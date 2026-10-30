@@ -11,7 +11,8 @@
 
 import type { ElementType } from '../../../ui/types';
 import type { DefinicjaKolumny, WierszTabeli, WierszZalozenia } from '../wzorzec';
-import type { KryteriaOceny, PozycjaRankingu, ZakresResponse } from './api';
+import type { RekordWerdyktu } from '../wzorzec/werdykt';
+import type { Kontyngencja, KryteriaOceny, PozycjaRankingu, ZakresResponse } from './api';
 import {
   KONTYNGENCJE_STRINGS as T,
   etykietaRodzaju,
@@ -56,48 +57,61 @@ export const KOLUMNY_RANKINGU: DefinicjaKolumny[] = [
   { klucz: 'pominiete', etykieta: T.kolPominiete, mono: true },
 ];
 
+/** Rekord kategorii naruszony — odczyt statusu rekordu backendu, nie porównanie licznika. */
+function naruszony(rekord: RekordWerdyktu | undefined): boolean {
+  return rekord?.status_maszynowy === 'NIE_SPELNIA';
+}
+
 /**
  * Ranking → wiersze wzorca.
  *
- * `ostrzezenie` zapala się TAM, GDZIE BACKEND POLICZYŁ NIEZEROWY LICZNIK — to
- * odczyt jego werdyktu, nie własny próg okna (żadnej wartości nie porównujemy
- * tu z granicą; granice zna wyłącznie backend). Licznik `null` (nie policzono)
- * nie jest ostrzeżeniem ani zerem — pokazuje się jako „—".
+ * `ostrzezenie` komórki kategorii pochodzi z REKORDU tej kategorii (`oceny` kontyngencji
+ * o tym samym `element_ref` — pozycja rankingu nie powtarza rekordów): znacznik zapala się,
+ * gdy rekord jest naruszony. Licznik jest wartością komórki, nie werdyktem — licznik zero
+ * przy pominiętym kryterium nie znaczy „w normie” (rekord ocena niewykonana, bez znacznika
+ * naruszenia; szczegóły w panelu kontyngencji). Licznik `null` pokazuje się jako „—".
  */
-export function naWierszeRankingu(ranking: readonly PozycjaRankingu[]): WierszTabeli[] {
-  return ranking.map((pozycja) => ({
-    [KLUCZ_WIERSZA_RANKINGU]: { wartosc: pozycja.element_ref },
-    pozycja: { wartosc: pozycja.pozycja, sortKey: pozycja.pozycja },
-    element: { wartosc: nazwaElementu(pozycja.element_name, pozycja.element_ref) },
-    rodzaj: { wartosc: etykietaRodzaju(pozycja.element_kind) },
-    odbiory: {
-      wartosc: fmtLicznik(pozycja.dotkliwosc.odbiory_bez_zasilania),
-      sortKey: pozycja.dotkliwosc.odbiory_bez_zasilania ?? undefined,
-      ostrzezenie: (pozycja.dotkliwosc.odbiory_bez_zasilania ?? 0) > 0,
-    },
-    mocOdciazona: {
-      wartosc: fmtLiczba(pozycja.dotkliwosc.moc_odciazona_mw, 3),
-      sortKey: pozycja.dotkliwosc.moc_odciazona_mw ?? undefined,
-    },
-    przeciazenia: {
-      wartosc: fmtLicznik(pozycja.dotkliwosc.przeciazenia),
-      sortKey: pozycja.dotkliwosc.przeciazenia ?? undefined,
-      ostrzezenie: (pozycja.dotkliwosc.przeciazenia ?? 0) > 0,
-    },
-    napiecia: {
-      wartosc: fmtLicznik(pozycja.dotkliwosc.naruszenia_napiecia),
-      sortKey: pozycja.dotkliwosc.naruszenia_napiecia ?? undefined,
-      ostrzezenie: (pozycja.dotkliwosc.naruszenia_napiecia ?? 0) > 0,
-    },
-    pominiete: {
-      wartosc: fmtLicznik(pozycja.dotkliwosc.kryteria_pominiete),
-      sortKey: pozycja.dotkliwosc.kryteria_pominiete ?? undefined,
-    },
-    // Kolumna identyfikatora (tryb ekspercki) NIE ma osobnego wpisu: jej klucz
-    // to `KLUCZ_WIERSZA_RANKINGU`, więc wartość ustawiona wyżej obsługuje OBIE
-    // role — klucz wiersza i widoczną kolumnę. Drugi wpis o tej samej nazwie był
-    // duplikatem pola (błąd typów TS1117), a nie dodatkową daną.
-  }));
+export function naWierszeRankingu(
+  ranking: readonly PozycjaRankingu[],
+  kontyngencje: readonly Kontyngencja[],
+): WierszTabeli[] {
+  const ocenyPoRef = new Map(kontyngencje.map((k) => [k.element_ref, k.oceny]));
+  return ranking.map((pozycja) => {
+    const oceny = ocenyPoRef.get(pozycja.element_ref);
+    return {
+      [KLUCZ_WIERSZA_RANKINGU]: { wartosc: pozycja.element_ref },
+      pozycja: { wartosc: pozycja.pozycja, sortKey: pozycja.pozycja },
+      element: { wartosc: nazwaElementu(pozycja.element_name, pozycja.element_ref) },
+      rodzaj: { wartosc: etykietaRodzaju(pozycja.element_kind) },
+      odbiory: {
+        wartosc: fmtLicznik(pozycja.dotkliwosc.odbiory_bez_zasilania),
+        sortKey: pozycja.dotkliwosc.odbiory_bez_zasilania ?? undefined,
+        ostrzezenie: naruszony(oceny?.odbiory_bez_zasilania),
+      },
+      mocOdciazona: {
+        wartosc: fmtLiczba(pozycja.dotkliwosc.moc_odciazona_mw, 3),
+        sortKey: pozycja.dotkliwosc.moc_odciazona_mw ?? undefined,
+      },
+      przeciazenia: {
+        wartosc: fmtLicznik(pozycja.dotkliwosc.przeciazenia),
+        sortKey: pozycja.dotkliwosc.przeciazenia ?? undefined,
+        ostrzezenie: naruszony(oceny?.przeciazenia),
+      },
+      napiecia: {
+        wartosc: fmtLicznik(pozycja.dotkliwosc.naruszenia_napiecia),
+        sortKey: pozycja.dotkliwosc.naruszenia_napiecia ?? undefined,
+        ostrzezenie: naruszony(oceny?.naruszenia_napiecia),
+      },
+      pominiete: {
+        wartosc: fmtLicznik(pozycja.dotkliwosc.kryteria_pominiete),
+        sortKey: pozycja.dotkliwosc.kryteria_pominiete ?? undefined,
+      },
+      // Kolumna identyfikatora (tryb ekspercki) NIE ma osobnego wpisu: jej klucz
+      // to `KLUCZ_WIERSZA_RANKINGU`, więc wartość ustawiona wyżej obsługuje OBIE
+      // role — klucz wiersza i widoczną kolumnę. Drugi wpis o tej samej nazwie był
+      // duplikatem pola (błąd typów TS1117), a nie dodatkową daną.
+    };
+  });
 }
 
 /**

@@ -822,8 +822,10 @@ class TestEdgeCases:
         assert result.verdict in ["ZGODNE", "GRANICZNE", "NIEZGODNE"]
 
     def test_validates_with_precomputed_result(self, valid_input: ProtectionSettingsInput):
-        """Test validation with pre-computed analysis result — `ithn_a` w tej
-        sciezce jest None (silnik nie przenosi przekroju/materialu w wyniku)."""
+        """Test validation with pre-computed analysis result — `ithn_a` czytany z wyniku
+        silnika (`thermal.ith_1s_a`), ten sam co na ścieżce z `input_data` (karta
+        WERDYKT-MIGRACJA-190, C40: jedno odczytanie tablicy j_thn; dawniej None, bo wzorzec
+        liczył I_th(1 s) sam z wejścia)."""
         analysis_result = ProtectionSettingsEngine.calculate(valid_input)
 
         pattern = LineIDoublePrimeReferencePattern()
@@ -832,7 +834,11 @@ class TestEdgeCases:
         assert result.verdict == "ZGODNE"
         step_names = [s["step"] for s in result.trace]
         assert "run_analysis" not in step_names
-        assert result.artifacts["ithn_a"] is None
+        assert result.artifacts["ithn_a"] == analysis_result.thermal.ith_1s_a
+        assert (
+            result.artifacts["ithn_a"]
+            == pattern.validate(input_data=valid_input).artifacts["ithn_a"]
+        )
 
 
 # =============================================================================

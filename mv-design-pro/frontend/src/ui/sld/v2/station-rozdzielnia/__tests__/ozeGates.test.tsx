@@ -221,11 +221,15 @@ describe('GATE J — SC contribution is IBG (bounded current), NOT a machine', (
     expect(contrib!.getAttribute('data-synchronous')).toBe('false');
   });
 
-  it('≤Icw verification is present and passes for every bus', () => {
+  it('rekordy K wytrzymałości (cieplna I_th ≤ I_cw, dynamiczna i_p ≤ I_dyn) dla każdej szyny', () => {
     for (const a of PV) {
       for (const bus of Object.values(OZE_ARCHETYPES_2A[a].short_circuit.buses)) {
-        expect(bus.verification.rule).toBe('ikss_max_le_icw');
-        expect(bus.verification.passed).toBe(true);
+        expect(bus.oceny.cieplna.kryterium_id).toMatch(/\.cieplna$/);
+        expect(bus.oceny.dynamiczna.kryterium_id).toMatch(/\.dynamiczna$/);
+        expect(bus.oceny.cieplna.status_maszynowy).toBe('SPELNIA');
+        expect(bus.oceny.dynamiczna.status_maszynowy).toBe('SPELNIA');
+        // Znamiona I_cw/I_dyn substratu to dane przyjęte — dowód niepełny (zasada nr 4).
+        expect(bus.oceny.cieplna.kompletnosc_dowodu).toBe('NIEPELNY');
       }
     }
   });
@@ -267,7 +271,7 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
         expect(m.mu).toBeGreaterThan(0);
         expect(m.mu).toBeLessThanOrEqual(1);
       }
-      expect(bus.verification.passed).toBe(true);
+      expect(bus.oceny.cieplna.status_maszynowy).toBe('SPELNIA');
     }
   });
 
@@ -286,7 +290,7 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
         expect(m.q).toBeGreaterThan(0);
         expect(m.q).toBeLessThanOrEqual(1); // q ≤ 1 (asynchronous decay)
       }
-      expect(bus.verification.passed).toBe(true);
+      expect(bus.oceny.cieplna.status_maszynowy).toBe('SPELNIA');
     }
   });
 
@@ -312,7 +316,7 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
         expect(m.q).toBeGreaterThan(0);
         expect(m.q).toBeLessThanOrEqual(1); // q ≤ 1 (induction-machine decay during crowbar)
       }
-      expect(bus.verification.passed).toBe(true);
+      expect(bus.oceny.cieplna.status_maszynowy).toBe('SPELNIA');
     }
   });
 
@@ -500,7 +504,7 @@ describe('G4-PVTR — PV 1 MW via customer transformer station', () => {
 
   it('SC verdict ≤Icw passes on a correctly-specified board; IBG (not a machine)', () => {
     for (const bus of Object.values(OZE_ARCHETYPES_2A[G4].short_circuit.buses)) {
-      expect(bus.verification.passed).toBe(true);
+      expect(bus.oceny.cieplna.status_maszynowy).toBe('SPELNIA');
       expect(bus.source_contribution.is_synchronous_machine).toBe(false);
     }
   });
@@ -869,7 +873,7 @@ describe('G5-BESS — magazyn energii (IBG dwukierunkowy + oś energii kWh)', ()
     for (const bus of Object.values(OZE_ARCHETYPES_2A[G5].short_circuit.buses)) {
       expect(bus.source_contribution.machine_type).toBe('IBG');
       expect(bus.source_contribution.is_synchronous_machine).toBe(false);
-      expect(bus.verification.passed).toBe(true);
+      expect(bus.oceny.cieplna.status_maszynowy).toBe('SPELNIA');
     }
   });
 
@@ -980,7 +984,7 @@ describe('G5-WIND-T4 — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
     for (const bus of Object.values(OZE_ARCHETYPES_2A[G6].short_circuit.buses)) {
       expect(bus.source_contribution.machine_type).toBe('IBG');
       expect(bus.source_contribution.is_synchronous_machine).toBe(false);
-      expect(bus.verification.passed).toBe(true);
+      expect(bus.oceny.cieplna.status_maszynowy).toBe('SPELNIA');
     }
   });
 

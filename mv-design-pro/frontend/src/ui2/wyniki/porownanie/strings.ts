@@ -55,7 +55,6 @@ export const POROWNANIE_STRINGS = {
   podsumProblemy: 'Problemy wg wagi (krytyczne · poważne · umiarkowane · drobne)',
   podsumProblemyRazem: 'Problemy łącznie',
   podsumLiczby: 'Liczba szyn · gałęzi',
-  podsumTagOdchylenie: 'poza zakresem',
 
   // Zakładki
   zakladkaSzyny: 'Różnice szyn',
@@ -148,9 +147,6 @@ export const WAGA_PL: Record<IssueSeverity, string> = {
   2: 'Drobny',
   1: 'Drobny',
 };
-
-/** Próg wagi, od którego różnica jest tagowana jako „poza zakresem" (poważny+). */
-export const WAGA_PROG_TAG: IssueSeverity = 4;
 
 /**
  * Polskie nazwy rodzajów problemu (`PowerFlowIssueCode`, `types.ts:23-29`).

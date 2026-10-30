@@ -64,7 +64,6 @@ export const KONTYNGENCJE_STRINGS = {
     'Stan sieci BEZ wyłączeń, liczony tą samą ścieżką co kontyngencje. Naruszenia '
     + 'widoczne już tutaj nie są skutkiem żadnej kontyngencji — bez tego odniesienia '
     + 'ranking N-1 czytałoby się jak listę nowych problemów.',
-  bazowyBezNaruszen: 'Stan bazowy bez naruszeń ocenianych kryteriów.',
 
   // Ranking ----------------------------------------------------------------
   rankingTytul: 'Ranking dotkliwości',
@@ -91,6 +90,7 @@ export const KONTYNGENCJE_STRINGS = {
   sekcjaPominieteOpis:
     'Brak danej nie jest wynikiem: te kryteria nie zostały policzone i nie wchodzą '
     + 'do dotkliwości ani do „w normie".',
+  sekcjaOceny: 'Ocena kategorii dotkliwości',
   sekcjaSlad: 'Ślad biegu',
   sladMechanizm: 'Wariant wejścia',
   sladMetoda: 'Metoda rozwiązania',

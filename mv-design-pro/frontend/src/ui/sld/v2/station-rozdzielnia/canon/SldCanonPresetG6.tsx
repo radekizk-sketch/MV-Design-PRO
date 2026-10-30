@@ -165,18 +165,18 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
 
       {/* ── node ① — collector 15 kV (sieć + MASZYNA referred through the turbine TR) ── */}
       <NodeReadout x={X.node} y={236} n={1} title={`kolektor SN · ${colKv} kV`}
-        uKv={sn.un_kv} uPu={sn.u_pu} uOk={Math.abs(sn.deviation_percent) <= 5}
+        uKv={sn.un_kv} uPu={sn.u_pu} uOcena={sn.ocena}
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + maszyna ${fmt(snMach, 2)} kA`}
-        icw={snSc.icw_ka} icwOk={snSc.verification.passed}
+        icw={snSc.icw_ka} icwOcena={snSc.oceny.cieplna} idynOcena={snSc.oceny.dynamiczna}
         ip={snSc.max.ip_ka} idyn={snSc.idyn_ka} />
 
       {/* ── node ② — turbine terminal 0.69 kV (TR + LOCAL machine, large) ── */}
       <NodeReadout x={X.node} y={470} n={2} title="zacisk DFIG · 0,69 kV"
-        uKv={lv.un_kv} uPu={lv.u_pu} uOk={Math.abs(lv.deviation_percent) <= 5}
+        uKv={lv.un_kv} uPu={lv.u_pu} uOcena={lv.ocena}
         ik3fMax={lvSc.max.ikss_ka} ik3fMin={lvSc.min.ikss_ka}
         ik1f="lok. (trafo Dyn turb.)" share={`TR ${fmt(lvTrShare, 1)} + maszyna ${fmt(lvMach, 1)} kA`}
-        icw={lvSc.icw_ka} icwOk={lvSc.verification.passed}
+        icw={lvSc.icw_ka} icwOcena={lvSc.oceny.cieplna} idynOcena={lvSc.oceny.dynamiczna}
         ip={lvSc.max.ip_ka} idyn={lvSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}

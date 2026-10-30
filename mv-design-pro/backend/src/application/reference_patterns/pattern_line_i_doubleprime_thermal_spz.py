@@ -63,7 +63,6 @@ from typing import Any
 
 # Import kanonicznego silnika metodyki nastaw (bez modyfikacji silnika)
 from application.protection_settings.engine import (
-    THERMAL_DENSITY,
     InstantaneousSettings,
     InstantaneousSettingWindow,
     LocalGenerationDiagnostic,
@@ -306,17 +305,12 @@ class LineIDoublePrimeReferencePattern:
         spz = analysis_result.spz
         local_generation = analysis_result.local_generation
 
-        # `ithn_a` (prad znamionowy cieplny 1s = przekroj x gestosc) wymaga
-        # przekroju/materialu przewodu — `ProtectionSettingsResult` ich NIE
-        # przenosi (inaczej niz dawny FIX-12D, gdzie `ThermalWithstandResult`
-        # niosl `ithn_a` wprost). Gdy wzorzec wola z `analysis_result` (bez
-        # `input_data` — sciezka wylacznie do testow post-processingu bez
-        # ponownego liczenia silnika), artefakt jest NIEDOSTEPNY — zero
-        # fabrykacji domyslnego materialu/przekroju.
-        ithn_a: float | None = None
-        if input_data is not None:
-            j_thn = THERMAL_DENSITY.get(input_data.conductor_material, 94.0)
-            ithn_a = round(input_data.cross_section_mm2 * j_thn, 1)
+        # `ithn_a` — wytrzymałość cieplna żyły dla 1 s (I_th(1 s) = s·j_thn) z wyniku silnika
+        # (`ThermalWithstandResult.ith_1s_a`): JEDNO odczytanie tablicy j_thn
+        # (`gestosc_cieplna_zyly`, materiał w kodach modelu CU/AL/AL_ST), także gdy wzorzec
+        # dostaje gotowy `analysis_result`. Dawniej wzorzec czytał tablicę sam, kluczami,
+        # które nie trafiały w kody modelu, z cichym j_thn aluminium.
+        ithn_a: float | None = analysis_result.thermal.ith_1s_a
 
         artifacts: dict[str, Any] = {
             "tk_total_s": spz.total_fault_time_s,

@@ -750,6 +750,85 @@ def _wytrzymalosc_pol() -> dict[str, Any]:
     }
 
 
+def _nastawy_cieplne() -> dict[str, Any]:
+    """Blok ``thermal`` wyniku silnika nastaw I>/I>> (``ProtectionSettingsEngine`` — TA SAMA
+    funkcja co odpowiedź końcówki nastaw) dla sekcji nastaw ekranu koordynacji: linia 120 mm² Al
+    wytrzymuje I″k,max = 8 kA, linia 10 mm² Al nie wytrzymuje 50 kA."""
+    from application.protection_settings.engine import (
+        ProtectionSettingsEngine,
+        ProtectionSettingsInput,
+    )
+
+    def _blok(przekroj: float, ik_max: float) -> dict[str, Any]:
+        wejscie = ProtectionSettingsInput(
+            line_id="L-001",
+            line_name="Linia SN nr 1",
+            cross_section_mm2=przekroj,
+            conductor_material="AL",
+            length_km=5.0,
+            i_nominal_a=300.0,
+            ik3_max_beginning_a=ik_max,
+            ik3_min_beginning_a=5000.0,
+            ik3_max_end_a=4000.0,
+            ik3_min_end_a=2500.0,
+            ik2_min_end_a=2000.0,
+            ik_max_next_bus_a=3000.0,
+            i_load_max_a=200.0,
+        )
+        blok: dict[str, Any] = ProtectionSettingsEngine.calculate(wejscie).to_dict()["thermal"]
+        return blok
+
+    return {"wytrzymuje": _blok(120.0, 8000.0), "nie_wytrzymuje": _blok(10.0, 50000.0)}
+
+
+def _oceny_kontyngencji() -> dict[str, Any]:
+    """Rekordy kategorii dotkliwości kontyngencji N-1 (``build_kontyngencje_n1_view`` — TA SAMA
+    funkcja co końcówka) dla fikstury ekranu „Kontyngencje N-1”
+    (``ui2/wyniki/kontyngencje/__tests__/fixtures.ts``). Fikstura ekranu składa warianty
+    o różnych licznikach z kilku sieci testowych serwisu, więc każdy wariant dostaje rekordy
+    z REALNEGO wariantu o tych samych licznikach kategorii:
+
+    - ``bazowy`` — stan N-0 promienia z transformatorem (bez naruszeń),
+    - ``z_przeciazeniem`` — pierścień, wyłączenie ``ln_src_a`` (przeciążenie objazdu),
+    - ``niezbiezna`` — sieć z biegiem niezbieżnym, wyłączenie ``ka_mocny``,
+    - ``wykluczona`` — promień, ``ln_wyl`` wyłączona już w modelu bazowym,
+    - ``odbiory_odciete`` — promień, wyłączenie ``tr_sn_nn`` (odbiór nN bez zasilania,
+      kryterium prądowe kabla pominięte).
+    """
+    from application.analyses.kontyngencje_n1 import build_kontyngencje_n1_view
+    from enm.canonical_analysis import reset_canonical_runs
+    from enm.store import reset_enm_store
+
+    from tests.application.analyses.test_kontyngencje_n1_service import (
+        _bieg,
+        _niezbiezny,
+        _pierscien,
+        _promien_z_transformatorem,
+    )
+
+    def _widok(budowa: Any) -> dict[str, Any]:
+        reset_canonical_runs()
+        reset_enm_store()
+        widok: dict[str, Any] = build_kontyngencje_n1_view(_bieg(budowa()))
+        return widok
+
+    def _oceny(widok: dict[str, Any], ref: str) -> Any:
+        return next(k["oceny"] for k in widok["kontyngencje"] if k["element_ref"] == ref)
+
+    promien = _widok(_promien_z_transformatorem)
+    pierscien = _widok(_pierscien)
+    niezbiezny = _widok(_niezbiezny)
+    reset_canonical_runs()
+    reset_enm_store()
+    return {
+        "bazowy": promien["przypadek_bazowy"]["oceny"],
+        "z_przeciazeniem": _oceny(pierscien, "ln_src_a"),
+        "niezbiezna": _oceny(niezbiezny, "ka_mocny"),
+        "wykluczona": _oceny(promien, "ln_wyl"),
+        "odbiory_odciete": _oceny(promien, "tr_sn_nn"),
+    }
+
+
 #: Plik fixtury frontu → funkcja budująca jego treść.
 FIXTURY: dict[Path, Any] = {
     _FRONTEND_SRC / "ui2" / "oze" / "frt" / "__tests__" / "rekordyOceny.json": _frt,
@@ -800,6 +879,18 @@ FIXTURY: dict[Path, Any] = {
     / "aparatura"
     / "__tests__"
     / "rekordyWytrzymalosci.json": _wytrzymalosc_pol,
+    _FRONTEND_SRC
+    / "ui2"
+    / "wyniki"
+    / "koordynacja"
+    / "__tests__"
+    / "nastawyCieplne.json": _nastawy_cieplne,
+    _FRONTEND_SRC
+    / "ui2"
+    / "wyniki"
+    / "kontyngencje"
+    / "__tests__"
+    / "ocenyKontyngencji.json": _oceny_kontyngencji,
 }
 
 

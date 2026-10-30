@@ -50,6 +50,9 @@ import os
 import re
 from typing import Any, Literal
 
+from analysis.energy_validation.models import EnergyCheckType
+from analysis.energy_validation.oceny import ocena_pozycji
+from analysis.normative.kryteria_napiecia import KRYTERIUM_PRZEKROCZENIE_PROCENT
 from analysis.obciazenie_galezi import (
     ObciazenieGalezi,
     obciazenie_galezi,
@@ -57,6 +60,7 @@ from analysis.obciazenie_galezi import (
     prad_zacisku_od_a,
 )
 from application.slad_kroku import kroki_zwarcia_w_kontrakcie
+from network_model.catalog.audit2_oceny import oceny_wytrzymalosci_aparatu
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.core.graph import NetworkGraph
@@ -80,6 +84,7 @@ from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitIEC60909Solver,
     ShortCircuitResult,
 )
+from werdykt import DanaPrzyjeta, Przedmiot, Wielkosc
 
 _BASE_MVA = 100.0
 _BASE_KV = 15.0
@@ -471,8 +476,104 @@ def _ibg_referred_a(graph: NetworkGraph, un_kv: float) -> float:
     return total
 
 
+# ---------------------------------------------------------------------------
+# Rekordy werdyktu wyjaśnialnego szyn (karta WERDYKT-MIGRACJA-190, domena SLD G1–G9).
+# Renderer stacji czyta etykietę rekordu (ton i znak z semantyki) — nie porównuje liczb
+# z progiem. Dawniej: kropka „w paśmie” przy |ΔU| ≤ 5 % (próg bez podstawy, liczony w
+# warstwie prezentacji) i flaga `verification.passed` = I″k,max ≤ Icw (bez kryterium,
+# limitu i marginesu).
+# ---------------------------------------------------------------------------
+_ODNIESIENIE_SUBSTRATU = "tests/reference_networks/station_archetype_substrate.py"
+
+
+def _nazwa_szyny(un_kv: float) -> str:
+    """Nazwa inżynierska szyny w zdaniu rekordu (rozdzielnica i napięcie znamionowe) —
+    identyfikator szyny substratu (np. ``SN_PCC``) zostaje w ``element_ref``, nie w tekście
+    rysunku (kanon SLD: bez nazw technicznych i bez „PCC”)."""
+    rozdzielnica = "SN" if un_kv >= 1.0 else "nN"
+    return f"szyna {rozdzielnica} {format(un_kv, 'g').replace('.', ',')} kV"
+
+
+def _ocena_napiecia_szyny(bus_id: str, un_kv: float, deviation_percent: float) -> dict[str, Any]:
+    """Rekord K odchylenia napięcia szyny wobec ±10 % (PN-EN 50160) — TA SAMA funkcja co
+    profil napięć i walidacja energetyczna (``ocena_pozycji``, jedno źródło kryterium).
+    ``bus_id`` nazywa krok śladu."""
+    ocena = ocena_pozycji(
+        check_type=EnergyCheckType.VOLTAGE_DEVIATION,
+        nazwa_pl=_nazwa_szyny(un_kv),
+        wynik=abs(deviation_percent),
+        limit=KRYTERIUM_PRZEKROCZENIE_PROCENT,
+        slad_krok=f"substrat_stacji.odchylenie_napiecia.{bus_id}",
+        odniesienie=_ODNIESIENIE_SUBSTRATU,
+    )
+    return ocena.model_dump(mode="json")
+
+
+def _oceny_wytrzymalosci_szyny(
+    bus_id: str,
+    un_kv: float,
+    *,
+    icw_ka: float,
+    idyn_ka: float,
+    ip_ka: float,
+    ith_ka: float,
+) -> dict[str, Any]:
+    """Rekordy K wytrzymałości rozdzielnicy szyny (dynamiczna i_p ≤ I_dyn, cieplna
+    I_th ≤ I_cw·√(t_cw/T_k)) — TA SAMA reguła co walidator katalogu, dowód doboru aparatury
+    i widok pól (``oceny_wytrzymalosci_aparatu``). Znamiona I_cw i I_dyn są założeniami
+    substratu (nie kartą producenta), więc wchodzą jako dane przyjęte ``ESTIMATED`` — dowód
+    każdego zapisu jest niepełny."""
+    przedmiot = Przedmiot(
+        element_ref=bus_id,
+        nazwa_pl=f"rozdzielnica — {_nazwa_szyny(un_kv)}",
+        opis_pl="rozdzielnica szyny substratu stacji wobec prądów zwarciowych szyny",
+    )
+    stosunek = 2.5 if un_kv >= 1.0 else 2.1
+    icw = DanaPrzyjeta(
+        nazwa_pl="prąd krótkotrwały wytrzymywany rozdzielnicy I_cw (1 s)",
+        wartosc=Wielkosc(wartosc=icw_ka, jednostka="kA"),
+        powod_pl="znamię przyjęte w substracie stacji, nie dana karty producenta",
+        jakosc="ESTIMATED",
+    )
+    idyn = DanaPrzyjeta(
+        nazwa_pl="prąd szczytowy wytrzymywany rozdzielnicy I_dyn",
+        wartosc=Wielkosc(wartosc=idyn_ka, jednostka="kA"),
+        powod_pl=(
+            f"I_dyn = {stosunek}·I_cw ("
+            + ("IEC 62271-1, rozdzielnica SN 50 Hz" if un_kv >= 1.0 else "klasa wyłączników nN")
+            + "), znamię przyjęte w substracie stacji"
+        ),
+        jakosc="ESTIMATED",
+    )
+    dynamiczna, cieplna = oceny_wytrzymalosci_aparatu(
+        kryterium_id=f"substrat_stacji.wytrzymalosc.{bus_id}",
+        przedmiot=przedmiot,
+        etykieta_pl=przedmiot.nazwa_pl,
+        i_dyn_ka=idyn_ka,
+        i_th_ka=icw_ka,
+        i_th_duration_s=1.0,
+        i_peak_calculated_ka=ip_ka,
+        i_thermal_calculated_ka=ith_ka,
+        t_clearing_s=_TK_S,
+        zakres_opis_pl=(
+            f"Rozdzielnica ({_nazwa_szyny(un_kv)}) wobec prądu udarowego i prądu cieplnego zastępczego "
+            f"zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = {_TK_S} s."
+        ),
+        dane_dynamiczna=(idyn,),
+        dane_cieplna=(icw,),
+        odniesienie=_ODNIESIENIE_SUBSTRATU,
+        zalozenie_znamion_pl=(
+            "znamiona rozdzielnicy przyjęte w substracie stacji (IEC 62271-1, nie karta producenta)"
+        ),
+    )
+    return {
+        "dynamiczna": dynamiczna.model_dump(mode="json"),
+        "cieplna": cieplna.model_dump(mode="json"),
+    }
+
+
 def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float) -> dict[str, Any]:
-    """Ik''max/min + ip/ib/ith/kappa + Sk + Icw verification at one busbar, with the solver's
+    """Ik''max/min + ip/ib/ith/kappa + Sk + rekordy K wytrzymałości (I_dyn, I_cw) at one busbar, with the solver's
     White Box trace carried verbatim except the prose copy of LaTeX the FROZEN core writes into
     `substitution` (removed by step key at the application boundary — karta DOWOD-CIEPLNY,
     `application/slad_kroku.py`; the LaTeX stays in `substitution_latex`). Audit F-1: the FROZEN solver adds IBG current UN-REFERRED
@@ -525,14 +626,16 @@ def _sc_bus_entry(graph: NetworkGraph, bus_id: str, un_kv: float, icw_ka: float)
             "sk_mva": round(rmin.sk_mva * f_min, 2),
             "white_box_trace": _json_safe(kroki_zwarcia_w_kontrakcie(rmin.white_box_trace)),
         },
-        # Verification: Ik''max ≤ Icw (thermal withstand). The dynamic check (ip ≤ Idyn) is the
-        # paired per-bus nameplate above; both are shown at L2 with their own verdict.
-        "verification": {
-            "rule": "ikss_max_le_icw",
-            "ikss_max_ka": ikss_max_ka,
-            "icw_ka": icw_ka,
-            "passed": bool(ikss_max_ka <= icw_ka),
-        },
+        # Rekordy K wytrzymałości rozdzielnicy szyny (dynamiczna i cieplna) — L2 pokazuje
+        # etykietę rekordu, nie porównuje liczb.
+        "oceny": _oceny_wytrzymalosci_szyny(
+            bus_id,
+            un_kv,
+            icw_ka=icw_ka,
+            idyn_ka=idyn_ka,
+            ip_ka=ip_max_ka,
+            ith_ka=round(rmax.ith_a * f_max / 1000.0, 3),
+        ),
     }
 
 
@@ -540,7 +643,7 @@ def build_short_circuit_companion(
     archetype: str, graph: NetworkGraph, buses: list[tuple[str, float, float]]
 ) -> dict[str, Any]:
     """SC companion for one archetype: every (bus_id, un_kv, icw_ka) carries its
-    IEC 60909 Ik''max/min + ip/ib/ith + Icw verification + White Box trace."""
+    IEC 60909 Ik''max/min + ip/ib/ith + rekordy K wytrzymałości + White Box trace."""
     return {
         "schema": "sld_short_circuit_companion_v1",
         "enm_hash": f"station-substrate/{archetype}",
@@ -881,6 +984,7 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
             "u_pu": u_pu_r,
             "u_percent": round(u_pu * 100.0, 3),
             "deviation_percent": dev,
+            "ocena": _ocena_napiecia_szyny(bus_id, un_kv, dev),
             "angle_deg": round(
                 float(sol.node_angle.get(bus_id, 0.0)) * 180.0 / 3.141592653589793, 3
             ),
@@ -1222,6 +1326,7 @@ def _oze_companion(
             "u_kv": round(u_pu * un_kv, 4),
             "u_pu": round(u_pu, 5),
             "deviation_percent": round((u_pu - 1.0) * 100.0, 3),
+            "ocena": _ocena_napiecia_szyny(bus_id, un_kv, round((u_pu - 1.0) * 100.0, 3)),
         }
     vf_branches: dict[str, dict[str, Any]] = {}
     for branch_id in sorted(graph.branches):
@@ -3307,7 +3412,7 @@ _TS_SC_HEADER = """\
  *     tests.reference_networks.station_archetype_substrate --write
  *
  * Every SN and nN busbar carries Ik''max/min + ip/ib/ith/kappa + Z(R/X) + Sk''
- * + the Ik''max ≤ Icw verification + the solver White Box trace. The renderer
+ * + rekordy K wytrzymałości (i_p ≤ I_dyn, I_th ≤ I_cw) + the solver White Box trace. The renderer
  * INTERPRETS these on L2 — it never recomputes a short circuit.
  */
 import type { StationArchetype } from '../contract';

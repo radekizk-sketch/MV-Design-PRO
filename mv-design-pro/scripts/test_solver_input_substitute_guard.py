@@ -2126,7 +2126,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # i na drzewie karty (4513). +1: `wylaczanie` (rekord K kryterium wylaczania w
     # `OcenyDoboruAparatu`); `status`, `overall_status`, `key_results` wyniku dowodu doboru
     # zastapione polami `ocena`/`wymaganie`, ktore juz byly w zbiorze nazw.
-    assert "Pol kontraktow wejsciowych: 4513." in wyjscie, wyjscie
+    # Ta sama karta, C40: 4513 -> 4515 — POMIAR `contract_fields()` na `01b76169c` (4513)
+    # i na drzewie karty (4515). +2: `dana_przyjeta` (`GestoscCieplna` — wartosc robocza j_thn
+    # dla materialu spoza tablicy) i `podstawa_wytrzymalosci` (`ConductorThermalInput`).
+    assert "Pol kontraktow wejsciowych: 4515." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2457,7 +2460,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # audit2_oceny.py` — rekordy K/W audytu 2). POMIAR guardem na drzewie karty (607).
         # Ta sama karta, C33: 607 -> 608 (+1 `application/equipment_proof/oceny.py`). POMIAR
         # guardem na drzewie karty (608).
-        "Przeskanowano 608 plikow w zakresie: network_model, solver_input, enm, "
+        # Ta sama karta, kontyngencje N-1: 608 -> 609 (+1 `application/analyses/
+        # kontyngencje_n1_oceny.py` — rekordy kategorii dotkliwosci). POMIAR guardem (609).
+        "Przeskanowano 609 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2556,7 +2561,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # POMIAR guardem na `b1e677ced` i na drzewie karty.
     # Ta sama karta, domena 7: 45/208 -> 44/206 — application −1 plik/−2: wpis
     # `proof_engine/packs/lv_circuit_verification.py` zdjety (krok 7 bez `0.0` za brak I²t).
-    assert "Zapadka dlugu (fizyczne): 44 plikow, suma 206." in wyjscie, wyjscie
+    # Ta sama karta, C40: 44/206 -> 44/204 — `protection_settings/engine.py` −2
+    # (`B:ifexp:inp.cross_section_mm2`, `H:local:inp.ik3_max_beginning_a`). POMIAR guardem.
+    assert "Zapadka dlugu (fizyczne): 44 plikow, suma 204." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2898,7 +2905,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Ta sama karta, domena 7: dlug 25/71 -> 24/69 (`lv_circuit_verification.py`). POMIAR.
         # Ta sama karta, C33: application 255 -> 256 (+1 `equipment_proof/oceny.py` — rekordy
         # K/W dowodu doboru aparatury); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  application: pliki_skanowane=256, dlug=24 plikow/suma 69, "
+        # Ta sama karta, C40: dlug 24/69 -> 24/67 (`protection_settings/engine.py`). POMIAR.
+        # Ta sama karta, kontyngencje N-1: application 256 -> 257 (+1
+        # `analyses/kontyngencje_n1_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=257, dlug=24 plikow/suma 67, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

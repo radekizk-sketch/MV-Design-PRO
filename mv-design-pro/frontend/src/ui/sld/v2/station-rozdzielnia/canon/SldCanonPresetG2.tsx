@@ -118,10 +118,10 @@ export function SldCanonPresetG2({ companion }: { companion: SldOzeArchetypeComp
 
       {/* ── node ① readout ── */}
       <NodeReadout x={nodeX} y={busY - 124} n={1} title="szyna nN · 0,40 kV · TN"
-        uKv={nn.un_kv} uPu={nn.u_pu} uOk={Math.abs(nn.deviation_percent) <= 5}
+        uKv={nn.un_kv} uPu={nn.u_pu} uOcena={nn.ocena}
         ik3fMax={nnSc.max.ikss_ka} ik3fMin={nnSc.min.ikss_ka}
         ik1f={ik1f} share={`OSD ${fmt(gridShare, 1)} + faln. ${fmt(faln, 2)} kA`}
-        icw={nnSc.icw_ka} icwOk={nnSc.verification.passed}
+        icw={nnSc.icw_ka} icwOcena={nnSc.oceny.cieplna} idynOcena={nnSc.oceny.dynamiczna}
         ip={nnSc.max.ip_ka} idyn={nnSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}

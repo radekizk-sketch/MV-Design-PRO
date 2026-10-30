@@ -58,6 +58,7 @@ import {
   type StationDetailLevel,
 } from './geometry';
 import type { ScBus } from './companions/shortCircuitTypes';
+import { odczytOceny } from './canon/sldCanonKit';
 import type { VfBus, VfBranch } from './companions/voltageFlowTypes';
 import { pasmoNapieciowe, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 
@@ -881,8 +882,9 @@ function SmcCoupler(props: {
 /**
  * The per-busbar short-circuit dossier shown at L2 (close zoom) — gate E. Every
  * value is READ from the frozen-solver SC companion (`ScBus`); nothing is
- * recomputed. Shows Ik''max/min, ip/ib/ith, κ, Sk'', R/X and the Ik''max ≤ Icw
- * withstand verdict, with the case_ref and a White Box affordance (the LaTeX
+ * recomputed. Shows Ik''max/min, ip/ib/ith, κ, Sk'', R/X and the two withstand K records of
+ * the busbar switchgear (cieplna I_th ≤ I_cw, dynamiczna i_p ≤ I_dyn — sign, tone and the
+ * explanation sentence from the record), with the case_ref and a White Box affordance (the LaTeX
  * derivation is carried in `max.white_box_trace`).
  */
 function BusbarShortCircuitPanel(props: {
@@ -891,7 +893,12 @@ function BusbarShortCircuitPanel(props: {
   y: number;
 }): JSX.Element {
   const { sc, x, y } = props;
-  const ok = sc.verification.passed;
+  const cieplna = odczytOceny(sc.oceny.cieplna);
+  const dynamiczna = odczytOceny(sc.oceny.dynamiczna);
+  const werdykty: Array<[string, ReturnType<typeof odczytOceny>]> = [
+    [`Ith ${sc.max.ith_ka.toFixed(1)} kA · Icw ${sc.icw_ka} kA ${cieplna.znak}`, cieplna],
+    [`ip ${sc.max.ip_ka.toFixed(1)} kA · Idyn ${sc.idyn_ka} kA ${dynamiczna.znak}`, dynamiczna],
+  ];
   const rows: Array<[string, string]> = [
     [`Ik"max (c=${sc.max.c_factor})`, `${sc.max.ikss_ka.toFixed(2)} kA`],
     ['ip', `${sc.max.ip_ka.toFixed(1)} kA`],
@@ -904,7 +911,7 @@ function BusbarShortCircuitPanel(props: {
   ];
   const rowH = 9;
   const panelW = 116;
-  const panelH = 20 + rows.length * rowH + 22;
+  const panelH = 20 + rows.length * rowH + 8 + werdykty.length * 14;
   return (
     <g data-testid={`sr-sc-panel-${sc.bus_ref}`} data-sc-bus={sc.bus_ref} pointerEvents="none">
       <rect x={x} y={y} width={panelW} height={panelH} rx={3} fill="#0A1622" stroke="#1C3A4E" strokeWidth={1} opacity={0.96} />
@@ -924,11 +931,19 @@ function BusbarShortCircuitPanel(props: {
           </g>
         );
       })}
-      {/* Icw verification verdict. */}
-      <rect x={x + 4} y={y + panelH - 18} width={panelW - 8} height={14} rx={2} fill={ok ? '#0C2A18' : '#3A0E0E'} stroke={ok ? COLOR_DEVICE_CLOSED_BORDER : COLOR_DEVICE_OPEN_BORDER} strokeWidth={1} />
-      <text x={x + panelW / 2} y={y + panelH - 8} textAnchor="middle" fill={ok ? '#5BE08A' : '#FF6B6B'} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={800}>
-        {`Ik"max ${sc.verification.ikss_max_ka.toFixed(1)} ${ok ? '≤' : '>'} Icw ${sc.verification.icw_ka} kA ${ok ? '✓' : '✗'}`}
-      </text>
+      {/* Rekordy K wytrzymałości rozdzielnicy szyny — etykieta i zdanie z backendu. */}
+      {werdykty.map(([tekst, odczyt], i) => {
+        const ry = y + panelH - werdykty.length * 14 + i * 14;
+        return (
+          <g key={tekst} data-testid={`sr-sc-ocena-${sc.bus_ref}-${i}`} data-semantyka={odczyt.semantyka}>
+            <title>{odczyt.opis}</title>
+            <rect x={x + 4} y={ry - 4} width={panelW - 8} height={12} rx={2} fill="#0A1622" stroke={odczyt.ton} strokeWidth={1} />
+            <text x={x + panelW / 2} y={ry + 5} textAnchor="middle" fill={odczyt.ton} fontFamily={FONT_MONO} fontSize={6.4} fontWeight={800}>
+              {tekst}
+            </text>
+          </g>
+        );
+      })}
       {/* White Box affordance — the derivation exists (LaTeX trace from the solver). */}
       <text data-testid={`sr-sc-whitebox-${sc.bus_ref}`} data-wb-steps={sc.max.white_box_trace.length} x={x + 6} y={y + panelH + 8} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6} fontWeight={600}>
         {`White Box: ${sc.max.white_box_trace.length} kroków · ${sc.max.case_ref}`}
@@ -944,15 +959,17 @@ function BusbarShortCircuitPanel(props: {
 /**
  * The per-busbar voltage badge shown at L2 — gate F. U [kV] + [p.u./%] +
  * signed deviation from nominal, READ from the frozen Newton-Raphson companion
- * (`VfBus`). A green/amber dot flags whether |deviation| is within ±5 %.
+ * (`VfBus`). The dot carries the tone of the backend K record of the voltage deviation
+ * (±10 % PN-EN 50160, `vf.ocena`) — the badge does not compare numbers with a threshold.
  */
 function BusbarVoltageBadge(props: { vf: VfBus; x: number; y: number; anchor?: 'start' | 'end' }): JSX.Element {
   const { vf, x, y, anchor = 'start' } = props;
-  const within = Math.abs(vf.deviation_percent) <= 5;
+  const u = odczytOceny(vf.ocena);
   const dotX = anchor === 'start' ? x - 6 : x + 6;
   return (
-    <g data-testid={`sr-vf-badge-${vf.bus_ref}`} data-vf-bus={vf.bus_ref} pointerEvents="none">
-      <circle cx={dotX} cy={y - 3} r={2.4} fill={within ? '#5BE08A' : '#FFB020'} />
+    <g data-testid={`sr-vf-badge-${vf.bus_ref}`} data-vf-bus={vf.bus_ref} data-semantyka={u.semantyka} pointerEvents="none">
+      <title>{u.opis}</title>
+      <circle cx={dotX} cy={y - 3} r={2.4} fill={u.ton} />
       <text x={x} y={y} textAnchor={anchor} fill="#CFE9FF" fontFamily={FONT_MONO} fontSize={7.5} fontWeight={800}>
         {`U=${vf.u_kv.toFixed(wPasmieNn(vf.un_kv) ? 3 : 2)} kV`}
       </text>

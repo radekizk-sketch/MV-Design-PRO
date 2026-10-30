@@ -21,7 +21,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EkranKontyngencji } from '../EkranKontyngencji';
 import { KONTYNGENCJE_STRINGS as T } from '../strings';
-import { MACIERZ, MACIERZ_Z_NARUSZENIEM_BAZOWYM, ZAKRES } from './fixtures';
+import { MACIERZ, MACIERZ_Z_NARUSZENIEM_BAZOWYM, OCENY, ZAKRES } from './fixtures';
+import type { OcenyKontyngencji } from '../api';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
@@ -394,6 +395,49 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-n1-macierz-blad')).toBeInTheDocument());
     expect(screen.getByTestId('mvd-n1-macierz-blad')).toHaveTextContent('500');
     expect(screen.getByTestId('mvd-n1-zakres')).toBeInTheDocument();
+  });
+
+  /** Karty rekordów kategorii w sekcji: etykieta i semantyka WYŁĄCZNIE z rekordu backendu. */
+  function sprawdzKartyKategorii(sekcja: HTMLElement, oceny: OcenyKontyngencji) {
+    const karty = Array.from(sekcja.querySelectorAll('article.mvd-werdykt:not(.mvd-werdykt-zagniezdzona)'));
+    const rekordy = [oceny.odbiory_bez_zasilania, oceny.przeciazenia, oceny.naruszenia_napiecia];
+    expect(karty).toHaveLength(3);
+    karty.forEach((karta, i) => {
+      expect(karta.getAttribute('data-semantyka')).toBe(rekordy[i].etykieta.semantyka);
+      expect(karta).toHaveTextContent(rekordy[i].etykieta.etykieta_pl);
+    });
+  }
+
+  it('stan bazowy i szczegóły kontyngencji pokazują rekordy kategorii (K odbiorów, W przeciążeń, W napięć)', async () => {
+    const uzytkownik = await policz();
+    sprawdzKartyKategorii(screen.getByTestId('mvd-n1-bazowy-oceny'), OCENY.bazowy);
+
+    await uzytkownik.click(screen.getByText('TR 15/0,4'));
+    sprawdzKartyKategorii(await screen.findByTestId('mvd-n1-szczegoly-oceny'), OCENY.odbiory_odciete);
+    // Pominięte kryterium prądowe (licznik przeciążeń 0) NIE jest „w normie”: rekord kategorii
+    // nie jest spełnieniem, a stary napis „bez naruszeń” z liczników zniknął.
+    expect(OCENY.odbiory_odciete.przeciazenia.status_maszynowy).not.toBe('SPELNIA');
+    expect(screen.queryByText(/bez naruszeń ocenianych kryteriów/)).toBeNull();
+  });
+
+  it('znacznik ostrzeżenia w rankingu wynika z rekordu kategorii, nie z licznika', async () => {
+    await policz();
+    const wiersze = Array.from(
+      screen.getByTestId('mvd-n1-ranking').querySelectorAll('tbody tr'),
+    ) as HTMLElement[];
+    const komorki = (wiersz: HTMLElement) => Array.from(wiersz.querySelectorAll('td'));
+    const kolumny = ['pozycja', 'element', 'rodzaj', 'odbiory', 'mocOdciazona', 'przeciazenia', 'napiecia', 'pominiete'];
+    const zTagiem = (wiersz: HTMLElement) =>
+      komorki(wiersz)
+        .map((td, i) => (td.querySelector('[data-testid="mvd-wyn-tag-ostrzezenie"]') ? kolumny[i] : null))
+        .filter((k) => k !== null);
+    // TR 15/0,4: odbiór nN odcięty (K naruszony) — znacznik tylko w odbiorach; przeciążenia 0
+    // przy pominiętym kryterium (rekord nierozstrzygnięty) bez znacznika naruszenia.
+    expect(wiersze[0]).toHaveTextContent('TR 15/0,4');
+    expect(zTagiem(wiersze[0])).toEqual(['odbiory']);
+    // Kabel magistralny: W przeciążeń naruszony.
+    expect(wiersze[1]).toHaveTextContent('Kabel magistralny');
+    expect(zTagiem(wiersze[1])).toEqual(['przeciazenia']);
   });
 
   it('tryb ekspercki dokłada identyfikatory, podstawowy ich nie pokazuje', async () => {

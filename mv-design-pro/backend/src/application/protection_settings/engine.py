@@ -44,17 +44,78 @@ zmian, patrz tests/test_protection_settings_w3c2_identity.py):
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
-# Thermal density values j_thn [A/mm²] for 1 second (IEC 60909/Hoppel Table 3-4)
-THERMAL_DENSITY = {
-    "Cu": 142.0,
-    "Al": 94.0,
-    "AlFe": 87.0,
-    "ACSR": 87.0,
+from network_model.solvers.conductor_thermal_withstand import (
+    ConductorThermalInput,
+    check_conductor_thermal_withstand,
+    prad_dopuszczalny_zyly_a,
+)
+from werdykt import DanaPrzyjeta, PodstawaWymagania, Wielkosc, WynikWymagania
+from werdykt.porownanie import rozstrzygniecie
+
+#: Gęstość prądu cieplnego żyły j_thn [A/mm²] dla 1 s (tablica metody Hoppla, IEC 60949).
+#: Klucze to KODY materiału modelu: materializacja katalogu zapisuje materiał WIELKIMI
+#: literami (`enm.domain_operations`, `enm.catalog_completion`: CU, AL, AL_ST). Dawne klucze
+#: „Cu"/„Al"/„AlFe" nie trafiały w żaden kod modelu — każda linia (także miedziana
+#: i stalowo-aluminiowa) dostawała po cichu j_thn aluminium.
+THERMAL_DENSITY: Final[dict[str, float]] = {
+    "CU": 142.0,
+    "AL": 94.0,
+    "AL_ST": 87.0,
 }
+#: Inne zapisy tego samego materiału (stalowo-aluminiowy: AlFe, ACSR).
+_ALIASY_MATERIALU: Final[dict[str, str]] = {"ALFE": "AL_ST", "ACSR": "AL_ST"}
+#: Wartość robocza dla materiału spoza tablicy: najmniejsza gęstość tablicy (zachowawczo).
+J_THN_ROBOCZE: Final = min(THERMAL_DENSITY.values())
+#: Czas własny wyłącznika doliczany do czasu zwarcia linii — założenie metody.
+CZAS_WLASNY_WYLACZNIKA_S: Final = 0.07
+
+PODSTAWA_GESTOSCI_CIEPLNEJ: Final = PodstawaWymagania(
+    rodzaj="NORMA",
+    dokument=(
+        "Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — "
+        "tablica gęstości prądu cieplnego j_thn; IEC 60949"
+    ),
+    wydanie="—",
+    jednostka_redakcyjna="j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm²",
+    status="WSKAZANE",
+    uwagi_pl="wytrzymałość cieplna żyły I_th(1 s) = s·j_thn z tablicy metody doboru nastaw",
+)
+
+
+@dataclass(frozen=True)
+class GestoscCieplna:
+    """Gęstość prądu cieplnego żyły i — gdy materiał spoza tablicy — dana przyjęta."""
+
+    j_thn: float
+    dana_przyjeta: DanaPrzyjeta | None
+
+
+def gestosc_cieplna_zyly(material: str) -> GestoscCieplna:
+    """JEDYNE odczytanie tablicy j_thn: warunek cieplny I>>, wytrzymałość linii, cykl SPZ
+    i wzorzec odniesienia czytają tę funkcję. Materiał spoza tablicy nie blokuje obliczenia
+    (zasada nr 4): wartość robocza ``J_THN_ROBOCZE`` z jakością ``ESTIMATED``."""
+    klucz = material.strip().upper()
+    klucz = _ALIASY_MATERIALU.get(klucz, klucz)
+    j_thn = THERMAL_DENSITY.get(klucz)
+    if j_thn is not None:
+        return GestoscCieplna(j_thn=j_thn, dana_przyjeta=None)
+    return GestoscCieplna(
+        j_thn=J_THN_ROBOCZE,
+        dana_przyjeta=DanaPrzyjeta(
+            nazwa_pl="gęstość prądu cieplnego żyły j_thn",
+            wartosc=Wielkosc(wartosc=J_THN_ROBOCZE, jednostka="A/mm²"),
+            powod_pl=(
+                f"materiał żyły „{material}” spoza tablicy metody (Cu, Al, AlFe) — przyjęto "
+                "najmniejszą gęstość tablicy (AlFe), wartość robocza zachowawcza do "
+                "potwierdzenia kartą przewodu"
+            ),
+            jakosc="ESTIMATED",
+        ),
+    )
+
 
 # Default correction factor k_bth by line length ratio (Hoppel Table 7)
 K_BTH_TABLE = {
@@ -73,7 +134,7 @@ class ProtectionSettingsInput:
 
     # Cable/line parameters
     cross_section_mm2: float
-    conductor_material: str  # "Cu", "Al", "AlFe", "ACSR"
+    conductor_material: str  # kod materiału modelu: CU, AL, AL_ST (`gestosc_cieplna_zyly`)
     length_km: float
     i_nominal_a: float  # Rated current capacity
 
@@ -114,6 +175,19 @@ class ProtectionSettingsInput:
         None  # Próg udziału E-L → ryzyko ZSZ; brak = NIEDOSTĘPNY
     )
 
+    def __post_init__(self) -> None:
+        """Kontrakt wejścia: przekrój dodatni, czasy nieujemne. Dawniej czas zwarcia ≤ 0
+        był po cichu podmieniany na 0,1 s, a przekrój 0 dawał „wytrzymałość” z zerem."""
+        if not self.cross_section_mm2 > 0.0:
+            raise ValueError(f"Przekrój żyły musi być dodatni: {self.cross_section_mm2} mm²")
+        for nazwa, czas in (
+            ("t_upstream_s", self.t_upstream_s),
+            ("delta_t_s", self.delta_t_s),
+            ("spz_pause_s", self.spz_pause_s),
+        ):
+            if czas < 0.0:
+                raise ValueError(f"Czas {nazwa} nie może być ujemny: {czas} s")
+
 
 @dataclass(frozen=True)
 class DelayedSettings:
@@ -147,14 +221,18 @@ class InstantaneousSettings:
 
 @dataclass(frozen=True)
 class ThermalWithstandResult:
-    """Thermal withstand check result."""
+    """Wytrzymałość cieplna linii przy zwarciu na jej początku.
+
+    ``ocena`` — rekord W sprawdzenia cieplnego przewodu (`check_conductor_thermal_withstand`,
+    karta WERDYKT-MIGRACJA-190, C40) zamiast gołej flagi ``is_adequate``."""
 
     i_th_dop_a: float  # Allowable thermal current [A]
     j_thn: float  # Thermal density [A/mm²]
     cross_section_mm2: float
     t_fault_s: float  # Total fault time [s]
     ik_max_a: float  # Maximum fault current [A]
-    is_adequate: bool  # Whether cable withstands the fault
+    ith_1s_a: float  # Wytrzymałość cieplna żyły dla 1 s [A] = s·j_thn
+    ocena: WynikWymagania
     margin_percent: float  # Safety margin [%]
     trace: list[dict[str, Any]]
 
@@ -296,7 +374,8 @@ class ProtectionSettingsResult:
                 "cross_section_mm2": self.thermal.cross_section_mm2,
                 "t_fault_s": self.thermal.t_fault_s,
                 "ik_max_a": self.thermal.ik_max_a,
-                "is_adequate": self.thermal.is_adequate,
+                "ith_1s_a": self.thermal.ith_1s_a,
+                "ocena": self.thermal.ocena.model_dump(mode="json"),
                 "margin_percent": self.thermal.margin_percent,
                 "trace": self.thermal.trace,
             },
@@ -350,9 +429,16 @@ class ProtectionSettingsEngine:
         if not instantaneous.is_valid:
             overall_valid = False
             notes.append("Nastawa I>> nie spełnia warunków")
-        if not thermal.is_adequate:
+        rozstrzygniecie_cieplne = rozstrzygniecie(thermal.ocena.oceny_skladowe)
+        if rozstrzygniecie_cieplne == "NIE_SPELNIA":
             overall_valid = False
             notes.append("Wytrzymałość cieplna przewodu niewystarczająca")
+        elif rozstrzygniecie_cieplne is None:
+            overall_valid = False
+            notes.append(
+                "Wytrzymałość cieplna przewodu nierozstrzygnięta: "
+                + thermal.ocena.wyjasnienie.zdanie_pl
+            )
         if spz.blocking_recommended:
             notes.append("Zalecana blokada SPZ od I>>")
 
@@ -477,12 +563,10 @@ class ProtectionSettingsEngine:
         )
 
         # Condition 2: Thermal withstand
-        j_thn = THERMAL_DENSITY.get(inp.conductor_material, 94.0)
+        gestosc = gestosc_cieplna_zyly(inp.conductor_material)
+        j_thn = gestosc.j_thn
         t_fault_inst = 0.05  # Instantaneous trip ~50ms
-        if t_fault_inst > 0:
-            i_th_dop = inp.cross_section_mm2 * j_thn / math.sqrt(t_fault_inst)
-        else:
-            i_th_dop = float("inf")
+        i_th_dop = prad_dopuszczalny_zyly_a(inp.cross_section_mm2 * j_thn, t_fault_inst)
 
         i_max_thermal = i_th_dop / inp.k_bth
         trace.append(
@@ -551,6 +635,9 @@ class ProtectionSettingsEngine:
 
         notes: list[str] = []
         is_valid = range_valid
+        if gestosc.dana_przyjeta is not None:
+            # Warunek cieplny I>> stoi na wartości roboczej j_thn — jawnie, nie po cichu.
+            notes.append(f"Warunek cieplny I>>: {gestosc.dana_przyjeta.powod_pl}")
 
         if not range_valid:
             notes.append(
@@ -577,21 +664,58 @@ class ProtectionSettingsEngine:
     def _check_thermal_withstand(
         inp: ProtectionSettingsInput,
     ) -> ThermalWithstandResult:
-        """
-        Check thermal withstand of cable/line.
+        """Wytrzymałość cieplna linii przy zwarciu na jej początku — sprawdzenie cieplne
+        przewodu (`check_conductor_thermal_withstand`, jedna fizyka i jeden rekord W z dowodem
+        cieplnym przewodów) z wytrzymałością żyły I_th(1 s) = s·j_thn z tablicy metody i czasem
+        zwarcia t_k = t_upstream + Δt + t_w.
 
-        I_th_dop = s * j_thn / sqrt(t_k)
+        Dane przyjęte rekordu (metoda doboru nastaw, nie dana producenta): prąd zastępczy cieplny
+        równy I″k,max na początku linii (bez współczynników m, n IEC 60909-0 §12), czas własny
+        wyłącznika t_w i — dla materiału spoza tablicy — wartość robocza j_thn.
         """
         trace: list[dict[str, Any]] = []
 
-        j_thn = THERMAL_DENSITY.get(inp.conductor_material, 94.0)
+        gestosc = gestosc_cieplna_zyly(inp.conductor_material)
+        j_thn = gestosc.j_thn
+        t_fault = inp.t_upstream_s + inp.delta_t_s + CZAS_WLASNY_WYLACZNIKA_S
+        ith_1s = inp.cross_section_mm2 * j_thn
+        i_th_dop = prad_dopuszczalny_zyly_a(ith_1s, t_fault)
+        ik_max = inp.ik3_max_beginning_a
 
-        # Total fault time = protection time + breaker time
-        t_fault = inp.t_upstream_s + inp.delta_t_s + 0.07  # +70ms breaker
-        if t_fault <= 0:
-            t_fault = 0.1
-
-        i_th_dop = inp.cross_section_mm2 * j_thn / math.sqrt(t_fault)
+        dane_przyjete = (
+            DanaPrzyjeta(
+                nazwa_pl="prąd zastępczy cieplny linii I_th",
+                wartosc=Wielkosc(wartosc=round(ik_max, 1), jednostka="A"),
+                powod_pl=(
+                    "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii "
+                    "(bez współczynników m, n wg IEC 60909-0 §12)"
+                ),
+                jakosc="ESTIMATED",
+            ),
+            DanaPrzyjeta(
+                nazwa_pl="czas własny wyłącznika t_w",
+                wartosc=Wielkosc(wartosc=CZAS_WLASNY_WYLACZNIKA_S, jednostka="s"),
+                powod_pl=(
+                    "założenie metody doboru nastaw doliczane do czasu zwarcia "
+                    "t_k = t_upstream + Δt + t_w"
+                ),
+                jakosc="ESTIMATED",
+            ),
+        ) + ((gestosc.dana_przyjeta,) if gestosc.dana_przyjeta is not None else ())
+        wynik = check_conductor_thermal_withstand(
+            ConductorThermalInput(
+                ith_a=ik_max,
+                fault_duration_s=t_fault,
+                ith_1s_a=ith_1s,
+                jth_1s_a_per_mm2=j_thn,
+                cross_section_mm2=inp.cross_section_mm2,
+                conductor_material=inp.conductor_material,
+                nazwa_pl=f"linia {inp.line_name}",
+                dane_przyjete=dane_przyjete,
+                podstawa_wytrzymalosci=PODSTAWA_GESTOSCI_CIEPLNEJ,
+            )
+        )
+        margin = (1.0 - ik_max / i_th_dop) * 100.0
 
         trace.append(
             {
@@ -607,11 +731,6 @@ class ProtectionSettingsEngine:
                 "result": {"I_th_dop_A": round(i_th_dop, 1)},
             }
         )
-
-        ik_max = inp.ik3_max_beginning_a
-        is_adequate = ik_max <= i_th_dop
-        margin = ((i_th_dop - ik_max) / i_th_dop * 100) if i_th_dop > 0 else 0.0
-
         trace.append(
             {
                 "step": "Sprawdzenie wytrzymałości cieplnej",
@@ -621,9 +740,10 @@ class ProtectionSettingsEngine:
                     "I_th_dop_A": round(i_th_dop, 1),
                 },
                 "result": {
-                    "is_adequate": is_adequate,
+                    "ocena": wynik.ocena.etykieta.etykieta_pl,
                     "margin_percent": round(margin, 1),
                 },
+                "uwagi": wynik.ocena.wyjasnienie.zdanie_pl,
             }
         )
 
@@ -633,7 +753,8 @@ class ProtectionSettingsEngine:
             cross_section_mm2=inp.cross_section_mm2,
             t_fault_s=round(t_fault, 3),
             ik_max_a=round(ik_max, 1),
-            is_adequate=is_adequate,
+            ith_1s_a=round(ith_1s, 1),
+            ocena=wynik.ocena,
             margin_percent=round(margin, 1),
             trace=trace,
         )
@@ -686,10 +807,8 @@ class ProtectionSettingsEngine:
         )
 
         # Thermal stress during SPZ cycle
-        j_thn = THERMAL_DENSITY.get(inp.conductor_material, 94.0)
-        i_th_available = (
-            inp.cross_section_mm2 * j_thn / math.sqrt(t_total) if t_total > 0 else float("inf")
-        )
+        j_thn = gestosc_cieplna_zyly(inp.conductor_material).j_thn
+        i_th_available = prad_dopuszczalny_zyly_a(inp.cross_section_mm2 * j_thn, t_total)
         i_th_required = inp.ik3_max_beginning_a
 
         spz_allowed = i_th_required <= i_th_available

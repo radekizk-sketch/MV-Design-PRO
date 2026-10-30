@@ -183,10 +183,13 @@ describe('EkranPorownania — prezentacja wyniku backendu', () => {
     expect(tabela.getByText('-0,0550')).toBeInTheDocument();
   });
 
-  it('delta z tagiem „poza zakresem" na szynie z wagą krytyczną', async () => {
+  it('szyna z wagą krytyczną w rankingu: delta bez znacznika oceny „Poza zakresem” (D26)', async () => {
+    // Waga backendu porządkuje różnice A/B; okno nie przerabia jej progiem na ocenę.
     render(<EkranPorownania {...props()} />);
     await wykonajPorownanie();
-    expect(screen.getAllByTestId('mvd-wyn-tag-ostrzezenie').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('-0,0550')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('mvd-wyn-tag-ostrzezenie')).toHaveLength(0);
+    expect(screen.queryByText(/poza zakresem/i)).toBeNull();
   });
 
   it('zakładka Gałęzie: straty i moc gałęzi A/B/Δ', async () => {
@@ -325,56 +328,54 @@ describe('EkranPorownania — dowody kolumn A/B (R3-C)', () => {
 });
 
 describe('EkranPorownania — wskazanie elementu (F-K4, znalezisko Z4)', () => {
-  it('szyna z istotną różnicą prowadzi do elementu w modelu (akcja inspekcyjna)', async () => {
-    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
-    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
-    render(<EkranPorownania {...props()} />);
-    await wykonajPorownanie();
+  /*
+   * Wskazanie elementu czyta OBECNOŚĆ elementu w rankingu problemów backendu, nie próg wagi
+   * okna (karta WERDYKT-MIGRACJA-190, D26). Iloczyn cech: zakładka (szyny, gałęzie) × waga
+   * problemu elementu (1–5) × obecność elementu w rankingu — waga nie zmienia wskazania,
+   * obecność decyduje.
+   */
+  const ZAKLADKI = [
+    ['szyny', 'SZYNA-GPZ', 'Bus'],
+    ['galezie', 'LINIA-GPZ-ST1', 'LineBranch'],
+  ] as const;
+  const PRZYPADKI = ZAKLADKI.flatMap(([zakladka, ref, typ]) =>
+    [1, 3, 4, 5].map((waga) => [zakladka, ref, typ, waga] as const),
+  );
 
-    const przyciski = screen.getAllByTestId('mvd-wyn-popraw');
-    expect(przyciski.length).toBeGreaterThanOrEqual(1);
-    // Różnica między wariantami nie jest naruszeniem kryterium — etykieta inspekcyjna.
-    expect(przyciski[0]).toHaveTextContent('Pokaż na schemacie');
+  it.each(PRZYPADKI)(
+    'zakładka %s: element %s (%s) w rankingu z wagą %s — wskazanie prowadzi do elementu',
+    async (zakladka, ref, typ, waga) => {
+      const bazowy = comparisonFixture();
+      mockCompare.mockResolvedValue(
+        comparisonFixture({
+          ranking: bazowy.ranking.map((pr) => (pr.element_ref === ref ? { ...pr, severity: waga } : pr)),
+        }),
+      );
+      useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
+      useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
+      render(<EkranPorownania {...props()} />);
+      await wykonajPorownanie();
+      if (zakladka === 'galezie') fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
 
-    fireEvent.click(przyciski[0]);
-    expect(useSelectionStore.getState().selectedElement?.type).toBe('Bus');
-    expect(useShellStore.getState().activeSpace).toBe('schemat');
-  });
+      const przyciski = screen.getAllByTestId('mvd-wyn-popraw');
+      expect(przyciski).toHaveLength(1);
+      expect(przyciski[0]).toHaveTextContent('Pokaż na schemacie');
+      expect(screen.queryAllByTestId('mvd-wyn-tag-ostrzezenie')).toHaveLength(0);
+      fireEvent.click(przyciski[0]);
+      expect(useSelectionStore.getState().selectedElement).toEqual({ id: ref, type: typ, name: ref });
+      expect(useShellStore.getState().activeSpace).toBe('schemat');
+    },
+  );
 
-  it('gałąź z wagą PONIŻEJ progu istotności nie dostaje wskazania (nie sugerujemy bez sygnału)', async () => {
-    // Fixtura: problem gałęzi LINIA-GPZ-ST1 ma wagę 3, próg tagu istotności to 4,
-    // więc wiersz gałęzi NIE jest oflagowany — i akcji być nie może.
-    render(<EkranPorownania {...props()} />);
-    await wykonajPorownanie();
-    fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
-
-    expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
-  });
-
-  it('gałąź z wagą krytyczną: wskazanie prowadzi do GAŁĘZI w modelu (typ LineBranch)', async () => {
+  it.each(ZAKLADKI)('zakładka %s: element %s spoza rankingu — bez wskazania', async (zakladka, ref) => {
     const bazowy = comparisonFixture();
     mockCompare.mockResolvedValue(
-      comparisonFixture({
-        // Podnosimy wagę problemu gałęzi do krytycznej — wtedy wiersz jest oflagowany
-        // jako istotna różnica i wskazanie ma sens (poniżej progu go nie ma).
-        ranking: bazowy.ranking.map((pr) =>
-          pr.element_ref === 'LINIA-GPZ-ST1' ? { ...pr, severity: 5 } : pr,
-        ),
-      }),
+      comparisonFixture({ ranking: bazowy.ranking.filter((pr) => pr.element_ref !== ref) }),
     );
-    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
-    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
     render(<EkranPorownania {...props()} />);
     await wykonajPorownanie();
-    fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
-
-    fireEvent.click(screen.getAllByTestId('mvd-wyn-popraw')[0]);
-    expect(useSelectionStore.getState().selectedElement).toEqual({
-      id: 'LINIA-GPZ-ST1',
-      type: 'LineBranch',
-      name: 'LINIA-GPZ-ST1',
-    });
-    expect(useShellStore.getState().activeSpace).toBe('schemat');
+    if (zakladka === 'galezie') fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
+    expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
   });
 });
 

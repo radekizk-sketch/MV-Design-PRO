@@ -44,6 +44,8 @@ import {
   type ZaciskZabezpieczenia,
 } from './nastawyApi';
 import { biegiRodziny } from '../kontekst/kontekstWyniku';
+import { KartaWerdyktu } from '../wzorzec';
+import { EtykietaWerdyktu } from '../wzorzec/KartaWerdyktu';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 
 type FazaKotwicy = 'szukanie' | 'brak' | 'gotowa' | 'blad';
@@ -590,15 +592,22 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                     <td>{odpowiedz.wynik.thermal.margin_percent.toFixed(1)} %</td>
                   </tr>
                   <tr>
-                    <th scope="row">Werdykt</th>
+                    <th scope="row">{T.nastawyOcenaCieplna}</th>
                     <td>
-                      <span data-tone={odpowiedz.wynik.thermal.is_adequate ? 'ok' : 'bad'}>
-                        {odpowiedz.wynik.thermal.is_adequate ? T.nastawyWytrzymujeTak : T.nastawyWytrzymujeNie}
+                      <EtykietaWerdyktu
+                        etykieta={odpowiedz.wynik.thermal.ocena.etykieta}
+                        status={odpowiedz.wynik.thermal.ocena.status_maszynowy}
+                        testid="mvd-koordynacja-nastawy-cieplna-etykieta"
+                        zwarta
+                      />{' '}
+                      <span data-testid="mvd-koordynacja-nastawy-cieplna-zdanie">
+                        {odpowiedz.wynik.thermal.ocena.wyjasnienie.zdanie_pl}
                       </span>
                     </td>
                   </tr>
                 </tbody>
               </table>
+              <KartaWerdyktu rekord={odpowiedz.wynik.thermal.ocena} />
 
               <h4>{T.nastawySekcjaSpz}</h4>
               <p data-tone={odpowiedz.wynik.spz.blocking_recommended ? 'warn' : 'ok'}>

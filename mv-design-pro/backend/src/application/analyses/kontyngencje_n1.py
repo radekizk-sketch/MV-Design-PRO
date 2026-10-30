@@ -153,6 +153,11 @@ from typing import Any
 from analysis.energy_validation.models import EnergyValidationConfig
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+from application.analyses.kontyngencje_n1_oceny import (
+    TYP_NAPIECIA,
+    TYPY_PRZECIAZENIA,
+    oceny_kontyngencji,
+)
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     ODMOWY_OBLICZENIA_BIEGU,
@@ -192,10 +197,11 @@ POWOD_WYKLUCZENIA_PL = (
     "więc jego wyłączenie nie jest kontyngencją."
 )
 
-#: Rodzaje kontroli walidacji energetycznej (D2) czytane jako PRZECIĄŻENIE.
-_TYPY_PRZECIAZENIA: frozenset[str] = frozenset({"BRANCH_LOADING", "TRANSFORMER_LOADING"})
-#: Rodzaj kontroli czytany jako NARUSZENIE NAPIĘCIOWE.
-_TYP_NAPIECIA = "VOLTAGE_DEVIATION"
+#: Rodzaje kontroli walidacji energetycznej (D2) czytane jako PRZECIĄŻENIE i jako NARUSZENIE
+#: NAPIĘCIOWE — JEDNO źródło z rekordami kategorii (``kontyngencje_n1_oceny``): licznik
+#: kategorii i rekord W kategorii czytają te same pozycje walidacji.
+_TYPY_PRZECIAZENIA: frozenset[str] = TYPY_PRZECIAZENIA
+_TYP_NAPIECIA = TYP_NAPIECIA
 #: Kontrole, których pominięcie (``NOT_COMPUTED``) raportujemy per kontyngencja.
 #: Budżet strat i bilans mocy biernej są kontrolami SIECIOWYMI (jedna pozycja na
 #: całą sieć), nie kryteriami N-1 per element — świadomie poza tą listą.
@@ -492,6 +498,7 @@ def _kontyngencja(
     enm_bazowy: EnergyNetworkModel,
     element: _Element,
     uow_factory: Callable[[], Any] | None,
+    config: EnergyValidationConfig,
 ) -> dict[str, Any]:
     """Jedna kontyngencja: scenariusz N-1 → migawka efektywna → bieg → skutki."""
     wspolne: dict[str, Any] = {
@@ -510,6 +517,14 @@ def _kontyngencja(
             "odbiory_bez_zasilania": [],
             "szyny_bez_zasilania": [],
             "dotkliwosc": _dotkliwosc(zasilanie=None, skutki=None),
+            "oceny": oceny_kontyngencji(
+                element_ref=element.ref,
+                nazwa_pl=f"wyłączenie: {element.name}",
+                pozycje_walidacji=None,
+                odbiory_bez_zasilania=None,
+                config=config,
+                powod_niestosowalnosci_pl=POWOD_WYKLUCZENIA_PL,
+            ),
             "slad": {
                 "element_wylaczony": {
                     "element_ref": element.ref,
@@ -546,11 +561,8 @@ def _kontyngencja(
 
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
     zbiegl = bool(dane_biegu["zbieznosc"])
-    skutki = (
-        _skutki_z_walidacji(build_energy_validation_view(bieg), _indeks_ref(wariant))
-        if zbiegl
-        else None
-    )
+    walidacja = build_energy_validation_view(bieg) if zbiegl else None
+    skutki = _skutki_z_walidacji(walidacja, _indeks_ref(wariant)) if walidacja is not None else None
 
     if zbiegl:
         powod = "Bieg rozpływu zbieżny — skutki policzone."
@@ -573,6 +585,14 @@ def _kontyngencja(
         "odbiory_bez_zasilania": zasilanie["odbiory_bez_zasilania"],
         "szyny_bez_zasilania": zasilanie["szyny_bez_zasilania"],
         "dotkliwosc": _dotkliwosc(zasilanie=zasilanie, skutki=skutki),
+        "oceny": oceny_kontyngencji(
+            element_ref=element.ref,
+            nazwa_pl=f"wyłączenie: {element.name}",
+            pozycje_walidacji=walidacja["items"] if walidacja is not None else None,
+            odbiory_bez_zasilania=len(zasilanie["odbiory_bez_zasilania"]),
+            config=config,
+            indeks_ref=_indeks_ref(wariant),
+        ),
         "slad": {
             "element_wylaczony": {
                 "element_ref": element.ref,
@@ -604,6 +624,7 @@ def _przypadek_bazowy(
     bazowy: CanonicalRun,
     enm_bazowy: EnergyNetworkModel,
     uow_factory: Callable[[], Any] | None,
+    config: EnergyValidationConfig,
 ) -> dict[str, Any]:
     """Stan N-0 (bez wyłączeń) — punkt odniesienia dla czytelnika macierzy.
 
@@ -624,9 +645,10 @@ def _przypadek_bazowy(
         blad = f"{type(exc).__name__}: {exc}"
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
     zbiegl = bool(dane_biegu["zbieznosc"])
+    walidacja = build_energy_validation_view(bieg) if zbiegl else None
     skutki = (
-        _skutki_z_walidacji(build_energy_validation_view(bieg), _indeks_ref(snapshot_bazowy))
-        if zbiegl
+        _skutki_z_walidacji(walidacja, _indeks_ref(snapshot_bazowy))
+        if walidacja is not None
         else None
     )
     return {
@@ -646,6 +668,14 @@ def _przypadek_bazowy(
         "odbiory_bez_zasilania": zasilanie["odbiory_bez_zasilania"],
         "szyny_bez_zasilania": zasilanie["szyny_bez_zasilania"],
         "dotkliwosc": _dotkliwosc(zasilanie=zasilanie, skutki=skutki),
+        "oceny": oceny_kontyngencji(
+            element_ref=None,
+            nazwa_pl="stan bazowy N-0 (bez wyłączeń)",
+            pozycje_walidacji=walidacja["items"] if walidacja is not None else None,
+            odbiory_bez_zasilania=len(zasilanie["odbiory_bez_zasilania"]),
+            config=config,
+            indeks_ref=_indeks_ref(snapshot_bazowy),
+        ),
         "bieg": dane_biegu,
     }
 
@@ -880,7 +910,9 @@ def build_kontyngencje_n1_view(
     # JEDNA walidacja modelu bazowego na CAŁĄ enumerację (nie na wariant) —
     # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.
     enm_bazowy = EnergyNetworkModel.model_validate(run.snapshot or {})
-    kontyngencje = [_kontyngencja(run, enm_bazowy, element, uow_factory) for element in elementy]
+    kontyngencje = [
+        _kontyngencja(run, enm_bazowy, element, uow_factory, config) for element in elementy
+    ]
     rozstrzygniete = [pozycja for pozycja in kontyngencje if pozycja["status"] == "zbiegl"]
     ranking = [
         {
@@ -913,7 +945,7 @@ def build_kontyngencje_n1_view(
             "kryteria": kryteria,
         },
         "input_hash": _input_hash(run, refs, kryteria),
-        "przypadek_bazowy": _przypadek_bazowy(run, enm_bazowy, uow_factory),
+        "przypadek_bazowy": _przypadek_bazowy(run, enm_bazowy, uow_factory, config),
         "kontyngencje": kontyngencje,
         "ranking": ranking,
         "nierozstrzygniete": nierozstrzygniete,

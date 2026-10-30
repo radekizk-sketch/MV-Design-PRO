@@ -150,10 +150,10 @@ export function SldCanonPresetG8({ companion }: { companion: SldOzeArchetypeComp
 
       {/* ── node ① — SN busbar 15 kV (sieć + MASZYNA synchroniczna, local) ── */}
       <NodeReadout x={node} y={236} n={1} title={`szyna SN · ${colKv} kV`}
-        uKv={sn.un_kv} uPu={sn.u_pu} uOk={Math.abs(sn.deviation_percent) <= 5}
+        uKv={sn.un_kv} uPu={sn.u_pu} uOcena={sn.ocena}
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + maszyna ${fmt(snMach, 2)} kA`}
-        icw={snSc.icw_ka} icwOk={snSc.verification.passed}
+        icw={snSc.icw_ka} icwOcena={snSc.oceny.cieplna} idynOcena={snSc.oceny.dynamiczna}
         ip={snSc.max.ip_ka} idyn={snSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}

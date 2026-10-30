@@ -14,6 +14,8 @@
  */
 
 import type { OzeMeteringCt } from '../companions/ozeTypes';
+import type { OcenaKryterium } from '../../../../../ui2/wyniki/wzorzec/werdykt';
+import { tonRysunkuEtykiety, znakEtykiety } from '../../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 
 export const GREEN = '#1FA24A';
 export const CYAN = '#3BA7D6';
@@ -29,6 +31,30 @@ export const MONO = 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace
 export const SANS = 'Inter, system-ui, sans-serif';
 
 export const fmt = (v: number, d = 2): string => v.toFixed(d).replace('.', ',');
+
+/** Paleta kanwy stacji dla semantyki etykiety rekordu werdyktu (jedna dla odczytów szyn). */
+export const TONY_STACJI = {
+  tonOk: OK,
+  tonBledu: '#FF6B6B',
+  tonOstrzegawczy: AMBER,
+  tonNeutralny: TXT_MUTED,
+} as const;
+
+/**
+ * Znak i ton odczytu szyny z rekordu K backendu (karta WERDYKT-MIGRACJA-190) — rysunek NIE
+ * porównuje liczb z progiem; znak (✓ / ✗ / ? / –) i kolor niesie semantyka etykiety rekordu,
+ * a podpowiedź (`title`) — etykieta i zdanie wyjaśnienia.
+ */
+export function odczytOceny(
+  ocena: OcenaKryterium,
+): { znak: string; ton: string; opis: string; semantyka: string } {
+  return {
+    semantyka: ocena.etykieta.semantyka,
+    znak: znakEtykiety(ocena.etykieta),
+    ton: tonRysunkuEtykiety(ocena.etykieta, TONY_STACJI),
+    opis: `${ocena.etykieta.etykieta_pl}: ${ocena.wyjasnienie.zdanie_pl}`,
+  };
+}
 /** Keep-out box "x,y,w,h" — for preset-local glyphs (fuses, meters) outside the canon. */
 export const ko = (x: number, y: number, w: number, h: number): string => `${x},${y},${w},${h}`;
 
@@ -255,28 +281,33 @@ const CIRCLED = ['①', '②', '③', '④', '⑤'];
 /** SCADA node readout (no frame, no table) — "wielkość = wartość" at the node. */
 export function NodeReadout(props: {
   x: number; y: number; n: number; title: string;
-  uKv: number; uPu: number; uOk: boolean; ik3fMax: number; ik3fMin: number;
-  // idyn is the bus dynamic-withstand nameplate (PER-BUS, paired with Icw), shown beside ip as
-  // two numbers. Karta MAGISTRALA-OCENA (ui_no_physics_guard, porównanie wielkości fizycznych):
-  // the readout does NOT compare ip with Idyn — a ✓/✗ computed here was a verdict formed in the
-  // presentation layer without criterion, basis or margin (explainable-verdict contract).
-  ik1f: string; share: string; icw: number; icwOk: boolean; ip: number; idyn: number;
+  uKv: number; uPu: number; uOcena: OcenaKryterium; ik3fMax: number; ik3fMin: number;
+  // idyn is the bus dynamic-withstand nameplate (PER-BUS, paired with Icw), shown beside ip.
+  // Karta MAGISTRALA-OCENA / WERDYKT-MIGRACJA-190: the readout does NOT compare numbers — the
+  // sign and tone of U, Icw and ip come from the backend K records (`odczytOceny`).
+  ik1f: string; share: string; icw: number; icwOcena: OcenaKryterium; ip: number; idyn: number;
+  idynOcena: OcenaKryterium;
 }): JSX.Element {
-  const { x, y, n, title, uKv, uPu, uOk, ik3fMax, ik3fMin, ik1f, share, icw, icwOk, ip, idyn } = props;
-  const rows: Array<[string, string, string]> = [
-    ['U', `${fmt(uKv)} kV · ${fmt(uPu)} pu${uOk ? ' ✓' : ''}`, uOk ? OK : AMBER],
-    ['Ik″ 3f', `${fmt(ik3fMax, 1)} / ${fmt(ik3fMin, 1)} kA`, TXT],
-    ['Ik″ 1f-z', ik1f, TXT],
-    ['udział', share, TXT],
-    ['Icw', `${fmt(icw, 0)} kA${icwOk ? ' ✓' : ''}`, icwOk ? OK : '#FF6B6B'],
-    ['ip', `${fmt(ip, 1)} kA · idyn ${fmt(idyn, 0)} kA`, TXT],
+  const { x, y, n, title, uKv, uPu, uOcena, ik3fMax, ik3fMin, ik1f, share, icw, icwOcena, ip, idyn, idynOcena } = props;
+  const u = odczytOceny(uOcena);
+  const th = odczytOceny(icwOcena);
+  const dyn = odczytOceny(idynOcena);
+  type Odczyt = ReturnType<typeof odczytOceny>;
+  const rows: Array<[string, string, string, Odczyt | null]> = [
+    ['U', `${fmt(uKv)} kV · ${fmt(uPu)} pu ${u.znak}`, u.ton, u],
+    ['Ik″ 3f', `${fmt(ik3fMax, 1)} / ${fmt(ik3fMin, 1)} kA`, TXT, null],
+    ['Ik″ 1f-z', ik1f, TXT, null],
+    ['udział', share, TXT, null],
+    ['Icw', `${fmt(icw, 0)} kA ${th.znak}`, th.ton, th],
+    ['ip', `${fmt(ip, 1)} kA · idyn ${fmt(idyn, 0)} kA ${dyn.znak}`, dyn.ton, dyn],
   ];
   return (
     <g>
       <text x={x} y={y} fill="#9FE6FF" fontFamily={SANS} fontSize={12} fontWeight={800}>{CIRCLED[n - 1] ?? `${n}`}</text>
       <text x={x + 16} y={y} fill="#9FE6FF" fontFamily={MONO} fontSize={12} fontWeight={800}>{title}</text>
-      {rows.map(([k, v, c], i) => (
-        <g key={k}>
+      {rows.map(([k, v, c, odczyt], i) => (
+        <g key={k} data-semantyka={odczyt?.semantyka}>
+          {odczyt === null ? null : <title>{odczyt.opis}</title>}
           {lbl(x, y + 16 + i * 15, k, TXT_MUTED, 10.5, 600)}
           {lbl(x + 70, y + 16 + i * 15, v, c, 10.5, 700)}
         </g>

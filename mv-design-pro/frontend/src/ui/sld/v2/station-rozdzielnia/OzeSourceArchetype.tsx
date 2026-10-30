@@ -39,6 +39,7 @@ import type {
 } from './companions/ozeTypes';
 import type { StationDetailLevel } from './geometry';
 import { wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
+import { odczytOceny } from './canon/sldCanonKit';
 
 export interface OzeSourceArchetypeProps {
   readonly companion: SldOzeArchetypeCompanion;
@@ -317,25 +318,35 @@ function PowerHierarchy(props: { h: SldOzeArchetypeCompanion['source']['power_hi
   );
 }
 
-/** Concise busbar results (U + Ik''max/min + ≤Icw verdict + source contribution +,
+/** Concise busbar results (U + Ik''max/min + withstand K records + source contribution +,
  *  for rotating machines, the per-machine WHITE-BOX breakdown I″k·i_b·μ·q, §6.6). */
 function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number }): JSX.Element {
   const { vf, sc, x, y } = props;
-  const ok = sc.verification.passed;
-  const within = Math.abs(vf.deviation_percent) <= 5;
+  const u = odczytOceny(vf.ocena);
+  const cieplna = odczytOceny(sc.oceny.cieplna);
+  const dynamiczna = odczytOceny(sc.oceny.dynamiczna);
   const contrib = sc.source_contribution;
   const machines = contrib.machines ?? [];
   return (
     <g data-testid={`oze-bus-results-${vf.bus_ref}`} pointerEvents="none">
-      <circle cx={x - 6} cy={y - 3} r={2.2} fill={within ? '#5BE08A' : '#FFB020'} />
+      <circle cx={x - 6} cy={y - 3} r={2.2} fill={u.ton} data-semantyka={u.semantyka}>
+        <title>{u.opis}</title>
+      </circle>
       <text x={x} y={y} fill="#CFE9FF" fontFamily={FONT_MONO} fontSize={7.4} fontWeight={800}>
         {`${vf.bus_ref}: U=${vf.u_kv.toFixed(wPasmieNn(vf.un_kv) ? 3 : 2)} kV (${vf.u_pu.toFixed(3)} pu)`}
       </text>
       <text x={x} y={y + 9} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6.8}>
         {`Ik"max=${sc.max.ikss_ka.toFixed(2)} / min=${sc.min.ikss_ka.toFixed(2)} kA`}
       </text>
-      <text x={x} y={y + 18} fill={ok ? '#5BE08A' : '#FF6B6B'} fontFamily={FONT_MONO} fontSize={6.8} fontWeight={700}>
-        {`Ik"max ${ok ? '≤' : '>'} Icw ${sc.icw_ka} kA ${ok ? '✓' : '✗'}`}
+      <text x={x} y={y + 18} fontFamily={FONT_MONO} fontSize={6.8} fontWeight={700}>
+        <tspan fill={cieplna.ton} data-semantyka={cieplna.semantyka}>
+          <title>{cieplna.opis}</title>
+          {`Icw ${sc.icw_ka} kA ${cieplna.znak}`}
+        </tspan>
+        <tspan fill={dynamiczna.ton} data-semantyka={dynamiczna.semantyka}>
+          <title>{dynamiczna.opis}</title>
+          {` · Idyn ${sc.idyn_ka} kA ${dynamiczna.znak}`}
+        </tspan>
       </text>
       {/* Gate J — the source contribution, machine-typed. */}
       <text x={x} y={y + 27} fill="#FFB020" fontFamily={FONT_MONO} fontSize={6.6} data-testid={`oze-sc-contrib-${vf.bus_ref}`} data-machine-type={contrib.machine_type} data-synchronous={String(contrib.is_synchronous_machine)}>

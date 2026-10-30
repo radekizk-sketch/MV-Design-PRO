@@ -1516,10 +1516,14 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # %) trafia wprost do `trace["result"]["margin_percent"]`. DLUG NAZWANY:
     # `i_th_dop<=0` jest DANA NIEPOPRAWNA (przekroj/material przewodu
     # brakujacy), nie brakiem marginesu — 0,0% zamiast odmowy.
+    # Karta WERDYKT-MIGRACJA-190 (C40): `B:ifexp:inp.cross_section_mm2` (ciche 94 A/mm²
+    # i dzielenie oslonione przekrojem) oraz forma H marginesu ZNIKAJA — sprawdzenie
+    # cieplne deleguje do `check_conductor_thermal_withstand` (rekord W), przekroj <= 0
+    # i ujemne czasy to `ValueError` w `ProtectionSettingsInput.__post_init__`, zacisk
+    # czasu zwarcia `t <= 0 -> 0,1 s` usuniety. Zostaje `ik2_min_end_a` (czulosc I> = 0
+    # przy I> = 0, czyli przy zerowym pradzie obciazenia z rozplywu).
     "application/protection_settings/engine.py": {
-        "B:ifexp:inp.cross_section_mm2": 1,
         "B:ifexp:inp.ik2_min_end_a": 1,
-        "H:local:inp.ik3_max_beginning_a": 1,
     },
     # `application/reference_networks/expected_values.py` (F:dictget:item.rtol
     # x3) i `.../station_archetype_substrate.py` (B:ifexp x2 + C:getattr x2):

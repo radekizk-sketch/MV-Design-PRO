@@ -68,7 +68,8 @@ def test_g5_collector_uses_family_standard_infeed():
     assert coll["un_kv"] == 15.0
     assert coll["max"]["ikss_ka"] == pytest.approx(9.75, abs=0.3)
     assert coll["max"]["sk_mva"] == pytest.approx(253.0, abs=6.0)
-    assert coll["verification"]["passed"] is True  # 9.75 kA ≤ 25 kA Icw board
+    # Rekord K wytrzymałości cieplnej rozdzielnicy (I_th ≤ I_cw 25 kA) — status z rekordu.
+    assert coll["oceny"]["cieplna"]["status_maszynowy"] == "SPELNIA"
     assert c["short_circuit"]["buses"]["WTG_LV_1"]["max"]["ikss_ka"] == pytest.approx(38.4, abs=1.0)
 
 

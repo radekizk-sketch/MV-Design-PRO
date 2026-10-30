@@ -157,13 +157,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "application.protection_settings.engine:ThermalWithstandResult.is_adequate",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C40 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "C40 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "diagnostics.models:DiagnosticReport.status",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz B20: 20. `diagnostics/models.py:23,40,77`, `engine.py:88-93`, `preflight.py:44-61,118`, `rules.py:386-399` — `DiagnosticStatus` {OK, WARN, FAIL}; `PreflightReport.ready`/`overall_status`; `AnalysisAvailability`; rule I-D01 \"model jest kompletny\". Issues carry code, message, refs, hints. Model-readiness gate. Reach: `/api/cases/{id}/diagnostics`, `/diagnostics/preflight`, `/execution/runs/{id}/diagnostics`; FE `ui/enm-inspector/DiagnosticsPanel` (OK/WARN/FAIL directly), `ui2/.../PanelDiagnozy`. Class: ENUM_WEWNETRZNY.",
@@ -402,76 +395,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/autolayout/StationAutoRenderer.tsx:StationAutoRenderer.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG1.tsx:SldCanonPresetG1.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG2.tsx:SldCanonPresetG2.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG3.tsx:SldCanonPresetG3.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG4.tsx:SldCanonPresetG4.nodeReadout.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG5.tsx:SldCanonPresetG5.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG6.tsx:SldCanonPresetG6.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG7.tsx:SldCanonPresetG7.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG8.tsx:SldCanonPresetG8.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/station-rozdzielnia/canon/SldCanonPresetG9.tsx:SldCanonPresetG9.uOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui2/kreatory/pomiar/KreatorPomiaru.tsx:KreatorPomiaru.przekladniaOk",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Plan AB §8 F19: kompletność danych budowy sieci / walidacja pola kreatora (liczność elementów > 0, przekładnia > 0, etapy zapisu), nie ocena wobec kryterium inżynierskiego — klasa tonu z porównania z zerem opisuje stan danych.",
@@ -490,41 +413,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz D75: 75. `spaces/gotowosc/adapters/gotowoscAdapter.ts:275-316` `statusGotowosci` OK/WARN/FAIL (documented \"null→OK\" debt). **ENUM_WEWNETRZNY.**",
    "wiersz_inwentarza": "D75"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/kontyngencje/model.ts:naWierszeRankingu.napiecia.ostrzezenie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D46 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D46"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/kontyngencje/model.ts:naWierszeRankingu.odbiory.ostrzezenie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D46 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D46"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/kontyngencje/model.ts:naWierszeRankingu.przeciazenia.ostrzezenie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D46 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D46"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/porownanie/porownanieModel.ts:naWierszeRankingu.waga.ostrzezenie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D26 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D26"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/porownanie/porownanieModel.ts:naWierszeRankinguZabezpieczen.waga.ostrzezenie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D26 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D26"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
@@ -658,13 +546,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz C26 (ENUM_WEWNETRZNY): koperta widoku łańcucha nN `status: \"OK\" / \"brak danych\" / \"nie dotyczy\"` to flaga dostępności danych (widok policzony albo czego brakuje — `missing_data`), nie ocena wobec kryterium; plan AB §8 F21.",
    "wiersz_inwentarza": "C26"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.protection_read_model:_build_summary.verification_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C39 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C39"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",

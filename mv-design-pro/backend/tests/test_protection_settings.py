@@ -18,15 +18,26 @@ import math
 
 import pytest
 from application.protection_settings.engine import (
+    J_THN_ROBOCZE,
     THERMAL_DENSITY,
     DelayedSettings,
+    GestoscCieplna,
     InstantaneousSettings,
     ProtectionSettingsEngine,
     ProtectionSettingsInput,
     ProtectionSettingsResult,
     SPZAnalysisResult,
     ThermalWithstandResult,
+    gestosc_cieplna_zyly,
 )
+from werdykt.porownanie import rozstrzygniecie
+
+
+def _rozstrzygniecie_cieplne(result: ProtectionSettingsResult) -> str | None:
+    """Rozstrzygnięcie liczbowe rekordu W wytrzymałości cieplnej linii (karta
+    WERDYKT-MIGRACJA-190, C40 — dawniej flaga ``is_adequate``)."""
+    return rozstrzygniecie(result.thermal.ocena.oceny_skladowe)
+
 
 # =============================================================================
 # Fixtures
@@ -241,7 +252,7 @@ class TestInstantaneousSettings:
         """I_max_thermal = (s * j_thn / sqrt(t_fault)) / k_bth."""
         inp = _make_input(cross_section_mm2=120.0, conductor_material="Al", k_bth=1.1)
         result = ProtectionSettingsEngine.calculate(inp)
-        j_thn = THERMAL_DENSITY["Al"]
+        j_thn = THERMAL_DENSITY["AL"]
         t_fault_inst = 0.05
         i_th_dop = 120.0 * j_thn / math.sqrt(t_fault_inst)
         expected_max_thermal = i_th_dop / 1.1
@@ -340,10 +351,8 @@ class TestThermalWithstand:
 
     def test_thermal_density_table_values(self):
         """Verify canonical j_thn values from Hoppel/IEC tables."""
-        assert THERMAL_DENSITY["Cu"] == 142.0
-        assert THERMAL_DENSITY["Al"] == 94.0
-        assert THERMAL_DENSITY["AlFe"] == 87.0
-        assert THERMAL_DENSITY["ACSR"] == 87.0
+        # Klucze w kodach materiału modelu (materializacja katalogu: CU, AL, AL_ST).
+        assert THERMAL_DENSITY == {"CU": 142.0, "AL": 94.0, "AL_ST": 87.0}
 
     def test_thermal_adequate_with_large_cross_section(self):
         """Large cross-section should withstand the fault current."""
@@ -353,7 +362,7 @@ class TestThermalWithstand:
             ik3_max_beginning_a=5000.0,
         )
         result = ProtectionSettingsEngine.calculate(inp)
-        assert result.thermal.is_adequate is True
+        assert _rozstrzygniecie_cieplne(result) == "SPELNIA"
         assert result.thermal.margin_percent > 0
 
     def test_thermal_inadequate_with_small_cross_section(self):
@@ -364,7 +373,7 @@ class TestThermalWithstand:
             ik3_max_beginning_a=50000.0,
         )
         result = ProtectionSettingsEngine.calculate(inp)
-        assert result.thermal.is_adequate is False
+        assert result.thermal.ocena.status_maszynowy == "NIE_SPELNIA"
 
     def test_thermal_uses_correct_j_thn(self):
         """j_thn should match the conductor material from THERMAL_DENSITY table."""
@@ -406,8 +415,8 @@ class TestThermalWithstand:
             ik3_max_beginning_a=5000.0,
         )
         result = ProtectionSettingsEngine.calculate(inp)
-        if result.thermal.is_adequate:
-            assert result.thermal.margin_percent > 0
+        assert _rozstrzygniecie_cieplne(result) == "SPELNIA"
+        assert result.thermal.margin_percent > 0
 
     def test_thermal_margin_negative_when_inadequate(self):
         """When inadequate, margin should be negative."""
@@ -416,8 +425,8 @@ class TestThermalWithstand:
             ik3_max_beginning_a=100000.0,
         )
         result = ProtectionSettingsEngine.calculate(inp)
-        if not result.thermal.is_adequate:
-            assert result.thermal.margin_percent < 0
+        assert _rozstrzygniecie_cieplne(result) == "NIE_SPELNIA"
+        assert result.thermal.margin_percent < 0
 
     def test_thermal_trace_present(self):
         """WHITE BOX: thermal check should produce trace steps."""
@@ -491,7 +500,7 @@ class TestSPZAnalysis:
         )
         result = ProtectionSettingsEngine.calculate(inp)
         t_total = 0.05 + 0.5 + 0.05
-        j_thn = THERMAL_DENSITY["Al"]
+        j_thn = THERMAL_DENSITY["AL"]
         expected = 120.0 * j_thn / math.sqrt(t_total)
         assert result.spz.i_th_available_a == pytest.approx(expected, rel=0.01)
 
@@ -531,11 +540,52 @@ class TestConductorMaterials:
         result = ProtectionSettingsEngine.calculate(inp)
         assert result.thermal.j_thn == expected_j_thn
 
-    def test_unknown_material_uses_default(self):
-        """Unknown conductor material should fall back to 94.0 A/mm2 (Al default)."""
+    def test_unknown_material_uses_declared_working_value(self):
+        """Materiał spoza tablicy nie blokuje obliczenia (zasada nr 4): wartość robocza
+        j_thn = najmniejsza gęstość tablicy (zachowawczo), jawnie jako dana przyjęta
+        ESTIMATED w rekordzie cieplnym i uwaga warunku cieplnego I>> — dawniej ciche 94."""
         inp = _make_input(conductor_material="UnknownMaterial")
         result = ProtectionSettingsEngine.calculate(inp)
-        assert result.thermal.j_thn == 94.0
+        assert result.thermal.j_thn == J_THN_ROBOCZE == 87.0
+        nazwy = {
+            d.nazwa_pl
+            for o in result.thermal.ocena.oceny_skladowe
+            for d in o.dowod.status_danych.dane_przyjete
+        }
+        assert "gęstość prądu cieplnego żyły j_thn" in nazwy
+        assert any("UnknownMaterial" in n for n in result.instantaneous.validation_notes)
+
+    @pytest.mark.parametrize(
+        ("material", "j_thn"),
+        [
+            ("CU", 142.0),
+            ("AL", 94.0),
+            ("AL_ST", 87.0),
+            ("Cu", 142.0),
+            ("Al", 94.0),
+            ("AlFe", 87.0),
+            ("ACSR", 87.0),
+            (" cu ", 142.0),
+        ],
+    )
+    def test_kody_materialu_modelu_trafiaja_w_tablice(self, material, j_thn):
+        """Materializacja katalogu zapisuje materiał WIELKIMI literami (CU, AL, AL_ST); dawna
+        tablica miała klucze „Cu"/„Al"/„AlFe", więc linia miedziana i stalowo-aluminiowa z
+        modelu dostawały po cichu j_thn aluminium (AL_ST: 94 zamiast 87 — zawyżona
+        wytrzymałość). Każdy zapis tego samego materiału daje tę samą gęstość i żadnej danej
+        przyjętej; ten sam j_thn czytają warunek I>>, wytrzymałość linii i cykl SPZ."""
+        inp = _make_input(conductor_material=material, spz_enabled=True)
+        result = ProtectionSettingsEngine.calculate(inp)
+        assert gestosc_cieplna_zyly(material) == GestoscCieplna(j_thn=j_thn, dana_przyjeta=None)
+        assert result.thermal.j_thn == j_thn
+        assert result.thermal.ith_1s_a == pytest.approx(inp.cross_section_mm2 * j_thn, abs=0.05)
+        t_spz = 0.05 + inp.spz_pause_s + 0.05
+        assert result.spz.i_th_available_a == pytest.approx(
+            inp.cross_section_mm2 * j_thn / math.sqrt(t_spz), abs=0.05
+        )
+        assert result.instantaneous.i_max_thermal_a == pytest.approx(
+            inp.cross_section_mm2 * j_thn / math.sqrt(0.05) / inp.k_bth, abs=0.05
+        )
 
     def test_copper_higher_thermal_capacity(self):
         """Cu (j=142) should allow higher I_th_dop than Al (j=94)."""
@@ -624,7 +674,11 @@ class TestOverallValidity:
         """When all checks pass, overall_valid should be True."""
         inp = _make_input()
         result = ProtectionSettingsEngine.calculate(inp)
-        if result.delayed.is_valid and result.instantaneous.is_valid and result.thermal.is_adequate:
+        if (
+            result.delayed.is_valid
+            and result.instantaneous.is_valid
+            and _rozstrzygniecie_cieplne(result) == "SPELNIA"
+        ):
             assert result.overall_valid is True
 
     def test_delayed_invalid_makes_overall_invalid(self):
@@ -655,9 +709,9 @@ class TestOverallValidity:
         """When thermal check fails, a summary note should mention it."""
         inp = _make_input(cross_section_mm2=10.0, ik3_max_beginning_a=50000.0)
         result = ProtectionSettingsEngine.calculate(inp)
-        if not result.thermal.is_adequate:
-            assert result.overall_valid is False
-            assert any("ciepln" in n.lower() for n in result.summary_notes)
+        assert _rozstrzygniecie_cieplne(result) == "NIE_SPELNIA"
+        assert result.overall_valid is False
+        assert any("ciepln" in n.lower() for n in result.summary_notes)
 
     def test_spz_blocking_adds_note(self):
         """When SPZ blocking is recommended, a note should be present."""

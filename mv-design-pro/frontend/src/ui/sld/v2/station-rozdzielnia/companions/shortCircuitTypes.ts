@@ -8,6 +8,8 @@
  * the ENM. The renderer INTERPRETS it on L2 — it never recomputes a short circuit.
  */
 
+import type { OcenaKryterium } from '../../../../../ui2/wyniki/wzorzec/werdykt';
+
 /**
  * One White Box step carried verbatim from the solver trace — a full A→B→C→D
  * derivation: A=title/formula, B=inputs (data), C=substitution, D=result+unit.
@@ -57,12 +59,14 @@ export interface ScMin {
   readonly white_box_trace: readonly ScWhiteBoxStep[];
 }
 
-/** Ik''max ≤ Icw withstand verification at a busbar. */
-export interface ScVerification {
-  readonly rule: 'ikss_max_le_icw';
-  readonly ikss_max_ka: number;
-  readonly icw_ka: number;
-  readonly passed: boolean;
+/**
+ * Rekordy K wytrzymałości rozdzielnicy szyny (backend `oceny_wytrzymalosci_aparatu` — ta sama
+ * reguła co walidator katalogu i dowód doboru aparatury): dynamiczna i_p ≤ I_dyn, cieplna
+ * I_th ≤ I_cw·√(t_cw/T_k). Rysunek czyta etykietę rekordu (ton i znak z semantyki).
+ */
+export interface ScOcenyWytrzymalosci {
+  readonly dynamiczna: OcenaKryterium;
+  readonly cieplna: OcenaKryterium;
 }
 
 /** Short-circuit at one busbar (SN section or nN 400 V). */
@@ -76,7 +80,7 @@ export interface ScBus {
   readonly idyn_ka: number;
   readonly max: ScMax;
   readonly min: ScMin;
-  readonly verification: ScVerification;
+  readonly oceny: ScOcenyWytrzymalosci;
 }
 
 export interface SldShortCircuitCompanion {

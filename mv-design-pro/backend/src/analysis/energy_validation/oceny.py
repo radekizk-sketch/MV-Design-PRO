@@ -175,6 +175,9 @@ def ocena_pozycji(
     braki: tuple[str, ...] = (),
     slad_krok: str | None = None,
     odniesienie: str = "analysis/energy_validation/builder.py",
+    zakres: ZakresWaznosci = _ZAKRES,
+    element_ref: str | None = None,
+    kryterium_sufiks: str | None = None,
 ) -> OcenaKryterium:
     """Rekord K pozycji walidacji. ``wynik is None`` — wielkości nie wyznaczono (``braki``
     nazywają przyczynę; reguła daje ``NIE_OCENIONO``, nigdy spełnienie).
@@ -182,11 +185,20 @@ def ocena_pozycji(
     Jedno źródło kryterium dla każdego konsumenta tej samej wielkości: profil napięć
     (``analysis/voltage_profile``) ocenia odchylenie napięcia szyny TĄ funkcją, podając własny
     krok śladu i odniesienie — dwie kopie warunku ``|ΔU| ≤ limit`` rozjechałyby się na
-    równości z progiem."""
+    równości z progiem.
+
+    ``zakres`` — zakres ważności biegu, gdy inny niż stan zapisany w modelu (wariant N-1 analizy
+    kontyngencji ocenia TĘ SAMĄ wielkość tym samym kryterium w stanie po wyłączeniu elementu);
+    ``element_ref`` — element modelu będący przedmiotem oceny; ``kryterium_sufiks`` — przyrostek
+    identyfikatora kryterium, gdy rekord W ma kilka składowych tej samej kontroli."""
     d = _DEFINICJE[check_type]
     return ocena_porownania(
         Porownanie(
-            kryterium_id=d.kryterium_id,
+            kryterium_id=(
+                d.kryterium_id
+                if kryterium_sufiks is None
+                else f"{d.kryterium_id}.{kryterium_sufiks}"
+            ),
             opis_pl=d.opis_pl,
             warunek_latex=d.warunek_latex,
             relacja=d.relacja,
@@ -198,10 +210,12 @@ def ocena_pozycji(
             limit_pl=d.limit_pl,
             braki=braki,
         ),
-        przedmiot=Przedmiot(element_ref=None, nazwa_pl=nazwa_pl, opis_pl=d.opis_przedmiotu_pl),
+        przedmiot=Przedmiot(
+            element_ref=element_ref, nazwa_pl=nazwa_pl, opis_pl=d.opis_przedmiotu_pl
+        ),
         podstawa=_podstawa(check_type, limit),
         zdolnosc=classify_dynamic_capability(ZDOLNOSC_WALIDACJI),
-        zakres=_ZAKRES,
+        zakres=zakres,
         slad=(
             ()
             if wynik is None

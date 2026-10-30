@@ -148,18 +148,18 @@ export function SldCanonPresetG5({ companion }: { companion: SldOzeArchetypeComp
 
       {/* ── node ① — collector 15 kV ── */}
       <NodeReadout x={X.node} y={236} n={1} title={`kolektor SN · ${colKv} kV`}
-        uKv={sn.un_kv} uPu={sn.u_pu} uOk={Math.abs(sn.deviation_percent) <= 5}
+        uKv={sn.un_kv} uPu={sn.u_pu} uOcena={sn.ocena}
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + WTG ${fmt(faln, 1)} kA`}
-        icw={snSc.icw_ka} icwOk={snSc.verification.passed}
+        icw={snSc.icw_ka} icwOcena={snSc.oceny.cieplna} idynOcena={snSc.oceny.dynamiczna}
         ip={snSc.max.ip_ka} idyn={snSc.idyn_ka} />
 
       {/* ── node ② — turbine LV 0.69 kV ── */}
       <NodeReadout x={X.node} y={470} n={2} title="zacisk turbiny · 0,69 kV"
-        uKv={lv.un_kv} uPu={lv.u_pu} uOk={Math.abs(lv.deviation_percent) <= 5}
+        uKv={lv.un_kv} uPu={lv.u_pu} uOcena={lv.ocena}
         ik3fMax={lvSc.max.ikss_ka} ik3fMin={lvSc.min.ikss_ka}
         ik1f="lok. (trafo Dyn turb.)" share={`TR ${fmt(lvTrShare, 1)} + ~/= ${fmt(faln, 1)} kA`}
-        icw={lvSc.icw_ka} icwOk={lvSc.verification.passed}
+        icw={lvSc.icw_ka} icwOcena={lvSc.oceny.cieplna} idynOcena={lvSc.oceny.dynamiczna}
         ip={lvSc.max.ip_ka} idyn={lvSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}

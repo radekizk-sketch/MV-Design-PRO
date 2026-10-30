@@ -59,7 +59,6 @@ import type {
 import { refDowoduPorownania } from './dowodPorownania';
 import {
   POROWNANIE_STRINGS,
-  WAGA_PROG_TAG,
   ZABEZPIECZENIA_POROWNANIE_STRINGS as ZB,
   fmtCzasZadzialania,
   fmtData,
@@ -166,27 +165,15 @@ export const KOLUMNY_RANKINGU: DefinicjaKolumny[] = [
   { klucz: 'opis', etykieta: POROWNANIE_STRINGS.kolOpis, wyrownanie: 'lewo', sortowalna: false },
 ];
 
-// ---------------------------------------------------------------------------
-// Mapa wag elementów z rankingu (progi → tagi wg wag z backendu)
-// ---------------------------------------------------------------------------
-
 /**
- * Buduje mapę `element_ref` → maksymalna waga problemu z rankingu backendu.
- * Steruje tagiem „poza zakresem" na komórkach Δ tabel różnic (karta §4.3:
- * progi→tagi wg wag z backendu — bez lokalnej oceny, wyłącznie dana z backendu).
+ * Elementy wskazane przez ranking problemów backendu (dowolna waga). Steruje wyłącznie
+ * akcją INSPEKCYJNĄ „Pokaż na schemacie” w tabelach różnic: wiersz elementu, który backend
+ * zgłosił w rankingu, prowadzi do elementu w modelu. To fakt obecności w rankingu, nie
+ * ocena — dawny próg okna „waga ≥ 4” zapalał na deltach znacznik „Poza zakresem” bez
+ * kryterium i limitu (karta WERDYKT-MIGRACJA-190, D26).
  */
-export function mapaWagElementow(ranking: PowerFlowRankingIssue[]): Map<string, number> {
-  const mapa = new Map<string, number>();
-  for (const issue of ranking) {
-    const poprz = mapa.get(issue.element_ref) ?? 0;
-    if (issue.severity > poprz) mapa.set(issue.element_ref, issue.severity);
-  }
-  return mapa;
-}
-
-/** Czy element ma wagę problemu na progu tagu (poważny+) — dana z backendu. */
-function poza(mapa: Map<string, number>, elementRef: string): boolean {
-  return (mapa.get(elementRef) ?? 0) >= WAGA_PROG_TAG;
+export function elementyZRankingu(ranking: readonly PowerFlowRankingIssue[]): ReadonlySet<string> {
+  return new Set(ranking.map((issue) => issue.element_ref));
 }
 
 /**
@@ -203,16 +190,16 @@ function komorka(
 }
 
 /**
- * Komórka delty: sformatowana ze znakiem + `sortKey` + tag przy wadze poważnej.
+ * Komórka delty: sformatowana ze znakiem + `sortKey`. Bez znacznika ostrzeżenia —
+ * różnica B−A nie jest oceną względem kryterium (karta WERDYKT-MIGRACJA-190, D26).
  * BEZ `dowodRef` (R3-C): różnica B−A nie ma pojedynczego wywodu WHITE BOX —
  * nie istnieje ślad „przebiegu Δ", więc delta świadomie nie otwiera dowodu.
  */
 function komorkaDelty(
   wartosc: number,
   format: (n: number) => string,
-  ostrzezenie: boolean,
 ): WartoscKomorki {
-  return { wartosc: format(wartosc), sortKey: wartosc, ostrzezenie };
+  return { wartosc: format(wartosc), sortKey: wartosc };
 }
 
 /**
@@ -221,11 +208,11 @@ function komorkaDelty(
  * podstawia zera. Brak pola (odniesienie A = 0 albo porównanie sprzed L-13) →
  * kreska bez `sortKey` (wiersz bez wartości nie udaje zera przy sortowaniu).
  */
-function komorkaProcentu(wartosc: number | null | undefined, ostrzezenie: boolean): WartoscKomorki {
+function komorkaProcentu(wartosc: number | null | undefined): WartoscKomorki {
   if (typeof wartosc !== 'number' || !Number.isFinite(wartosc)) {
     return { wartosc: POROWNANIE_STRINGS.kreska };
   }
-  return { wartosc: fmtRoznicaProcentowa(wartosc), sortKey: wartosc, ostrzezenie };
+  return { wartosc: fmtRoznicaProcentowa(wartosc), sortKey: wartosc };
 }
 
 // ---------------------------------------------------------------------------
@@ -235,11 +222,9 @@ function komorkaProcentu(wartosc: number | null | undefined, ostrzezenie: boolea
 /** `PowerFlowBusDiffRow[]` → wiersze tabeli wzorca (A · B · Δ; kolejność źródłowa). */
 export function naWierszeSzynDiff(
   rows: PowerFlowBusDiffRow[],
-  wagi: Map<string, number>,
   nazwa: NazwaObiektu,
 ): WierszTabeli[] {
   return rows.map((row) => {
-    const flaga = poza(wagi, row.bus_id);
     const refA = refDowoduPorownania('A', row.bus_id);
     const refB = refDowoduPorownania('B', row.bus_id);
     return {
@@ -247,15 +232,15 @@ export function naWierszeSzynDiff(
       szyna: { wartosc: nazwa(row.bus_id) },
       vA: komorka(row.v_pu_a, fmtNapiecie, refA),
       vB: komorka(row.v_pu_b, fmtNapiecie, refB),
-      dV: komorkaDelty(row.delta_v_pu, fmtDeltaNapiecie, flaga),
-      dVproc: komorkaProcentu(row.delta_v_percent, flaga),
+      dV: komorkaDelty(row.delta_v_pu, fmtDeltaNapiecie),
+      dVproc: komorkaProcentu(row.delta_v_percent),
       katA: komorka(row.angle_deg_a, fmtKat, refA),
       katB: komorka(row.angle_deg_b, fmtKat, refB),
-      dKat: komorkaDelty(row.delta_angle_deg, fmtDeltaKat, flaga),
-      dKatProc: komorkaProcentu(row.delta_angle_percent, flaga),
+      dKat: komorkaDelty(row.delta_angle_deg, fmtDeltaKat),
+      dKatProc: komorkaProcentu(row.delta_angle_percent),
       qA: komorka(row.q_injected_mvar_a, fmtMocBierna, refA),
       qB: komorka(row.q_injected_mvar_b, fmtMocBierna, refB),
-      dQ: komorkaDelty(row.delta_q_mvar, fmtDeltaMocBierna, flaga),
+      dQ: komorkaDelty(row.delta_q_mvar, fmtDeltaMocBierna),
     };
   });
 }
@@ -263,11 +248,9 @@ export function naWierszeSzynDiff(
 /** `PowerFlowBranchDiffRow[]` → wiersze tabeli wzorca (A · B · Δ; kolejność źródłowa). */
 export function naWierszeGalezi(
   rows: PowerFlowBranchDiffRow[],
-  wagi: Map<string, number>,
   nazwa: NazwaObiektu,
 ): WierszTabeli[] {
   return rows.map((row) => {
-    const flaga = poza(wagi, row.branch_id);
     const refA = refDowoduPorownania('A', row.branch_id);
     const refB = refDowoduPorownania('B', row.branch_id);
     return {
@@ -275,15 +258,15 @@ export function naWierszeGalezi(
       galaz: { wartosc: nazwa(row.branch_id) },
       stratyA: komorka(row.losses_p_mw_a, fmtMoc, refA),
       stratyB: komorka(row.losses_p_mw_b, fmtMoc, refB),
-      dStraty: komorkaDelty(row.delta_losses_p_mw, fmtDeltaMoc, flaga),
-      dStratyProc: komorkaProcentu(row.delta_losses_p_percent, flaga),
+      dStraty: komorkaDelty(row.delta_losses_p_mw, fmtDeltaMoc),
+      dStratyProc: komorkaProcentu(row.delta_losses_p_percent),
       mocA: komorka(row.p_from_mw_a, fmtMoc, refA),
       mocB: komorka(row.p_from_mw_b, fmtMoc, refB),
-      dMoc: komorkaDelty(row.delta_p_from_mw, fmtDeltaMoc, flaga),
-      dMocProc: komorkaProcentu(row.delta_p_from_percent, flaga),
+      dMoc: komorkaDelty(row.delta_p_from_mw, fmtDeltaMoc),
+      dMocProc: komorkaProcentu(row.delta_p_from_percent),
       qA: komorka(row.q_from_mvar_a, fmtMocBierna, refA),
       qB: komorka(row.q_from_mvar_b, fmtMocBierna, refB),
-      dQ: komorkaDelty(row.delta_q_from_mvar, fmtDeltaMocBierna, flaga),
+      dQ: komorkaDelty(row.delta_q_from_mvar, fmtDeltaMocBierna),
     };
   });
 }
@@ -325,8 +308,11 @@ export function tylkoRozniceGalezi(rows: PowerFlowBranchDiffRow[]): PowerFlowBra
 }
 
 /**
- * `PowerFlowRankingIssue[]` → wiersze tabeli wzorca. Waga → tag PL (ostrzeżenie
- * przy poważnym+); rodzaj i opis po polsku; surowy kod tylko w trybie eksperckim.
+ * `PowerFlowRankingIssue[]` → wiersze tabeli wzorca. Waga → nazwa PL klasy wagi
+ * backendu (`ISSUE_SEVERITY_MAP`) i klucz sortowania — bez znacznika ostrzeżenia:
+ * waga porządkuje różnice A/B, nie rozstrzyga wymagania, a próg „poważny+” po stronie
+ * okna był oceną bez kryterium (karta WERDYKT-MIGRACJA-190, D26). Rodzaj i opis po
+ * polsku; surowy kod tylko w trybie eksperckim.
  * Klucz wiersza = indeks źródłowy (stabilny, deterministyczny przy sortowaniu).
  */
 export function naWierszeRankingu(
@@ -337,7 +323,6 @@ export function naWierszeRankingu(
     waga: {
       wartosc: wagaPL(issue.severity),
       sortKey: issue.severity,
-      ostrzezenie: issue.severity >= WAGA_PROG_TAG,
     },
     rodzaj: { wartosc: rodzajProblemuPL(issue.issue_code) },
     element: { wartosc: nazwa(issue.element_ref) },
@@ -348,12 +333,12 @@ export function naWierszeRankingu(
 
 /**
  * Podsumowanie porównania jako sekcja ZAŁOŻENIA wzorca (karta §3): każda pozycja
- * niesie wartość A, wartość B i deltę RAZEM (karta §4.2). Tag „poza zakresem"
- * dopisany do delty strat, gdy backend zgłosił niezerową liczbę problemów
- * (dana z backendu — zero lokalnej oceny).
+ * niesie wartość A, wartość B i deltę RAZEM (karta §4.2). Delta strat bez dopisku
+ * oceny: dawny dopisek „poza zakresem” przy `total_issues > 0` przypisywał stratom
+ * każdy problem rankingu (także napięciowy) i udawał werdykt bez kryterium i limitu
+ * (karta WERDYKT-MIGRACJA-190, D26); liczba i wagi problemów mają własne pozycje.
  */
 export function naZalozeniaPorownania(summary: PowerFlowComparisonSummary): WierszZalozenia[] {
-  const tag = summary.total_issues > 0 ? ` (${POROWNANIE_STRINGS.podsumTagOdchylenie})` : '';
   return [
     {
       etykieta: POROWNANIE_STRINGS.podsumZbieznosc,
@@ -361,7 +346,7 @@ export function naZalozeniaPorownania(summary: PowerFlowComparisonSummary): Wier
     },
     {
       etykieta: POROWNANIE_STRINGS.podsumStraty,
-      wartosc: `${fmtMoc(summary.total_losses_p_mw_a)} · ${fmtMoc(summary.total_losses_p_mw_b)} · Δ ${fmtDeltaMoc(summary.delta_total_losses_p_mw)}${tag}`,
+      wartosc: `${fmtMoc(summary.total_losses_p_mw_a)} · ${fmtMoc(summary.total_losses_p_mw_b)} · Δ ${fmtDeltaMoc(summary.delta_total_losses_p_mw)}`,
       jednostka: POROWNANIE_STRINGS.jednMW,
     },
     {
@@ -536,9 +521,8 @@ export function etykietaPrzebiegu(
 //   (`api/protection_comparisons.py`) — ekran woła WYŁĄCZNIE POST (jak rozpływ).
 // - Wiersz: `ProtectionComparisonRow` — klucz PARY (protected_element_ref,
 //   fault_target_id), NIE samego elementu (inaczej niż rozpływ) — stąd osobna
-//   funkcja klucza wiersza (`kluczWierszaZabezpieczen`) reużyta ZARÓWNO do
-//   budowy mapy wag, JAK I do odczytu z niej (KLASA-NIE-INSTANCJA §3: predykaty
-//   parami z jednego źródła prawdy, nie dwa niezależne klucze).
+//   funkcja klucza wiersza (`kluczWierszaZabezpieczen`) — odnośnik dowodu strony
+//   A/B pary (jedno źródło klucza, KLASA-NIE-INSTANCJA §3).
 // - Problem rankingu: `RankingIssue` — jak wyżej, klucz PARY (element+punkt).
 // - Lista przebiegów do wyboru A/B: `ProtectionRunItem`, klient `fetchProtectionRuns`
 //   (`ui/protection-comparison/api.ts`) → `GET /projects/{id}/protection-runs`.
@@ -577,33 +561,12 @@ export const KOLUMNY_RANKINGU_ZABEZPIECZEN: DefinicjaKolumny[] = [
 ];
 
 /**
- * Klucz PARY (element chroniony, punkt zwarcia) — TA SAMA funkcja buduje klucz
- * mapy wag (`mapaWagWierszyZabezpieczen`) i klucz odczytu w wierszu
- * (`naWierszeStanowZabezpieczen`): jedno źródło prawdy zamiast dwóch
- * niezależnych formuł, które mogłyby się rozjechać (KLASA-NIE-INSTANCJA §3).
+ * Klucz PARY (element chroniony, punkt zwarcia) — odnośnik dowodu stron A/B wiersza
+ * (`naWierszeStanowZabezpieczen`); jedna funkcja klucza zamiast formuł rozsianych
+ * po wywołaniach (KLASA-NIE-INSTANCJA §3).
  */
 function kluczWierszaZabezpieczen(elementRef: string, faultTargetId: string): string {
   return `${elementRef}::${faultTargetId}`;
-}
-
-/**
- * Buduje mapę (element, punkt) → maksymalna waga problemu z rankingu backendu.
- * Klucz PARY (nie samego elementu — inaczej niż `mapaWagElementow` rozpływu),
- * bo severity rankingu zabezpieczeń jest per (element, punkt zwarcia): ten sam
- * element chroniony może mieć różne wagi na różnych punktach zwarcia.
- */
-export function mapaWagWierszyZabezpieczen(ranking: ProtectionRankingIssue[]): Map<string, number> {
-  const mapa = new Map<string, number>();
-  for (const issue of ranking) {
-    const klucz = kluczWierszaZabezpieczen(issue.element_ref, issue.fault_target_id);
-    const poprz = mapa.get(klucz) ?? 0;
-    if (issue.severity > poprz) mapa.set(klucz, issue.severity);
-  }
-  return mapa;
-}
-
-function pozaZabezpieczenia(mapa: Map<string, number>, elementRef: string, faultTargetId: string): boolean {
-  return (mapa.get(kluczWierszaZabezpieczen(elementRef, faultTargetId)) ?? 0) >= WAGA_PROG_TAG;
 }
 
 /**
@@ -630,11 +593,10 @@ function komorkaZabezpieczen(
 function komorkaDeltyZabezpieczen(
   wartosc: number | null,
   format: (n: number) => string,
-  ostrzezenie: boolean,
 ): WartoscKomorki {
   return typeof wartosc !== 'number'
     ? { wartosc: ZB.kreska }
-    : { wartosc: format(wartosc), sortKey: wartosc, ostrzezenie };
+    : { wartosc: format(wartosc), sortKey: wartosc };
 }
 
 /**
@@ -644,10 +606,8 @@ function komorkaDeltyZabezpieczen(
  */
 export function naWierszeStanowZabezpieczen(
   rows: ProtectionComparisonRow[],
-  wagi: Map<string, number>,
 ): WierszTabeli[] {
   return rows.map((row, i) => {
-    const flaga = pozaZabezpieczenia(wagi, row.protected_element_ref, row.fault_target_id);
     const parRef = kluczWierszaZabezpieczen(row.protected_element_ref, row.fault_target_id);
     const refA = refDowoduPorownania('A', parRef);
     const refB = refDowoduPorownania('B', parRef);
@@ -659,10 +619,10 @@ export function naWierszeStanowZabezpieczen(
       stanB: { wartosc: stanZadzialaniaPL(row.trip_state_b), dowodRef: refB },
       czasA: komorkaZabezpieczen(row.t_trip_s_a, fmtCzasZadzialania, refA),
       czasB: komorkaZabezpieczen(row.t_trip_s_b, fmtCzasZadzialania, refB),
-      czasD: komorkaDeltyZabezpieczen(row.delta_t_s, fmtDeltaCzasZadzialania, flaga),
+      czasD: komorkaDeltyZabezpieczen(row.delta_t_s, fmtDeltaCzasZadzialania),
       pradA: komorkaZabezpieczen(row.i_fault_a_a, fmtPradZwarciowy, refA),
       pradB: komorkaZabezpieczen(row.i_fault_a_b, fmtPradZwarciowy, refB),
-      pradD: komorkaDeltyZabezpieczen(row.delta_i_fault_a, fmtDeltaPradZwarciowy, flaga),
+      pradD: komorkaDeltyZabezpieczen(row.delta_i_fault_a, fmtDeltaPradZwarciowy),
       marginesA: komorkaZabezpieczen(row.margin_percent_a, fmtMarginesProcent, refA),
       marginesB: komorkaZabezpieczen(row.margin_percent_b, fmtMarginesProcent, refB),
       wiarygodnoscA: { wartosc: WIARYGODNOSC_PL[row.wiarygodnosc_a] },
@@ -685,8 +645,8 @@ export function tylkoZmianyStanowZabezpieczen(
 }
 
 /**
- * `RankingIssue[]` (zabezpieczenia) → wiersze tabeli wzorca. Waga → tag PL
- * (`wagaPL`, reużyty z rozpływu — ta sama skala 1–5); rodzaj przez
+ * `RankingIssue[]` (zabezpieczenia) → wiersze tabeli wzorca. Waga → nazwa PL
+ * bez znacznika ostrzeżenia (jak ranking rozpływu, D26) (`wagaPL`, reużyty z rozpływu — ta sama skala 1–5); rodzaj przez
  * `rodzajProblemuZabezpieczenPL` (mapa `ISSUE_CODE_LABELS` zabezpieczeń);
  * punkt zwarcia dołożony względem rankingu rozpływu (klucz PARY, nie
  * samego elementu). Klucz wiersza = indeks źródłowy (deterministyczny).
@@ -699,7 +659,6 @@ export function naWierszeRankinguZabezpieczen(
     waga: {
       wartosc: wagaPL(issue.severity),
       sortKey: issue.severity,
-      ostrzezenie: issue.severity >= WAGA_PROG_TAG,
     },
     rodzaj: { wartosc: rodzajProblemuZabezpieczenPL(issue.issue_code) },
     element: { wartosc: nazwa(issue.element_ref) },

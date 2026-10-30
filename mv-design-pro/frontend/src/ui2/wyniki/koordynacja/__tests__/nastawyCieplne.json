@@ -1,0 +1,1336 @@
+{
+  "nie_wytrzymuje": {
+    "cross_section_mm2": 10.0,
+    "i_th_dop_a": 1545.4,
+    "ik_max_a": 50000.0,
+    "ith_1s_a": 940.0,
+    "j_thn": 94.0,
+    "margin_percent": -3135.5,
+    "ocena": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "network_model/solvers/conductor_thermal_withstand.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [
+            {
+              "jakosc": "ESTIMATED",
+              "nazwa_pl": "prąd zastępczy cieplny linii I_th",
+              "powod_pl": "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12)",
+              "wartosc": {
+                "jednostka": "A",
+                "wartosc": 50000.0
+              }
+            },
+            {
+              "jakosc": "ESTIMATED",
+              "nazwa_pl": "czas własny wyłącznika t_w",
+              "powod_pl": "założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w",
+              "wartosc": {
+                "jednostka": "s",
+                "wartosc": 0.07
+              }
+            }
+          ],
+          "stan": "UNVALIDATED_INPUT"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Wymaganie naruszone",
+        "semantyka": "negatywna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [
+        "przewod.prad_dopuszczalny",
+        "przewod.energia_cieplna",
+        "przewod.przekroj_minimalny"
+      ],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Wytrzymałość cieplna zwarciowa przewodu",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "prąd zastępczy cieplny linii I_th",
+                  "powod_pl": "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12)",
+                  "wartosc": {
+                    "jednostka": "A",
+                    "wartosc": 50000.0
+                  }
+                },
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "czas własny wyłącznika t_w",
+                  "powod_pl": "założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w",
+                  "wartosc": {
+                    "jednostka": "s",
+                    "wartosc": 0.07
+                  }
+                }
+              ],
+              "stan": "UNVALIDATED_INPUT"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "I_{th} \\le I_{dop}(t) = \\frac{I_{th(1s)}}{\\sqrt{t}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "przewod.prad_dopuszczalny",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949",
+              "jednostka_redakcyjna": "j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm²",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "wytrzymałość cieplna żyły I_th(1 s) = s·j_thn z tablicy metody doboru nastaw",
+              "wydanie": "—"
+            },
+            "wartosc": {
+              "jednostka": "A",
+              "wartosc": 1545.35048067
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "prąd dopuszczalny żyły przy czasie wyłączenia t"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "linia Linia SN nr 1",
+            "skala": {
+              "jednostka": "A",
+              "wartosc": 1545.35048067
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "A",
+              "wartosc": -48454.6495193
+            },
+            "wzgledny": -31.355119842
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+            "jednostka_redakcyjna": "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2012"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+            "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "linia Linia SN nr 1",
+            "opis_pl": "Żyła przewodu nagrzewana prądem zwarcia"
+          },
+          "slad": [
+            {
+              "krok": "conductor_thermal_criterion",
+              "opis_pl": "Sprawdzenie kryterium cieplnego (zapis prądowy)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "prąd zwarciowy zastępczy cieplny przekracza wartość graniczną o 48450 A (linia Linia SN nr 1)",
+            "zastrzezenia": [
+              "Podstawa „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”, wydanie 2012, 434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949”, wydanie —, j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+              "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+              "Zakres ważności: Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s — wynik nie obejmuje: nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia); żyły powrotne i żyły ekranów."
+            ],
+            "zdanie_pl": "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1) — kryterium naruszone. Prąd zwarciowy zastępczy cieplny: 50000 A wobec wymaganych ≤ 1545 A wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −48450 A, punkt: linia Linia SN nr 1, względnie −3136 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "linia Linia SN nr 1",
+            "symbol_latex": "I_{th}",
+            "wartosc": {
+              "jednostka": "A",
+              "wartosc": 50000.0
+            },
+            "wielkosc_pl": "prąd zwarciowy zastępczy cieplny"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+              "żyły powrotne i żyły ekranów"
+            ]
+          }
+        },
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "prąd zastępczy cieplny linii I_th",
+                  "powod_pl": "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12)",
+                  "wartosc": {
+                    "jednostka": "A",
+                    "wartosc": 50000.0
+                  }
+                },
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "czas własny wyłącznika t_w",
+                  "powod_pl": "założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w",
+                  "wartosc": {
+                    "jednostka": "s",
+                    "wartosc": 0.07
+                  }
+                }
+              ],
+              "stan": "UNVALIDATED_INPUT"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "I_{th}^2\\,t \\le k^2 S^2",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "przewod.energia_cieplna",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949",
+              "jednostka_redakcyjna": "j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm²",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "wytrzymałość cieplna żyły I_th(1 s) = s·j_thn z tablicy metody doboru nastaw",
+              "wydanie": "—"
+            },
+            "wartosc": {
+              "jednostka": "A²·s",
+              "wartosc": 883600.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalna energia cieplna żyły k²S²"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "linia Linia SN nr 1",
+            "skala": {
+              "jednostka": "A²·s",
+              "wartosc": 883600.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "A²·s",
+              "wartosc": -924116400.0
+            },
+            "wzgledny": -1045.85377999
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+            "jednostka_redakcyjna": "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2012"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+            "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "linia Linia SN nr 1",
+            "opis_pl": "Żyła przewodu nagrzewana prądem zwarcia"
+          },
+          "slad": [
+            {
+              "krok": "conductor_thermal_energy",
+              "opis_pl": "Bilans energii cieplnej zwarcia",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "energia cieplna zwarcia przekracza wartość graniczną o 924100000 A²·s (linia Linia SN nr 1)",
+            "zastrzezenia": [
+              "Podstawa „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”, wydanie 2012, 434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949”, wydanie —, j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+              "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+              "Zakres ważności: Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s — wynik nie obejmuje: nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia); żyły powrotne i żyły ekranów."
+            ],
+            "zdanie_pl": "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1) — kryterium naruszone. Energia cieplna zwarcia: 925000000 A²·s wobec wymaganych ≤ 883600 A²·s wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −924100000 A²·s, punkt: linia Linia SN nr 1, względnie −104600 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "linia Linia SN nr 1",
+            "symbol_latex": "I_{th}^2\\,t",
+            "wartosc": {
+              "jednostka": "A²·s",
+              "wartosc": 925000000.0
+            },
+            "wielkosc_pl": "energia cieplna zwarcia"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+              "żyły powrotne i żyły ekranów"
+            ]
+          }
+        },
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "prąd zastępczy cieplny linii I_th",
+                  "powod_pl": "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12)",
+                  "wartosc": {
+                    "jednostka": "A",
+                    "wartosc": 50000.0
+                  }
+                },
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "czas własny wyłącznika t_w",
+                  "powod_pl": "założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w",
+                  "wartosc": {
+                    "jednostka": "s",
+                    "wartosc": 0.07
+                  }
+                }
+              ],
+              "stan": "UNVALIDATED_INPUT"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "S \\ge S_{min} = \\frac{I_{th}\\sqrt{t}}{k}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "przewod.przekroj_minimalny",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949",
+              "jednostka_redakcyjna": "j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm²",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "wytrzymałość cieplna żyły I_th(1 s) = s·j_thn z tablicy metody doboru nastaw",
+              "wydanie": "—"
+            },
+            "wartosc": {
+              "jednostka": "mm²",
+              "wartosc": 323.55119842
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "minimalny przekrój z warunku cieplnego"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "linia Linia SN nr 1",
+            "skala": {
+              "jednostka": "mm²",
+              "wartosc": 323.55119842
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "mm²",
+              "wartosc": -313.55119842
+            },
+            "wzgledny": -0.969092990387
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+            "jednostka_redakcyjna": "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2012"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+            "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "linia Linia SN nr 1",
+            "opis_pl": "Żyła przewodu nagrzewana prądem zwarcia"
+          },
+          "slad": [
+            {
+              "krok": "conductor_thermal_min_section",
+              "opis_pl": "Minimalny przekrój żyły z warunku cieplnego",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "przekrój zastosowany żyły nie osiąga wartości granicznej o 313,6 mm² (linia Linia SN nr 1)",
+            "zastrzezenia": [
+              "Podstawa „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”, wydanie 2012, 434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949”, wydanie —, j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+              "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+              "Zakres ważności: Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s — wynik nie obejmuje: nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia); żyły powrotne i żyły ekranów."
+            ],
+            "zdanie_pl": "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1) — kryterium naruszone. Przekrój zastosowany żyły: 10 mm² wobec wymaganych ≥ 323,6 mm² wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −313,6 mm², punkt: linia Linia SN nr 1, względnie −96,91 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "linia Linia SN nr 1",
+            "symbol_latex": "S",
+            "wartosc": {
+              "jednostka": "mm²",
+              "wartosc": 10.0
+            },
+            "wielkosc_pl": "przekrój zastosowany żyły"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+              "żyły powrotne i żyły ekranów"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+        "jednostka_redakcyjna": "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+        "rodzaj": "NORMA",
+        "status": "WSKAZANE",
+        "uwagi_pl": null,
+        "wydanie": "2012"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+        "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+        "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+        "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+        "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+        "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+        "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+        "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+      ],
+      "slad": [
+        {
+          "krok": "conductor_thermal_criterion",
+          "opis_pl": "Sprawdzenie kryterium cieplnego (zapis prądowy)",
+          "run_id": null,
+          "wersja_silnika": null
+        },
+        {
+          "krok": "conductor_thermal_energy",
+          "opis_pl": "Bilans energii cieplnej zwarcia",
+          "run_id": null,
+          "wersja_silnika": null
+        },
+        {
+          "krok": "conductor_thermal_min_section",
+          "opis_pl": "Minimalny przekrój żyły z warunku cieplnego",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "NIE_SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+          "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+          "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+          "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+        ],
+        "przyczyna_pl": "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1) — prąd zwarciowy zastępczy cieplny przekracza wartość graniczną o 48450 A (linia Linia SN nr 1); Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1) — energia cieplna zwarcia przekracza wartość graniczną o 924100000 A²·s (linia Linia SN nr 1); Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1) — przekrój zastosowany żyły nie osiąga wartości granicznej o 313,6 mm² (linia Linia SN nr 1)",
+        "zastrzezenia": [
+          "Podstawa „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”, wydanie 2012, 434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949”, wydanie —, j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 50000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+          "Zakres ważności: Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s — wynik nie obejmuje: nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia); żyły powrotne i żyły ekranów."
+        ],
+        "zdanie_pl": "Wytrzymałość cieplna zwarciowa przewodu (434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1) — prąd zwarciowy zastępczy cieplny: 50000 A wobec wymaganych ≤ 1545 A wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −48450 A, punkt: linia Linia SN nr 1, względnie −3136 % wartości granicznej); Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1) — energia cieplna zwarcia: 925000000 A²·s wobec wymaganych ≤ 883600 A²·s wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −924100000 A²·s, punkt: linia Linia SN nr 1, względnie −104600 % wartości granicznej); Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1) — przekrój zastosowany żyły: 10 mm² wobec wymaganych ≥ 323,6 mm² wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −313,6 mm², punkt: linia Linia SN nr 1, względnie −96,91 % wartości granicznej)."
+      },
+      "wymaganie_id": "przewod.wytrzymalosc_cieplna_zwarciowa",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "SHORT_CIRCUIT",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+          "żyły powrotne i żyły ekranów"
+        ]
+      }
+    },
+    "t_fault_s": 0.37,
+    "trace": [
+      {
+        "formula": "I_{th,dop} = \\frac{s \\cdot j_{thn}}{\\sqrt{t_k}}",
+        "inputs": {
+          "j_thn_A_mm2": 94.0,
+          "material": "AL",
+          "s_mm2": 10.0,
+          "t_fault_s": 0.37
+        },
+        "result": {
+          "I_th_dop_A": 1545.4
+        },
+        "step": "Obliczenie dopuszczalnego prądu cieplnego",
+        "substitution": "10.0 * 94.0 / sqrt(0.370)"
+      },
+      {
+        "formula": "I_{k,max} \\leq I_{th,dop}",
+        "inputs": {
+          "I_k_max_A": 50000.0,
+          "I_th_dop_A": 1545.4
+        },
+        "result": {
+          "margin_percent": -3135.5,
+          "ocena": "Wymaganie naruszone"
+        },
+        "step": "Sprawdzenie wytrzymałości cieplnej",
+        "uwagi": "Wytrzymałość cieplna zwarciowa przewodu (434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1) — prąd zwarciowy zastępczy cieplny: 50000 A wobec wymaganych ≤ 1545 A wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −48450 A, punkt: linia Linia SN nr 1, względnie −3136 % wartości granicznej); Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1) — energia cieplna zwarcia: 925000000 A²·s wobec wymaganych ≤ 883600 A²·s wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −924100000 A²·s, punkt: linia Linia SN nr 1, względnie −104600 % wartości granicznej); Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1) — przekrój zastosowany żyły: 10 mm² wobec wymaganych ≥ 323,6 mm² wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines −313,6 mm², punkt: linia Linia SN nr 1, względnie −96,91 % wartości granicznej)."
+      }
+    ]
+  },
+  "wytrzymuje": {
+    "cross_section_mm2": 120.0,
+    "i_th_dop_a": 18544.2,
+    "ik_max_a": 8000.0,
+    "ith_1s_a": 11280.0,
+    "j_thn": 94.0,
+    "margin_percent": 56.9,
+    "ocena": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "network_model/solvers/conductor_thermal_withstand.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [
+            {
+              "jakosc": "ESTIMATED",
+              "nazwa_pl": "prąd zastępczy cieplny linii I_th",
+              "powod_pl": "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12)",
+              "wartosc": {
+                "jednostka": "A",
+                "wartosc": 8000.0
+              }
+            },
+            {
+              "jakosc": "ESTIMATED",
+              "nazwa_pl": "czas własny wyłącznika t_w",
+              "powod_pl": "założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w",
+              "wartosc": {
+                "jednostka": "s",
+                "wartosc": 0.07
+              }
+            }
+          ],
+          "stan": "UNVALIDATED_INPUT"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Brak wystarczającego dowodu",
+        "semantyka": "ostrzegawcza"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Wytrzymałość cieplna zwarciowa przewodu",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "prąd zastępczy cieplny linii I_th",
+                  "powod_pl": "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12)",
+                  "wartosc": {
+                    "jednostka": "A",
+                    "wartosc": 8000.0
+                  }
+                },
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "czas własny wyłącznika t_w",
+                  "powod_pl": "założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w",
+                  "wartosc": {
+                    "jednostka": "s",
+                    "wartosc": 0.07
+                  }
+                }
+              ],
+              "stan": "UNVALIDATED_INPUT"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "I_{th} \\le I_{dop}(t) = \\frac{I_{th(1s)}}{\\sqrt{t}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "przewod.prad_dopuszczalny",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949",
+              "jednostka_redakcyjna": "j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm²",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "wytrzymałość cieplna żyły I_th(1 s) = s·j_thn z tablicy metody doboru nastaw",
+              "wydanie": "—"
+            },
+            "wartosc": {
+              "jednostka": "A",
+              "wartosc": 18544.205768
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "prąd dopuszczalny żyły przy czasie wyłączenia t"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "linia Linia SN nr 1",
+            "skala": {
+              "jednostka": "A",
+              "wartosc": 18544.205768
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "A",
+              "wartosc": 10544.205768
+            },
+            "wzgledny": 0.568598402107
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+            "jednostka_redakcyjna": "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2012"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+            "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "linia Linia SN nr 1",
+            "opis_pl": "Żyła przewodu nagrzewana prądem zwarcia"
+          },
+          "slad": [
+            {
+              "krok": "conductor_thermal_criterion",
+              "opis_pl": "Sprawdzenie kryterium cieplnego (zapis prądowy)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”, wydanie 2012, 434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949”, wydanie —, j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+              "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+              "Zakres ważności: Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s — wynik nie obejmuje: nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia); żyły powrotne i żyły ekranów."
+            ],
+            "zdanie_pl": "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1) — kryterium spełnione. Prąd zwarciowy zastępczy cieplny: 8000 A wobec wymaganych ≤ 18540 A wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +10540 A, punkt: linia Linia SN nr 1, względnie +56,86 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "linia Linia SN nr 1",
+            "symbol_latex": "I_{th}",
+            "wartosc": {
+              "jednostka": "A",
+              "wartosc": 8000.0
+            },
+            "wielkosc_pl": "prąd zwarciowy zastępczy cieplny"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+              "żyły powrotne i żyły ekranów"
+            ]
+          }
+        },
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "prąd zastępczy cieplny linii I_th",
+                  "powod_pl": "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12)",
+                  "wartosc": {
+                    "jednostka": "A",
+                    "wartosc": 8000.0
+                  }
+                },
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "czas własny wyłącznika t_w",
+                  "powod_pl": "założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w",
+                  "wartosc": {
+                    "jednostka": "s",
+                    "wartosc": 0.07
+                  }
+                }
+              ],
+              "stan": "UNVALIDATED_INPUT"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "I_{th}^2\\,t \\le k^2 S^2",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "przewod.energia_cieplna",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949",
+              "jednostka_redakcyjna": "j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm²",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "wytrzymałość cieplna żyły I_th(1 s) = s·j_thn z tablicy metody doboru nastaw",
+              "wydanie": "—"
+            },
+            "wartosc": {
+              "jednostka": "A²·s",
+              "wartosc": 127238400.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalna energia cieplna żyły k²S²"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "linia Linia SN nr 1",
+            "skala": {
+              "jednostka": "A²·s",
+              "wartosc": 127238400.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "A²·s",
+              "wartosc": 103558400.0
+            },
+            "wzgledny": 0.813892661335
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+            "jednostka_redakcyjna": "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2012"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+            "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "linia Linia SN nr 1",
+            "opis_pl": "Żyła przewodu nagrzewana prądem zwarcia"
+          },
+          "slad": [
+            {
+              "krok": "conductor_thermal_energy",
+              "opis_pl": "Bilans energii cieplnej zwarcia",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”, wydanie 2012, 434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949”, wydanie —, j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+              "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+              "Zakres ważności: Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s — wynik nie obejmuje: nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia); żyły powrotne i żyły ekranów."
+            ],
+            "zdanie_pl": "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1) — kryterium spełnione. Energia cieplna zwarcia: 23680000 A²·s wobec wymaganych ≤ 127200000 A²·s wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +103600000 A²·s, punkt: linia Linia SN nr 1, względnie +81,39 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "linia Linia SN nr 1",
+            "symbol_latex": "I_{th}^2\\,t",
+            "wartosc": {
+              "jednostka": "A²·s",
+              "wartosc": 23680000.0
+            },
+            "wielkosc_pl": "energia cieplna zwarcia"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+              "żyły powrotne i żyły ekranów"
+            ]
+          }
+        },
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": null,
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "prąd zastępczy cieplny linii I_th",
+                  "powod_pl": "metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12)",
+                  "wartosc": {
+                    "jednostka": "A",
+                    "wartosc": 8000.0
+                  }
+                },
+                {
+                  "jakosc": "ESTIMATED",
+                  "nazwa_pl": "czas własny wyłącznika t_w",
+                  "powod_pl": "założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w",
+                  "wartosc": {
+                    "jednostka": "s",
+                    "wartosc": 0.07
+                  }
+                }
+              ],
+              "stan": "UNVALIDATED_INPUT"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "S \\ge S_{min} = \\frac{I_{th}\\sqrt{t}}{k}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "przewod.przekroj_minimalny",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949",
+              "jednostka_redakcyjna": "j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm²",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "wytrzymałość cieplna żyły I_th(1 s) = s·j_thn z tablicy metody doboru nastaw",
+              "wydanie": "—"
+            },
+            "wartosc": {
+              "jednostka": "mm²",
+              "wartosc": 51.7681917472
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "minimalny przekrój z warunku cieplnego"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "linia Linia SN nr 1",
+            "skala": {
+              "jednostka": "mm²",
+              "wartosc": 51.7681917472
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "mm²",
+              "wartosc": 68.2318082528
+            },
+            "wzgledny": 1.31802572101
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+            "jednostka_redakcyjna": "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2012"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+            "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "linia Linia SN nr 1",
+            "opis_pl": "Żyła przewodu nagrzewana prądem zwarcia"
+          },
+          "slad": [
+            {
+              "krok": "conductor_thermal_min_section",
+              "opis_pl": "Minimalny przekrój żyły z warunku cieplnego",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”, wydanie 2012, 434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949”, wydanie —, j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+              "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+              "Zakres ważności: Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s — wynik nie obejmuje: nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia); żyły powrotne i żyły ekranów."
+            ],
+            "zdanie_pl": "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1) — kryterium spełnione. Przekrój zastosowany żyły: 120 mm² wobec wymaganych ≥ 51,77 mm² wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +68,23 mm², punkt: linia Linia SN nr 1, względnie +131,8 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "linia Linia SN nr 1",
+            "symbol_latex": "S",
+            "wartosc": {
+              "jednostka": "mm²",
+              "wartosc": 120.0
+            },
+            "wielkosc_pl": "przekrój zastosowany żyły"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "SHORT_CIRCUIT",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+              "żyły powrotne i żyły ekranów"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)",
+        "jednostka_redakcyjna": "434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie",
+        "rodzaj": "NORMA",
+        "status": "WSKAZANE",
+        "uwagi_pl": null,
+        "wydanie": "2012"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+        "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+        "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+        "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+        "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+        "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+        "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+        "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+      ],
+      "slad": [
+        {
+          "krok": "conductor_thermal_criterion",
+          "opis_pl": "Sprawdzenie kryterium cieplnego (zapis prądowy)",
+          "run_id": null,
+          "wersja_silnika": null
+        },
+        {
+          "krok": "conductor_thermal_energy",
+          "opis_pl": "Bilans energii cieplnej zwarcia",
+          "run_id": null,
+          "wersja_silnika": null
+        },
+        {
+          "krok": "conductor_thermal_min_section",
+          "opis_pl": "Minimalny przekrój żyły z warunku cieplnego",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "BRAK_DOWODU",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+          "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+          "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+          "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w."
+        ],
+        "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).; Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.; Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).; Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.; Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).; Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.; Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).; Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1): Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+        "zastrzezenia": [
+          "Podstawa „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”, wydanie 2012, 434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949”, wydanie —, j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Dana przyjęta bez walidacji: prąd zastępczy cieplny linii I_th = 8000 A, jakość danej: oszacowane — metoda doboru nastaw przyjmuje I_th równy prądowi I″k,max na początku linii (bez współczynników m, n wg IEC 60909-0 §12).",
+          "Dana przyjęta bez walidacji: czas własny wyłącznika t_w = 0,07 s, jakość danej: oszacowane — założenie metody doboru nastaw doliczane do czasu zwarcia t_k = t_upstream + Δt + t_w.",
+          "Zakres ważności: Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s — wynik nie obejmuje: nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia); żyły powrotne i żyły ekranów."
+        ],
+        "zdanie_pl": "Wytrzymałość cieplna zwarciowa przewodu (434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1) — prąd zwarciowy zastępczy cieplny: 8000 A wobec wymaganych ≤ 18540 A wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +10540 A, punkt: linia Linia SN nr 1, względnie +56,86 % wartości granicznej); Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1) — energia cieplna zwarcia: 23680000 A²·s wobec wymaganych ≤ 127200000 A²·s wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +103600000 A²·s, punkt: linia Linia SN nr 1, względnie +81,39 % wartości granicznej); Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1) — przekrój zastosowany żyły: 120 mm² wobec wymaganych ≥ 51,77 mm² wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +68,23 mm², punkt: linia Linia SN nr 1, względnie +131,8 % wartości granicznej)."
+      },
+      "wymaganie_id": "przewod.wytrzymalosc_cieplna_zwarciowa",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Nagrzewanie zwarciowe żyły adiabatyczne przy prądzie zastępczym cieplnym I_th z biegu IEC 60909 i czasie wyłączenia t; wytrzymałość żyły odniesiona do 1 s.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "SHORT_CIRCUIT",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "nagrzewanie nieadiabatyczne (odpływ ciepła do otoczenia przy długich czasach zwarcia)",
+          "żyły powrotne i żyły ekranów"
+        ]
+      }
+    },
+    "t_fault_s": 0.37,
+    "trace": [
+      {
+        "formula": "I_{th,dop} = \\frac{s \\cdot j_{thn}}{\\sqrt{t_k}}",
+        "inputs": {
+          "j_thn_A_mm2": 94.0,
+          "material": "AL",
+          "s_mm2": 120.0,
+          "t_fault_s": 0.37
+        },
+        "result": {
+          "I_th_dop_A": 18544.2
+        },
+        "step": "Obliczenie dopuszczalnego prądu cieplnego",
+        "substitution": "120.0 * 94.0 / sqrt(0.370)"
+      },
+      {
+        "formula": "I_{k,max} \\leq I_{th,dop}",
+        "inputs": {
+          "I_k_max_A": 8000.0,
+          "I_th_dop_A": 18544.2
+        },
+        "result": {
+          "margin_percent": 56.9,
+          "ocena": "Brak wystarczającego dowodu"
+        },
+        "step": "Sprawdzenie wytrzymałości cieplnej",
+        "uwagi": "Wytrzymałość cieplna zwarciowa przewodu (434.5.2 — warunek adiabatyczny doboru przekroju ze względu na zwarcie „PN-HD 60364-4-43 (ochrona przed prądem przetężeniowym)”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd zwarciowy zastępczy cieplny nie większy od prądu dopuszczalnego żyły dla czasu wyłączenia (linia Linia SN nr 1) — prąd zwarciowy zastępczy cieplny: 8000 A wobec wymaganych ≤ 18540 A wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +10540 A, punkt: linia Linia SN nr 1, względnie +56,86 % wartości granicznej); Energia cieplna zwarcia nie większa od energii, którą przyjmie żyła (linia Linia SN nr 1) — energia cieplna zwarcia: 23680000 A²·s wobec wymaganych ≤ 127200000 A²·s wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +103600000 A²·s, punkt: linia Linia SN nr 1, względnie +81,39 % wartości granicznej); Przekrój zastosowany nie mniejszy od minimalnego z warunku cieplnego (linia Linia SN nr 1) — przekrój zastosowany żyły: 120 mm² wobec wymaganych ≥ 51,77 mm² wg j_thn dla 1 s: Cu 142, Al 94, AlFe 87 A/mm² „Hoppel W., „Dobór nastaw zabezpieczeń nadprądowych zwarciowych dla linii SN” — tablica gęstości prądu cieplnego j_thn; IEC 60949” (margines +68,23 mm², punkt: linia Linia SN nr 1, względnie +131,8 % wartości granicznej)."
+      }
+    ]
+  }
+}

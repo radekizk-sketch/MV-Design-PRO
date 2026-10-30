@@ -1,0 +1,2996 @@
+{
+  "bazowy": {
+    "naruszenia_napiecia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Brak wystarczającego dowodu",
+        "semantyka": "ostrzegawcza"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Odchylenie napięcia szyn — stan bazowy N-0 (bez wyłączeń)",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia.najwieksza",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu)",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 9.19756002788
+            },
+            "wzgledny": 0.919756002788
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "b_nn",
+            "nazwa_pl": "Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu)",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [
+            {
+              "krok": "kontyngencje_n1.voltage_deviation",
+              "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu)) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,8024 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,198 pp, punkt: Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu), względnie +91,98 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu)",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.80243997212
+            },
+            "wielkosc_pl": "odchylenie napięcia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "odchylenie napięcia szyn w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z pasma odchylenia napięcia walidacji energetycznej (ten sam co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.voltage_deviation",
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "BRAK_DOWODU",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń.",
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, odchylenie napięcia szyn w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+        ],
+        "zdanie_pl": "Odchylenie napięcia szyn — stan bazowy N-0 (bez wyłączeń) (odchylenie napięcia szyn w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu)) — odchylenie napięcia od znamionowego: 0,8024 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,198 pp, punkt: Szyna nN — największa wartość spośród 5 pozycji (szyny wariantu), względnie +91,98 % wartości granicznej)."
+      },
+      "wymaganie_id": "kontyngencje_n1.napiecia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "odbiory_bez_zasilania": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+        "semantyka": "ostrzegawcza"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego",
+        "relacja": "NIE_WIECEJ",
+        "warunek_latex": "n_{\\text{odb}} \\le 0",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "kontyngencje_n1.zasilanie_odbiorow",
+      "limit": {
+        "jednostka_obwiedni": null,
+        "obwiednia": null,
+        "pasmo": null,
+        "podstawa": {
+          "dokument": "Kryterium N-1 analizy kontyngencji programu",
+          "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+          "wydanie": "bieżący stan programu"
+        },
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wersja_profilu": null,
+        "zakres_stosowalnosci_pl": "dopuszczalna liczba odbiorów bez zasilania w stanie N-1"
+      },
+      "margines": {
+        "definicja_latex": "m = x_{\\lim} - x",
+        "niedefiniowalny": false,
+        "powod_pl": null,
+        "punkt_pl": "stan bazowy N-0 (bez wyłączeń)",
+        "skala": null,
+        "skala_rodzaj": null,
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wzgledny": null
+      },
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+        "wydanie": "bieżący stan programu"
+      },
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przedmiot": {
+        "element_ref": null,
+        "nazwa_pl": "stan bazowy N-0 (bez wyłączeń)",
+        "opis_pl": "Sieć w stanie normalnym (bez wyłączeń) — odniesienie dla kontyngencji"
+      },
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.wyspa_zasilana",
+          "opis_pl": "Wyspa węzła bilansującego wariantu (ślad kontyngencji: szyny zasilane, szyny i odbiory poza wyspą)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "status_maszynowy": "SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": null,
+        "zastrzezenia": [
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+        ],
+        "zdanie_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego (stan bazowy N-0 (bez wyłączeń)) — kryterium spełnione. Liczba odbiorów poza wyspą węzła bilansującego: 0 wobec wymaganych ≤ 0 wg zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego „Kryterium N-1 analizy kontyngencji programu” (margines 0, punkt: stan bazowy N-0 (bez wyłączeń))."
+      },
+      "wynik": {
+        "chwila_s": null,
+        "metoda": "OBLICZENIE",
+        "punkt_krytyczny_pl": "stan bazowy N-0 (bez wyłączeń)",
+        "symbol_latex": "n_{\\text{odb}}",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wielkosc_pl": "liczba odbiorów poza wyspą węzła bilansującego"
+      },
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "przeciazenia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Brak wystarczającego dowodu",
+        "semantyka": "ostrzegawcza"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Obciążenie gałęzi i transformatorów — stan bazowy N-0 (bez wyłączeń)",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.obciazenie_galezi.najwieksza",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+              "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 100.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia gałęzi"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 100.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 87.1223046527
+            },
+            "wzgledny": 0.871223046527
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "ka_magistrala",
+            "nazwa_pl": "Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "opis_pl": "Linia albo kabel w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [
+            {
+              "krok": "kontyngencje_n1.branch_loading",
+              "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))) — kryterium spełnione. Obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 12,88 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +87,12 pp, punkt: Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable)), względnie +87,12 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "symbol_latex": "\\varepsilon",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 12.8776953473
+            },
+            "wielkosc_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        },
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.obciazenie_transformatora.najwieksza",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+              "jednostka_redakcyjna": "obciążenie transformatora — próg przekroczenia prądu znamionowego strony",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "współczynnik obciążenia K = I / I_r (IEC 60076-7) bez przeciążalności cyklicznej",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 100.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia transformatora"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu)",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 100.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 67.0122973346
+            },
+            "wzgledny": 0.670122973346
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "jednostka_redakcyjna": "obciążenie transformatora — próg przekroczenia prądu znamionowego strony",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "współczynnik obciążenia K = I / I_r (IEC 60076-7) bez przeciążalności cyklicznej",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "tr_sn_nn",
+            "nazwa_pl": "TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu)",
+            "opis_pl": "Transformator w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [
+            {
+              "krok": "kontyngencje_n1.transformer_loading",
+              "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie transformatora — próg przekroczenia prądu znamionowego strony (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu)) — kryterium spełnione. Obciążenie transformatora (prąd strony wobec prądu znamionowego strony): 32,99 % wobec wymaganych ≤ 100 % wg obciążenie transformatora — próg przekroczenia prądu znamionowego strony „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +67,01 pp, punkt: TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu), względnie +67,01 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu)",
+            "symbol_latex": "\\varepsilon",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 32.9877026654
+            },
+            "wielkosc_pl": "obciążenie transformatora (prąd strony wobec prądu znamionowego strony)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z progów walidacji energetycznej sieci (ten sam próg co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.branch_loading",
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+          "run_id": null,
+          "wersja_silnika": null
+        },
+        {
+          "krok": "kontyngencje_n1.transformer_loading",
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "BRAK_DOWODU",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń.",
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie transformatora — próg przekroczenia prądu znamionowego strony (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+        ],
+        "zdanie_pl": "Obciążenie gałęzi i transformatorów — stan bazowy N-0 (bez wyłączeń) (obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))) — obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 12,88 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +87,12 pp, punkt: Kabel magistralny — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable)), względnie +87,12 % wartości granicznej); Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu)) — obciążenie transformatora (prąd strony wobec prądu znamionowego strony): 32,99 % wobec wymaganych ≤ 100 % wg obciążenie transformatora — próg przekroczenia prądu znamionowego strony „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +67,01 pp, punkt: TR 15/0,4 — największa wartość spośród 1 pozycji (transformatory wariantu), względnie +67,01 % wartości granicznej)."
+      },
+      "wymaganie_id": "kontyngencje_n1.przeciazenia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    }
+  },
+  "niezbiezna": {
+    "naruszenia_napiecia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Ocena niewykonana",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Odchylenie napięcia szyn — wyłączenie: Kabel mocny",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia.niewyznaczone",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+          },
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "szyny wariantu",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono"
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono)",
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (szyny wariantu) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "odchylenie napięcia szyn w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z pasma odchylenia napięcia walidacji energetycznej (ten sam co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (szyny wariantu): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "slad": [],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "NIE_OCENIONO",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (szyny wariantu): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (szyny wariantu): bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono",
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (szyny wariantu): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przyczyna_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (szyny wariantu) — brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono)",
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń.",
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, odchylenie napięcia szyn w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+        ],
+        "zdanie_pl": "Odchylenie napięcia szyn — wyłączenie: Kabel mocny (odchylenie napięcia szyn w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — ocena niewykonana. Kryteria nieocenione: Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (szyny wariantu) — brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono)."
+      },
+      "wymaganie_id": "kontyngencje_n1.napiecia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "odbiory_bez_zasilania": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+        "semantyka": "ostrzegawcza"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego",
+        "relacja": "NIE_WIECEJ",
+        "warunek_latex": "n_{\\text{odb}} \\le 0",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "kontyngencje_n1.zasilanie_odbiorow",
+      "limit": {
+        "jednostka_obwiedni": null,
+        "obwiednia": null,
+        "pasmo": null,
+        "podstawa": {
+          "dokument": "Kryterium N-1 analizy kontyngencji programu",
+          "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+          "wydanie": "bieżący stan programu"
+        },
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wersja_profilu": null,
+        "zakres_stosowalnosci_pl": "dopuszczalna liczba odbiorów bez zasilania w stanie N-1"
+      },
+      "margines": {
+        "definicja_latex": "m = x_{\\lim} - x",
+        "niedefiniowalny": false,
+        "powod_pl": null,
+        "punkt_pl": "wyłączenie: Kabel mocny",
+        "skala": null,
+        "skala_rodzaj": null,
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wzgledny": null
+      },
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+        "wydanie": "bieżący stan programu"
+      },
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przedmiot": {
+        "element_ref": "ka_mocny",
+        "nazwa_pl": "wyłączenie: Kabel mocny",
+        "opis_pl": "Sieć w stanie po wyłączeniu wskazanego elementu (wariant N-1)"
+      },
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.wyspa_zasilana",
+          "opis_pl": "Wyspa węzła bilansującego wariantu (ślad kontyngencji: szyny zasilane, szyny i odbiory poza wyspą)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "status_maszynowy": "SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": null,
+        "zastrzezenia": [
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+        ],
+        "zdanie_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego (wyłączenie: Kabel mocny) — kryterium spełnione. Liczba odbiorów poza wyspą węzła bilansującego: 0 wobec wymaganych ≤ 0 wg zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego „Kryterium N-1 analizy kontyngencji programu” (margines 0, punkt: wyłączenie: Kabel mocny)."
+      },
+      "wynik": {
+        "chwila_s": null,
+        "metoda": "OBLICZENIE",
+        "punkt_krytyczny_pl": "wyłączenie: Kabel mocny",
+        "symbol_latex": "n_{\\text{odb}}",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wielkosc_pl": "liczba odbiorów poza wyspą węzła bilansującego"
+      },
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "przeciazenia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Ocena niewykonana",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Obciążenie gałęzi i transformatorów — wyłączenie: Kabel mocny",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.obciazenie_galezi.niewyznaczone",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+              "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 100.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia gałęzi"
+          },
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "gałęzie wariantu (linie i kable)",
+            "opis_pl": "Linia albo kabel w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono"
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono)",
+            "zastrzezenia": [
+              "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (gałęzie wariantu (linie i kable)) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        },
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.obciazenie_transformatora.niewyznaczone",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+              "jednostka_redakcyjna": "obciążenie transformatora — próg przekroczenia prądu znamionowego strony",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "współczynnik obciążenia K = I / I_r (IEC 60076-7) bez przeciążalności cyklicznej",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 100.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia transformatora"
+          },
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "jednostka_redakcyjna": "obciążenie transformatora — próg przekroczenia prądu znamionowego strony",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "współczynnik obciążenia K = I / I_r (IEC 60076-7) bez przeciążalności cyklicznej",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "transformatory wariantu",
+            "opis_pl": "Transformator w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono"
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono)",
+            "zastrzezenia": [
+              "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie transformatora — próg przekroczenia prądu znamionowego strony (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (transformatory wariantu) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z progów walidacji energetycznej sieci (ten sam próg co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (gałęzie wariantu (linie i kable)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (transformatory wariantu): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "slad": [],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "NIE_OCENIONO",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (gałęzie wariantu (linie i kable)): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (gałęzie wariantu (linie i kable)): bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono",
+          "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (transformatory wariantu): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (transformatory wariantu): bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono",
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (gałęzie wariantu (linie i kable)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (transformatory wariantu): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przyczyna_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (gałęzie wariantu (linie i kable)) — brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono); Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (transformatory wariantu) — brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono)",
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń.",
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie transformatora — próg przekroczenia prądu znamionowego strony (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+        ],
+        "zdanie_pl": "Obciążenie gałęzi i transformatorów — wyłączenie: Kabel mocny (obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — ocena niewykonana. Kryteria nieocenione: Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (gałęzie wariantu (linie i kable)) — brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono); Obciążenie transformatora nie większe od progu przekroczenia prądu znamionowego (transformatory wariantu) — brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu nie dał rozwiązania — wielkości z wyniku rozpływu nie wyznaczono)."
+      },
+      "wymaganie_id": "kontyngencje_n1.przeciazenia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    }
+  },
+  "odbiory_odciete": {
+    "naruszenia_napiecia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Ocena niewykonana",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Odchylenie napięcia szyn — wyłączenie: TR 15/0,4",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia.najwieksza",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Stacja odgalezienia — największa wartość spośród 4 pozycji (szyny wariantu)",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 9.85402273853
+            },
+            "wzgledny": 0.985402273853
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "b_odg",
+            "nazwa_pl": "Stacja odgalezienia — największa wartość spośród 4 pozycji (szyny wariantu)",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [
+            {
+              "krok": "kontyngencje_n1.voltage_deviation",
+              "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja odgalezienia — największa wartość spośród 4 pozycji (szyny wariantu)) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,146 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,854 pp, punkt: Stacja odgalezienia — największa wartość spośród 4 pozycji (szyny wariantu), względnie +98,54 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Stacja odgalezienia — największa wartość spośród 4 pozycji (szyny wariantu)",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.145977261473
+            },
+            "wielkosc_pl": "odchylenie napięcia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        },
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia.niewyznaczone",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+          },
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "1 pozycji bez wyznaczonej wielkości (szyny wariantu)",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Brak danych napięciowych — Szyna nN"
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Brak danych napięciowych — Szyna nN)",
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (1 pozycji bez wyznaczonej wielkości (szyny wariantu)) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Brak danych napięciowych — Szyna nN). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "odchylenie napięcia szyn w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z pasma odchylenia napięcia walidacji energetycznej (ten sam co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja odgalezienia — największa wartość spośród 4 pozycji (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (1 pozycji bez wyznaczonej wielkości (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.voltage_deviation",
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "NIE_OCENIONO",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (1 pozycji bez wyznaczonej wielkości (szyny wariantu)): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (1 pozycji bez wyznaczonej wielkości (szyny wariantu)): Brak danych napięciowych — Szyna nN",
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja odgalezienia — największa wartość spośród 4 pozycji (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (1 pozycji bez wyznaczonej wielkości (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przyczyna_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (1 pozycji bez wyznaczonej wielkości (szyny wariantu)) — brak wyznaczonej wielkości ocenianej (Brak danych napięciowych — Szyna nN)",
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń.",
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, odchylenie napięcia szyn w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+        ],
+        "zdanie_pl": "Odchylenie napięcia szyn — wyłączenie: TR 15/0,4 (odchylenie napięcia szyn w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — ocena niewykonana. Kryteria nieocenione: Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (1 pozycji bez wyznaczonej wielkości (szyny wariantu)) — brak wyznaczonej wielkości ocenianej (Brak danych napięciowych — Szyna nN)."
+      },
+      "wymaganie_id": "kontyngencje_n1.napiecia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "odbiory_bez_zasilania": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Kryterium naruszone",
+        "semantyka": "negatywna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego",
+        "relacja": "NIE_WIECEJ",
+        "warunek_latex": "n_{\\text{odb}} \\le 0",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "kontyngencje_n1.zasilanie_odbiorow",
+      "limit": {
+        "jednostka_obwiedni": null,
+        "obwiednia": null,
+        "pasmo": null,
+        "podstawa": {
+          "dokument": "Kryterium N-1 analizy kontyngencji programu",
+          "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+          "wydanie": "bieżący stan programu"
+        },
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wersja_profilu": null,
+        "zakres_stosowalnosci_pl": "dopuszczalna liczba odbiorów bez zasilania w stanie N-1"
+      },
+      "margines": {
+        "definicja_latex": "m = x_{\\lim} - x",
+        "niedefiniowalny": false,
+        "powod_pl": null,
+        "punkt_pl": "wyłączenie: TR 15/0,4",
+        "skala": null,
+        "skala_rodzaj": null,
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": -1.0
+        },
+        "wzgledny": null
+      },
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+        "wydanie": "bieżący stan programu"
+      },
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przedmiot": {
+        "element_ref": "tr_sn_nn",
+        "nazwa_pl": "wyłączenie: TR 15/0,4",
+        "opis_pl": "Sieć w stanie po wyłączeniu wskazanego elementu (wariant N-1)"
+      },
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.wyspa_zasilana",
+          "opis_pl": "Wyspa węzła bilansującego wariantu (ślad kontyngencji: szyny zasilane, szyny i odbiory poza wyspą)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "status_maszynowy": "NIE_SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "liczba odbiorów poza wyspą węzła bilansującego przekracza wartość graniczną o 1 (wyłączenie: TR 15/0,4)",
+        "zastrzezenia": [
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+        ],
+        "zdanie_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego (wyłączenie: TR 15/0,4) — kryterium naruszone. Liczba odbiorów poza wyspą węzła bilansującego: 1 wobec wymaganych ≤ 0 wg zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego „Kryterium N-1 analizy kontyngencji programu” (margines −1, punkt: wyłączenie: TR 15/0,4)."
+      },
+      "wynik": {
+        "chwila_s": null,
+        "metoda": "OBLICZENIE",
+        "punkt_krytyczny_pl": "wyłączenie: TR 15/0,4",
+        "symbol_latex": "n_{\\text{odb}}",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 1.0
+        },
+        "wielkosc_pl": "liczba odbiorów poza wyspą węzła bilansującego"
+      },
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "przeciazenia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Brak wystarczającego dowodu",
+        "semantyka": "ostrzegawcza"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Obciążenie gałęzi i transformatorów — wyłączenie: TR 15/0,4",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.obciazenie_galezi.najwieksza",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+              "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 100.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia gałęzi"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 100.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 89.8421615922
+            },
+            "wzgledny": 0.898421615922
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "ln_odg",
+            "nazwa_pl": "Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "opis_pl": "Linia albo kabel w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [
+            {
+              "krok": "kontyngencje_n1.branch_loading",
+              "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))) — kryterium spełnione. Obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 10,16 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +89,84 pp, punkt: Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable)), względnie +89,84 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "symbol_latex": "\\varepsilon",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.1578384078
+            },
+            "wielkosc_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z progów walidacji energetycznej sieci (ten sam próg co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.branch_loading",
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "BRAK_DOWODU",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń.",
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+        ],
+        "zdanie_pl": "Obciążenie gałęzi i transformatorów — wyłączenie: TR 15/0,4 (obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))) — obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 10,16 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +89,84 pp, punkt: Linia odgalezienia — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable)), względnie +89,84 % wartości granicznej)."
+      },
+      "wymaganie_id": "kontyngencje_n1.przeciazenia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    }
+  },
+  "wykluczona": {
+    "naruszenia_napiecia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Nie dotyczy",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIE_DOTYCZY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Odchylenie napięcia szyn — wyłączenie: Linia rezerwowa (wylaczona)",
+      "oceny_skladowe": [],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "odchylenie napięcia szyn w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z pasma odchylenia napięcia walidacji energetycznej (ten sam co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [],
+      "slad": [],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "NIE_DOTYCZY",
+      "stosowalnosc": {
+        "dotyczy": false,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją.",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją.",
+        "zastrzezenia": [
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, odchylenie napięcia szyn w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+        ],
+        "zdanie_pl": "Odchylenie napięcia szyn — wyłączenie: Linia rezerwowa (wylaczona) (odchylenie napięcia szyn w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — nie dotyczy: Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją."
+      },
+      "wymaganie_id": "kontyngencje_n1.napiecia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "odbiory_bez_zasilania": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Nie dotyczy",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIE_DOTYCZY",
+      "kryterium": {
+        "opis_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego",
+        "relacja": "NIE_WIECEJ",
+        "warunek_latex": "n_{\\text{odb}} \\le 0",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "kontyngencje_n1.zasilanie_odbiorow",
+      "limit": {
+        "jednostka_obwiedni": null,
+        "obwiednia": null,
+        "pasmo": null,
+        "podstawa": {
+          "dokument": "Kryterium N-1 analizy kontyngencji programu",
+          "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+          "wydanie": "bieżący stan programu"
+        },
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wersja_profilu": null,
+        "zakres_stosowalnosci_pl": "dopuszczalna liczba odbiorów bez zasilania w stanie N-1"
+      },
+      "margines": null,
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+        "wydanie": "bieżący stan programu"
+      },
+      "powody_niepelnosci": [],
+      "przedmiot": {
+        "element_ref": "ln_wyl",
+        "nazwa_pl": "wyłączenie: Linia rezerwowa (wylaczona)",
+        "opis_pl": "Sieć w stanie po wyłączeniu wskazanego elementu (wariant N-1)"
+      },
+      "slad": [],
+      "status_maszynowy": "NIE_DOTYCZY",
+      "stosowalnosc": {
+        "dotyczy": false,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją.",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją.",
+        "zastrzezenia": [
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+        ],
+        "zdanie_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego (wyłączenie: Linia rezerwowa (wylaczona)) — nie dotyczy: Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją."
+      },
+      "wynik": null,
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "przeciazenia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Nie dotyczy",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIE_DOTYCZY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Obciążenie gałęzi i transformatorów — wyłączenie: Linia rezerwowa (wylaczona)",
+      "oceny_skladowe": [],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z progów walidacji energetycznej sieci (ten sam próg co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [],
+      "slad": [],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "NIE_DOTYCZY",
+      "stosowalnosc": {
+        "dotyczy": false,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją.",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją.",
+        "zastrzezenia": [
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+        ],
+        "zdanie_pl": "Obciążenie gałęzi i transformatorów — wyłączenie: Linia rezerwowa (wylaczona) (obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — nie dotyczy: Element jest już wyłączony w modelu bazowym (status open), więc jego wyłączenie nie jest kontyngencją."
+      },
+      "wymaganie_id": "kontyngencje_n1.przeciazenia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    }
+  },
+  "z_przeciazeniem": {
+    "naruszenia_napiecia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Brak wystarczającego dowodu",
+        "semantyka": "ostrzegawcza"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Odchylenie napięcia szyn — wyłączenie: Linia GPZ-A",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia.najwieksza",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Stacja A — największa wartość spośród 3 pozycji (szyny wariantu)",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 9.3681743101
+            },
+            "wzgledny": 0.93681743101
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "b_a",
+            "nazwa_pl": "Stacja A — największa wartość spośród 3 pozycji (szyny wariantu)",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [
+            {
+              "krok": "kontyngencje_n1.voltage_deviation",
+              "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja A — największa wartość spośród 3 pozycji (szyny wariantu)) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,6318 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,368 pp, punkt: Stacja A — największa wartość spośród 3 pozycji (szyny wariantu), względnie +93,68 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Stacja A — największa wartość spośród 3 pozycji (szyny wariantu)",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.631825689896
+            },
+            "wielkosc_pl": "odchylenie napięcia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "odchylenie napięcia szyn w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z pasma odchylenia napięcia walidacji energetycznej (ten sam co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja A — największa wartość spośród 3 pozycji (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.voltage_deviation",
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "BRAK_DOWODU",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja A — największa wartość spośród 3 pozycji (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja A — największa wartość spośród 3 pozycji (szyny wariantu)): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń.",
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, odchylenie napięcia szyn w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+        ],
+        "zdanie_pl": "Odchylenie napięcia szyn — wyłączenie: Linia GPZ-A (odchylenie napięcia szyn w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Stacja A — największa wartość spośród 3 pozycji (szyny wariantu)) — odchylenie napięcia od znamionowego: 0,6318 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,368 pp, punkt: Stacja A — największa wartość spośród 3 pozycji (szyny wariantu), względnie +93,68 % wartości granicznej)."
+      },
+      "wymaganie_id": "kontyngencje_n1.napiecia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "odbiory_bez_zasilania": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+        "semantyka": "ostrzegawcza"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego",
+        "relacja": "NIE_WIECEJ",
+        "warunek_latex": "n_{\\text{odb}} \\le 0",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "kontyngencje_n1.zasilanie_odbiorow",
+      "limit": {
+        "jednostka_obwiedni": null,
+        "obwiednia": null,
+        "pasmo": null,
+        "podstawa": {
+          "dokument": "Kryterium N-1 analizy kontyngencji programu",
+          "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+          "wydanie": "bieżący stan programu"
+        },
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wersja_profilu": null,
+        "zakres_stosowalnosci_pl": "dopuszczalna liczba odbiorów bez zasilania w stanie N-1"
+      },
+      "margines": {
+        "definicja_latex": "m = x_{\\lim} - x",
+        "niedefiniowalny": false,
+        "powod_pl": null,
+        "punkt_pl": "wyłączenie: Linia GPZ-A",
+        "skala": null,
+        "skala_rodzaj": null,
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wzgledny": null
+      },
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "kryterium projektowe niezawodności zasilania (żaden odbiór bez zasilania po wyłączeniu jednego elementu), nie wartość normowa; wymaganie operatora sieci może je zaostrzyć albo złagodzić",
+        "wydanie": "bieżący stan programu"
+      },
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przedmiot": {
+        "element_ref": "ln_src_a",
+        "nazwa_pl": "wyłączenie: Linia GPZ-A",
+        "opis_pl": "Sieć w stanie po wyłączeniu wskazanego elementu (wariant N-1)"
+      },
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.wyspa_zasilana",
+          "opis_pl": "Wyspa węzła bilansującego wariantu (ślad kontyngencji: szyny zasilane, szyny i odbiory poza wyspą)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "status_maszynowy": "SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": null,
+        "zastrzezenia": [
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+        ],
+        "zdanie_pl": "Żaden odbiór nie pozostaje poza wyspą zasilaną z węzła bilansującego (wyłączenie: Linia GPZ-A) — kryterium spełnione. Liczba odbiorów poza wyspą węzła bilansującego: 0 wobec wymaganych ≤ 0 wg zasilanie odbiorów po wyłączeniu pojedynczego elementu przesyłowego „Kryterium N-1 analizy kontyngencji programu” (margines 0, punkt: wyłączenie: Linia GPZ-A)."
+      },
+      "wynik": {
+        "chwila_s": null,
+        "metoda": "OBLICZENIE",
+        "punkt_krytyczny_pl": "wyłączenie: Linia GPZ-A",
+        "symbol_latex": "n_{\\text{odb}}",
+        "wartosc": {
+          "jednostka": "1",
+          "wartosc": 0.0
+        },
+        "wielkosc_pl": "liczba odbiorów poza wyspą węzła bilansującego"
+      },
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    },
+    "przeciazenia": {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "OBLICZENIE",
+        "odniesienie": "application/analyses/kontyngencje_n1.py",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_danych": {
+          "dane_przyjete": [],
+          "stan": "ZWALIDOWANE"
+        },
+        "status_modelu": "NIE_DOTYCZY",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Wymaganie naruszone",
+        "semantyka": "negatywna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryteria_naruszone": [
+        "walidacja_energetyczna.obciazenie_galezi.najwieksza"
+      ],
+      "kryterium_najblizej_granicy": null,
+      "nazwa_pl": "Obciążenie gałęzi i transformatorów — wyłączenie: Linia GPZ-A",
+      "oceny_skladowe": [
+        {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "application/analyses/kontyngencje_n1.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\varepsilon \\le \\varepsilon_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.obciazenie_galezi.najwieksza",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+              "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 100.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "próg przekroczenia obciążenia gałęzi"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 100.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": -34.7432526879
+            },
+            "wzgledny": -0.347432526879
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+            "jednostka_redakcyjna": "obciążenie gałęzi — próg przekroczenia prądu znamionowego",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "prąd znamionowy gałęzi z obciążalności długotrwałej typu katalogowego",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "ln_src_b",
+            "nazwa_pl": "Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "opis_pl": "Linia albo kabel w stanie ustalonym biegu rozpływu"
+          },
+          "slad": [
+            {
+              "krok": "kontyngencje_n1.branch_loading",
+              "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego) przekracza wartość graniczną o 34,74 pp (Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable)))",
+            "zastrzezenia": [
+              "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))) — kryterium naruszone. Obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 134,7 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines −34,74 pp, punkt: Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable)), względnie −34,74 % wartości granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))",
+            "symbol_latex": "\\varepsilon",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 134.743252688
+            },
+            "wielkosc_pl": "obciążenie gałęzi (prąd zacisku wobec prądu znamionowego)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+              "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+              "wyłączenia wielokrotne (N-2 i dalsze)",
+              "aparaty łączeniowe i źródła jako kontyngencje",
+              "przeciążalność krótkotrwała i cykliczna urządzeń"
+            ]
+          }
+        }
+      ],
+      "podstawa": {
+        "dokument": "Kryterium N-1 analizy kontyngencji programu",
+        "jednostka_redakcyjna": "obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu",
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "status": "WSKAZANE",
+        "uwagi_pl": "limity składowych z progów walidacji energetycznej sieci (ten sam próg co stan N-0)",
+        "wydanie": "bieżący stan programu"
+      },
+      "podstawa_sposobu_wykazania": null,
+      "pokrycie_programu": "NIE_DOTYCZY",
+      "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "slad": [
+        {
+          "krok": "kontyngencje_n1.branch_loading",
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+          "run_id": null,
+          "wersja_silnika": null
+        }
+      ],
+      "sposob_wykazania": "OBLICZENIE",
+      "status_maszynowy": "NIE_SPELNIA",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "kontyngencja wyłączenia elementu przesyłowego",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przyczyna_pl": "Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))) — obciążenie gałęzi (prąd zacisku wobec prądu znamionowego) przekracza wartość graniczną o 34,74 pp (Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable)))",
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu — wynik nie obejmuje: przebieg przejściowy wyłączenia i działanie zabezpieczeń; przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy); wyłączenia wielokrotne (N-2 i dalsze); aparaty łączeniowe i źródła jako kontyngencje; przeciążalność krótkotrwała i cykliczna urządzeń.",
+          "Podstawa „Kryterium N-1 analizy kontyngencji programu”, wydanie bieżący stan programu, obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+        ],
+        "zdanie_pl": "Obciążenie gałęzi i transformatorów — wyłączenie: Linia GPZ-A (obciążenie gałęzi i transformatorów w stanie po wyłączeniu elementu „Kryterium N-1 analizy kontyngencji programu”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Obciążenie gałęzi nie większe od progu przekroczenia prądu znamionowego (Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable))) — obciążenie gałęzi (prąd zacisku wobec prądu znamionowego): 134,7 % wobec wymaganych ≤ 100 % wg obciążenie gałęzi — próg przekroczenia prądu znamionowego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines −34,74 pp, punkt: Linia GPZ-B — największa wartość spośród 2 pozycji (gałęzie wariantu (linie i kable)), względnie −34,74 % wartości granicznej)."
+      },
+      "wymaganie_id": "kontyngencje_n1.przeciazenia",
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Stan ustalony sieci po wyłączeniu jednego elementu przesyłowego (linia, kabel, transformator) przy obciążeniach i generacji zapisanych w modelu — osobny bieg rozpływu mocy wariantu bez tego elementu.",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": "POWER_FLOW",
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "przebieg przejściowy wyłączenia i działanie zabezpieczeń",
+          "przełączenia ruchowe po zakłóceniu (rezerwa, samoczynne załączanie rezerwy)",
+          "wyłączenia wielokrotne (N-2 i dalsze)",
+          "aparaty łączeniowe i źródła jako kontyngencje",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      }
+    }
+  }
+}

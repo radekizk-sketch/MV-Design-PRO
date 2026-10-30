@@ -179,6 +179,16 @@ WEJSCIA_REPREZENTATYWNE: dict[str, dict[str, Any]] = {
 }
 
 
+_LICZBY_CIEPLNE = (
+    "i_th_dop_a",
+    "j_thn",
+    "cross_section_mm2",
+    "t_fault_s",
+    "ik_max_a",
+    "margin_percent",
+)
+
+
 def _wynik_do_dict_wspolny(wynik: Any) -> dict[str, Any]:
     """Wytnij TYLKO bloki istniejące przed kartą W3-C2 z `to_dict()`."""
     dane = wynik.to_dict()
@@ -187,7 +197,10 @@ def _wynik_do_dict_wspolny(wynik: Any) -> dict[str, Any]:
         "line_name": dane["line_name"],
         "delayed": dane["delayed"],
         "instantaneous": dane["instantaneous"],
-        "thermal": dane["thermal"],
+        # Karta WERDYKT-MIGRACJA-190 (C40): rozstrzygnięcie cieplne niesie rekord W `ocena`
+        # zamiast flagi `is_adequate` (zgodność obu — osobna asercja w teście); liczby
+        # bloku cieplnego porównywane bit w bit jak dotąd.
+        "thermal": {k: dane["thermal"][k] for k in _LICZBY_CIEPLNE},
         "spz": dane["spz"],
         "overall_valid": dane["overall_valid"],
         "summary_notes": dane["summary_notes"],
@@ -218,6 +231,12 @@ def test_tozsamosc_przed_po_dla_istniejacych_wejsc(
         f"Rozbieznosc PRZED/PO dla wejscia '{nazwa_wejscia}' — rozszerzenie W3-C2 "
         "zmienilo istniejaca liczbe zamiast byc czysto addytywne."
     )
+    # Flaga sprzed karty i rozstrzygnięcie liczbowe rekordu W wytrzymałości cieplnej linii
+    # mówią to samo dla każdego wejścia reprezentatywnego.
+    from werdykt.porownanie import rozstrzygniecie
+
+    flaga_przed = wynik_przed.to_dict()["thermal"]["is_adequate"]
+    assert flaga_przed == (rozstrzygniecie(wynik_po.thermal.ocena.oceny_skladowe) == "SPELNIA")
 
 
 def test_po_ma_nowe_bloki_ktorych_przed_nie_mial() -> None:

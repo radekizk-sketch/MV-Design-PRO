@@ -17,6 +17,7 @@
  */
 
 import type { CFactorBiegu } from '../../../ui/results-inspector/types';
+import type { WynikWymagania } from '../wzorzec/werdykt';
 
 /** Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). */
 export type ZaciskZabezpieczenia = 'od' | 'do';
@@ -97,7 +98,13 @@ export interface SprawdzenieCieplne {
   readonly cross_section_mm2: number;
   readonly t_fault_s: number;
   readonly ik_max_a: number;
-  readonly is_adequate: boolean;
+  /** Prąd 1-sekundowy żyły I_th1s = s·j_thn [A] (limit kryterium cieplnego). */
+  readonly ith_1s_a: number;
+  /**
+   * Rekord W wytrzymałości cieplnej przewodu (kryterium I_th·√t ≤ I_th1s) — jedyne źródło
+   * etykiety i zdania; dane przyjęte (I_th = I″k,max, t_w wyłącznika) czynią dowód niepełnym.
+   */
+  readonly ocena: WynikWymagania;
   readonly margin_percent: number;
   readonly trace: readonly KrokSladu[];
 }

@@ -69,7 +69,6 @@ import {
   KOLUMNY_RANKINGU_ZABEZPIECZEN,
   KOLUMNY_STANOW_ZABEZPIECZEN,
   etykietaPrzebieguZabezpieczen,
-  mapaWagWierszyZabezpieczen,
   naWierszeAudytuPorownania,
   naWierszeRankinguZabezpieczen,
   naWierszeStanowZabezpieczen,
@@ -212,16 +211,12 @@ export function TrybZabezpieczen({ projektId, szczegolyAudytowe }: TrybZabezpiec
     [wynik, setWynikiTab],
   );
 
-  const wagi = useMemo(
-    () => (wynik ? mapaWagWierszyZabezpieczen(wynik.ranking) : new Map<string, number>()),
-    [wynik],
-  );
   const nazwaObiektu = useNazwaObiektu();
   const wierszeStanow = useMemo(() => {
     if (!wynik) return [];
     const zrodlo = tylkoZmiany ? tylkoZmianyStanowZabezpieczen(wynik.rows) : wynik.rows;
-    return naWierszeStanowZabezpieczen(zrodlo, wagi);
-  }, [wynik, wagi, tylkoZmiany]);
+    return naWierszeStanowZabezpieczen(zrodlo);
+  }, [wynik, tylkoZmiany]);
   const wierszeRankingu = useMemo(
     () => (wynik ? naWierszeRankinguZabezpieczen(wynik.ranking, nazwaObiektu) : []),
     [wynik, nazwaObiektu],

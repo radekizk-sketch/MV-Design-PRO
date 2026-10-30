@@ -26,13 +26,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './kontyngencje.css';
 import { useSwiezoscNaglowka } from '../../freshness';
-import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
+import {
+  EkranAnalizy,
+  KartaWerdyktu,
+  PrzyciskAkcjiStanu,
+  useAkcjaUruchomObliczenie,
+} from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import {
   fetchMacierzN1,
   fetchZakresN1,
   type Kontyngencja,
   type MacierzResponse,
+  type OcenyKontyngencji,
   type PozycjaNaruszenia,
   type PozycjaPominieta,
   type PrzypadekBazowy,
@@ -163,12 +169,25 @@ function ListaPominietych({
   );
 }
 
+/**
+ * Rekordy kategorii dotkliwości wariantu (K odbiorów bez zasilania, W przeciążeń, W odchyleń
+ * napięcia) — status, etykieta, kryterium, wynik, limit, margines i braki WYŁĄCZNIE z rekordu
+ * backendu. Liczniki obok są faktami biegu, nie werdyktem: licznik zero przy pominiętym
+ * kryterium nie jest „w normie” — mówi o tym rekord („ocena niewykonana”).
+ */
+function OcenyKategorii({ oceny, testid }: { oceny: OcenyKontyngencji; testid: string }) {
+  return (
+    <section className="mvd-n1-sekcja" data-testid={testid}>
+      <h4 className="mvd-n1-sekcja-tytul">{T.sekcjaOceny}</h4>
+      <KartaWerdyktu rekord={oceny.odbiory_bez_zasilania} naglowek={T.kolOdbiory} />
+      <KartaWerdyktu rekord={oceny.przeciazenia} naglowek={T.kolPrzeciazenia} />
+      <KartaWerdyktu rekord={oceny.naruszenia_napiecia} naglowek={T.kolNapiecia} />
+    </section>
+  );
+}
+
 /** Przypadek bazowy N-0 — ZAWSZE nad rankingiem (uczciwe odniesienie). */
 function PanelBazowy({ bazowy }: { bazowy: PrzypadekBazowy }) {
-  const bezNaruszen =
-    bazowy.przeciazenia.length === 0
-    && bazowy.naruszenia_napiecia.length === 0
-    && bazowy.odbiory_bez_zasilania.length === 0;
   return (
     <section className="mvd-n1-bazowy" data-testid="mvd-n1-bazowy">
       <h3 className="mvd-n1-blok-tytul">{T.bazowyTytul}</h3>
@@ -202,7 +221,7 @@ function PanelBazowy({ bazowy }: { bazowy: PrzypadekBazowy }) {
           </dd>
         </div>
       </dl>
-      {bezNaruszen && <p className="mvd-n1-pusty">{T.bazowyBezNaruszen}</p>}
+      <OcenyKategorii oceny={bazowy.oceny} testid="mvd-n1-bazowy-oceny" />
       <ListaNaruszen
         pozycje={bazowy.przeciazenia}
         tytul={T.sekcjaPrzeciazenia}
@@ -236,6 +255,8 @@ function PanelSzczegolow({
         {etykietaRodzaju(kontyngencja.element_kind)} · {etykietaStatusu(kontyngencja.status)} —{' '}
         {kontyngencja.powod_pl}
       </p>
+
+      <OcenyKategorii oceny={kontyngencja.oceny} testid="mvd-n1-szczegoly-oceny" />
 
       <ListaNaruszen
         pozycje={kontyngencja.przeciazenia}
@@ -633,7 +654,7 @@ export function EkranKontyngencji({ szczegolyAudytowe, onOtworzDowod }: EkranKon
                   daneMacierzy.podsumowanie.kontyngencji,
                 )}
                 kolumny={KOLUMNY_RANKINGU}
-                wiersze={naWierszeRankingu(daneMacierzy.ranking)}
+                wiersze={naWierszeRankingu(daneMacierzy.ranking, daneMacierzy.kontyngencje)}
                 onOtworzDowod={onOtworzDowod}
                 szczegolyAudytowe={szczegolyAudytowe}
                 kluczWiersza={KLUCZ_WIERSZA_RANKINGU}

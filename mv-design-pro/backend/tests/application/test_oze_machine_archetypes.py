@@ -30,7 +30,12 @@ def test_g7_biogaz_synchronous_machine_contribution():
             assert m["q"] == 1.0  # synchronous: μ only, no q
             assert 0.0 < m["mu"] <= 1.0
             assert m["ikss_partial_ka"] > 0
-        assert bus["verification"]["passed"] is True
+        # Wytrzymałość szyny z rekordów K backendu (karta WERDYKT-MIGRACJA-190), nie z flagi
+        # `verification.passed` bez kryterium i marginesu.
+        assert {n: o["status_maszynowy"] for n, o in bus["oceny"].items()} == {
+            "cieplna": "SPELNIA",
+            "dynamiczna": "SPELNIA",
+        }
 
 
 def test_g8_wind_async_machine_contribution():
@@ -46,7 +51,12 @@ def test_g8_wind_async_machine_contribution():
         assert isinstance(sc["motors_negligible"], bool)
         for m in sc["machines"]:
             assert 0.0 < m["q"] <= 1.0  # asynchronous decay (μ·q)
-        assert bus["verification"]["passed"] is True
+        # Wytrzymałość szyny z rekordów K backendu (karta WERDYKT-MIGRACJA-190), nie z flagi
+        # `verification.passed` bez kryterium i marginesu.
+        assert {n: o["status_maszynowy"] for n, o in bus["oceny"].items()} == {
+            "cieplna": "SPELNIA",
+            "dynamiczna": "SPELNIA",
+        }
 
 
 def test_g8_async_terminal_vs_collector_contrast():

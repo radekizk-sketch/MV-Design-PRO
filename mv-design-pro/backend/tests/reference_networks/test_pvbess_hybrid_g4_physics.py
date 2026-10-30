@@ -36,7 +36,8 @@ def test_hybrid_is_ibg_15kv_and_withstand_holds(build):
     assert sn["max"]["kappa"] == pytest.approx(1.659, abs=0.01)  # grid-infeed X/R≈7
     for bus in c["short_circuit"]["buses"].values():
         sc = bus["source_contribution"]
-        assert bus["verification"]["passed"] is True
+        assert bus["oceny"]["cieplna"]["status_maszynowy"] == "SPELNIA"
+        assert bus["oceny"]["dynamiczna"]["status_maszynowy"] == "SPELNIA"
         assert sc["machine_type"] == "IBG"
         assert sc["ik_contribution_ka"] > 0  # PV + BESS IBG sum (k·In)
         assert "machines" not in sc  # IBG: no rotating-machine breakdown

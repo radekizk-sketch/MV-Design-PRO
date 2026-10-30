@@ -63,10 +63,10 @@ import {
   KOLUMNY_RANKINGU,
   KOLUMNY_SZYN_DIFF,
   etykietaPrzebiegu,
-  mapaWagElementow,
   naWierszeGalezi,
   naWierszeRankingu,
   naWierszeAudytuPorownania,
+  elementyZRankingu,
   naWierszeSzynDiff,
   naZalozeniaPorownania,
   tylkoRozniceGalezi,
@@ -247,8 +247,8 @@ function TrybRozplywu({ projektId, szczegolyAudytowe }: EkranPorownaniaProps) {
     [wynik, setWynikiTab],
   );
 
-  const wagi = useMemo(
-    () => (wynik ? mapaWagElementow(wynik.ranking) : new Map<string, number>()),
+  const zProblemem = useMemo(
+    () => (wynik ? elementyZRankingu(wynik.ranking) : new Set<string>()),
     [wynik],
   );
   const poprawWModelu = usePoprawWModelu();
@@ -256,13 +256,13 @@ function TrybRozplywu({ projektId, szczegolyAudytowe }: EkranPorownaniaProps) {
   const wierszeSzyn = useMemo(() => {
     if (!wynik) return [];
     const zrodlo = tylkoRoznice ? tylkoRozniceSzyn(wynik.bus_diffs) : wynik.bus_diffs;
-    return naWierszeSzynDiff(zrodlo, wagi, nazwaObiektu);
-  }, [wynik, wagi, tylkoRoznice, nazwaObiektu]);
+    return naWierszeSzynDiff(zrodlo, nazwaObiektu);
+  }, [wynik, tylkoRoznice, nazwaObiektu]);
   const wierszeGalezi = useMemo(() => {
     if (!wynik) return [];
     const zrodlo = tylkoRoznice ? tylkoRozniceGalezi(wynik.branch_diffs) : wynik.branch_diffs;
-    return naWierszeGalezi(zrodlo, wagi, nazwaObiektu);
-  }, [wynik, wagi, tylkoRoznice, nazwaObiektu]);
+    return naWierszeGalezi(zrodlo, nazwaObiektu);
+  }, [wynik, tylkoRoznice, nazwaObiektu]);
   const wierszeRankingu = useMemo(
     () => (wynik ? naWierszeRankingu(wynik.ranking, nazwaObiektu) : []),
     [wynik, nazwaObiektu],
@@ -397,9 +397,10 @@ function TrybRozplywu({ projektId, szczegolyAudytowe }: EkranPorownaniaProps) {
                 {tylkoRoznice ? POROWNANIE_STRINGS.filtrPusto : POROWNANIE_STRINGS.brakSzyn}
               </p>
             ) : (
-              /* F-K4 (znalezisko Z4): wiersz z ISTOTNĄ różnicą prowadzi do szyny
-                 w modelu. Akcja jest INSPEKCYJNA: różnica między wariantami nie
-                 jest naruszeniem kryterium, więc nie obiecujemy naprawy. */
+              /* F-K4 (znalezisko Z4): wiersz elementu zgłoszonego w rankingu problemów
+                 backendu prowadzi do szyny w modelu. Akcja jest INSPEKCYJNA: różnica
+                 między wariantami nie jest naruszeniem kryterium, więc nie obiecujemy
+                 naprawy ani nie znakujemy delty oceną (D26). */
               <TabelaWynikow
                 kolumny={KOLUMNY_SZYN_DIFF}
                 wiersze={wierszeSzyn}
@@ -410,6 +411,8 @@ function TrybRozplywu({ projektId, szczegolyAudytowe }: EkranPorownaniaProps) {
                   poprawWModelu(klucz, 'Bus', nazwaObiektu(klucz), 'inspekcja-elementu')
                 }
                 rodzajWiersza={() => 'inspekcja-elementu'}
+                trybDecyzji="zawsze"
+                wierszDecyzyjny={(klucz) => zProblemem.has(klucz)}
               />
             ))}
 
@@ -429,6 +432,8 @@ function TrybRozplywu({ projektId, szczegolyAudytowe }: EkranPorownaniaProps) {
                   poprawWModelu(klucz, 'LineBranch', nazwaObiektu(klucz), 'inspekcja-elementu')
                 }
                 rodzajWiersza={() => 'inspekcja-elementu'}
+                trybDecyzji="zawsze"
+                wierszDecyzyjny={(klucz) => zProblemem.has(klucz)}
               />
             ))}
 

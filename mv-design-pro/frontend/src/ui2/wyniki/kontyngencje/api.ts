@@ -22,6 +22,8 @@
  * start przy pustym zaznaczeniu — ta sama reguła po obu stronach).
  */
 
+import type { OcenaKryterium, WynikWymagania } from '../wzorzec/werdykt';
+
 /** Kontekst przebiegu (pochodzenie wyniku) — koperta `zbuduj_kontekst_widoku`. */
 export interface KontekstKontyngencji {
   readonly run_id: string | null;
@@ -108,6 +110,18 @@ export interface Dotkliwosc {
 }
 
 /** Metryki biegu wariantu (ślad WHITE BOX). */
+/**
+ * Rekordy kategorii dotkliwości wariantu (backend `kontyngencje_n1_oceny.py:oceny_kontyngencji`):
+ * K odbiorów bez zasilania (liczba odbiorów poza wyspą wobec 0), W przeciążeń i W odchyleń
+ * napięcia (składowe: pozycja największa i pozycje bez wyznaczonej wielkości). Status, etykieta
+ * i wyjaśnienie — wyłącznie z rekordu; licznik `dotkliwosc` nie jest werdyktem.
+ */
+export interface OcenyKontyngencji {
+  readonly odbiory_bez_zasilania: OcenaKryterium;
+  readonly przeciazenia: WynikWymagania;
+  readonly naruszenia_napiecia: WynikWymagania;
+}
+
 export interface DaneBiegu {
   readonly zbieznosc: boolean;
   readonly iteracje: number | null;
@@ -151,6 +165,7 @@ export interface Kontyngencja {
   readonly odbiory_bez_zasilania: readonly OdbiorBezZasilania[];
   readonly szyny_bez_zasilania: readonly string[];
   readonly dotkliwosc: Dotkliwosc;
+  readonly oceny: OcenyKontyngencji;
   readonly slad: SladKontyngencji;
 }
 
@@ -164,6 +179,7 @@ export interface PrzypadekBazowy {
   readonly odbiory_bez_zasilania: readonly OdbiorBezZasilania[];
   readonly szyny_bez_zasilania: readonly string[];
   readonly dotkliwosc: Dotkliwosc;
+  readonly oceny: OcenyKontyngencji;
   readonly bieg: DaneBiegu;
 }
 

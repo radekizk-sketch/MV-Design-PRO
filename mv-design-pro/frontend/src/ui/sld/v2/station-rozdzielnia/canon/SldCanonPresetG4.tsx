@@ -144,9 +144,9 @@ export function SldCanonPresetG4({ companion }: { companion: SldOzeArchetypeComp
   const nodeReadout = (x: number, y: number, n: number, titleTxt: string, b: OzeVfBus, bsc: OzeScBus,
     shareTxt: string, ik1f: string) => (
     <NodeReadout x={x} y={y} n={n} title={titleTxt}
-      uKv={b.un_kv} uPu={b.u_pu} uOk={Math.abs(b.deviation_percent) <= 5}
+      uKv={b.un_kv} uPu={b.u_pu} uOcena={b.ocena}
       ik3fMax={bsc.max.ikss_ka} ik3fMin={bsc.min.ikss_ka} ik1f={ik1f} share={shareTxt}
-      icw={bsc.icw_ka} icwOk={bsc.verification.passed} ip={bsc.max.ip_ka} idyn={bsc.idyn_ka} />
+      icw={bsc.icw_ka} icwOcena={bsc.oceny.cieplna} idynOcena={bsc.oceny.dynamiczna} ip={bsc.max.ip_ka} idyn={bsc.idyn_ka} />
   );
 
   // nN-node share: grid-through-TR + LOCAL IBG (per-bus k·In from the companion).

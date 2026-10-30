@@ -16,10 +16,34 @@ from application.protection_settings.engine import (
     InstantaneousSettings,
     InstantaneousSettingWindow,
     LocalGenerationDiagnostic,
+    ProtectionSettingsEngine,
+    ProtectionSettingsInput,
     ProtectionSettingsResult,
     SPZAnalysisResult,
     ThermalWithstandResult,
 )
+
+
+def _sprawdzenie_cieplne() -> ThermalWithstandResult:
+    """Blok cieplny z REALNEJ ścieżki silnika (rekord W z ``check_conductor_thermal_withstand``)
+    — mapowanie na aparat go nie czyta; rekord nie jest fabrykowany ręcznie."""
+    return ProtectionSettingsEngine._check_thermal_withstand(
+        ProtectionSettingsInput(
+            line_id="line-1",
+            line_name="Odcinek testowy",
+            cross_section_mm2=120.0,
+            conductor_material="AL",
+            length_km=5.0,
+            i_nominal_a=300.0,
+            ik3_max_beginning_a=4000.0,
+            ik3_min_beginning_a=3000.0,
+            ik3_max_end_a=2500.0,
+            ik3_min_end_a=2000.0,
+            ik2_min_end_a=1700.0,
+            ik_max_next_bus_a=2000.0,
+            i_load_max_a=100.0,
+        )
+    )
 
 
 def _wynik_hoppela(
@@ -50,16 +74,7 @@ def _wynik_hoppela(
             validation_notes=[],
             trace=[],
         ),
-        thermal=ThermalWithstandResult(
-            i_th_dop_a=5000.0,
-            j_thn=94.0,
-            cross_section_mm2=120.0,
-            t_fault_s=0.37,
-            ik_max_a=4000.0,
-            is_adequate=True,
-            margin_percent=20.0,
-            trace=[],
-        ),
+        thermal=_sprawdzenie_cieplne(),
         spz=SPZAnalysisResult(
             spz_allowed=True,
             total_fault_time_s=0.6,

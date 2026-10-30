@@ -305,9 +305,9 @@ describe('GATE E — short-circuit dossier on every SN/nN busbar at L2', () => {
         // Distinct case_refs.
         expect(bus.max.case_ref).toBe('ZWARCIOWY_MAKS');
         expect(bus.min.case_ref).toBe('ZWARCIOWY_MIN');
-        // Verification present: Ik"max ≤ Icw.
-        expect(bus.verification.rule).toBe('ikss_max_le_icw');
-        expect(typeof bus.verification.passed).toBe('boolean');
+        // Rekordy K wytrzymałości rozdzielnicy szyny (nie flaga bez kryterium).
+        expect(bus.oceny.cieplna.kryterium_id).toMatch(/\.cieplna$/);
+        expect(bus.oceny.dynamiczna.kryterium_id).toMatch(/\.dynamiczna$/);
         // White Box derivation carried (non-empty).
         expect(bus.max.white_box_trace.length).toBeGreaterThan(0);
       }
@@ -360,6 +360,8 @@ describe('GATE F — bus voltages + field power flows from the frozen NR solver'
         expect(b.u_pu).toBeGreaterThan(0.9);
         expect(b.u_pu).toBeLessThan(1.1);
         expect(typeof b.deviation_percent).toBe('number');
+        // Rekord K odchylenia napięcia (±10 % PN-EN 50160) — ta sama reguła co profil napięć.
+        expect(b.ocena.kryterium_id).toBe('walidacja_energetyczna.odchylenie_napiecia');
       }
       // Every field with a branchRef has an I/P/Q/S flow.
       for (const f of model.fields) {

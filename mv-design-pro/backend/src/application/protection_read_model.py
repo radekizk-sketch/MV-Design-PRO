@@ -344,9 +344,6 @@ def _build_read_model_summary(
     blocked_assignments = sum(1 for item in assignments if item.get("status") == "BLOCKED")
     complete_count = sum(1 for item in summaries if item.get("has_complete_data"))
     incomplete_count = sum(1 for item in summaries if not item.get("has_complete_data"))
-    verified_count = sum(1 for item in summaries if item.get("verification_status") == "SPELNIONE")
-    failed_count = sum(1 for item in summaries if item.get("verification_status") == "NIESPELNIONE")
-    no_data_count = sum(1 for item in summaries if item.get("verification_status") == "BRAK_DANYCH")
     error_count = sum(1 for item in diagnostics if item.get("severity") == "ERROR")
     warn_count = sum(1 for item in diagnostics if item.get("severity") == "WARN")
     info_count = sum(1 for item in diagnostics if item.get("severity") == "INFO")
@@ -358,9 +355,6 @@ def _build_read_model_summary(
         "blocked_assignments": blocked_assignments,
         "complete_count": complete_count,
         "incomplete_count": incomplete_count,
-        "verified_count": verified_count,
-        "failed_count": failed_count,
-        "no_data_count": no_data_count,
         "error_count": error_count,
         "warn_count": warn_count,
         "info_count": info_count,
@@ -725,33 +719,27 @@ def _build_summary(entry: dict[str, Any]) -> dict[str, Any]:
     time_function = next((item for item in functions if item["code"] == "OVERCURRENT_TIME"), None)
     inst_function = next((item for item in functions if item["code"] == "OVERCURRENT_INST"), None)
 
-    severity_set = {diagnostic.severity.value for diagnostic in diagnostics}
-    has_only_info = severity_set == {"INFO"}
-    has_warn_or_error = bool({"WARN", "ERROR"} & severity_set)
-    # Funkcja bez progu pierwotnego (brak jednostki progu albo przekładni) to dane niepełne.
-    bez_progu = any(item.get("setpoint") is None for item in functions)
-    has_complete_data = bool(functions) and not has_only_info and not bez_progu
-
+    # Karta WERDYKT-MIGRACJA-190 (C39): podsumowanie elementu NIE niesie statusu
+    # „SPELNIONE / NIESPELNIONE” — dawny status wynikał z BRAKU diagnostyk („brak wykrytych
+    # konfliktów” → spełnione), a nie z oceny jakiegokolwiek kryterium względem limitu, i miał
+    # stały `margin_pct = None`. Konflikty logiki niosą diagnostyki elementu (`diagnostics`),
+    # a podsumowanie mówi tylko, czego brakuje w danych. JEDNO źródło prawdy kompletności:
+    # `has_complete_data` jest równoważne pustej liście braków.
+    braki_danych_pl: list[str] = []
     if not functions:
-        verification_status = "BRAK_DANYCH"
-        verification_reason = "Brak skonfigurowanych funkcji zabezpieczeniowych"
-    elif bez_progu:
-        verification_status = "BRAK_DANYCH"
-        verification_reason = (
+        braki_danych_pl.append("Brak skonfigurowanych funkcji zabezpieczeniowych")
+    # Funkcja bez progu pierwotnego (brak jednostki progu albo przekładni) to dane niepełne.
+    if any(item.get("setpoint") is None for item in functions):
+        braki_danych_pl.append(
             "Próg funkcji nie ma jednostki (strona wtórna albo pierwotna) albo przekładnika "
             "prądowego — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny"
         )
-    elif has_warn_or_error:
-        verification_status = "NIESPELNIONE"
-        verification_reason = (
-            diagnostics[0].message_pl if diagnostics else "Wykryto niespełnione kryteria"
-        )
-    elif has_only_info:
-        verification_status = "BRAK_DANYCH"
-        verification_reason = diagnostics[0].message_pl if diagnostics else "Analiza częściowa"
-    else:
-        verification_status = "SPELNIONE"
-        verification_reason = "Brak wykrytych konfliktów w logice zabezpieczeń"
+    # Diagnostyka INFO znaczy „brak danych do pełnej analizy” (`SanityCheckSeverity.INFO`)
+    # — także obok WARN/ERROR (dawniej liczona tylko, gdy była JEDYNĄ diagnostyką elementu,
+    # więc element z WARN i INFO uchodził za kompletny).
+    braki_danych_pl.extend(
+        diagnostic.message_pl for diagnostic in diagnostics if diagnostic.severity.value == "INFO"
+    )
 
     return {
         "element_id": entry["element_id"],
@@ -768,10 +756,8 @@ def _build_summary(entry: dict[str, Any]) -> dict[str, Any]:
             else None
         ),
         "ct": entry["ct"],
-        "verification_status": verification_status,
-        "verification_reason": verification_reason,
-        "margin_pct": None,
-        "has_complete_data": has_complete_data,
+        "braki_danych_pl": braki_danych_pl,
+        "has_complete_data": not braki_danych_pl,
     }
 
 

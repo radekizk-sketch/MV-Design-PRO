@@ -8,6 +8,8 @@
  * next to the ENM. The renderer INTERPRETS it on L2 — it never recomputes a flow.
  */
 
+import type { OcenaKryterium } from '../../../../../ui2/wyniki/wzorzec/werdykt';
+
 /**
  * One White Box derivation step (A→B→C→D): formula → data → substitution →
  * result. `source` is provenance: 'solver' (frozen NR primitive) or
@@ -32,6 +34,8 @@ export interface VfBus {
   readonly u_percent: number;
   /** (U_pu − 1)·100 — signed deviation from nominal [%]. */
   readonly deviation_percent: number;
+  /** Rekord K odchylenia napięcia wobec ±10 % PN-EN 50160 (backend `ocena_pozycji`). */
+  readonly ocena: OcenaKryterium;
   readonly angle_deg: number;
   /** Gate D — the U derivation from the frozen NR solution. */
   readonly white_box: readonly VfWhiteBoxStep[];

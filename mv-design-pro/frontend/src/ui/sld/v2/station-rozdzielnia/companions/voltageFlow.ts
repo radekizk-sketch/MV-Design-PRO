@@ -236,6 +236,144 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "angle_deg": 27.299,
         "bus_ref": "NN_BUS",
         "deviation_percent": -1.871,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "szyna nN 0,4 kV",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 8.129
+            },
+            "wzgledny": 0.8129
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "szyna nN 0,4 kV",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+          },
+          "slad": [
+            {
+              "krok": "substrat_stacji.odchylenie_napiecia.NN_BUS",
+              "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+              "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+            ],
+            "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 1,871 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +8,129 pp, punkt: szyna nN 0,4 kV, wzgl\u0119dnie +81,29 % warto\u015bci granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "szyna nN 0,4 kV",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 1.871
+            },
+            "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+              "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+            ]
+          }
+        },
         "u_kv": 0.3925,
         "u_percent": 98.129,
         "u_pu": 0.98129,
@@ -288,6 +426,144 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "angle_deg": -0.243,
         "bus_ref": "SN_BUS",
         "deviation_percent": -0.421,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "szyna SN 15 kV",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 9.579
+            },
+            "wzgledny": 0.9579
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "szyna SN 15 kV",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+          },
+          "slad": [
+            {
+              "krok": "substrat_stacji.odchylenie_napiecia.SN_BUS",
+              "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+              "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+            ],
+            "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,421 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,579 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +95,79 % warto\u015bci granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "szyna SN 15 kV",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.421
+            },
+            "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+              "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+            ]
+          }
+        },
         "u_kv": 14.9369,
         "u_percent": 99.579,
         "u_pu": 0.99579,
@@ -492,6 +768,144 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "angle_deg": 27.995,
         "bus_ref": "NN_BUS",
         "deviation_percent": -1.543,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "szyna nN 0,4 kV",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 8.457
+            },
+            "wzgledny": 0.8457
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "szyna nN 0,4 kV",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+          },
+          "slad": [
+            {
+              "krok": "substrat_stacji.odchylenie_napiecia.NN_BUS",
+              "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+              "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+            ],
+            "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 1,543 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +8,457 pp, punkt: szyna nN 0,4 kV, wzgl\u0119dnie +84,57 % warto\u015bci granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "szyna nN 0,4 kV",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 1.543
+            },
+            "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+              "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+            ]
+          }
+        },
         "u_kv": 0.3938,
         "u_percent": 98.457,
         "u_pu": 0.98457,
@@ -544,6 +958,144 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "angle_deg": -0.063,
         "bus_ref": "SN_BUS",
         "deviation_percent": -0.132,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "szyna SN 15 kV",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 9.868
+            },
+            "wzgledny": 0.9868
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "szyna SN 15 kV",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+          },
+          "slad": [
+            {
+              "krok": "substrat_stacji.odchylenie_napiecia.SN_BUS",
+              "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+              "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+            ],
+            "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,132 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,868 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +98,68 % warto\u015bci granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "szyna SN 15 kV",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.132
+            },
+            "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+              "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+            ]
+          }
+        },
         "u_kv": 14.9802,
         "u_percent": 99.868,
         "u_pu": 0.99868,
@@ -817,6 +1369,144 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "angle_deg": -0.153,
         "bus_ref": "ZKSN",
         "deviation_percent": -0.26,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "szyna SN 15 kV",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 9.74
+            },
+            "wzgledny": 0.974
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "szyna SN 15 kV",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+          },
+          "slad": [
+            {
+              "krok": "substrat_stacji.odchylenie_napiecia.ZKSN",
+              "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+              "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+            ],
+            "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,26 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,74 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +97,4 % warto\u015bci granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "szyna SN 15 kV",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.26
+            },
+            "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+              "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+            ]
+          }
+        },
         "u_kv": 14.961,
         "u_percent": 99.74,
         "u_pu": 0.9974,
@@ -1159,6 +1849,144 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "angle_deg": -0.13,
         "bus_ref": "SEC_A",
         "deviation_percent": -0.22,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "szyna SN 15 kV",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 9.78
+            },
+            "wzgledny": 0.978
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "szyna SN 15 kV",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+          },
+          "slad": [
+            {
+              "krok": "substrat_stacji.odchylenie_napiecia.SEC_A",
+              "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+              "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+            ],
+            "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,22 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,78 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +97,8 % warto\u015bci granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "szyna SN 15 kV",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.22
+            },
+            "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+              "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+            ]
+          }
+        },
         "u_kv": 14.967,
         "u_percent": 99.78,
         "u_pu": 0.9978,
@@ -1211,6 +2039,144 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "angle_deg": -0.118,
         "bus_ref": "SEC_B",
         "deviation_percent": -0.199,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+            "relacja": "NIE_WIECEJ",
+            "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 10.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+          },
+          "margines": {
+            "definicja_latex": "m = x_{\\lim} - x",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "szyna SN 15 kV",
+            "skala": {
+              "jednostka": "pp",
+              "wartosc": 10.0
+            },
+            "skala_rodzaj": "LIMIT",
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 9.801
+            },
+            "wzgledny": 0.9801
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+          ],
+          "przedmiot": {
+            "element_ref": null,
+            "nazwa_pl": "szyna SN 15 kV",
+            "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+          },
+          "slad": [
+            {
+              "krok": "substrat_stacji.odchylenie_napiecia.SEC_B",
+              "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+              "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+            ],
+            "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,199 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,801 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +98,01 % warto\u015bci granicznej)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "szyna SN 15 kV",
+            "symbol_latex": "\\delta U",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.199
+            },
+            "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+              "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+            ]
+          }
+        },
         "u_kv": 14.9701,
         "u_percent": 99.801,
         "u_pu": 0.99801,

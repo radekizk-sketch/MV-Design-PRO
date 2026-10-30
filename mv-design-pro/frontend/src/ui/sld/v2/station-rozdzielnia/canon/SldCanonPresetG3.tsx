@@ -141,10 +141,10 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
 
       {/* ── node ① readout ── */}
       <NodeReadout x={X.node1} y={236} n={1} title="szyna SN · 15 kV"
-        uKv={sn.un_kv} uPu={sn.u_pu} uOk={Math.abs(sn.deviation_percent) <= 5}
+        uKv={sn.un_kv} uPu={sn.u_pu} uOcena={sn.ocena}
         ik3fMax={snSc.max.ikss_ka} ik3fMin={snSc.min.ikss_ka}
         ik1f={snIk1f} share={`sieć ${fmt(snGridShare, 1)} + PCS ${fmt(faln, 1)} kA`}
-        icw={snSc.icw_ka} icwOk={snSc.verification.passed}
+        icw={snSc.icw_ka} icwOcena={snSc.oceny.cieplna} idynOcena={snSc.oceny.dynamiczna}
         ip={snSc.max.ip_ka} idyn={snSc.idyn_ka} />
 
       {/* ── nN busbar ── */}
@@ -174,10 +174,10 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
 
       {/* ── node ② readout ── */}
       <NodeReadout x={X.node1} y={636} n={2} title="szyna nN · 0,40 kV · IT"
-        uKv={nn.un_kv} uPu={nn.u_pu} uOk={Math.abs(nn.deviation_percent) <= 5}
+        uKv={nn.un_kv} uPu={nn.u_pu} uOcena={nn.ocena}
         ik3fMax={nnSc.max.ikss_ka} ik3fMin={nnSc.min.ikss_ka}
         ik1f={nnIk1f} share={`TR ${fmt(nnTrShare, 1)} + PCS ${fmt(faln, 1)} kA`}
-        icw={nnSc.icw_ka} icwOk={nnSc.verification.passed}
+        icw={nnSc.icw_ka} icwOcena={nnSc.oceny.cieplna} idynOcena={nnSc.oceny.dynamiczna}
         ip={nnSc.max.ip_ka} idyn={nnSc.idyn_ka} />
 
       {/* ── LEGENDA — symbole IEC (wspólny kanon) ── */}

@@ -86,7 +86,7 @@ describe('SldCanonPresetG9 — GPO wielopolowe (mixed sources on one busbar)', (
     expect(txt).toContain('POMIAR rozliczeniowy');
     expect(txt).toContain('granica = układ pomiarowy');
     expect(snSc.max.kappa).toBeGreaterThan(1.5); // grid-dominated busbar (X/R≈7, common _GRID_INFEED)
-    expect(snSc.verification.passed).toBe(true); // Ik″ ≤ Icw
+    expect(snSc.oceny.cieplna.status_maszynowy).toBe('SPELNIA'); // I_th ≤ I_cw (rekord K)
   });
 
   it('LAYOUT: no text-on-glyph overlap + no hanging conductor (continuity guard)', () => {

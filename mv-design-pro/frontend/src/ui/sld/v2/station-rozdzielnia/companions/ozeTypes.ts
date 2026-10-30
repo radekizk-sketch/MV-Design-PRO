@@ -8,6 +8,7 @@
  * transformer + an IBG InverterSource. The renderer INTERPRETS — never recomputes.
  */
 import type { ScBus } from './shortCircuitTypes';
+import type { OcenaKryterium } from '../../../../../ui2/wyniki/wzorzec/werdykt';
 
 /** Power hierarchy of a connection: Pzainst ≥ Pn,AC ≥ Pprzyłącz ≥ Posiągalna. */
 export interface OzePowerHierarchy {
@@ -210,6 +211,8 @@ export interface OzeVfBus {
   readonly u_kv: number;
   readonly u_pu: number;
   readonly deviation_percent: number;
+  /** Rekord K odchylenia napięcia wobec ±10 % PN-EN 50160 (backend `ocena_pozycji`). */
+  readonly ocena: OcenaKryterium;
 }
 
 export interface OzeVfBranch {

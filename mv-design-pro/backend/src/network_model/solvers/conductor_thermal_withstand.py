@@ -44,6 +44,7 @@ from werdykt import (
     DanaPrzyjeta,
     OcenaKryterium,
     OdnosnikSladu,
+    PodstawaWymagania,
     Przedmiot,
     Wielkosc,
     WyjasnienieWerdyktu,
@@ -229,6 +230,12 @@ class ConductorThermalInput:
     conductor_kind: str | None = None
     #: Nazwa przewodu w rekordzie oceny (gałąź, obwód albo pozycja katalogowa).
     nazwa_pl: str = "przewód"
+    #: Dane przyjęte wołającego (wartości robocze wielkości wejścia — zasada nr 4): wchodzą do
+    #: rekordu każdego zapisu kryterium, więc dowód jest ``NIEPELNY``.
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
+    #: Podstawa wytrzymałości żyły, gdy nie pochodzi z karty katalogowej (np. tablica gęstości
+    #: prądu cieplnego metody doboru nastaw); ``None`` — karta katalogowa albo IEC 60949.
+    podstawa_wytrzymalosci: PodstawaWymagania | None = None
 
 
 # --- Rekord werdyktu wyjaśnialnego (karta WERDYKT-MIGRACJA-190) ----------------------
@@ -301,6 +308,8 @@ def _ocena_cieplna(
     applied_section_mm2: float | None,
     k_wyprowadzone: KDerivation | None,
     braki: tuple[str, ...],
+    dane_wejscia: tuple[DanaPrzyjeta, ...] = (),
+    podstawa_wytrzymalosci: PodstawaWymagania | None = None,
 ) -> WynikWymagania:
     """Rekord W kryterium cieplnego z rekordami K trzech równoważnych zapisów.
 
@@ -313,9 +322,11 @@ def _ocena_cieplna(
     ``k_wyprowadzone`` — k policzone wzorem IEC 60949 z materiału i pary temperatur, bo karta
     katalogowa nie podaje I_th(1 s) ani J_th(1 s): wartość robocza (zasada nr 4) — jakość
     ``ESTIMATED`` w ``dane_przyjete``, więc dowód każdego zapisu jest ``NIEPELNY``.
+    ``dane_wejscia`` — dane przyjęte wołającego (dopisane po k); ``podstawa_wytrzymalosci`` —
+    podstawa limitu, gdy wytrzymałość żyły nie pochodzi z karty katalogowej.
     """
     zdolnosc = classify_dynamic_capability(ZDOLNOSC_CIEPLNA)
-    dane_przyjete: tuple[DanaPrzyjeta, ...] = (
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = dane_wejscia + (
         ()
         if k_wyprowadzone is None
         else (
@@ -341,7 +352,10 @@ def _ocena_cieplna(
     podstawa_limitu = (
         _PODSTAWA_IEC60949
         if k_wyprowadzone
-        else podstawa_katalogu(nazwa_pl, "wytrzymałość cieplna żyły I_th(1 s) albo J_th(1 s)")
+        else (
+            podstawa_wytrzymalosci
+            or podstawa_katalogu(nazwa_pl, "wytrzymałość cieplna żyły I_th(1 s) albo J_th(1 s)")
+        )
     )
     opisy_brakow = tuple(_OPIS_BRAKU[kod] for kod in braki)
     wyznaczono = not braki
@@ -559,6 +573,14 @@ class ConductorThermalResult:
         return self.status in (STATUS_PASS, STATUS_FAIL)
 
 
+def prad_dopuszczalny_zyly_a(ith_1s_a: float, czas_s: float) -> float:
+    """Prąd dopuszczalny żyły przy czasie zwarcia t: I_dop(t) = I_th(1 s)·√(1 s / t)
+    (nagrzewanie adiabatyczne, I²t = const — IEC 60949). JEDYNY zapis tej zależności w
+    backendzie: czyta go sprawdzenie cieplne przewodu i silnik nastaw I>/I>> (warunek
+    cieplny I>>, wytrzymałość linii, cykl SPZ). Wejście dodatnie — sprawdza wołający."""
+    return ith_1s_a / math.sqrt(czas_s)
+
+
 def _positive(value: float | None) -> float | None:
     if value is None:
         return None
@@ -612,6 +634,8 @@ def check_conductor_thermal_withstand(
             applied_section_mm2=None,
             k_wyprowadzone=k_derivation,
             braki=tuple(dict.fromkeys(braki)),
+            dane_wejscia=data.dane_przyjete,
+            podstawa_wytrzymalosci=data.podstawa_wytrzymalosci,
         )
         return ConductorThermalResult(
             status=_kod(ocena_braku.oceny_skladowe),
@@ -628,7 +652,7 @@ def check_conductor_thermal_withstand(
     assert ith is not None and duration is not None and ith_1s is not None
 
     sqrt_t = math.sqrt(duration)
-    admissible = ith_1s / sqrt_t
+    admissible = prad_dopuszczalny_zyly_a(ith_1s, duration)
     utilization = ith / admissible
     margin = admissible - ith
 
@@ -654,6 +678,8 @@ def check_conductor_thermal_withstand(
         applied_section_mm2=section,
         k_wyprowadzone=k_derivation,
         braki=(),
+        dane_wejscia=data.dane_przyjete,
+        podstawa_wytrzymalosci=data.podstawa_wytrzymalosci,
     )
     status = _kod(ocena.oceny_skladowe)
 
@@ -1210,7 +1236,7 @@ def _build_recommendations(
     )
 
     # Maksymalny prad zwarciowy, ktory obecny przewod wytrzyma w tym czasie.
-    prad_max = ith_1s_a / math.sqrt(duration_s)
+    prad_max = prad_dopuszczalny_zyly_a(ith_1s_a, duration_s)
     zalecenia.append(
         {
             "kod": "ogranicz_prad",

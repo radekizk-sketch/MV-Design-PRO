@@ -630,8 +630,16 @@ def test_kontrakt_widoku_jest_kompletny() -> None:
         "odbiory_bez_zasilania",
         "szyny_bez_zasilania",
         "dotkliwosc",
+        "oceny",
         "slad",
     }
+    # Trzy rekordy kategorii dotkliwości, w kolejności rankingu — ten sam kształt w każdej
+    # kontyngencji i w stanie bazowym. Pozycja rankingu NIE powtarza rekordów (odczyt po
+    # `element_ref` z kontyngencji — jedna kopia rekordu w odpowiedzi).
+    kategorie = ["odbiory_bez_zasilania", "przeciazenia", "naruszenia_napiecia"]
+    assert list(kontyngencja["oceny"]) == kategorie
+    assert list(widok["przypadek_bazowy"]["oceny"]) == kategorie
+    assert all("oceny" not in p for p in widok["ranking"])
     assert set(kontyngencja["slad"]) == {
         "element_wylaczony",
         "wariant_wejscia",
@@ -952,6 +960,20 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # wejściowy składa topologię GPZ-MODEL z mapą `wartosci_robocze` kabli SN karty
     # LINIA-110). Jedyne liście różne od obu stron to te dwa odciski. Wynik kontyngencji =
     # wynik UI/UX (GPZ-MODEL).
+    # 2026-10-30 (karta WERDYKT-MIGRACJA-190, kontyngencje): gn01 63af4b10… → 856c1f2b…, gn03
+    # d05d5914… → 4eb929cd…. Jedyna zmiana: pole addytywne `oceny` (trzy rekordy kategorii
+    # dotkliwości: K odbiorów bez zasilania, W przeciążeń, W odchyleń napięcia) w każdej
+    # kontyngencji i w przypadku bazowym. Widok z KAŻDYM kluczem `oceny`
+    # usuniętym rekurencyjnie daje dokładnie poprzednie odciski (63af4b10…, d05d5914…) —
+    # pilnuje tego `test_widok_bez_ocen_rowny_widokowi_sprzed_rekordow` niżej. Enumeracja,
+    # dotkliwości, skutki, ślady i ranking identyczne.
+    "gn01_promieniowa": "856c1f2bccd8f5f483c35088fa21348a0105c41adfa6ab65c2e3f168970f0351",
+    "gn03_pierscien": "4eb929cdb2810575f3402146b09d7751c46533f41009b524a247bbd971880b0f",
+}
+
+#: Odciski widoku sprzed rekordów kategorii (`oceny`) — wynik liczbowy N-1 bez rekordów musi
+#: pozostać bit w bit ten sam (rekordy są addytywne, nie zmieniają enumeracji ani liczników).
+ODCISKI_WIDOKU_BEZ_OCEN = {
     "gn01_promieniowa": "63af4b10b849707308af6ac179b091097cdc245dddc887ef732a152e8b9f2826",
     "gn03_pierscien": "d05d59143f677beab95dfd3e7a1f0b8fe971ac59d946b550349e2cafe06817c8",
 }
@@ -1009,6 +1031,31 @@ def test_pelny_widok_kanoniczny_nie_zmienil_sie_po_optymalizacji(siec: str) -> N
     # Kontrola samego pinu: odcisk ma pokrywać NIEPUSTĄ enumerację, inaczej
     # pilnowałby stałej wartości pustej listy.
     assert widok["podsumowanie"]["kontyngencji"] > 0
+
+
+def _bez_ocen(wartosc: object) -> object:
+    if isinstance(wartosc, dict):
+        return {k: _bez_ocen(v) for k, v in wartosc.items() if k != "oceny"}
+    if isinstance(wartosc, list):
+        return [_bez_ocen(v) for v in wartosc]
+    return wartosc
+
+
+@pytest.mark.parametrize("siec", sorted(ODCISKI_WIDOKU_BEZ_OCEN))
+def test_widok_bez_ocen_rowny_widokowi_sprzed_rekordow(siec: str) -> None:
+    """Rekordy kategorii są ADDYTYWNE: widok bez pól `oceny` jest bit w bit widokiem sprzed
+    karty WERDYKT-MIGRACJA-190 (enumeracja, liczniki, skutki, ślady, ranking)."""
+    from tests.reference_networks.builders import (
+        build_gn01_sn_promieniowa,
+        build_gn03_sn_pierscien,
+    )
+
+    dane = {
+        "gn01_promieniowa": build_gn01_sn_promieniowa,
+        "gn03_pierscien": build_gn03_sn_pierscien,
+    }[siec]()
+    widok = build_kontyngencje_n1_view(_bieg_o_stalym_id(dane))
+    assert _odcisk_widoku(_bez_ocen(widok)) == ODCISKI_WIDOKU_BEZ_OCEN[siec]
 
 
 # Zapowiedź zakresu (koszt przed biegiem) — karta ekranu N-1

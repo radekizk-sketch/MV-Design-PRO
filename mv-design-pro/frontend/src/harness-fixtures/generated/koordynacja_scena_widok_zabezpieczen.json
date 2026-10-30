@@ -7,7 +7,7 @@
       "element_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
       "element_type": "Switch",
       "nastawy": {
-        "alf": 20,
+        "alf": 20.0,
         "braki": [],
         "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
         "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
@@ -16,7 +16,7 @@
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie odejścia S01",
         "obwod_wtorny_ct": {
-          "alf": 20,
+          "alf": 20.0,
           "dlugosc_przewodu_m": null,
           "i2n_a": 5.0,
           "moc_stykow_va": null,
@@ -527,7 +527,7 @@
       "element_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
       "element_type": "Switch",
       "nastawy": {
-        "alf": 20,
+        "alf": 20.0,
         "braki": [],
         "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
         "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
@@ -536,7 +536,7 @@
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
         "obwod_wtorny_ct": {
-          "alf": 20,
+          "alf": 20.0,
           "dlugosc_przewodu_m": null,
           "i2n_a": 5.0,
           "moc_stykow_va": null,
@@ -1102,6 +1102,7 @@
   },
   "summaries": [
     {
+      "braki_danych_pl": [],
       "ct": {
         "label": "600/5",
         "primary_a": 600.0,
@@ -1111,7 +1112,6 @@
       "element_name": "Wyłącznik odejścia S01",
       "element_type": "Switch",
       "has_complete_data": true,
-      "margin_pct": null,
       "overcurrent": {
         "instant_overcurrent": {
           "characteristic": "DT",
@@ -1129,11 +1129,10 @@
           "tms": 0.1,
           "trip_time_s": null
         }
-      },
-      "verification_reason": "Brak wykrytych konfliktów w logice zabezpieczeń",
-      "verification_status": "SPELNIONE"
+      }
     },
     {
+      "braki_danych_pl": [],
       "ct": {
         "label": "600/5",
         "primary_a": 600.0,
@@ -1143,7 +1142,6 @@
       "element_name": "Wyłącznik pola liniowego GPZ",
       "element_type": "Switch",
       "has_complete_data": true,
-      "margin_pct": null,
       "overcurrent": {
         "instant_overcurrent": {
           "characteristic": "DT",
@@ -1161,9 +1159,7 @@
           "tms": 0.3,
           "trip_time_s": null
         }
-      },
-      "verification_reason": "Brak wykrytych konfliktów w logice zabezpieczeń",
-      "verification_status": "SPELNIONE"
+      }
     }
   ],
   "summary": {
@@ -1171,13 +1167,10 @@
     "blocked_assignments": 0,
     "complete_count": 2,
     "error_count": 0,
-    "failed_count": 0,
     "incomplete_count": 0,
     "info_count": 0,
-    "no_data_count": 0,
     "total_assignments": 2,
     "total_elements": 2,
-    "verified_count": 2,
     "warn_count": 0
   },
   "view_status": {

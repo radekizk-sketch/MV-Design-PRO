@@ -16,7 +16,25 @@
  * test na zielono.
  */
 
-import type { MacierzResponse, PozycjaNaruszenia, ZakresResponse } from '../api';
+import type {
+  MacierzResponse,
+  OcenyKontyngencji,
+  PozycjaNaruszenia,
+  ZakresResponse,
+} from '../api';
+import OCENY_WARIANTOW from './ocenyKontyngencji.json';
+
+/**
+ * Rekordy kategorii dotkliwości — WYGENEROWANE z backendu
+ * (`backend/tests/uczciwosc/generuj_fixtury_ocen_fe.py:_oceny_kontyngencji`, ta sama funkcja
+ * co końcówka): każdy wariant tej fikstury dostaje rekordy realnego wariantu o tych samych
+ * licznikach kategorii (zgodność licznik ↔ rekord pilnuje `ekranKontyngencji.test.tsx`).
+ */
+const OCENY = OCENY_WARIANTOW as unknown as Record<
+  'bazowy' | 'z_przeciazeniem' | 'niezbiezna' | 'wykluczona' | 'odbiory_odciete',
+  OcenyKontyngencji
+>;
+export { OCENY };
 
 /** Zapowiedź zakresu z modelem, w którym JEDEN element jest wykluczony. */
 export const ZAKRES: ZakresResponse = {
@@ -164,6 +182,7 @@ export const MACIERZ: MacierzResponse = {
       naruszenia_napiecia: 0,
       kryteria_pominiete: 0,
     },
+    oceny: OCENY.bazowy,
     bieg: {
       zbieznosc: true,
       iteracje: 3,
@@ -191,6 +210,7 @@ export const MACIERZ: MacierzResponse = {
         naruszenia_napiecia: 0,
         kryteria_pominiete: 0,
       },
+      oceny: OCENY.z_przeciazeniem,
       slad: {
         element_wylaczony: {
           element_ref: 'ka_magistrala',
@@ -242,6 +262,7 @@ export const MACIERZ: MacierzResponse = {
         naruszenia_napiecia: null,
         kryteria_pominiete: null,
       },
+      oceny: OCENY.niezbiezna,
       slad: {
         element_wylaczony: {
           element_ref: 'ln_odg',
@@ -290,6 +311,7 @@ export const MACIERZ: MacierzResponse = {
         naruszenia_napiecia: null,
         kryteria_pominiete: null,
       },
+      oceny: OCENY.wykluczona,
       slad: {
         element_wylaczony: {
           element_ref: 'ln_wyl',
@@ -342,6 +364,7 @@ export const MACIERZ: MacierzResponse = {
         naruszenia_napiecia: 0,
         kryteria_pominiete: 1,
       },
+      oceny: OCENY.odbiory_odciete,
       slad: {
         element_wylaczony: {
           element_ref: 'tr_sn_nn',
@@ -439,5 +462,6 @@ export const MACIERZ_Z_NARUSZENIEM_BAZOWYM: MacierzResponse = {
       ...MACIERZ.przypadek_bazowy.dotkliwosc,
       przeciazenia: 1,
     },
+    oceny: { ...MACIERZ.przypadek_bazowy.oceny, przeciazenia: OCENY.z_przeciazeniem.przeciazenia },
   },
 };

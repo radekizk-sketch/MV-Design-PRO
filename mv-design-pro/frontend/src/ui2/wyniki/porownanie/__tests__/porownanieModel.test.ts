@@ -7,7 +7,6 @@ import {
   KOLUMNY_GALEZI,
   KOLUMNY_SZYN_DIFF,
   etykietaPrzebiegu,
-  mapaWagElementow,
   naLinieProweniencji,
   naWierszeGalezi,
   naWierszeRankingu,
@@ -16,7 +15,7 @@ import {
   tylkoRozniceGalezi,
   tylkoRozniceSzyn,
 } from '../porownanieModel';
-import { POROWNANIE_STRINGS } from '../strings';
+import { POROWNANIE_STRINGS, WAGA_PL as POROWNANIE_STRINGS_WAGA } from '../strings';
 import {
   branchDiffFixture,
   busDiffFixture,
@@ -33,28 +32,41 @@ import {
 const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
   nazwaZWyniku ?? `nazwa ${ref}`;
 
-describe('mapaWagElementow — maksymalna waga per element', () => {
-  it('bierze najwyższą wagę problemu dla elementu', () => {
-    const mapa = mapaWagElementow([
-      ...rankingFixture(),
-      {
-        issue_code: 'ANGLE_SHIFT_HIGH',
-        severity: 2,
-        element_ref: 'SZYNA-GPZ',
-        description_pl: 'x',
-        evidence_ref: 2,
-      },
-    ]);
-    expect(mapa.get('SZYNA-GPZ')).toBe(5);
-    expect(mapa.get('LINIA-GPZ-ST1')).toBe(3);
-    expect(mapa.get('BRAK')).toBeUndefined();
+/**
+ * Karta WERDYKT-MIGRACJA-190 (D26): porównanie A/B nie wystawia ocen. Waga problemu
+ * (`ISSUE_SEVERITY_MAP` backendu) porządkuje różnice, ale nie jest wymaganiem z kryterium,
+ * limitem i podstawą — dawny próg okna „waga ≥ 4 → «Poza zakresem»” zapalał znacznik na
+ * KAŻDEJ delcie elementu (także ΔQ szyny przy problemie napięciowym) i na delcie strat przy
+ * dowolnym problemie. Iloczyn cech: waga 1–5 × miejsce (wiersz rankingu, delty szyny, delty
+ * gałęzi, podsumowanie) — znacznik nie pojawia się w żadnej kombinacji, a waga zostaje nazwą
+ * i kluczem sortowania.
+ */
+describe('porównanie A/B bez znacznika oceny z progu wagi', () => {
+  const WAGI = [1, 2, 3, 4, 5] as const;
+  it.each(WAGI)('waga %s: ranking, delty szyny i gałęzi bez znacznika ostrzeżenia', (waga) => {
+    const ranking = rankingFixture().map((r) => ({ ...r, severity: waga }));
+    const [wiersz] = naWierszeRankingu(ranking, NAZWA);
+    expect(wiersz.waga.sortKey).toBe(waga);
+    expect(wiersz.waga.wartosc).toBe(POROWNANIE_STRINGS_WAGA[waga]);
+    const komorki = [
+      ...naWierszeRankingu(ranking, NAZWA),
+      ...naWierszeSzynDiff([busDiffFixture()], NAZWA),
+      ...naWierszeGalezi([branchDiffFixture()], NAZWA),
+    ].flatMap((w) => Object.values(w));
+    expect(komorki.some((k) => k.ostrzezenie !== undefined)).toBe(false);
+  });
+
+  it.each([0, 2])('podsumowanie przy %s problemach — delta strat bez dopisku oceny', (n) => {
+    const zal = naZalozeniaPorownania(summaryFixture({ total_issues: n }));
+    const straty = zal.find((z) => z.etykieta === POROWNANIE_STRINGS.podsumStraty);
+    expect(String(straty?.wartosc)).toBe('0,200 · 0,300 · Δ +0,100');
+    for (const z of zal) expect(String(z.wartosc).toLowerCase()).not.toContain('poza zakresem');
   });
 });
 
-describe('naWierszeSzynDiff — A · B · Δ z sortKey i tagiem wg wagi', () => {
+describe('naWierszeSzynDiff — A · B · Δ z sortKey', () => {
   it('mapuje napięcia i kąty A/B/Δ z przecinkiem PL', () => {
-    const wagi = mapaWagElementow(rankingFixture());
-    const wiersze = naWierszeSzynDiff([busDiffFixture()], wagi, NAZWA);
+    const wiersze = naWierszeSzynDiff([busDiffFixture()], NAZWA);
     const w = wiersze[0];
     expect(w.szyna.wartosc).toBe('nazwa SZYNA-GPZ');
     // Identyfikator jest KLUCZEM wiersza (dowód, zaznaczenie), nie tekstem kolumny.
@@ -68,33 +80,20 @@ describe('naWierszeSzynDiff — A · B · Δ z sortKey i tagiem wg wagi', () => 
 
   it('delta dodatnia otrzymuje znak „+"', () => {
     const wiersze = naWierszeSzynDiff(
-      [busDiffFixture({ delta_v_pu: 0.01, delta_angle_deg: 0.5 })],
-      new Map(), NAZWA
+      [busDiffFixture({ delta_v_pu: 0.01, delta_angle_deg: 0.5 })], NAZWA
     );
     expect(wiersze[0].dV.wartosc).toBe('+0,0100');
     expect(wiersze[0].dKat.wartosc).toBe('+0,50');
   });
 
-  it('element z wagą poważną+ (5) → tag ostrzeżenia na deltach', () => {
-    const wagi = mapaWagElementow(rankingFixture());
-    const wiersze = naWierszeSzynDiff([busDiffFixture()], wagi, NAZWA);
-    expect(wiersze[0].dV.ostrzezenie).toBe(true);
-    expect(wiersze[0].dKat.ostrzezenie).toBe(true);
-  });
-
-  it('element bez problemów → brak tagu', () => {
-    const wiersze = naWierszeSzynDiff([busDiffFixture({ bus_id: 'CICHA' })], new Map(), NAZWA);
-    expect(wiersze[0].dV.ostrzezenie).toBe(false);
-  });
-
   it('wartości źródłowe A i B niosą sortKey liczbowy', () => {
-    const wiersze = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA);
+    const wiersze = naWierszeSzynDiff([busDiffFixture()], NAZWA);
     expect(wiersze[0].vA.sortKey).toBe(1.02);
     expect(wiersze[0].vB.sortKey).toBe(0.965);
   });
 
   it('R3-C: komórki A/B niosą dowodRef strony, Δ bez dowodu (brak wywodu różnicy)', () => {
-    const w = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA)[0];
+    const w = naWierszeSzynDiff([busDiffFixture()], NAZWA)[0];
     expect(w.vA.dowodRef).toBe('A:SZYNA-GPZ');
     expect(w.vB.dowodRef).toBe('B:SZYNA-GPZ');
     expect(w.katA.dowodRef).toBe('A:SZYNA-GPZ');
@@ -107,8 +106,7 @@ describe('naWierszeSzynDiff — A · B · Δ z sortKey i tagiem wg wagi', () => 
 
 describe('naWierszeGalezi — straty i moc A · B · Δ', () => {
   it('mapuje straty czynne i moc początkową A/B/Δ [MW] z 3 miejscami', () => {
-    const wagi = mapaWagElementow(rankingFixture());
-    const w = naWierszeGalezi([branchDiffFixture()], wagi, NAZWA)[0];
+    const w = naWierszeGalezi([branchDiffFixture()], NAZWA)[0];
     expect(w.galaz.wartosc).toBe('nazwa LINIA-GPZ-ST1');
     expect(w[KLUCZ_ID_ELEMENTU].wartosc).toBe('LINIA-GPZ-ST1');
     expect(w.stratyA.wartosc).toBe('0,200');
@@ -118,14 +116,8 @@ describe('naWierszeGalezi — straty i moc A · B · Δ', () => {
     expect(w.dMoc.wartosc).toBe('+0,700');
   });
 
-  it('waga umiarkowana (3) nie przekracza progu tagu (poważny=4)', () => {
-    const wagi = mapaWagElementow(rankingFixture());
-    const w = naWierszeGalezi([branchDiffFixture()], wagi, NAZWA)[0];
-    expect(w.dStraty.ostrzezenie).toBe(false);
-  });
-
   it('R3-C: komórki A/B gałęzi niosą dowodRef strony, Δ bez dowodu', () => {
-    const w = naWierszeGalezi([branchDiffFixture()], new Map(), NAZWA)[0];
+    const w = naWierszeGalezi([branchDiffFixture()], NAZWA)[0];
     expect(w.stratyA.dowodRef).toBe('A:LINIA-GPZ-ST1');
     expect(w.stratyB.dowodRef).toBe('B:LINIA-GPZ-ST1');
     expect(w.mocA.dowodRef).toBe('A:LINIA-GPZ-ST1');
@@ -140,7 +132,6 @@ describe('naWierszeRankingu — waga PL, rodzaj PL, element nazwany mostem nazw'
     const wiersze = naWierszeRankingu(rankingFixture(), NAZWA);
     expect(wiersze[0].waga.wartosc).toBe('Krytyczny');
     expect(wiersze[0].waga.sortKey).toBe(5);
-    expect(wiersze[0].waga.ostrzezenie).toBe(true);
     expect(wiersze[0].rodzaj.wartosc).toBe('Duża zmiana napięcia');
     expect(wiersze[0].element.wartosc).toBe('nazwa SZYNA-GPZ');
     // Karta #145: kod problemu (`VOLTAGE_DELTA_HIGH`) nie jest komórką tabeli w żadnym trybie.
@@ -148,12 +139,6 @@ describe('naWierszeRankingu — waga PL, rodzaj PL, element nazwany mostem nazw'
     expect(Object.values(wiersze[0]).map((k) => k.wartosc)).not.toContain('VOLTAGE_DELTA_HIGH');
     expect(wiersze[0][KLUCZ_PROBLEM].wartosc).toBe('0');
     expect(wiersze[1][KLUCZ_PROBLEM].wartosc).toBe('1');
-  });
-
-  it('waga 3 → „Umiarkowany" bez tagu', () => {
-    const wiersze = naWierszeRankingu(rankingFixture(), NAZWA);
-    expect(wiersze[1].waga.wartosc).toBe('Umiarkowany');
-    expect(wiersze[1].waga.ostrzezenie).toBe(false);
   });
 });
 
@@ -166,18 +151,6 @@ describe('naZalozeniaPorownania — podsumowanie A · B · Δ', () => {
     expect(straty?.wartosc).toContain('0,200 · 0,300 · Δ +0,100');
     const problemy = zal.find((z) => z.etykieta === POROWNANIE_STRINGS.podsumProblemy);
     expect(problemy?.wartosc).toBe('1 · 0 · 1 · 0');
-  });
-
-  it('delta strat dostaje tag „poza zakresem" przy niezerowych problemach', () => {
-    const zal = naZalozeniaPorownania(summaryFixture({ total_issues: 2 }));
-    const straty = zal.find((z) => z.etykieta === POROWNANIE_STRINGS.podsumStraty);
-    expect(String(straty?.wartosc)).toContain(POROWNANIE_STRINGS.podsumTagOdchylenie);
-  });
-
-  it('brak problemów → brak tagu przy delcie', () => {
-    const zal = naZalozeniaPorownania(summaryFixture({ total_issues: 0 }));
-    const straty = zal.find((z) => z.etykieta === POROWNANIE_STRINGS.podsumStraty);
-    expect(String(straty?.wartosc)).not.toContain(POROWNANIE_STRINGS.podsumTagOdchylenie);
   });
 
   it('niezbieżność jednego wariantu widoczna w podsumowaniu', () => {
@@ -314,7 +287,7 @@ describe('kolumny — kontrakt deklaratywny', () => {
 
 describe('L-12 — kolumny mocy biernej z payloadu backendu', () => {
   it('szyna: Q A/B i ΔQ pochodzą z pól q_injected_mvar_* i delta_q_mvar', () => {
-    const wiersz = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA)[0];
+    const wiersz = naWierszeSzynDiff([busDiffFixture()], NAZWA)[0];
     expect(wiersz.qA.wartosc).toBe('2,000');
     expect(wiersz.qB.wartosc).toBe('2,300');
     expect(wiersz.dQ.wartosc).toBe('+0,300');
@@ -322,14 +295,14 @@ describe('L-12 — kolumny mocy biernej z payloadu backendu', () => {
   });
 
   it('gałąź: Q A/B i ΔQ pochodzą z pól q_from_mvar_* i delta_q_from_mvar', () => {
-    const wiersz = naWierszeGalezi([branchDiffFixture()], new Map(), NAZWA)[0];
+    const wiersz = naWierszeGalezi([branchDiffFixture()], NAZWA)[0];
     expect(wiersz.qA.wartosc).toBe('1,100');
     expect(wiersz.qB.wartosc).toBe('1,300');
     expect(wiersz.dQ.wartosc).toBe('+0,200');
   });
 
   it('kolumna Δ mocy biernej nie otwiera dowodu (różnica bez wywodu WHITE BOX)', () => {
-    const wiersz = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA)[0];
+    const wiersz = naWierszeSzynDiff([busDiffFixture()], NAZWA)[0];
     expect(wiersz.qA.dowodRef).toBeDefined();
     expect(wiersz.dQ.dowodRef).toBeUndefined();
   });
@@ -388,43 +361,34 @@ describe('L-13 — Δ% pochodzi z backendu, prezentacja nic nie liczy', () => {
     // podanych A/B: gdyby ekran liczył sam, pokazałby -5,39 zamiast +12,50.
     // Test przypina kontrakt: liczy backend, prezentacja tylko formatuje.
     const w = naWierszeSzynDiff(
-      [busDiffFixture({ v_pu_a: 1.02, v_pu_b: 0.965, delta_v_percent: 12.5 })],
-      new Map(), NAZWA
+      [busDiffFixture({ v_pu_a: 1.02, v_pu_b: 0.965, delta_v_percent: 12.5 })], NAZWA
     )[0];
     expect(w.dVproc.wartosc).toBe('+12,50');
     expect(w.dVproc.sortKey).toBe(12.5);
   });
 
   it('Δ% szyn i gałęzi formatowane z przecinkiem PL i znakiem', () => {
-    const szyna = naWierszeSzynDiff([busDiffFixture()], new Map(), NAZWA)[0];
+    const szyna = naWierszeSzynDiff([busDiffFixture()], NAZWA)[0];
     expect(szyna.dVproc.wartosc).toBe('-5,39');
     expect(szyna.dKatProc.wartosc).toBe('-64,00');
-    const galaz = naWierszeGalezi([branchDiffFixture()], new Map(), NAZWA)[0];
+    const galaz = naWierszeGalezi([branchDiffFixture()], NAZWA)[0];
     expect(galaz.dStratyProc.wartosc).toBe('+50,00');
     expect(galaz.dMocProc.wartosc).toBe('+8,54');
   });
 
   it('brak pola procentu (odniesienie A = 0 albo starsze porównanie) → kreska bez sortKey', () => {
     const szyna = naWierszeSzynDiff(
-      [busDiffFixture({ delta_v_percent: null, delta_angle_percent: undefined })],
-      new Map(), NAZWA
+      [busDiffFixture({ delta_v_percent: null, delta_angle_percent: undefined })], NAZWA
     )[0];
     expect(szyna.dVproc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
     expect(szyna.dVproc.sortKey).toBeUndefined();
     expect(szyna.dKatProc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
 
     const galaz = naWierszeGalezi(
-      [branchDiffFixture({ delta_losses_p_percent: null, delta_p_from_percent: null })],
-      new Map(), NAZWA
+      [branchDiffFixture({ delta_losses_p_percent: null, delta_p_from_percent: null })], NAZWA
     )[0];
     expect(galaz.dStratyProc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
     expect(galaz.dMocProc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
-  });
-
-  it('tag „poza zakresem" wg wagi z backendu obejmuje także komórki Δ%', () => {
-    const wagi = mapaWagElementow(rankingFixture());
-    const szyna = naWierszeSzynDiff([busDiffFixture()], wagi, NAZWA)[0];
-    expect(szyna.dVproc.ostrzezenie).toBe(true);
   });
 
   it('podsumowanie niesie względną zmianę strat z backendu (brak → kreska)', () => {

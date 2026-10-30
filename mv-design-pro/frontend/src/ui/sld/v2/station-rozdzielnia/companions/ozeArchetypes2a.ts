@@ -418,19 +418,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN_BUS.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.094
+                },
+                "wzgledny": 0.36376
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "NN_BUS",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN_BUS.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 15,91 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +9,094 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +36,38 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 15.906
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 52.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN_BUS.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 52.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 52.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 21.778
+                },
+                "wzgledny": 0.414819047619
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 52,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "NN_BUS",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN_BUS.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 52,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 30,72 kA wobec wymaganych \u2264 52,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +21,78 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +41,48 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 30.722
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.087,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 0.4,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 15.826,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.4
         },
         "SN_BUS": {
           "bus_ref": "SN_BUS",
@@ -783,19 +1081,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_BUS.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 15.497
+                },
+                "wzgledny": 0.61988
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_BUS",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_BUS.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 9,503 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +15,5 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +61,99 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.503
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_BUS.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 45.912
+                },
+                "wzgledny": 0.734592
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_BUS",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_BUS.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 16,59 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +45,91 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +73,46 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 16.588
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.002,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 9.47,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         }
       },
       "standard": "IEC 60909"
@@ -856,6 +1452,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN_BUS": {
           "bus_ref": "NN_BUS",
           "deviation_percent": 0.074,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,4 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.926
+              },
+              "wzgledny": 0.9926
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,4 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.NN_BUS",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,074 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,926 pp, punkt: szyna nN 0,4 kV, wzgl\u0119dnie +99,26 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,4 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.074
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.4003,
           "u_pu": 1.00074,
           "un_kv": 0.4
@@ -863,6 +1597,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_BUS": {
           "bus_ref": "SN_BUS",
           "deviation_percent": 0.005,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.995
+              },
+              "wzgledny": 0.9995
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_BUS",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,005 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,995 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +99,95 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.005
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0008,
           "u_pu": 1.00005,
           "un_kv": 15.0
@@ -1286,19 +2158,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 40.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN_COLLECTOR.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 40 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 12.418
+                },
+                "wzgledny": 0.31045
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "NN_COLLECTOR",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN_COLLECTOR.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 27,58 kA wobec wymaganych \u2264 40 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +12,42 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +31,05 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 27.582
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 84.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN_COLLECTOR.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 84.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 84.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 13.156
+                },
+                "wzgledny": 0.156619047619
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 84 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "NN_COLLECTOR",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN_COLLECTOR.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 84 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 70,84 kA wobec wymaganych \u2264 84 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +13,16 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +15,66 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 70.844
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 1.715,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 0.4,
-          "verification": {
-            "icw_ka": 40.0,
-            "ikss_max_ka": 26.237,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.4
         },
         "PCC_SN": {
           "bus_ref": "PCC_SN",
@@ -1651,19 +2821,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PCC_SN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 15.454
+                },
+                "wzgledny": 0.61816
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "PCC_SN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PCC_SN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 9,546 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +15,45 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +61,82 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.546
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PCC_SN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 45.836
+                },
+                "wzgledny": 0.733376
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "PCC_SN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PCC_SN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 16,66 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +45,84 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +73,34 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 16.664
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.046,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 9.513,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         }
       },
       "standard": "IEC 60909"
@@ -1717,6 +3185,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN_COLLECTOR": {
           "bus_ref": "NN_COLLECTOR",
           "deviation_percent": 0.016,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,4 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.984
+              },
+              "wzgledny": 0.9984
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,4 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.NN_COLLECTOR",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,016 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,984 pp, punkt: szyna nN 0,4 kV, wzgl\u0119dnie +99,84 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,4 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.016
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.4001,
           "u_pu": 1.00016,
           "un_kv": 0.4
@@ -1724,6 +3330,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PCC_SN": {
           "bus_ref": "PCC_SN",
           "deviation_percent": 0.158,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.842
+              },
+              "wzgledny": 0.9842
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.PCC_SN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,158 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,842 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +98,42 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.158
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0237,
           "u_pu": 1.00158,
           "un_kv": 15.0
@@ -2079,19 +3823,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PCC_SN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 15.43
+                },
+                "wzgledny": 0.6172
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "PCC_SN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PCC_SN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 9,57 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +15,43 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +61,72 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.57
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PCC_SN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 45.794
+                },
+                "wzgledny": 0.732704
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "PCC_SN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PCC_SN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 16,71 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +45,79 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +73,27 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 16.706
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.069,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 9.537,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         },
         "PV_SN": {
           "bus_ref": "PV_SN",
@@ -2388,19 +4430,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PV_SN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 17.623
+                },
+                "wzgledny": 0.70492
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "PV_SN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PV_SN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 7,377 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +17,62 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +70,49 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 7.377
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PV_SN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 49.622
+                },
+                "wzgledny": 0.793952
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "PV_SN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PV_SN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 12,88 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +49,62 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +79,4 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 12.878
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.069,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 7.352,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         }
       },
       "standard": "IEC 60909"
@@ -2454,6 +4794,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PCC_SN": {
           "bus_ref": "PCC_SN",
           "deviation_percent": 0.267,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.733
+              },
+              "wzgledny": 0.9733
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.PCC_SN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,267 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,733 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +97,33 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.267
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.04,
           "u_pu": 1.00267,
           "un_kv": 15.0
@@ -2461,6 +4939,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PV_SN": {
           "bus_ref": "PV_SN",
           "deviation_percent": 0.347,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.653
+              },
+              "wzgledny": 0.9653
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.PV_SN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,347 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,653 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +96,53 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.347
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0521,
           "u_pu": 1.00347,
           "un_kv": 15.0
@@ -2997,19 +5613,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 50.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 50 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 20.563
+                },
+                "wzgledny": 0.41126
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 29,44 kA wobec wymaganych \u2264 50 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +20,56 kA, punkt: rozdzielnica \u2014 szyna nN 0,8 kV, wzgl\u0119dnie +41,13 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 29.437
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 105.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 41.273
+                },
+                "wzgledny": 0.393076190476
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 63,73 kA wobec wymaganych \u2264 105 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +41,27 kA, punkt: rozdzielnica \u2014 szyna nN 0,8 kV, wzgl\u0119dnie +39,31 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 63.727
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 1.731,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 0.8,
-          "verification": {
-            "icw_ka": 50.0,
-            "ikss_max_ka": 29.199,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.8
         },
         "SN_PCC": {
           "bus_ref": "SN_PCC",
@@ -3362,19 +6276,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 16.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 16.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 16 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 16.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 6.325
+                },
+                "wzgledny": 0.3953125
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 16 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 16 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 9,675 kA wobec wymaganych \u2264 16 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +6,325 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +39,53 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.675
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 40.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 17.568
+                },
+                "wzgledny": 0.4392
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 22,43 kA wobec wymaganych \u2264 40 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +17,57 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +43,92 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 22.432
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 16.0,
-            "ikss_max_ka": 9.561,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         }
       },
       "standard": "IEC 60909"
@@ -3514,6 +6726,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN": {
           "bus_ref": "NN",
           "deviation_percent": 0.79,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,8 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.21
+              },
+              "wzgledny": 0.921
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,8 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.NN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,79 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,21 pp, punkt: szyna nN 0,8 kV, wzgl\u0119dnie +92,1 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,8 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.79
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.8063,
           "u_pu": 1.0079,
           "un_kv": 0.8
@@ -3521,6 +6871,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": 0.048,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.952
+              },
+              "wzgledny": 0.9952
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,048 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,952 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +99,52 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.048
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0072,
           "u_pu": 1.00048,
           "un_kv": 15.0
@@ -4125,19 +7613,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 50.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.BESS_NN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 50 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 16.389
+                },
+                "wzgledny": 0.32778
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "BESS_NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.BESS_NN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 33,61 kA wobec wymaganych \u2264 50 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +16,39 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +32,78 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 33.611
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 105.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.BESS_NN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 32.658
+                },
+                "wzgledny": 0.311028571429
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "BESS_NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.BESS_NN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 72,34 kA wobec wymaganych \u2264 105 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +32,66 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +31,1 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 72.342
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 3.462,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 0.4,
-          "verification": {
-            "icw_ka": 50.0,
-            "ikss_max_ka": 33.347,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.4
         },
         "PV_NN": {
           "bus_ref": "PV_NN",
@@ -4546,19 +8332,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 50.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PV_NN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 50 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 35.991
+                },
+                "wzgledny": 0.71982
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "PV_NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PV_NN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 14,01 kA wobec wymaganych \u2264 50 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +35,99 kA, punkt: rozdzielnica \u2014 szyna nN 0,8 kV, wzgl\u0119dnie +71,98 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 14.009
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 105.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PV_NN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 74.888
+                },
+                "wzgledny": 0.713219047619
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "PV_NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PV_NN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 30,11 kA wobec wymaganych \u2264 105 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +74,89 kA, punkt: rozdzielnica \u2014 szyna nN 0,8 kV, wzgl\u0119dnie +71,32 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 30.112
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 1.731,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 0.8,
-          "verification": {
-            "icw_ka": 50.0,
-            "ikss_max_ka": 13.899,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.8
         },
         "SN_PCC": {
           "bus_ref": "SN_PCC",
@@ -4967,19 +9051,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 16.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 16.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 16 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 16.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 6.325
+                },
+                "wzgledny": 0.3953125
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 16 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 16 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 9,675 kA wobec wymaganych \u2264 16 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +6,325 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +39,53 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.675
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 40.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 17.568
+                },
+                "wzgledny": 0.4392
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 22,43 kA wobec wymaganych \u2264 40 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +17,57 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +43,92 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 22.432
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 16.0,
-            "ikss_max_ka": 9.561,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         }
       },
       "standard": "IEC 60909"
@@ -5128,6 +9510,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "BESS_NN": {
           "bus_ref": "BESS_NN",
           "deviation_percent": 0.303,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,4 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.697
+              },
+              "wzgledny": 0.9697
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,4 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.BESS_NN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,303 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,697 pp, punkt: szyna nN 0,4 kV, wzgl\u0119dnie +96,97 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,4 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.303
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.4012,
           "u_pu": 1.00303,
           "un_kv": 0.4
@@ -5135,6 +9655,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PV_NN": {
           "bus_ref": "PV_NN",
           "deviation_percent": 0.928,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,8 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.072
+              },
+              "wzgledny": 0.9072
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,8 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.PV_NN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,928 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,072 pp, punkt: szyna nN 0,8 kV, wzgl\u0119dnie +90,72 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,8 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.928
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.8074,
           "u_pu": 1.00928,
           "un_kv": 0.8
@@ -5142,6 +9800,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": 0.006,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.994
+              },
+              "wzgledny": 0.9994
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,006 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,994 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +99,94 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.006
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0008,
           "u_pu": 1.00006,
           "un_kv": 15.0
@@ -5707,19 +10503,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 50.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN_800.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 50 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 36.864
+                },
+                "wzgledny": 0.73728
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "NN_800",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN_800.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 13,14 kA wobec wymaganych \u2264 50 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +36,86 kA, punkt: rozdzielnica \u2014 szyna nN 0,8 kV, wzgl\u0119dnie +73,73 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 13.136
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 105.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN_800.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 76.763
+                },
+                "wzgledny": 0.731076190476
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "NN_800",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN_800.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 28,24 kA wobec wymaganych \u2264 105 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +76,76 kA, punkt: rozdzielnica \u2014 szyna nN 0,8 kV, wzgl\u0119dnie +73,11 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,8 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 28.237
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,8 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.866,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 0.8,
-          "verification": {
-            "icw_ka": 50.0,
-            "ikss_max_ka": 13.033,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.8
         },
         "SN_PCC": {
           "bus_ref": "SN_PCC",
@@ -6072,19 +11166,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 16.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 16.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 16 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15,75 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 16.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 6.83
+                },
+                "wzgledny": 0.426875
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 16 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15,75 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 16 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15,75 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15,75 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 9,17 kA wobec wymaganych \u2264 16 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +6,83 kA, punkt: rozdzielnica \u2014 szyna SN 15,75 kV, wzgl\u0119dnie +42,69 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15,75 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.17
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15,75 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 40.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15,75 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 18.74
+                },
+                "wzgledny": 0.4685
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15,75 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15,75 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15,75 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 21,26 kA wobec wymaganych \u2264 40 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +18,74 kA, punkt: rozdzielnica \u2014 szyna SN 15,75 kV, wzgl\u0119dnie +46,85 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15,75 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 21.26
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15,75 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.044,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.75,
-          "verification": {
-            "icw_ka": 16.0,
-            "ikss_max_ka": 9.062,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.75
         }
       },
       "standard": "IEC 60909"
@@ -6345,6 +11737,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN_800": {
           "bus_ref": "NN_800",
           "deviation_percent": 0.938,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,8 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.062
+              },
+              "wzgledny": 0.9062
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,8 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.NN_800",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,8 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,938 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,062 pp, punkt: szyna nN 0,8 kV, wzgl\u0119dnie +90,62 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,8 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.938
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.8075,
           "u_pu": 1.00938,
           "un_kv": 0.8
@@ -6352,6 +11882,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": 0.02,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15,75 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.98
+              },
+              "wzgledny": 0.998
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15,75 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15,75 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,02 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,98 pp, punkt: szyna SN 15,75 kV, wzgl\u0119dnie +99,8 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15,75 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.02
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.7532,
           "u_pu": 1.0002,
           "un_kv": 15.75
@@ -6904,19 +12572,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 50.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 50 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 18.133
+                },
+                "wzgledny": 0.36266
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 31,87 kA wobec wymaganych \u2264 50 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +18,13 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +36,27 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 31.867
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 105.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.NN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 36.412
+                },
+                "wzgledny": 0.346780952381
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.NN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 68,59 kA wobec wymaganych \u2264 105 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +36,41 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +34,68 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 68.588
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 1.732,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 0.4,
-          "verification": {
-            "icw_ka": 50.0,
-            "ikss_max_ka": 31.616,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.4
         },
         "SN_PCC": {
           "bus_ref": "SN_PCC",
@@ -7269,19 +13235,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 16.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 16.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 16 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 16.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 6.372
+                },
+                "wzgledny": 0.39825
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 16 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 16 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 9,628 kA wobec wymaganych \u2264 16 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +6,372 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +39,83 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.628
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 40.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 40.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 17.677
+                },
+                "wzgledny": 0.441925
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 40 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 22,32 kA wobec wymaganych \u2264 40 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +17,68 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +44,19 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 22.323
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.046,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 16.0,
-            "ikss_max_ka": 9.515,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         }
       },
       "standard": "IEC 60909"
@@ -7384,6 +13648,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "NN": {
           "bus_ref": "NN",
           "deviation_percent": 0.282,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,4 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.718
+              },
+              "wzgledny": 0.9718
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,4 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.NN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,282 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,718 pp, punkt: szyna nN 0,4 kV, wzgl\u0119dnie +97,18 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,4 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.282
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.4011,
           "u_pu": 1.00282,
           "un_kv": 0.4
@@ -7391,6 +13793,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": -0.015,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.985
+              },
+              "wzgledny": 0.9985
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,015 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,985 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +99,85 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.015
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 14.9978,
           "u_pu": 0.99985,
           "un_kv": 15.0
@@ -8003,19 +14543,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 15.138
+                },
+                "wzgledny": 0.60552
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 9,862 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +15,14 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +60,55 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 9.862
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 39.635
+                },
+                "wzgledny": 0.63416
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 22,87 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +39,64 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +63,42 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 22.865
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 0.277,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 9.746,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         },
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
@@ -8480,19 +15318,317 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 50.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.WTG_LV_1.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 50 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 11.82
+                },
+                "wzgledny": 0.2364
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "WTG_LV_1",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.WTG_LV_1.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 38,18 kA wobec wymaganych \u2264 50 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +11,82 kA, punkt: rozdzielnica \u2014 szyna nN 0,69 kV, wzgl\u0119dnie +23,64 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 38.18
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 105.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.WTG_LV_1.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 22.346
+                },
+                "wzgledny": 0.212819047619
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "WTG_LV_1",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.WTG_LV_1.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 82,65 kA wobec wymaganych \u2264 105 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +22,35 kA, punkt: rozdzielnica \u2014 szyna nN 0,69 kV, wzgl\u0119dnie +21,28 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 82.654
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ik_contribution_ka": 6.025,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
             "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
           },
-          "un_kv": 0.69,
-          "verification": {
-            "icw_ka": 50.0,
-            "ikss_max_ka": 37.871,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.69
         }
       },
       "standard": "IEC 60909"
@@ -8592,6 +15728,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": 0.218,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.782
+              },
+              "wzgledny": 0.9782
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,218 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,782 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +97,82 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.218
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0327,
           "u_pu": 1.00218,
           "un_kv": 15.0
@@ -8599,6 +15873,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
           "deviation_percent": 1.14,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,69 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 8.86
+              },
+              "wzgledny": 0.886
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,69 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.WTG_LV_1",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 1,14 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +8,86 pp, punkt: szyna nN 0,69 kV, wzgl\u0119dnie +88,6 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,69 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 1.14
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.6979,
           "u_pu": 1.0114,
           "un_kv": 0.69
@@ -9278,6 +16690,310 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 14.11
+                },
+                "wzgledny": 0.5644
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 10,89 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +14,11 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +56,44 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 10.89
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 37.959
+                },
+                "wzgledny": 0.607344
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 24,54 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +37,96 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +60,73 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 24.541
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ib_contribution_ka": 0.584,
             "ik_contribution_ka": 1.339,
@@ -9316,13 +17032,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "motors_negligible": false,
             "t_min_s": 0.1
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 10.782,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         },
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
@@ -9855,6 +17565,310 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 63.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.WTG_LV_1.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 63.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 63 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 63.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 18.386
+                },
+                "wzgledny": 0.291841269841
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 63 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "WTG_LV_1",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.WTG_LV_1.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 63 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 44,61 kA wobec wymaganych \u2264 63 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +18,39 kA, punkt: rozdzielnica \u2014 szyna nN 0,69 kV, wzgl\u0119dnie +29,18 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 44.614
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 132.3
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.WTG_LV_1.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 132.3
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 132.3
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 40.805
+                },
+                "wzgledny": 0.308427815571
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 132,3 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "WTG_LV_1",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.WTG_LV_1.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 132,3 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 91,5 kA wobec wymaganych \u2264 132,3 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +40,81 kA, punkt: rozdzielnica \u2014 szyna nN 0,69 kV, wzgl\u0119dnie +30,84 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 91.495
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ib_contribution_ka": 6.568,
             "ik_contribution_ka": 14.989,
@@ -9893,13 +17907,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "motors_negligible": false,
             "t_min_s": 0.1
           },
-          "un_kv": 0.69,
-          "verification": {
-            "icw_ka": 63.0,
-            "ikss_max_ka": 44.33,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.69
         }
       },
       "standard": "IEC 60909"
@@ -10012,6 +18020,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": 0.218,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.782
+              },
+              "wzgledny": 0.9782
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,218 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,782 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +97,82 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.218
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0327,
           "u_pu": 1.00218,
           "un_kv": 15.0
@@ -10019,6 +18165,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
           "deviation_percent": 1.14,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,69 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 8.86
+              },
+              "wzgledny": 0.886
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,69 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.WTG_LV_1",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 1,14 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +8,86 pp, punkt: szyna nN 0,69 kV, wzgl\u0119dnie +88,6 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,69 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 1.14
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.6979,
           "u_pu": 1.0114,
           "un_kv": 0.69
@@ -10698,6 +18982,310 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 14.843
+                },
+                "wzgledny": 0.59372
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 10,16 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +14,84 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +59,37 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 10.157
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 39.262
+                },
+                "wzgledny": 0.628192
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 23,24 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +39,26 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +62,82 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 23.238
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ib_contribution_ka": 0.213,
             "ik_contribution_ka": 0.589,
@@ -10736,13 +19324,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "motors_negligible": false,
             "t_min_s": 0.1
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 10.046,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         },
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
@@ -11275,6 +19857,310 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 50.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.WTG_LV_1.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 50 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 30.248
+                },
+                "wzgledny": 0.60496
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "WTG_LV_1",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.WTG_LV_1.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 19,75 kA wobec wymaganych \u2264 50 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +30,25 kA, punkt: rozdzielnica \u2014 szyna nN 0,69 kV, wzgl\u0119dnie +60,5 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 19.752
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 105.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.WTG_LV_1.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 64.657
+                },
+                "wzgledny": 0.615780952381
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "WTG_LV_1",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.WTG_LV_1.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 40,34 kA wobec wymaganych \u2264 105 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +64,66 kA, punkt: rozdzielnica \u2014 szyna nN 0,69 kV, wzgl\u0119dnie +61,58 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 40.343
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ib_contribution_ka": 2.12,
             "ik_contribution_ka": 6.113,
@@ -11313,13 +20199,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "motors_negligible": false,
             "t_min_s": 0.1
           },
-          "un_kv": 0.69,
-          "verification": {
-            "icw_ka": 50.0,
-            "ikss_max_ka": 19.628,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.69
         }
       },
       "standard": "IEC 60909"
@@ -11430,6 +20310,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": 0.098,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.902
+              },
+              "wzgledny": 0.9902
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,098 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,902 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +99,02 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.098
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0147,
           "u_pu": 1.00098,
           "un_kv": 15.0
@@ -11437,6 +20455,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "WTG_LV_1": {
           "bus_ref": "WTG_LV_1",
           "deviation_percent": 1.071,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,69 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 8.929
+              },
+              "wzgledny": 0.8929
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,69 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.WTG_LV_1",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 1,071 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +8,929 pp, punkt: szyna nN 0,69 kV, wzgl\u0119dnie +89,29 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,69 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 1.071
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.6974,
           "u_pu": 1.01071,
           "un_kv": 0.69
@@ -11916,6 +21072,310 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 14.71
+                },
+                "wzgledny": 0.5884
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 10,29 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +14,71 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +58,84 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 10.29
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 38.513
+                },
+                "wzgledny": 0.616208
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 23,99 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +38,51 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +61,62 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 23.987
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ib_contribution_ka": 0.482,
             "ik_contribution_ka": 0.698,
@@ -11945,13 +21405,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "motors_negligible": true,
             "t_min_s": 0.1
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 10.165,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         }
       },
       "standard": "IEC 60909"
@@ -12039,6 +21493,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": 0.122,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.878
+              },
+              "wzgledny": 0.9878
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,122 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,878 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +98,78 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.122
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0183,
           "u_pu": 1.00122,
           "un_kv": 15.0
@@ -12669,6 +22261,310 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 65.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PV_NN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 65.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 65 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 65.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 5.223
+                },
+                "wzgledny": 0.0803538461538
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 65 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "PV_NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PV_NN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 65 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 59,78 kA wobec wymaganych \u2264 65 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +5,223 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +8,035 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 59.777
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 136.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.PV_NN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 136.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 136.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 7.28
+                },
+                "wzgledny": 0.0533333333333
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 136,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "PV_NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.PV_NN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 136,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 129,2 kA wobec wymaganych \u2264 136,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +7,28 kA, punkt: rozdzielnica \u2014 szyna nN 0,4 kV, wzgl\u0119dnie +5,333 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,4 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 129.22
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,4 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ib_contribution_ka": 4.722,
             "ibg_ka": 3.464,
@@ -12698,13 +22594,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ],
             "model": "GPO \u2014 IBG (\u00a76.7) + maszyny synchr./asynchr. (\u00a76.3/\u00a76.7) na wsp\u00f3lnej szynie SN"
           },
-          "un_kv": 0.4,
-          "verification": {
-            "icw_ka": 65.0,
-            "ikss_max_ka": 59.297,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.4
         },
         "SN_PCC": {
           "bus_ref": "SN_PCC",
@@ -13161,6 +23051,310 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 25.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 25 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 25.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 14.269
+                },
+                "wzgledny": 0.57076
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 25 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 10,73 kA wobec wymaganych \u2264 25 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +14,27 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +57,08 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 10.731
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 62.5
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 62.5
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 37.686
+                },
+                "wzgledny": 0.602976
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "SN_PCC",
+                "nazwa_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.SN_PCC.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 62,5 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.5\u00b7I_cw (IEC 62271-1, rozdzielnica SN 50 Hz), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 24,81 kA wobec wymaganych \u2264 62,5 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +37,69 kA, punkt: rozdzielnica \u2014 szyna SN 15 kV, wzgl\u0119dnie +60,3 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna SN 15 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 24.814
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna SN 15 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ib_contribution_ka": 0.628,
             "ibg_ka": 0.092,
@@ -13190,13 +23384,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ],
             "model": "GPO \u2014 IBG (\u00a76.7) + maszyny synchr./asynchr. (\u00a76.3/\u00a76.7) na wsp\u00f3lnej szynie SN"
           },
-          "un_kv": 15.0,
-          "verification": {
-            "icw_ka": 25.0,
-            "ikss_max_ka": 10.607,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 15.0
         },
         "WIND_NN": {
           "bus_ref": "WIND_NN",
@@ -13653,6 +23841,310 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               }
             ]
           },
+          "oceny": {
+            "cieplna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s)",
+                      "powod_pl": "znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 50.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.WIND_NN.cieplna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "pr\u0105d kr\u00f3tkotrwa\u0142y 50 kA / 1 s przeliczony na czas wy\u0142\u0105czenia T_k = 1 s"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 50.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 11.507
+                },
+                "wzgledny": 0.23014
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w",
+                "jednostka_redakcyjna": "wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia por\u00f3wnany z pr\u0105dem kr\u00f3tkotrwa\u0142ym aparatu przeliczonym na czas wy\u0142\u0105czenia; przy czasie kr\u00f3tszym od znamionowego limitem jest sam pr\u0105d znamionowy (bez przeliczenia w g\u00f3r\u0119)",
+                "wydanie": "2011"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta."
+              ],
+              "przedmiot": {
+                "element_ref": "WIND_NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.WIND_NN.cieplna",
+                  "opis_pl": "pr\u0105d cieplny podany do oceny wobec I_th przeliczonego na czas wy\u0142\u0105czenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 60865-1 (PN-EN 60865-1) Pr\u0105dy zwarciowe \u2014 obliczanie skutk\u00f3w\u201d, wydanie 2011, wytrzyma\u0142o\u015b\u0107 cieplna urz\u0105dze\u0144 elektrycznych: I_th \u2264 I_thr dla T_k \u2264 T_kr oraz I_th \u2264 I_thr\u00b7\u221a(T_kr/T_k) dla T_k \u2265 T_kr (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany rozdzielnicy I_cw (1 s) = 50 kA, jako\u015b\u0107 danej: oszacowane \u2014 znami\u0119 przyj\u0119te w substracie stacji, nie dana karty producenta.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy pola nie przekracza pr\u0105du kr\u00f3tkotrwa\u0142ego aparatu przeliczonego na czas wy\u0142\u0105czenia zwarcia (rozdzielnica \u2014 szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy: 38,49 kA wobec wymaganych \u2264 50 kA wg \u00a7 4.5 znamionowy pr\u0105d kr\u00f3tkotrwa\u0142y wytrzymywany I_k i \u00a7 4.7 czas jego trwania t_k \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +11,51 kA, punkt: rozdzielnica \u2014 szyna nN 0,69 kV, wzgl\u0119dnie +23,01 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "symbol_latex": "I_{th}",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 38.493
+                },
+                "wielkosc_pl": "pr\u0105d cieplny zast\u0119pczy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            },
+            "dynamiczna": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [
+                    {
+                      "jakosc": "ESTIMATED",
+                      "nazwa_pl": "pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn",
+                      "powod_pl": "I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji",
+                      "wartosc": {
+                        "jednostka": "kA",
+                        "wartosc": 105.0
+                      }
+                    }
+                  ],
+                  "stan": "UNVALIDATED_INPUT"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryterium": {
+                "opis_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu",
+                "relacja": "NIE_WIECEJ",
+                "warunek_latex": "i_p \\le I_{dyn}",
+                "warunek_wstepny_pl": null,
+                "warunek_wstepny_podstawa": null
+              },
+              "kryterium_id": "substrat_stacji.wytrzymalosc.WIND_NN.dynamiczna",
+              "limit": {
+                "jednostka_obwiedni": null,
+                "obwiednia": null,
+                "pasmo": null,
+                "podstawa": {
+                  "dokument": "znamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)",
+                  "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                  "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                  "status": "WSKAZANE",
+                  "uwagi_pl": null,
+                  "wydanie": "bie\u017c\u0105cy stan programu"
+                },
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "wersja_profilu": null,
+                "zakres_stosowalnosci_pl": "znamionowy pr\u0105d szczytowy wytrzymywany aparatu I_dyn"
+              },
+              "margines": {
+                "definicja_latex": "m = x_{\\lim} - x",
+                "niedefiniowalny": false,
+                "powod_pl": null,
+                "punkt_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "skala": {
+                  "jednostka": "kA",
+                  "wartosc": 105.0
+                },
+                "skala_rodzaj": "LIMIT",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 25.907
+                },
+                "wzgledny": 0.246733333333
+              },
+              "niepewnosc": {
+                "metoda_pl": null,
+                "nie_dotyczy": true,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+                "wartosc": null
+              },
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "\u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy pr\u0105d udarowy w miejscu zabudowy nie przekracza jego znamionowego pr\u0105du szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci).",
+                "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji."
+              ],
+              "przedmiot": {
+                "element_ref": "WIND_NN",
+                "nazwa_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "opis_pl": "rozdzielnica szyny substratu stacji wobec pr\u0105d\u00f3w zwarciowych szyny"
+              },
+              "slad": [
+                {
+                  "krok": "substrat_stacji.wytrzymalosc.WIND_NN.dynamiczna",
+                  "opis_pl": "pr\u0105d udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "status_maszynowy": "SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [],
+                "przyczyna_pl": null,
+                "zastrzezenia": [
+                  "Podstawa \u201eIEC 62271-1 (PN-EN 62271-1) Wysokonapi\u0119ciowa aparatura rozdzielcza i sterownicza\u201d, wydanie 2007, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Podstawa \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d, wydanie bie\u017c\u0105cy stan programu, \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p (za\u0142o\u017cenie projektowe): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                  "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                  "Dana przyj\u0119ta bez walidacji: pr\u0105d szczytowy wytrzymywany rozdzielnicy I_dyn = 105 kA, jako\u015b\u0107 danej: oszacowane \u2014 I_dyn = 2.1\u00b7I_cw (klasa wy\u0142\u0105cznik\u00f3w nN), znami\u0119 przyj\u0119te w substracie stacji.",
+                  "Zakres wa\u017cno\u015bci: Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s \u2014 wynik nie obejmuje: zwarcia niesymetryczne; rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny."
+                ],
+                "zdanie_pl": "Pr\u0105d udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego pr\u0105du szczytowego wytrzymywanego aparatu (rozdzielnica \u2014 szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Pr\u0105d udarowy zwarcia w punkcie zabudowy: 79,09 kA wobec wymaganych \u2264 105 kA wg \u00a7 4.6 znamionowy pr\u0105d szczytowy wytrzymywany I_p \u201eznamiona rozdzielnicy przyj\u0119te w substracie stacji (IEC 62271-1, nie karta producenta)\u201d (margines +25,91 kA, punkt: rozdzielnica \u2014 szyna nN 0,69 kV, wzgl\u0119dnie +24,67 % warto\u015bci granicznej)."
+              },
+              "wynik": {
+                "chwila_s": null,
+                "metoda": "OBLICZENIE",
+                "punkt_krytyczny_pl": "rozdzielnica \u2014 szyna nN 0,69 kV",
+                "symbol_latex": "i_p",
+                "wartosc": {
+                  "jednostka": "kA",
+                  "wartosc": 79.093
+                },
+                "wielkosc_pl": "pr\u0105d udarowy zwarcia w punkcie zabudowy"
+              },
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Rozdzielnica (szyna nN 0,69 kV) wobec pr\u0105du udarowego i pr\u0105du cieplnego zast\u0119pczego zwarcia maksymalnego (IEC 60909) przy czasie zwarcia T_k = 1.0 s.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdzia\u0142 pr\u0105du zwarcia na ga\u0142\u0119zie pola \u2014 por\u00f3wnany pe\u0142ny pr\u0105d podany do oceny"
+                ]
+              }
+            }
+          },
           "source_contribution": {
             "ib_contribution_ka": 5.577,
             "ibg_ka": 2.008,
@@ -13682,13 +24174,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ],
             "model": "GPO \u2014 IBG (\u00a76.7) + maszyny synchr./asynchr. (\u00a76.3/\u00a76.7) na wsp\u00f3lnej szynie SN"
           },
-          "un_kv": 0.69,
-          "verification": {
-            "icw_ka": 50.0,
-            "ikss_max_ka": 38.246,
-            "passed": true,
-            "rule": "ikss_max_le_icw"
-          }
+          "un_kv": 0.69
         }
       },
       "standard": "IEC 60909"
@@ -13769,6 +24255,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "PV_NN": {
           "bus_ref": "PV_NN",
           "deviation_percent": 1.168,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,4 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 8.832
+              },
+              "wzgledny": 0.8832
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,4 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.PV_NN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,4 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 1,168 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +8,832 pp, punkt: szyna nN 0,4 kV, wzgl\u0119dnie +88,32 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,4 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 1.168
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.4047,
           "u_pu": 1.01168,
           "un_kv": 0.4
@@ -13776,6 +24400,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "SN_PCC": {
           "bus_ref": "SN_PCC",
           "deviation_percent": 0.246,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna SN 15 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.754
+              },
+              "wzgledny": 0.9754
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna SN 15 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.SN_PCC",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna SN 15 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 0,246 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +9,754 pp, punkt: szyna SN 15 kV, wzgl\u0119dnie +97,54 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna SN 15 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.246
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 15.0369,
           "u_pu": 1.00246,
           "un_kv": 15.0
@@ -13783,6 +24545,144 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "WIND_NN": {
           "bus_ref": "WIND_NN",
           "deviation_percent": 1.117,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "tests/reference_networks/station_archetype_substrate.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spe\u0142nione \u2014 dow\u00f3d niepe\u0142ny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napi\u0119cia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "szyna nN 0,69 kV",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 8.883
+              },
+              "wzgledny": 0.8883
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona wzorem zamkni\u0119tym z danych modelu \u2014 niepewno\u015b\u0107 numeryczna nie dotyczy, niepewno\u015b\u0107 danych wej\u015bciowych wyra\u017ca stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem w\u0142a\u015bciwym: zdolno\u015b\u0107 obliczeniowa o poziomie dowodowym \u201emodel niezwalidowany\u201d (wymagany solver zwalidowany \u2014 najwy\u017cszy poziom dowodowy zdolno\u015bci)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "szyna nN 0,69 kV",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozp\u0142ywu"
+            },
+            "slad": [
+              {
+                "krok": "substrat_stacji.odchylenie_napiecia.WIND_NN",
+                "opis_pl": "Wyw\u00f3d pozycji oceny (wz\u00f3r, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielko\u015b\u0107 wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d, wydanie 2010, 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % (norma): stan \u017ar\u00f3d\u0142a \u201ewskazane\u201d \u2014 dokument i jednostka redakcyjna wskazane, tre\u015b\u0107 dokumentu nie jest do\u0142\u0105czona do repozytorium.",
+                "Poziom dowodowy zdolno\u015bci narz\u0119dzia: \u201emodel niezwalidowany\u201d \u2014 obliczenie bez ustalonej poprawno\u015bci fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres wa\u017cno\u015bci: Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107) \u2014 wynik nie obejmuje: inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144."
+              ],
+              "zdanie_pl": "Odchylenie napi\u0119cia od znamionowego nie wi\u0119ksze od dopuszczalnego (szyna nN 0,69 kV) \u2014 kryterium spe\u0142nione. Odchylenie napi\u0119cia od znamionowego: 1,117 % wobec wymaganych \u2264 10 % wg 4.2.2 i 5.2.2 \u2014 zmiany napi\u0119cia zasilaj\u0105cego w warunkach normalnej pracy: Un \u00b1 10 % \u201ePN-EN 50160 (Parametry napi\u0119cia zasilaj\u0105cego w publicznych sieciach elektroenergetycznych)\u201d (margines +8,883 pp, punkt: szyna nN 0,69 kV, wzgl\u0119dnie +88,83 % warto\u015bci granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "szyna nN 0,69 kV",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 1.117
+              },
+              "wielkosc_pl": "odchylenie napi\u0119cia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozp\u0142ywu mocy przy obci\u0105\u017ceniach i generacji zapisanych w modelu; wielko\u015bci z wyniku rozp\u0142ywu por\u00f3wnane z progami kryteri\u00f3w rozp\u0142ywu (walidacja energetyczna, profil napi\u0119\u0107).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy ni\u017c zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeci\u0105\u017calno\u015b\u0107 kr\u00f3tkotrwa\u0142a i cykliczna urz\u0105dze\u0144"
+              ]
+            }
+          },
           "u_kv": 0.6977,
           "u_pu": 1.01117,
           "un_kv": 0.69

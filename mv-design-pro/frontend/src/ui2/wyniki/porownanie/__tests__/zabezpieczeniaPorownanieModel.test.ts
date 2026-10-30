@@ -13,7 +13,6 @@ import {
   KOLUMNY_RANKINGU_ZABEZPIECZEN,
   KOLUMNY_STANOW_ZABEZPIECZEN,
   etykietaPrzebieguZabezpieczen,
-  mapaWagWierszyZabezpieczen,
   naLinieProweniencji,
   naWierszeRankinguZabezpieczen,
   naWierszeStanowZabezpieczen,
@@ -64,37 +63,9 @@ describe('wynik sieci złotej G08 — kontrakt wiersza', () => {
   });
 });
 
-describe('mapaWagWierszyZabezpieczen — klucz PARY (element, punkt zwarcia)', () => {
-  it('ranking realnego porównania: jedna waga na parę, maksimum przy wielu problemach', () => {
-    const mapa = mapaWagWierszyZabezpieczen(WYNIK.ranking);
-    for (const issue of WYNIK.ranking) {
-      const klucz = `${issue.element_ref}::${issue.fault_target_id}`;
-      const maks = Math.max(
-        ...WYNIK.ranking
-          .filter((i) => i.element_ref === issue.element_ref && i.fault_target_id === issue.fault_target_id)
-          .map((i) => i.severity),
-      );
-      expect(mapa.get(klucz)).toBe(maks);
-    }
-    const [pierwszy] = WYNIK.ranking;
-    const zwiekszony = mapaWagWierszyZabezpieczen([...WYNIK.ranking, { ...pierwszy, severity: 5 }]);
-    expect(zwiekszony.get(`${pierwszy.element_ref}::${pierwszy.fault_target_id}`)).toBe(5);
-  });
-
-  it('ten sam element w dwóch punktach zwarcia → dwie niezależne wagi', () => {
-    const [pierwszy] = WYNIK.ranking;
-    const mapa = mapaWagWierszyZabezpieczen([
-      { ...pierwszy, fault_target_id: 'punkt-1', severity: 5 },
-      { ...pierwszy, fault_target_id: 'punkt-2', severity: 2 },
-    ]);
-    expect(mapa.get(`${pierwszy.element_ref}::punkt-1`)).toBe(5);
-    expect(mapa.get(`${pierwszy.element_ref}::punkt-2`)).toBe(2);
-  });
-});
-
 describe('naWierszeStanowZabezpieczen — komórki A/B/różnica, nullowalne pola, dowód', () => {
   it('urządzenie i punkt z nazw backendu; identyfikator urządzenia nie jest komórką (karta #145)', () => {
-    const [w] = naWierszeStanowZabezpieczen([WIERSZ], new Map());
+    const [w] = naWierszeStanowZabezpieczen([WIERSZ]);
     expect(w.element.wartosc).toBe(WIERSZ.nazwa_urzadzenia_pl);
     expect(w.punkt.wartosc).toBe(WIERSZ.nazwa_punktu_pl);
     expect(Object.values(w).map((k) => k.wartosc)).not.toContain(WIERSZ.device_id_a);
@@ -102,28 +73,34 @@ describe('naWierszeStanowZabezpieczen — komórki A/B/różnica, nullowalne pol
   });
 
   it('wartość obecna dostaje dowodRef strony; wartość null → kreska bez dowodu', () => {
-    const [w] = naWierszeStanowZabezpieczen([wiersz({ t_trip_s_b: null })], new Map());
+    const [w] = naWierszeStanowZabezpieczen([wiersz({ t_trip_s_b: null })]);
     expect(w.czasA.wartosc).toBe(fmtCzasZadzialania(WIERSZ.t_trip_s_a!));
     expect(w.czasA.dowodRef).toBe(`A:${WIERSZ.protected_element_ref}::${WIERSZ.fault_target_id}`);
     expect(w.czasB.wartosc).toBe('—');
     expect(w.czasB.dowodRef).toBeUndefined();
   });
 
-  it('różnicę oznacza tagiem ostrzeżenia WYŁĄCZNIE wg wagi z rankingu backendu; różnica bez dowodu', () => {
-    const klucz = `${WIERSZ.protected_element_ref}::${WIERSZ.fault_target_id}`;
-    const [zWaga] = naWierszeStanowZabezpieczen([WIERSZ], new Map([[klucz, 5]]));
-    expect(zWaga.pradD.wartosc).toBe(fmtDeltaPradZwarciowy(WIERSZ.delta_i_fault_a!));
-    expect(zWaga.pradD.ostrzezenie).toBe(true);
-    expect(zWaga.pradD.dowodRef).toBeUndefined();
-    const [bezWagi] = naWierszeStanowZabezpieczen([WIERSZ], new Map());
-    expect(bezWagi.pradD.ostrzezenie).toBe(false);
+  it('różnica bez znacznika oceny przy każdej wadze rankingu backendu; różnica bez dowodu (D26)', () => {
+    // Waga problemu porządkuje różnice A/B, nie rozstrzyga wymagania — znacznik „Poza
+    // zakresem” z progu okna był oceną bez kryterium (karta WERDYKT-MIGRACJA-190).
+    for (const waga of [1, 2, 3, 4, 5] as const) {
+      const ranking = WYNIK.ranking.map((r) => ({ ...r, severity: waga }));
+      const wiersze = [
+        ...naWierszeStanowZabezpieczen([WIERSZ]),
+        ...naWierszeRankinguZabezpieczen(ranking, (ref) => ref),
+      ];
+      for (const w of wiersze) {
+        expect(Object.values(w).some((k) => k.ostrzezenie !== undefined)).toBe(false);
+      }
+    }
+    const [w] = naWierszeStanowZabezpieczen([WIERSZ]);
+    expect(w.pradD.wartosc).toBe(fmtDeltaPradZwarciowy(WIERSZ.delta_i_fault_a!));
+    expect(w.pradD.dowodRef).toBeUndefined();
   });
 
   it('utrata zadziałania: stan po polsku, różnica czasu niewyznaczona → kreska', () => {
     const [w] = naWierszeStanowZabezpieczen(
-      [wiersz({ trip_state_b: 'NO_TRIP', t_trip_s_b: null, delta_t_s: null, state_change: 'TRIP_TO_NO_TRIP' })],
-      new Map(),
-    );
+      [wiersz({ trip_state_b: 'NO_TRIP', t_trip_s_b: null, delta_t_s: null, state_change: 'TRIP_TO_NO_TRIP' })]);
     expect(w.stanA.wartosc).toBe('Zadziałanie');
     expect(w.stanB.wartosc).toBe('Brak zadziałania');
     expect(w.czasD.wartosc).toBe('—');
@@ -134,9 +111,7 @@ describe('naWierszeStanowZabezpieczen — komórki A/B/różnica, nullowalne pol
     const [w] = naWierszeStanowZabezpieczen(
       // Oba stany JAWNIE: wiersz sieci złotej niesie dziś NIEUSTALONA (obwód wtórny CT
       // niezapisany — jądro nasycenia nie ma danej), a test sprawdza mapowanie A/B osobno.
-      [wiersz({ wiarygodnosc_a: 'WIARYGODNY', wiarygodnosc_b: 'NIEWIARYGODNY' })],
-      new Map(),
-    );
+      [wiersz({ wiarygodnosc_a: 'WIARYGODNY', wiarygodnosc_b: 'NIEWIARYGODNY' })]);
     expect(w.marginesA.wartosc).toBe(fmtMarginesProcent(WIERSZ.margin_percent_a!));
     expect(w.marginesD).toBeUndefined();
     expect(w.wiarygodnoscA.wartosc).toBe(WIARYGODNOSC_PL.WIARYGODNY);
@@ -146,14 +121,12 @@ describe('naWierszeStanowZabezpieczen — komórki A/B/różnica, nullowalne pol
 
   it('brak oceny w jednym biegu (pusty stan wiarygodności) → kreska, nie „wiarygodny"', () => {
     const [w] = naWierszeStanowZabezpieczen(
-      [wiersz({ wiarygodnosc_b: '', trip_state_b: 'MISSING', t_trip_s_b: null })],
-      new Map(),
-    );
+      [wiersz({ wiarygodnosc_b: '', trip_state_b: 'MISSING', t_trip_s_b: null })]);
     expect(w.wiarygodnoscB.wartosc).toBe('—');
   });
 
   it('klucz React wiersza jest indeksem źródłowym — unikalny także przy tym samym urządzeniu', () => {
-    const wiersze = naWierszeStanowZabezpieczen(WYNIK.rows, new Map());
+    const wiersze = naWierszeStanowZabezpieczen(WYNIK.rows);
     expect(wiersze.map((w) => w.klucz.wartosc)).toEqual(WYNIK.rows.map((_r, i) => String(i)));
   });
 });

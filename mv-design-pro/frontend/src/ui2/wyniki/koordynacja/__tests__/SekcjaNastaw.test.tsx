@@ -16,6 +16,12 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { SekcjaNastaw } from '../SekcjaNastaw';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
+import type { SprawdzenieCieplne } from '../nastawyApi';
+// Bloki `thermal` generowane z backendu (`ProtectionSettingsEngine.calculate`) przez
+// backend/tests/uczciwosc/generuj_fixtury_ocen_fe.py; parytet pilnuje test_fixtury_ocen_fe.py.
+import nastawyCieplne from './nastawyCieplne.json';
+
+const CIEPLNE = nastawyCieplne as unknown as Record<'wytrzymuje' | 'nie_wytrzymuje', SprawdzenieCieplne>;
 
 const RUN_SC_MAX = {
   id: 'run-sc-max',
@@ -112,16 +118,7 @@ const WYNIK_NASTAW = {
       validation_notes: [],
       trace: [],
     },
-    thermal: {
-      i_th_dop_a: 18544.2,
-      j_thn: 94.0,
-      cross_section_mm2: 120.0,
-      t_fault_s: 0.37,
-      ik_max_a: 8000.0,
-      is_adequate: true,
-      margin_percent: 56.9,
-      trace: [],
-    },
+    thermal: CIEPLNE.wytrzymuje,
     spz: {
       spz_allowed: true,
       total_fault_time_s: 0.6,
@@ -555,5 +552,50 @@ describe('SekcjaNastaw — katalog aparatów: odczyt w toku / błąd / pusty / l
     if (wariant === 'wczytywanie') {
       expect(within(sekcja).getByTestId(TESTID.wczytywanie)).toHaveAttribute('aria-busy', 'true');
     }
+  });
+});
+
+describe('SekcjaNastaw — wytrzymałość cieplna przewodu z rekordu W', () => {
+  // Iloczyn: przypadek fizyczny (wytrzymuje × nie wytrzymuje) × nośnik (plakietka, zdanie, karta).
+  // Etykieta, status i zdanie pochodzą z rekordu backendu — ekran niczego nie przemapowuje.
+  it.each([
+    ['wytrzymuje', 'BRAK_DOWODU'],
+    ['nie_wytrzymuje', 'NIE_SPELNIA'],
+  ] as const)('przypadek %s: plakietka i zdanie z rekordu (status %s)', async (klucz, status) => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    mockDomyslny();
+    const thermal = CIEPLNE[klucz];
+    const odpowiedz = { ...WYNIK_NASTAW, wynik: { ...WYNIK_NASTAW.wynik, thermal } };
+    const bazowy = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/nastawy?')) {
+        return { ok: true, status: 200, json: async () => odpowiedz } as Response;
+      }
+      return bazowy!(input);
+    });
+    const user = userEvent.setup();
+
+    render(<SekcjaNastaw caseId="case-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    await user.click(screen.getByLabelText('Zacisk początkowy — szyna GPZ SN'));
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
+    await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-wynik')).toBeInTheDocument(),
+    );
+
+    expect(thermal.ocena.status_maszynowy).toBe(status);
+    const plakietka = screen.getByTestId('mvd-koordynacja-nastawy-cieplna-etykieta');
+    expect(plakietka.textContent).toBe(thermal.ocena.etykieta.etykieta_pl);
+    expect(plakietka.getAttribute('data-status')).toBe(status);
+    expect(plakietka.getAttribute('data-semantyka')).toBe(thermal.ocena.etykieta.semantyka);
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-cieplna-zdanie').textContent).toBe(
+      thermal.ocena.wyjasnienie.zdanie_pl,
+    );
+    // Karta rekordu prowadzi do wyjaśnienia (etykieta bez wyjaśnienia nie jest odpowiedzią).
+    expect(screen.getAllByText(thermal.ocena.wyjasnienie.zdanie_pl).length).toBeGreaterThanOrEqual(1);
   });
 });

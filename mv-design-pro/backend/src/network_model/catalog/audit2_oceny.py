@@ -41,6 +41,7 @@ from werdykt.porownanie import (
     podstawa_katalogu,
     podstawa_nieustalona,
     podstawa_normy,
+    podstawa_zalozenia,
     wymaganie_z_ocen,
 )
 
@@ -178,6 +179,7 @@ def oceny_wytrzymalosci_aparatu(
     dane_cieplna: Sequence[DanaPrzyjeta] = (),
     zdolnosc_id: str = ZDOLNOSC_WYTRZYMALOSCI,
     odniesienie: str = _ODNIESIENIE,
+    zalozenie_znamion_pl: str | None = None,
 ) -> tuple[OcenaKryterium, OcenaKryterium]:
     """Dwa rekordy K wytrzymałości aparatu ze znamion pozycji katalogu: dynamiczny
     (i_p ≤ I_dyn) i cieplny (I_th ≤ I_thr·√min(1, T_kr/T_k)).
@@ -190,7 +192,16 @@ def oceny_wytrzymalosci_aparatu(
     (wartości robocze biegu: tolerancja sieci nN, gałęzie, parametry maszyn) — rekord ma wtedy
     kompletność dowodu ``NIEPELNY``. ``zdolnosc_id`` / ``odniesienie`` — zdolność i moduł
     wołającego (walidator katalogu albo dowód doboru aparatury), gdy reguła jest ta sama.
+    ``zalozenie_znamion_pl`` — znamiona nie pochodzą z karty katalogowej, tylko z jawnego
+    założenia (dokument założenia); podstawa limitu jest wtedy ``ZALOZENIE_PROJEKTOWE``, a nie
+    karta producenta (wartość robocza nie udaje danej producenta — zasada nr 4).
     """
+
+    def _podstawa_znamienia(znamie: str) -> PodstawaWymagania:
+        if zalozenie_znamion_pl is None:
+            return podstawa_katalogu(etykieta_pl, PARAGRAF_ZNAMIENIA[znamie])
+        return podstawa_zalozenia(zalozenie_znamion_pl, PARAGRAF_ZNAMIENIA[znamie])
+
     zdolnosc = classify_dynamic_capability(zdolnosc_id)
     zakres = zakres_wytrzymalosci(zakres_opis_pl)
     braki_dyn: list[str] = []
@@ -212,7 +223,7 @@ def oceny_wytrzymalosci_aparatu(
         ),
         przedmiot=przedmiot,
         podstawa=PODSTAWA_WYTRZYMALOSCI_DYNAMICZNEJ,
-        podstawa_limitu=podstawa_katalogu(etykieta_pl, PARAGRAF_ZNAMIENIA["i_dyn"]),
+        podstawa_limitu=_podstawa_znamienia("i_dyn"),
         zdolnosc=zdolnosc,
         zakres=zakres,
         slad=_slad(
@@ -257,7 +268,7 @@ def oceny_wytrzymalosci_aparatu(
         ),
         przedmiot=przedmiot,
         podstawa=PODSTAWA_WYTRZYMALOSCI_CIEPLNEJ,
-        podstawa_limitu=podstawa_katalogu(etykieta_pl, PARAGRAF_ZNAMIENIA["i_th"]),
+        podstawa_limitu=_podstawa_znamienia("i_th"),
         zdolnosc=zdolnosc,
         zakres=zakres,
         slad=_slad(

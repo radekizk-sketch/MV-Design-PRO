@@ -262,9 +262,6 @@ def test_get_protection_view_empty(client):
         "blocked_assignments": 0,
         "complete_count": 0,
         "incomplete_count": 0,
-        "verified_count": 0,
-        "failed_count": 0,
-        "no_data_count": 0,
         "error_count": 0,
         "warn_count": 0,
         "info_count": 0,
@@ -304,14 +301,16 @@ def test_get_protection_view_with_assignments_and_diagnostics(client):
     assert data["summary"]["blocked_assignments"] == 0
     assert data["summary"]["complete_count"] >= 1
     assert data["summary"]["incomplete_count"] >= 0
-    assert data["summary"]["verified_count"] >= 0
-    assert data["summary"]["failed_count"] >= 0
-    assert data["summary"]["no_data_count"] >= 0
+    # Karta WERDYKT-MIGRACJA-190 (C39): zestawienie bez liczników statusu „spełnione /
+    # niespełnione” (status wynikał z braku diagnostyk, nie z oceny kryterium).
+    assert not {"verified_count", "failed_count", "no_data_count"} & set(data["summary"])
     assert data["summary"]["error_count"] >= 0
     assert data["summary"]["warn_count"] >= 0
     assert data["summary"]["info_count"] >= 0
 
     line_summary = next(item for item in data["summaries"] if item["element_id"] == "line_1")
+    assert line_summary["has_complete_data"] is (not line_summary["braki_danych_pl"])
+    assert "verification_status" not in line_summary
     assert line_summary["ct"]["label"] == "200/1"
     assert line_summary["overcurrent"]["time_overcurrent"]["pickup_a"] == pytest.approx(240.0)
 

@@ -218,11 +218,11 @@ export function StationAutoRenderer({
         return (
           <NodeReadout key={bus.id} x={readoutX} y={bus.y + 30} n={i + 1}
             title={`szyna ${isSn ? 'SN' : 'nN'} · ${kv(bus.unKv)} kV`}
-            uKv={v.un_kv} uPu={v.u_pu} uOk={Math.abs(v.deviation_percent) <= 5}
+            uKv={v.un_kv} uPu={v.u_pu} uOcena={v.ocena}
             ik3fMax={b.max.ikss_ka} ik3fMin={b.min.ikss_ka}
             ik1f={isSn && e ? `${fmt(e.ik_1f_ka)} kA · ${e.neutral_point}` : 'lok. (za trafem)'}
             share={shareLabel(b.source_contribution, b.max.ikss_ka, { isCollector: bus.band === 0, hasLocalIbg, hasLocalMachine })}
-            icw={b.icw_ka} icwOk={b.verification.passed}
+            icw={b.icw_ka} icwOcena={b.oceny.cieplna} idynOcena={b.oceny.dynamiczna}
             ip={b.max.ip_ka} idyn={b.idyn_ka} />
         );
       })}

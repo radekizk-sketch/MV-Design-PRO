@@ -116,9 +116,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # (`enm/catalog_completion.py`), zero nowych względem żadnego z rodziców.
     # Karta WERDYKT-MIGRACJA-190: 167/21 → 163/20 → 161/19 — pomiar `mypy src` na drzewie karty;
     # zdjęte błędy w plikach przepisanych na rekordy werdyktu (m.in. 2 × `misc`
-    # w `analysis/grid_strength/builder.py`), zero nowych.
-    assert modul.BASELINE_ERRORS == 161
-    assert modul.BASELINE_FILES == 19
+    # w `analysis/grid_strength/builder.py`), zero nowych; dalej 161/19 → 156/18 — dowód doboru
+    # aparatury C33 (5 × `arg-type` w `equipment_proof/generator.py` zniknęło), zero nowych.
+    assert modul.BASELINE_ERRORS == 156
+    assert modul.BASELINE_FILES == 18
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
