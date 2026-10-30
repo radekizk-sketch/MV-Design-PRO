@@ -1172,30 +1172,27 @@ więc stan jest NIEZWERYFIKOWANY.
 
   Iniekcje I1, I2, I4 i I5 były czerwone (RC=1), pliki przywrócono.
 
-**W trakcie (przerwane):** iniekcja I3 na komparatorze sortowania konfiguratora
-(`left.vector_group!.toUpperCase()`) była ZIELONA, czyli test jej nie łapał. Przyczyna: przy dwóch
-typach katalogu typ bez grupy trafiał tylko na prawą stronę komparatora. Test
-`frontend/src/ui/workspace/surfaces/__tests__/katalogTransformatorowKonfiguratora.test.tsx` dostał
-trzecią cechę iloczynu: kolejność odpowiedzi katalogu {typ bez grupy pierwszy, typ pełny pierwszy}.
-Eslint tego pliku przeszedł z RC=0. Biegu vitest i iniekcji I3a (strona lewa), I3b (strona prawa)
-i I3c (etykieta `String(null)`) NIE wykonano: skrypt `/tmp/claude-0/logs/c5_iniekcje2.sh` czekał
-w kolejce zamka i został przerwany przed startem.
+**Aktualizacja po wznowieniu (2026-10-30):** test konfiguratora z cechą kolejności: RC=0,
+4 passed. Iniekcje I3a (lewa strona komparatora) i I3b (prawa strona) czerwone (RC=1, po 1 failed),
+przywrócone; tsc RC=0. Iniekcja I3c na `buildTransformerCatalogSummary` była ZIELONA, bo pole
+`summary` opcji katalogu transformatora nie miało ŻADNEGO konsumenta (karta
+`StationConfigTransformerCard` buduje etykietę opcji sama w `optionLabel`) — martwe pole, druga
+etykieta tej samej opcji. Usunięte: pole `summary` z `StationTransformerCatalogOption`,
+`buildTransformerCatalogSummary` i `formatMva` ze `StationConfiguratorSurface.tsx`, `summary`
+z fikstur `StationConfigurator.test.tsx`.
 
-**Zostało:**
-- uruchomić `npx vitest run` na tym pliku testów (spodziewane 4 przypadki zielone);
-- wykonać iniekcje I3a, I3b i I3c — każda musi być czerwona;
-- poprawić treść commitu (WIP → właściwy), bez amend — nowym commitem albo przy
-  cherry-picku w sesji głównej;
-- przekazać do pełnej bramki sesji głównej.
+**W trakcie:** bieg `/tmp/claude-0/logs/c5_iniekcje3.sh` w kolejce zamka — testy konfiguratora
+(oba pliki), iniekcja I3c przeniesiona na `optionLabel` w karcie (oczekiwana czerwona), eslint, tsc.
+
+**Zostało:** wynik tego biegu; commit właściwy (bez prefiksu WIP) po zielonym biegu i czerwonej I3c.
 
 **Znane czerwone:** brak znanych czerwonych testów i strażników. Jedyna luka to niepotwierdzona
 siła testu konfiguratora wobec I3. Środowisko nie ma pandapower, więc 33 testy z tym znacznikiem
 padają lokalnie z powodu środowiska, nie zmiany.
 
-**Pierwszy krok dla następcy:** pod zamkiem `/tmp/claude-0/bieg_ciezki.lock` uruchom
-`bash /tmp/claude-0/logs/c5_iniekcje2.sh` z drzewa `wt-bkr`. Status trafi do
-`/tmp/claude-0/logs/c5_iniekcje2_status.log`. Oczekiwane: `I3_czysty RC=0` oraz
-`I3a/I3b/I3c RC≠0` z „przywrocono”.
+**Pierwszy krok dla następcy:** pod zamkiem uruchom `bash /tmp/claude-0/logs/c5_iniekcje3.sh`
+z drzewa `wt-bkr`. Status trafi do `/tmp/claude-0/logs/c5_iniekcje3_status.log`. Oczekiwane:
+`czysty RC=0`, `I3c RC≠0` z „przywrocono”, `RC_ESLINT=0`, `RC_TSC=0`.
 
 ---
 

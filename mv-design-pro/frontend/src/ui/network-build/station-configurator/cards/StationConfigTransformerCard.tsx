@@ -20,7 +20,6 @@ export interface StationTransformerCatalogOption {
   readonly id: string;
   readonly name: string;
   readonly manufacturer?: string;
-  readonly summary: string;
   readonly ratedPowerMva: number;
   readonly voltageHvKv: number;
   readonly voltageLvKv: number;

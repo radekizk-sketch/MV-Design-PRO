@@ -354,7 +354,6 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
             {
               id: 'tr-15-04-63',
               name: 'TR 63 kVA 15/0,4 kV',
-              summary: '0,063 MVA · 15/0,4 kV · Dyn11',
               ratedPowerMva: 0.063,
               voltageHvKv: 15,
               voltageLvKv: 0.4,
@@ -368,7 +367,6 @@ describe('StationConfigTransformerCard — multi-voltage nN', () => {
             {
               id: 'tr-15-04-100',
               name: 'TR 100 kVA 15/0,4 kV',
-              summary: '0,1 MVA · 15/0,4 kV · Dyn11',
               ratedPowerMva: 0.1,
               voltageHvKv: 15,
               voltageLvKv: 0.4,
