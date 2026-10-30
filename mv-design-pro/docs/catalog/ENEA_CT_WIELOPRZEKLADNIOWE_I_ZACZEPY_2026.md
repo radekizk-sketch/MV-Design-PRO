@@ -119,6 +119,14 @@ stanowi podstawy do narzucenia wymiany przy każdej istniejącej stacji.
 Źródło:
 https://www.tender-vision.com/przetargi/przetarg/p120021115400000041732026-od5-zir-dostosowanie-pola-liniowego-sn-nr-16-w-gpz-kos-404ba2b5
 
+**ENEA, rozdział 16 — zastosowanie innych rozwiązań:** standard
+dopuszcza inne rozwiązania na indywidualny wniosek i po decyzji właściwego
+organu operatora. Dla infrastruktury **SN** decyzję podejmuje właściwy
+**Dyrektor Oddziału Dystrybucji**, a nie automatyczny filtr katalogu.
+Oznacza to, że w nowym PPE jednozakresowe 200/5 A nie staje się
+standardowym zamiennikiem 200–400/5 A tylko dlatego, że jest
+dostępne w katalogu; wyjątek wymaga formalnej ścieżki z rozdziału 16.
+
 **ENEA, rozdz. 1–2 standardu 05.2022-2:** nowo zabudowywane układy
 oraz modernizowane po ocenie możliwości i zasadności zastosowania
 standardu w danym przypadku. Nie ma automatycznego nakazu wymiany
