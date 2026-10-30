@@ -31,6 +31,7 @@ import type {
   TransformerType,
   TypeCategory,
   VTCatalogType,
+  FerrantiCatalogType,
 } from './types';
 
 export class CatalogApiError extends Error {
@@ -80,6 +81,7 @@ export type CatalogListItem =
   | LoadCatalogType
   | CTCatalogType
   | VTCatalogType
+  | FerrantiCatalogType
   | PVInverterCatalogType
   | BESSInverterCatalogType
   | ProtectionDeviceType
@@ -340,6 +342,10 @@ export async function fetchCtTypes(): Promise<CTCatalogType[]> {
 
 export async function fetchVtTypes(): Promise<VTCatalogType[]> {
   return fetchCatalogJson<VTCatalogType[]>('/api/catalog/vt-types');
+}
+
+export async function fetchFerrantiTypes(): Promise<FerrantiCatalogType[]> {
+  return fetchCatalogJson<FerrantiCatalogType[]>('/api/catalog/ferranti-types');
 }
 
 export async function fetchSurgeArresterTypes(): Promise<SurgeArresterCatalogType[]> {
@@ -731,6 +737,9 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
     case 'VT':
       types = await fetchVtTypes();
       break;
+    case 'FERRANTI':
+      types = await fetchFerrantiTypes();
+      break;
     case 'SURGE_ARRESTER':
       types = await fetchSurgeArresterTypes();
       break;
@@ -741,7 +750,7 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       types = await fetchPtpireeGeneratorCertificates();
       break;
     case 'MEASUREMENT_TRANSFORMER':
-      types = [...(await fetchCtTypes()), ...(await fetchVtTypes())];
+      types = [...(await fetchCtTypes()), ...(await fetchVtTypes()), ...(await fetchFerrantiTypes())];
       break;
     case 'PV_INVERTER':
       types = await fetchPvInverterTypes();
