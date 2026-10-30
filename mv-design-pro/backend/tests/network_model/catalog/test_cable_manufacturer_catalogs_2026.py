@@ -64,6 +64,35 @@ def test_tfk_sn_12_20_27_wierszy_producenta_bez_mieszania_serii() -> None:
     assert next(x for x in records if x["id"] == "cable-tfk-2025-xruhkxs-240-50-12-20")["params"]["rated_current_a"] == 666
 
 
+
+
+def test_tfk_sn_18_30_27_wierszy_z_osobnej_tabeli_2025() -> None:
+    """Nie wolno kopiować parametrów 12/20 kV do typu 18/30 kV."""
+    typy = get_all_tfk_1830_cable_types()
+    assert len(typy) == 27
+    repo = get_default_mv_catalog()
+    for record in typy:
+        p = record["params"]
+        assert record["id"] in repo.cable_types
+        assert record["id"].endswith("-18-30")
+        assert p["voltage_rating_kv"] == 30.0
+        assert "18/30(36)" in p["source_reference"]
+        assert "tele-fonika.com" in p["source_reference"]
+        assert all(
+            math.isfinite(p[key]) and p[key] > 0
+            for key in ("r_ohm_per_km", "x_ohm_per_km", "c_nf_per_km",
+                        "rated_current_a", "ith_1s_a",
+                        "return_conductor_r_ohm_per_km_20c",
+                        "return_conductor_ith_1s_a")
+        )
+    al_240 = next(t for t in typy if t["id"] == "cable-tfk-2025-xruhakxs-240-50-18-30")
+    cu_240 = next(t for t in typy if t["id"] == "cable-tfk-2025-xruhkxs-240-50-18-30")
+    assert al_240["params"]["c_nf_per_km"] == 210.0
+    assert al_240["params"]["rated_current_a"] == 518.0
+    assert cu_240["params"]["c_nf_per_km"] == 210.0
+    assert cu_240["params"]["rated_current_a"] == 661.0
+
+
 def test_nkt_nn_37_roznych_pelnych_kabli_4_5_zyl_i_pen_bez_al10() -> None:
     nkt = get_all_nkt_lv_cable_types()
     assert len(nkt) == 37
