@@ -342,7 +342,7 @@ export const STACJA_STRINGS = {
   typKatalogPlaceholder: '— wybierz typ transformatora —',
   typKatalogPomoc:
     'Lista zawęża się do typów zgodnych z napięciem SN szyny i wybranym napięciem nN — '
-    + 'parametry (moc, uk, przekładnia) pochodzą z katalogu.',
+    + 'parametry (moc, $u_{k}$, przekładnia) pochodzą z katalogu.',
   typBlad: 'Nie udało się pobrać katalogu transformatorów SN/nN.',
   brakDoboru:
     'Brak w katalogu transformatora zgodnego z napięciem SN szyny i wybranym napięciem nN. '
@@ -355,7 +355,7 @@ export const STACJA_STRINGS = {
   // Parametry katalogu (odczyt).
   paramMoc: 'Moc znamionowa',
   paramNapiecia: 'Napięcia SN/nN',
-  paramUk: 'Napięcie zwarcia uk',
+  paramUk: 'Napięcie zwarcia $u_{k}$',
 
   // Krok 3 — rozdzielnica SN.
   producent: 'Producent rozdzielnicy SN',
@@ -565,13 +565,13 @@ export const STACJA_STRINGS = {
   teoriaTrafoOpis:
     'Transformator łączy szynę SN z szyną nN przez przekładnię napięciową (SN/nN). Napięcie nN odbioru '
     + 'wyznacza wymaganą stronę dolną transformatora, a napięcie SN szyny — stronę górną; katalog podaje '
-    + 'zgodne typy. Moc znamionowa Sn ogranicza obciążalność stacji i dobiera się do mocy szczytowej '
-    + 'odbiorów z zapasem. Napięcie zwarcia uk [%] decyduje o spadku napięcia pod obciążeniem i o udziale '
+    + 'zgodne typy. Moc znamionowa $S_{n}$ ogranicza obciążalność stacji i dobiera się do mocy szczytowej '
+    + 'odbiorów z zapasem. Napięcie zwarcia $u_{k}$ [%] decyduje o spadku napięcia pod obciążeniem i o udziale '
     + 'transformatora w prądzie zwarciowym po stronie nN. Wszystkie wartości pochodzą z katalogu; prądy, '
     + 'spadki i zwarcia liczy solver.',
   teoriaTrafoWymog:
-    'Sn z zapasem nad mocą szczytową; napięcia i grupa połączeń zgodne z układem sieci (praca równoległa '
-    + 'transformatorów wymaga tej samej grupy i zbliżonego uk).',
+    '$S_{n}$ z zapasem nad mocą szczytową; napięcia i grupa połączeń zgodne z układem sieci (praca równoległa '
+    + 'transformatorów wymaga tej samej grupy i zbliżonego $u_{k}$).',
   teoriaTrafoPodstawa: 'Podstawa: PN-EN 60076, IEC 60909 (udział transformatora w zwarciu).',
   teoriaRozdzielnicaTytul: 'Teoria: pola rozdzielnicy SN i ich role',
   teoriaRozdzielnicaOpis:
@@ -669,7 +669,7 @@ export const STACJA_STRINGS = {
   potrzebyWlasneMoc: 'Moc potrzeb własnych [kW]',
   potrzebyWlasneMocPlaceholder: 'np. 5',
   potrzebyWlasneMocPomoc: 'Puste — stacja bez odrębnego odbioru potrzeb własnych.',
-  potrzebyWlasneCosphi: 'cosφ potrzeb własnych',
+  potrzebyWlasneCosphi: '$\\cos\\varphi$ potrzeb własnych',
   potrzebyWlasneCosphiPomoc:
     'Współczynnik mocy odbioru — moc bierną (Q) wylicza backend ($Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$).',
 

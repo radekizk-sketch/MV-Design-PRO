@@ -76,15 +76,15 @@ export const PULPIT_STRINGS = {
   przylaczenieBrakZrodla: 'Brak źródła sieciowego w modelu',
   przylaczenieBrakZrodlaOpis: 'Dodaj punkt przyłączenia (GPZ / sieć zewnętrzna), aby ustalić warunki.',
   przylaczenieNapiecie: 'Napięcie przyłączenia',
-  przylaczenieSk: 'Moc zwarciowa Sk″',
-  przylaczenieIk: 'Prąd zwarciowy Ik″',
+  przylaczenieSk: 'Moc zwarciowa $S_{k}\'\'$',
+  przylaczenieIk: 'Prąd zwarciowy $I_{k}\'\'$',
   // CV-4.3 K7: scenariusz MIN (warunki przyłączenia OSD) — dodatkowe wiersze
   // renderowane WYŁĄCZNIE gdy źródło niesie dane MIN (zero fabrykacji); bez nich
   // kafel pokazuje wyłącznie `przylaczenieSk`/`przylaczenieIk` jak dotychczas.
-  przylaczenieSkMaks: 'Moc zwarciowa Sk″ (maks.)',
-  przylaczenieSkMin: 'Moc zwarciowa Sk″ (min.)',
-  przylaczenieIkMaks: 'Prąd zwarciowy Ik″ (maks.)',
-  przylaczenieIkMin: 'Prąd zwarciowy Ik″ (min.)',
+  przylaczenieSkMaks: 'Moc zwarciowa $S_{k}\'\'$ (maks.)',
+  przylaczenieSkMin: 'Moc zwarciowa $S_{k}\'\'$ (min.)',
+  przylaczenieIkMaks: 'Prąd zwarciowy $I_{k}\'\'$ (maks.)',
+  przylaczenieIkMin: 'Prąd zwarciowy $I_{k}\'\'$ (min.)',
   // CV-4.3 K7c: napięcie zadane szyny bilansującej — wiersz WYŁĄCZNIE gdy
   // źródło je niesie (zero fabrykacji); bez niego kafel pokazuje wyłącznie
   // wiersze Sk″/Ik″ jak dotychczas.
@@ -101,19 +101,19 @@ export const PULPIT_STRINGS = {
 
   // Warunki przyłączenia OSD (K2 — blok `header.connection_conditions`)
   osdLimit: 'Moc przyłączeniowa (OSD)',
-  osdCosPhi: 'Wymagany cosφ (OSD)',
+  osdCosPhi: 'Wymagany $\\cos\\varphi$ (OSD)',
   osdTrybPracy: 'Tryb pracy przyłącza',
   osdBrak: 'Warunków przyłączenia OSD nie podano.',
   osdUzupelnij: 'Uzupełnij warunki OSD',
   osdWerdyktOk: 'w limicie OSD',
   osdWerdyktPrzekroczono: 'przekracza limit OSD',
   osdFormMoc: 'Moc przyłączeniowa [MW]',
-  osdFormCosPhi: 'Wymagany cosφ',
+  osdFormCosPhi: 'Wymagany $\\cos\\varphi$',
   osdFormTryb: 'Tryb pracy (z dokumentu OSD)',
   osdFormZapisz: 'Zapisz warunki',
   osdFormAnuluj: 'Anuluj',
   osdFormBladMoc: 'Moc przyłączeniowa musi być liczbą dodatnią.',
-  osdFormBladCosPhi: 'Wymagany cosφ musi być w przedziale (0, 1].',
+  osdFormBladCosPhi: 'Wymagany $\\cos\\varphi$ musi być w przedziale (0, 1].',
   osdFormBladPuste: 'Podaj przynajmniej jedno pole warunków.',
   osdFormBrakZakresu: 'Otwórz zakres obliczeń, aby zapisać warunki do modelu.',
 } as const;

@@ -272,8 +272,8 @@ export function NodeReadout(props: {
   const { x, y, n, title, uKv, uPu, uOk, ik3fMax, ik3fMin, ik1f, share, icw, icwOk, ip, idyn } = props;
   const rows: Array<[string, string, string]> = [
     ['U', `${fmt(uKv)} kV · ${fmt(uPu)} pu${uOk ? ' ✓' : ''}`, uOk ? OK : AMBER],
-    ['Ik″ 3f', `${fmt(ik3fMax, 1)} / ${fmt(ik3fMin, 1)} kA`, TXT],
-    ['Ik″ 1f-z', ik1f, TXT],
+    ['$I_{k}\'\'$ 3f', `${fmt(ik3fMax, 1)} / ${fmt(ik3fMin, 1)} kA`, TXT],
+    ['$I_{k}\'\'$ 1f-z', ik1f, TXT],
     ['udział', share, TXT],
     ['Icw', `${fmt(icw, 0)} kA${icwOk ? ' ✓' : ''}`, icwOk ? OK : '#FF6B6B'],
     ['ip', `${fmt(ip, 1)} kA · idyn ${fmt(idyn, 0)} kA`, TXT],

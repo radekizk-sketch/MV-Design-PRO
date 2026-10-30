@@ -8,6 +8,7 @@
  */
 
 import { SCENARIUSZ_C_LABELS, type ScenariuszC } from './types';
+import { tekstBezWzorow } from '../../ui2/kreatory/rama/tekstZWzorami';
 import type { PolaWspolczynnikaC } from './wspolczynnikC';
 
 const SCENARIUSZE: readonly ScenariuszC[] = ['MAX', 'MIN'];
@@ -19,7 +20,7 @@ export const SEKCJA_C_STRINGS = {
   nadpisz: 'Nadpisz c ręcznie (wymaga uzasadnienia)',
   wartosc: 'Wartość c',
   uzasadnienie: 'Uzasadnienie nadpisania',
-  uzasadnieniePodpis: 'np. uzgodnienie z operatorem, ograniczenie c·Un ≤ Um',
+  uzasadnieniePodpis: 'np. uzgodnienie z operatorem, ograniczenie $c \\cdot U_{n} \\leq U_{m}$',
 } as const;
 
 interface SekcjaWspolczynnikaCProps {
@@ -80,7 +81,7 @@ export function SekcjaWspolczynnikaC({
             <input
               type="text"
               data-testid={`${testIdPrefix}-c-uzasadnienie`}
-              placeholder={SEKCJA_C_STRINGS.uzasadnieniePodpis}
+              placeholder={tekstBezWzorow(SEKCJA_C_STRINGS.uzasadnieniePodpis)}
               value={pola.uzasadnienie}
               onChange={(e) => onZmiana({ ...pola, uzasadnienie: e.target.value })}
             />

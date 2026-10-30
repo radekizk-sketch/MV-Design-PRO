@@ -13,6 +13,7 @@
 
 import { useMemo, useState } from 'react';
 import { KEYBOARD_SHORTCUTS, type KeyboardCategory } from '../sld/core/keyboardShortcuts';
+import { TekstZWzorami, tekstBezWzorow } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 type HelpTab = 'docs' | 'glossary' | 'shortcuts';
 
@@ -68,12 +69,12 @@ const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   },
   {
     term: 'I_dyn',
-    definition: 'Prąd zwarciowy dynamiczny (udarowy ip) - maksymalna wartość chwilowa prądu zwarcia. Wymagana wytrzymałość aparatury.',
+    definition: 'Prąd zwarciowy dynamiczny (udarowy $i_{p}$) - maksymalna wartość chwilowa prądu zwarcia. Wymagana wytrzymałość aparatury.',
     normative: 'IEC 60909-0, PN-EN 62271-1',
   },
   {
     term: 'I_th',
-    definition: 'Prąd zwarciowy termiczny (Ith) - wartość RMS równoważna cieplnie. Wytrzymałość 1s/3s aparatury.',
+    definition: 'Prąd zwarciowy termiczny ($I_{th}$) - wartość RMS równoważna cieplnie. Wytrzymałość 1s/3s aparatury.',
     normative: 'IEC 60909-0, PN-EN 60865',
   },
   {
@@ -147,7 +148,7 @@ export function HelpPanel({ isOpen, onClose, initialTab = 'docs' }: HelpPanelPro
     return GLOSSARY_ENTRIES.filter(
       (e) =>
         e.term.toLowerCase().includes(q) ||
-        e.definition.toLowerCase().includes(q) ||
+        tekstBezWzorow(e.definition).toLowerCase().includes(q) ||
         e.normative?.toLowerCase().includes(q),
     );
   }, [searchQuery]);
@@ -249,7 +250,7 @@ export function HelpPanel({ isOpen, onClose, initialTab = 'docs' }: HelpPanelPro
                 {filteredGlossary.map((entry) => (
                   <div key={entry.term} className="rounded border border-gray-200 p-3" data-testid={`glossary-entry-${entry.term}`}>
                     <dt className="text-xs font-semibold text-blue-700">{entry.term}</dt>
-                    <dd className="mt-1 text-xs text-gray-700">{entry.definition}</dd>
+                    <dd className="mt-1 text-xs text-gray-700"><TekstZWzorami tekst={entry.definition} /></dd>
                     {entry.normative && (
                       <div className="mt-1 text-[10px] italic text-gray-500">Norma: {entry.normative}</div>
                     )}

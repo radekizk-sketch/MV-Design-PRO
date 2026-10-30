@@ -52,6 +52,7 @@ import type { DoziemienieSieci } from '../../results-inspector/types';
 import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
 import { wielkoscPl } from '../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
+import { MathInline } from '../../proof/MathRenderer';
 import type { PolePomiaroweWiersz } from './polaPomiaroweStacji';
 import {
   canonicalFieldRole,
@@ -735,7 +736,9 @@ function StationEarthingPanel({
             ) : null}
             {sekcja.galezie_bez_b0.length > 0 ? (
               <div className="text-scada-grounded" data-testid="station-earthing-bez-b0">
-                {`Gałęzie bez susceptancji zerowej B′0 (prąd pojemnościowy niewyznaczony — uzupełnij B′0 albo typ katalogowy odcinka): ${sekcja.galezie_bez_b0.length}.`}
+                <TekstZWzorami
+                  tekst={`Gałęzie bez susceptancji zerowej $B'_{0}$ (prąd pojemnościowy niewyznaczony — uzupełnij $B'_{0}$ albo typ katalogowy odcinka): ${sekcja.galezie_bez_b0.length}.`}
+                />
               </div>
             ) : null}
             {sekcja.dane_przyjete_pojemnosci.length > 0 ? (
@@ -798,7 +801,7 @@ function StationPowerQualityPanel({
         <MetricCard label="Odbiory nN" value={`${totalLoadMw.toFixed(3)} MW`} />
         <MetricCard label="Profile NC RfG" value={String(profiles.size)} />
       </div>
-      <TechnicalPanel title="Bilans i jakość energii" subtitle="Dane wejściowe do oceny napięcia, cosφ, profili Q(U) i wpływu źródeł.">
+      <TechnicalPanel title="Bilans i jakość energii" subtitle="Dane wejściowe do oceny napięcia, $\cos\varphi$, profili Q(U) i wpływu źródeł.">
         {ders.length > 0 || loads.length > 0 ? (
           <div className="grid gap-2 text-xs md:grid-cols-2">
             <Fact label="Źródła i magazyny" value={ders.length > 0 ? ders.map((der) => der.der_kind).join(', ') : 'do wyboru z wariantu OZE'} />
@@ -808,7 +811,8 @@ function StationPowerQualityPanel({
           </div>
         ) : (
           <GuidanceBox>
-            Dodaj odbiory albo układ PV/BESS/FW, aby ocenić bilans mocy, regulację cosφ i wpływ na napięcie.
+            Dodaj odbiory albo układ PV/BESS/FW, aby ocenić bilans mocy, regulację{' '}
+            <MathInline latex="\cos\varphi" /> i wpływ na napięcie.
           </GuidanceBox>
         )}
       </TechnicalPanel>
@@ -901,8 +905,14 @@ function TechnicalPanel({
   return (
     <section className="rounded border border-scada-border bg-scada-surface p-3">
       <div className="mb-3">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-scada-muted">{title}</div>
-        {subtitle && <div className="mt-1 text-[11px] text-scada-muted">{subtitle}</div>}
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-scada-muted">
+          <TekstZWzorami tekst={title} />
+        </div>
+        {subtitle && (
+          <div className="mt-1 text-[11px] text-scada-muted">
+            <TekstZWzorami tekst={subtitle} />
+          </div>
+        )}
       </div>
       {children}
     </section>

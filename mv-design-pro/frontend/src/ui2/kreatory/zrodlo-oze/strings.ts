@@ -5,7 +5,7 @@ export const OZE_STRINGS = {
   cel:
     'Dodaj źródło przekształtnikowe (PV / magazyn energii / elektrownia wiatrowa) — '
     + 'z falownikiem z katalogu, trybem regulacji mocy biernej i przyłączeniem do rozdzielni. '
-    + 'Tryb regulacji (Q(U)/cosφ) realnie wpływa na rozpływ mocy; tabliczka wnosi wkład '
+    + 'Tryb regulacji (Q(U)/$\\cos\\varphi$) realnie wpływa na rozpływ mocy; tabliczka wnosi wkład '
     + 'zwarciowy i dane do oceny zgodności NC RfG.',
   odznaka: 'Nowe źródło OZE',
 
@@ -70,10 +70,10 @@ export const OZE_STRINGS = {
   katalogLadowanieStopka: 'Ładowanie katalogu przekształtników i aparatury nN — zapis chwilę poczeka.',
   katalogPomoc: 'Tabliczka wnosi napięcie, moc znamionową i zdolność Q — z katalogu (ZERO fizyki w UI).',
   liczba: 'Liczba jednostek',
-  liczbaPomoc: 'Moc zagregowana = liczba × Pmax jednostki; agregacja po stronie backendu.',
+  liczbaPomoc: 'Moc zagregowana = liczba × $P_{\\max}$ jednostki; agregacja po stronie backendu.',
   paramNapiecie: 'Napięcie znamionowe',
   paramMoc: 'Moc znamionowa S',
-  paramPmax: 'Moc czynna Pmax (agregat)',
+  paramPmax: 'Moc czynna $P_{\\max}$ (agregat)',
   // O7: jawna semantyka liczby jednostek — zestaw i suma mocy pozornej z tabliczki.
   paramZestaw: 'Zestaw jednostek',
   paramMocAgregat: 'Moc pozorna S (agregat)',
@@ -88,15 +88,15 @@ export const OZE_STRINGS = {
   regulacjaPomoc:
     'Po co: falownik OZE utrzymuje napięcie i współczynnik mocy w punkcie przyłączenia. '
     + 'Tryb wyznacza, jak źródło oddaje/pobiera moc bierną Q. Wybór realnie wpływa na wynik '
-    + 'rozpływu mocy (kanoniczny model falownika). Stały cosφ — Q proporcjonalna do P wg '
-    + 'zadanego cosφ; Q(U) (napięciowo-jałowa) — Q zależna od napięcia szyny (statyzm); '
+    + 'rozpływu mocy (kanoniczny model falownika). Stały $\\cos\\varphi$ — Q proporcjonalna do P wg '
+    + 'zadanego $\\cos\\varphi$; Q(U) (napięciowo-jałowa) — Q zależna od napięcia szyny (statyzm); '
     + 'P(U) — ograniczanie mocy czynnej od napięcia (nie modelowane w rozpływie ustalonym); '
     + 'regulacja napięcia (U = const) — falownik trzyma zadany moduł napięcia szyny, Q jest '
     + 'WYNIKIEM rozpływu w granicach Q min/Q max (węzeł PV, nie PQ); '
     + '„Bez regulacji" — źródło pasywne ($Q = 0$).',
-  cosPhiCel: 'Docelowy współczynnik mocy cosφ',
+  cosPhiCel: 'Docelowy współczynnik mocy $\\cos\\varphi$',
   cosPhiCelPomoc:
-    'Wartość rządząca trybem stałego cosφ. $\\cos\\varphi < 1$ → falownik oddaje/pobiera Q '
+    'Wartość rządząca trybem stałego $\\cos\\varphi$. $\\cos\\varphi < 1$ → falownik oddaje/pobiera Q '
     + '($Q/|P| = \\tan(\\arccos\\cos\\varphi)$). Sugerowane: 0,95 (NC RfG typ B/C zwykle wymaga zdolności '
     + '±0,95, tj. $\\pm 0{,}3287 \\cdot P_n$). $\\cos\\varphi = 1$ → brak Q (tryb pasywny).',
   quNachylenie: 'Nachylenie Q(U) (statyzm)',
@@ -120,15 +120,15 @@ export const OZE_STRINGS = {
   qMax: 'Q max (oddawanie, nadwzbudzenie)',
   qPomoc:
     'Zakres mocy biernej falownika [Mvar] — klamra dla trybu regulacji. Puste = zakres z '
-    + 'tabliczki katalogowej. NC RfG (typ B/C): zdolność co najmniej $\\pm 0{,}3287 \\cdot P_n$ (cosφ 0,95).',
+    + 'tabliczki katalogowej. NC RfG (typ B/C): zdolność co najmniej $\\pm 0{,}3287 \\cdot P_n$ ($\\cos\\varphi$ 0,95).',
   mocRobocza: 'Moc robocza P (nastawa)',
   mocRoboczaPomoc:
     'Zadana moc czynna [MW] w punkcie pracy studium. Puste = moc znamionowa agregatu '
-    + '(liczba × Pmax). Dla magazynu: dodatnia = rozładowanie, ujemna = ładowanie.',
+    + '(liczba × $P_{\\max}$). Dla magazynu: dodatnia = rozładowanie, ujemna = ładowanie.',
   statyzmPf: 'Statyzm P(f) / LFSM',
   statyzmPfPomoc:
     'Po co: ograniczanie mocy czynnej przy wzroście częstotliwości (LFSM-O), a dla magazynu '
-    + 'także jej podnoszenie przy spadku (LFSM-U). Statyzm [%Pn na %f]: mniejsza wartość = '
+    + 'także jej podnoszenie przy spadku (LFSM-U). Statyzm [%$P_{n}$ na %f]: mniejsza wartość = '
     + 'ostrzejsza reakcja. Realnie zmienia moc czynną w rozpływie przy odchyłce częstotliwości '
     + 'studium (przy 50 Hz brak wpływu). Sugerowane: 5% (typ. 2–12% wg operatora). '
     + 'Puste = bez regulacji P(f).',
@@ -155,7 +155,7 @@ export const OZE_STRINGS = {
     `Profil operatora „${operator}” nie dopuszcza regulacji napięcia (U = const) — tryb `
     + 'przywrócono na „Bez regulacji”.',
   regulacjaPasywnaOstrzezenie:
-    'Wybrany tryb regulacji jest nieaktywny — uzupełnij wartość rządzącą (cosφ albo nachylenie '
+    'Wybrany tryb regulacji jest nieaktywny — uzupełnij wartość rządzącą ($\\cos\\varphi$ albo nachylenie '
     + 'Q(U)), inaczej źródło pracuje pasywnie ($Q = 0$) i wybór trybu nie wpływa na rozpływ.',
   sekcjaBess: 'Praca magazynu (BESS)',
   bessTryb: 'Tryb pracy magazynu',
@@ -259,7 +259,7 @@ export const OZE_STRINGS = {
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
     'Źródło wchodzi do topologii i schematu (SLD); tryb regulacji zasila rozpływ mocy '
-    + 'falownika (Q(U)/cosφ), tabliczka — wkład zwarciowy maszynowy, ocenę siły sieci '
+    + 'falownika (Q(U)/$\\cos\\varphi$), tabliczka — wkład zwarciowy maszynowy, ocenę siły sieci '
     + '(grid strength), adekwatność mocy biernej i badania zgodności NC RfG/PTPiREE.',
 
   // Gotowość
@@ -341,7 +341,7 @@ export const OZE_STRINGS = {
     'Falownik dobierany jest z katalogu (zasada „catalog-first"): tabliczka wnosi napięcie '
     + 'znamionowe, moc pozorną S, zakres mocy biernej Q i certyfikat PTPiREE — bez ręcznego '
     + 'wpisywania parametrów fizycznych w UI (zero fizyki w UI). Moc zagregowana źródła = liczba '
-    + 'jednostek × Pmax jednostki; agregację i wszystkie wyniki liczy backend. Certyfikat PTPiREE '
+    + 'jednostek × $P_{\\max}$ jednostki; agregację i wszystkie wyniki liczy backend. Certyfikat PTPiREE '
     + '(WOŚ — Warunki Ogólne Świadczenia) potwierdza zgodność falownika z wymaganiami NC RfG i jest '
     + 'niezbędny do oceny zgodności w punkcie przyłączenia.',
   teoriaKatalogWymog:
@@ -370,23 +370,23 @@ export const OZE_STRINGS = {
     + '$S_{ef} = \\Sigma S \\cdot k_j$. Puste = 1,0 (pełna jednoczesność).',
   doborObciazalnoscTr: 'Obciążalność TR',
   doborObciazalnoscTrPomoc:
-    'Dopuszczalne obciążenie względne transformatora [pu Sn], np. 1,0 = praca do mocy '
+    'Dopuszczalne obciążenie względne transformatora [pu $S_{n}$], np. 1,0 = praca do mocy '
     + 'znamionowej. Próg doboru: $S_n \\cdot \\text{obciążalność} \\ge S_{wym}$.',
   doborRezerwaPole: 'Rezerwa prądowa aparatu pola',
   doborRezerwaPolePomoc: 'Zapas prądu znamionowego aparatu pola SN ponad prąd TR [pu].',
   // uk% TR blokowego: WYŁĄCZNIE odczyt z propozycji — wartość rządzi katalog typu
   // (materializacja nadpisuje wartość z żądania), więc kontrolka edycji byłaby pozorna.
-  doborUkTr: 'Napięcie zwarcia uk (z katalogu)',
+  doborUkTr: 'Napięcie zwarcia $u_{k}$ (z katalogu)',
   doborMaxDeltaU: 'Dopuszczalna zmiana napięcia',
   doborMaxDeltaUPomoc:
     'Dopuszczalna zmiana napięcia na odcinku kabla SN [%] — kryterium obejmuje MODUŁ zmiany, '
     + 'czyli zarówno spadek, jak i wzrost napięcia (przy generacji wiążący jest wzrost).',
   // V12K-203 — przypadek pracy toru DER sprawdzany w doborze.
-  doborCosPhi: 'cos φ toru',
+  doborCosPhi: '$\\cos\\varphi$ toru',
   doborCosPhiPomoc:
     'Współczynnik mocy falowników w sprawdzanym przypadku pracy. Wyznacza moc pozorną '
-    + '(S = ΣP / cos φ), czyli moc transformatora blokowego, oraz udział mocy biernej w zmianie '
-    + 'napięcia na kablu. cos φ = 1 oznacza pracę bez mocy biernej.',
+    + '(S = ΣP / $\\cos\\varphi$), czyli moc transformatora blokowego, oraz udział mocy biernej w zmianie '
+    + 'napięcia na kablu. $\\cos\\varphi$ = 1 oznacza pracę bez mocy biernej.',
   doborCharakterQ: 'Charakter mocy biernej falownika',
   doborCharakterQPobor: 'Pobór Q (indukcyjny — regulacja Q(U))',
   doborCharakterQOddawanie: 'Oddawanie Q (pojemnościowy)',
@@ -395,8 +395,8 @@ export const OZE_STRINGS = {
     + 'przyłączenia rośnie. Wyborem jest moc bierna: pobór Q (tak działa regulacja Q(U) falownika) '
     + 'TŁUMI wzrost napięcia i pozwala zwykle na mniejszy przekrój; oddawanie Q wzrost powiększa.',
   doborCharakterQBezZnaczenia:
-    'Przy cos φ = 1 falownik nie wymienia mocy biernej (sin φ = 0), więc charakter Q nie wpływa '
-    + 'na dobór. Ustaw cos φ < 1, aby sprawdzić wpływ regulacji Q(U).',
+    'Przy $\\cos\\varphi$ = 1 falownik nie wymienia mocy biernej (sin φ = 0), więc charakter Q nie wpływa '
+    + 'na dobór. Ustaw $\\cos\\varphi$ < 1, aby sprawdzić wpływ regulacji Q(U).',
   doborZmianaNapiecia: (wzrost: boolean) => (wzrost ? 'Wzrost napięcia' : 'Spadek napięcia'),
   doborWzrostInfo:
     'Tor generacji podnosi napięcie w punkcie przyłączenia — to ograniczenie wiodące przy '
@@ -414,10 +414,10 @@ export const OZE_STRINGS = {
   doborEkranUziemienie: 'Uziemienie ekranu kabla SN',
   doborEkranUziemieniePomoc:
     'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
-    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + 'Katalogowe $R_{0}$/$X_{0}$ obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
     + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
   doborObciazalnoscKatalogowa: 'Obciążalność katalogowa Iz',
-  doborObciazalnoscSkorygowana: 'Obciążalność po korekcie I′z',
+  doborObciazalnoscSkorygowana: 'Obciążalność po korekcie $I\'_{z}$',
   doborZalozenieObciazalnosci: 'Założenie obciążalności',
   doborNapiecieSn: 'Napięcie szyny SN',
   doborZaproponuj: 'Zaproponuj dobór',
@@ -437,7 +437,7 @@ export const OZE_STRINGS = {
   teoriaDoborTytul: 'Teoria: dobór toru DER po stronie SN',
   teoriaDoborOpis:
     'Dobór wychodzi z parametrów elektrycznych, nie z rysunku. Moc pozorna źródła '
-    + '$S = \\Sigma P / \\cos\\varphi$ (gdy podano cosφ). Transformator blokowy: najmniejsza moc znamionowa '
+    + '$S = \\Sigma P / \\cos\\varphi$ (gdy podano $\\cos\\varphi$). Transformator blokowy: najmniejsza moc znamionowa '
     + 'spełniająca $S_n \\cdot \\text{obciążalność} \\ge S \\cdot k_j \\cdot (1 + \\text{rezerwa})$ przy zgodnych '
     + 'napięciach stron SN/nN. Prąd znamionowy TR (strona SN) $I_{TR} = S_n / (\\sqrt{3} \\cdot U_{SN})$. Kabel SN: '
     + 'najmniejszy przekrój z $I_z \\ge I_{TR} \\cdot (1 + \\text{rezerwa})$ oraz $\\Delta U\\% \\le \\Delta U_{dop}$, gdzie '
@@ -524,17 +524,17 @@ export const PODSUMOWANIE_STRINGS = {
 /** Teoria + opis osi wykresów charakterystyk NC RfG (poglądowych). */
 export const NCRFG_TEORIA = {
   cosPhi: {
-    tytul: 'Stały współczynnik mocy cosφ',
+    tytul: 'Stały współczynnik mocy $\\cos\\varphi$',
     opis:
-      'Falownik utrzymuje zadany cosφ niezależnie od punktu pracy — moc bierna jest '
-      + 'proporcjonalna do czynnej: $Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$. Przy cosφ = 0,95 daje to '
+      'Falownik utrzymuje zadany $\\cos\\varphi$ niezależnie od punktu pracy — moc bierna jest '
+      + 'proporcjonalna do czynnej: $Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$. Przy $\\cos\\varphi$ = 0,95 daje to '
       + '$|Q| \\approx 0{,}3287 \\cdot P$. Tryb prosty, nie reaguje na napięcie sieci — nadaje się, gdy OSD '
-      + 'zadaje stałą wartość cosφ w punkcie przyłączenia (PPP).',
+      + 'zadaje stałą wartość $\\cos\\varphi$ w punkcie przyłączenia (PPP).',
     wymog:
-      'NC RfG typ B/C: moduł musi mieć zdolność pracy w zakresie co najmniej cosφ 0,95 '
+      'NC RfG typ B/C: moduł musi mieć zdolność pracy w zakresie co najmniej $\\cos\\varphi$ 0,95 '
       + 'indukcyjnie–pojemnościowo ($\\pm 0{,}3287 \\cdot P_n$) przy mocy znamionowej.',
     jakCzytac:
-      'Linia robocza wychodzi z początku pod kątem $\\varphi = \\arccos(\\cos\\varphi)$. Im niższy cosφ, tym '
+      'Linia robocza wychodzi z początku pod kątem $\\varphi = \\arccos(\\cos\\varphi)$. Im niższy $\\cos\\varphi$, tym '
       + 'stromsza linia (więcej Q na jednostkę P). Szary klin = wymagane pasmo zdolności ±0,95.',
   },
   qu: {
@@ -543,14 +543,14 @@ export const NCRFG_TEORIA = {
       'Moc bierna zależy od napięcia w PPP: w paśmie nieczułości (martwej strefie) wokół '
       + 'napięcia znamionowego $Q = 0$; poza pasmem Q rośnie liniowo ze statyzmem. Przy napięciu '
       + 'wyższym od górnej granicy pasma źródło POBIERA Q (rozładowuje sieć), przy niższym od '
-      + 'dolnej — ODDAJE Q (podpiera napięcie). Zakres ograniczają Qmin/Qmax. To podstawowy '
+      + 'dolnej — ODDAJE Q (podpiera napięcie). Zakres ograniczają $Q_{\\min}$/$Q_{\\max}$. To podstawowy '
       + 'tryb wsparcia napięcia lokalnego w sieciach z dużym nasyceniem OZE.',
     wymog:
       'NC RfG: charakterystyka Q(U) z nastawialnym pasmem nieczułości i nachyleniem; typowe '
       + 'pasmo 0,95–1,05 pu, statyzm dobierany przez OSD. Reakcja tylko poza pasmem.',
     jakCzytac:
       'Płaski odcinek na środku = pasmo nieczułości ($Q = 0$). Nachylenie ramion = statyzm '
-      + '(większy = ostrzejsza reakcja). Poziome plateau = ograniczenie Qmin/Qmax.',
+      + '(większy = ostrzejsza reakcja). Poziome plateau = ograniczenie $Q_{\\min}$/$Q_{\\max}$.',
   },
   pf: {
     tytul: 'Statyzm P(f) / LFSM — ograniczanie mocy od częstotliwości',
@@ -572,14 +572,14 @@ export const NCRFG_TEORIA = {
     opis:
       'Falownik trzyma zadany moduł napięcia $|U| = U_{set}$ na swojej szynie (węzeł PV rozpływu '
       + 'mocy) — moc bierna NIE jest tu zadawana, jest WYNIKIEM rozpływu potrzebnym do utrzymania '
-      + 'nastawy. Gdy wymagane Q mieści się w granicach Qmin/Qmax, $|U|$ = nastawa dokładnie. Przy '
+      + 'nastawy. Gdy wymagane Q mieści się w granicach $Q_{\\min}$/$Q_{\\max}$, $|U|$ = nastawa dokładnie. Przy '
       + 'nasyceniu granic falownik traci regulację i przechodzi na stałą, graniczną moc bierną '
       + '(węzeł zmienia się na obciążeniowy — widoczne w wyniku jako przełączenie PV→PQ).',
     wymog:
       'NC RfG dopuszcza tryb regulacji napięcia tylko, gdy profil operatora go wymienia w zdolnych '
       + 'trybach regulacji mocy biernej (voltage_control_modes) — poza tym pasmem nastawa 0,9–1,1 pu.',
     jakCzytac:
-      'Brak charakterystyki Q(U)/cosφ do narysowania — regulator działa na napięciu WPROST '
+      'Brak charakterystyki Q(U)/$\\cos\\varphi$ do narysowania — regulator działa na napięciu WPROST '
       + '(zamknięta pętla), nie na z góry zadanej zależności Q od P lub U.',
   },
   wylaczone: {
@@ -593,7 +593,7 @@ export const NCRFG_TEORIA = {
   osU: 'Napięcie U [pu]',
   osQ: 'Moc bierna Q',
   osF: 'Częstotliwość f [Hz]',
-  osP: 'Moc czynna P/Pn [%]',
+  osP: 'Moc czynna P/$P_{n}$ [%]',
   osPn: 'Moc czynna P [pu]',
   qOddawanie: '+ oddawanie',
   qPobor: '− pobór',

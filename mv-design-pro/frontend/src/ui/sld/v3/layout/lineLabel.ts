@@ -100,7 +100,7 @@ export function formatRatedVoltageKv(ratedVoltageKv: number | null | undefined):
   // Zapis liczby — jedna konwencja rysunku (`liczbaRysunkuPl`, core/text.ts).
   // Dwa miejsca dziesiętne zamiast jednego: katalogowe 20/30 kV wychodzą tak samo,
   // a wartość ułamkowa nie traci cyfry przez zaokrąglenie zapisu.
-  return `Un=${liczbaRysunkuPl(ratedVoltageKv)} kV`;
+  return `$U_{n}$=${liczbaRysunkuPl(ratedVoltageKv)} kV`;
 }
 
 /**

@@ -302,7 +302,7 @@ export function KreatorZrodlaOze() {
     [konwerteryTech],
   );
   const opcjeAparaty = useMemo(
-    () => aparaty.map((a) => ({ id: a.id, etykieta: `${a.name} · Un ${a.u_n_kv} kV · In ${a.i_n_a} A` })),
+    () => aparaty.map((a) => ({ id: a.id, etykieta: `${a.name} · $U_{n}$ ${a.u_n_kv} kV · $I_{n}$ ${a.i_n_a} A` })),
     [aparaty],
   );
   const opcjeTransformatory = useMemo(

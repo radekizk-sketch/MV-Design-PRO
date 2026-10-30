@@ -530,7 +530,7 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     ],
     minimumSizePx: 40,
     lodPolicy: 'zawsze',
-    notes: 'Strona SN u góry (zacisk hv), nN u dołu (lv). Tabliczka (Sn, przekładnia, grupa, uk) jest TEKSTEM obok — moc nie jest kodowana rozmiarem. Brak w pierwowzorze (instalacja nN bez transformatora).',
+    notes: 'Strona SN u góry (zacisk hv), nN u dołu (lv). Tabliczka ($S_{n}$, przekładnia, grupa, $u_{k}$) jest TEKSTEM obok — moc nie jest kodowana rozmiarem. Brak w pierwowzorze (instalacja nN bez transformatora).',
   },
   'cad.przekladnikPradowy': {
     symbolId: 'cad.przekladnikPradowy',
@@ -715,7 +715,7 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     domainType: 'protection_assignment (przekaźnik przypisany do aparatu)',
     functionalClass: 'zabezpieczenie',
     polishName: 'Zabezpieczenie (przekaźnik)',
-    standardReference: 'konwencja dokumentacji zabezpieczeń (IEC 60617: prostokąt urządzenia + znaki wielkości charakterystycznej I>, I>>, I0>, U<, f<, df/dt wewnątrz; pierwowzór: blok wyzwalacza LSI z „I>" i „I>>" przy -QPV1)',
+    standardReference: 'konwencja dokumentacji zabezpieczeń (IEC 60617: prostokąt urządzenia + znaki wielkości charakterystycznej I>, I>>, $I_{0}$>, U<, f<, df/dt wewnątrz; pierwowzór: blok wyzwalacza LSI z „I>" i „I>>" przy -QPV1)',
     verificationStatus: 'DRAFT',
     nominalWidth: 16,
     nominalHeight: 12,
@@ -724,7 +724,7 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     body: [{ k: 'path', d: 'M 0.5 0.5 h 15 v 11 h -15 Z', fill: 'paper' }],
     minimumSizePx: 14,
     lodPolicy: 'od_sieci',
-    notes: 'Prostokąt urządzenia wtórnego połączony kreską kropkowaną z torem (przy przekładniku/aparacie) — jak blok wyzwalacza w pierwowzorze. WEWNĄTRZ znaki funkcji w notacji IEC (I>, I>>, I0>, U<, f<…) z danych przypisania — nanosi je renderer (`wnetrze`), maks. 2 wiersze, pełna lista w panelu odpływu.',
+    notes: 'Prostokąt urządzenia wtórnego połączony kreską kropkowaną z torem (przy przekładniku/aparacie) — jak blok wyzwalacza w pierwowzorze. WEWNĄTRZ znaki funkcji w notacji IEC (I>, I>>, $I_{0}$>, U<, f<…) z danych przypisania — nanosi je renderer (`wnetrze`), maks. 2 wiersze, pełna lista w panelu odpływu.',
   },
 };
 

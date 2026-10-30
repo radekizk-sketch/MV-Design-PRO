@@ -246,14 +246,14 @@ function wlasciwosciLiniiNapowietrznej(el: OverheadLine): WierszWlasciwosci[] {
     ...bezNulli([
       wr('Długość', el.length_km, 'km'),
       wr('Rezystancja R1', el.r_ohm_per_km, 'Ω/km'),
-      wr('Reaktancja X1', el.x_ohm_per_km, 'Ω/km'),
+      wr('Reaktancja $X_{1}$', el.x_ohm_per_km, 'Ω/km'),
       w('Susceptancja B1', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
-      w('Rezystancja R0', el.r0_ohm_per_km ?? null, 'Ω/km'),
-      w('Reaktancja X0', el.x0_ohm_per_km ?? null, 'Ω/km'),
-      w('Susceptancja B0', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
+      w('Rezystancja $R_{0}$', el.r0_ohm_per_km ?? null, 'Ω/km'),
+      w('Reaktancja $X_{0}$', el.x0_ohm_per_km ?? null, 'Ω/km'),
+      w('Susceptancja $B_{0}$', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
       w('Materiał przewodu', el.conductor_material ?? null),
       w('Przekrój', el.cross_section_mm2 ?? null, 'mm²'),
-      w('Prąd cieplny 1s (Ith)', el.ith_1s_a ?? null, 'A'),
+      w('Prąd cieplny 1s ($I_{th}$)', el.ith_1s_a ?? null, 'A'),
       ...wlasciwosciParametrowZGeometrii(el),
     ]),
   ];
@@ -265,17 +265,17 @@ function wlasciwosciKabla(el: Cable): WierszWlasciwosci[] {
     ...bezNulli([
       wr('Długość', el.length_km, 'km'),
       wr('Rezystancja R1', el.r_ohm_per_km, 'Ω/km'),
-      wr('Reaktancja X1', el.x_ohm_per_km, 'Ω/km'),
+      wr('Reaktancja $X_{1}$', el.x_ohm_per_km, 'Ω/km'),
       w('Susceptancja B1', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
-      w('Rezystancja R0', el.r0_ohm_per_km ?? null, 'Ω/km'),
-      w('Reaktancja X0', el.x0_ohm_per_km ?? null, 'Ω/km'),
-      w('Susceptancja B0', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
+      w('Rezystancja $R_{0}$', el.r0_ohm_per_km ?? null, 'Ω/km'),
+      w('Reaktancja $X_{0}$', el.x0_ohm_per_km ?? null, 'Ω/km'),
+      w('Susceptancja $B_{0}$', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
       w('Materiał przewodu', el.conductor_material ?? null),
       w('Przekrój', el.cross_section_mm2 ?? null, 'mm²'),
       w('Izolacja', el.insulation ?? null),
       w('Liczba żył', el.number_of_cores ?? null),
       w('Tory równoległe', el.n_parallel ?? null),
-      w('Prąd cieplny 1s (Ith)', el.ith_1s_a ?? null, 'A'),
+      w('Prąd cieplny 1s ($I_{th}$)', el.ith_1s_a ?? null, 'A'),
     ]),
   ];
 }
@@ -327,10 +327,10 @@ function wlasciwosciTransformatora(el: Transformer): WierszWlasciwosci[] {
     wr('Moc znamionowa', el.sn_mva, 'MVA'),
     wr('Napięcie GN', el.uhv_kv, 'kV'),
     wr('Napięcie DN', el.ulv_kv, 'kV'),
-    wr('Napięcie zwarcia uk', el.uk_percent, '%'),
-    wr('Straty zwarcia Pk', el.pk_kw, 'kW'),
-    w('Straty jałowe P0', el.p0_kw ?? null, 'kW'),
-    w('Prąd jałowy I0', el.i0_percent ?? null, '%'),
+    wr('Napięcie zwarcia $u_{k}$', el.uk_percent, '%'),
+    wr('Straty zwarcia $P_{k}$', el.pk_kw, 'kW'),
+    w('Straty jałowe $P_{0}$', el.p0_kw ?? null, 'kW'),
+    w('Prąd jałowy $I_{0}$', el.i0_percent ?? null, '%'),
     w('Grupa połączeń', el.vector_group ?? null),
     w('Jednostki równoległe', el.n_parallel ?? null),
   ]);
@@ -339,8 +339,8 @@ function wlasciwosciTransformatora(el: Transformer): WierszWlasciwosci[] {
 function wlasciwosciZrodla(el: Source): WierszWlasciwosci[] {
   return bezNulli([
     wr('Model źródła', el.model),
-    w('Moc zwarciowa Sk″', el.sk3_mva ?? null, 'MVA'),
-    w('Prąd zwarciowy Ik″', el.ik3_ka ?? null, 'kA'),
+    w('Moc zwarciowa $S_{k}\'\'$', el.sk3_mva ?? null, 'MVA'),
+    w('Prąd zwarciowy $I_{k}\'\'$', el.ik3_ka ?? null, 'kA'),
     w('Stosunek R/X', el.rx_ratio ?? null),
     w('Moc zwarciowa MIN', el.sk3_min_mva ?? null, 'MVA'),
     w('Prąd zwarciowy MIN', el.ik3_min_ka ?? null, 'kA'),
@@ -392,8 +392,8 @@ function wlasciwosciZespolu(el: ZespolUziemiajacy): WierszWlasciwosci[] {
     w('Grupa połączeń', el.grupa_polaczen ?? null),
     w('Napięcie znamionowe', el.u_n_kv ?? null, 'kV'),
     w('Moc znamionowa', el.s_n_kva ?? null, 'kVA'),
-    w('Rezystancja zerowa R0', el.r0_ohm ?? null, 'Ω'),
-    w('Reaktancja zerowa X0', el.x0_ohm ?? null, 'Ω'),
+    w('Rezystancja zerowa $R_{0}$', el.r0_ohm ?? null, 'Ω'),
+    w('Reaktancja zerowa $X_{0}$', el.x0_ohm ?? null, 'Ω'),
     w('Dławik: prąd minimalny', dlawik?.i_min_a ?? null, 'A'),
     w('Dławik: prąd maksymalny', dlawik?.i_max_a ?? null, 'A'),
     w('Dławik: nastawa', dlawik?.i_nastawy_a ?? null, 'A'),
@@ -713,10 +713,10 @@ function wynikiZwarcioweElementu(
   const rzad = wynik?.rows?.find((w) => (w.element_id ?? w.target_id) === id);
   if (!rzad) return null;
   const wiersze = [
-    wiersz('Prąd zwarciowy początkowy Ik″', liczbaWyniku(rzad.ikss_ka, 3), 'kA'),
-    wiersz('Prąd udarowy ip', liczbaWyniku(rzad.ip_ka, 3), 'kA'),
-    wiersz('Prąd cieplny Ith', liczbaWyniku(rzad.ith_ka, 3), 'kA'),
-    wiersz('Moc zwarciowa Sk″', liczbaWyniku(rzad.sk_mva, 2), 'MVA'),
+    wiersz('Prąd zwarciowy początkowy $I_{k}\'\'$', liczbaWyniku(rzad.ikss_ka, 3), 'kA'),
+    wiersz('Prąd udarowy $i_{p}$', liczbaWyniku(rzad.ip_ka, 3), 'kA'),
+    wiersz('Prąd cieplny $I_{th}$', liczbaWyniku(rzad.ith_ka, 3), 'kA'),
+    wiersz('Moc zwarciowa $S_{k}\'\'$', liczbaWyniku(rzad.sk_mva, 2), 'MVA'),
   ].filter((w): w is WierszWlasciwosci => w !== null);
   return wiersze.length > 0
     ? { id: 'wynik-zwarcie', tytul: 'Zwarcie', wiersze }

@@ -2356,7 +2356,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   label="Krzywa LVRT"
                   value={
                     selectedNcRfgOperator
-                      ? `${selectedNcRfgOperator.ride_through.lvrt.length} punktów t-U/Un`
+                      ? `${selectedNcRfgOperator.ride_through.lvrt.length} punktów t-U/$U_{n}$`
                       : ''
                   }
                 />
@@ -2364,7 +2364,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   label="Krzywa HVRT"
                   value={
                     selectedNcRfgOperator
-                      ? `${selectedNcRfgOperator.ride_through.hvrt.length} punktów t-U/Un`
+                      ? `${selectedNcRfgOperator.ride_through.hvrt.length} punktów t-U/$U_{n}$`
                       : ''
                   }
                 />

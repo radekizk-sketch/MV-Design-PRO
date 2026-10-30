@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import { fetchCtTypes, fetchDerConverterTypes, fetchProtectionDeviceTypes, fetchVtTypes } from '../../catalog/api';
 import type { ConverterType, CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../catalog/types';
@@ -700,8 +701,12 @@ function TorMaszynyTurbiny({ turbina }: { readonly turbina: ConverterType | null
 function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
   return (
     <div className="grid grid-cols-1 gap-0.5 border-b border-scada-border/60 py-1.5 last:border-b-0 sm:grid-cols-[170px_1fr] sm:gap-3">
-      <dt className="text-scada-muted">{label}</dt>
-      <dd className="break-words font-medium text-scada-text">{value}</dd>
+      <dt className="text-scada-muted">
+        <TekstZWzorami tekst={label} />
+      </dt>
+      <dd className="break-words font-medium text-scada-text">
+        <TekstZWzorami tekst={value} />
+      </dd>
     </div>
   );
 }
@@ -709,7 +714,7 @@ function FieldRow({ label, value }: { readonly label: string; readonly value: st
 function EngineeringNote({ children }: { readonly children: string }) {
   return (
     <p className="mt-3 border-l-2 border-sygnal-info bg-sygnal-info-tlo px-3 py-2 text-[length:var(--mvd-font-size-data)] text-sygnal-info-tusz">
-      {children}
+      <TekstZWzorami tekst={children} />
     </p>
   );
 }
@@ -851,11 +856,11 @@ function buildDerCards(
         <dl>
           <FieldRow
             label="Charakterystyka Q(U)"
-            value={ncRfg ? `${ncRfg.operator_name_pl}: zakres ${(ncRfg.reactive_power.q_range_pct_pn_min * 100).toFixed(0)}…${(ncRfg.reactive_power.q_range_pct_pn_max * 100).toFixed(0)}% Pn` : 'wg profilu operatora'}
+            value={ncRfg ? `${ncRfg.operator_name_pl}: zakres ${(ncRfg.reactive_power.q_range_pct_pn_min * 100).toFixed(0)}…${(ncRfg.reactive_power.q_range_pct_pn_max * 100).toFixed(0)}% $P_{n}$` : 'wg profilu operatora'}
           />
           <FieldRow label="Charakterystyka P(f)" value={pfCurveLabel(der.profiles.pf_curve_ref, pfCurves)} />
           <FieldRow
-            label="Zakres cos φ"
+            label="Zakres $\cos\varphi$"
             value={ncRfg ? `min. ${ncRfg.reactive_power.cos_phi_min.toFixed(2)}` : 'wg profilu operatora'}
           />
           <FieldRow label="Ograniczenie eksportu" value="do wyznaczenia w rozpływie mocy" />
@@ -983,7 +988,7 @@ function PvInverterCatalogPanel({
           <FieldRow label="Zakres bazy źródłowej" value={ptpireeSourceSummary(rejestr)} />
         </dl>
         <EngineeringNote>
-          Certyfikat PTPiREE potwierdza wpis urządzenia w wykazie NC RfG/WOS. Parametry Un, Sn, Ik, FRT i model dynamiczny nadal muszą pochodzić z karty katalogowej lub typu katalogowego.
+          Certyfikat PTPiREE potwierdza wpis urządzenia w wykazie NC RfG/WOS. Parametry $U_{n}$, $S_{n}$, $I_{k}$, FRT i model dynamiczny nadal muszą pochodzić z karty katalogowej lub typu katalogowego.
         </EngineeringNote>
       </div>
 

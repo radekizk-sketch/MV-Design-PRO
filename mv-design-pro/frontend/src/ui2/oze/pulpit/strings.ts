@@ -89,7 +89,7 @@ export const PULPIT_STRINGS = {
   magazynPojemnosc: 'Pojemność energetyczna',
   magazynMoc: 'Moc znamionowa ($P_{\\max}$)',
   magazynZakresQ: 'Zakres mocy biernej',
-  magazynCosphi: 'Zakres cosφ',
+  magazynCosphi: 'Zakres $\\cos\\varphi$',
   magazynTrybRegulacji: 'Tryb regulacji',
   magazynModel: 'Model konwertera',
   identyfikatorAnalizy: 'Identyfikator analizy',
@@ -101,7 +101,7 @@ export const PULPIT_STRINGS = {
   sekcjaZdolnosc: 'Zdolność punktu przyłączenia (siła sieci)',
   silaBrakPrzebiegu: 'Przeprowadź analizę zwarciową',
   silaBrakOpis:
-    'Ocena siły sieci wymaga zakończonego przebiegu zwarciowego (moc zwarciowa S″k w węzłach). ' +
+    'Ocena siły sieci wymaga zakończonego przebiegu zwarciowego (moc zwarciowa $S_{k}\'\'$ w węzłach). ' +
     'Uruchom analizę zwarciową w przypadku obliczeniowym — pulpit wskaże wynik automatycznie.',
   silaLadowanie: 'Ładowanie oceny siły sieci…',
   silaBlad: 'Nie udało się pobrać oceny siły sieci',
@@ -112,7 +112,7 @@ export const PULPIT_STRINGS = {
   silaNieobliczone: 'Nieobliczone',
   silaWezly: 'Węzły przyłączenia',
   silaScr: 'SCR',
-  silaSsc: 'Moc zwarciowa S″k',
+  silaSsc: 'Moc zwarciowa $S_{k}\'\'$',
   silaSinst: 'Moc zainstalowana',
   silaNapiecie: 'Napięcie znamionowe',
   silaWerdykt: 'Werdykt',

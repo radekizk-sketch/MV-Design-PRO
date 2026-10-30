@@ -32,7 +32,7 @@ interface ResultsExportProps {
 const BUS_CSV_COLUMNS = [
   { key: 'name', label: 'Nazwa' },
   { key: 'bus_id', label: 'ID wezla' },
-  { key: 'un_kv', label: 'Un [kV]' },
+  { key: 'un_kv', label: '$U_{n}$ [kV]' },
   { key: 'u_kv', label: 'U [kV]' },
   { key: 'u_pu', label: 'U [pu]' },
   { key: 'angle_deg', label: 'Kat [°]' },
@@ -56,10 +56,10 @@ const SHORT_CIRCUIT_CSV_COLUMNS = [
   { key: 'target_name', label: 'Wezel zwarcia' },
   { key: 'target_id', label: 'ID wezla' },
   { key: 'fault_type', label: 'Rodzaj zwarcia' },
-  { key: 'ikss_ka', label: "Ik'' [kA]" },
-  { key: 'ip_ka', label: 'ip [kA]' },
-  { key: 'ith_ka', label: 'Ith [kA]' },
-  { key: 'sk_mva', label: "Sk'' [MVA]" },
+  { key: 'ikss_ka', label: "$I_{k}''$ [kA]" },
+  { key: 'ip_ka', label: '$i_{p}$ [kA]' },
+  { key: 'ith_ka', label: '$I_{th}$ [kA]' },
+  { key: 'sk_mva', label: "$S_{k}''$ [MVA]" },
 ] as const;
 
 const TAB_LABELS: Record<ResultsInspectorTab, string> = {

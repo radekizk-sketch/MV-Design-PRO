@@ -22,8 +22,8 @@ export const GENERATOR_SN_STRINGS = {
   typBlad: 'Nie udało się pobrać katalogu generatorów synchronicznych.',
   katalogPusty:
     'Katalog nie zawiera typów generatorów synchronicznych dostępnych dla projektu — podaj tabliczkę ręcznie.',
-  ratedMva: 'Moc pozorna znamionowa Sn',
-  ratedKv: 'Napięcie znamionowe Un',
+  ratedMva: 'Moc pozorna znamionowa $S_{n}$',
+  ratedKv: 'Napięcie znamionowe $U_{n}$',
   ratedKvPomoc: 'Puste = napięcie szyny (założenie robocze zapisane przy elemencie).',
   tabliczkaQmin: 'Q min z tabliczki',
   tabliczkaQmax: 'Q max z tabliczki',

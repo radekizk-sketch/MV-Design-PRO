@@ -1217,7 +1217,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
           <text x={xText} y={node.y + step} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}>{`${plNumber(uhv)}/${plNumber(ulv)} kV${group ? ` · ${group}` : ''}`}</text>
         ) : null}
         {uk != null && pokazTabliczke ? (
-          <text x={xText} y={node.y + 2 * step} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}>{`uk = ${plNumber(uk)}%`}</text>
+          <text x={xText} y={node.y + 2 * step} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}>{`$u_{k}$ = ${plNumber(uk)}%`}</text>
         ) : null}
         {/* Zaciski jawne (§9): SN u góry, nN u dołu glifu. */}
         {pokazTabliczke ? (
@@ -1430,10 +1430,10 @@ function VerdictDot({ node, ctx, tone, overlay, status }: { readonly node: LvDom
 }
 
 const SC_METRICS: readonly { readonly code: string; readonly label: string }[] = [
-  { code: 'IK_3F_A', label: 'Ik″3' },
-  { code: 'IK_1F_A', label: 'Ik″1' },
-  { code: 'IP_A', label: 'ip' },
-  { code: 'ITH_A', label: 'Ith' },
+  { code: 'IK_3F_A', label: '$I_{k3}\'\'$' },
+  { code: 'IK_1F_A', label: '$I_{k1}\'\'$' },
+  { code: 'IP_A', label: '$i_{p}$' },
+  { code: 'ITH_A', label: '$I_{th}$' },
 ];
 
 function BusResultBadge({ node, ctx, overlay, payload, outdated, kotwica }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku; readonly overlay: 'loads' | 'shortCircuit'; readonly payload: RawOverlayPayload | null; readonly outdated: boolean; readonly kotwica: KotwicaPlakietki }): JSX.Element | null {

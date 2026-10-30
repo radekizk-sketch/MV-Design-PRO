@@ -227,7 +227,7 @@ function buildBayCatalogSection(
         unit: 'kV',
         source: 'catalog',
       },
-      { key: 'um_classes', label: 'Klasy napięciowe Um', value: joinNumbers(rodzina.um_classes_kv), unit: 'kV', source: 'catalog' },
+      { key: 'um_classes', label: 'Klasy napięciowe $U_{m}$', value: joinNumbers(rodzina.um_classes_kv), unit: 'kV', source: 'catalog' },
       {
         key: 'family_buildable',
         label: 'Dopuszczona do budowania konfiguracji',
@@ -1686,7 +1686,7 @@ function buildAdvancedConverterSections(
           },
           {
             key: 'pn_kw',
-            label: 'Moc znamionowa Pn',
+            label: 'Moc znamionowa $P_{n}$',
             value: catalogPowerKw,
             unit: 'kW',
             source: hasCatalog ? 'catalog' : undefined,
@@ -1747,7 +1747,7 @@ function buildAdvancedConverterSections(
             label: 'Regulacja Q(U)',
             value: ncRfgProfile
               ? `Q ${ncRfgProfile.reactive_power.q_range_pct_pn_min * 100}...`
-                + `${ncRfgProfile.reactive_power.q_range_pct_pn_max * 100}% Pn`
+                + `${ncRfgProfile.reactive_power.q_range_pct_pn_max * 100}% $P_{n}$`
               : 'do konfiguracji',
             source: ncRfgProfile ? 'catalog' : undefined,
           },
@@ -1760,7 +1760,7 @@ function buildAdvancedConverterSections(
           },
           {
             key: 'cos_phi',
-            label: 'Minimalny cos φ',
+            label: 'Minimalny $\\cos\\varphi$',
             value: ncRfgProfile?.reactive_power.cos_phi_min ?? null,
             source: ncRfgProfile ? 'catalog' : undefined,
           },
@@ -1777,13 +1777,13 @@ function buildAdvancedConverterSections(
             // punktów t-U/Un profilu operatora, nie etykietę z usuniętego katalogu.
             key: 'lvrt',
             label: 'Krzywa LVRT',
-            value: ncRfgProfile ? `${ncRfgProfile.ride_through.lvrt.length} punktów t-U/Un` : 'do konfiguracji',
+            value: ncRfgProfile ? `${ncRfgProfile.ride_through.lvrt.length} punktów t-U/$U_{n}$` : 'do konfiguracji',
             source: lvrtRef ? 'catalog' : undefined,
           },
           {
             key: 'hvrt',
             label: 'Krzywa HVRT',
-            value: ncRfgProfile ? `${ncRfgProfile.ride_through.hvrt.length} punktów t-U/Un` : 'do konfiguracji',
+            value: ncRfgProfile ? `${ncRfgProfile.ride_through.hvrt.length} punktów t-U/$U_{n}$` : 'do konfiguracji',
             source: hvrtRef ? 'catalog' : undefined,
           },
           {
@@ -1919,14 +1919,14 @@ function buildSemanticGpzSections(
       label: 'Parametry sieci',
       fields: [
         { key: 'bus_voltage_kv', label: 'Napięcie szyny', value: sourceBus?.voltage_kv ?? null, unit: 'kV' },
-        { key: 'sk3_mva', label: 'Moc zwarciowa Sk3', value: source.sk3_mva ?? null, unit: 'MVA' },
+        { key: 'sk3_mva', label: 'Moc zwarciowa $S_{k3}\'\'$', value: source.sk3_mva ?? null, unit: 'MVA' },
         { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
         { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'ohm' },
         { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'ohm' },
         // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — brak = scenariusz
         // MIN biegu liczony z danych MAX z jawnym założeniem source.sk_min_missing.
-        { key: 'sk3_min_mva', label: 'Moc zwarciowa Sk3 (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
-        { key: 'ik3_min_ka', label: 'Prąd zwarciowy Ik3 (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
+        { key: 'sk3_min_mva', label: 'Moc zwarciowa $S_{k3}\'\'$ (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
+        { key: 'ik3_min_ka', label: 'Prąd zwarciowy $I_{k3}\'\'$ (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
         { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: source.rx_ratio_min ?? null },
         // CV-4.3 K7c: napięcie zadane szyny bilansującej — brak = znamionowe
         // (1,0 p.u.), zero fabrykacji.
@@ -2315,8 +2315,8 @@ function buildSectionsForElement(
     sections.push({
       id: 'electrical', label: 'Parametry elektryczne', fields: [
         { key: 'sn_mva', label: 'Moc znamionowa', value: transformer.sn_mva, unit: 'MVA', source: 'catalog' },
-        { key: 'uk_percent', label: 'Napięcie zwarcia uk', value: transformer.uk_percent, unit: '%', source: 'catalog' },
-        { key: 'pk_kw', label: 'Straty zwarciowe Pk', value: transformer.pk_kw, unit: 'kW', source: 'catalog' },
+        { key: 'uk_percent', label: 'Napięcie zwarcia $u_{k}$', value: transformer.uk_percent, unit: '%', source: 'catalog' },
+        { key: 'pk_kw', label: 'Straty zwarciowe $P_{k}$', value: transformer.pk_kw, unit: 'kW', source: 'catalog' },
         { key: 'tap_position', label: 'Pozycja zaczepu', value: transformer.tap_position ?? 0 },
         { key: 'vector_group', label: 'Grupa wektorowa', value: transformer.vector_group ?? '?', source: 'catalog' },
       ],
@@ -2363,14 +2363,14 @@ function buildSectionsForElement(
     sections.push({
       id: 'electrical', label: 'Parametry sieci', fields: [
         { key: 'bus_voltage_kv', label: 'Napięcie szyny', value: sourceBus?.voltage_kv ?? null, unit: 'kV' },
-        { key: 'sk3_mva', label: 'Moc zwarciowa Sk3', value: source.sk3_mva ?? null, unit: 'MVA' },
+        { key: 'sk3_mva', label: 'Moc zwarciowa $S_{k3}\'\'$', value: source.sk3_mva ?? null, unit: 'MVA' },
         { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
         { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'Ω' },
         { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'Ω' },
         // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — brak = scenariusz
         // MIN biegu liczony z danych MAX z jawnym założeniem source.sk_min_missing.
-        { key: 'sk3_min_mva', label: 'Moc zwarciowa Sk3 (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
-        { key: 'ik3_min_ka', label: 'Prąd zwarciowy Ik3 (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
+        { key: 'sk3_min_mva', label: 'Moc zwarciowa $S_{k3}\'\'$ (MIN)', value: source.sk3_min_mva ?? null, unit: 'MVA' },
+        { key: 'ik3_min_ka', label: 'Prąd zwarciowy $I_{k3}\'\'$ (MIN)', value: source.ik3_min_ka ?? null, unit: 'kA' },
         { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: source.rx_ratio_min ?? null },
         // CV-4.3 K7c: napięcie zadane szyny bilansującej — brak = znamionowe
         // (1,0 p.u.), zero fabrykacji.

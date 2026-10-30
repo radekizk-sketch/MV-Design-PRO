@@ -206,8 +206,8 @@ function buildTransformerCatalogSummary(
     `${formatMva(type.rated_power_mva)} MVA`,
     `${type.voltage_hv_kv}/${type.voltage_lv_kv} kV`,
     type.vector_group,
-    `uk ${type.uk_percent}%`,
-    `Pk ${type.pk_kw} kW`,
+    `$u_{k}$ ${type.uk_percent}%`,
+    `$P_{k}$ ${type.pk_kw} kW`,
     powerStatus,
   ].join(' · ');
 }

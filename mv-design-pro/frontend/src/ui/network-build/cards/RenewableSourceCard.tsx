@@ -255,7 +255,7 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
                     },
                     {
                       key: 'blocking_tr_uk',
-                      label: 'Uk trafo blokowego',
+                      label: '$u_{k}$ trafo blokowego',
                       value: blockingTransformer.uk_percent,
                       unit: '%',
                       source: 'catalog' as const,

@@ -94,7 +94,7 @@ export const ENGINEER_TOOLTIPS: Record<string, EngineerTooltip> = {
     norm: 'IEC 62116, NC RfG',
   },
   oze_cos_phi: {
-    text: 'Charakterystyka cos φ(P) — sterowanie współczynnikiem mocy zależnie od mocy czynnej.',
+    text: 'Charakterystyka $\\cos\\varphi$(P) — sterowanie współczynnikiem mocy zależnie od mocy czynnej.',
     norm: 'NC RfG Art. 21',
   },
   oze_q_of_u: {

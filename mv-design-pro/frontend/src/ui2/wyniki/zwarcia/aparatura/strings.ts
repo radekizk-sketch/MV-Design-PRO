@@ -18,19 +18,19 @@ export const APARATURA_STRINGS = {
 
   wejsciaEyebrow: 'DANE WEJŚCIOWE',
   wejsciePrady: 'Prądy zwarciowe pól',
-  wejsciePradyOpis: 'ip i Ith w punkcie zabudowy każdego pola',
+  wejsciePradyOpis: '$i_{p}$ i $I_{th}$ w punkcie zabudowy każdego pola',
   wejscieStacja: 'Stacja punktu zwarcia',
   wejsciePola: 'Pola z aparaturą do sprawdzenia',
   zrodloPradow: 'z wyniku tego biegu',
   // Prądy jednego pola (wiersz biegu dla punktu zabudowy pola).
   pradyPola: 'Prądy w punkcie zabudowy pola',
   pradyPunkt: 'punkt',
-  pradyIp: 'ip',
-  pradyIth: 'Ith',
+  pradyIp: '$i_{p}$',
+  pradyIth: '$I_{th}$',
   // Wielkości kryterium wyłączania (karta SC-IB-ITH-ZRODLA) — wartości z wiersza biegu.
-  pradyIb: 'Ib',
-  pradyIdc: 'iDC(tb)',
-  pradyTb: 'tb',
+  pradyIb: '$I_{b}$',
+  pradyIdc: '$i_{DC}$($t_{b}$)',
+  pradyTb: '$t_{b}$',
   pradyTbBrak: 'nie podano',
   zrodloAparatu: 'z modelu i konfiguracji stacji',
   // Źródło aparatu per wiersz — inżynier musi wiedzieć, CO ocenia (KD-6).

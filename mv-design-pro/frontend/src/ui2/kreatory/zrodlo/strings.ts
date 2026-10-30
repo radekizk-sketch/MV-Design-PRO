@@ -18,7 +18,7 @@ export const ZRODLO_STRINGS = {
   katalogLadowanie: 'Ładowanie katalogu źródeł…',
   katalogBlad: 'Nie udało się pobrać katalogu źródeł systemowych SN.',
   katalogPomoc:
-    'Pakiet katalogowy GPZ wnosi napięcie SN, moc zwarciową Sk″ i stosunek R/X. '
+    'Pakiet katalogowy GPZ wnosi napięcie SN, moc zwarciową $S_{k}\'\'$ i stosunek R/X. '
     + 'Wartości liczbowe zawsze pochodzą z katalogu — nie z ręcznego wpisu.',
   zrodloParametrow: 'Źródło parametrów',
   powiazanieKatalogowe: 'Powiązanie katalogowe',
@@ -56,26 +56,26 @@ export const ZRODLO_STRINGS = {
 
   // Parametry zwarciowe.
   zwarcieTytul: 'Parametry zwarciowe na szynach SN',
-  sk3: 'Moc zwarciowa Sk″',
+  sk3: 'Moc zwarciowa $S_{k}\'\'$',
   sk3Pomoc: 'Początkowa symetryczna moc zwarciowa 3-faz (IEC 60909). Wpływa na dobór aparatury i zabezpieczeń.',
   rx: 'Stosunek R/X',
-  rxPomoc: 'Stosunek rezystancji do reaktancji źródła (IEC 60909). Wpływa na prąd udarowy ip.',
-  czasCieplny: 'Czas cieplny tk',
+  rxPomoc: 'Stosunek rezystancji do reaktancji źródła (IEC 60909). Wpływa na prąd udarowy $i_{p}$.',
+  czasCieplny: 'Czas cieplny $t_{k}$',
 
   // Scenariusz MIN (CV-4.3 K7): warunki przyłączenia OSD — minimalna moc/prąd zwarciowy.
   zwarcieMinTytul: 'Scenariusz MIN (warunki przyłączenia OSD)',
   zwarcieMinOpis:
     'Warunki przyłączenia OSD — minimalna moc zwarciowa; brak = scenariusz MIN liczony '
     + 'z danych maksymalnych (założenie niekonserwatywne dla czułości zabezpieczeń).',
-  sk3Min: 'Sk″min',
+  sk3Min: '$S_{k,\\min}\'\'$',
   sk3MinPomoc:
     'Minimalna symetryczna moc zwarciowa 3-faz (IEC 60909-0 §6.2.1, $c_{\\min}$). Podaj '
     + '$S_{k,\\min}^{\\prime\\prime}$ albo $I_{k,\\min}^{\\prime\\prime}$ — jedno wystarczy.',
-  ik3Min: 'Ik″min',
-  ik3MinPomoc: 'Minimalny prąd zwarciowy 3-faz — alternatywa dla Sk″min, gdy OSD podaje prąd, nie moc.',
+  ik3Min: '$I_{k,\\min}\'\'$',
+  ik3MinPomoc: 'Minimalny prąd zwarciowy 3-faz — alternatywa dla $S_{k,\\min}\'\'$, gdy OSD podaje prąd, nie moc.',
   rxMin: 'Stosunek R/X (MIN)',
   rxMinPomoc:
-    'Stosunek R/X dla scenariusza MIN. Wymaga podanego Sk″min albo Ik″min — bez nich '
+    'Stosunek R/X dla scenariusza MIN. Wymaga podanego $S_{k,\\min}\'\'$ albo $I_{k,\\min}\'\'$ — bez nich '
     + 'nie ma zastosowania (scenariusz MIN liczony z danych maksymalnych).',
 
   // Napięcie zadane szyny bilansującej (CV-4.3 K7c) — niezależne od scenariusza MIN.
@@ -111,32 +111,32 @@ export const ZRODLO_STRINGS = {
 
   // Składowa zerowa (advanced).
   zeroTytul: 'Składowa zerowa sieci 110 kV',
-  zeroToggle: 'Definiuj R0/X0 sieci 110 kV dla obliczeń doziemnych',
+  zeroToggle: 'Definiuj $R_{0}$/$X_{0}$ sieci 110 kV dla obliczeń doziemnych',
   podsumIk1ZespolSn: 'z zespołu uziemiającego sekcji (bieg zwarć)',
-  r0: 'R0',
-  x0: 'X0',
-  z0z1: 'Z0/Z1',
+  r0: '$R_{0}$',
+  x0: '$X_{0}$',
+  z0z1: '$Z_{0}$/$Z_{1}$',
 
   // Podsumowanie.
   podsumTytul: 'Podsumowanie obliczone (backend)',
-  podsumSk: 'Sk″ (SN)',
-  podsumIk3: 'Ik″ (3-faz. maks.)',
-  podsumIk1: 'Ik″ (1-faz. maks.)',
+  podsumSk: '$S_{k}\'\'$ (SN)',
+  podsumIk3: '$I_{k}\'\'$ (3-faz. maks.)',
+  podsumIk1: '$I_{k}\'\'$ (1-faz. maks.)',
   podsumKappa: 'κ (IEC 60909)',
-  podsumIp: 'ip (3-faz. maks.)',
-  podsumIth: 'Ith (3-faz., tk)',
-  podsumZ1: 'Z1 źródła',
-  podsumZ0: 'Z0 źródła',
+  podsumIp: '$i_{p}$ (3-faz. maks.)',
+  podsumIth: '$I_{th}$ (3-faz., $t_{k}$)',
+  podsumZ1: '$Z_{1}$ źródła',
+  podsumZ0: '$Z_{0}$ źródła',
   // Scenariusz MIN (CV-4.3 K7) — te same wielkości co powyżej, policzone z danych MIN
   // (renderowane WYŁĄCZNIE gdy backend zwrócił blok `scenariusz_min`, zero fabrykacji).
-  podsumSkMin: 'Sk″ (SN, min.)',
-  podsumIk3Min: 'Ik″ (3-faz. min.)',
-  podsumIk1Min: 'Ik″ (1-faz. min.)',
+  podsumSkMin: '$S_{k}\'\'$ (SN, min.)',
+  podsumIk3Min: '$I_{k}\'\'$ (3-faz. min.)',
+  podsumIk1Min: '$I_{k}\'\'$ (1-faz. min.)',
   podsumKappaMin: 'κ (min.)',
-  podsumIpMin: 'ip (3-faz. min.)',
-  podsumIthMin: 'Ith (3-faz. min., tk)',
-  podsumZ1Min: 'Z1 źródła (min.)',
-  podsumZ0Min: 'Z0 źródła (min.)',
+  podsumIpMin: '$i_{p}$ (3-faz. min.)',
+  podsumIthMin: '$I_{th}$ (3-faz. min., $t_{k}$)',
+  podsumZ1Min: '$Z_{1}$ źródła (min.)',
+  podsumZ0Min: '$Z_{0}$ źródła (min.)',
   podsumZrodlo: 'Źródło wyników',
   podsumZrodloWartosc: 'Obliczenie IEC 60909 po stronie serwera',
   podsumBrak: 'nie wyznaczono',
@@ -173,10 +173,10 @@ export const ZRODLO_STRINGS = {
   stronaSn: 'Strona SN',
   stronaHv: 'Strona 110 kV',
   trybParamTytul: 'Postać parametru zwarciowego',
-  trybMoc: 'Moc zwarciowa Sk″',
+  trybMoc: 'Moc zwarciowa $S_{k}\'\'$',
   trybImpedancja: 'Impedancja R + jX',
   napiecieHv: 'Napięcie szyny 110 kV',
-  sk3Hv: 'Moc zwarciowa Sk″ (110 kV)',
+  sk3Hv: 'Moc zwarciowa $S_{k}\'\'$ (110 kV)',
   rOhm: 'Rezystancja R',
   xOhm: 'Reaktancja X',
 
@@ -184,7 +184,7 @@ export const ZRODLO_STRINGS = {
   transformatoryOpis:
     'Liczba i typ transformatorów 110/SN łączących wspólną szynę 110 kV (na niej równoważnik '
     + 'sieci) z sekcjami SN — transformator n zasila sekcję n (po kolei, cyklicznie). Parametry '
-    + '(Sn, uk, grupa połączeń) pochodzą z katalogu; rozpływ przez każdy transformator i wkłady '
+    + '($S_{n}$, $u_{k}$, grupa połączeń) pochodzą z katalogu; rozpływ przez każdy transformator i wkłady '
     + 'zwarciowe liczy backend dla rzeczywistego stanu sprzęgła.',
   transformatoryPozaModelem:
     'Równoważnik sieci podany na szynach SN (z katalogu albo ręcznie po stronie SN) to moc '
@@ -198,8 +198,8 @@ export const ZRODLO_STRINGS = {
   transformatorKatalog: 'Typ transformatora 110/SN z katalogu',
   transformatorPlaceholder: '— transformator domyślny (dobór automatyczny) —',
   transformatorBlad: 'Nie udało się pobrać katalogu transformatorów.',
-  transformatorSn: 'Moc znamionowa Sn',
-  transformatorUk: 'Napięcie zwarcia uk',
+  transformatorSn: 'Moc znamionowa $S_{n}$',
+  transformatorUk: 'Napięcie zwarcia $u_{k}$',
   transformatorGrupa: 'Grupa połączeń',
 
   // Regulacja zaczepów (OLTC/DETC) — V12K-045.
@@ -287,22 +287,22 @@ export const ZRODLO_STRINGS = {
   teoriaTytul: 'Teoria: GPZ jako źródło systemowe i moc zwarciowa',
   teoriaOpis:
     'Główny Punkt Zasilający (GPZ) jest w modelu źródłem systemowym (slack) — reprezentuje sieć '
-    + 'nadrzędną o zadanej mocy zwarciowej Sk″ i stosunku R/X. Moc zwarciowa określa „sztywność" '
-    + 'sieci: im wyższe Sk″, tym mniejsza impedancja źródła ($Z = c \\cdot U^2 / S_k\'\'$), wyższe prądy zwarciowe '
-    + 'i mniejsze wahania napięcia przy zmianach obciążenia. Stosunek R/X wpływa na prąd udarowy ip '
-    + '(współczynnik κ) i na charakter spadków napięcia. Wszystkie prądy zwarciowe (Ik″, ip, Ith) '
+    + 'nadrzędną o zadanej mocy zwarciowej $S_{k}\'\'$ i stosunku R/X. Moc zwarciowa określa „sztywność" '
+    + 'sieci: im wyższe $S_{k}\'\'$, tym mniejsza impedancja źródła ($Z = c \\cdot U^2 / S_k\'\'$), wyższe prądy zwarciowe '
+    + 'i mniejsze wahania napięcia przy zmianach obciążenia. Stosunek R/X wpływa na prąd udarowy $i_{p}$ '
+    + '(współczynnik κ) i na charakter spadków napięcia. Wszystkie prądy zwarciowe ($I_{k}\'\'$, $i_{p}$, $I_{th}$) '
     + 'liczy backend wg IEC 60909 — GPZ wnosi tylko parametry źródła; z nich wynika dobór aparatury '
     + 'i nastaw zabezpieczeń w całej sieci SN.',
   teoriaWymog:
-    'Aparatura i pola muszą wytrzymać prąd zwarciowy wynikający z Sk″ (zdolność łączeniowa, '
+    'Aparatura i pola muszą wytrzymać prąd zwarciowy wynikający z $S_{k}\'\'$ (zdolność łączeniowa, '
     + 'wytrzymałość cieplna i dynamiczna); dane zwarciowe pobiera się od OSD/PSE dla danego węzła.',
   teoriaPodstawa: 'Podstawa: IEC 60909 (prądy zwarciowe), PN-EN 62271 (aparatura), dane OSD/PSE.',
   teoriaJakCzytac:
     'Krzywa = impedancja źródła w funkcji mocy zwarciowej ($Z \\propto 1/S_k\'\'$). Punkt (1;1) = '
-    + 'odniesienie; podwojenie Sk″ o połowę zmniejsza Z (sieć sztywniejsza: wyższe prądy zwarciowe, '
-    + 'mniejsze wahania napięcia). Rzeczywiste Ik″/Z liczy backend wg IEC 60909.',
-  wykresAria: 'Sztywność sieci: impedancja źródła w funkcji mocy zwarciowej (Z proporcjonalne do 1/Sk″)',
-  wykresOsSk: 'Moc zwarciowa Sk″/Skn',
+    + 'odniesienie; podwojenie $S_{k}\'\'$ o połowę zmniejsza Z (sieć sztywniejsza: wyższe prądy zwarciowe, '
+    + 'mniejsze wahania napięcia). Rzeczywiste $I_{k}\'\'$/Z liczy backend wg IEC 60909.',
+  wykresAria: 'Sztywność sieci: impedancja źródła w funkcji mocy zwarciowej (Z proporcjonalne do 1/$S_{k}\'\'$)',
+  wykresOsSk: 'Moc zwarciowa $S_{k}\'\'$/Skn',
   wykresOsZ: 'Impedancja Z/Zn',
   wykresPunkt: 'odniesienie',
 

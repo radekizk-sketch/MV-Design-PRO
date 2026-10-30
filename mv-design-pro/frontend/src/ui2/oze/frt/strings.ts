@@ -70,8 +70,8 @@ export const FRT_STRINGS = {
   zalozeniaTyp: 'Typ przekształtnika',
   zalozeniaOperator: 'Operator OSD',
   zalozeniaRodzaj: 'Rodzaj testu',
-  zalozeniaPmax: 'Moc maksymalna Pmax',
-  zalozeniaUn: 'Napięcie znamionowe Un',
+  zalozeniaPmax: 'Moc maksymalna $P_{\\max}$',
+  zalozeniaUn: 'Napięcie znamionowe $U_{n}$',
   // Stopień dowodowy trajektorii (karta S-1 §0.9) — czy wynik wolno
   // przedstawić jako dowód regulacyjny (dziś: nie, model niezwalidowany).
   zalozeniaPodstawa: 'Stopień dowodowy',
@@ -153,7 +153,7 @@ export const FRT_STRINGS = {
   sekwKolZapad: 'Zapad',
   sekwKontekstTytul: 'Kontekst siły sieci',
   sekwKontekstScr: 'Wskaźnik zwarciowy SCR',
-  sekwKontekstMocZwarciowa: 'Moc zwarciowa Sk″',
+  sekwKontekstMocZwarciowa: 'Moc zwarciowa $S_{k}\'\'$',
   sekwKontekstMocZainstalowana: 'Moc zainstalowana źródeł',
   sekwKontekstWezel: 'Szyna przyłączenia',
   sekwKontekstWerdykt: 'Ocena siły sieci',
@@ -167,7 +167,7 @@ export const FRT_STRINGS = {
   sekwKontekstDoborTytul: 'Kontekst siły sieci (opcjonalny)',
   sekwKontekstDoborOpis:
     'Wskaż zakończone obliczenie zwarciowe i szynę przyłączenia modułu, aby dołączyć do '
-    + 'wyniku kontekst siły sieci (SCR / moc zwarciowa Sk″). Bez wyboru sekwencja jest '
+    + 'wyniku kontekst siły sieci (SCR / moc zwarciowa $S_{k}\'\'$). Bez wyboru sekwencja jest '
     + 'liczona bez tego kontekstu.',
   sekwKontekstRunEtykieta: 'Przebieg zwarciowy',
   sekwKontekstRunPusty: 'Bez kontekstu siły sieci',

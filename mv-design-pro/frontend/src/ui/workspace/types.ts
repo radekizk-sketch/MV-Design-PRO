@@ -965,7 +965,7 @@ export const ISSUE_MATRIX: Record<string, CanonicalIssuePolicy> = {
   'analysis.partial_missing_z0': {
     severity: 'warning',
     scope: 'analysis_case',
-    defaultMessagePl: 'Wynik jest czesciowy z powodu brakow danych Z0.',
+    defaultMessagePl: 'Wynik jest czesciowy z powodu brakow danych $Z_{0}$.',
       repairTarget: { screenCode: 'E-29', entityType: 'analysis_run', entityRef: null, tabId: 'z1-z2-z0', subtabId: null, fieldAnchor: null },
     blocksSave: false,
     blocksAnalysis: false,

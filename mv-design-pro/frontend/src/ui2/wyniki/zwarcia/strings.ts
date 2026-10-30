@@ -21,10 +21,10 @@ export const ZWARCIA_STRINGS = {
   // Kolumny tabeli punktów zwarciowych
   kolPunkt: 'Punkt zwarcia',
   kolRodzaj: 'Rodzaj zwarcia',
-  kolIkss: 'Prąd zwarciowy początkowy Ik"',
-  kolIp: 'Prąd udarowy ip',
-  kolIth: 'Prąd cieplny Ith',
-  kolSk: 'Moc zwarciowa Sk"',
+  kolIkss: 'Prąd zwarciowy początkowy $I_{k}\'\'$',
+  kolIp: 'Prąd udarowy $i_{p}$',
+  kolIth: 'Prąd cieplny $I_{th}$',
+  kolSk: 'Moc zwarciowa $S_{k}\'\'$',
   kolUwagi: 'Uwagi',
   kolIdentyfikator: 'Identyfikator punktu',
   // Kolumny impedancyjne (ZWARCIA-PRO F1, tryb ekspercki)
@@ -38,13 +38,13 @@ export const ZWARCIA_STRINGS = {
   bilansTytul: 'Bilans IEC 60909',
   bilansOpis:
     'Komplet wielkości punktu zwarcia z solvera — do weryfikacji bez zaglądania do śladu obliczeń.',
-  bilansIkss: 'Prąd zwarciowy początkowy Ik"',
-  bilansIp: 'Prąd udarowy ip',
-  bilansIth: 'Prąd cieplny zastępczy Ith',
-  bilansIb: 'Prąd wyłączeniowy symetryczny Ib',
-  bilansIdc: 'Składowa nieokresowa iDC(tb)',
-  bilansIk: 'Prąd zwarciowy ustalony Ik',
-  bilansSk: 'Moc zwarciowa Sk"',
+  bilansIkss: 'Prąd zwarciowy początkowy $I_{k}\'\'$',
+  bilansIp: 'Prąd udarowy $i_{p}$',
+  bilansIth: 'Prąd cieplny zastępczy $I_{th}$',
+  bilansIb: 'Prąd wyłączeniowy symetryczny $I_{b}$',
+  bilansIdc: 'Składowa nieokresowa $i_{DC}$($t_{b}$)',
+  bilansIk: 'Prąd zwarciowy ustalony $I_{k}$',
+  bilansSk: 'Moc zwarciowa $S_{k}\'\'$',
   bilansI2t: 'Energia cieplna I²t',
   bilansKappa: 'Współczynnik udaru κ',
   bilansXR: 'Stosunek X/R',
@@ -53,9 +53,9 @@ export const ZWARCIA_STRINGS = {
   bilansZk: 'Impedancja zastępcza (Thevenin) |Zk|',
   bilansC: 'Współczynnik napięciowy c',
   bilansCZrodlo: 'Podstawa współczynnika c',
-  bilansUn: 'Napięcie znamionowe przed zwarciem Un',
-  bilansTk: 'Czas trwania zwarcia tk',
-  bilansTb: 'Czas wyłączenia tb',
+  bilansUn: 'Napięcie znamionowe przed zwarciem $U_{n}$',
+  bilansTk: 'Czas trwania zwarcia $t_{k}$',
+  bilansTb: 'Czas wyłączenia $t_{b}$',
   // Karta TB-WARTOSC-ROBOCZA: tb punktu będący wartością roboczą — dyskretna etykieta,
   // źródło z backendu i akcja prowadząca do tb scenariusza zwarciowego.
   bilansTbRobocza: 'wartość robocza',
@@ -66,7 +66,7 @@ export const ZWARCIA_STRINGS = {
   zalMetodaWartosc: 'IEC 60909',
   zalWspolczynnikC: 'Współczynnik napięciowy c',
   zalCzasCieplny: 'Czas cieplny',
-  zalCzasWylaczenia: 'Czas wyłączenia tb',
+  zalCzasWylaczenia: 'Czas wyłączenia $t_{b}$',
   zalCzasWylaczeniaPunkt: 'w punkcie zwarcia',
   zalozeniePunkty: (liczba: number) =>
     `Dotyczy punktów zwarcia: ${liczba} (oznaczenie „wartość robocza" w bilansie punktu).`,
@@ -117,14 +117,14 @@ export const ZWARCIA_STRINGS = {
   wkladSzczegolOpis:
     'Parametry maszyny z rozbicia maszynowego IEC 60909 policzone przez solver zwarciowy — klik wiersza wkładu zwija/rozwija.',
   wkladTypMaszyny: 'Typ maszyny',
-  wkladIr: 'Prąd znamionowy Ir',
-  wkladIkIr: 'Stosunek Ik"/Ir',
+  wkladIr: 'Prąd znamionowy $I_{r}$',
+  wkladIkIr: 'Stosunek $I_{k}\'\'$/$I_{r}$',
   wkladMu: 'Współczynnik zaniku μ',
   wkladQ: 'Współczynnik q',
-  wkladIb: 'Prąd wyłączeniowy symetryczny Ib',
+  wkladIb: 'Prąd wyłączeniowy symetryczny $I_{b}$',
   wkladSzczegolBrak: 'Szczegóły maszyny niedostępne dla tego źródła.',
   wkladSzczegolBrakOpis:
-    'Rozbicie maszynowe tego przebiegu nie zawiera parametrów IEC 60909 (Ir, μ, q, Ib) dla tego źródła.',
+    'Rozbicie maszynowe tego przebiegu nie zawiera parametrów IEC 60909 ($I_{r}$, μ, q, $I_{b}$) dla tego źródła.',
 
   // Sekcja rozpływu prądu zwarciowego w gałęziach (karta W-C, F4; V12K-132)
   rozplywTytul: 'Rozpływ prądu zwarciowego',
@@ -176,7 +176,7 @@ export const ZWARCIA_STRINGS = {
     'Budowa macierzy admitancyjnej składowej zerowej po elementach sieci: impedancja zerowa '
     + 'źródeł, impedancja zerowa i pojemność doziemna linii i kabli, połączenie transformatorów '
     + 'w składowej zerowej wg grupy połączeń i uziemienia punktów neutralnych, droga zerowa '
-    + 'baterii kondensatorów. Z tej macierzy pochodzi impedancja Z0 w miejscu zwarcia. '
+    + 'baterii kondensatorów. Z tej macierzy pochodzi impedancja $Z_{0}$ w miejscu zwarcia. '
     + 'Wyłącznie odczyt jawnego śladu obliczeń, zero obliczeń w interfejsie.',
   sladZerowejNiedostepny: 'Bieg nie niesie śladu sieci składowej zerowej.',
   sladZerowejNiedostepnyOpis:
@@ -196,7 +196,7 @@ export const ZWARCIA_STRINGS = {
   zrodlaKolZrodlo: 'Źródło',
   zrodlaKolScenariusz: 'Scenariusz',
   zrodlaKolTryb: 'Tryb danych',
-  zrodlaKolMocPrad: 'S″kQ / I″kQ',
+  zrodlaKolMocPrad: '$S_{kQ}\'\'$ / $I_{kQ}\'\'$',
   zrodlaKolC: 'c',
   zrodlaKolRx: 'R/X',
   zrodlaKolZq: '$|Z_Q|$',
@@ -208,14 +208,14 @@ export const ZWARCIA_STRINGS = {
   pasmoOpis:
     'Wielkości zwarciowe przy $c_{\\max}$ i $c_{\\min}$ tego samego przypadku obok siebie — '
     + 'dwa biegi kanoniczne z jednej migawki modelu, zero obliczeń w interfejsie.',
-  pasmoKolIkssMax: 'Ik" (max)',
-  pasmoKolIkssMin: 'Ik" (min)',
-  pasmoKolIpMax: 'ip (max)',
-  pasmoKolIpMin: 'ip (min)',
-  pasmoKolIthMax: 'Ith (max)',
-  pasmoKolIthMin: 'Ith (min)',
-  pasmoKolSkMax: 'Sk" (max)',
-  pasmoKolSkMin: 'Sk" (min)',
+  pasmoKolIkssMax: '$I_{k}\'\'$ (max)',
+  pasmoKolIkssMin: '$I_{k}\'\'$ (min)',
+  pasmoKolIpMax: '$i_{p}$ (max)',
+  pasmoKolIpMin: '$i_{p}$ (min)',
+  pasmoKolIthMax: '$I_{th}$ (max)',
+  pasmoKolIthMin: '$I_{th}$ (min)',
+  pasmoKolSkMax: '$S_{k}\'\'$ (max)',
+  pasmoKolSkMin: '$S_{k}\'\'$ (min)',
   pasmoKolRkMax: 'Rk (max)',
   pasmoKolRkMin: 'Rk (min)',
   pasmoKolXkMax: 'Xk (max)',
@@ -261,19 +261,19 @@ export const ZWARCIA_STRINGS = {
   pokazNaSchemacie: 'Pokaż na schemacie',
 
   // Wykres
-  wykresTytul: 'Prądy zwarciowe Ik" w punktach zwarcia',
-  wykresOsY: 'Prąd zwarciowy początkowy Ik"',
+  wykresTytul: 'Prądy zwarciowe $I_{k}\'\'$ w punktach zwarcia',
+  wykresOsY: 'Prąd zwarciowy początkowy $I_{k}\'\'$',
 
   // Przełącznik wielkości wykresu (karta W-A F2)
   wykresPrzelacznik: 'Wielkość wykresu',
-  wykresPrzyciskIkss: 'Ik"',
-  wykresPrzyciskIp: 'ip',
-  wykresPrzyciskIth: 'Ith',
-  wykresPrzyciskSk: 'Sk"',
+  wykresPrzyciskIkss: '$I_{k}\'\'$',
+  wykresPrzyciskIp: '$i_{p}$',
+  wykresPrzyciskIth: '$I_{th}$',
+  wykresPrzyciskSk: '$S_{k}\'\'$',
   wykresPrzyciskI2t: 'I²t',
-  wykresTytulIp: 'Prądy udarowe ip w punktach zwarcia',
-  wykresTytulIth: 'Prądy cieplne Ith w punktach zwarcia',
-  wykresTytulSk: 'Moce zwarciowe Sk" w punktach zwarcia',
+  wykresTytulIp: 'Prądy udarowe $i_{p}$ w punktach zwarcia',
+  wykresTytulIth: 'Prądy cieplne $I_{th}$ w punktach zwarcia',
+  wykresTytulSk: 'Moce zwarciowe $S_{k}\'\'$ w punktach zwarcia',
   wykresTytulI2t: 'Energia cieplna I²t w punktach zwarcia',
   wykresBrakDanych: 'Wielkość niedostępna w tym przebiegu.',
   wykresBrakDanychOpis:
@@ -468,8 +468,8 @@ export function scenariuszZwarciaPL(scenariusz: 'MAX' | 'MIN'): string {
 export type TrybDanychZrodla = 'MOC_ZWARCIOWA' | 'PRAD_ZWARCIOWY' | 'IMPEDANCJA_JAWNA';
 
 export const TRYB_ZRODLA_BAZA_PL: Readonly<Record<TrybDanychZrodla, string>> = {
-  MOC_ZWARCIOWA: 'moc zwarciowa S″kQ',
-  PRAD_ZWARCIOWY: 'prąd zwarciowy I″kQ',
+  MOC_ZWARCIOWA: 'moc zwarciowa $S_{kQ}\'\'$',
+  PRAD_ZWARCIOWY: 'prąd zwarciowy $I_{kQ}\'\'$',
   IMPEDANCJA_JAWNA: 'impedancja jawna (R+jX)',
 };
 

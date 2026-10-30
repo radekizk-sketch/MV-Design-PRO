@@ -110,7 +110,7 @@ const DEFAULT_CARD_HINTS: Record<DerKind, Record<DerCardId, readonly string[]>> 
       'Nie wpisuj parametrów z ręki, jeżeli istnieje pozycja katalogowa.',
     ],
     'plant-controller': [
-      'Ustaw Q(U), P(f), cos phi i ewentualne ograniczenie eksportu.',
+      'Ustaw Q(U), P(f), $\\cos\\varphi$ i ewentualne ograniczenie eksportu.',
       'Regulacja ma być zgodna z wybranym profilem operatora.',
     ],
     'frt-hvrt': [

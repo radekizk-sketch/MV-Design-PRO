@@ -84,10 +84,10 @@ const POWOD_NADPISANIE_C =
   'zwarciowym — wpisz wartość dodatnią z uzasadnieniem albo usuń nadpisanie, wtedy c wynika ' +
   'z tabeli 1 IEC 60909-0.';
 const POWOD_CZAS_TB =
-  'Czas wyłączenia tb (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) ' +
+  'Czas wyłączenia $t_{b}$ (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) ' +
   'podaje się w scenariuszu zwarciowym przypadku obliczeń — bez niego obliczenia biorą najkrótszy ' +
-  'czas pól przy szynie punktu zwarcia albo wartość roboczą, a prąd wyłączeniowy Ib przy maszynach ' +
-  'wirujących i składowa nieokresowa iDC (IEC 60909-0 rozdz. 9 i 10) stoją na założeniu.';
+  'czas pól przy szynie punktu zwarcia albo wartość roboczą, a prąd wyłączeniowy $I_{b}$ przy maszynach ' +
+  'wirujących i składowa nieokresowa $i_{DC}$ (IEC 60909-0 rozdz. 9 i 10) stoją na założeniu.';
 const POWOD_WYPOSAZENIE_POLA_BKR =
   'Aparaty pola baterii kondensatorów (przekładnik niezrównoważenia w połączeniu ' +
   'międzygwiazdowym, dwa przekładniki napięciowe międzyfazowe do rozładowania) ustawia się na ' +

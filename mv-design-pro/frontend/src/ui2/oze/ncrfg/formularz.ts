@@ -74,7 +74,7 @@ export const ETYKIETY_POL_WEJSCIA: Readonly<Record<PoleLiczboweWejscia, string>>
   droop_percent: 'Statyzm P(f) [%]',
   dead_band_hz: 'Strefa nieczułości [Hz]',
   ramp_rate_pct_per_min: 'Szybkość zmiany mocy [%/min]',
-  cos_phi_min: 'Minimalny współczynnik mocy cosφ',
+  cos_phi_min: 'Minimalny współczynnik mocy $\\cos\\varphi$',
   q_range_pct_pn_min: 'Zakres Q — dolna granica [p.u. $P_n$]',
   q_range_pct_pn_max: 'Zakres Q — górna granica [p.u. $P_n$]',
   reactive_current_gain: 'Wzmocnienie prądu biernego k',

@@ -501,7 +501,7 @@ export function toTransformerCatalogEntries(
       name: type.name,
       manufacturer: type.manufacturer,
       summary:
-        `SN zgodne · nN zgodne · ${powerStatus} · uk ${formatMva(type.uk_percent)}% · `
+        `SN zgodne · nN zgodne · ${powerStatus} · $u_{k}$ ${formatMva(type.uk_percent)}% · `
         + `${type.vector_group}`,
     };
   });
@@ -513,8 +513,8 @@ export function toConverterCatalogEntries(types: ConverterType[]): CatalogEntry[
     name: type.name,
     manufacturer: type.manufacturer,
     summary:
-      `Un ${formatKv(type.un_kv)} kV · Sn ${formatMva(type.sn_mva)} MVA · `
-      + `Pmax ${formatMva(type.pmax_mw)} MW`,
+      `$U_{n}$ ${formatKv(type.un_kv)} kV · $S_{n}$ ${formatMva(type.sn_mva)} MVA · `
+      + `$P_{\\max}$ ${formatMva(type.pmax_mw)} MW`,
   }));
 }
 

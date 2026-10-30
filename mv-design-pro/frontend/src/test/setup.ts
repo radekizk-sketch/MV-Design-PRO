@@ -27,3 +27,9 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 import { zainstalujCzujnikLadunkow } from './czujnikLadunkow';
 
 zainstalujCzujnikLadunkow();
+
+// Czujnik surowego zapisu wzoru: ekran testu nie może pokazać `$…$` zamiast symbolu
+// (runtime'owa para strażnika `scripts/ui_math_guard.py`).
+import { zainstalujCzujnikSurowychWzorow } from './czujnikSurowychWzorow';
+
+zainstalujCzujnikSurowychWzorow();

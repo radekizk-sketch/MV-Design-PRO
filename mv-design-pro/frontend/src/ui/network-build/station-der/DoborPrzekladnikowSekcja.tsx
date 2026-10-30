@@ -413,7 +413,7 @@ export function DoborPrzekladnikowSekcja({
               ? `prąd roboczy toru ${wejscia.prad_roboczy_a.toFixed(0)} A`
               : 'prąd roboczy toru nieznany',
             wejscia.ik_ka !== null
-              ? `Ik″ ${wejscia.ik_ka.toFixed(2)} kA z obliczeń zwarciowych`
+              ? `$I_{k}''$ ${wejscia.ik_ka.toFixed(2)} kA z obliczeń zwarciowych`
               : 'prądy zwarciowe: brak zakończonego przebiegu',
           ].join(' · ')}
         </p>

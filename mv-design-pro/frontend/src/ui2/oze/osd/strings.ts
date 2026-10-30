@@ -31,13 +31,13 @@ export const OSD_STRINGS = {
   wyborPolecenie: 'Rodzaj polecenia',
   wyborPolecenieOpis:
     'Co to jest: rodzaj polecenia operatora do wykonania przez źródło. Konsekwencja: '
-    + 'decyduje, które pole nastawu (P, Q, cosφ lub odpowiedź częstotliwościowa) zostanie '
+    + 'decyduje, które pole nastawu (P, Q, $\\cos\\varphi$ lub odpowiedź częstotliwościowa) zostanie '
     + 'zmienione w biegu z poleceniem.',
 
   // Rodzaje polecenia (etykiety)
-  polecenieOgraniczenieP: 'Ograniczenie mocy czynnej (do X% Pn)',
+  polecenieOgraniczenieP: 'Ograniczenie mocy czynnej (do X% $P_{n}$)',
   polecenieMocBierna: 'Zadana moc bierna Q',
-  polecenieCosfi: 'Zadany cosφ',
+  polecenieCosfi: 'Zadany $\\cos\\varphi$',
   polecenieLfsmO: 'Odpowiedź częstotliwościowa nadczęstotliwościowa (LFSM-O)',
   polecenieLfsmU: 'Odpowiedź częstotliwościowa podczęstotliwościowa (LFSM-U)',
 
@@ -55,13 +55,13 @@ export const OSD_STRINGS = {
     + 'Skąd domyślna: brak zmiany (0). Konsekwencja: Q źródła = zadana wartość.',
 
   // Parametr: cosφ
-  paramCosfi: 'Współczynnik mocy cosφ',
+  paramCosfi: 'Współczynnik mocy $\\cos\\varphi$',
   paramCosfiOpis:
     'Co to jest: docelowy współczynnik mocy źródła. Zakres typowy: 0,90–1,00. Skąd '
     + 'domyślna: typowy wymóg regulacji napięcia. Konsekwencja: $Q = \\pm|P| \\cdot \\tan(\\arccos\\cos\\varphi)$.',
   paramCharakter: 'Charakter mocy biernej',
   paramCharakterOpis:
-    'Co to jest: znak mocy biernej przy zadanym cosφ. Nadwzbudny: generacja Q (znak +); '
+    'Co to jest: znak mocy biernej przy zadanym $\\cos\\varphi$. Nadwzbudny: generacja Q (znak +); '
     + 'podwzbudny: pobór Q (znak −). Konsekwencja: kierunek oddziaływania na napięcie.',
   charakterNadwzbudny: 'Nadwzbudny (generacja Q)',
   charakterPodwzbudny: 'Podwzbudny (pobór Q)',
@@ -176,7 +176,7 @@ export function etykietaPoleceniaOsd(command: RodzajPoleceniaOsd): string {
       return OSD_STRINGS.polecenieOgraniczenieP;
     case 'moc_bierna':
       return OSD_STRINGS.polecenieMocBierna;
-    case 'cosfi':
+    case '$\\cos\\varphi$':
       return OSD_STRINGS.polecenieCosfi;
     case 'lfsm_o':
       return OSD_STRINGS.polecenieLfsmO;

@@ -41,13 +41,13 @@ export const SKLADOWE_STRINGS = {
   zalMetodaWartosc: 'IEC 60909',
   zalWspolczynnikC: 'Współczynnik napięciowy c',
   zalWspolczynnikCPerWezel: 'różny dla węzłów — zob. kolumny „c" i „Podstawa c" w tabeli punktów',
-  zalCzasTrwania: 'Czas trwania zwarcia tk',
+  zalCzasTrwania: 'Czas trwania zwarcia $t_{k}$',
   zalLiczbaPunktow: 'Liczba punktów zwarcia',
 
   // Tabela punktów.
   tabelaTytul: 'Punkty zwarcia — impedancje zastępcze i werdykt',
   tabelaOpis: 'Wielkości bilansu z kanonicznego wyniku solvera (tylko odczyt). '
-    + 'Kliknij wiersz, aby zobaczyć składowe Z1/Z2/Z0 i uziemienie punktu.',
+    + 'Kliknij wiersz, aby zobaczyć składowe $Z_{1}$/$Z_{2}$/$Z_{0}$ i uziemienie punktu.',
   kolPunkt: 'Punkt zwarcia',
   kolRodzaj: 'Rodzaj zwarcia',
   kolZk: '|Zk|',
@@ -55,27 +55,27 @@ export const SKLADOWE_STRINGS = {
   kolXk: 'Xk',
   kolXR: 'X/R',
   kolKappa: 'Współczynnik udaru κ',
-  kolIkss: 'Prąd zwarciowy początkowy Ik"',
+  kolIkss: 'Prąd zwarciowy początkowy $I_{k}\'\'$',
   kolC: 'c',
   kolCZrodlo: 'Podstawa c',
   kolWerdykt: 'Werdykt raportowalności',
   kolIdentyfikator: 'Identyfikator punktu',
 
   // Sekcja składowych (ze śladu WHITE BOX).
-  skladoweTytul: 'Impedancje składowych Z1 / Z2 / Z0',
+  skladoweTytul: 'Impedancje składowych $Z_{1}$ / $Z_{2}$ / $Z_{0}$',
   skladoweOpis: 'Wartości pochodzą ze śladu pełnej jawności obliczeń przebiegu (krok „Impedancja '
     + 'zastępcza w punkcie zwarcia") — prezentacja read-only, zero obliczeń w interfejsie.',
-  skladowaZ1: 'Składowa zgodna Z1',
-  skladowaZ2: 'Składowa przeciwna Z2',
-  skladowaZ0: 'Składowa zerowa Z0',
+  skladowaZ1: 'Składowa zgodna $Z_{1}$',
+  skladowaZ2: 'Składowa przeciwna $Z_{2}$',
+  skladowaZ0: 'Składowa zerowa $Z_{0}$',
   skladoweBrakZ0: 'Składowa zerowa nie uczestniczy w tym rodzaju zwarcia '
-    + '(ślad przebiegu nie niesie Z0 dla tego punktu).',
+    + '(ślad przebiegu nie niesie $Z_{0}$ dla tego punktu).',
   skladoweWzor: 'Wzór na impedancję zastępczą',
   skladowePodstawienie: 'Podstawienie wartości przebiegu',
   skladoweBrak: 'Ślad obliczeń tego przebiegu nie niesie kroku impedancji zastępczej '
     + 'dla wybranego punktu — składowych nie można pokazać bez fabrykacji.',
   skladoweSladNiedostepny: 'Ślad obliczeń przebiegu jest niedostępny (błąd pobierania). '
-    + 'Składowe Z1/Z2/Z0 są prezentowane wyłącznie ze śladu obliczeń — bez niego '
+    + 'Składowe $Z_{1}$/$Z_{2}$/$Z_{0}$ są prezentowane wyłącznie ze śladu obliczeń — bez niego '
     + 'ekran pokazuje tylko bilans |Zk| z wierszy kanonicznych.',
   skladoweDowod: 'Otwórz pełny dowód obliczeń',
   skladoweDowodOpis: 'Pełny ślad obliczeń przebiegu (wszystkie kroki) w zakładce „Dowód obliczeń".',
@@ -147,7 +147,7 @@ export const SKLADOWE_STRINGS = {
 
   // Następny krok / powrót.
   nastepnyEyebrow: 'NASTĘPNY KROK',
-  nastepnyOpis: 'Komplet prądów punktu (Ik", ip, Ith, Sk") znajdziesz w oknie „Zwarcia" '
+  nastepnyOpis: 'Komplet prądów punktu ($I_{k}\'\'$, $i_{p}$, $I_{th}$, $S_{k}\'\'$) znajdziesz w oknie „Zwarcia" '
     + 'przestrzeni Wyniki; pełny wywód kroków — w zakładce „Dowód obliczeń".',
   powrotHub: '← Wróć do analiz technicznych',
   powrotOpis: 'Wróć do przeglądu analiz technicznych',

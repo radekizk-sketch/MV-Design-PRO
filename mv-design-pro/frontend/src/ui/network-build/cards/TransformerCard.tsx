@@ -131,7 +131,7 @@ export function TransformerCard({ elementId }: { elementId: string }) {
       fields: [
         {
           key: 'sn_mva',
-          label: 'Moc pozorna Sn',
+          label: 'Moc pozorna $S_{n}$',
           value: transformer.sn_mva * 1000,
           unit: 'kVA',
           source: transformer.catalog_ref ? 'catalog' : 'instance',
@@ -139,7 +139,7 @@ export function TransformerCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'uk_percent',
-          label: 'Napięcie zwarcia Uk',
+          label: 'Napięcie zwarcia $u_{k}$',
           value: transformer.uk_percent,
           unit: '%',
           source: transformer.catalog_ref ? 'catalog' : 'instance',
@@ -147,21 +147,21 @@ export function TransformerCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'pk_kw',
-          label: 'Straty w miedzi Pk',
+          label: 'Straty w miedzi $P_{k}$',
           value: transformer.pk_kw,
           unit: 'kW',
           source: transformer.catalog_ref ? 'catalog' : 'instance',
         },
         {
           key: 'p0_kw',
-          label: 'Straty w żelazie P₀',
+          label: 'Straty w żelazie $P_{0}$',
           value: transformer.p0_kw ?? null,
           unit: 'kW',
           source: transformer.catalog_ref ? 'catalog' : 'instance',
         },
         {
           key: 'i0_percent',
-          label: 'Prąd biegu jałowego I₀',
+          label: 'Prąd biegu jałowego $I_{0}$',
           value: transformer.i0_percent ?? null,
           unit: '%',
           source: transformer.catalog_ref ? 'catalog' : 'instance',
@@ -250,7 +250,7 @@ export function TransformerCard({ elementId }: { elementId: string }) {
           { key: 'q_flow', label: 'Przepływ Q', value: null, unit: 'Mvar', source: 'calculated' },
           { key: 'i_hv', label: 'Prąd strona WN', value: null, unit: 'A', source: 'calculated' },
           { key: 'i_lv', label: 'Prąd strona nN', value: null, unit: 'A', source: 'calculated' },
-          { key: 'loading', label: 'Obciążenie Sn', value: null, unit: '%', source: 'calculated' },
+          { key: 'loading', label: 'Obciążenie $S_{n}$', value: null, unit: '%', source: 'calculated' },
           { key: 'losses', label: 'Straty ΔP', value: null, unit: 'kW', source: 'calculated' },
           { key: 'tap_actual', label: 'Zaczep aktualny', value: null, source: 'calculated' },
           { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },

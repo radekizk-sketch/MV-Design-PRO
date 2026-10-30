@@ -350,10 +350,10 @@ function walidujDaneScenariuszaMin(
 ): BladPolaZrodla[] {
   const errors: BladPolaZrodla[] = [];
   if (data.sk3_min_mva !== null && data.sk3_min_mva <= 0) {
-    errors.push({ field: 'sk3_min_mva', message: 'Moc zwarciowa Sk″min musi być dodatnia.' });
+    errors.push({ field: 'sk3_min_mva', message: 'Moc zwarciowa $S_{k,\\min}\'\'$ musi być dodatnia.' });
   }
   if (data.ik3_min_ka !== null && data.ik3_min_ka <= 0) {
-    errors.push({ field: 'ik3_min_ka', message: 'Prąd zwarciowy Ik″min musi być dodatni.' });
+    errors.push({ field: 'ik3_min_ka', message: 'Prąd zwarciowy $I_{k,\\min}\'\'$ musi być dodatni.' });
   }
   if (data.rx_ratio_min !== null && data.rx_ratio_min < 0) {
     errors.push({ field: 'rx_ratio_min', message: 'Stosunek R/X (MIN) musi być nieujemny.' });
@@ -367,13 +367,13 @@ function walidujDaneScenariuszaMin(
   ) {
     errors.push({
       field: 'sk3_min_mva',
-      message: 'Sk″min nie może przekraczać Sk″ (wartości maksymalnej).',
+      message: '$S_{k,\\min}\'\'$ nie może przekraczać $S_{k}\'\'$ (wartości maksymalnej).',
     });
   }
   if (data.rx_ratio_min !== null && data.sk3_min_mva === null && data.ik3_min_ka === null) {
     errors.push({
       field: 'rx_ratio_min',
-      message: 'R/X (MIN) wymaga podania Sk″min albo Ik″min — bez własnej mocy/prądu zwarciowego scenariusz MIN liczy się z danych maksymalnych.',
+      message: 'R/X (MIN) wymaga podania $S_{k,\\min}\'\'$ albo $I_{k,\\min}\'\'$ — bez własnej mocy/prądu zwarciowego scenariusz MIN liczy się z danych maksymalnych.',
     });
   }
   return errors;
@@ -424,7 +424,7 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
     errors.push({ field: 'line_fields_per_section', message: 'Liczba pól liniowych na sekcję musi mieścić się w zakresie 1-12.' });
   }
   if (!Number.isFinite(data.thermal_time_s) || data.thermal_time_s <= 0) {
-    errors.push({ field: 'thermal_time_s', message: 'Czas cieplny tk musi być dodatni.' });
+    errors.push({ field: 'thermal_time_s', message: 'Czas cieplny $t_{k}$ musi być dodatni.' });
   }
   const nazwaSekcji = data.gpz_section_name.trim();
   if (nazwaSekcji.length >= 1 && nazwaSekcji.length <= 2) {
@@ -445,7 +445,7 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
         errors.push({ field: 'hv_voltage_kv', message: 'Tryb WN/SN wymaga dodatniego napięcia strony 110 kV.' });
       }
       if (!isPositive(data.sk3_hv_mva)) {
-        errors.push({ field: 'sk3_hv_mva', message: 'Podaj moc zwarciową Sk″ na szynie 110 kV.' });
+        errors.push({ field: 'sk3_hv_mva', message: 'Podaj moc zwarciową $S_{k}\'\'$ na szynie 110 kV.' });
       }
       if (data.rx_ratio === null || data.rx_ratio < 0) {
         errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
@@ -466,12 +466,12 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
       if (data.sk3_min_mva !== null || data.ik3_min_ka !== null || data.rx_ratio_min !== null) {
         errors.push({
           field: 'sk3_min_mva',
-          message: 'Tryb impedancyjny (R+jX) nie ma wariantu MIN — usuń dane Sk″min/Ik″min/R/X (MIN) albo przełącz na tryb mocy zwarciowej.',
+          message: 'Tryb impedancyjny (R+jX) nie ma wariantu MIN — usuń dane $S_{k,\\min}\'\'$/$I_{k,\\min}\'\'$/R/X (MIN) albo przełącz na tryb mocy zwarciowej.',
         });
       }
     } else {
       if (!isPositive(data.sk3_mva)) {
-        errors.push({ field: 'sk3_mva', message: 'Moc zwarciowa Sk″ musi być dodatnia.' });
+        errors.push({ field: 'sk3_mva', message: 'Moc zwarciowa $S_{k}\'\'$ musi być dodatnia.' });
       }
       if (data.rx_ratio === null || data.rx_ratio < 0) {
         errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
@@ -480,7 +480,7 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
     }
   } else {
     if (!isPositive(data.sk3_mva)) {
-      errors.push({ field: 'sk3_mva', message: `Moc zwarciowa Sk″ musi pochodzić z ${sourceDescriptor}.` });
+      errors.push({ field: 'sk3_mva', message: `Moc zwarciowa $S_{k}''$ musi pochodzić z ${sourceDescriptor}.` });
     }
     if (data.rx_ratio === null || data.rx_ratio < 0) {
       errors.push({ field: 'rx_ratio', message: `Stosunek R/X musi pochodzić z ${sourceDescriptor}.` });
@@ -490,13 +490,13 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
   if (zrodloOpisujeSiec110kV(data)) {
     if (data.zero_sequence_enabled) {
       if (data.r0_ohm !== null && data.r0_ohm < 0) {
-        errors.push({ field: 'r0_ohm', message: 'R0 nie może być ujemne.' });
+        errors.push({ field: 'r0_ohm', message: '$R_{0}$ nie może być ujemne.' });
       }
       if (data.x0_ohm !== null && data.x0_ohm <= 0) {
-        errors.push({ field: 'x0_ohm', message: 'X0 musi być dodatnie.' });
+        errors.push({ field: 'x0_ohm', message: '$X_{0}$ musi być dodatnie.' });
       }
       if (data.z0_z1_ratio !== null && data.z0_z1_ratio <= 0) {
-        errors.push({ field: 'z0_z1_ratio', message: 'Z0/Z1 musi być dodatnie.' });
+        errors.push({ field: 'z0_z1_ratio', message: '$Z_{0}$/$Z_{1}$ musi być dodatnie.' });
       }
     }
     if (data.grounding_type === 'resistor_grounded' && (data.grounding_r_ohm === null || data.grounding_r_ohm <= 0)) {
@@ -957,7 +957,7 @@ export function znajdzPozycjeKatalogu(
 export function etykietaZrodlaKatalogu(item: SourceSystemCatalogType): string {
   const manufacturer = item.operator_name ?? item.series ?? item.catalog_number;
   const voltage = Number.isFinite(item.voltage_rating_kv) ? `${item.voltage_rating_kv} kV` : 'SN';
-  const sk = Number.isFinite(item.sk3_mva) ? `Sk3 ${item.sk3_mva} MVA` : 'Sk3 —';
+  const sk = Number.isFinite(item.sk3_mva) ? `$S_{k3}''$ ${item.sk3_mva} MVA` : '$S_{k3}\'\'$ —';
   return [item.name, manufacturer, voltage, sk].filter(Boolean).join(' · ');
 }
 
@@ -981,7 +981,7 @@ function apparatusKindLabel(value: string | undefined): string {
 }
 
 export function etykietaAparatu(item: MVApparatusType): string {
-  return `${item.name} · ${apparatusKindLabel(item.device_kind)} · Un ${formatujLiczbe(item.u_n_kv, 1)} kV · In ${formatujLiczbe(item.i_n_a, 0)} A`;
+  return `${item.name} · ${apparatusKindLabel(item.device_kind)} · $U_{n}$ ${formatujLiczbe(item.u_n_kv, 1)} kV · $I_{n}$ ${formatujLiczbe(item.i_n_a, 0)} A`;
 }
 
 export function pasujeRodzajAparatu(item: MVApparatusType, kind: GpzLineFieldApparatusKind): boolean {
@@ -1025,13 +1025,13 @@ export function opisUziemienia(type: TypPunktuNeutralnego): string {
   // Opis sieci 110 kV za granicą modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 3).
   switch (type) {
     case 'directly_grounded':
-      return 'Sieć 110 kV skutecznie uziemiona (punkty neutralne transformatorów 110 kV uziemione) — typowa praca krajowej sieci 110 kV. Podaj Z0 sieci (R0/X0 albo Z0/Z1) z danych operatora.';
+      return 'Sieć 110 kV skutecznie uziemiona (punkty neutralne transformatorów 110 kV uziemione) — typowa praca krajowej sieci 110 kV. Podaj $Z_{0}$ sieci ($R_{0}$/$X_{0}$ albo $Z_{0}$/$Z_{1}$) z danych operatora.';
     case 'resistor_grounded':
-      return 'Punkt neutralny sieci 110 kV uziemiony przez rezystor — podaj R uziemienia i Z0 sieci z danych operatora.';
+      return 'Punkt neutralny sieci 110 kV uziemiony przez rezystor — podaj R uziemienia i $Z_{0}$ sieci z danych operatora.';
     case 'petersen_coil':
-      return 'Sieć 110 kV kompensowana dławikiem — podaj X dławika i Z0 sieci z danych operatora.';
+      return 'Sieć 110 kV kompensowana dławikiem — podaj X dławika i $Z_{0}$ sieci z danych operatora.';
     case 'isolated':
-      return 'Sieć 110 kV z izolowanym punktem neutralnym — brak bocznika zerowego, Z0 sieci nie podaje się.';
+      return 'Sieć 110 kV z izolowanym punktem neutralnym — brak bocznika zerowego, $Z_{0}$ sieci nie podaje się.';
     default:
       return 'Wybierz sposób pracy punktu neutralnego sieci 110 kV.';
   }

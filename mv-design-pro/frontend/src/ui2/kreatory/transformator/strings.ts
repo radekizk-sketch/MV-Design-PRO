@@ -3,7 +3,7 @@
 export const TRANSFORMATOR_STRINGS = {
   eyebrow: 'MODEL SIECI · TRANSFORMATOR SN/nN',
   cel:
-    'Dodaj transformator między szyną SN a szyną nN stacji. Typ (moc, napięcia, uk) '
+    'Dodaj transformator między szyną SN a szyną nN stacji. Typ (moc, napięcia, $u_{k}$) '
     + 'bierzesz z katalogu; prądy strony górnej i dolnej liczy backend. '
     + 'Możesz skonfigurować regulację zaczepów (DETC bez obciążenia lub OLTC pod obciążeniem).',
   odznaka: 'Nowy transformator',
@@ -30,7 +30,7 @@ export const TRANSFORMATOR_STRINGS = {
   // Parametry katalogu (odczyt).
   paramMoc: 'Moc znamionowa',
   paramNapiecia: 'Napięcia HV/LV',
-  paramUk: 'Napięcie zwarcia uk',
+  paramUk: 'Napięcie zwarcia $u_{k}$',
   paramGrupa: 'Grupa połączeń',
   paramZaczepy: 'Zakres zaczepów',
 
@@ -63,17 +63,17 @@ export const TRANSFORMATOR_STRINGS = {
 
   // Podgląd (R2).
   podgladTytul: 'Podgląd prądów (backend)',
-  podgladI1: 'Prąd strony górnej I₁',
-  podgladI2: 'Prąd strony dolnej I₂',
+  podgladI1: 'Prąd strony górnej $I_{1}$',
+  podgladI2: 'Prąd strony dolnej $I_{2}$',
   podgladZrodlo: 'Źródło wyniku',
   podgladZrodloWartosc: 'Obliczenie prądów po stronie serwera (R2)',
-  podgladBrak: 'Wybierz typ transformatora, aby zobaczyć prądy I₁/I₂.',
+  podgladBrak: 'Wybierz typ transformatora, aby zobaczyć prądy $I_{1}$/$I_{2}$.',
   podgladBlad: 'Nie udało się wyznaczyć podglądu prądów.',
 
   // Downstream.
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
-    'Rozpływ mocy (z pętlą OLTC, jeśli włączona) i zwarcia (Ik) uwzględnią transformator; '
+    'Rozpływ mocy (z pętlą OLTC, jeśli włączona) i zwarcia ($I_{k}$) uwzględnią transformator; '
     + 'badania regulacji OLTC, straty i raporty policzą jego wpływ.',
 
   // Kontrola.
@@ -104,14 +104,14 @@ export const TRANSFORMATOR_STRINGS = {
   teoriaSzynyTytul: 'Teoria: transformator SN/nN — przekładnia i impedancja zwarcia',
   teoriaSzynyOpis:
     'Transformator łączy szynę górnego napięcia (strona zasilania) z dolnym przez przekładnię '
-    + 'napięciową. Moc znamionowa Sn ogranicza obciążalność, a napięcie zwarcia uk [%] wyznacza '
+    + 'napięciową. Moc znamionowa $S_{n}$ ogranicza obciążalność, a napięcie zwarcia $u_{k}$ [%] wyznacza '
     + 'impedancję szeregową ($Z \\approx u_k \\cdot U^2 / S_n$) — decyduje o spadku napięcia pod obciążeniem i o prądzie '
-    + 'zwarciowym po stronie dolnej (im wyższe uk, tym mniejszy prąd zwarciowy, ale większy spadek '
+    + 'zwarciowym po stronie dolnej (im wyższe $u_{k}$, tym mniejszy prąd zwarciowy, ale większy spadek '
     + 'napięcia). Grupa połączeń (np. Dyn11) określa przesunięcie fazowe i drogę składowej zerowej '
     + 'dla zwarć doziemnych. Wszystkie parametry pochodzą z katalogu; prądy i spadki liczy solver.',
   teoriaSzynyWymog:
-    'Sn dobiera się do mocy szczytowej z zapasem; uk i grupa połączeń muszą być zgodne z układem '
-    + 'sieci (praca równoległa transformatorów wymaga tej samej grupy i zbliżonego uk).',
+    '$S_{n}$ dobiera się do mocy szczytowej z zapasem; $u_{k}$ i grupa połączeń muszą być zgodne z układem '
+    + 'sieci (praca równoległa transformatorów wymaga tej samej grupy i zbliżonego $u_{k}$).',
   teoriaSzynyPodstawa: 'Podstawa: PN-EN 60076, IEC 60909 (udział transformatora w zwarciu).',
   teoriaRegTytul: 'Teoria: regulacja napięcia i przełącznik zaczepów',
   teoriaRegOpis:

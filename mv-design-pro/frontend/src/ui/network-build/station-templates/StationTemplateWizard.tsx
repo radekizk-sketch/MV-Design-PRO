@@ -887,7 +887,7 @@ function PreviewStep(props: {
                     {d.expected_count_per_kind}× {d.block_transformer_name ?? d.block_transformer_ref}
                   </span>
                   <span className="text-zinc-500">
-                    {` (Sn ${d.block_transformer_sn_mva ?? '—'} MVA, wymagane ${d.required_apparent_power_mva_each ?? '—'} MVA na jednostkę; falownik ${d.inverter_output_kv ?? '—'} kV; kabel ${d.mv_cable_ref ?? '—'}; aparat pola ${d.mv_field_apparatus_ref ?? '—'})`}
+                    {` ($S_{n}$ ${d.block_transformer_sn_mva ?? '—'} MVA, wymagane ${d.required_apparent_power_mva_each ?? '—'} MVA na jednostkę; falownik ${d.inverter_output_kv ?? '—'} kV; kabel ${d.mv_cable_ref ?? '—'}; aparat pola ${d.mv_field_apparatus_ref ?? '—'})`}
                   </span>
                 </div>
               ))}

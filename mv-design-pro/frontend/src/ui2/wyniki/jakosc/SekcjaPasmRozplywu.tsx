@@ -87,7 +87,7 @@ function naZalozeniaNapiec(napiecia: PasmaRozplywuResponse['napiecia']): WierszZ
   return [
     {
       etykieta: JAKOSC_STRINGS.pasmaNormaNapiecia,
-      wartosc: `Un ± ${napiecia.band_pct} %`,
+      wartosc: `$U_{n}$ ± ${napiecia.band_pct} %`,
       uwaga: napiecia.norm_ref,
     },
   ];

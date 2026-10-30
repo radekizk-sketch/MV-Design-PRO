@@ -86,7 +86,7 @@ export function walidujFormularz(data: MagistralaFormData): BladPola[] {
     errors.push({ field: 'dlugosc_m', message: 'Długość odcinka musi być dodatnia.' });
   }
   if (data.cos_phi <= 0 || data.cos_phi > 1) {
-    errors.push({ field: 'cos_phi', message: 'Współczynnik mocy cosφ musi być w zakresie (0, 1].' });
+    errors.push({ field: 'cos_phi', message: 'Współczynnik mocy $\\cos\\varphi$ musi być w zakresie (0, 1].' });
   }
   if (!nextStepDozwolony(data.next_step, data.rodzaj)) {
     errors.push({

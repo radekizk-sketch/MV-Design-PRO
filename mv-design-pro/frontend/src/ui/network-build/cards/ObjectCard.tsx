@@ -10,7 +10,7 @@
 import { clsx } from 'clsx';
 import type { ReactNode } from 'react';
 import { publicTechnicalLabel } from '../../shared/publicTechnicalLabels';
-import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
+import { TekstZWzorami, tekstBezWzorow } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 // =============================================================================
 // Types
@@ -127,9 +127,9 @@ export function ObjectCard({
                         field.severity === 'warning' && 'text-amber-600',
                         !field.source && !field.severity && 'text-gray-800',
                       )}
-                      title={formatCardValue(field.value)}
+                      title={tekstBezWzorow(formatCardValue(field.value))}
                     >
-                      {formatCardValue(field.value)}
+                      <TekstZWzorami tekst={formatCardValue(field.value)} />
                       {field.unit && <span className="text-gray-400 ml-0.5">{field.unit}</span>}
                     </span>
                   </div>

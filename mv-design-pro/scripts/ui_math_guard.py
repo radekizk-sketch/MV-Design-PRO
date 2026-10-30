@@ -172,6 +172,26 @@ def _jest_lista_klas_css(wartosc: str) -> bool:
 POJEDYNCZY_UKOSNIK_RE = re.compile(r"(?<!\\)(?:\\\\)*\\(?![ux][0-9a-fA-F{])[a-zA-Z]")
 
 
+#: Ucieczka literalu JS poprzedzona NIEPARZYSTA liczba ukosnikow: Unicode (`\u0142`,
+#: `\u{1F600}`, `\x41`) i cudzyslow (`\'`, `\"`, `` \` ``). W surowym zapisie zrodla `\u0142`
+#: wyglada jak polecenie LaTeX (`\u…`), a jest znakiem (`ł`) — bez rozwiniecia tekst zapisany
+#: ucieczkami (dane JSON generatora fikstur) uchodzilby za LaTeX i wypadal ze skanu prozy;
+#: `'Ik\'\''` to w tekscie `Ik''`. Podwojny ukosnik (`\\cdot` — polecenie LaTeX) zostaje.
+UCIECZKA_JS_RE = re.compile(
+    r"(?<!\\)((?:\\\\)*)\\(?:u([0-9a-fA-F]{4})|u\{([0-9a-fA-F]{1,6})\}|x([0-9a-fA-F]{2})|(['\"`]))"
+)
+
+
+def _rozwin_ucieczki_js(wartosc: str) -> str:
+    def znak(dopasowanie: re.Match[str]) -> str:
+        if dopasowanie.group(5):
+            return dopasowanie.group(1) + dopasowanie.group(5)
+        kod = dopasowanie.group(2) or dopasowanie.group(3) or dopasowanie.group(4)
+        return dopasowanie.group(1) + chr(int(kod, 16))
+
+    return UCIECZKA_JS_RE.sub(znak, wartosc)
+
+
 def _sprawdz_ukosniki(zapisy_latex: list[str]) -> bool:
     return any(POJEDYNCZY_UKOSNIK_RE.search(zapis) for zapis in zapisy_latex)
 
@@ -218,6 +238,48 @@ def _dopasowania(wartosc: str, *, stala_kodu_dozwolona: bool = False) -> list[st
     ):
         trafienia.append("goly indeks symbolu (np. 'U_f') poza wzorem $...$/*_latex")
     return trafienia
+
+
+#: Symbol wielkosci SPLASZCZONY do znakow Unicode/ASCII w prozie frontu — projektant widzi
+#: `Ik″`, `Ith`, `cosφ`, `I₁` zamiast symbolu z indeksem. Zapis kanoniczny to wzor `$…$`
+#: (`$I''_{k}$`, `$I_{th}$`, `$\\cos\\varphi$`) skladany przez `MathInline` (HTML) albo
+#: `TekstSvgZWzorami` (SVG) z JEDNEGO zapisu LaTeX. Wzorzec (zamkniety, wielkosc liter istotna):
+#: (1) litera + indeks Unicode (`I₁`, `P₀`, `R₀`); (2) prim po symbolu (`Ik″`, `S″k`, `B′0`,
+#: `Ik''`, `Ik"max`); (3) symbol z indeksem sklejonym bez separatora z zamknietej listy
+#: wielkosci sieci (`Ik`, `Ip`, `Ib`, `Ith`, `Idyn`, `Icw`, `In`, `Un`, `uk`, `Sn`, `Sk3`, `Pmax`,
+#: `Pk`, `P0`, `Qmax`, `Z0`, `X1`, `R0`, `B0`, `ip`, `tk` …); (4) `cos φ`/`cosφ`/`cos phi`/`tg φ`.
+#: Oznaczenia reguly (`R1`) i pasma (`B1`) nie sa na liscie — `R` i `B` tylko z indeksem 0.
+WZORZEC_SPLASZCZONY = re.compile(
+    r"""(?x)
+    (?<![\w\\])(?:
+        [^\W\d_][₀-₉ₐ-ₜᵢ-ᵪ]+
+      | [A-Z][a-z]{0,2}\d?(?:″|′|'')\w*
+      | [A-Z]k"\w*
+      | I(?:k|p|b|th|dyn|cw|cu|cs|ma|n|r|e|max|min|sc|nom|k1|k2|k3|kmax|kmin|0|1|2)(?!\w)
+      | U(?:n|r|m|k|max|min|nom|c|0|1|2)(?!\w)
+      | u(?:k|kr)(?![\w%])
+      | i(?:p|b|DC)(?!\w)
+      | t(?:k|b)(?!\w)
+      | P(?:k|0|max|min|n|zainst|gen|load)(?!\w)
+      | Q(?:max|min|n)(?!\w)
+      | S(?:n|k|k3|kmax|kmin|r)(?!\w)
+      | (?:[XZ][012]|[RB]0)(?!\w)
+      | cos\s?(?:φ|phi|fi)(?!\w) | tg\s?φ | tan\s?φ
+    )"""
+)
+POWOD_SPLASZCZONEGO = (
+    "symbol splaszczony (np. 'Ik″', 'Ith', 'cosφ', 'I₁') poza wzorem $...$ "
+    "— zapis LaTeX przez MathInline/TekstSvgZWzorami"
+)
+
+
+def _splaszczone(wartosc: str, *, pojedynczy_token_jest_kodem: bool) -> bool:
+    """Czy proza (poza segmentami `$…$`) niesie symbol splaszczony. Literal z jednym tokenem
+    poza kontekstem tekstu UI (`"key": "Ib"`, kod funkcji `'I0>'` w mapie) jest kluczem kodu."""
+    if pojedynczy_token_jest_kodem and len(wartosc.split()) <= 1:
+        return False
+    proza = SEGMENT_WZORU_RE.sub(" ", wartosc)
+    return not _jest_juz_latex(proza) and bool(WZORZEC_SPLASZCZONY.search(proza))
 
 
 #: Skrypt wyciagajacy literaly i teksty JSX parserem kompilatora TypeScript.
@@ -269,7 +331,7 @@ def skanuj_ts(
             continue
         numer = int(str(wpis["linia"]))
         wiersz = str(wpis["wiersz"]).strip()[:140]
-        wartosc = str(wpis["wartosc"])
+        wartosc = _rozwin_ucieczki_js(str(wpis["wartosc"]))
         przed = str(wpis["przed"])
         klucz_latex = bool(KLUCZ_LATEX_TS_RE.search(przed))
         if not wpis["atrybut_jsx"]:
@@ -285,6 +347,8 @@ def skanuj_ts(
         tekst_ui = modul_tekstow or bool(KLUCZ_TEKSTU_UI_RE.search(przed))
         for powod in _dopasowania(wartosc, stala_kodu_dozwolona=not tekst_ui):
             wyniki.append((numer, wiersz, powod))
+        if _splaszczone(wartosc, pojedynczy_token_jest_kodem=not tekst_ui):
+            wyniki.append((numer, wiersz, POWOD_SPLASZCZONEGO))
     return wyniki
 
 
@@ -295,6 +359,8 @@ def skanuj_jsx(teksty: list[tuple[int, str]]) -> list[tuple[int, str, str]]:
     wyniki: list[tuple[int, str, str]] = []
     for numer, tekst in teksty:
         powody = _dopasowania(tekst)
+        if _splaszczone(tekst, pojedynczy_token_jest_kodem=False):
+            powody.append(POWOD_SPLASZCZONEGO)
         if SEGMENT_WZORU_RE.search(tekst):
             powody.append("segment $...$ w tekscie JSX — wyswietli sie z dolarami (MathInline)")
         for powod in powody:

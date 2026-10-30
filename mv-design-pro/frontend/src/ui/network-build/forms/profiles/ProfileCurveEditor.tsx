@@ -10,6 +10,8 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
+import { TekstZWzorami } from '../../../../ui2/kreatory/rama/tekstZWzorami';
 
 export interface CurvePoint {
   x: number;
@@ -120,7 +122,9 @@ export function ProfileCurveEditor({
 
   return (
     <div data-testid="profile-curve-editor" className="rounded border border-scada-border bg-scada-bg p-3">
-      <h4 className="mb-2 text-[11px] font-semibold text-scada-text">{title}</h4>
+      <h4 className="mb-2 text-[11px] font-semibold text-scada-text">
+        <TekstZWzorami tekst={title} />
+      </h4>
       <svg
         width={width}
         height={height}
@@ -170,7 +174,7 @@ export function ProfileCurveEditor({
 
         {/* Axes labels */}
         <text x={width / 2} y={height - 8} textAnchor="middle" fontSize={10} fill="#9ab3d5">
-          {xLabel}
+          <TekstSvgZWzorami tekst={xLabel} />
         </text>
         <text
           x={12}
@@ -180,7 +184,7 @@ export function ProfileCurveEditor({
           fill="#9ab3d5"
           transform={`rotate(-90, 12, ${height / 2})`}
         >
-          {yLabel}
+          <TekstSvgZWzorami tekst={yLabel} />
         </text>
 
         {/* Curve */}

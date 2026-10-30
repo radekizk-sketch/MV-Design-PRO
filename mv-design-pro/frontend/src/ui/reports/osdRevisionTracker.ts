@@ -77,7 +77,7 @@ export function validateRevisionList(list: RevisionList): {
 } {
   const issues: string[] = [];
   if (list.revisions.length === 0) {
-    issues.push('Lista rewizji pusta — wymagana co najmniej R0 (wersja początkowa).');
+    issues.push('Lista rewizji pusta — wymagana co najmniej $R_{0}$ (wersja początkowa).');
     return { isValid: false, issues };
   }
   // Numery muszą być sekwencyjne

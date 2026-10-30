@@ -162,7 +162,7 @@ export function SldCanonPresetG3({ companion }: { companion: SldOzeArchetypeComp
           <InverterSym x={fx} y={701} />
           <BatteryGlyph x={fx + 15} y={701} />
           {lbl(fx, 734, `PCS ${i + 1} · ${pcsKw} kW`, AMBER, 11, 800, 'middle')}
-          {lbl(fx, 747, `4Q · Ik″ ≈ ${fmt(faln / pcsX.length, 2)} kA`, TXT2, 9, 700, 'middle')}
+          {lbl(fx, 747, `4Q · $I_{k}''$ ≈ ${fmt(faln / pcsX.length, 2)} kA`, TXT2, 9, 700, 'middle')}
         </g>
       ))}
       {lbl((pcsX[0] + pcsX[pcsX.length - 1]) / 2, 770, 'SoC · BMS · obwody DC → moduł magazynu (IEC 62933)', TXT_MUTED, 9.5, 600, 'middle')}

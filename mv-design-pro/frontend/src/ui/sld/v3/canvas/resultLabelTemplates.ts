@@ -252,15 +252,15 @@ const SC_BUS: readonly ResultLabelLineSpec[] = [
  *  spadek); wartości B bez znaku (wielkości bezwzględne). Wartości i jednostki
  *  1:1 z backendu — ZERO arytmetyki w tej warstwie. */
 const SC_DELTA_BUS: readonly ResultLabelLineSpec[] = [
-  { code: 'DELTA_IK_3F_KA', prefix: 'Δ Ik″', format: formatSignedScalar },
-  { code: 'B_IK_3F_KA', prefix: 'Ik″ (B)', format: formatCurrent },
-  { code: 'DELTA_IK_3F_PCT', prefix: 'Δ Ik″ %', format: formatSignedScalar },
-  { code: 'DELTA_IP_KA', prefix: 'Δ ip', format: formatSignedScalar },
-  { code: 'B_IP_KA', prefix: 'ip (B)', format: formatCurrent },
-  { code: 'DELTA_ITH_KA', prefix: 'Δ Ith', format: formatSignedScalar },
-  { code: 'B_ITH_KA', prefix: 'Ith (B)', format: formatCurrent },
-  { code: 'DELTA_SK_MVA', prefix: 'Δ Sk', format: formatSignedScalar },
-  { code: 'B_SK_MVA', prefix: 'Sk (B)', format: formatScalar },
+  { code: 'DELTA_IK_3F_KA', prefix: 'Δ $I_{k}\'\'$', format: formatSignedScalar },
+  { code: 'B_IK_3F_KA', prefix: '$I_{k}\'\'$ (B)', format: formatCurrent },
+  { code: 'DELTA_IK_3F_PCT', prefix: 'Δ $I_{k}\'\'$ %', format: formatSignedScalar },
+  { code: 'DELTA_IP_KA', prefix: 'Δ $i_{p}$', format: formatSignedScalar },
+  { code: 'B_IP_KA', prefix: '$i_{p}$ (B)', format: formatCurrent },
+  { code: 'DELTA_ITH_KA', prefix: 'Δ $I_{th}$', format: formatSignedScalar },
+  { code: 'B_ITH_KA', prefix: '$I_{th}$ (B)', format: formatCurrent },
+  { code: 'DELTA_SK_MVA', prefix: 'Δ $S_{k}\'\'$', format: formatSignedScalar },
+  { code: 'B_SK_MVA', prefix: '$S_{k}\'\'$ (B)', format: formatScalar },
 ];
 
 /** Rejestr szablonów: `analysis → kind → specyfikacje`. Brak wpisu (analiza lub

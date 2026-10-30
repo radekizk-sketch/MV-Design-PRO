@@ -334,7 +334,7 @@ const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_typ
 /** Tryb regulacji z karty katalogowej przekształtnika (`ConverterType.control_mode`) — słownik
  *  katalogu różni się od nastawy modelu (`meta.control_mode`, `REGULACJA_OPCJE`). */
 const TRYB_REGULACJI_KATALOGU_PL: Readonly<Record<string, string>> = {
-  STALY_COS_PHI: 'Stały współczynnik mocy cosφ',
+  STALY_COS_PHI: 'Stały współczynnik mocy $\\cos\\varphi$',
   Q_U_DROOP: 'Regulacja Q(U) — charakterystyka opadająca',
   Q_OF_U: 'Regulacja Q(U)',
   GRID_FORMING: 'Praca formująca sieć (grid forming)',
@@ -1139,8 +1139,8 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
           wiersz('material', 'Materiał żyły', napis(odcinek?.conductor_material) ?? napis(mp?.conductor_material)),
           wiersz('izolacja', 'Izolacja', izolacja),
           wiersz('i_dop', 'Obciążalność długotrwała', zapisLiczby(odcinek?.rating?.in_a ?? mp?.rated_current_a, 'A', 0)),
-          wiersz('r1', 'Rezystancja R′', zapisLiczby(odcinek?.r_ohm_per_km, 'Ω/km', 4), { zrodloPl: nadpisanie(galaz, 'r_ohm_per_km') }),
-          wiersz('x1', 'Reaktancja X′', zapisLiczby(odcinek?.x_ohm_per_km, 'Ω/km', 4), { zrodloPl: nadpisanie(galaz, 'x_ohm_per_km') }),
+          wiersz('r1', 'Rezystancja $R\'$', zapisLiczby(odcinek?.r_ohm_per_km, 'Ω/km', 4), { zrodloPl: nadpisanie(galaz, 'r_ohm_per_km') }),
+          wiersz('x1', 'Reaktancja $X\'$', zapisLiczby(odcinek?.x_ohm_per_km, 'Ω/km', 4), { zrodloPl: nadpisanie(galaz, 'x_ohm_per_km') }),
           ...(galaz.type === 'cable' && liczba(galaz.n_parallel) !== null ? [wiersz('rownolegle', 'Tory równoległe', zapisLiczby(galaz.n_parallel, ''))] : []),
         ],
         zrodloPl: zrodloDanychElementuPl(galaz, napis(mp?.trade_name)),

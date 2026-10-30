@@ -822,7 +822,7 @@ function buildAnalysisTableRows(
       type: 'Transformator',
       name: transformer.name || transformer.ref_id,
       voltage: `${formatTechnicalNumber(transformer.uhv_kv, 'kV')} / ${formatTechnicalNumber(transformer.ulv_kv, 'kV')}`,
-      input: `Sn ${formatTechnicalNumber(transformer.sn_mva, 'MVA')}; uk ${formatTechnicalNumber(transformer.uk_percent, '%')}; katalog: ${formatCatalogRef(transformer.catalog_ref)}`,
+      input: `$S_{n}$ ${formatTechnicalNumber(transformer.sn_mva, 'MVA')}; $u_{k}$ ${formatTechnicalNumber(transformer.uk_percent, '%')}; katalog: ${formatCatalogRef(transformer.catalog_ref)}`,
       resultA: 'obciążenie: nie wyznaczono',
       resultB: 'straty/P/Q: nie wyznaczono',
       status: resultStatus,
@@ -2624,7 +2624,7 @@ const PROOF_PACK_TYPES = [
   {
     id: 'SC3F_IEC60909',
     labelPl: 'Zwarcie 3-fazowe',
-    descriptionPl: 'IEC 60909, Ik″/ip/Ith z śladem Y-bus + Z-thevenin.',
+    descriptionPl: 'IEC 60909, $I_{k}\'\'$/$i_{p}$/$I_{th}$ z śladem Y-bus + Z-thevenin.',
   },
   {
     id: 'SC1F_IEC60909',

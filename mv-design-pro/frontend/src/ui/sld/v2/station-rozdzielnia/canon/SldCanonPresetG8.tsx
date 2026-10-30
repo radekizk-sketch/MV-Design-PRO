@@ -144,8 +144,8 @@ export function SldCanonPresetG8({ companion }: { companion: SldOzeArchetypeComp
           {lbl(fx, 519, `◯GS synchroniczny · x″d=${fmt(xdPu, 2)}`, TXT2, 9, 700, 'middle')}
         </g>
       ))}
-      {lbl((gx[0] + gx[gx.length - 1]) / 2, 535, `pkt neutralny generatora 15 kV: ${neutralEarth} — podstawa 64/59N + I″k1f-z`, CYAN, 8.5, 700, 'middle')}
-      {lbl((gx[0] + gx[gx.length - 1]) / 2, 548, '15 kV: agregaty synchroniczne na szynie = MASZYNA SYNCHRONICZNA (PN-EN 60909 §6.3, za Z″_GK); prąd zwarciowy PODTRZYMYWANY wzbudzeniem (Ib ≈ Ik — NIE zanika jak indukcyjna)', TXT_MUTED, 9, 600, 'middle')}
+      {lbl((gx[0] + gx[gx.length - 1]) / 2, 535, `pkt neutralny generatora 15 kV: ${neutralEarth} — podstawa 64/59N + $I_{k1f}''$-z`, CYAN, 8.5, 700, 'middle')}
+      {lbl((gx[0] + gx[gx.length - 1]) / 2, 548, '15 kV: agregaty synchroniczne na szynie = MASZYNA SYNCHRONICZNA (PN-EN 60909 §6.3, za $Z_{_GK}\'\'$); prąd zwarciowy PODTRZYMYWANY wzbudzeniem ($I_{b}$ ≈ $I_{k}$ — NIE zanika jak indukcyjna)', TXT_MUTED, 9, 600, 'middle')}
       {lbl((gx[0] + gx[gx.length - 1]) / 2, 561, `zab. generatora: ${machineProt} (pełny zestaw synchroniczny)`, TXT_MUTED, 8.5, 600, 'middle')}
 
       {/* ── node ① — SN busbar 15 kV (sieć + MASZYNA synchroniczna, local) ── */}

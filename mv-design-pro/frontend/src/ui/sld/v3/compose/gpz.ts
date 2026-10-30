@@ -969,8 +969,8 @@ function wierszeTabliczkiTransformatora(transformer: CanonicalGpzTransformer): S
   // katalogowa) na tabliczce TR — WYŁĄCZNIE gdy dane są (uczciwy brak,
   // zero literałów zastępczych).
   const shortCircuitParts: string[] = [];
-  if (transformer.ukPercent != null) shortCircuitParts.push(`uk ${liczbaRysunkuPl(transformer.ukPercent)}%`);
-  if (transformer.pkKw != null) shortCircuitParts.push(`Pk ${liczbaRysunkuPl(transformer.pkKw)} kW`);
+  if (transformer.ukPercent != null) shortCircuitParts.push(`$u_{k}$ ${liczbaRysunkuPl(transformer.ukPercent)}%`);
+  if (transformer.pkKw != null) shortCircuitParts.push(`$P_{k}$ ${liczbaRysunkuPl(transformer.pkKw)} kW`);
   // SLD-02 (V12K-091): wiersz regulacji zaczepów z modelu (`tap_changer`
   // → oltc). WYŁĄCZNIE gdy regulacja obecna (uczciwy brak: bez wiersza).
   const oltcRowText = transformer.oltc
@@ -1114,15 +1114,15 @@ function gpzSystemSourceDataplateText(source: CanonicalGpzHvSystemSource): strin
   if (source.sk3Mva != null) {
     parts.push(
       source.sk3MinMva != null
-        ? `Sk″maks ${liczbaRysunkuPl(source.sk3Mva)} / Sk″min ${liczbaRysunkuPl(source.sk3MinMva)} MVA`
-        : `Sk″ ${liczbaRysunkuPl(source.sk3Mva)} MVA`,
+        ? `$S_{k,\\max}''$ ${liczbaRysunkuPl(source.sk3Mva)} / $S_{k,\\min}''$ ${liczbaRysunkuPl(source.sk3MinMva)} MVA`
+        : `$S_{k}''$ ${liczbaRysunkuPl(source.sk3Mva)} MVA`,
     );
   }
   if (source.ik3Ka != null) {
     parts.push(
       source.ik3MinKa != null
-        ? `Ik″maks ${liczbaRysunkuPl(source.ik3Ka)} / Ik″min ${liczbaRysunkuPl(source.ik3MinKa)} kA`
-        : `Ik″ ${liczbaRysunkuPl(source.ik3Ka)} kA`,
+        ? `$I_{k,\\max}''$ ${liczbaRysunkuPl(source.ik3Ka)} / $I_{k,\\min}''$ ${liczbaRysunkuPl(source.ik3MinKa)} kA`
+        : `$I_{k}''$ ${liczbaRysunkuPl(source.ik3Ka)} kA`,
     );
   }
   if (source.voltageKv != null) parts.push(`${liczbaRysunkuPl(source.voltageKv)} kV`);

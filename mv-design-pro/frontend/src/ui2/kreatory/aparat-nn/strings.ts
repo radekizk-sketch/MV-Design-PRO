@@ -32,8 +32,8 @@ export const APARAT_NN_STRINGS = {
   nazwaPlaceholder: 'np. Wyłącznik odpływu nr 1',
 
   paramSekcjaNormowa: 'Parametry z katalogu',
-  paramIn: 'Prąd znamionowy In',
-  paramUn: 'Napięcie znamionowe Un',
+  paramIn: 'Prąd znamionowy $I_{n}$',
+  paramUn: 'Napięcie znamionowe $U_{n}$',
   paramZdolnoscWylaczania: 'Zdolność wyłączania',
 
   kontrolaTytul: 'Kontrola aparatu',

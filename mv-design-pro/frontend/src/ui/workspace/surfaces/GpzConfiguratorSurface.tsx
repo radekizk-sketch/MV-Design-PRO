@@ -230,7 +230,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               required
             />
             <NumberField
-              label="Moc zwarciowa S''k 110 kV"
+              label="Moc zwarciowa $S_{k}''$ 110 kV"
               unit="MVA"
               value={data.hvShortCircuitMva}
               onChange={(v) => setData((d) => ({ ...d, hvShortCircuitMva: v }))}
@@ -248,7 +248,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
             )}
             {data.shortCircuitInputMode === 'SN_SIMPLIFIED' && (
               <NumberField
-                label="Moc zwarciowa S''k po stronie SN"
+                label="Moc zwarciowa $S_{k}''$ po stronie SN"
                 unit="MVA"
                 value={data.snShortCircuitMva}
                 onChange={(v) => setData((d) => ({ ...d, snShortCircuitMva: v }))}
@@ -273,7 +273,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               options={TRAFO_110_CATALOG_OPTIONS}
             />
             <NumberField
-              label="Moc znamionowa Sn"
+              label="Moc znamionowa $S_{n}$"
               unit="MVA"
               value={data.transformerNominalMva}
               onChange={(v) => setData((d) => ({ ...d, transformerNominalMva: v }))}

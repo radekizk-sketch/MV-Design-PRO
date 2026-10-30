@@ -3,8 +3,8 @@
 export const ODBIOR_STRINGS = {
   eyebrow: 'MODEL SIECI · ODBIÓR nN',
   cel:
-    'Dodaj odbiór na odpływie nN. Podajesz moc czynną i współczynnik mocy cosφ; '
-    + 'prąd i moc pozorną liczy backend, a moc bierną Q operacja wyprowadza z cosφ. '
+    'Dodaj odbiór na odpływie nN. Podajesz moc czynną i współczynnik mocy $\\cos\\varphi$; '
+    + 'prąd i moc pozorną liczy backend, a moc bierną Q operacja wyprowadza z $\\cos\\varphi$. '
     + 'Typ odbioru dobierasz z katalogu; tryb ręczny (ekspercki) pozwala pominąć katalog.',
   odznaka: 'Nowy odbiór nN',
 
@@ -27,14 +27,14 @@ export const ODBIOR_STRINGS = {
   typKatalog: 'Typ odbioru z katalogu',
   typKatalogPlaceholder: '— wybierz typ odbioru —',
   typBlad: 'Nie udało się pobrać katalogu odbiorów.',
-  typPomoc: 'Wybór typu wypełnia moc i cosφ z katalogu — możesz je potem skorygować.',
+  typPomoc: 'Wybór typu wypełnia moc i $\\cos\\varphi$ z katalogu — możesz je potem skorygować.',
 
   nazwa: 'Nazwa odbioru',
   nazwaPlaceholder: 'np. Odbiór technologiczny hala A',
   moc: 'Moc czynna P',
-  cosPhi: 'Współczynnik mocy cosφ',
+  cosPhi: 'Współczynnik mocy $\\cos\\varphi$',
   qOverride: 'Moc bierna Q (opcjonalnie)',
-  qOverridePomoc: 'Puste = backend wyprowadzi Q z cosφ. Wpisz, aby narzucić wartość.',
+  qOverridePomoc: 'Puste = backend wyprowadzi Q z $\\cos\\varphi$. Wpisz, aby narzucić wartość.',
   rodzaj: 'Rodzaj odbioru',
   rodzajOpcje: [
     { id: 'SKUPIONY', etykieta: 'Skupiony' },
@@ -106,7 +106,7 @@ export const ODBIOR_STRINGS = {
   podgladS: 'Moc pozorna S',
   podgladZrodlo: 'Źródło wyniku',
   podgladZrodloWartosc: 'Obliczenie prądu po stronie serwera (R1)',
-  podgladBrak: 'Podaj moc i cosφ, aby zobaczyć prąd odbioru.',
+  podgladBrak: 'Podaj moc i $\\cos\\varphi$, aby zobaczyć prąd odbioru.',
   // Komunikat NAZYWA PRZYCZYNE (V12K-260). Poprzednia wersja mowila tylko, ze sie
   // nie udalo, a pod spodem ekran dopisywal polecenie podania mocy i cosfi — przy
   // mocy i cosfi JUZ PODANYCH. Projektant szukal brakujacego pola, ktorego nie brakowalo.
@@ -116,7 +116,7 @@ export const ODBIOR_STRINGS = {
   // Downstream.
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
-    'Rozpływ mocy uwzględni odbiór (P i Q z cosφ); rozpływ niesymetryczny rozłoży go '
+    'Rozpływ mocy uwzględni odbiór (P i Q z $\\cos\\varphi$); rozpływ niesymetryczny rozłoży go '
     + 'na wskazane fazy; analizy łuku, bilansu energii i strat oraz identyfikacja '
     + 'granic policzą jego wpływ.',
 
@@ -124,7 +124,7 @@ export const ODBIOR_STRINGS = {
   kontrolaTytul: 'Kontrola odbioru',
   wierszOdplyw: 'Odpływ nN',
   wierszMoc: 'Moc P',
-  wierszCos: 'cosφ',
+  wierszCos: '$\\cos\\varphi$',
   wierszPrad: 'Prąd',
 
   // Stan zerowy.
@@ -149,21 +149,21 @@ export const ODBIOR_STRINGS = {
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: odbiór nN — moc, współczynnik mocy i model obciążenia',
   teoriaOpis:
-    'Odbiór reprezentuje pobór mocy czynnej P i biernej Q na szynie nN. Współczynnik mocy cosφ '
-    + 'wiąże je: $Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$ — im niższy cosφ, tym większy pobór Q i większe obciążenie '
+    'Odbiór reprezentuje pobór mocy czynnej P i biernej Q na szynie nN. Współczynnik mocy $\\cos\\varphi$ '
+    + 'wiąże je: $Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$ — im niższy $\\cos\\varphi$, tym większy pobór Q i większe obciążenie '
     + 'sieci oraz straty. Model obciążenia (stała moc / stały prąd / stała impedancja, tzw. ZIP) '
     + 'określa, jak pobór zmienia się z napięciem: odbiory stałomocowe pobierają tę samą P niezależnie '
     + 'od napięcia, impedancyjne — malejącą przy spadku napięcia. Sposób przyłączenia (1‑/3‑fazowe) '
     + 'wpływa na niesymetrię. Rozkład napięć i prądów od tego odbioru liczy solver rozpływu mocy.',
   teoriaWymog:
-    'cosφ w punkcie przyłączenia powinien spełniać wymagania OSD (zwykle ≥ 0,93 tgφ ≤ 0,4); '
+    '$\\cos\\varphi$ w punkcie przyłączenia powinien spełniać wymagania OSD (zwykle ≥ 0,93 $\\operatorname{tg}\\varphi$ ≤ 0,4); '
     + 'moc przyłączeniowa i model obciążenia muszą odpowiadać rzeczywistemu charakterowi odbioru.',
-  teoriaPodstawa: 'Podstawa: PN-EN 50160, IRiESD (tgφ), model ZIP obciążenia.',
+  teoriaPodstawa: 'Podstawa: PN-EN 50160, IRiESD ($\\operatorname{tg}\\varphi$), model ZIP obciążenia.',
   teoriaJakCzytac:
     'Trójkąt mocy: przyprostokątna pozioma = moc czynna P, pionowa = moc bierna Q, '
-    + 'przeciwprostokątna = moc pozorna S. Kąt między P a S rośnie, gdy cosφ maleje — im niższy '
-    + 'cosφ, tym więcej Q na tę samą P ($Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$). Rzeczywisty pobór liczy rozpływ.',
-  wykresAria: 'Trójkąt mocy odbioru w funkcji cosφ (P, Q, S)',
+    + 'przeciwprostokątna = moc pozorna S. Kąt między P a S rośnie, gdy $\\cos\\varphi$ maleje — im niższy '
+    + '$\\cos\\varphi$, tym więcej Q na tę samą P ($Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$). Rzeczywisty pobór liczy rozpływ.',
+  wykresAria: 'Trójkąt mocy odbioru w funkcji $\\cos\\varphi$ (P, Q, S)',
   wykresOsP: 'Moc czynna P [pu]',
   wykresOsQ: 'Moc bierna Q [pu]',
   wykresP: 'P (czynna)',
@@ -181,8 +181,8 @@ export const ODBIOR_SN_STRINGS = {
   eyebrow: 'MODEL SIECI · ODBIÓR SN',
   cel:
     'Dodaj odbiór przyłączony wprost do szyny SN (np. odbiorca zasilany z rozdzielni SN bez '
-    + 'własnej stacji SN/nN w modelu). Podajesz moc czynną i cosφ; moc bierną Q operacja '
-    + 'wyprowadza z cosφ, prąd liczy backend. Typ odbioru dobierasz z katalogu albo w trybie ręcznym.',
+    + 'własnej stacji SN/nN w modelu). Podajesz moc czynną i $\\cos\\varphi$; moc bierną Q operacja '
+    + 'wyprowadza z $\\cos\\varphi$, prąd liczy backend. Typ odbioru dobierasz z katalogu albo w trybie ręcznym.',
   odznaka: 'Nowy odbiór SN',
   trybRecznyInfo:
     'Tryb ekspercki: dane odbioru wprowadzasz ręcznie, bez pozycji katalogowej. '

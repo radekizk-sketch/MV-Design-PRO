@@ -102,8 +102,8 @@ export function getBusFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'u_calculated', label: 'U obliczone', value: null, type: 'number', unit: 'kV', editable: false, source: 'calculated' },
         { key: 'angle_deg', label: 'Kąt napięcia', value: null, type: 'number', unit: '°', editable: false, source: 'calculated' },
-        { key: 'ikss_ka', label: 'Ik"', value: null, type: 'number', unit: 'kA', editable: false, source: 'calculated' },
-        { key: 'ip_ka', label: 'ip', value: null, type: 'number', unit: 'kA', editable: false, source: 'calculated' },
+        { key: 'ikss_ka', label: '$I_{k}\'\'$', value: null, type: 'number', unit: 'kA', editable: false, source: 'calculated' },
+        { key: 'ip_ka', label: '$i_{p}$', value: null, type: 'number', unit: 'kA', editable: false, source: 'calculated' },
       ],
     },
     {
@@ -269,13 +269,13 @@ export function getTransformerBranchFieldDefinitions(): PropertySection[] {
       id: 'type_params',
       label: SECTION_LABELS.type_params,
       fields: [
-        { key: 'rated_power_mva', label: 'Moc znamionowa Sn', value: null, type: 'number', unit: 'MVA', editable: false, source: 'type' },
+        { key: 'rated_power_mva', label: 'Moc znamionowa $S_{n}$', value: null, type: 'number', unit: 'MVA', editable: false, source: 'type' },
         { key: 'voltage_hv_kv', label: 'Napięcie GN', value: null, type: 'number', unit: 'kV', editable: false, source: 'type' },
         { key: 'voltage_lv_kv', label: 'Napięcie DN', value: null, type: 'number', unit: 'kV', editable: false, source: 'type' },
         { key: 'uk_percent', label: 'Napięcie zwarcia uk%', value: null, type: 'number', unit: '%', editable: false, source: 'type' },
-        { key: 'pk_kw', label: 'Straty obciążeniowe Pk', value: null, type: 'number', unit: 'kW', editable: false, source: 'type' },
+        { key: 'pk_kw', label: 'Straty obciążeniowe $P_{k}$', value: null, type: 'number', unit: 'kW', editable: false, source: 'type' },
         { key: 'i0_percent', label: 'Prąd jałowy i0%', value: null, type: 'number', unit: '%', editable: false, source: 'type' },
-        { key: 'p0_kw', label: 'Straty jałowe P0', value: null, type: 'number', unit: 'kW', editable: false, source: 'type' },
+        { key: 'p0_kw', label: 'Straty jałowe $P_{0}$', value: null, type: 'number', unit: 'kW', editable: false, source: 'type' },
         // W5-A: grupa połączeń WYŁĄCZNIE z typu katalogowego — szablon bez domyślnego Dyn11.
         { key: 'vector_group', label: 'Grupa połączeń', value: '', type: 'string', editable: false, source: 'type' },
       ],
@@ -368,10 +368,10 @@ export function getSwitchFieldDefinitions(): PropertySection[] {
       // Parametry typu pochodzą z katalogu: bez danej (typ nieprzypisany albo pozycja bez
       // tej wartości, np. łącznik 110 kV bez I_k/I_cw) pole pokazuje „brak danych”, nie 0.
       fields: [
-        { key: 'un_kv', label: 'Napięcie znamionowe Un', value: null, type: 'number', unit: 'kV', editable: false, source: 'type' },
-        { key: 'in_a', label: 'Prąd znamionowy In', value: null, type: 'number', unit: 'A', editable: false, source: 'type' },
-        { key: 'ik_ka', label: 'Prąd wyłączalny Ik', value: null, type: 'number', unit: 'kA', editable: false, source: 'type' },
-        { key: 'icw_ka', label: 'Prąd wytrzymałości Icw', value: null, type: 'number', unit: 'kA', editable: false, source: 'type' },
+        { key: 'un_kv', label: 'Napięcie znamionowe $U_{n}$', value: null, type: 'number', unit: 'kV', editable: false, source: 'type' },
+        { key: 'in_a', label: 'Prąd znamionowy $I_{n}$', value: null, type: 'number', unit: 'A', editable: false, source: 'type' },
+        { key: 'ik_ka', label: 'Prąd wyłączalny $I_{k}$', value: null, type: 'number', unit: 'kA', editable: false, source: 'type' },
+        { key: 'icw_ka', label: 'Prąd wytrzymałości $I_{cw}$', value: null, type: 'number', unit: 'kA', editable: false, source: 'type' },
         { key: 'medium', label: 'Ośrodek gaszący', value: '', type: 'string', editable: false, source: 'type' },
       ],
     },
@@ -379,9 +379,9 @@ export function getSwitchFieldDefinitions(): PropertySection[] {
       id: 'electrical_params',
       label: SECTION_LABELS.electrical_params,
       fields: [
-        { key: 'voltage_kv', label: 'Napięcie znamionowe Un', value: 15.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
-        { key: 'rated_current_a', label: 'Prąd znamionowy In', value: 1250, type: 'number', unit: 'A', editable: true, source: 'instance' },
-        { key: 'breaking_current_ka', label: 'Prąd wyłączalny Ik', value: 25.0, type: 'number', unit: 'kA', editable: true, source: 'instance' },
+        { key: 'voltage_kv', label: 'Napięcie znamionowe $U_{n}$', value: 15.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
+        { key: 'rated_current_a', label: 'Prąd znamionowy $I_{n}$', value: 1250, type: 'number', unit: 'A', editable: true, source: 'instance' },
+        { key: 'breaking_current_ka', label: 'Prąd wyłączalny $I_{k}$', value: 25.0, type: 'number', unit: 'kA', editable: true, source: 'instance' },
       ],
     },
     {
@@ -389,7 +389,7 @@ export function getSwitchFieldDefinitions(): PropertySection[] {
       label: SECTION_LABELS.calculated,
       fields: [
         { key: 'i_calculated_a', label: 'I obliczony', value: null, type: 'number', unit: 'A', editable: false, source: 'calculated' },
-        { key: 'ikss_at_location_ka', label: 'Ik" w miejscu', value: null, type: 'number', unit: 'kA', editable: false, source: 'calculated' },
+        { key: 'ikss_at_location_ka', label: '$I_{k}\'\'$ w miejscu', value: null, type: 'number', unit: 'kA', editable: false, source: 'calculated' },
         { key: 'utilization_percent', label: 'Współczynnik wykorzystania', value: null, type: 'number', unit: '%', editable: false, source: 'calculated' },
       ],
     },
@@ -456,16 +456,16 @@ export function getSourceFieldDefinitions(): PropertySection[] {
         // źródła, a edycja zapisywała klucz, którego nic w modelu nie czyta;
         // ten sam defekt co niżej w `applyCaseConfigRules`/`validation.ts` —
         // naprawione w komplecie, KLASA NIE INSTANCJA).
-        { key: 'sk3_mva', label: "Moc zwarciowa Sk\"", value: 5000, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
+        { key: 'sk3_mva', label: "Moc zwarciowa $S_{k}''$", value: 5000, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
         { key: 'rx_ratio', label: 'Stosunek R/X', value: 0.1, type: 'number', editable: true, source: 'instance' },
         // Karta K7c-FE: klucz zgodny z polem modelu ENM `Source.sn_voltage_kv`
         // (był `voltage_kv` — `Source` NIE MA takiego pola, ma `sn_voltage_kv`;
         // ta sama klasa fantomu co `sk_mva` powyżej — etykieta bez zmian).
-        { key: 'sn_voltage_kv', label: 'Napięcie znamionowe Un', value: 110.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
+        { key: 'sn_voltage_kv', label: 'Napięcie znamionowe $U_{n}$', value: 110.0, type: 'number', unit: 'kV', editable: true, source: 'instance' },
         // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — opcjonalne,
         // brak wartości domyślnej (zero fabrykacji; `null` = nie podano).
-        { key: 'sk3_min_mva', label: "Moc zwarciowa Sk\"min", value: null, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
-        { key: 'ik3_min_ka', label: "Prąd zwarciowy Ik\"min", value: null, type: 'number', unit: 'kA', editable: true, source: 'instance' },
+        { key: 'sk3_min_mva', label: "Moc zwarciowa $S_{k,\\min}''$", value: null, type: 'number', unit: 'MVA', editable: true, source: 'instance' },
+        { key: 'ik3_min_ka', label: "Prąd zwarciowy $I_{k,\\min}''$", value: null, type: 'number', unit: 'kA', editable: true, source: 'instance' },
         { key: 'rx_ratio_min', label: 'Stosunek R/X (MIN)', value: null, type: 'number', editable: true, source: 'instance' },
         // CV-4.3 K7c: napięcie zadane szyny bilansującej — opcjonalne (brak =
         // znamionowe, zero fabrykacji), ta sama klasa mutowalności co MIN wyżej.
@@ -479,7 +479,7 @@ export function getSourceFieldDefinitions(): PropertySection[] {
         { key: 'zk_ohm', label: 'Impedancja zwarciowa Zk', value: null, type: 'number', unit: 'Ω', editable: false, source: 'calculated' },
         { key: 'rk_ohm', label: 'Rk', value: null, type: 'number', unit: 'Ω', editable: false, source: 'calculated' },
         { key: 'xk_ohm', label: 'Xk', value: null, type: 'number', unit: 'Ω', editable: false, source: 'calculated' },
-        { key: 'ikss_ka', label: 'Ik"', value: null, type: 'number', unit: 'kA', editable: false, source: 'calculated' },
+        { key: 'ikss_ka', label: '$I_{k}\'\'$', value: null, type: 'number', unit: 'kA', editable: false, source: 'calculated' },
         { key: 'p_mw', label: 'P wpływające', value: null, type: 'number', unit: 'MW', editable: false, source: 'calculated' },
         { key: 'q_mvar', label: 'Q wpływające', value: null, type: 'number', unit: 'Mvar', editable: false, source: 'calculated' },
       ],
@@ -539,7 +539,7 @@ export function getLoadFieldDefinitions(): PropertySection[] {
       fields: [
         { key: 'p_mw', label: 'Moc czynna P', value: 1.0, type: 'number', unit: 'MW', editable: true, source: 'instance' },
         { key: 'q_mvar', label: 'Moc bierna Q', value: 0.3, type: 'number', unit: 'Mvar', editable: true, source: 'instance' },
-        { key: 'cos_phi', label: 'Współczynnik mocy cos φ', value: 0.95, type: 'number', editable: true, source: 'instance' },
+        { key: 'cos_phi', label: 'Współczynnik mocy $\\cos\\varphi$', value: 0.95, type: 'number', editable: true, source: 'instance' },
         { key: 'load_type', label: 'Typ modelu', value: 'CONSTANT_POWER', type: 'enum', editable: true, enumOptions: ['CONSTANT_POWER', 'CONSTANT_IMPEDANCE', 'ZIP'], source: 'instance' },
       ],
     },

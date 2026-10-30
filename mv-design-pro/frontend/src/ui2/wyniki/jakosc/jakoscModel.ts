@@ -619,7 +619,7 @@ export function naZalozeniaCieplne(
     },
     {
       etykieta: 'Wytrzymałość żyły',
-      wartosc: 'Ith(1s) albo Jth(1s)·S z katalogu',
+      wartosc: '$I_{th}$(1s) albo Jth(1s)·S z katalogu',
       uwaga: 'Brak danych katalogowych ⇒ pozycja niesprawdzona, nigdy spełniona.',
     },
     {

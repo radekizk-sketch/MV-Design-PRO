@@ -893,14 +893,14 @@ function BusbarShortCircuitPanel(props: {
   const { sc, x, y } = props;
   const ok = sc.verification.passed;
   const rows: Array<[string, string]> = [
-    [`Ik"max (c=${sc.max.c_factor})`, `${sc.max.ikss_ka.toFixed(2)} kA`],
+    [`$I_{k,\\max}''$ (c=${sc.max.c_factor})`, `${sc.max.ikss_ka.toFixed(2)} kA`],
     ['ip', `${sc.max.ip_ka.toFixed(1)} kA`],
     ['Ith', `${sc.max.ith_ka.toFixed(2)} kA`],
     ['Ib', `${sc.max.ib_ka.toFixed(2)} kA`],
     ['κ', sc.max.kappa.toFixed(2)],
     ['Sk"', `${sc.max.sk_mva.toFixed(1)} MVA`],
     ['R/X', sc.max.rx_ratio.toFixed(3)],
-    [`Ik"min (c=${sc.min.c_factor})`, `${sc.min.ikss_ka.toFixed(2)} kA`],
+    [`$I_{k,\\min}''$ (c=${sc.min.c_factor})`, `${sc.min.ikss_ka.toFixed(2)} kA`],
   ];
   const rowH = 9;
   const panelW = 116;
@@ -927,7 +927,7 @@ function BusbarShortCircuitPanel(props: {
       {/* Icw verification verdict. */}
       <rect x={x + 4} y={y + panelH - 18} width={panelW - 8} height={14} rx={2} fill={ok ? '#0C2A18' : '#3A0E0E'} stroke={ok ? COLOR_DEVICE_CLOSED_BORDER : COLOR_DEVICE_OPEN_BORDER} strokeWidth={1} />
       <text x={x + panelW / 2} y={y + panelH - 8} textAnchor="middle" fill={ok ? '#5BE08A' : '#FF6B6B'} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={800}>
-        {`Ik"max ${sc.verification.ikss_max_ka.toFixed(1)} ${ok ? '≤' : '>'} Icw ${sc.verification.icw_ka} kA ${ok ? '✓' : '✗'}`}
+        {`$I_{k,\\max}''$ ${sc.verification.ikss_max_ka.toFixed(1)} ${ok ? '≤' : '>'} $I_{cw}$ ${sc.verification.icw_ka} kA ${ok ? '✓' : '✗'}`}
       </text>
       {/* White Box affordance — the derivation exists (LaTeX trace from the solver). */}
       <text data-testid={`sr-sc-whitebox-${sc.bus_ref}`} data-wb-steps={sc.max.white_box_trace.length} x={x + 6} y={y + panelH + 8} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6} fontWeight={600}>

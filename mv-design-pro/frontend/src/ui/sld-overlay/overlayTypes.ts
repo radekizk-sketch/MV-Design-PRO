@@ -122,8 +122,8 @@ export const OVERLAY_ANALYSIS_LABELS: Readonly<Record<OverlayAnalysisType, strin
   PROTECTION_COVERAGE: 'Pokrycie ochronne',
   VOLTAGE_PROFILE: 'Profil napięciowy',
   OVERLOAD: 'Przeciążenie termiczne',
-  THERMAL_WITHSTAND: 'Wytrzymałość cieplna (Ith)',
-  DYNAMIC_WITHSTAND: 'Wytrzymałość dynamiczna (Idyn)',
+  THERMAL_WITHSTAND: 'Wytrzymałość cieplna ($I_{th}$)',
+  DYNAMIC_WITHSTAND: 'Wytrzymałość dynamiczna ($I_{dyn}$)',
   LOSSES: 'Straty mocy',
   VARIANT_DELTA: 'Porównanie wariantów',
 } as const;

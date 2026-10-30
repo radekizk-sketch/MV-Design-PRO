@@ -39,7 +39,7 @@ export function WykresTrojkatMocy({ cosPhi }: { cosPhi: number }) {
         {T.wykresS}
       </text>
       <text x={xP + 6} y={yQ - 4} className="mvd-wykres-znak">
-        {`cosφ = ${c.toFixed(2)}`}
+        {`$\\cos\\varphi$ = ${c.toFixed(2)}`}
       </text>
     </svg>
   );

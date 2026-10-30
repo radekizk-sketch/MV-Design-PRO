@@ -269,7 +269,7 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
 
   // Nagłówek analizy (tryb zwarciowy)
   podtytul:
-    'Porównanie A/B wyników zwarciowych — wielkości Ik", ip, Ith, Sk (oraz pełny bilans IEC 60909 w trybie eksperckim) pochodzą z serwera obliczeń (tylko do odczytu).',
+    'Porównanie A/B wyników zwarciowych — wielkości $I_{k}\'\'$, $i_{p}$, $I_{th}$, $S_{k}\'\'$ (oraz pełny bilans IEC 60909 w trybie eksperckim) pochodzą z serwera obliczeń (tylko do odczytu).',
 
   // Wybór A/B
   wyborTytul: 'Wybór przebiegów zwarciowych do porównania',
@@ -293,18 +293,18 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
 
   // Kolumny tabeli punktów (A · B · Δ dla każdej wielkości)
   kolPunkt: 'Punkt zwarcia',
-  kolIkssA: 'Ik" A',
-  kolIkssB: 'Ik" B',
-  kolIkssD: 'Δ Ik"',
-  kolIpA: 'ip A',
-  kolIpB: 'ip B',
-  kolIpD: 'Δ ip',
-  kolIthA: 'Ith A',
-  kolIthB: 'Ith B',
-  kolIthD: 'Δ Ith',
-  kolSkA: 'Sk A',
-  kolSkB: 'Sk B',
-  kolSkD: 'Δ Sk',
+  kolIkssA: '$I_{k}\'\'$ A',
+  kolIkssB: '$I_{k}\'\'$ B',
+  kolIkssD: 'Δ $I_{k}\'\'$',
+  kolIpA: '$i_{p}$ A',
+  kolIpB: '$i_{p}$ B',
+  kolIpD: 'Δ $i_{p}$',
+  kolIthA: '$I_{th}$ A',
+  kolIthB: '$I_{th}$ B',
+  kolIthD: 'Δ $I_{th}$',
+  kolSkA: '$S_{k}\'\'$ A',
+  kolSkB: '$S_{k}\'\'$ B',
+  kolSkD: 'Δ $S_{k}\'\'$',
 
   // Kolumny pełnego bilansu IEC 60909 (karta S-C — tryb ekspercki, addytywnie)
   kolRkA: 'Rk A',
@@ -324,15 +324,15 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   kolI2tD: 'Δ I²t',
   // Wielkości zależne od czasu wyłączenia t_b i sam t_b punktu (karta TB-WARTOSC-ROBOCZA):
   // różnica Ib / iDC między przebiegami bywa skutkiem samej zmiany t_b.
-  kolIbA: 'Ib A',
-  kolIbB: 'Ib B',
-  kolIbD: 'Δ Ib',
-  kolIdcA: 'iDC(tb) A',
-  kolIdcB: 'iDC(tb) B',
-  kolIdcD: 'Δ iDC(tb)',
-  kolTbA: 'tb A',
-  kolTbB: 'tb B',
-  kolTbD: 'Δ tb',
+  kolIbA: '$I_{b}$ A',
+  kolIbB: '$I_{b}$ B',
+  kolIbD: 'Δ $I_{b}$',
+  kolIdcA: '$i_{DC}$($t_{b}$) A',
+  kolIdcB: '$i_{DC}$($t_{b}$) B',
+  kolIdcD: 'Δ $i_{DC}$($t_{b}$)',
+  kolTbA: '$t_{b}$ A',
+  kolTbB: '$t_{b}$ B',
+  kolTbD: 'Δ $t_{b}$',
   /** Dopisek przy t_b strony, który jest wartością roboczą (pochodzenie z backendu). */
   tbRobocza: ' · wartość robocza',
 
@@ -343,7 +343,7 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   pokazNaSchemacie: 'Pokaż różnice na schemacie',
   pokazNaSchemacieWTrakcie: 'Przygotowywanie różnic…',
   pokazNaSchemacieOpis:
-    'Nanosi różnice Δ (Ik", ip, Ith, Sk) na punkty zwarcia schematu — te same wartości co w tabeli.',
+    'Nanosi różnice Δ ($I_{k}\'\'$, $i_{p}$, $I_{th}$, $S_{k}\'\'$) na punkty zwarcia schematu — te same wartości co w tabeli.',
   // Uczciwy stan zerowy: bez punktów wspólnych nie ma czego nanosić.
   // Komunikat błędu pobrania NIE stoi tutaj — niesie go store nakładki wprost
   // z odpowiedzi (status HTTP), a drugi, ogólniejszy tekst obok zabrałby

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 import { fetchTypesByCategory } from '../catalog';
 import type { CatalogListItem } from '../catalog/api';
 import {
@@ -59,7 +60,7 @@ const NAMESPACE_PARAM_LABELS: Partial<Record<CatalogNamespace, Record<string, st
   LINIA_SN: {
     r_ohm_per_km: "R' [Ohm/km]",
     x_ohm_per_km: "X' [Ohm/km]",
-    rated_current_a: 'In [A]',
+    rated_current_a: '$I_{n}$ [A]',
   },
   // Karta LINIA-110: dane wyrobu (PN-EN 50182) — impedancję linii liczy backend z geometrii.
   PRZEWOD_LINII_WN: {
@@ -67,54 +68,54 @@ const NAMESPACE_PARAM_LABELS: Partial<Record<CatalogNamespace, Record<string, st
     przeznaczenie: 'Przeznaczenie',
     r20_dc_ohm_per_km: 'R20 DC [Ohm/km]',
     srednica_mm: 'd [mm]',
-    rated_current_a: 'In [A]',
+    rated_current_a: '$I_{n}$ [A]',
   },
   KABEL_SN: {
     r_ohm_per_km: "R' [Ohm/km]",
     x_ohm_per_km: "X' [Ohm/km]",
-    rated_current_a: 'In [A]',
+    rated_current_a: '$I_{n}$ [A]',
     insulation_type: 'Izolacja',
   },
   TRAFO_SN_NN: {
-    rated_power_mva: 'Sn [MVA]',
-    uk_percent: 'uk [%]',
-    pk_kw: 'Pk [kW]',
+    rated_power_mva: '$S_{n}$ [MVA]',
+    uk_percent: '$u_{k}$ [%]',
+    pk_kw: '$P_{k}$ [kW]',
     vector_group: 'Grupa',
   },
   ZRODLO_SN: {
-    voltage_rating_kv: 'Un [kV]',
-    sk3_mva: 'Sk3 [MVA]',
+    voltage_rating_kv: '$U_{n}$ [kV]',
+    sk3_mva: '$S_{k3}\'\'$ [MVA]',
     rx_ratio: 'R/X',
   },
   APARAT_SN: {
-    u_n_kv: 'Un [kV]',
-    i_n_a: 'In [A]',
+    u_n_kv: '$U_{n}$ [kV]',
+    i_n_a: '$I_{n}$ [A]',
     breaking_capacity_ka: 'Iwyl [kA]',
   },
   APARAT_NN: {
-    u_n_kv: 'Un [kV]',
-    i_n_a: 'In [A]',
+    u_n_kv: '$U_{n}$ [kV]',
+    i_n_a: '$I_{n}$ [A]',
     breaking_capacity_ka: 'Iwyl [kA]',
   },
   APARAT_NN_RCD: {
     i_delta_n_a: 'IΔn [A]',
     rcd_type: 'Rodzaj',
-    in_a: 'In [A]',
+    in_a: '$I_{n}$ [A]',
     t_a_s: 'ta przy IΔn [s]',
   },
   KABEL_NN: {
-    u_n_kv: 'Un [kV]',
+    u_n_kv: '$U_{n}$ [kV]',
     cross_section_mm2: 'S [mm2]',
-    i_max_a: 'Imax [A]',
+    i_max_a: '$I_{\\max}$ [A]',
   },
   OBCIAZENIE: {
     model: 'Model',
     p_kw: 'P [kW]',
-    cos_phi: 'cos fi',
+    cos_phi: '$\\cos\\varphi$',
   },
   ZRODLO_NN_PV: {
-    s_n_kva: 'Sn [kVA]',
-    p_max_kw: 'Pmax [kW]',
+    s_n_kva: '$S_{n}$ [kVA]',
+    p_max_kw: '$P_{\\max}$ [kW]',
     control_mode: 'Sterowanie',
   },
   ZRODLO_NN_BESS: {
@@ -125,7 +126,7 @@ const NAMESPACE_PARAM_LABELS: Partial<Record<CatalogNamespace, Record<string, st
   ZABEZPIECZENIE: {
     vendor: 'Producent',
     series: 'Seria',
-    rated_current_a: 'In [A]',
+    rated_current_a: '$I_{n}$ [A]',
   },
   CT: {
     ratio_primary_a: 'Iprim [A]',
@@ -314,7 +315,7 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
                     <th className="px-3 py-1.5 text-left font-medium text-gray-500">Producent</th>
                     {Object.values(paramLabels).map((label) => (
                       <th key={label} className="px-3 py-1.5 text-right font-medium text-gray-500">
-                        {label}
+                        <TekstZWzorami tekst={label} />
                       </th>
                     ))}
                   </tr>
