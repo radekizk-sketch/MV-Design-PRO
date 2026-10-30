@@ -8,6 +8,8 @@ from __future__ import annotations
 import math
 
 from network_model.catalog.lv_cable_nkt import get_all_nkt_lv_cable_types
+from network_model.catalog.lv_cable_nkt_pvc import get_all_nkt_yky_lv_cable_types
+from network_model.catalog.lv_cable_nkt_yaky import get_all_nkt_yaky_lv_cable_types
 from network_model.catalog.mv_cable_tfk_full import get_all_tfk_1220_cable_types, get_all_tfk_1830_cable_types
 from network_model.catalog.mv_cable_line_catalog import (
     CABLE_NKT_PELNY_ODBIORCA_TYPES,
@@ -128,3 +130,32 @@ def test_catalog_no_enforced_enea_scope_for_customer_side() -> None:
     assert "cable-tfk-2025-xruhkxs-1000-50-12-20" in cable_ids
     assert "cable-tfk-2025-xruhakxs-1000-50-12-20" in cable_ids
     assert "cable-enea-2026-nkt-xruhakxs1-240-25" in cable_ids
+
+
+def test_nkt_nn_pvc_42_typy_yky_yaky_z_producenckich_tabel() -> None:
+    cu = get_all_nkt_yky_lv_cable_types()
+    al = get_all_nkt_yaky_lv_cable_types()
+    assert len(cu) == 23
+    assert len(al) == 19
+    repo = get_default_mv_catalog()
+    assert len(repo.lv_cable_types) == 96
+    for item in cu + al:
+        p = item["params"]
+        assert item["id"] in repo.lv_cable_types
+        assert p["manufacturer"] == "NKT"
+        assert p["insulation_type"] == "PVC"
+        assert p["max_temperature_c"] == 70.0
+        assert p["short_circuit_temperature_c"] == 160.0
+        assert p["source_reference"].startswith("NKT")
+        for key in ("r_ohm_per_km", "x_ohm_per_km", "i_max_a",
+                    "ith_1s_a", "return_conductor_r_ohm_per_km_20c",
+                    "return_conductor_x_ohm_per_km"):
+            assert math.isfinite(p[key]) and p[key] > 0, (item["id"], key)
+        if p["number_of_cores"] == 4:
+            assert p["core_functions"] == "3L+PEN"
+            assert p["cross_section_mm2"] >= (16 if p["conductor_material"] == "AL" else 10)
+    assert "kab-nn-nkt-yky-4x240" in repo.lv_cable_types
+    assert "kab-nn-nkt-yaky-4x300" in repo.lv_cable_types
+    assert "kab-nn-nkt-yky-5x1p5" in repo.lv_cable_types
+    assert "kab-nn-nkt-yaky-5x10" in repo.lv_cable_types
+    assert "kab-nn-nkt-yaky-4x10" not in repo.lv_cable_types
