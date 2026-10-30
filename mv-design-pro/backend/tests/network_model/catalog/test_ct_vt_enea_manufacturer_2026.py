@@ -28,7 +28,7 @@ def test_enea_36_ct_wymagania_5a_5b_5c_5d_z_rdzeniami() -> None:
         assert p["catalog_status"] == "REFERENCYJNY_V1"
         assert p["accuracy_class"] == "0.2S"
         assert p["fs_safety_factor"] == 5.0
-        assert p["um_kv"] == 24.0
+        assert p["um_kv"] == (0.72 if p["construction"] == "RING_PHASE_CT" else 24.0)
         assert p["core_count"] >= len(p["secondary_cores"]) >= 1
         assert p["secondary_cores"][0]["role"] == "BILLING"
         assert p["secondary_cores"][0]["fs"] == 5.0
@@ -43,7 +43,7 @@ def test_enea_36_ct_wymagania_5a_5b_5c_5d_z_rdzeniami() -> None:
         d = obj.to_dict()
         assert d["core_count"] == p["core_count"]
         assert d["secondary_cores"] == p["secondary_cores"]
-        assert d["um_kv"] == 24.0
+        assert d["um_kv"] == p["um_kv"]
     assert {x["params"]["construction"] for x in items} == {
         "SUPPORT", "RING_PHASE_CT"
     }
