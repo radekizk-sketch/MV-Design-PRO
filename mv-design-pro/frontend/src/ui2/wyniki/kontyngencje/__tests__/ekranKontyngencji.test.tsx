@@ -280,7 +280,7 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
     expect(lista).toHaveTextContent('Linia GPZ-B');
     expect(lista).toHaveTextContent('134,74');
     // Powód z backendu, nie własna interpretacja okna.
-    expect(lista).toHaveTextContent('przekracza limit');
+    expect(lista).toHaveTextContent('wobec limitu 100,0 %');
   });
 
   it('ranking pokazuje liczniki kategorii w kolejności z backendu', async () => {

@@ -183,8 +183,9 @@ class TestDeterminism:
 class TestOcenSwzWkladkaGgKartaD2:
     """Karta D2 (nN, „runda 8", 2026-08-14): SWZ decyzyjne dla gG z bramek
     normatywnych konwencjonalnych (Inf/If) — iloczyn cech: Ik1_min < Inf →
-    nie spełnia (rozstrzygalne); Inf<=Ik1_min<bramka_t_wymagany →
-    nierozstrzygalne warunkowe; Ik1_min>=bramka_t_wymagany → spełnia,
+    nie spełnia (rozstrzygalne); Inf<Ik1_min bez bramki t_wymagany w rejestrze →
+    nierozstrzygalne warunkowe (rekord BRAK_PODSTAWY); Inf<Ik1_min<bramka_t_wymagany →
+    nie spełnia (karta WERDYKT-MIGRACJA-190); Ik1_min>=bramka_t_wymagany → spełnia,
     WYŁĄCZNIE jeśli bramka jest zasilona (domyślnie rejestr PUSTY — patrz
     `protection_lv_curves.FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER`)."""
 
@@ -306,14 +307,20 @@ class TestOcenSwzWkladkaGgIniekcjaBramkiTWymaganego:
     ) -> None:
         monkeypatch.setitem(protection_lv_curves.FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER, 0.4, 2.0)
         # Ik1_min=45A: powyżej If=40A (WYZWOLENIE_GWARANTOWANE w czasie
-        # umownym), ale PONIŻEJ bramki wstrzykniętej 50A przy t_wymagany —
-        # wciąż NIEROZSTRZYGALNE (bramka NIE osiągnięta), nie 'spełnia'.
+        # umownym), ale PONIŻEJ bramki wstrzykniętej 50A przy t_wymagany.
+        # Karta WERDYKT-MIGRACJA-190: bramka przy t_wymagany JEST prądem I_a
+        # z §411.4.4 IEC 60364-4-41 (prąd zapewniający zadziałanie w czasie
+        # wymaganym), więc Ik1_min < I_a narusza warunek Z_s·I_a ≤ U_0 — rekord K
+        # „Ik1_min ≥ I_a” jest NIE_SPELNIA, tak samo jak dla MCB poniżej górnej
+        # granicy pasma (dawny trzeci stan był niespójny z tą regułą).
         result = ocen_swz(
             ik1_min_a=45.0,
             u0_v=230.0,
             aparat=AparatZabezpieczajacy(typ="WKLADKA_GG", in_a=25.0),
         )
-        assert result.status == SwzStatus.NIEROZSTRZYGALNE
+        assert result.status == SwzStatus.NIE_SPELNIA
+        assert result.wymaganie.status_maszynowy == "NIE_SPELNIA"
+        assert result.ia_wymagane_a == pytest.approx(50.0)
 
     def test_removing_injected_gate_reverts_to_third_state(
         self, monkeypatch: pytest.MonkeyPatch

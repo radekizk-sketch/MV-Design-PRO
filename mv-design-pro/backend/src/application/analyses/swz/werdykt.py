@@ -42,6 +42,7 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
+from application.ocena_niewykonana import rekord_json
 from enm.dane_przyjete_galezi import dane_przyjete_z_zapisu
 from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
     CZAS_TN_ROZDZIELCZY,
@@ -61,7 +62,27 @@ from network_model.solvers.protection_lv_curves import (
     bramka_t_wymagany_gg_a,
     compute_fuse_gg_gate,
 )
-from werdykt import DanaPrzyjeta, format_liczba
+from solver_input.provenance import classify_dynamic_capability
+from werdykt import (
+    DanaPrzyjeta,
+    OcenaKryterium,
+    OdnosnikSladu,
+    PodstawaWymagania,
+    Przedmiot,
+    WyjasnienieWerdyktu,
+    WynikWymagania,
+    ZakresWaznosci,
+    format_liczba,
+)
+from werdykt.porownanie import (
+    Porownanie,
+    ocena_porownania,
+    podstawa_nieustalona,
+    podstawa_normy,
+    projekcja_statusu,
+    rozstrzygniecie,
+    wymaganie_z_ocen,
+)
 
 # Próg prądu znamionowego obwodu odbiorczego wg §411.3.2.2 normy — karta P0.6
 # upraszcza do JEDNEGO progu 63 A (patrz docstring
@@ -125,7 +146,12 @@ class AparatZabezpieczajacy:
 
 @dataclass(frozen=True)
 class SwzResult:
-    """Werdykt SWZ + PEŁEN dowód liczbowy (WHITE BOX)."""
+    """Werdykt SWZ układu TN: rekord W (``wymaganie``) z rekordami K + dowód liczbowy WHITE BOX.
+
+    ``status`` jest PROJEKCJĄ rekordu W (``projekcja_statusu`` ocen składowych — jedno źródło
+    rozstrzygnięcia); ``wyjasnienie`` = wyjaśnienie rekordu W (kontrakt werdyktu wyjaśnialnego).
+    Pola liczbowe (Ia, t wymagany, margines) zostają kontekstem tabeli i śladu.
+    """
 
     status: SwzStatus
     przyczyna_pl: str
@@ -136,6 +162,8 @@ class SwzResult:
     rodzaj_obwodu: str
     pasmo_u0: str
     white_box_trace: tuple[dict[str, Any], ...]
+    wymaganie: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte, na których stoi Ik1_min (c pętli z
     #: wartości roboczej tolerancji sieci nN) — addytywnie, w odpowiedzi WYŁĄCZNIE gdy są.
     dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
@@ -151,6 +179,8 @@ class SwzResult:
             "rodzaj_obwodu": self.rodzaj_obwodu,
             "pasmo_u0": self.pasmo_u0,
             "white_box_trace": list(self.white_box_trace),
+            "wymaganie": rekord_json(self.wymaganie),
+            "wyjasnienie": self.wyjasnienie.model_dump(mode="json"),
         }
         if self.dane_przyjete:
             wynik["status_danych"] = "UNVALIDATED_INPUT"
@@ -234,6 +264,213 @@ def _dane_przyjete_petli(
     )
 
 
+# ---------------------------------------------------------------------------
+# Rekordy werdyktu wyjaśnialnego (karta WERDYKT-MIGRACJA-190, domena 7)
+# ---------------------------------------------------------------------------
+
+#: Zdolność obliczeniowa w rejestrze dowodowym (``solver_input/provenance.py``).
+ZDOLNOSC_PETLI_TN = "nn.petla_zwarcia_tn"
+#: Identyfikator rekordu W samoczynnego wyłączenia w układzie TN.
+WYMAGANIE_SWZ_TN = "swz.tn"
+#: Kryterium prądowe: Ik1_min wobec prądu zapewniającego zadziałanie w czasie wymaganym.
+KRYTERIUM_PRADU_TN = "swz.tn.prad_zadzialania"
+#: Kryterium konieczne wkładki gG: Ik1_min powyżej umownego prądu niezadziałania I_nf.
+KRYTERIUM_NIESTOPIENIA_GG = "swz.tn.gg_prog_niestopienia"
+
+_PODSTAWA_SWZ_TN = podstawa_normy(
+    "IEC 60364-4-41",
+    "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)",
+    "§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1",
+    uwagi_pl=(
+        "pełny tekst normy niedostępny w repozytorium — czasy wyłączenia z modułu tabeli "
+        "czasów (status referencyjny)"
+    ),
+)
+_PODSTAWA_GG = podstawa_normy(
+    "IEC 60269-1",
+    "2006 / 2024 (mnożniki potwierdzone w dwóch źródłach wtórnych)",
+    "umowny prąd niezadziałania I_nf = 1,25·I_n i zadziałania I_f = 1,6·I_n (I_n > 16 A)",
+    uwagi_pl=FUSE_GG_GATE_SOURCE_PL,
+)
+_ZAKRES_TN = ZakresWaznosci(
+    rodzaj_analizy="SHORT_CIRCUIT",
+    opis_pl=(
+        "Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze "
+        "końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca"
+    ),
+    wykluczenia=(
+        "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+        "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od "
+        "transformatora własnej sekcji)",
+        "zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem "
+        "wymaganym Tab. 41.1)",
+    ),
+)
+
+
+@dataclass(frozen=True)
+class _KontekstTn:
+    """Wspólne wejście rekordów jednego obwodu (wynik pętli, czas wymagany, przedmiot)."""
+
+    ik1_min_a: float
+    t_wymagany_s: float
+    rodzaj: str
+    pasmo: str
+    przedmiot: Przedmiot
+    dane_przyjete: tuple[DanaPrzyjeta, ...]
+
+
+def _przedmiot_domyslny(aparat: AparatZabezpieczajacy) -> Przedmiot:
+    opis = aparat.typ + (f" {format_liczba(aparat.in_a)} A" if aparat.in_a is not None else "")
+    return Przedmiot(
+        element_ref=None,
+        nazwa_pl=f"Obwód nN chroniony aparatem {opis}",
+        opis_pl=(
+            f"Obwód nN chroniony aparatem {opis} — ochrona przeciwporażeniowa przez samoczynne "
+            "wyłączenie zasilania w układzie TN"
+        ),
+    )
+
+
+def _ocena_pradu(
+    ctx: _KontekstTn,
+    *,
+    ia_a: float | None,
+    opis_ia_pl: str,
+    podstawa_limitu: PodstawaWymagania,
+    krok_sladu: str,
+    braki: tuple[str, ...] = (),
+) -> OcenaKryterium:
+    """Rekord K ``Ik1_min ≥ I_a``: ``ia_a is None`` — prądu zapewniającego zadziałanie nie
+    wyznaczono (``braki`` nazywają powód, reguła daje ``BRAK_PODSTAWY``, nigdy spełnienie)."""
+    return ocena_porownania(
+        Porownanie(
+            kryterium_id=KRYTERIUM_PRADU_TN,
+            opis_pl=(
+                "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu "
+                f"zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym "
+                f"{format_liczba(ctx.t_wymagany_s)} s (obwód {ctx.rodzaj}, pasmo U0 {ctx.pasmo})"
+            ),
+            relacja="NIE_MNIEJ",
+            wielkosc_pl="prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN)",
+            warunek_latex=r"I_{k1,min} \ge I_a",
+            symbol_latex="I_{k1,min}",
+            jednostka="A",
+            wynik=ctx.ik1_min_a,
+            limit=ia_a,
+            limit_pl=opis_ia_pl,
+            braki=braki,
+        ),
+        przedmiot=ctx.przedmiot,
+        podstawa=_PODSTAWA_SWZ_TN,
+        podstawa_limitu=podstawa_limitu,
+        zdolnosc=classify_dynamic_capability(ZDOLNOSC_PETLI_TN),
+        zakres=_ZAKRES_TN,
+        dane_przyjete=ctx.dane_przyjete,
+        slad=(OdnosnikSladu(krok=f"swz-tn:{krok_sladu}", opis_pl=f"I_a: {opis_ia_pl}"),),
+        odniesienie="application/analyses/swz/werdykt.py",
+    )
+
+
+def _ocena_niestopienia_gg(
+    ctx: _KontekstTn, *, in_a: float, inf_a: float, powyzej_inf: bool, t_umowny_s: float
+) -> OcenaKryterium:
+    """Rekord K warunku koniecznego wkładki gG: prąd zapewniający stopienie w czasie wymaganym
+    jest większy od I_nf, więc Ik1_min ≤ I_nf przesądza naruszenie. Stan pochodzi z bramki
+    solvera (``compute_fuse_gg_gate`` — jedno źródło, łącznie z granicą równości I = I_nf,
+    przy której norma gwarantuje brak stopienia)."""
+    relacja_pl = ">" if powyzej_inf else "≤"
+    return ocena_porownania(
+        Porownanie(
+            kryterium_id=KRYTERIUM_NIESTOPIENIA_GG,
+            opis_pl=(
+                "Prąd zwarcia jednofazowego minimalny powyżej umownego prądu niezadziałania "
+                "wkładki gG — warunek konieczny stopienia w czasie wymaganym (charakterystyka "
+                "czasowo-prądowa monotoniczna)"
+            ),
+            relacja="LOGICZNE",
+            wielkosc_pl="położenie prądu zwarcia wobec umownego prądu niezadziałania wkładki",
+            warunek_latex=r"I_{k1,min} > I_{nf}",
+            symbol_latex=r"I_{k1,min} > I_{nf}",
+            spelniony=powyzej_inf,
+            stan_pl=(
+                f"I_k1,min = {format_liczba(ctx.ik1_min_a)} A {relacja_pl} I_nf = "
+                f"{format_liczba(inf_a)} A (wkładka gG {format_liczba(in_a)} A, czas umowny "
+                f"{format_liczba(t_umowny_s)} s)"
+            ),
+        ),
+        przedmiot=ctx.przedmiot,
+        podstawa=_PODSTAWA_GG,
+        zdolnosc=classify_dynamic_capability(ZDOLNOSC_PETLI_TN),
+        zakres=_ZAKRES_TN,
+        dane_przyjete=ctx.dane_przyjete,
+        slad=(
+            OdnosnikSladu(
+                krok="swz-tn:aparat_wkladka_gg_bramka_konwencjonalna",
+                opis_pl="Bramka konwencjonalna I_nf/I_f wkładki gG (solver krzywych nN)",
+            ),
+        ),
+        odniesienie="network_model/solvers/protection_lv_curves.py",
+    )
+
+
+def _wynik(
+    ctx: _KontekstTn,
+    oceny: tuple[OcenaKryterium, ...],
+    *,
+    przyczyna_pl: str,
+    ia_wymagane_a: float | None,
+    margines: float | None,
+    trace: list[dict[str, Any]],
+) -> SwzResult:
+    """Rekord W z ocen składowych; ``status`` jest PROJEKCJĄ rekordu (jedno źródło)."""
+    wymaganie = wymaganie_z_ocen(
+        wymaganie_id=WYMAGANIE_SWZ_TN,
+        nazwa_pl="Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4)",
+        podstawa=_PODSTAWA_SWZ_TN,
+        oceny=oceny,
+        zdolnosc=classify_dynamic_capability(ZDOLNOSC_PETLI_TN),
+        zakres=_ZAKRES_TN,
+        odniesienie="application/analyses/swz/werdykt.py",
+    )
+    status = SwzStatus(
+        projekcja_statusu(
+            oceny,
+            spelnia=SwzStatus.SPELNIA.value,
+            nie_spelnia=SwzStatus.NIE_SPELNIA.value,
+            nierozstrzygniete=SwzStatus.NIEROZSTRZYGALNE.value,
+        )
+    )
+    trace.append(
+        {
+            "step": "rekord_wymagania",
+            "method": "rekord W z rekordów K (pakiet werdykt, reguła §2.3)",
+            "wymaganie_id": WYMAGANIE_SWZ_TN,
+            "kryteria": [o.kryterium_id for o in oceny],
+        }
+    )
+    return z_danymi_przyjetymi(
+        SwzResult(
+            status=status,
+            przyczyna_pl=przyczyna_pl,
+            ik1_min_a=ctx.ik1_min_a,
+            ia_wymagane_a=ia_wymagane_a,
+            t_wymagany_s=ctx.t_wymagany_s,
+            margines=margines,
+            rodzaj_obwodu=ctx.rodzaj,
+            pasmo_u0=ctx.pasmo,
+            white_box_trace=tuple(trace),
+            wymaganie=wymaganie,
+            wyjasnienie=wymaganie.wyjasnienie,
+        ),
+        ctx.dane_przyjete,
+    )
+
+
+def _spelnia(ocena: OcenaKryterium) -> bool:
+    return rozstrzygniecie((ocena,)) == "SPELNIA"
+
+
 def ocen_swz(
     *,
     ik1_min_a: float,
@@ -241,12 +478,20 @@ def ocen_swz(
     aparat: AparatZabezpieczajacy,
     rodzaj_obwodu: str | None = None,
     dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
+    przedmiot: Przedmiot | None = None,
 ) -> SwzResult:
-    """Werdykt 3-stanowy SWZ dla obwodu w układzie TN (IEC 60364-4-41).
+    """Werdykt SWZ dla obwodu w układzie TN (IEC 60364-4-41) — rekord W z rekordami K.
 
     ``dane_przyjete`` — dane, na których stoi ``ik1_min_a`` (``dane_przyjete_petli``, karta
-    TOLERANCJA-NN-WARTOSC-ROBOCZA): KAŻDY wynik (także nierozstrzygalny) niesie listę i zdanie
-    przyczyny (``z_danymi_przyjetymi``).
+    TOLERANCJA-NN-WARTOSC-ROBOCZA): KAŻDY wynik (także nierozstrzygnięty) niesie listę w dowodzie
+    rekordów i w zdaniu przyczyny (``z_danymi_przyjetymi``). ``przedmiot`` — obwód oceniany
+    (nazwy z modelu); bez niego przedmiot opisuje aparat.
+
+    Kryteria: ``Ik1_min ≥ I_a`` (I_a z górnej granicy pasma magnetycznego MCB, z nastawy Ii
+    MCCB albo z bramki stopienia wkładki gG w czasie wymaganym) oraz — dla wkładki gG —
+    warunek konieczny ``Ik1_min > I_nf``. Status zastany (``spełnia``/``nie spełnia``/
+    ``nierozstrzygalne``) jest projekcją rekordu W: brak danych aparatu albo brak podstawy
+    limitu nigdy nie daje „spełnia”.
 
     Args:
         ik1_min_a: Prąd zwarcia jednofazowego minimalny (Ik1_min) w punkcie
@@ -255,7 +500,7 @@ def ocen_swz(
             — zob. ``application.analyses.fault_loop.route.
             route_segments_min_scenario``).
         u0_v: Napięcie fazowe znamionowe [V] (zwykle 230 V).
-        aparat: Dane aparatu zabezpieczającego (MCB albo wkładka gG).
+        aparat: Dane aparatu zabezpieczającego (MCB, MCCB albo wkładka gG).
         rodzaj_obwodu: ``"odbiorczy"`` / ``"rozdzielczy"`` — jeśli ``None``,
             wyprowadzone z ``aparat.in_a`` wg progu 63 A (uproszczenie karty,
             patrz ``PROG_PRADU_OBWODU_ODBIORCZEGO_A``).
@@ -291,366 +536,117 @@ def ocen_swz(
             "podstawa": wpis_czasu.podstawa,
         }
     )
+    ctx = _KontekstTn(
+        ik1_min_a=ik1_min_a,
+        t_wymagany_s=t_wymagany,
+        rodzaj=rodzaj,
+        pasmo=pasmo,
+        przedmiot=przedmiot or _przedmiot_domyslny(aparat),
+        dane_przyjete=dane_przyjete,
+    )
 
     if aparat.typ == "WKLADKA_GG":
-        if aparat.in_a is None:
-            trace.append(
-                {
-                    "step": "aparat_wkladka_gg_brak_in",
-                    "method": "G-D2 — bramki I-t gG wymagają In wkładki",
-                    "result": "NIEROZSTRZYGALNE",
-                }
-            )
-            return z_danymi_przyjetymi(
-                SwzResult(
-                    status=SwzStatus.NIEROZSTRZYGALNE,
-                    przyczyna_pl=(
-                        "Wkładka topikowa gG bez prądu znamionowego In — bramki I-t (G-D2, "
-                        "IEC 60269-1) nie do wyznaczenia bez In. Werdykt SWZ NIEROZSTRZYGALNY."
-                    ),
-                    ik1_min_a=ik1_min_a,
-                    ia_wymagane_a=None,
-                    t_wymagany_s=t_wymagany,
-                    margines=None,
-                    rodzaj_obwodu=rodzaj,
-                    pasmo_u0=pasmo,
-                    white_box_trace=tuple(trace),
-                ),
-                dane_przyjete,
-            )
-
-        if aparat.in_a <= 16.0:
-            trace.append(
-                {
-                    "step": "aparat_wkladka_gg_poza_zakresem",
-                    "method": "G-D2 — mnożniki bramek dla In<=16 A NIE zaimplementowane",
-                    "in_a": aparat.in_a,
-                    "result": "NIEROZSTRZYGALNE",
-                }
-            )
-            return z_danymi_przyjetymi(
-                SwzResult(
-                    status=SwzStatus.NIEROZSTRZYGALNE,
-                    przyczyna_pl=(
-                        f"Wkładka topikowa gG In={aparat.in_a:g} A <= 16 A — poza zweryfikowanym "
-                        "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16 A różnią się od "
-                        "In>16 A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
-                        "źródłowej — patrz `protection_lv_curves._czas_umowny_fuse_gg_s`). "
-                        "Werdykt SWZ NIEROZSTRZYGALNY, nie fabrykacja mnożnika."
-                    ),
-                    ik1_min_a=ik1_min_a,
-                    ia_wymagane_a=None,
-                    t_wymagany_s=t_wymagany,
-                    margines=None,
-                    rodzaj_obwodu=rodzaj,
-                    pasmo_u0=pasmo,
-                    white_box_trace=tuple(trace),
-                ),
-                dane_przyjete,
-            )
-
-        # Karta D2 (nN, „runda 8"): bramki konwencjonalne Inf/If (G-D2,
-        # podwójnie zweryfikowane, IEC 60269-1) — REUSE `compute_fuse_gg_gate`
-        # (solver), zero drugiej fizyki (zakaz duplikowania Inf=1,25×In /
-        # If=1,6×In w tej warstwie interpretacji).
-        bramka_konwencjonalna = compute_fuse_gg_gate(i_query_a=ik1_min_a, in_a=aparat.in_a)
-        trace.append(
-            {
-                "step": "aparat_wkladka_gg_bramka_konwencjonalna",
-                "solver_trace": bramka_konwencjonalna.white_box_trace,
-            }
-        )
-
-        if bramka_konwencjonalna.gwarancja == GwarancjaNormy.BRAK_WYZWOLENIA_GWARANTOWANY:
-            # §0 pkt 1a karty D2: Ik1_min <= Inf ⇒ norma GWARANTUJE brak
-            # stopienia NAWET w (dłuższym) czasie umownym (1-4h) — a fortiori
-            # nie stopi się w KRÓTSZYM t_wymagany (0,1-5 s) SWZ. Charakterystyka
-            # t-I jest monotoniczna (mniejszy prąd ⇒ dłuższy/nieskończony czas
-            # stopienia), więc ten wniosek NIE wymaga bramki przy t_wymagany —
-            # rozstrzygalny wprost z Inf, bez ekstrapolacji.
-            margines = (
-                ik1_min_a / bramka_konwencjonalna.inf_a
-                if bramka_konwencjonalna.inf_a > 0
-                else float("inf")
-            )
-            trace.append(
-                {
-                    "step": "werdykt_gg_nie_spelnia",
-                    "method": (
-                        "Ik1_min <= Inf ⇒ brak stopienia gwarantowany NAWET w czasie "
-                        "umownym normy (dłuższym niż t_wymagany SWZ) — monotoniczność "
-                        "charakterystyki t-I gG (mniejszy prąd nigdy nie topi szybciej)"
-                    ),
-                    "ik1_min_a": ik1_min_a,
-                    "inf_a": bramka_konwencjonalna.inf_a,
-                    "t_wymagany_s": t_wymagany,
-                    "result": SwzStatus.NIE_SPELNIA.value,
-                }
-            )
-            przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A <= Inf={bramka_konwencjonalna.inf_a:.1f} A "
-                f"(wkładka gG {aparat.in_a:g} A, IEC 60269-1, {FUSE_GG_GATE_SOURCE_PL}) — "
-                "norma gwarantuje BRAK stopienia nawet w (dłuższym) czasie umownym normy "
-                f"({bramka_konwencjonalna.t_umowny_s:g} s), więc a fortiori wkładka NIE "
-                f"stopi się w krótszym t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 "
-                f"{pasmo}) — charakterystyka t-I gG jest monotoniczna. NIE SPEŁNIA."
-            )
-            return z_danymi_przyjetymi(
-                SwzResult(
-                    status=SwzStatus.NIE_SPELNIA,
-                    przyczyna_pl=przyczyna,
-                    ik1_min_a=ik1_min_a,
-                    ia_wymagane_a=bramka_konwencjonalna.inf_a,
-                    t_wymagany_s=t_wymagany,
-                    margines=margines,
-                    rodzaj_obwodu=rodzaj,
-                    pasmo_u0=pasmo,
-                    white_box_trace=tuple(trace),
-                ),
-                dane_przyjete,
-            )
-
-        # §0 pkt 1b/1c karty D2: „spełnia" wymaga bramki I-t PRZY t_wymagany
-        # dokładnym (0,1-5 s) — Inf/If gwarantują zachowanie WYŁĄCZNIE w
-        # czasie umownym normy (1-4h), fizycznie INNYM pytaniu. SPRÓBUJ
-        # zasilić bramkę podwójnie zweryfikowaną (rejestr
-        # `FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER` — patrz status badania w
-        # `protection_lv_curves.py`); gdy brak — warunkowe NIEROZSTRZYGALNE,
-        # NIGDY fabrykowane „spełnia".
-        bramka_t_wym_a = bramka_t_wymagany_gg_a(t_wymagany_s=t_wymagany, in_a=aparat.in_a)
-        trace.append(
-            {
-                "step": "aparat_wkladka_gg_bramka_t_wymagany",
-                "t_wymagany_s": t_wymagany,
-                "bramka_t_wymagany_a": bramka_t_wym_a,
-                "status_zrodel": (
-                    "potwierdzona podwójnie"
-                    if bramka_t_wym_a is not None
-                    else FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL
-                ),
-            }
-        )
-
-        if bramka_t_wym_a is not None and ik1_min_a >= bramka_t_wym_a:
-            margines = ik1_min_a / bramka_t_wym_a if bramka_t_wym_a > 0 else float("inf")
-            trace.append(
-                {
-                    "step": "werdykt_gg_spelnia",
-                    "ik1_min_a": ik1_min_a,
-                    "bramka_t_wymagany_a": bramka_t_wym_a,
-                    "t_wymagany_s": t_wymagany,
-                    "result": SwzStatus.SPELNIA.value,
-                }
-            )
-            przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A >= bramka(t_wymagany={t_wymagany:g} s)="
-                f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — norma gwarantuje "
-                f"stopienie w t_wymagany={t_wymagany:g} s ({rodzaj}, pasmo U0 {pasmo}). "
-                "SPEŁNIA."
-            )
-            return z_danymi_przyjetymi(
-                SwzResult(
-                    status=SwzStatus.SPELNIA,
-                    przyczyna_pl=przyczyna,
-                    ik1_min_a=ik1_min_a,
-                    ia_wymagane_a=bramka_t_wym_a,
-                    t_wymagany_s=t_wymagany,
-                    margines=margines,
-                    rodzaj_obwodu=rodzaj,
-                    pasmo_u0=pasmo,
-                    white_box_trace=tuple(trace),
-                ),
-                dane_przyjete,
-            )
-
-        if bramka_t_wym_a is None:
-            przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A > Inf={bramka_konwencjonalna.inf_a:.1f} A "
-                f"(wkładka gG {aparat.in_a:g} A) — norma NIE gwarantuje braku stopienia, ale "
-                f"brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy "
-                f"t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 {pasmo}) w rejestrze "
-                f"({FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL}). Bramki Inf/If (G-D2) gwarantują "
-                f"WYŁĄCZNIE zachowanie w czasie umownym normy "
-                f"({bramka_konwencjonalna.t_umowny_s:g} s), NIE w t_wymagany SWZ — nie da "
-                "się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty "
-                "P0.7). NIEROZSTRZYGALNE (warunkowe)."
-            )
-        else:
-            przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A < bramka(t_wymagany={t_wymagany:g} s)="
-                f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — Ik1_min powyżej "
-                f"Inf, ale poniżej bramki gwarantującej stopienie w t_wymagany={t_wymagany:g} "
-                f"s ({rodzaj}, pasmo U0 {pasmo}) — norma nie gwarantuje ani braku, ani "
-                "wystąpienia stopienia w tym przedziale (zakaz interpolacji, §0.2 karty "
-                "P0.7). NIEROZSTRZYGALNE (warunkowe)."
-            )
-        trace.append(
-            {
-                "step": "werdykt_gg_nierozstrzygalne",
-                "ik1_min_a": ik1_min_a,
-                "inf_a": bramka_konwencjonalna.inf_a,
-                "if_a": bramka_konwencjonalna.if_a,
-                "bramka_t_wymagany_a": bramka_t_wym_a,
-                "t_wymagany_s": t_wymagany,
-                "result": SwzStatus.NIEROZSTRZYGALNE.value,
-            }
-        )
-        return z_danymi_przyjetymi(
-            SwzResult(
-                status=SwzStatus.NIEROZSTRZYGALNE,
-                przyczyna_pl=przyczyna,
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=None,
-                t_wymagany_s=t_wymagany,
-                margines=None,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
-            ),
-            dane_przyjete,
-        )
-
+        return _ocen_wkladke_gg(ctx, aparat, trace)
     if aparat.typ == "MCCB":
-        if aparat.ii_a is None:
-            trace.append(
-                {
-                    "step": "aparat_mccb_brak_nastawy_ii",
-                    "method": "Karta D1 — Ia z nastawy Ii (magnetycznej/bezzwłocznej)",
-                    "result": "NIEROZSTRZYGALNE",
-                }
-            )
-            return z_danymi_przyjetymi(
-                SwzResult(
-                    status=SwzStatus.NIEROZSTRZYGALNE,
-                    przyczyna_pl=(
-                        "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
-                        "zwarciowej Ii w katalogu — Ia nie do wyznaczenia bez fabrykacji danych."
-                    ),
-                    ik1_min_a=ik1_min_a,
-                    ia_wymagane_a=None,
-                    t_wymagany_s=t_wymagany,
-                    margines=None,
-                    rodzaj_obwodu=rodzaj,
-                    pasmo_u0=pasmo,
-                    white_box_trace=tuple(trace),
-                ),
-                dane_przyjete,
-            )
-
-        ia = aparat.ii_a
-        margines = ik1_min_a / ia if ia > 0 else float("inf")
-        spelnia = ik1_min_a >= ia
-
-        trace.append(
-            {
-                "step": "ia_z_nastawy_ii_mccb",
-                "method": "Ia = Ii (nastawa zwarciowa/bezzwłoczna wyzwalacza elektronicznego, "
-                "IEC 60947-2) — karta D1, bez interpolacji pasma (Ii jest KONKRETNĄ nastawą)",
-                "ii_a": aparat.ii_a,
-                "ia_a": ia,
-            }
-        )
-        trace.append(
-            {
-                "step": "werdykt",
-                "method": "Ik1_min ≥ Ia ⇒ wyzwolenie zwarciowe (natychmiastowe) gwarantowane "
-                "(<0,1 s < t_wymagany z Tab. 41.1)",
-                "ik1_min_a": ik1_min_a,
-                "ia_a": ia,
-                "margines": margines,
-                "result": SwzStatus.SPELNIA.value if spelnia else SwzStatus.NIE_SPELNIA.value,
-            }
-        )
-
-        przyczyna = (
-            f"Ik1_min={ik1_min_a:.1f} A {'≥' if spelnia else '<'} Ia={ia:.1f} A "
-            f"(MCCB, nastawa Ii={aparat.ii_a:.1f} A — wyzwolenie zwarciowe natychmiastowe, "
-            f"<0,1 s, IEC 60947-2). Czas wyzwolenia jest poniżej t_wymagany={t_wymagany:g} s "
-            f"z Tab. 41.1 ({rodzaj}, pasmo U0 {pasmo}), więc kryterium czasowe jest spełnione "
-            "automatycznie po spełnieniu kryterium prądowego."
-            if spelnia
-            else (
-                f"Ik1_min={ik1_min_a:.1f} A < Ia={ia:.1f} A (MCCB, nastawa Ii="
-                f"{aparat.ii_a:.1f} A) — wyzwolenie zwarciowe NIE jest gwarantowane przy tej "
-                f"nastawie; aparat może nie wyłączyć w czasie t_wymagany={t_wymagany:g} s "
-                f"z Tab. 41.1 ({rodzaj}, pasmo U0 {pasmo})."
-            )
-        )
-
-        return z_danymi_przyjetymi(
-            SwzResult(
-                status=SwzStatus.SPELNIA if spelnia else SwzStatus.NIE_SPELNIA,
-                przyczyna_pl=przyczyna,
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=ia,
-                t_wymagany_s=t_wymagany,
-                margines=margines,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
-            ),
-            dane_przyjete,
-        )
-
+        return _ocen_mccb(ctx, aparat, trace)
     if aparat.typ != "MCB":
         trace.append(
             {
                 "step": "aparat_typ_nieobslugiwany",
                 "typ": aparat.typ,
                 "dozwolone": list(_TYPY_APARATU_DOZWOLONE),
-                "result": "NIEROZSTRZYGALNE",
+                "kryterium_id": KRYTERIUM_PRADU_TN,
             }
         )
-        return z_danymi_przyjetymi(
-            SwzResult(
-                status=SwzStatus.NIEROZSTRZYGALNE,
-                przyczyna_pl=(
-                    f"Typ aparatu '{aparat.typ}' nieobsłużony w werdykcie SWZ karty P0.6 "
-                    f"(obsługiwane: {', '.join(_TYPY_APARATU_DOZWOLONE)}) — brak modelu Ia, "
-                    "nie fabrykacja."
-                ),
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=None,
-                t_wymagany_s=t_wymagany,
-                margines=None,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
-            ),
-            dane_przyjete,
+        brak = (
+            f"model prądu zadziałania I_a dla aparatu typu „{aparat.typ}” (obsługiwane: "
+            f"{', '.join(_TYPY_APARATU_DOZWOLONE)})"
         )
+        return _wynik(
+            ctx,
+            (
+                _ocena_pradu(
+                    ctx,
+                    ia_a=None,
+                    opis_ia_pl="prąd zadziałania aparatu nieobsłużonego typu",
+                    podstawa_limitu=podstawa_nieustalona(
+                        f"model prądu zadziałania aparatu „{aparat.typ}”"
+                    ),
+                    krok_sladu="aparat_typ_nieobslugiwany",
+                    braki=(brak,),
+                ),
+            ),
+            przyczyna_pl=(
+                f"Typ aparatu '{aparat.typ}' nieobsłużony w ocenie SWZ (obsługiwane: "
+                f"{', '.join(_TYPY_APARATU_DOZWOLONE)}) — brak modelu Ia, nie fabrykacja."
+            ),
+            ia_wymagane_a=None,
+            margines=None,
+            trace=trace,
+        )
+    return _ocen_mcb(ctx, aparat, trace)
 
+
+def _ocen_mcb(
+    ctx: _KontekstTn, aparat: AparatZabezpieczajacy, trace: list[dict[str, Any]]
+) -> SwzResult:
     if aparat.in_a is None or aparat.klasa_mcb is None:
         trace.append(
             {
                 "step": "aparat_mcb_dane_niekompletne",
                 "in_a": aparat.in_a,
                 "klasa_mcb": aparat.klasa_mcb,
-                "result": "NIEROZSTRZYGALNE",
+                "kryterium_id": KRYTERIUM_PRADU_TN,
             }
         )
-        return z_danymi_przyjetymi(
-            SwzResult(
-                status=SwzStatus.NIEROZSTRZYGALNE,
-                przyczyna_pl=(
-                    "MCB bez kompletnych danych (In i/lub klasa B/C/D) — Ia nie do "
-                    "wyznaczenia bez fabrykacji."
+        braki = tuple(
+            opis
+            for brak, opis in (
+                (aparat.in_a is None, "prąd znamionowy I_n wyłącznika nadprądowego"),
+                (aparat.klasa_mcb is None, "klasa charakterystyki B/C/D wyłącznika nadprądowego"),
+            )
+            if brak
+        )
+        return _wynik(
+            ctx,
+            (
+                _ocena_pradu(
+                    ctx,
+                    ia_a=None,
+                    opis_ia_pl="górna granica pasma wyzwalania magnetycznego MCB",
+                    podstawa_limitu=podstawa_nieustalona(
+                        "IEC 60898-1 Tab. 3 — klasa i prąd znamionowy aparatu nieznane"
+                    ),
+                    krok_sladu="aparat_mcb_dane_niekompletne",
+                    braki=braki,
                 ),
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=None,
-                t_wymagany_s=t_wymagany,
-                margines=None,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
             ),
-            dane_przyjete,
+            przyczyna_pl=(
+                "MCB bez kompletnych danych (In i/lub klasa B/C/D) — Ia nie do "
+                "wyznaczenia bez fabrykacji."
+            ),
+            ia_wymagane_a=None,
+            margines=None,
+            trace=trace,
         )
 
     ia = ia_gwarantowane_a(in_a=aparat.in_a, klasa=aparat.klasa_mcb)
-    margines = ik1_min_a / ia if ia > 0 else float("inf")
-    spelnia = ik1_min_a >= ia
-
+    margines = ctx.ik1_min_a / ia if ia > 0 else None
+    ocena = _ocena_pradu(
+        ctx,
+        ia_a=ia,
+        opis_ia_pl=(
+            f"górna granica pasma wyzwalania magnetycznego MCB {aparat.klasa_mcb} "
+            f"{format_liczba(aparat.in_a)} A (wyzwolenie chwilowe < 0,1 s)"
+        ),
+        podstawa_limitu=podstawa_normy(
+            "IEC 60898-1",
+            "2015",
+            f"Tab. 3 — pasmo wyzwalania natychmiastowego klasy {aparat.klasa_mcb} (górna granica)",
+        ),
+        krok_sladu="ia_gwarantowane_mcb",
+    )
+    spelnia = _spelnia(ocena)
     trace.append(
         {
             "step": "ia_gwarantowane_mcb",
@@ -665,40 +661,369 @@ def ocen_swz(
             "step": "werdykt",
             "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s "
             "< t_wymagany z Tab. 41.1)",
-            "ik1_min_a": ik1_min_a,
+            "ik1_min_a": ctx.ik1_min_a,
             "ia_a": ia,
             "margines": margines,
-            "result": SwzStatus.SPELNIA.value if spelnia else SwzStatus.NIE_SPELNIA.value,
+            "kryterium_id": KRYTERIUM_PRADU_TN,
         }
     )
-
     przyczyna = (
-        f"Ik1_min={ik1_min_a:.1f} A {'≥' if spelnia else '<'} Ia={ia:.1f} A "
+        f"Ik1_min={ctx.ik1_min_a:.1f} A ≥ Ia={ia:.1f} A "
         f"(MCB {aparat.klasa_mcb} {aparat.in_a:g} A, wyzwolenie magnetyczne gwarantowane "
         f"na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest "
-        f"chwilowy (<0,1 s) — poniżej t_wymagany={t_wymagany:g} s z Tab. 41.1 "
-        f"({rodzaj}, pasmo U0 {pasmo}), więc kryterium czasowe jest spełnione automatycznie "
-        "po spełnieniu kryterium prądowego."
+        f"chwilowy (<0,1 s) — poniżej t_wymagany={ctx.t_wymagany_s:g} s z Tab. 41.1 "
+        f"({ctx.rodzaj}, pasmo U0 {ctx.pasmo}), więc kryterium czasowe jest spełnione "
+        "automatycznie po spełnieniu kryterium prądowego."
         if spelnia
         else (
-            f"Ik1_min={ik1_min_a:.1f} A < Ia={ia:.1f} A (MCB {aparat.klasa_mcb} "
-            f"{aparat.in_a:g} A) — wyzwolenie magnetyczne NIE jest gwarantowane; "
-            f"aparat może nie wyłączyć w czasie t_wymagany={t_wymagany:g} s z Tab. 41.1 "
-            f"({rodzaj}, pasmo U0 {pasmo})."
+            f"Ik1_min={ctx.ik1_min_a:.1f} A < Ia={ia:.1f} A (MCB {aparat.klasa_mcb} "
+            f"{aparat.in_a:g} A) — wyzwolenie magnetyczne nie jest gwarantowane; "
+            f"aparat może nie wyłączyć w czasie t_wymagany={ctx.t_wymagany_s:g} s z Tab. 41.1 "
+            f"({ctx.rodzaj}, pasmo U0 {ctx.pasmo})."
         )
     )
+    return _wynik(
+        ctx, (ocena,), przyczyna_pl=przyczyna, ia_wymagane_a=ia, margines=margines, trace=trace
+    )
 
-    return z_danymi_przyjetymi(
-        SwzResult(
-            status=SwzStatus.SPELNIA if spelnia else SwzStatus.NIE_SPELNIA,
-            przyczyna_pl=przyczyna,
-            ik1_min_a=ik1_min_a,
-            ia_wymagane_a=ia,
-            t_wymagany_s=t_wymagany,
-            margines=margines,
-            rodzaj_obwodu=rodzaj,
-            pasmo_u0=pasmo,
-            white_box_trace=tuple(trace),
+
+def _ocen_mccb(
+    ctx: _KontekstTn, aparat: AparatZabezpieczajacy, trace: list[dict[str, Any]]
+) -> SwzResult:
+    if aparat.ii_a is None:
+        trace.append(
+            {
+                "step": "aparat_mccb_brak_nastawy_ii",
+                "method": "Karta D1 — Ia z nastawy Ii (magnetycznej/bezzwłocznej)",
+                "kryterium_id": KRYTERIUM_PRADU_TN,
+            }
+        )
+        return _wynik(
+            ctx,
+            (
+                _ocena_pradu(
+                    ctx,
+                    ia_a=None,
+                    opis_ia_pl="nastawa zwarciowa bezzwłoczna I_i wyzwalacza elektronicznego",
+                    podstawa_limitu=podstawa_nieustalona(
+                        "IEC 60947-2 — nastawa I_i aparatu nierozwiązana w katalogu"
+                    ),
+                    krok_sladu="aparat_mccb_brak_nastawy_ii",
+                    braki=(
+                        "nastawa zwarciowa bezzwłoczna I_i wyłącznika z wyzwalaczem "
+                        "elektronicznym (zakres nastaw w katalogu)",
+                    ),
+                ),
+            ),
+            przyczyna_pl=(
+                "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
+                "zwarciowej Ii w katalogu — Ia nie do wyznaczenia bez fabrykacji danych."
+            ),
+            ia_wymagane_a=None,
+            margines=None,
+            trace=trace,
+        )
+
+    ia = aparat.ii_a
+    margines = ctx.ik1_min_a / ia if ia > 0 else None
+    ocena = _ocena_pradu(
+        ctx,
+        ia_a=ia,
+        opis_ia_pl=(
+            f"nastawa zwarciowa bezzwłoczna I_i = {format_liczba(ia)} A wyzwalacza "
+            "elektronicznego (wyzwolenie natychmiastowe < 0,1 s)"
         ),
-        dane_przyjete,
+        podstawa_limitu=podstawa_normy(
+            "IEC 60947-2",
+            "2016",
+            "wyzwalacz zwarciowy bezzwłoczny — nastawa I_i (górny kraniec zakresu nastaw z "
+            "katalogu typów)",
+        ),
+        krok_sladu="ia_z_nastawy_ii_mccb",
+    )
+    spelnia = _spelnia(ocena)
+    trace.append(
+        {
+            "step": "ia_z_nastawy_ii_mccb",
+            "method": "Ia = Ii (nastawa zwarciowa/bezzwłoczna wyzwalacza elektronicznego, "
+            "IEC 60947-2) — karta D1, bez interpolacji pasma (Ii jest KONKRETNĄ nastawą)",
+            "ii_a": aparat.ii_a,
+            "ia_a": ia,
+        }
+    )
+    trace.append(
+        {
+            "step": "werdykt",
+            "method": "Ik1_min ≥ Ia ⇒ wyzwolenie zwarciowe (natychmiastowe) gwarantowane "
+            "(<0,1 s < t_wymagany z Tab. 41.1)",
+            "ik1_min_a": ctx.ik1_min_a,
+            "ia_a": ia,
+            "margines": margines,
+            "kryterium_id": KRYTERIUM_PRADU_TN,
+        }
+    )
+    przyczyna = (
+        f"Ik1_min={ctx.ik1_min_a:.1f} A ≥ Ia={ia:.1f} A "
+        f"(MCCB, nastawa Ii={aparat.ii_a:.1f} A — wyzwolenie zwarciowe natychmiastowe, "
+        f"<0,1 s, IEC 60947-2). Czas wyzwolenia jest poniżej t_wymagany={ctx.t_wymagany_s:g} s "
+        f"z Tab. 41.1 ({ctx.rodzaj}, pasmo U0 {ctx.pasmo}), więc kryterium czasowe jest "
+        "spełnione automatycznie po spełnieniu kryterium prądowego."
+        if spelnia
+        else (
+            f"Ik1_min={ctx.ik1_min_a:.1f} A < Ia={ia:.1f} A (MCCB, nastawa Ii="
+            f"{aparat.ii_a:.1f} A) — wyzwolenie zwarciowe nie jest gwarantowane przy tej "
+            f"nastawie; aparat może nie wyłączyć w czasie t_wymagany={ctx.t_wymagany_s:g} s "
+            f"z Tab. 41.1 ({ctx.rodzaj}, pasmo U0 {ctx.pasmo})."
+        )
+    )
+    return _wynik(
+        ctx, (ocena,), przyczyna_pl=przyczyna, ia_wymagane_a=ia, margines=margines, trace=trace
+    )
+
+
+def _ocen_wkladke_gg(
+    ctx: _KontekstTn, aparat: AparatZabezpieczajacy, trace: list[dict[str, Any]]
+) -> SwzResult:
+    ik1_min_a, t_wymagany, rodzaj, pasmo = (
+        ctx.ik1_min_a,
+        ctx.t_wymagany_s,
+        ctx.rodzaj,
+        ctx.pasmo,
+    )
+    if aparat.in_a is None:
+        trace.append(
+            {
+                "step": "aparat_wkladka_gg_brak_in",
+                "method": "G-D2 — bramki I-t gG wymagają In wkładki",
+                "kryterium_id": KRYTERIUM_PRADU_TN,
+            }
+        )
+        return _wynik(
+            ctx,
+            (
+                _ocena_pradu(
+                    ctx,
+                    ia_a=None,
+                    opis_ia_pl="prąd stopienia wkładki gG w czasie wymaganym",
+                    podstawa_limitu=podstawa_nieustalona(
+                        "IEC 60269-1 — prąd znamionowy wkładki nieznany"
+                    ),
+                    krok_sladu="aparat_wkladka_gg_brak_in",
+                    braki=("prąd znamionowy I_n wkładki topikowej gG",),
+                ),
+            ),
+            przyczyna_pl=(
+                "Wkładka topikowa gG bez prądu znamionowego In — bramki I-t (G-D2, "
+                "IEC 60269-1) nie do wyznaczenia bez In."
+            ),
+            ia_wymagane_a=None,
+            margines=None,
+            trace=trace,
+        )
+
+    if aparat.in_a <= 16.0:
+        trace.append(
+            {
+                "step": "aparat_wkladka_gg_poza_zakresem",
+                "method": "G-D2 — mnożniki bramek dla In<=16 A NIE zaimplementowane",
+                "in_a": aparat.in_a,
+                "kryterium_id": KRYTERIUM_PRADU_TN,
+            }
+        )
+        return _wynik(
+            ctx,
+            (
+                _ocena_pradu(
+                    ctx,
+                    ia_a=None,
+                    opis_ia_pl=f"prąd stopienia wkładki gG {format_liczba(aparat.in_a)} A",
+                    podstawa_limitu=podstawa_nieustalona(
+                        "IEC 60269-1 — mnożniki bramek I_nf/I_f dla I_n ≤ 16 A",
+                        uwagi_pl=(
+                            "mnożniki dla I_n ≤ 16 A różnią się od I_n > 16 A i nie mają w "
+                            "repozytorium podwójnej weryfikacji źródłowej"
+                        ),
+                    ),
+                    krok_sladu="aparat_wkladka_gg_poza_zakresem",
+                    braki=(
+                        "mnożniki bramek I_nf/I_f wkładki gG o prądzie znamionowym do 16 A "
+                        "(IEC 60269-1) potwierdzone w dwóch źródłach",
+                    ),
+                ),
+            ),
+            przyczyna_pl=(
+                f"Wkładka topikowa gG In={aparat.in_a:g} A <= 16 A — poza zweryfikowanym "
+                "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16 A różnią się od "
+                "In>16 A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
+                "źródłowej — patrz `protection_lv_curves._czas_umowny_fuse_gg_s`); "
+                "mnożnik nie jest fabrykowany."
+            ),
+            ia_wymagane_a=None,
+            margines=None,
+            trace=trace,
+        )
+
+    # Karta D2 (nN, „runda 8"): bramki konwencjonalne Inf/If (G-D2,
+    # podwójnie zweryfikowane, IEC 60269-1) — REUSE `compute_fuse_gg_gate`
+    # (solver), zero drugiej fizyki (zakaz duplikowania Inf=1,25×In /
+    # If=1,6×In w tej warstwie interpretacji).
+    bramka_konwencjonalna = compute_fuse_gg_gate(i_query_a=ik1_min_a, in_a=aparat.in_a)
+    trace.append(
+        {
+            "step": "aparat_wkladka_gg_bramka_konwencjonalna",
+            "solver_trace": bramka_konwencjonalna.white_box_trace,
+        }
+    )
+    # §0 pkt 1a karty D2: Ik1_min <= Inf ⇒ norma GWARANTUJE brak stopienia NAWET w
+    # (dłuższym) czasie umownym (1-4h) — a fortiori nie stopi się w KRÓTSZYM t_wymagany.
+    # Stan rekordu pochodzi z bramki solvera (jedno źródło granicy równości).
+    powyzej_inf = bramka_konwencjonalna.gwarancja != GwarancjaNormy.BRAK_WYZWOLENIA_GWARANTOWANY
+    ocena_inf = _ocena_niestopienia_gg(
+        ctx,
+        in_a=aparat.in_a,
+        inf_a=bramka_konwencjonalna.inf_a,
+        powyzej_inf=powyzej_inf,
+        t_umowny_s=bramka_konwencjonalna.t_umowny_s,
+    )
+
+    # §0 pkt 1b/1c karty D2: „spełnia" wymaga bramki I-t PRZY t_wymagany
+    # dokładnym (0,1-5 s) — Inf/If gwarantują zachowanie WYŁĄCZNIE w
+    # czasie umownym normy (1-4h), fizycznie INNYM pytaniu. Rejestr
+    # `FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER` (status badania w
+    # `protection_lv_curves.py`); brak wpisu — rekord bez limitu (BRAK_PODSTAWY),
+    # NIGDY fabrykowane „spełnia".
+    bramka_t_wym_a = bramka_t_wymagany_gg_a(t_wymagany_s=t_wymagany, in_a=aparat.in_a)
+    trace.append(
+        {
+            "step": "aparat_wkladka_gg_bramka_t_wymagany",
+            "t_wymagany_s": t_wymagany,
+            "bramka_t_wymagany_a": bramka_t_wym_a,
+            "status_zrodel": (
+                "potwierdzona podwójnie"
+                if bramka_t_wym_a is not None
+                else FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL
+            ),
+        }
+    )
+    opis_bramki = (
+        f"prąd gwarantowanego stopienia wkładki gG {format_liczba(aparat.in_a)} A w czasie "
+        f"wymaganym {format_liczba(t_wymagany)} s"
+    )
+    ocena_pradu = _ocena_pradu(
+        ctx,
+        ia_a=bramka_t_wym_a,
+        opis_ia_pl=opis_bramki,
+        podstawa_limitu=(
+            _PODSTAWA_GG
+            if bramka_t_wym_a is not None
+            else podstawa_nieustalona(
+                "IEC 60269-1 — bramka czasowo-prądowa wkładki gG w czasie wymaganym",
+                uwagi_pl=FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL,
+            )
+        ),
+        krok_sladu="aparat_wkladka_gg_bramka_t_wymagany",
+        braki=(
+            ()
+            if bramka_t_wym_a is not None
+            else (
+                f"bramka czasowo-prądowa wkładki gG przy czasie wymaganym "
+                f"{format_liczba(t_wymagany)} s potwierdzona w dwóch źródłach (rejestr bramek "
+                "gG pusty)",
+            )
+        ),
+    )
+    oceny = (ocena_inf, ocena_pradu)
+
+    if not powyzej_inf:
+        margines = (
+            ik1_min_a / bramka_konwencjonalna.inf_a if bramka_konwencjonalna.inf_a > 0 else None
+        )
+        trace.append(
+            {
+                "step": "werdykt_gg_ponizej_inf",
+                "method": (
+                    "Ik1_min <= Inf ⇒ brak stopienia gwarantowany NAWET w czasie "
+                    "umownym normy (dłuższym niż t_wymagany SWZ) — monotoniczność "
+                    "charakterystyki t-I gG (mniejszy prąd nigdy nie topi szybciej)"
+                ),
+                "ik1_min_a": ik1_min_a,
+                "inf_a": bramka_konwencjonalna.inf_a,
+                "t_wymagany_s": t_wymagany,
+                "kryterium_id": KRYTERIUM_NIESTOPIENIA_GG,
+            }
+        )
+        przyczyna = (
+            f"Ik1_min={ik1_min_a:.1f} A <= Inf={bramka_konwencjonalna.inf_a:.1f} A "
+            f"(wkładka gG {aparat.in_a:g} A, IEC 60269-1, {FUSE_GG_GATE_SOURCE_PL}) — "
+            "norma gwarantuje brak stopienia nawet w (dłuższym) czasie umownym normy "
+            f"({bramka_konwencjonalna.t_umowny_s:g} s), więc a fortiori wkładka nie "
+            f"stopi się w krótszym t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 "
+            f"{pasmo}) — charakterystyka t-I gG jest monotoniczna."
+        )
+        return _wynik(
+            ctx,
+            oceny,
+            przyczyna_pl=przyczyna,
+            ia_wymagane_a=bramka_konwencjonalna.inf_a,
+            margines=margines,
+            trace=trace,
+        )
+
+    if bramka_t_wym_a is not None:
+        margines = ik1_min_a / bramka_t_wym_a if bramka_t_wym_a > 0 else None
+        spelnia = _spelnia(ocena_pradu)
+        trace.append(
+            {
+                "step": "werdykt_gg_bramka_t_wymagany",
+                "ik1_min_a": ik1_min_a,
+                "bramka_t_wymagany_a": bramka_t_wym_a,
+                "t_wymagany_s": t_wymagany,
+                "kryterium_id": KRYTERIUM_PRADU_TN,
+            }
+        )
+        przyczyna = (
+            f"Ik1_min={ik1_min_a:.1f} A >= bramka(t_wymagany={t_wymagany:g} s)="
+            f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — norma gwarantuje "
+            f"stopienie w t_wymagany={t_wymagany:g} s ({rodzaj}, pasmo U0 {pasmo})."
+            if spelnia
+            else (
+                f"Ik1_min={ik1_min_a:.1f} A < bramka(t_wymagany={t_wymagany:g} s)="
+                f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — Ik1_min powyżej "
+                f"Inf, ale poniżej prądu gwarantującego stopienie w t_wymagany="
+                f"{t_wymagany:g} s ({rodzaj}, pasmo U0 {pasmo}): samoczynne wyłączenie w "
+                "czasie wymaganym nie jest zapewnione (warunek Z_s·I_a ≤ U_0 naruszony)."
+            )
+        )
+        return _wynik(
+            ctx,
+            oceny,
+            przyczyna_pl=przyczyna,
+            ia_wymagane_a=bramka_t_wym_a,
+            margines=margines,
+            trace=trace,
+        )
+
+    trace.append(
+        {
+            "step": "werdykt_gg_brak_bramki_t_wymagany",
+            "ik1_min_a": ik1_min_a,
+            "inf_a": bramka_konwencjonalna.inf_a,
+            "if_a": bramka_konwencjonalna.if_a,
+            "bramka_t_wymagany_a": bramka_t_wym_a,
+            "t_wymagany_s": t_wymagany,
+            "kryterium_id": KRYTERIUM_PRADU_TN,
+        }
+    )
+    przyczyna = (
+        f"Ik1_min={ik1_min_a:.1f} A > Inf={bramka_konwencjonalna.inf_a:.1f} A "
+        f"(wkładka gG {aparat.in_a:g} A) — norma nie gwarantuje braku stopienia, ale "
+        f"brak podwójnie zweryfikowanej bramki czasowo-prądowej przy "
+        f"t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 {pasmo}) w rejestrze "
+        f"({FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL}). Bramki Inf/If (G-D2) gwarantują "
+        f"wyłącznie zachowanie w czasie umownym normy "
+        f"({bramka_konwencjonalna.t_umowny_s:g} s), nie w t_wymagany SWZ — ocena "
+        "nierozstrzygnięta bez ekstrapolacji (zakaz §0.2 karty P0.7)."
+    )
+    return _wynik(
+        ctx, oceny, przyczyna_pl=przyczyna, ia_wymagane_a=None, margines=None, trace=trace
     )

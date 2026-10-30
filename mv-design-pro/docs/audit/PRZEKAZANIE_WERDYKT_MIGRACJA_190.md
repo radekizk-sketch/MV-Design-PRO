@@ -3,7 +3,7 @@
 Gałąź `claude/mv-design-pro-twin-audit-u4lhy0-werdykt-migracja`, drzewo `/home/user/wt-werdykt`.
 Cel karty: lista `scripts/werdykt_wyjasnialny_allowlist.json` bez wpisów MIGRACJA (strażnik
 `scripts/werdykt_wyjasnialny_guard.py`). Stan bazowy karty (`b1e677ced`): MIGRACJA 190,
-ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 95, ENUM_WEWNETRZNY 51** (strażnik RC=0).
+ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 90, ENUM_WEWNETRZNY 51** (strażnik RC=0).
 
 ## Domeny
 
@@ -15,7 +15,7 @@ ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 95, ENUM_WEWNETRZNY 51** (strażnik R
 | 4. Ocena normatywna, wrażliwość, profil napięć | 7 | 0 | zmigrowane — w commicie WIP (zweryfikowane celowo: pytest 5834 zielone przed naprawami strażników; po naprawach bieg zbiorczy przerwany) |
 | 5. Wzorce odniesienia A i C (+ API, PDF/DOCX) | 18 | 0 | zmigrowane — w commicie WIP (testy wzorców i API 56+175 zielone, 4 iniekcje czerwone bez naprawy) |
 | 6. Modele analiz: siła sieci B11, adekwatność Q B10, SSCI B12, wgląd zabezpieczeń B7 | 8 | 1 | siła sieci B11 zmigrowana (rekord K SCR na węzeł i WSCR, `verdict`/`is_weak` projekcją, front pulpitu OZE i kontekst sekwencji FRT z etykietą i kartą rekordu); adekwatność Q B10 zmigrowana (rekord W: rezerwy w górę/w dół każdego źródła wobec ε i pasmo napięcia węzłów; nasycenie i naruszenie projekcją rekordów; brak danych źródła ≠ wystarczająca); SSCI B12 zmigrowana (wyjaśnienie rekordu `NIE_OCENIONO` przy polu werdyktu, model i ładunek HTTP); B7 `ProtectionInsightItem.selectivity_status` ZATRZYMANE do decyzji architekta — klasa bez producenta w produkcji (wejście zawsze `None` w `pokrycie_analiz`/`wrazliwosc_rozplywu`), a ocena pokrycia odejmuje 5 pkt za „Brak analizy zabezpieczeń”, której nic nie dostarcza |
-| 7. nN / SWZ (C25, C27, C29, C30, arkusz obwodów, E75, E77, fieldLabels) | 22 | 22 | nietknięte |
+| 7. nN / SWZ (C25, C27, C29, C30, arkusz obwodów, E75, E77, fieldLabels) | 22 | 17 | w toku (commit WIP): SWZ TN z rekordu W (`swz.tn`, K prądu zadziałania i K niestopienia gG), dobór aparatu nN z rekordów K (Ib≤In≤Iz′, I2≤1,45·Iz′, zdolność wyłączania, SWZ), arkusz obwodów niesie rekordy w komórkach; zostaje pakiet dowodowy C30, koperty dostępności (ENUM), front nakładki SWZ i karty obwodu |
 | 8. Proof Engine / audyt (C41, C44, C48, A36, sc_symmetrical/asymmetrical) | 19 | 19 | nietknięte |
 | 9. Frontend pozostały (D18…D72, E20…E62, SLD v2 G1–G9, NnSwitchgearCard) | 38 | 32 | nietknięte poza wpisami usuniętymi razem z grupami 2–4 |
 | 10. Pozostałe (archiwum, importy, preflight B20, kreator C54, katalogi audit2, reference_engine) | 24 | 14 | w części przeklasyfikowane na ENUM_WEWNETRZNY z uzasadnieniem; reszta nietknięta |
@@ -40,6 +40,16 @@ ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 95, ENUM_WEWNETRZNY 51** (strażnik R
 - Zapadka mypy obniżona 163/20 → 161/19 (pomiar: różnica zbiorów = 2 błędy `misc` w `analysis/grid_strength/builder.py`).
 - Bieg zbiorczy `testy_final.txt` na `6bc155298` zakończony RC=143 (przerwany sygnałem przed startem pytest) — do powtórzenia na drzewie końcowym.
 - Znaleziska do meldunku: dryf ostatniej cyfry rozpływu ~1e-11 (rdzeń NR FROZEN); wzorzec C bez ścieżki w API; API wzorców bez konsumenta frontu; selektywność wzorca A przy `ik_max_next_bus_a = 0` daje „spełniona: I_min = 0 A” (silnik nastaw).
+
+## Naprawy weryfikacji zbiorczej `6bc155298`
+
+Bieg zbiorczy na `6bc155298` (14071 zielonych, 10 czerwonych, 9 błędów środowiska — brak
+`node_modules` w drzewie tymczasowym) wykazał skutki wcześniejszych grup, naprawione w commicie
+WIP domeny 7: pin mapy pól i zapadki `solver_input_substitute_guard` (4510 pól, 606 plików,
+45/208), pin testu zapadki mypy (161/19), tekst sanity z przecinkiem dziesiętnym, fikstura ekranu
+kontyngencji i złoty hash `kontyngencje_n1/pierscien/pelny` (zmiana wyłącznie tekstu powodu
+przeciążenia: „wobec limitu … (próg ostrzeżenia …)” zamiast „przekracza limit” — rozstrzygnięcie
+niesie rekord K walidacji energetycznej; porównanie widoku przed/po: 2 linie tekstu, zero liczb).
 
 ## Pierwszy krok następcy
 

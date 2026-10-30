@@ -267,6 +267,7 @@ def build_swz_view(
         u0_v=u_phase_v,
         aparat=aparat,
         dane_przyjete=dane_przyjete_petli(loop_result, nazwa_po_identyfikatorze(bus_ref, enm)),
+        przedmiot=przedmiot_obwodu_nn(enm, station_ref, bus_ref, breaker_ref),
     )
 
     return {
@@ -285,7 +286,7 @@ def build_swz_view(
 def przedmiot_obwodu_nn(
     enm: EnergyNetworkModel, station_ref: str, bus_ref: str, breaker_ref: str
 ) -> Przedmiot:
-    """Przedmiot oceny SWZ TT/IT: obwód nN od aparatu korzenia odpływu do punktu.
+    """Przedmiot oceny SWZ (układ TN, TT i IT): obwód nN od aparatu korzenia odpływu do punktu.
 
     Nazwy z modelu (jedno źródło nazw); element spoza migawki opisuje jawny brak, nigdy
     identyfikator maszynowy.

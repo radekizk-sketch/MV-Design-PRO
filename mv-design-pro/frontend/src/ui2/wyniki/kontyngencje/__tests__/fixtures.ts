@@ -66,7 +66,7 @@ export const PRZECIAZENIE: PozycjaNaruszenia = {
   wartosc: 134.7433,
   granica_pct: 100.0,
   jednostka: '%',
-  powod_pl: 'Obciążenie 134,74 % przekracza limit 100,0 %.',
+  powod_pl: 'Obciążenie 134,74 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).',
   slad_kryterium: [
     {
       tekst: 'Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %',
@@ -85,7 +85,7 @@ export const PRZECIAZENIE: PozycjaNaruszenia = {
     },
     { tekst: 'Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %', latex: null },
     {
-      tekst: 'Porównanie z progami: Obciążenie 134,74 % przekracza limit 100,0 %.',
+      tekst: 'Porównanie z progami: Obciążenie 134,74 % wobec limitu 100,0 % (próg ostrzeżenia 80,0 %).',
       latex: null,
     },
   ],

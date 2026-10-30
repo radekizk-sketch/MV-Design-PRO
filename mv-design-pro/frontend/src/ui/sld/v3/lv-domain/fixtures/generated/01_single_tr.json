@@ -959,7 +959,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "9884bcd62cfb7d6220d98d0cbf790d453bc90dffd0d864947be870204acaa3ca",
+  "projection_hash": "fbcc748ae65f8ee9b81f47006281738bb7cb4769b37137c9a37c83fe5a067ac9",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1308,12 +1308,263 @@
                   {
                     "ia_a": 250.0,
                     "ik1_min_a": 1150.13096,
+                    "kryterium_id": "swz.tn.prad_zadzialania",
                     "margines": 4.60052384,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
-                    "result": "spełnia",
                     "step": "werdykt"
+                  },
+                  {
+                    "kryteria": [
+                      "swz.tn.prad_zadzialania"
+                    ],
+                    "method": "rekord W z rekordów K (pakiet werdykt, reguła §2.3)",
+                    "step": "rekord_wymagania",
+                    "wymaganie_id": "swz.tn"
                   }
-                ]
+                ],
+                "wyjasnienie": {
+                  "czego_brakuje": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230) (Obwód nN: QF-01 → Zacisk Odbiór 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230) (Obwód nN: QF-01 → Zacisk Odbiór 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "zastrzezenia": [
+                    "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                    "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                    "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                    "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                  ],
+                  "zdanie_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4) (§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 „IEC 60364-4-41”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230) (Obwód nN: QF-01 → Zacisk Odbiór 1) — prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 1150 A wobec wymaganych ≥ 250 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines +900,1 A, punkt: Obwód nN: QF-01 → Zacisk Odbiór 1, względnie +360,1 % wartości granicznej)."
+                },
+                "wymaganie": {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "application/analyses/swz/werdykt.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Brak wystarczającego dowodu",
+                    "semantyka": "ostrzegawcza"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryteria_naruszone": [],
+                  "kryterium_najblizej_granicy": null,
+                  "nazwa_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4)",
+                  "oceny_skladowe": [
+                    {
+                      "dowod": {
+                        "domena_pl": null,
+                        "metoda": "OBLICZENIE",
+                        "odniesienie": "application/analyses/swz/werdykt.py",
+                        "poziom": "UNVALIDATED_MODEL",
+                        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                        "status_danych": {
+                          "dane_przyjete": [],
+                          "stan": "ZWALIDOWANE"
+                        },
+                        "status_modelu": "NIE_DOTYCZY",
+                        "w_domenie_walidacji": null
+                      },
+                      "etykieta": {
+                        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+                        "semantyka": "ostrzegawcza"
+                      },
+                      "kompletnosc_dowodu": "NIEPELNY",
+                      "kryterium": {
+                        "opis_pl": "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230)",
+                        "relacja": "NIE_MNIEJ",
+                        "warunek_latex": "I_{k1,min} \\ge I_a",
+                        "warunek_wstepny_pl": null,
+                        "warunek_wstepny_podstawa": null
+                      },
+                      "kryterium_id": "swz.tn.prad_zadzialania",
+                      "limit": {
+                        "jednostka_obwiedni": null,
+                        "obwiednia": null,
+                        "pasmo": null,
+                        "podstawa": {
+                          "dokument": "IEC 60898-1",
+                          "jednostka_redakcyjna": "Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica)",
+                          "rodzaj": "NORMA",
+                          "status": "WSKAZANE",
+                          "uwagi_pl": null,
+                          "wydanie": "2015"
+                        },
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 250.0
+                        },
+                        "wersja_profilu": null,
+                        "zakres_stosowalnosci_pl": "górna granica pasma wyzwalania magnetycznego MCB C 25 A (wyzwolenie chwilowe < 0,1 s)"
+                      },
+                      "margines": {
+                        "definicja_latex": "m = x - x_{\\lim}",
+                        "niedefiniowalny": false,
+                        "powod_pl": null,
+                        "punkt_pl": "Obwód nN: QF-01 → Zacisk Odbiór 1",
+                        "skala": {
+                          "jednostka": "A",
+                          "wartosc": 250.0
+                        },
+                        "skala_rodzaj": "LIMIT",
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 900.130961
+                        },
+                        "wzgledny": 3.60052384
+                      },
+                      "niepewnosc": {
+                        "metoda_pl": null,
+                        "nie_dotyczy": true,
+                        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                        "wartosc": null
+                      },
+                      "podstawa": {
+                        "dokument": "IEC 60364-4-41",
+                        "jednostka_redakcyjna": "§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1",
+                        "rodzaj": "NORMA",
+                        "status": "WSKAZANE",
+                        "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy wyłączenia z modułu tabeli czasów (status referencyjny)",
+                        "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                      },
+                      "powody_niepelnosci": [
+                        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                      ],
+                      "przedmiot": {
+                        "element_ref": "QF-01_koniec",
+                        "nazwa_pl": "Obwód nN: QF-01 → Zacisk Odbiór 1",
+                        "opis_pl": "Obwód nN — stacja „Stacja C” — od aparatu „QF-01” do punktu „Zacisk Odbiór 1” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                      },
+                      "slad": [
+                        {
+                          "krok": "swz-tn:ia_gwarantowane_mcb",
+                          "opis_pl": "I_a: górna granica pasma wyzwalania magnetycznego MCB C 25 A (wyzwolenie chwilowe < 0,1 s)",
+                          "run_id": null,
+                          "wersja_silnika": null
+                        }
+                      ],
+                      "status_maszynowy": "SPELNIA",
+                      "stosowalnosc": {
+                        "dotyczy": true,
+                        "modul_istniejacy": null,
+                        "podstawa": null,
+                        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                        "technologia": null,
+                        "typ_modulu": null,
+                        "warunek_wstepny_nieuruchomiony": false
+                      },
+                      "wyjasnienie": {
+                        "czego_brakuje": [],
+                        "przyczyna_pl": null,
+                        "zastrzezenia": [
+                          "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                          "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                        ],
+                        "zdanie_pl": "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230) (Obwód nN: QF-01 → Zacisk Odbiór 1) — kryterium spełnione. Prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 1150 A wobec wymaganych ≥ 250 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines +900,1 A, punkt: Obwód nN: QF-01 → Zacisk Odbiór 1, względnie +360,1 % wartości granicznej)."
+                      },
+                      "wynik": {
+                        "chwila_s": null,
+                        "metoda": "OBLICZENIE",
+                        "punkt_krytyczny_pl": "Obwód nN: QF-01 → Zacisk Odbiór 1",
+                        "symbol_latex": "I_{k1,min}",
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 1150.13096
+                        },
+                        "wielkosc_pl": "prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN)"
+                      },
+                      "zakres_waznosci": {
+                        "model_urzadzenia": null,
+                        "ograniczniki": [],
+                        "opis_pl": "Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca",
+                        "parametry_sieci": [],
+                        "regulator": null,
+                        "rodzaj_analizy": "SHORT_CIRCUIT",
+                        "symetria_zaklocenia": null,
+                        "technologia": null,
+                        "wykluczenia": [
+                          "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                          "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                          "zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)"
+                        ]
+                      }
+                    }
+                  ],
+                  "podstawa": {
+                    "dokument": "IEC 60364-4-41",
+                    "jednostka_redakcyjna": "§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1",
+                    "rodzaj": "NORMA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy wyłączenia z modułu tabeli czasów (status referencyjny)",
+                    "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                  },
+                  "podstawa_sposobu_wykazania": null,
+                  "pokrycie_programu": "NIE_DOTYCZY",
+                  "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230) (Obwód nN: QF-01 → Zacisk Odbiór 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "slad": [
+                    {
+                      "krok": "swz-tn:ia_gwarantowane_mcb",
+                      "opis_pl": "I_a: górna granica pasma wyzwalania magnetycznego MCB C 25 A (wyzwolenie chwilowe < 0,1 s)",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "sposob_wykazania": "OBLICZENIE",
+                  "status_maszynowy": "BRAK_DOWODU",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [
+                      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                      "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230) (Obwód nN: QF-01 → Zacisk Odbiór 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                    ],
+                    "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230) (Obwód nN: QF-01 → Zacisk Odbiór 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "zastrzezenia": [
+                      "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                    ],
+                    "zdanie_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4) (§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 „IEC 60364-4-41”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 0,4 s (obwód odbiorczy, pasmo U0 120<U0<=230) (Obwód nN: QF-01 → Zacisk Odbiór 1) — prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 1150 A wobec wymaganych ≥ 250 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines +900,1 A, punkt: Obwód nN: QF-01 → Zacisk Odbiór 1, względnie +360,1 % wartości granicznej)."
+                  },
+                  "wymaganie_id": "swz.tn",
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "SHORT_CIRCUIT",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                      "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                      "zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)"
+                    ]
+                  }
+                }
               },
               "transformer_ref": "T1"
             },
@@ -1810,7 +2061,7 @@
                 "ik1_min_a": 532.010549,
                 "margines": 0.425608439,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=532.0 A < Ia=1250.0 A (MCB C 125 A) — wyzwolenie magnetyczne NIE jest gwarantowane; aparat może nie wyłączyć w czasie t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230).",
+                "przyczyna_pl": "Ik1_min=532.0 A < Ia=1250.0 A (MCB C 125 A) — wyzwolenie magnetyczne nie jest gwarantowane; aparat może nie wyłączyć w czasie t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230).",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "nie spełnia",
                 "t_wymagany_s": 5.0,
@@ -1834,12 +2085,265 @@
                   {
                     "ia_a": 1250.0,
                     "ik1_min_a": 532.010549,
+                    "kryterium_id": "swz.tn.prad_zadzialania",
                     "margines": 0.425608439,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
-                    "result": "nie spełnia",
                     "step": "werdykt"
+                  },
+                  {
+                    "kryteria": [
+                      "swz.tn.prad_zadzialania"
+                    ],
+                    "method": "rekord W z rekordów K (pakiet werdykt, reguła §2.3)",
+                    "step": "rekord_wymagania",
+                    "wymaganie_id": "swz.tn"
                   }
-                ]
+                ],
+                "wyjasnienie": {
+                  "czego_brakuje": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-02 → Zacisk Odbiór RGN-2): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przyczyna_pl": "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-02 → Zacisk Odbiór RGN-2) — prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN) nie osiąga wartości granicznej o 718 A (Obwód nN: QF-02 → Zacisk Odbiór RGN-2)",
+                  "zastrzezenia": [
+                    "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                    "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                    "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                    "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                  ],
+                  "zdanie_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4) (§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 „IEC 60364-4-41”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-02 → Zacisk Odbiór RGN-2) — prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 532 A wobec wymaganych ≥ 1250 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines −718 A, punkt: Obwód nN: QF-02 → Zacisk Odbiór RGN-2, względnie −57,44 % wartości granicznej)."
+                },
+                "wymaganie": {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "application/analyses/swz/werdykt.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Wymaganie naruszone",
+                    "semantyka": "negatywna"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryteria_naruszone": [
+                    "swz.tn.prad_zadzialania"
+                  ],
+                  "kryterium_najblizej_granicy": null,
+                  "nazwa_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4)",
+                  "oceny_skladowe": [
+                    {
+                      "dowod": {
+                        "domena_pl": null,
+                        "metoda": "OBLICZENIE",
+                        "odniesienie": "application/analyses/swz/werdykt.py",
+                        "poziom": "UNVALIDATED_MODEL",
+                        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                        "status_danych": {
+                          "dane_przyjete": [],
+                          "stan": "ZWALIDOWANE"
+                        },
+                        "status_modelu": "NIE_DOTYCZY",
+                        "w_domenie_walidacji": null
+                      },
+                      "etykieta": {
+                        "etykieta_pl": "Kryterium naruszone",
+                        "semantyka": "negatywna"
+                      },
+                      "kompletnosc_dowodu": "NIEPELNY",
+                      "kryterium": {
+                        "opis_pl": "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230)",
+                        "relacja": "NIE_MNIEJ",
+                        "warunek_latex": "I_{k1,min} \\ge I_a",
+                        "warunek_wstepny_pl": null,
+                        "warunek_wstepny_podstawa": null
+                      },
+                      "kryterium_id": "swz.tn.prad_zadzialania",
+                      "limit": {
+                        "jednostka_obwiedni": null,
+                        "obwiednia": null,
+                        "pasmo": null,
+                        "podstawa": {
+                          "dokument": "IEC 60898-1",
+                          "jednostka_redakcyjna": "Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica)",
+                          "rodzaj": "NORMA",
+                          "status": "WSKAZANE",
+                          "uwagi_pl": null,
+                          "wydanie": "2015"
+                        },
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 1250.0
+                        },
+                        "wersja_profilu": null,
+                        "zakres_stosowalnosci_pl": "górna granica pasma wyzwalania magnetycznego MCB C 125 A (wyzwolenie chwilowe < 0,1 s)"
+                      },
+                      "margines": {
+                        "definicja_latex": "m = x - x_{\\lim}",
+                        "niedefiniowalny": false,
+                        "powod_pl": null,
+                        "punkt_pl": "Obwód nN: QF-02 → Zacisk Odbiór RGN-2",
+                        "skala": {
+                          "jednostka": "A",
+                          "wartosc": 1250.0
+                        },
+                        "skala_rodzaj": "LIMIT",
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": -717.989451
+                        },
+                        "wzgledny": -0.574391561
+                      },
+                      "niepewnosc": {
+                        "metoda_pl": null,
+                        "nie_dotyczy": true,
+                        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                        "wartosc": null
+                      },
+                      "podstawa": {
+                        "dokument": "IEC 60364-4-41",
+                        "jednostka_redakcyjna": "§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1",
+                        "rodzaj": "NORMA",
+                        "status": "WSKAZANE",
+                        "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy wyłączenia z modułu tabeli czasów (status referencyjny)",
+                        "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                      },
+                      "powody_niepelnosci": [
+                        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                      ],
+                      "przedmiot": {
+                        "element_ref": "FU-21_koniec",
+                        "nazwa_pl": "Obwód nN: QF-02 → Zacisk Odbiór RGN-2",
+                        "opis_pl": "Obwód nN — stacja „Stacja C” — od aparatu „QF-02” do punktu „Zacisk Odbiór RGN-2” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                      },
+                      "slad": [
+                        {
+                          "krok": "swz-tn:ia_gwarantowane_mcb",
+                          "opis_pl": "I_a: górna granica pasma wyzwalania magnetycznego MCB C 125 A (wyzwolenie chwilowe < 0,1 s)",
+                          "run_id": null,
+                          "wersja_silnika": null
+                        }
+                      ],
+                      "status_maszynowy": "NIE_SPELNIA",
+                      "stosowalnosc": {
+                        "dotyczy": true,
+                        "modul_istniejacy": null,
+                        "podstawa": null,
+                        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                        "technologia": null,
+                        "typ_modulu": null,
+                        "warunek_wstepny_nieuruchomiony": false
+                      },
+                      "wyjasnienie": {
+                        "czego_brakuje": [],
+                        "przyczyna_pl": "prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN) nie osiąga wartości granicznej o 718 A (Obwód nN: QF-02 → Zacisk Odbiór RGN-2)",
+                        "zastrzezenia": [
+                          "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                          "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                        ],
+                        "zdanie_pl": "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-02 → Zacisk Odbiór RGN-2) — kryterium naruszone. Prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 532 A wobec wymaganych ≥ 1250 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines −718 A, punkt: Obwód nN: QF-02 → Zacisk Odbiór RGN-2, względnie −57,44 % wartości granicznej)."
+                      },
+                      "wynik": {
+                        "chwila_s": null,
+                        "metoda": "OBLICZENIE",
+                        "punkt_krytyczny_pl": "Obwód nN: QF-02 → Zacisk Odbiór RGN-2",
+                        "symbol_latex": "I_{k1,min}",
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 532.010549
+                        },
+                        "wielkosc_pl": "prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN)"
+                      },
+                      "zakres_waznosci": {
+                        "model_urzadzenia": null,
+                        "ograniczniki": [],
+                        "opis_pl": "Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca",
+                        "parametry_sieci": [],
+                        "regulator": null,
+                        "rodzaj_analizy": "SHORT_CIRCUIT",
+                        "symetria_zaklocenia": null,
+                        "technologia": null,
+                        "wykluczenia": [
+                          "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                          "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                          "zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)"
+                        ]
+                      }
+                    }
+                  ],
+                  "podstawa": {
+                    "dokument": "IEC 60364-4-41",
+                    "jednostka_redakcyjna": "§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1",
+                    "rodzaj": "NORMA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy wyłączenia z modułu tabeli czasów (status referencyjny)",
+                    "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                  },
+                  "podstawa_sposobu_wykazania": null,
+                  "pokrycie_programu": "NIE_DOTYCZY",
+                  "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-02 → Zacisk Odbiór RGN-2): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "slad": [
+                    {
+                      "krok": "swz-tn:ia_gwarantowane_mcb",
+                      "opis_pl": "I_a: górna granica pasma wyzwalania magnetycznego MCB C 125 A (wyzwolenie chwilowe < 0,1 s)",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "sposob_wykazania": "OBLICZENIE",
+                  "status_maszynowy": "NIE_SPELNIA",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [
+                      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                      "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-02 → Zacisk Odbiór RGN-2): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                    ],
+                    "przyczyna_pl": "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-02 → Zacisk Odbiór RGN-2) — prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN) nie osiąga wartości granicznej o 718 A (Obwód nN: QF-02 → Zacisk Odbiór RGN-2)",
+                    "zastrzezenia": [
+                      "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                    ],
+                    "zdanie_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4) (§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 „IEC 60364-4-41”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-02 → Zacisk Odbiór RGN-2) — prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 532 A wobec wymaganych ≥ 1250 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines −718 A, punkt: Obwód nN: QF-02 → Zacisk Odbiór RGN-2, względnie −57,44 % wartości granicznej)."
+                  },
+                  "wymaganie_id": "swz.tn",
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "SHORT_CIRCUIT",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                      "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                      "zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)"
+                    ]
+                  }
+                }
               },
               "transformer_ref": "T1"
             },
@@ -2168,12 +2672,263 @@
                   {
                     "ia_a": 1000.0,
                     "ik1_min_a": 2601.64887,
+                    "kryterium_id": "swz.tn.prad_zadzialania",
                     "margines": 2.60164887,
                     "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
-                    "result": "spełnia",
                     "step": "werdykt"
+                  },
+                  {
+                    "kryteria": [
+                      "swz.tn.prad_zadzialania"
+                    ],
+                    "method": "rekord W z rekordów K (pakiet werdykt, reguła §2.3)",
+                    "step": "rekord_wymagania",
+                    "wymaganie_id": "swz.tn"
                   }
-                ]
+                ],
+                "wyjasnienie": {
+                  "czego_brakuje": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-03 → PV1 · punkt przyłączenia): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-03 → PV1 · punkt przyłączenia): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "zastrzezenia": [
+                    "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                    "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                    "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                    "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                  ],
+                  "zdanie_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4) (§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 „IEC 60364-4-41”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-03 → PV1 · punkt przyłączenia) — prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 2602 A wobec wymaganych ≥ 1000 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines +1602 A, punkt: Obwód nN: QF-03 → PV1 · punkt przyłączenia, względnie +160,2 % wartości granicznej)."
+                },
+                "wymaganie": {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "application/analyses/swz/werdykt.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Brak wystarczającego dowodu",
+                    "semantyka": "ostrzegawcza"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryteria_naruszone": [],
+                  "kryterium_najblizej_granicy": null,
+                  "nazwa_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4)",
+                  "oceny_skladowe": [
+                    {
+                      "dowod": {
+                        "domena_pl": null,
+                        "metoda": "OBLICZENIE",
+                        "odniesienie": "application/analyses/swz/werdykt.py",
+                        "poziom": "UNVALIDATED_MODEL",
+                        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                        "status_danych": {
+                          "dane_przyjete": [],
+                          "stan": "ZWALIDOWANE"
+                        },
+                        "status_modelu": "NIE_DOTYCZY",
+                        "w_domenie_walidacji": null
+                      },
+                      "etykieta": {
+                        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+                        "semantyka": "ostrzegawcza"
+                      },
+                      "kompletnosc_dowodu": "NIEPELNY",
+                      "kryterium": {
+                        "opis_pl": "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230)",
+                        "relacja": "NIE_MNIEJ",
+                        "warunek_latex": "I_{k1,min} \\ge I_a",
+                        "warunek_wstepny_pl": null,
+                        "warunek_wstepny_podstawa": null
+                      },
+                      "kryterium_id": "swz.tn.prad_zadzialania",
+                      "limit": {
+                        "jednostka_obwiedni": null,
+                        "obwiednia": null,
+                        "pasmo": null,
+                        "podstawa": {
+                          "dokument": "IEC 60898-1",
+                          "jednostka_redakcyjna": "Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica)",
+                          "rodzaj": "NORMA",
+                          "status": "WSKAZANE",
+                          "uwagi_pl": null,
+                          "wydanie": "2015"
+                        },
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 1000.0
+                        },
+                        "wersja_profilu": null,
+                        "zakres_stosowalnosci_pl": "górna granica pasma wyzwalania magnetycznego MCB C 100 A (wyzwolenie chwilowe < 0,1 s)"
+                      },
+                      "margines": {
+                        "definicja_latex": "m = x - x_{\\lim}",
+                        "niedefiniowalny": false,
+                        "powod_pl": null,
+                        "punkt_pl": "Obwód nN: QF-03 → PV1 · punkt przyłączenia",
+                        "skala": {
+                          "jednostka": "A",
+                          "wartosc": 1000.0
+                        },
+                        "skala_rodzaj": "LIMIT",
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 1601.64887
+                        },
+                        "wzgledny": 1.60164887
+                      },
+                      "niepewnosc": {
+                        "metoda_pl": null,
+                        "nie_dotyczy": true,
+                        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                        "wartosc": null
+                      },
+                      "podstawa": {
+                        "dokument": "IEC 60364-4-41",
+                        "jednostka_redakcyjna": "§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1",
+                        "rodzaj": "NORMA",
+                        "status": "WSKAZANE",
+                        "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy wyłączenia z modułu tabeli czasów (status referencyjny)",
+                        "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                      },
+                      "powody_niepelnosci": [
+                        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                      ],
+                      "przedmiot": {
+                        "element_ref": "QF-03_pcc",
+                        "nazwa_pl": "Obwód nN: QF-03 → PV1 · punkt przyłączenia",
+                        "opis_pl": "Obwód nN — stacja „Stacja C” — od aparatu „QF-03” do punktu „PV1 · punkt przyłączenia” — ochrona przeciwporażeniowa przez samoczynne wyłączenie zasilania"
+                      },
+                      "slad": [
+                        {
+                          "krok": "swz-tn:ia_gwarantowane_mcb",
+                          "opis_pl": "I_a: górna granica pasma wyzwalania magnetycznego MCB C 100 A (wyzwolenie chwilowe < 0,1 s)",
+                          "run_id": null,
+                          "wersja_silnika": null
+                        }
+                      ],
+                      "status_maszynowy": "SPELNIA",
+                      "stosowalnosc": {
+                        "dotyczy": true,
+                        "modul_istniejacy": null,
+                        "podstawa": null,
+                        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                        "technologia": null,
+                        "typ_modulu": null,
+                        "warunek_wstepny_nieuruchomiony": false
+                      },
+                      "wyjasnienie": {
+                        "czego_brakuje": [],
+                        "przyczyna_pl": null,
+                        "zastrzezenia": [
+                          "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                          "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                        ],
+                        "zdanie_pl": "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-03 → PV1 · punkt przyłączenia) — kryterium spełnione. Prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 2602 A wobec wymaganych ≥ 1000 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines +1602 A, punkt: Obwód nN: QF-03 → PV1 · punkt przyłączenia, względnie +160,2 % wartości granicznej)."
+                      },
+                      "wynik": {
+                        "chwila_s": null,
+                        "metoda": "OBLICZENIE",
+                        "punkt_krytyczny_pl": "Obwód nN: QF-03 → PV1 · punkt przyłączenia",
+                        "symbol_latex": "I_{k1,min}",
+                        "wartosc": {
+                          "jednostka": "A",
+                          "wartosc": 2601.64887
+                        },
+                        "wielkosc_pl": "prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN)"
+                      },
+                      "zakres_waznosci": {
+                        "model_urzadzenia": null,
+                        "ograniczniki": [],
+                        "opis_pl": "Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca",
+                        "parametry_sieci": [],
+                        "regulator": null,
+                        "rodzaj_analizy": "SHORT_CIRCUIT",
+                        "symetria_zaklocenia": null,
+                        "technologia": null,
+                        "wykluczenia": [
+                          "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                          "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                          "zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)"
+                        ]
+                      }
+                    }
+                  ],
+                  "podstawa": {
+                    "dokument": "IEC 60364-4-41",
+                    "jednostka_redakcyjna": "§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1",
+                    "rodzaj": "NORMA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": "pełny tekst normy niedostępny w repozytorium — czasy wyłączenia z modułu tabeli czasów (status referencyjny)",
+                    "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
+                  },
+                  "podstawa_sposobu_wykazania": null,
+                  "pokrycie_programu": "NIE_DOTYCZY",
+                  "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-03 → PV1 · punkt przyłączenia): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "slad": [
+                    {
+                      "krok": "swz-tn:ia_gwarantowane_mcb",
+                      "opis_pl": "I_a: górna granica pasma wyzwalania magnetycznego MCB C 100 A (wyzwolenie chwilowe < 0,1 s)",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "sposob_wykazania": "OBLICZENIE",
+                  "status_maszynowy": "BRAK_DOWODU",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [
+                      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                      "Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-03 → PV1 · punkt przyłączenia): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                    ],
+                    "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-03 → PV1 · punkt przyłączenia): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "zastrzezenia": [
+                      "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Podstawa „IEC 60898-1”, wydanie 2015, Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)."
+                    ],
+                    "zdanie_pl": "Samoczynne wyłączenie zasilania w układzie TN (IEC 60364-4-41 §411.4) (§411.4.4 (układ TN: Z_s·I_a ≤ U_0, czyli I_k1,min ≥ I_a) i Tab. 41.1 „IEC 60364-4-41”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd zwarcia jednofazowego minimalny w punkcie obwodu nie mniejszy od prądu zapewniającego samoczynne zadziałanie aparatu w czasie wymaganym 5 s (obwód rozdzielczy, pasmo U0 120<U0<=230) (Obwód nN: QF-03 → PV1 · punkt przyłączenia) — prąd zwarcia jednofazowego minimalny (pętla L-PE/L-PEN, scenariusz MIN): 2602 A wobec wymaganych ≥ 1000 A wg Tab. 3 — pasmo wyzwalania natychmiastowego klasy C (górna granica) „IEC 60898-1” (margines +1602 A, punkt: Obwód nN: QF-03 → PV1 · punkt przyłączenia, względnie +160,2 % wartości granicznej)."
+                  },
+                  "wymaganie_id": "swz.tn",
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Pętla zwarcia L-PE/L-PEN układu TN (scenariusz MIN, rezystancje w temperaturze końcowej): trasa od transformatora do punktu + transformator + sieć zasilająca",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "SHORT_CIRCUIT",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej)",
+                      "wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji)",
+                      "zadziałanie członu przeciążeniowego aparatu (czas rzędu godzin — poza czasem wymaganym Tab. 41.1)"
+                    ]
+                  }
+                }
               },
               "transformer_ref": "T1"
             },

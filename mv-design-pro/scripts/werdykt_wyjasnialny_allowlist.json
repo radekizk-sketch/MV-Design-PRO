@@ -87,20 +87,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "application.analyses.nn_device_selection:KryteriumWynik.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C27 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C27"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "application.analyses.swz.werdykt:SwzResult.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C25 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C25"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "application.equipment_proof.types:EquipmentProofCheckResult.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C33 (MIGRACJA): migracja (plan §8).",
@@ -703,13 +689,6 @@
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.analyses.swz.werdykt:ocen_swz.result",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C25 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C25 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "application.analyses.wytrzymalosc_aparatury_pol:zbuduj_widok_wytrzymalosci_aparatury.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C31 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
@@ -798,20 +777,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C48 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "C48"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.analyses.swz.werdykt:ocen_swz.przyczyna:NIE_SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C25 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C25 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.analyses.swz.werdykt:ocen_swz.przyczyna:SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C25 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C25 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",

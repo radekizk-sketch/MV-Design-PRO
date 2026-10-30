@@ -268,6 +268,48 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
         ),
         CapabilityEvidence(
+            capability_id="nn.dobor_aparatu.dane_znamionowe",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Koordynacja aparatu z przewodem obwodu nN (I_B ≤ I_n ≤ I_z′, I_2 ≤ 1,45·I_z′): "
+                "prąd znamionowy i prąd zadziałania umownego aparatu są danymi znamionowymi "
+                "z katalogu typów i definicji normy aparatu, porównanymi z prądem obliczeniowym "
+                "projektu i obciążalnością przewodu z katalogu skorygowaną współczynnikami "
+                "tabelarycznymi ułożenia — deklaracja jest tu właściwą podstawą dowodową."
+            ),
+            audit_ref="karta P0.7 (§0.5), karta WERDYKT-MIGRACJA-190 (domena 7)",
+        ),
+        CapabilityEvidence(
+            capability_id="nn.dobor_aparatu",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Dobór aparatu zabezpieczającego obwodu nN: dane znamionowe aparatu z katalogu "
+                "typów porównane z prądem obliczeniowym, obciążalnością przewodu skorygowaną "
+                "współczynnikami ułożenia (network_model/solvers/cable_ampacity_derating.py) "
+                "i prądem zwarciowym punktu z biegu IEC 60909 — porównania są jawne, ale "
+                "wielkości obliczone po stronie sieci nie mają wyroczni odniesienia, więc "
+                "wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta P0.7 (§0.5), karta WERDYKT-MIGRACJA-190 (domena 7)",
+        ),
+        CapabilityEvidence(
+            capability_id="nn.petla_zwarcia_tn",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Pętla zwarcia L-PE/L-PEN układu TN: prąd zwarcia jednofazowego minimalny z sumy "
+                "impedancji trasy (rezystancje w temperaturze końcowej, scenariusz MIN), "
+                "transformatora i sieci zasilającej (network_model/solvers/"
+                "fault_loop_iec60364.py), porównany z prądem zapewniającym zadziałanie aparatu "
+                "w czasie z Tab. 41.1 IEC 60364-4-41 — obliczenie jest wykonywane jawnie, ale "
+                "nie ma wyroczni odniesienia (pomiar impedancji pętli, przykład normy z kopią "
+                "tekstu), więc wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta P0.6 (G-06), karta WERDYKT-MIGRACJA-190 (domena 7)",
+        ),
+        CapabilityEvidence(
             capability_id="nn.petla_zwarcia_tt_it",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

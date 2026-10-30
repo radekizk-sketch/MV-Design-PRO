@@ -2103,7 +2103,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `nazwa_od`, `nazwa_do`, `z_base_ohm`). -4: pola skasowanego mostu doziemienia
     # (`earth_electrode_resistance_ohm`, `earth_return_split_factor`, `pack_input`,
     # `readiness_issues`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4502." in wyjscie, wyjscie
+    # Karta WERDYKT-MIGRACJA-190 (2026-10-30): 4502 -> 4510 — POMIAR `contract_fields()` na
+    # `b1e677ced` (drzewo bazowe karty: 4502, pin zgodny) i na drzewie karty (4510). Roznica
+    # zbiorow +10, -2. +10: pola rekordow werdyktu wyjasnialnego w modelach analiz
+    # (`ocena_rezerwy_gora`, `ocena_rezerwy_dol`, `ocena_wymagania`, `wscr_ocena`,
+    # `wscr_wyjasnienie`, `informacje`, `ograniczenie`, `check`) oraz pola budowniczego
+    # `werdykt/porownanie.py` dopisanego do mapy (`stan_pl`, `opis_przedmiotu_pl`). -2: pola
+    # werdyktu tekstowego zastapione rekordem (`werdykt`, `wniosek_pl`). PASS niezmieniony;
+    # zapadka dlugu 46/210 -> 45/208 (wpis `swz/werdykt.py` zdjety, margines `None`
+    # zamiast `float("inf")`).
+    assert "Pol kontraktow wejsciowych: 4510." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2426,7 +2435,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/analyses/earthing/{__init__,ground_fault_bridge}.py`, +1
         # `application/analyses/v126_oceny.py` — rekordy werdyktu V12.6). POMIAR guardem na
         # `f2da569d3` (605) i na drzewie karty (604); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 604 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta WERDYKT-MIGRACJA-190 (2026-10-30): 604 -> 606 (+1
+        # `network_model/solvers/equipment_checks/oceny.py`, +1
+        # `application/reference_patterns/oceny.py` — budowniczowie rekordow K werdyktu
+        # wyjasnialnego). POMIAR guardem na `b1e677ced` (604) i na drzewie karty (606).
+        "Przeskanowano 606 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2517,7 +2530,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # network_model −2: wpisy `A:or:item.arrester_residual_10ka_kv` i `A:or:item.predicted_tov_kv`
     # w `v126_academic.py` zdjete (koordynacja izolacji z k trybu punktu neutralnego, dobor
     # wstepny jako dana przyjeta ESTIMATED). POMIAR guardem na `0344668a0` i na drzewie karty.
-    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 218." in wyjscie, wyjscie
+    # Karta WERDYKT-MIGRACJA-190 (2026-10-30): 47/218 -> 45/208 — application −2 pliki/−10:
+    # `swz/werdykt.py` (margines `None` zamiast `float("inf")`, −2),
+    # `reference_patterns/wzorzec_c_generacja_lokalna.py` (wejscia wzorca C czytane jako
+    # `float | None` z brakiem w rekordzie K, −6) i `B:ifexp:setting_window.i_min_a` w
+    # `reference_patterns/pattern_line_i_doubleprime_thermal_spz.py` (−2).
+    # POMIAR guardem na `b1e677ced` i na drzewie karty.
+    assert "Zapadka dlugu (fizyczne): 45 plikow, suma 208." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2645,7 +2664,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie obu kart (2026-10-29): 191 + 2 + 2 = 195. POMIAR guardem.
         # Odcinek 2 karty ZU (2026-10-29): 195 -> 196 (+1 `solvers/doziemienie_sn.py`), dlug
         # 10/67 -> 10/65 (dwa wpisy koordynacji izolacji `v126_academic.py` zdjete). POMIAR.
-        "  network_model: pliki_skanowane=196, dlug=10 plikow/suma 65, "
+        # Karta WERDYKT-MIGRACJA-190 (2026-10-30): 196 -> 197 (+1
+        # `solvers/equipment_checks/oceny.py`); dlug BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=197, dlug=10 plikow/suma 65, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2851,7 +2872,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Odcinek 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (2026-10-30): application 255 -> 254
         # (-2 pakiet mostu doziemienia, +1 `v126_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
-        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
+        # Karta WERDYKT-MIGRACJA-190 (2026-10-30): application 254 -> 255 (+1
+        # `reference_patterns/oceny.py`), dlug 27/81 -> 25/71 (wpisy wyzej). POMIAR guardem.
+        "  application: pliki_skanowane=255, dlug=25 plikow/suma 71, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

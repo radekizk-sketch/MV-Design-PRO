@@ -384,7 +384,11 @@ class TestStanyTrzecie:
         wynik = build_nn_circuit_sheet(enm=enm, station_ref="stn")
         wiersz = next(w for w in wynik["wiersze"] if w["feeder_root_branch_ref"] == "ap_mccb")
         assert wiersz["k2_i2"]["status"] == "nierozstrzygalne"
-        assert wiersz["kryterium_ii_i2_iz"]["status"] == "nierozstrzygalne"
+        # Kryterium bez nastawy niesie rekord K NIE_OCENIONO (brak danych ≠ spełnia).
+        assert wiersz["kryterium_ii_i2_iz"]["status"] == "OK"
+        ocena_ii = wiersz["kryterium_ii_i2_iz"]["wartosc"]["ocena"]
+        assert ocena_ii["status_maszynowy"] == "NIE_OCENIONO"
+        assert wiersz["kryterium_ii_i2_iz"]["wartosc"]["status"] == "nierozstrzygalne"
 
     def test_uklad_it_bez_pojemnosci_odmawia_kodem_dobor_nie_dotyczy(self) -> None:
         # Karta W5-E-TTIT: IT jest liczony pętlą doziemną; bez pojemności doziemnych odcinków

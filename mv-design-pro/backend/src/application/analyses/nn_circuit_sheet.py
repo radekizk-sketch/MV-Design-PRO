@@ -124,6 +124,7 @@ from application.analyses.nn_device_selection import (
     KIND_MCB,
     KIND_MCCB,
     KandydatAparatuNn,
+    KryteriumWynik,
     oceniaj_kandydata,
     oceniaj_przeciazenie_kandydata,
     odmowa_doboru_nadpradowego_tt_it,
@@ -132,6 +133,7 @@ from application.analyses.nn_device_selection import (
 from application.analyses.swz.service import build_swz_view
 from application.analyses.swz.werdykt import dane_przyjete_petli_zserializowanej
 from application.analyses.voltage_profile_view import build_voltage_profile_view
+from application.ocena_niewykonana import rekord_json
 from application.proof_engine.lv_circuit_verification_binding import (
     resolve_urzadzenie_ochronne,
 )
@@ -260,6 +262,24 @@ def _nierozstrzygalne(reason_pl: str) -> dict[str, Any]:
         "zrodlo_pl": None,
         "reason_pl": reason_pl,
     }
+
+
+def _sekcja_kryterium(
+    kryterium: KryteriumWynik, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
+) -> dict[str, Any]:
+    """Sekcja kryterium doboru: rekord werdyktu wyjaśnialnego (K albo W) z wyjaśnieniem i kod
+    zastany jako jego projekcja. Kryterium nierozstrzygnięte (brak nastawy, brak podstawy
+    limitu) też niesie rekord — status sekcji mówi wyłącznie, że rekord jest w komórce."""
+    return _wartosc(
+        {
+            "status": kryterium.status.value,
+            "wartosci": kryterium.wartosci,
+            "ocena": rekord_json(kryterium.ocena),
+            "wyjasnienie": kryterium.wyjasnienie.model_dump(mode="json"),
+        },
+        kryterium.uzasadnienie_pl,
+        dane_przyjete,
+    )
 
 
 # =============================================================================
@@ -608,7 +628,8 @@ def _i2t_dla_kabla(
         )
     return _wartosc(
         {
-            "wytrzymuje": wynik.status == "PASS",
+            "ocena": rekord_json(wynik.ocena),
+            "wyjasnienie": wynik.wyjasnienie.model_dump(mode="json"),
             "i2t_a2s": wynik.i2t_a2s,
             "i2t_dopuszczalne_a2s": wynik.i2t_admissible_a2s,
             "margines_procent": wynik.margin_percent,
@@ -959,20 +980,8 @@ def _build_row(
                 kr_i, kr_ii = oceniaj_przeciazenie_kandydata(
                     kandydat=kandydat, ib_a=ib_a, iz_prime_a=iz_prime_a
                 )
-                kryterium_i_sekcja = _wartosc(
-                    {"status": kr_i.status.value, "wartosci": kr_i.wartosci},
-                    kr_i.uzasadnienie_pl,
-                    dane_ib,
-                )
-                kryterium_ii_sekcja = (
-                    _wartosc(
-                        {"status": kr_ii.status.value, "wartosci": kr_ii.wartosci},
-                        kr_ii.uzasadnienie_pl,
-                        dane_ib,
-                    )
-                    if kr_ii.status.value != "nierozstrzygalne"
-                    else _nierozstrzygalne(kr_ii.uzasadnienie_pl)
-                )
+                kryterium_i_sekcja = _sekcja_kryterium(kr_i, dane_ib)
+                kryterium_ii_sekcja = _sekcja_kryterium(kr_ii, dane_ib)
                 k2 = _k2_dla_rodzaju(urzadzenie.kind)
                 i2_a = kr_ii.wartosci.get("i2_a")
                 k2_i2_sekcja = (
@@ -987,7 +996,7 @@ def _build_row(
                 status_doboru_sekcja = {**_nie_dotyczy(dobor_reason or ""), "kod_odmowy": dobor_kod}
             # `ib_a is None` => `dobor_wejscie is None` (dobór liczony wyłącznie przy
             # ustalonym Ib, gałąź wyżej) — warunek jawny, żeby gałąź oceny miała Ib.
-            elif dobor_wejscie is None or ib_a is None:
+            elif dobor_wejscie is None or ib_a is None or iz_prime_a is None:
                 if widok_tt_it is not None:
                     # TT/IT bez Ib albo Iz′: kryteria przeciążeniowe są NIEDOSTĘPNE (brak danych
                     # wejściowych), nie „nie dotyczy" — to inny stan niż dobór wg SWZ.
@@ -1016,7 +1025,7 @@ def _build_row(
                 ocena = oceniaj_kandydata(
                     kandydat=kandydat,
                     ib_a=ib_a,
-                    iz_prime_a=iz_prime_a,  # type: ignore[arg-type]  # dobor_wejscie != None => iz_prime_a rozwiązane
+                    iz_prime_a=iz_prime_a,
                     ik_max_ka=ikss_ka,
                     ik1_min_a=dobor_wejscie["ik1_min_a"],
                     u0_v=dobor_wejscie["u0_v"],
@@ -1026,20 +1035,8 @@ def _build_row(
                 kr_i = next(k for k in ocena.kryteria if k.nazwa == "Ib<=In<=Iz′")
                 kr_ii = next(k for k in ocena.kryteria if k.nazwa == "I2<=1,45·Iz′")
                 kr_swz = next(k for k in ocena.kryteria if k.nazwa == "SWZ przy Ik_min")
-                kryterium_i_sekcja = _wartosc(
-                    {"status": kr_i.status.value, "wartosci": kr_i.wartosci},
-                    kr_i.uzasadnienie_pl,
-                    dane_ib,
-                )
-                kryterium_ii_sekcja = (
-                    _wartosc(
-                        {"status": kr_ii.status.value, "wartosci": kr_ii.wartosci},
-                        kr_ii.uzasadnienie_pl,
-                        dane_ib,
-                    )
-                    if kr_ii.status.value != "nierozstrzygalne"
-                    else _nierozstrzygalne(kr_ii.uzasadnienie_pl)
-                )
+                kryterium_i_sekcja = _sekcja_kryterium(kr_i, dane_ib)
+                kryterium_ii_sekcja = _sekcja_kryterium(kr_ii, dane_ib)
                 k2 = _k2_dla_rodzaju(urzadzenie.kind)
                 i2_a = kr_ii.wartosci.get("i2_a")
                 k2_i2_sekcja = (
@@ -1050,15 +1047,7 @@ def _build_row(
                     if i2_a is not None
                     else _nierozstrzygalne(kr_ii.uzasadnienie_pl)
                 )
-                swz_sekcja = (
-                    _wartosc(
-                        {"status": kr_swz.status.value, "wartosci": kr_swz.wartosci},
-                        kr_swz.uzasadnienie_pl,
-                        kr_swz.dane_przyjete,
-                    )
-                    if kr_swz.status.value != "nierozstrzygalne"
-                    else _nierozstrzygalne(kr_swz.uzasadnienie_pl)
-                )
+                swz_sekcja = _sekcja_kryterium(kr_swz, kr_swz.dane_przyjete)
                 status_doboru_sekcja = _wartosc(
                     {
                         "kwalifikuje_sie": ocena.kwalifikuje_sie,

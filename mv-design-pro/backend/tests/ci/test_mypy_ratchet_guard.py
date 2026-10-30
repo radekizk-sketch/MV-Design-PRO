@@ -114,8 +114,11 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Scalenie gałęzi programu (partie 9–13) z gałęzią UI/UX: 169/22 → 167/21 — pomiar `mypy src`
     # na obu rodzicach i na drzewie scalonym; zdjęte dokładnie 2 błędy W5-B
     # (`enm/catalog_completion.py`), zero nowych względem żadnego z rodziców.
-    assert modul.BASELINE_ERRORS == 167
-    assert modul.BASELINE_FILES == 21
+    # Karta WERDYKT-MIGRACJA-190: 167/21 → 163/20 → 161/19 — pomiar `mypy src` na drzewie karty;
+    # zdjęte błędy w plikach przepisanych na rekordy werdyktu (m.in. 2 × `misc`
+    # w `analysis/grid_strength/builder.py`), zero nowych.
+    assert modul.BASELINE_ERRORS == 161
+    assert modul.BASELINE_FILES == 19
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

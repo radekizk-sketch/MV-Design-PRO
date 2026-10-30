@@ -584,6 +584,16 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # najkrotsze nowe: `krok`, `pasmo`, `skala`, `poziom`, `metoda`), ZERO nowych
     # trafien (RC=0, zapadka dlugu 56 plikow/suma 255 bez zmian) — decyzja „do mapy".
     "werdykt/dokument.py",
+    # Karta WERDYKT-MIGRACJA-190 (2026-10-30): pin mapy zazadal decyzji dla dwoch korzeni
+    # czytanych przez zakres — `werdykt/porownanie.py` (wspolny budowniczy rekordu K
+    # `Porownanie` -> `OcenaKryterium`, czytany przez `application/analyses/swz`,
+    # `nn_device_selection`, wzorce odniesienia i solvery `equipment_checks`) oraz
+    # `analysis/energy_validation/oceny.py` (rekord K pozycji walidacji energetycznej,
+    # czytany przez `application/analyses`). To KONTRAKT REKORDU werdyktu wyjasnialnego,
+    # jak `werdykt/kontrakt.py` i `werdykt/dokument.py` wyzej — zadne pole nie jest
+    # atrybutem typu wbudowanego, wiec decyzja „do mapy". Pomiar przy pinie w samotescie.
+    "werdykt/porownanie.py",
+    "analysis/energy_validation/oceny.py",
 )
 
 #: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza
@@ -1440,10 +1450,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # nie bezposrednio. DLUG NAZWANY: `ii_a<=0` jest DANA NIEPOPRAWNA (nastawa
     # zwarciowa nie moze byc zerowa/ujemna), nie brakiem — margines=inf
     # UDAJE nieskonczony zapas bezpieczenstwa zamiast zgloszenia bledu wejscia.
-    "application/analyses/swz/werdykt.py": {
-        "B:ifexp:bramka_konwencjonalna.inf_a": 1,
-        "H:local:aparat.ii_a": 1,
-    },
+    # Karta WERDYKT-MIGRACJA-190 (2026-10-30): wpis `application/analyses/swz/werdykt.py`
+    # ZDJETY — `margines` przy pradzie progowym `<= 0` jest `None` (brak marginesu), a nie
+    # `float("inf")` udajacy nieskonczony zapas; rozstrzygniecie niesie rekord K (`_ocena_pradu`),
+    # nie margines. Budzety `B:ifexp:bramka_konwencjonalna.inf_a` i `H:local:aparat.ii_a`
+    # spadly do 0 (pomiar tym guardem).
     "application/proof_engine/packs/lv_circuit_verification.py": {
         "B:ifexp:th.i2t_a2s": 1,
         "B:ifexp:th.i2t_admissible_a2s": 1,

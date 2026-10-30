@@ -69,8 +69,11 @@ def test_tekst_werdyktu_sanity_bez_surowego_floata() -> None:
     w1 = evaluate_short_circuit_current(15.0, 4.611507168332454)
     w2 = evaluate_short_circuit_current(15.0, 4.611507168332455)
     assert w1.why_pl == w2.why_pl
-    assert "4.612 kA" in w1.why_pl
+    # Liczba w zapisie polskim (przecinek dziesiętny) — wyjaśnienie rekordu werdyktu
+    # formatuje wartości przez `werdykt.format_liczba`.
+    assert "4,612 kA" in w1.why_pl
     assert "4.611507" not in w1.why_pl
+    assert "4,611507" not in w1.why_pl
 
 
 # ---------------------------------------------------------------------------
