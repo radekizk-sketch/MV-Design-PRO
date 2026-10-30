@@ -12,16 +12,16 @@ from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import VTType
 
 
-def test_57_rodzin_15_producentow_z_wiarygodnym_zrodlem() -> None:
+def test_59_rodzin_16_producentow_z_wiarygodnym_zrodlem() -> None:
     items = get_all_instrument_transformer_manufacturer_families_pl()
-    assert len(items) == 57
+    assert len(items) == 59
     assert list_instrument_transformer_families() == items
-    assert len({r["id"] for r in items}) == 57
+    assert len({r["id"] for r in items}) == 59
     assert {item["manufacturer"] for item in items} == {
         "KPB Intra", "RITZ", "Arteche", "ALCE Elektrik", "ESITAS",
         "PLESSE", "ZWARPOL", "PFIFFNER", "MBS",
         "Łukasiewicz-ITR", "SPIE Energotest", "ZELISKO",
-        "TESAR Polska", "KONČAR", "POLCONTACT WARSZAWA",
+        "TESAR Polska", "KONČAR", "POLCONTACT WARSZAWA", "ABB",
     }
     for record in items:
         assert record["record_kind"] == "MANUFACTURER_FAMILY_NOT_SKU"
