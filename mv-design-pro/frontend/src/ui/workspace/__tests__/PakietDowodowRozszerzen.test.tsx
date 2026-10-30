@@ -22,6 +22,7 @@ import { useStationDerStore } from '../../network-build/station-der';
 import type { Audit2ProjectProofPackResponse } from '../../network-build/station-der';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { WorkspaceSurfaceRouter } from '../WorkspaceSurfaceRouter';
+import { tekstZrodlowy } from '../../../test/tekstZWzorami';
 import { REPORT_SURFACE_SCREEN_CODE, type WorkspaceSurfaceDescriptor } from '../types';
 
 const SURFACE_BASE = {
@@ -233,8 +234,9 @@ describe('Pakiet dowodów walidacji rozszerzeń — ekrany (karta PROOFPACK-KONT
     const wiersz = screen.getByTestId('hosting-capacity-stacja');
     expect(wiersz.getAttribute('data-status')).toBe('normal_export');
     expect(wiersz.textContent).toContain('Stacja: Stacja Łąkowa');
-    expect(wiersz.textContent).toContain('P_export: 600 kW');
-    expect(wiersz.textContent).toContain('P_import: 500 kW');
+    // Symbole bilansu są wzorami KaTeX (`MathInline`), nie gołym `P_export`.
+    expect(tekstZrodlowy(wiersz)).toContain('P_{\\text{eksport}}: 600 kW');
+    expect(tekstZrodlowy(wiersz)).toContain('P_{\\text{import}}: 500 kW');
     const nieznane = screen.getAllByTestId('hosting-capacity-nieznane-stacja');
     expect(nieznane).toHaveLength(1);
     expect(nieznane[0].textContent).toContain('Stacja: Stacja Polna');

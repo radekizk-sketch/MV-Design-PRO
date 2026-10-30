@@ -14,6 +14,7 @@ import type { PasmoZwarciaOdpowiedz, StronaPasmaOdpowiedz } from '../api';
 import { PasmoMinMax } from '../PasmoMinMax';
 import { ZWARCIA_STRINGS } from '../strings';
 import { shortCircuitResultsFixture, shortCircuitRowFixture } from './fixtures';
+import { tekstZrodlowy } from '../../../../test/tekstZWzorami';
 
 function stronaFixture(over: Partial<StronaPasmaOdpowiedz> = {}): StronaPasmaOdpowiedz {
   return {
@@ -222,11 +223,16 @@ describe('PasmoMinMax — strona niedostępna (uczciwe stany, akcja „Uruchom")
     await waitFor(() => expect(screen.getByTestId('mvd-zwarcia-pasmo-brak-min')).toBeInTheDocument());
 
     const blokBrak = screen.getByTestId('mvd-zwarcia-pasmo-brak-min');
-    expect(within(blokBrak).getByText(ZWARCIA_STRINGS.pasmoBrakScenariusz('MIN'))).toBeInTheDocument();
+    expect(tekstZrodlowy(blokBrak)).toContain(ZWARCIA_STRINGS.pasmoBrakScenariusz('MIN'));
     expect(within(blokBrak).getByText(dane.powod_niedostepnosci_pl!)).toBeInTheDocument();
     const akcja = within(blokBrak).getByTestId('mvd-zwarcia-pasmo-min-akcja');
     expect(akcja).toBeInTheDocument();
-    expect(akcja).toHaveTextContent(ZWARCIA_STRINGS.pasmoUruchomScenariusz('MIN'));
+    expect(tekstZrodlowy(akcja)).toBe(ZWARCIA_STRINGS.pasmoUruchomScenariusz('MIN'));
+    // Nazwa dostępna przycisku niesie odczyt symbolu (`role="math"`), podpowiedź — tekst bez `$`.
+    // jsdom nie liczy `display` dla `<span>` (pusty ciąg ≠ `inline`), więc dom-accessibility-api
+    // otacza KAŻDY element potomny spacją — przeglądarka składa „(cmin)” bez spacji.
+    expect(akcja).toHaveAccessibleName(/^Uruchom bieg MIN \(\s*cmin\s*\)$/);
+    expect(akcja.getAttribute('title')).toContain('minimalnym (cmin)');
     expect(akcja).not.toBeDisabled();
 
     // Strona MAX (kotwica) zostaje dostępna mimo braku pary.
@@ -250,6 +256,6 @@ describe('PasmoMinMax — strona niedostępna (uczciwe stany, akcja „Uruchom")
     const akcja = within(screen.getByTestId('mvd-zwarcia-pasmo-brak-max')).getByTestId(
       'mvd-zwarcia-pasmo-max-akcja',
     );
-    expect(akcja).toHaveTextContent(ZWARCIA_STRINGS.pasmoUruchomScenariusz('MAX'));
+    expect(tekstZrodlowy(akcja)).toBe(ZWARCIA_STRINGS.pasmoUruchomScenariusz('MAX'));
   });
 });

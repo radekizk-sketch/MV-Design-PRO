@@ -18,6 +18,7 @@ import {
   OPERATOR_PROFILES,
 } from './types';
 import { useStudyCasesStore } from './store';
+import { MathInline } from '../proof/MathRenderer';
 
 interface CreateCaseDialogProps {
   projectId: string;
@@ -310,8 +311,9 @@ export function CreateCaseDialog({
                 <h3 className="mb-3 text-sm font-medium text-gray-700">Konfiguracja obliczeń</h3>
                 <div className="space-y-3">
                   <p className="text-xs text-gray-500" data-testid="case-config-c-nosnik">
-                    Współczynnik napięciowy c (MAX/MIN wg IEC 60909-0 tab. 1) i czas
-                    zwarcia t_k ustawiasz w scenariuszu zwarciowym, nie w przypadku.
+                    Współczynnik napięciowy <MathInline latex="c" /> (MAX/MIN wg IEC 60909-0 tab. 1)
+                    i czas zwarcia <MathInline latex="t_k" /> ustawiasz w scenariuszu zwarciowym, nie
+                    w przypadku.
                   </p>
 
                   <ConfigField

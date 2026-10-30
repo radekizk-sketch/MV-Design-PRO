@@ -1739,7 +1739,7 @@ def build_g4_pvtr() -> dict[str, Any]:
     przekaźnik SN: I>/I>>/Ust II>/G0>/3U0/I0>; granica ZKSN na kablu zasilającym) +
     POLE 2 TRANSFORMATOROWE (SŁ2+U: rozłącznik GTR5 ◇ + uziemnik ◯ → ITK 224 →
     3×YHAKXS DO TRANSFORMATORA, który wisi pod polem; bez przekaźnika).
-    nN 800 V (układ IT): Q1 □ 3WA1108 800A (I>=720A / I>>=4000A) → szyna 3×P40×10 →
+    nN 800 V (układ IT): Q1 □ 3WA1108 800A (I> = 720 A / I>> = 4000 A) → szyna 3×P40×10 →
     3 POLA FALOWNIKÓW (~333 kW; 560×595Wp/falownik; BTVC 315A/800V) + pole RPW-PV.
     Koordynacja trójpoziomowa (dok. 1.18) — w module zabezpieczenia, nie na płótnie.
 
@@ -1824,7 +1824,9 @@ def build_g4_pvtr() -> dict[str, Any]:
         "nn_kv": _PV1MW_NN_KV,
         "transformer": "1000 kVA · 15,75/0,8 kV · POLIM-D18N",
         "nn_grid": "IT",
-        "nn_main_breaker": "Q1 3WA1108 · 800 A · 1000 V · I>=720 A (0,9 In) · I>>=4000 A (4 In)",
+        # Etykieta ekranu (schemat SVG, `TekstSvgZWzorami`): człony nastaw I>/I>> to oznaczenia
+        # stopni zabezpieczenia, krotność prądu znamionowego jako wzór `$…$`.
+        "nn_main_breaker": "Q1 3WA1108 · 800 A · 1000 V · I> = 720 A ($0{,}9\\,I_n$) · I>> = 4000 A ($4\\,I_n$)",
         "pv_modules": f"JA SOLAR JAM72D40-595/MB · 595 Wp · {inv_count}×{modules_per_inv} szt = {p_dc_kwp:.1f} kWp DC",
         "inverters": f"{inv_count} × ~{kwp_per_inv:.0f} kW (BTVC 315 A/800 V na pole)",
         "dc_ac_ratio": round(p_dc_kwp / 1000.0, 3),

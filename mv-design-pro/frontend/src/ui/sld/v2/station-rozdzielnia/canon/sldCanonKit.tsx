@@ -14,6 +14,7 @@
  */
 
 import type { OzeMeteringCt } from '../companions/ozeTypes';
+import { TekstSvgZWzorami } from '../../../../proof/TekstSvgZWzorami';
 
 export const GREEN = '#1FA24A';
 export const CYAN = '#3BA7D6';
@@ -59,7 +60,13 @@ export function lbl(
   x: number, y: number, t: string, color = TXT2, size = 11, weight = 600,
   anchor: 'start' | 'middle' | 'end' = 'start',
 ): JSX.Element {
-  return <text x={x} y={y} textAnchor={anchor} fill={color} fontFamily={MONO} fontSize={size} fontWeight={weight}>{t}</text>;
+  // Segment `$…$` (symbol z indeksem) składa `TekstSvgZWzorami` — indeks jako `<tspan>`
+  // z `baseline-shift`, z tej samej konwersji co odczyt tekstowy (`ui/proof/latexTekst.ts`).
+  return (
+    <text x={x} y={y} textAnchor={anchor} fill={color} fontFamily={MONO} fontSize={size} fontWeight={weight}>
+      <TekstSvgZWzorami tekst={t} />
+    </text>
+  );
 }
 
 export function Odlacznik({ x, y, closed = true }: { x: number; y: number; closed?: boolean }): JSX.Element {

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Testy wlasne `ui_math_guard.py` (karta V12.7 §0.11/§0.12).
 
-Pokrywaja: piec wzorcow ASCII-matematyki osobno (pozytyw/negatyw), dwie
-poprawki precyzji skanu (usuniecie interpolacji `${...}` z template literali
-TS, wylaczenie docstringow Pythona), mechanizm `WYJATKI_ZNANE` (wylaczenie z
+Pokrywaja: piec wzorcow ASCII-matematyki osobno (pozytyw/negatyw), poprawki
+precyzji skanu (literaly TS z parsera kompilatora — interpolacja `${...}` jest kodem,
+literal zagniezdzony i wielowierszowy sa widoczne; wylaczenie docstringow Pythona),
+zakres `ui/**` + `ui2/**`, teksty JSX, polecenie LaTeX z pojedynczym ukosnikiem,
+mechanizm `WYJATKI_ZNANE` (wylaczenie z
 PIN + zapadke swiezosci — ten sam wzorzec co
 `no_raw_ids_in_ui_guard.check_excluded_relative_files_freshness`) oraz brzegi
 `main()` (PIN przekroczony/dotrzymany, brakujacy katalog/plik).
@@ -22,26 +24,57 @@ import guard_parsowanie  # noqa: E402
 import ui_math_guard as guard  # noqa: E402
 
 # ---------------------------------------------------------------------------
-# _usun_interpolacje — kod JS/TS w `${...}` znika, balansujac klamry.
+# wpisy_ts — literaly i teksty JSX z parsera kompilatora TypeScript.
 # ---------------------------------------------------------------------------
 
 
-def test_usun_interpolacje_usuwa_prosty_kod() -> None:
-    assert guard._usun_interpolacje("${v * 100} %") == " %"
+def _literaly(plik: Path) -> list[tuple[int, str]]:
+    return [
+        (int(wpis["linia"]), str(wpis["wartosc"]))
+        for wpis in guard.wpisy_ts([plik]).get(plik, [])
+        if wpis["rodzaj"] == "literal"
+    ]
 
 
-def test_usun_interpolacje_balansuje_zagniezdzone_klamry() -> None:
-    wejscie = "wartosc: ${foo({a: 1, b: 2})} koniec"
-    assert guard._usun_interpolacje(wejscie) == "wartosc:  koniec"
+def test_wpisy_ts_szablon_bez_kodu_interpolacji(tmp_path: Path) -> None:
+    plik = tmp_path / "a.ts"
+    plik.write_text("const t = `wartosc: ${foo({a: 1, b: 2})} koniec`;\n", encoding="utf-8")
+    assert _literaly(plik) == [(1, "wartosc:  koniec")]
 
 
-def test_usun_interpolacje_bez_interpolacji_jest_noop() -> None:
-    assert guard._usun_interpolacje("zwykly tekst bez kodu") == "zwykly tekst bez kodu"
+def test_wpisy_ts_literal_zagniezdzony_w_interpolacji_jest_osobnym_wpisem(tmp_path: Path) -> None:
+    # Wewnetrzny backtick konczyl dopasowanie zewnetrznego literalu w skanie wierszy.
+    plik = tmp_path / "a.tsx"
+    plik.write_text("const t = `wklad ${x} kA${ok ? ` · i_b=${y} kA` : ''}`;\n", encoding="utf-8")
+    assert _literaly(plik) == [(1, "wklad  kA"), (1, " · i_b= kA"), (1, "")]
 
 
-def test_usun_interpolacje_wiele_segmentow() -> None:
-    wejscie = "${a} · ${b} kV"
-    assert guard._usun_interpolacje(wejscie) == " ·  kV"
+def test_wpisy_ts_literal_wielowierszowy_widoczny(tmp_path: Path) -> None:
+    plik = tmp_path / "a.ts"
+    plik.write_text("const t = `pierwszy wiersz\n  drugi U_f`;\n", encoding="utf-8")
+    assert _literaly(plik) == [(1, "pierwszy wiersz\n  drugi U_f")]
+
+
+def test_wpisy_ts_kod_nie_jest_tekstem(tmp_path: Path) -> None:
+    """Specyfikator modulu, typ literalowy, nazwa wlasciwosci i argument dostepu indeksowego
+    sa kodem — nie trafiaja do skanu; wartosc tej samej wlasciwosci trafia."""
+    plik = tmp_path / "a.ts"
+    plik.write_text(
+        "import x from './U_f';\n"
+        "type R = 'I_A' | 'U_B';\n"
+        "const o = { 'Load.p_mw': 'wartosc' };\n"
+        "const v = o['Load.p_mw'];\n",
+        encoding="utf-8",
+    )
+    assert _literaly(plik) == [(3, "wartosc")]
+
+
+def test_wpisy_ts_brak_node_to_blad_zrodla(monkeypatch, tmp_path: Path) -> None:
+    plik = tmp_path / "a.ts"
+    plik.write_text("const t = 'x';\n", encoding="utf-8")
+    monkeypatch.setattr(guard.shutil, "which", lambda _nazwa: None)
+    with pytest.raises(guard_parsowanie.BladZrodla):
+        guard.wpisy_ts([plik])
 
 
 # ---------------------------------------------------------------------------
@@ -237,6 +270,13 @@ def test_skanuj_py_docstring_nie_maskuje_zwyklego_literalu_pod_nim(tmp_path: Pat
     assert len(wyniki) >= 1
 
 
+def _pusty_ui(tmp_path: Path) -> Path:
+    """Katalog `frontend/src/ui` drzewa testowego (pusty, jesli test nie dopisze plikow)."""
+    katalog = tmp_path / "frontend" / "src" / "ui"
+    katalog.mkdir(parents=True, exist_ok=True)
+    return katalog
+
+
 # ---------------------------------------------------------------------------
 # WYJATKI_ZNANE — wylaczenie z PIN + zapadka swiezosci (osierocenie).
 # ---------------------------------------------------------------------------
@@ -279,6 +319,7 @@ def test_wyjatki_znane_wylaczaja_trafienie_z_pin(monkeypatch, tmp_path: Path) ->
 
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "FRONTEND_UI", _pusty_ui(tmp_path))
     monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset({("frontend/src/ui2/Plik.tsx", 1)}))
     monkeypatch.setattr(guard, "PIN", 0)
@@ -291,8 +332,11 @@ def test_wyjatki_znane_wylaczaja_trafienie_z_pin(monkeypatch, tmp_path: Path) ->
 # ---------------------------------------------------------------------------
 
 
-def test_main_zwraca_1_gdy_brak_katalogu_frontendowego(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(guard, "FRONTEND_UI2", tmp_path / "nigdy-nie-istnieje")
+@pytest.mark.parametrize("katalog", ["FRONTEND_UI", "FRONTEND_UI2"])
+def test_main_zwraca_1_gdy_brak_katalogu_frontendowego(
+    monkeypatch, tmp_path: Path, katalog: str
+) -> None:
+    monkeypatch.setattr(guard, katalog, tmp_path / "nigdy-nie-istnieje")
 
     assert guard.main() == 1
 
@@ -301,6 +345,7 @@ def test_main_zwraca_1_gdy_brak_pliku_backendowego(monkeypatch, tmp_path: Path) 
     frontend_ui2 = tmp_path / "frontend" / "src" / "ui2"
     frontend_ui2.mkdir(parents=True)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "FRONTEND_UI", _pusty_ui(tmp_path))
     monkeypatch.setattr(guard, "BACKEND_PLIKI", (tmp_path / "nigdy.py",))
 
     assert guard.main() == 1
@@ -316,6 +361,7 @@ def test_main_zwraca_1_gdy_pin_przekroczony(monkeypatch, tmp_path: Path) -> None
 
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "FRONTEND_UI", _pusty_ui(tmp_path))
     monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
     monkeypatch.setattr(guard, "PIN", 0)
@@ -333,6 +379,7 @@ def test_main_zwraca_0_gdy_pin_dotrzymany(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "FRONTEND_UI", _pusty_ui(tmp_path))
     monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
     monkeypatch.setattr(guard, "PIN", 0)
@@ -351,6 +398,7 @@ def test_main_pomija_pliki_z_wylaczonych_wzorcow(monkeypatch, tmp_path: Path) ->
 
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "FRONTEND_UI", _pusty_ui(tmp_path))
     monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
     monkeypatch.setattr(guard, "PIN", 0)
@@ -516,6 +564,7 @@ def test_iniekcja_golego_indeksu_w_kopii_realnego_modulu_czerwieni_main(
         kopie_py.append(kopia)
     monkeypatch.setattr(guard, "ROOT", tmp_path)
     monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "FRONTEND_UI", _pusty_ui(tmp_path))
     monkeypatch.setattr(guard, "BACKEND_PLIKI", tuple(kopie_py))
     monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
     monkeypatch.setattr(guard, "PIN", 0)
@@ -534,6 +583,140 @@ def test_iniekcja_golego_indeksu_w_kopii_realnego_modulu_czerwieni_main(
         oryginal_py.replace('"% $I_n$ na rząd"', '"% I_n na rząd"'), encoding="utf-8"
     )
     assert kopie_py[0].read_text(encoding="utf-8") != oryginal_py
+    assert guard.main() == 1
+
+
+# ---------------------------------------------------------------------------
+# Teksty JSX, polecenie LaTeX z pojedynczym ukosnikiem, klasa CSS — iloczyn cech:
+# miejsce tekstu (literal JS, napis atrybutu JSX, tekst JSX) × zapis (goly indeks, `$...$`,
+# polecenie z jednym/dwoma ukosnikami) × kontekst (proza, pole LaTeX).
+# ---------------------------------------------------------------------------
+
+UKOSNIK = "pojedynczym ukosnikiem"
+
+
+def test_skanuj_plik_frontu_tekst_jsx_goly_indeks_i_dolary(tmp_path: Path) -> None:
+    plik = tmp_path / "Pole.tsx"
+    plik.write_text(
+        "export const P = () => (\n"
+        "  <div>\n"
+        "    <label>Rezystancja R_f [Ω]</label>\n"
+        "    <span>Czas $t_k$</span>\n"
+        '    <span>Czas <MathInline latex="t_k" /> [s]</span>\n'
+        "  </div>\n"
+        ");\n",
+        encoding="utf-8",
+    )
+    wyniki = guard.skanuj_plik_frontu(plik)
+    assert [(n, GOLY in p_ or "dolarami" in p_) for n, _l, p_ in wyniki] == [(3, True), (4, True)]
+
+
+@pytest.mark.parametrize(
+    ("zrodlo", "oczekiwane"),
+    [
+        ("const a = '$\\\\Delta U$';\n", False),
+        ("const a = '$\\Delta U$';\n", True),
+        ("const a = `$\\varphi$ = ${x}`;\n", True),
+        ("const a = { formula_latex: '\\frac{a}{b}' };\n", True),
+        ("const a = { formula_latex: '\\\\frac{a}{b}' };\n", False),
+        ("const a = 'proza z \\n nowym wierszem';\n", False),
+        ("const a = '$I_{\\u0394}$';\n", False),
+        ('const a = <MathInline latex="\\Delta U" />;\n', False),
+    ],
+)
+def test_skanuj_ts_polecenie_latex_z_pojedynczym_ukosnikiem(
+    tmp_path: Path, zrodlo: str, oczekiwane: bool
+) -> None:
+    plik = tmp_path / "a.tsx"
+    plik.write_text(zrodlo, encoding="utf-8")
+    trafione = any(UKOSNIK in powod for _n, _l, powod in guard.skanuj_ts(plik))
+    assert trafione is oczekiwane, zrodlo
+
+
+@pytest.mark.parametrize(
+    ("wartosc", "lista_klas"),
+    [
+        ("bg-[url(I_k.png)] w-4", True),
+        ("[mask_type:I_k] p-2", True),
+        ("Prąd I_k zwarcia", False),
+        ("Prąd wytrzymywany I_th [kA]", False),
+        ("Current I_th [kA]", False),
+        ("w-4 h-4", False),
+    ],
+)
+def test_lista_klas_css_odroznia_od_prozy_z_jednostka(wartosc: str, lista_klas: bool) -> None:
+    assert guard._jest_lista_klas_css(wartosc) is lista_klas, wartosc
+
+
+def _drzewo_z_kopiami(monkeypatch, tmp_path: Path, wzgledne: list[str]) -> dict[str, Path]:
+    """Drzewo testowe z kopiami REALNYCH plikow frontu (sciezki wzgledem `frontend/src`)."""
+    frontend_src = tmp_path / "frontend" / "src"
+    (frontend_src / "ui").mkdir(parents=True)
+    (frontend_src / "ui2").mkdir(parents=True)
+    kopie: dict[str, Path] = {}
+    for wzgledna in wzgledne:
+        zrodlo = guard.ROOT / "frontend" / "src" / wzgledna
+        kopia = frontend_src / wzgledna
+        kopia.parent.mkdir(parents=True, exist_ok=True)
+        kopia.write_text(zrodlo.read_text(encoding="utf-8"), encoding="utf-8")
+        kopie[wzgledna] = kopia
+    backend_plik = tmp_path / "backend.py"
+    backend_plik.write_text("wartosc = 1\n", encoding="utf-8")
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_UI", frontend_src / "ui")
+    monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_src / "ui2")
+    monkeypatch.setattr(guard, "BACKEND_PLIKI", (backend_plik,))
+    monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
+    monkeypatch.setattr(guard, "PIN", 0)
+    return kopie
+
+
+@pytest.mark.parametrize(
+    ("wzgledna", "przed", "po"),
+    [
+        # Literal w `ui/**` (zakres rozszerzony decyzja architekta 2026-10-30).
+        (
+            "ui/catalog/TypeLibraryBrowser.tsx",
+            "'Prąd wytrzymywany krótkotrwale $I_{th}$ [kA]'",
+            "'Prąd wytrzymywany krótkotrwale I_th [kA]'",
+        ),
+        # Polecenie LaTeX z pojedynczym ukosnikiem (`\v` to znak sterujacy w literale).
+        (
+            "ui/catalog/TypeLibraryBrowser.tsx",
+            "'Współczynnik mocy $\\\\cos\\\\varphi$'",
+            "'Współczynnik mocy $\\\\cos\\varphi$'",
+        ),
+        # Tekst JSX `ui/**`.
+        (
+            "ui/network-build/station-configurator/cards/StationConfigTransformerCard.tsx",
+            '<MathInline latex="u_k" /> [%]',
+            "u_k [%]",
+        ),
+        # Literal szablonowy zagniezdzony w interpolacji (niewidoczny dla skanu wierszy).
+        (
+            "ui/sld/v2/station-rozdzielnia/OzeSourceArchetype.tsx",
+            "` · $i_b$ = ${contrib.ib_contribution_ka.toFixed(3)} kA`",
+            "` · i_b=${contrib.ib_contribution_ka.toFixed(3)} kA`",
+        ),
+        # Tekst JSX `ui2/**`.
+        (
+            "ui2/inspector/SekcjaPetlaZwarcia.tsx",
+            'Pojemność doziemna sieci <MathInline latex="C_e" />',
+            "Pojemność doziemna sieci C_e",
+        ),
+    ],
+)
+def test_iniekcja_w_kopii_realnego_pliku_frontu_czerwieni_main(
+    monkeypatch, tmp_path: Path, wzgledna: str, przed: str, po: str
+) -> None:
+    """Kopia realnego pliku jest czysta (main == 0); jedna iniekcja klasy czerwieni
+    straznika (main == 1). `przed` musi wystepowac w pliku dokladnie raz — inaczej iniekcja
+    nie sprawdza tego, co deklaruje."""
+    kopia = _drzewo_z_kopiami(monkeypatch, tmp_path, [wzgledna])[wzgledna]
+    assert guard.main() == 0
+    oryginal = kopia.read_text(encoding="utf-8")
+    assert oryginal.count(przed) == 1, przed
+    kopia.write_text(oryginal.replace(przed, po), encoding="utf-8")
     assert guard.main() == 1
 
 

@@ -230,11 +230,11 @@ export const ZWARCIA_STRINGS = {
   pasmoBladPobrania: 'Nie udało się pobrać pasma MIN/MAX dla tego przebiegu.',
   pasmoBladPobraniaOpis: 'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później.',
   pasmoBrakScenariusz: (scenariusz: 'MAX' | 'MIN') =>
-    `Brak biegu ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'} tego przypadku.`,
+    `Brak biegu ${scenariusz === 'MAX' ? 'MAX ($c_{max}$)' : 'MIN ($c_{min}$)'} tego przypadku.`,
   pasmoUruchomScenariusz: (scenariusz: 'MAX' | 'MIN') =>
-    `Uruchom bieg ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'}`,
+    `Uruchom bieg ${scenariusz === 'MAX' ? 'MAX ($c_{max}$)' : 'MIN ($c_{min}$)'}`,
   pasmoUruchomScenariuszOpis: (scenariusz: 'MAX' | 'MIN') =>
-    `Uruchamia przebieg zwarciowy IEC 60909 przy scenariuszu ${scenariusz === 'MAX' ? 'maksymalnym (c_max)' : 'minimalnym (c_min)'} dla tego przypadku i dokłada go do pasma.`,
+    `Uruchamia przebieg zwarciowy IEC 60909 przy scenariuszu ${scenariusz === 'MAX' ? 'maksymalnym ($c_{max}$)' : 'minimalnym ($c_{min}$)'} dla tego przypadku i dokłada go do pasma.`,
   pasmoProwenencjaZapisany: 'Bieg zapisany',
   pasmoProwenencjaObliczony: 'Policzone na żądanie z biegu kotwicy (bez zapisu)',
   pasmoIdentyfikatorBiegu: 'Identyfikator biegu',
@@ -242,8 +242,6 @@ export const ZWARCIA_STRINGS = {
   pasmoRewizja: (rewizja: number | null | undefined) =>
     rewizja === null || rewizja === undefined ? 'rewizja nieznana' : `rewizja modelu ${rewizja}`,
   pasmoRozbieznoscRewizji: 'Bieg MAX i bieg MIN pochodzą z różnych rewizji modelu — porównanie jest orientacyjne.',
-  pasmoScenariuszKotwicy: (scenariusz: 'MAX' | 'MIN') =>
-    `Bieg kotwicy: scenariusz ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'}.`,
 
   // Sekcja ZAŁOŻENIA — wpisy `raw_result.zalozenia` (CV-4.3 K7): jedno założenie
   // = jeden element + scenariusz, treść (message_pl) wprost z backendu (WHITE BOX).

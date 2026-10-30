@@ -39,6 +39,7 @@ import type {
 } from './companions/ozeTypes';
 import type { StationDetailLevel } from './geometry';
 import { wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
+import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 
 export interface OzeSourceArchetypeProps {
   readonly companion: SldOzeArchetypeCompanion;
@@ -297,10 +298,10 @@ function ApparatusStack(props: {
 function PowerHierarchy(props: { h: SldOzeArchetypeCompanion['source']['power_hierarchy']; x: number; y: number }): JSX.Element {
   const { h, x, y } = props;
   const rows: Array<[string, number]> = [
-    ['Pzainst', h.p_zainst_kw],
-    ['Pn,AC', h.pn_ac_kw],
-    ['Pprzyłącz', h.p_przylacz_kw],
-    ['Posiągalna', h.p_osiagalna_kw],
+    ['$P_{\\text{zainst}}$', h.p_zainst_kw],
+    ['$P_{n,AC}$', h.pn_ac_kw],
+    ['$P_{\\text{przyłącz}}$', h.p_przylacz_kw],
+    ['$P_{\\text{osiągalna}}$', h.p_osiagalna_kw],
   ];
   const ok = h.valid;
   return (
@@ -310,7 +311,7 @@ function PowerHierarchy(props: { h: SldOzeArchetypeCompanion['source']['power_hi
       </text>
       {rows.map(([k, v], i) => (
         <text key={k} x={x} y={y + 9 + i * 8} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6.6}>
-          {`${k} = ${v.toFixed(0)} kW${i < rows.length - 1 ? ' ≥' : ''}`}
+          <TekstSvgZWzorami tekst={`${k} = ${v.toFixed(0)} kW${i < rows.length - 1 ? ' ≥' : ''}`} />
         </text>
       ))}
     </g>
@@ -332,14 +333,18 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
         {`${vf.bus_ref}: U=${vf.u_kv.toFixed(wPasmieNn(vf.un_kv) ? 3 : 2)} kV (${vf.u_pu.toFixed(3)} pu)`}
       </text>
       <text x={x} y={y + 9} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6.8}>
-        {`Ik"max=${sc.max.ikss_ka.toFixed(2)} / min=${sc.min.ikss_ka.toFixed(2)} kA`}
+        <TekstSvgZWzorami
+          tekst={`$I''_{k,max}$ = ${sc.max.ikss_ka.toFixed(2)} / $I''_{k,min}$ = ${sc.min.ikss_ka.toFixed(2)} kA`}
+        />
       </text>
       <text x={x} y={y + 18} fill={ok ? '#5BE08A' : '#FF6B6B'} fontFamily={FONT_MONO} fontSize={6.8} fontWeight={700}>
-        {`Ik"max ${ok ? '≤' : '>'} Icw ${sc.icw_ka} kA ${ok ? '✓' : '✗'}`}
+        <TekstSvgZWzorami tekst={`$I''_{k,max}$ ${ok ? '≤' : '>'} $I_{cw}$ ${sc.icw_ka} kA ${ok ? '✓' : '✗'}`} />
       </text>
       {/* Gate J — the source contribution, machine-typed. */}
       <text x={x} y={y + 27} fill="#FFB020" fontFamily={FONT_MONO} fontSize={6.6} data-testid={`oze-sc-contrib-${vf.bus_ref}`} data-machine-type={contrib.machine_type} data-synchronous={String(contrib.is_synchronous_machine)}>
-        {`wkład ${contrib.machine_type}: ${contrib.ik_contribution_ka.toFixed(3)} kA (${contrib.machine_type === 'IBG' ? 'ograniczony' : 'maszyna'})${contrib.ib_contribution_ka != null ? ` · i_b=${contrib.ib_contribution_ka.toFixed(3)} kA` : ''}`}
+        <TekstSvgZWzorami
+          tekst={`wkład ${contrib.machine_type}: ${contrib.ik_contribution_ka.toFixed(3)} kA (${contrib.machine_type === 'IBG' ? 'ograniczony' : 'maszyna'})${contrib.ib_contribution_ka != null ? ` · $i_b$ = ${contrib.ib_contribution_ka.toFixed(3)} kA` : ''}`}
+        />
       </text>
       {/* Per-machine WHITE-BOX breakdown (§6.6) — each rotating machine's partial I″k,
           breaking current i_b, decay μ and (asynchronous) q. Absent for IBG. */}
@@ -355,7 +360,9 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
           data-machine-mu={m.mu}
           data-machine-q={m.q}
         >
-          {`#${j + 1} ${m.node_ref}: I″k=${m.ikss_partial_ka.toFixed(3)} · i_b=${m.ib_partial_ka.toFixed(3)} kA · μ=${m.mu.toFixed(3)}${contrib.is_synchronous_machine ? '' : ` · q=${m.q.toFixed(3)}`}`}
+          <TekstSvgZWzorami
+            tekst={`#${j + 1} ${m.node_ref}: $I''_k$ = ${m.ikss_partial_ka.toFixed(3)} · $i_b$ = ${m.ib_partial_ka.toFixed(3)} kA · $\\mu$ = ${m.mu.toFixed(3)}${contrib.is_synchronous_machine ? '' : ` · $q$ = ${m.q.toFixed(3)}`}`}
+          />
         </text>
       ))}
     </g>
@@ -858,14 +865,14 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
           {[
             `Trafo: ${schematic.transformer}`,
             `nN ${schematic.nn_kv * 1000} V · układ ${schematic.nn_grid} · wył. ${schematic.nn_main_breaker}`,
-            `CT ${schematic.ct.type} ${schematic.ct.ratio} · Ith=${schematic.ct.ith_ka} kA · Idyn=${schematic.ct.idyn_ka} kA`,
+            `CT ${schematic.ct.type} ${schematic.ct.ratio} · $I_{th}$ = ${schematic.ct.ith_ka} kA · $I_{dyn}$ = ${schematic.ct.idyn_ka} kA`,
             `  rdzenie: ${schematic.ct.cores.join(' · ')}`,
             `VT ${schematic.vt.type} ${schematic.vt.ratio}`,
             `PV: ${schematic.pv_modules}`,
             `Potrzeby własne: ${schematic.own_needs}`,
           ].map((ln, i) => (
             <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
-              {ln}
+              <TekstSvgZWzorami tekst={ln} />
             </text>
           ))}
         </g>
@@ -883,10 +890,10 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
             `Moc PCS: ${storage.n_pcs}×${storage.pcs_kw.toFixed(0)} kW = ${storage.power_kw.toFixed(0)} kW`,
             `Pojemność: ${storage.capacity_kwh.toFixed(0)} kWh · ${storage.duration_h} h`,
             `Praca 2-kier.: rozład. ${storage.discharge_kw.toFixed(0)} kW ⇄ ład. ${storage.charge_kw.toFixed(0)} kW`,
-            `Maszyna: IBG (PCS) — Ik ograniczony k·In (§6.7)`,
+            `Maszyna: IBG (PCS) — $I_k$ ograniczony do $k \\cdot I_n$ (§6.7)`,
           ].map((ln, i) => (
             <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
-              {ln}
+              <TekstSvgZWzorami tekst={ln} />
             </text>
           ))}
         </g>
@@ -905,13 +912,13 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
             `Turbiny: ${collector.n_turbines} × ${(collector.turbine_kw / 1000).toFixed(1)} MW ${src.machine_type === 'ASYNCHRONOUS' ? '(Typ 1, generator asynchroniczny)' : src.machine_type === 'DFIG' ? '(Typ 3, DFIG)' : '(Typ 4, pełny przekształtnik)'}`,
             `Trafo turbiny (każda): ${collector.turbine_transformer}`,
             src.machine_type === 'ASYNCHRONOUS'
-              ? `Maszyna: asynchroniczna — Ik za Z_M (§6.7), zanik μ·q (§6.6)`
+              ? `Maszyna: asynchroniczna — $I_k$ za $Z_M$ (§6.7), zanik $\\mu \\cdot q$ (§6.6)`
               : src.machine_type === 'DFIG'
-                ? `Maszyna: DFIG (crowbar→asynchr.) — Ik za Z_M (§6.7), zanik μ·q (§6.6)`
-                : `Maszyna: IBG — Ik ograniczony k·In (§6.7), NIE maszyna`,
+                ? `Maszyna: DFIG (crowbar→asynchr.) — $I_k$ za $Z_M$ (§6.7), zanik $\\mu \\cdot q$ (§6.6)`
+                : `Maszyna: IBG — $I_k$ ograniczony do $k \\cdot I_n$ (§6.7), NIE maszyna`,
           ].map((ln, i) => (
             <text key={i} x={schemX} y={schemY + 9 + i * 8} fill={i === 3 ? COLOR_TEXT_MUTED : COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6} fontWeight={i === 3 ? 400 : 600}>
-              {ln}
+              <TekstSvgZWzorami tekst={ln} />
             </text>
           ))}
         </g>

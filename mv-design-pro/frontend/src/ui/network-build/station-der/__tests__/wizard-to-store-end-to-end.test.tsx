@@ -495,7 +495,11 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
         },
       });
     });
-  });
+    // Pięć kroków kreatora i ~60 znaków wpisanych natywnie (`userEvent`, każdy znak to osobne
+    // makrozadanie): 2,0–2,2 s w pojedynkę, a w równoległej puli procesów przekraczał domyślne 5 s
+    // (pomiar 2026-10-30, ten sam czas przed i po zmianie kreatora). `delay: null` łamie przebieg
+    // kreatora (walidacja pól asynchroniczna), więc budżet testu jest jawny, a ścieżka — natywna.
+  }, 20_000);
 
   it('przekazuje do API katalogową moc PV 50 kW bez sztucznej podłogi 100 kW', async () => {
     useSnapshotStore.setState({

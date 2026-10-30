@@ -106,7 +106,8 @@ describe('WalidacjaVtPolaSekcja — typy, uziemienie z modelu i werdykt z backen
 
     const wiersz = await screen.findByTestId('vt-validation-J01');
     expect(wiersz.getAttribute('data-vt-ok')).toBe('true');
-    expect(tekstZrodlowy(wiersz)).toContain('$F_v$ = 1.9');
+    // `MathInline latex="F_v"` — `data-latex` bez ograniczników `$…$`.
+    expect(tekstZrodlowy(wiersz)).toContain('F_v = 1.9');
     expect(zapytania.some((u) => u.endsWith('/_uziemienie-sn'))).toBe(true);
     expect(cialaReguly).toEqual([{ voltage_factor: 1.9, grounding_type: 'petersen_coil' }]);
   });

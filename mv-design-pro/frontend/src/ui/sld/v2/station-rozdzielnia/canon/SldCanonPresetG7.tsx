@@ -157,7 +157,7 @@ export function SldCanonPresetG7({ companion }: { companion: SldOzeArchetypeComp
           {lbl(fx, 607, '◯G∼ klatkowa · bez ~/=', TXT2, 9, 700, 'middle')}
         </g>
       ))}
-      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 616, '0,69 kV: generator indukcyjny klatkowy na sieci = MASZYNA asynchroniczna (PN-EN 60909 §6.7, za Z_M); udział z zanikiem μ·q, kompensacja Q baterią', TXT_MUTED, 9, 600, 'middle')}
+      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 616, '0,69 kV: generator indukcyjny klatkowy na sieci = MASZYNA asynchroniczna (PN-EN 60909 §6.7, za $Z_M$); udział z zanikiem $\\mu \\cdot q$, kompensacja $Q$ baterią', TXT_MUTED, 9, 600, 'middle')}
       {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 629, `zab. maszyny: ${machineProt} (bez przekształtnika — Typ 1)`, TXT_MUTED, 8.5, 600, 'middle')}
 
       {/* ── node ① — collector 15 kV (sieć + MASZYNA referred through the turbine TR) ── */}

@@ -6274,7 +6274,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "inverters": "3 \u00d7 ~333 kW (BTVC 315 A/800 V na pole)",
         "nn_grid": "IT",
         "nn_kv": 0.8,
-        "nn_main_breaker": "Q1 3WA1108 \u00b7 800 A \u00b7 1000 V \u00b7 I>=720 A (0,9 In) \u00b7 I>>=4000 A (4 In)",
+        "nn_main_breaker": "Q1 3WA1108 \u00b7 800 A \u00b7 1000 V \u00b7 I> = 720 A ($0{,}9\\,I_n$) \u00b7 I>> = 4000 A ($4\\,I_n$)",
         "own_needs": "RPW-PV \u00b7 TS 5 kVA 800/230 V \u00b7 F0=HN-C20/1 \u00b7 F1-F10",
         "pv_modules": "JA SOLAR JAM72D40-595/MB \u00b7 595 Wp \u00b7 3\u00d7560 szt = 999.6 kWp DC",
         "sn_kv": 15.75,

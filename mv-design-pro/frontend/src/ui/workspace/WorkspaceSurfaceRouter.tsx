@@ -146,6 +146,7 @@ import { resolveFixActionSurface } from '../../types/fixActionSurface';
 import type { EnergyNetworkModel, FixAction } from '../../types/enm';
 import { szynyStacji } from '../shared/szynyStacji';
 import { transformatoryNalezaceDoStacji } from '../shared/transformatoryStacji';
+import { MathInline } from '../proof/MathRenderer';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -871,7 +872,9 @@ function AnalysisDataTable({
             <tr>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Typ</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Obiekt</th>
-              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">U_n / wariant</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">
+                <MathInline latex="U_n" /> / wariant
+              </th>
               <th className="min-w-[260px] border-b border-slate-200 px-3 py-2">Dane wejściowe</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 1</th>
               <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 2</th>
@@ -2293,9 +2296,15 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                 <div className="font-semibold">Stacja: {row.stationNazwa}</div>
                 <div className="mt-1 text-[11px]">{row.summaryPl}</div>
                 <div className="mt-1 grid grid-cols-3 gap-2 font-mono text-[10px]">
-                  <span>P_export: {row.details.p_export_kw.toFixed(0)} kW</span>
-                  <span>P_import: {row.details.p_import_kw.toFixed(0)} kW</span>
-                  <span>P_net: {row.details.p_net_export_kw.toFixed(0)} kW</span>
+                  <span>
+                    <MathInline latex="P_{\text{eksport}}" />: {row.details.p_export_kw.toFixed(0)} kW
+                  </span>
+                  <span>
+                    <MathInline latex="P_{\text{import}}" />: {row.details.p_import_kw.toFixed(0)} kW
+                  </span>
+                  <span>
+                    <MathInline latex="P_{\text{netto}}" />: {row.details.p_net_export_kw.toFixed(0)} kW
+                  </span>
                 </div>
               </div>
             ))}

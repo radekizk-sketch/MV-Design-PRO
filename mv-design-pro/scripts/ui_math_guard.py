@@ -28,21 +28,27 @@ LaTeX-a albo jest w calosci owiniety `$...$`/`$$...$$`) NIE jest sprawdzany
 wzorcami `^-1`/`^2`/` * ` — `x^2` i `A \cdot B` sa tam poprawna skladnia.
 Wzorce `<=`/`>=`/`sqrt(` sa sprawdzane ZAWSZE (nigdy nie sa poprawnym LaTeX-em).
 
-PRECYZJA SKANU (dwie klasy false-positive usuniete u zrodla, nie wyjatkiem):
-  1. Template literal TS/TSX (`` `...` ``) moze zawierac interpolacje
-     `${wyrazenie}` — to KOD (np. `v * 100`, `item.u_n_kv, 1`), nie tekst dla
-     uzytkownika. Skanujemy WYLACZNIE czesc literalna, z wybalansowanym
-     usunieciem kazdego `${...}` (patrz `_usun_interpolacje`).
+PRECYZJA SKANU (klasy false-positive i false-negative usuniete u zrodla, nie wyjatkiem):
+  1. Teksty TS/TSX wyciaga parser kompilatora TypeScript (`teksty_ts.mjs`), nie wyrazenie
+     regularne na wierszach: literal szablonowy ma wylacznie czesci literalne (interpolacja
+     `${wyrazenie}` to KOD), a literal zagniezdzony w interpolacji, literal wielowierszowy
+     i tekst miedzy znacznikami JSX sa osobnymi wpisami (skan wierszy ich nie widzial).
+     Komentarz nie jest literalem. Specyfikator modulu, typ literalowy, nazwa wlasciwosci
+     i argument dostepu indeksowego sa kodem.
   2. Docstring Pythona (pierwsza instrukcja modulu/klasy/funkcji) to komentarz
      dla programisty, nie tekst UI. Wylaczony ze skanu przez pozycje ustalone
      `ast`-em (patrz `_linie_docstringow`), nie przez `WYJATKI_ZNANE`.
   3. Pola kontraktu, ktore z definicji nie sa proza (wzorzec golego indeksu i pozostale):
      wartosc pola `*_latex` oraz identyfikator `symbol` w parze z `symbol_latex` w tym
      samym wywolaniu/slowniku (`_literaly_symboli`, skan Pythona po drzewie `ast`).
-     W TS ten sam wyjatek ma wlasciwosc `*_latex:`/`*Latex:` (`KLUCZ_LATEX_TS_RE`).
+     W TS ten sam wyjatek ma wlasciwosc `*_latex:`/`*Latex:` i atrybut `latex=`
+     (`KLUCZ_LATEX_TS_RE`).
   4. Identyfikator kodu: klucz danych malymi literami (`bus_ref`) zawsze; stala TS
      (`'V_MAGNITUDE'`, kod metryki `'I_A'`) tylko poza modulem `strings.ts` i poza
      wlasciwoscia tekstowa (`etykieta:`, `jednostka:`, ...) — `_jest_identyfikatorem`.
+  5. Polecenie LaTeX z pojedynczym ukosnikiem w literale JS (`'$\\Delta$'` w zrodle
+     zapisane jako `'$\Delta$'`) — ukosnik ginie albo tworzy znak sterujacy; wykrywane
+     w segmentach `$...$` i w wartosci pola LaTeX (`POJEDYNCZY_UKOSNIK_RE`).
 
 ZAPADKA (pin z pomiaru, TYLKO W DOL — karta V12.7 §0.11): PIN ponizej jest
 SUFITEM zmierzonym na tym drzewie po naprawach karty V12.7 i po dwoch
@@ -73,7 +79,6 @@ FRONTEND_UI2 = ROOT / "frontend" / "src" / "ui2"
 #: Warstwa `ui/**` (decyzja architekta 2026-10-30: kryterium jest to, co widzi projektant,
 #: nie warstwa kodu) — ten sam skan i ten sam PIN co `ui2/**`.
 FRONTEND_UI = ROOT / "frontend" / "src" / "ui"
-KATALOGI_FRONTU = (FRONTEND_UI, FRONTEND_UI2)
 BACKEND_PLIKI = (
     ROOT / "backend" / "src" / "application" / "analyses" / "v126_katalog.py",
     ROOT / "backend" / "src" / "application" / "analyses" / "werdykt_projektowy.py",
@@ -98,10 +103,6 @@ PIN = 0
 #: Pliki/katalogi wylaczone ze skanu ui2/** (testy same niosa fixture'y ASCII
 #: nie renderowane na ekranie — to samo wylaczenie co forbidden_ui_terms_guard).
 WYLACZONE_WZORCE = ("__tests__", ".test.", ".spec.", "/dist/", "/node_modules/")
-
-STRING_LITERAL_TS_RE = re.compile(
-    r"""(?P<quote>['"`])(?P<value>(?:\\.|(?!(?P=quote)).)*)(?P=quote)""",
-)
 
 #: Komenda LaTeX (`\cdot`, `\leq`, `\mathrm{...}`, `\frac{...}{...}`…) —
 #: obecnosc oznacza, ze literal jest juz zapisem LaTeX, nie proza z symbolami.
@@ -144,89 +145,31 @@ NAZWA_MODULU_TEKSTOW_UI = "strings.ts"
 #: Klucz moze stac w cudzyslowie (`"formula_latex":` — dane wynikowe zapisane w TS jako JSON),
 #: a w JSX zapis LaTeX niesie atrybut `latex="..."` / `latex={`...`}` (`FormulaBlock`,
 #: `MathInline`) albo `*Latex=`.
-KLUCZ_LATEX_TS_RE = re.compile(
-    r"""(?:\b\w*_latex|\b\w*Latex|\blatex)['"]?\s*(?::|=\{?)\s*$"""
-)
-#: Literal bedacy lista klas CSS z wartoscia dowolna Tailwind (`bg-[radial-gradient(...)]`):
-#: bez bialych znakow, z nawiasem kwadratowym — kod stylu, nie tekst UI (proza ma spacje).
-KLASA_CSS_RE = re.compile(r"[^\s\[\]]*\[[^\s\]]*\][^\s]*")
-#: Literal bedacy KLUCZEM obiektu (`'Load.p_mw': [...]`): stoi na poczatku wpisu (po `{`, `,`
-#: albo na poczatku linii) i bezposrednio po nim jest `:` — nazwa pola kodu, nie tekst UI.
-#: Wartosc warunku trojargumentowego (`? 'a' : 'b'`) nie stoi po `{`/`,`, wiec nie jest kluczem.
-POCZATEK_WPISU_RE = re.compile(r"(?:^|[{,])\s*$")
-PO_KLUCZU_RE = re.compile(r"^\s*:")
+KLUCZ_LATEX_TS_RE = re.compile(r"""(?:\b\w*_latex|\b\w*Latex|\blatex)['"]?\s*(?::|=\{?)\s*$""")
+#: Literal bedacy lista klas CSS z wartoscia dowolna Tailwind (`bg-[radial-gradient(...)] w-4`):
+#: kazdy token rozdzielony spacja to klasa ASCII (litery, cyfry, `_ - : / . ! # %`), a co
+#: najmniej jeden niesie wartosc dowolna — `prefiks-[...]` albo wlasciwosc dowolna `[wl:wart]`
+#: — kod stylu, nie tekst UI. Jednostka w nawiasie prozy (`I_th [kA]`) nie ma prefiksu `-`
+#: ani dwukropka, a proza z polskimi znakami nie jest ASCII — nie sa lista klas.
+TOKEN_KLASY_CSS_RE = re.compile(r"[!\w:/.#%-]*(?:\[[^\s\]]*\][\w:/.%-]*)?", re.ASCII)
+WARTOSC_DOWOLNA_CSS_RE = re.compile(r"-\[[^\s\]]+\]|(?:^|:)\[[^\s\]:]+:[^\s\]]+\]")
+
+
+def _jest_lista_klas_css(wartosc: str) -> bool:
+    tokeny = wartosc.split()
+    return (
+        bool(tokeny)
+        and any(WARTOSC_DOWOLNA_CSS_RE.search(token) for token in tokeny)
+        and all(TOKEN_KLASY_CSS_RE.fullmatch(token) for token in tokeny)
+    )
+
+
 #: Polecenie LaTeX zapisane w literale TS POJEDYNCZYM ukosnikiem (nieparzysta liczba `\`
 #: przed litera): w literale lancuchowym `'\Delta'` traci ukosnik (`Delta`), a `'\varphi'`,
 #: `'\frac'`, `'\times'`, `'\beta'`, `'\nu'`, `'\rho'` zamieniaja sie na znak sterujacy —
 #: KaTeX dostaje inny wzor, niz napisano. Poprawny zapis w zrodle to `\\Delta`. Ucieczki
 #: Unicode (`\u00b7`, `\u{…}`, `\x41`) nie sa poleceniem.
 POJEDYNCZY_UKOSNIK_RE = re.compile(r"(?<!\\)(?:\\\\)*\\(?![ux][0-9a-fA-F{])[a-zA-Z]")
-#: Atrybut JSX z napisem (`latex="I_{\Delta n}"`): tresc nie jest literalem JS — ukosnik jest
-#: znakiem doslownym, wiec pojedynczy ukosnik jest tam poprawny.
-ATRYBUT_JSX_RE = re.compile(r"[\w-]=\s*$")
-
-
-def _usun_interpolacje(wartosc: str) -> str:
-    """Usuwa segmenty `${...}` (kod JS/TS) z wnetrza template literal TS/TSX —
-    zostaje wylacznie tekst literalny widoczny dla uzytkownika. Balansuje
-    klamry, wiec `${foo({a: 1})}` znika w calosci, nie tylko do pierwszej `}`.
-    """
-    wynik: list[str] = []
-    i = 0
-    n = len(wartosc)
-    while i < n:
-        if wartosc[i] == "$" and i + 1 < n and wartosc[i + 1] == "{":
-            glebokosc = 1
-            i += 2
-            while i < n and glebokosc > 0:
-                if wartosc[i] == "{":
-                    glebokosc += 1
-                elif wartosc[i] == "}":
-                    glebokosc -= 1
-                i += 1
-            continue
-        wynik.append(wartosc[i])
-        i += 1
-    return "".join(wynik)
-
-
-def _interpolacje(wartosc: str) -> list[str]:
-    """Wyrazenia `${...}` template literal (te same granice co `_usun_interpolacje`). Ich
-    literaly lancuchowe (`${ok ? `I_b = ${x}` : ''}`) to tez tekst ekranu — skan zagniezdzony
-    w `skanuj_ts`, inaczej tekst w zagniezdzonym literale bylby niewidoczny dla straznika."""
-    wyrazenia: list[str] = []
-    i = 0
-    n = len(wartosc)
-    while i < n:
-        if wartosc[i] == "$" and i + 1 < n and wartosc[i + 1] == "{":
-            glebokosc = 1
-            poczatek = i + 2
-            i += 2
-            while i < n and glebokosc > 0:
-                if wartosc[i] == "{":
-                    glebokosc += 1
-                elif wartosc[i] == "}":
-                    glebokosc -= 1
-                i += 1
-            wyrazenia.append(wartosc[poczatek : i - 1])
-            continue
-        i += 1
-    return wyrazenia
-
-
-def _literaly_w_wyrazeniu(wyrazenie: str) -> list[str]:
-    """Teksty literalow lancuchowych w wyrazeniu interpolacji — rekurencyjnie (literal
-    szablonowy w srodku moze miec wlasne interpolacje)."""
-    teksty: list[str] = []
-    for dopasowanie in STRING_LITERAL_TS_RE.finditer(wyrazenie):
-        wartosc = dopasowanie.group("value")
-        if dopasowanie.group("quote") == "`":
-            teksty.append(_usun_interpolacje(wartosc))
-            for wewnetrzne in _interpolacje(wartosc):
-                teksty.extend(_literaly_w_wyrazeniu(wewnetrzne))
-        else:
-            teksty.append(wartosc)
-    return teksty
 
 
 def _sprawdz_ukosniki(zapisy_latex: list[str]) -> bool:
@@ -277,78 +220,72 @@ def _dopasowania(wartosc: str, *, stala_kodu_dozwolona: bool = False) -> list[st
     return trafienia
 
 
-def skanuj_ts(plik: Path) -> list[tuple[int, str, str]]:
-    wyniki: list[tuple[int, str, str]] = []
-    tekst = czytaj_tekst(plik)
-    modul_tekstow = plik.name == NAZWA_MODULU_TEKSTOW_UI
-    for numer, linia in enumerate(tekst.splitlines(), start=1):
-        oczyszczona = linia.strip()
-        if oczyszczona.startswith(("//", "*", "/*")):
-            continue
-        for dopasowanie in STRING_LITERAL_TS_RE.finditer(linia):
-            wartosc = dopasowanie.group("value")
-            zagniezdzone: list[str] = []
-            if dopasowanie.group("quote") == "`":
-                for wyrazenie in _interpolacje(wartosc):
-                    zagniezdzone.extend(_literaly_w_wyrazeniu(wyrazenie))
-                wartosc = _usun_interpolacje(wartosc)
-            przed = linia[: dopasowanie.start()]
-            for tekst_zagniezdzony in zagniezdzone:
-                powody = _dopasowania(tekst_zagniezdzony, stala_kodu_dozwolona=True)
-                if _sprawdz_ukosniki(SEGMENT_WZORU_RE.findall(tekst_zagniezdzony)):
-                    powody.append(POWOD_UKOSNIKA)
-                for powod in powody:
-                    wyniki.append((numer, oczyszczona[:140], powod))
-            if not ATRYBUT_JSX_RE.search(przed):
-                zapisy_latex = (
-                    [wartosc]
-                    if KLUCZ_LATEX_TS_RE.search(przed)
-                    else SEGMENT_WZORU_RE.findall(wartosc)
-                )
-                if _sprawdz_ukosniki(zapisy_latex):
-                    wyniki.append((numer, oczyszczona[:140], POWOD_UKOSNIKA))
-            if KLUCZ_LATEX_TS_RE.search(przed):
-                # Wartosc pola LaTeX (`formula_latex:`, `symbolLatex:`) — zrodlo `MathInline`,
-                # z definicji nie proza; ta sama regula co `*_latex` w skanie Pythona.
-                continue
-            if KLASA_CSS_RE.fullmatch(wartosc):
-                continue
-            if POCZATEK_WPISU_RE.search(przed) and PO_KLUCZU_RE.match(linia[dopasowanie.end() :]):
-                continue
-            tekst_ui = modul_tekstow or bool(KLUCZ_TEKSTU_UI_RE.search(przed))
-            for powod in _dopasowania(wartosc, stala_kodu_dozwolona=not tekst_ui):
-                wyniki.append((numer, oczyszczona[:140], powod))
-    return wyniki
+#: Skrypt wyciagajacy literaly i teksty JSX parserem kompilatora TypeScript.
+SKRYPT_TEKSTOW_TS = Path(__file__).resolve().parent / "teksty_ts.mjs"
 
 
-#: Skrypt wyciagajacy teksty JSX (`JsxText`) parserem kompilatora TypeScript.
-SKRYPT_TEKSTOW_JSX = Path(__file__).resolve().parent / "teksty_jsx.mjs"
-
-
-def teksty_jsx(pliki: list[Path]) -> dict[Path, list[tuple[int, str]]]:
-    """Teksty wpisane wprost miedzy znacznikami JSX (`<label>R_f [Ω]</label>`) — tekst ekranu,
-    ktorego skan literalow nie widzi. Parser kompilatora TypeScript (`teksty_jsx.mjs`), nie
-    wyrazenie regularne; brak `node` albo blad parsera => `BladZrodla` (straznik nie zgaduje)."""
-    pliki_tsx = [plik for plik in pliki if plik.suffix == ".tsx"]
-    if not pliki_tsx:
+def wpisy_ts(pliki: list[Path]) -> dict[Path, list[dict[str, object]]]:
+    """Literaly lancuchowe/szablonowe i teksty JSX plikow TS/TSX (`teksty_ts.mjs`) — jeden
+    proces `node` na cala liste. Parser, nie wyrazenie regularne: literal szablonowy
+    zagniezdzony w interpolacji, literal wielowierszowy i tekst miedzy znacznikami JSX sa
+    osobnymi wezlami. Brak `node` albo blad parsera => `BladZrodla` (straznik nie zgaduje)."""
+    if not pliki:
         return {}
     node = shutil.which("node")
     if node is None:
-        raise BladZrodla(f"{SKRYPT_TEKSTOW_JSX}:0: brak `node` — teksty JSX nie zostaly ocenione")
+        raise BladZrodla(f"{SKRYPT_TEKSTOW_TS}:0: brak `node` — teksty TS nie zostaly ocenione")
     proces = subprocess.run(  # noqa: S603 — stala sciezka skryptu repozytorium
-        [node, str(SKRYPT_TEKSTOW_JSX)],
-        input="\n".join(str(plik) for plik in pliki_tsx),
+        [node, str(SKRYPT_TEKSTOW_TS)],
+        input="\n".join(str(plik) for plik in pliki),
         capture_output=True,
         text=True,
         encoding="utf-8",
         check=False,
     )
     if proces.returncode != 0:
-        raise BladZrodla(f"{SKRYPT_TEKSTOW_JSX}:0: parser JSX zakonczyl sie bledem: {proces.stderr}")
-    wynik: dict[Path, list[tuple[int, str]]] = {}
+        raise BladZrodla(f"{SKRYPT_TEKSTOW_TS}:0: parser TS zakonczyl sie bledem: {proces.stderr}")
+    wynik: dict[Path, list[dict[str, object]]] = {}
     for wpis in json.loads(proces.stdout):
-        wynik.setdefault(Path(wpis["plik"]), []).append((int(wpis["linia"]), wpis["tekst"]))
+        wynik.setdefault(Path(str(wpis["plik"])), []).append(wpis)
     return wynik
+
+
+def skanuj_ts(
+    plik: Path, wpisy: list[dict[str, object]] | None = None
+) -> list[tuple[int, str, str]]:
+    """Wzorce ASCII-matematyki na literalach pliku TS/TSX (wpisy `rodzaj == "literal"`).
+
+    Kontekst literalu (`przed` — tekst wiersza przed nim) rozstrzyga: wartosc wlasciwosci
+    LaTeX (`formula_latex:`, `latex=`) nie jest proza; klasa CSS nie jest tekstem; stala kodu
+    (`'V_MAGNITUDE'`) jest kodem tylko poza `strings.ts` i poza wlasciwoscia tekstowa.
+    Polecenie LaTeX z pojedynczym ukosnikiem jest sprawdzane w kazdym literale JS (nie
+    w napisie atrybutu JSX, gdzie ukosnik jest dosłowny)."""
+    if wpisy is None:
+        wpisy = wpisy_ts([plik]).get(plik, [])
+    wyniki: list[tuple[int, str, str]] = []
+    modul_tekstow = plik.name == NAZWA_MODULU_TEKSTOW_UI
+    for wpis in wpisy:
+        if wpis["rodzaj"] != "literal":
+            continue
+        numer = int(str(wpis["linia"]))
+        wiersz = str(wpis["wiersz"]).strip()[:140]
+        wartosc = str(wpis["wartosc"])
+        przed = str(wpis["przed"])
+        klucz_latex = bool(KLUCZ_LATEX_TS_RE.search(przed))
+        if not wpis["atrybut_jsx"]:
+            zapisy_latex = [wartosc] if klucz_latex else SEGMENT_WZORU_RE.findall(wartosc)
+            if _sprawdz_ukosniki(zapisy_latex):
+                wyniki.append((numer, wiersz, POWOD_UKOSNIKA))
+        if klucz_latex:
+            # Wartosc pola LaTeX (`formula_latex:`, `symbolLatex:`) — zrodlo `MathInline`,
+            # z definicji nie proza; ta sama regula co `*_latex` w skanie Pythona.
+            continue
+        if _jest_lista_klas_css(wartosc):
+            continue
+        tekst_ui = modul_tekstow or bool(KLUCZ_TEKSTU_UI_RE.search(przed))
+        for powod in _dopasowania(wartosc, stala_kodu_dozwolona=not tekst_ui):
+            wyniki.append((numer, wiersz, powod))
+    return wyniki
 
 
 def skanuj_jsx(teksty: list[tuple[int, str]]) -> list[tuple[int, str, str]]:
@@ -365,9 +302,19 @@ def skanuj_jsx(teksty: list[tuple[int, str]]) -> list[tuple[int, str, str]]:
     return wyniki
 
 
-def skanuj_plik_frontu(plik: Path) -> list[tuple[int, str, str]]:
-    """Skan pliku frontu: literaly lancuchowe i (dla `.tsx`) teksty JSX."""
-    wyniki = skanuj_ts(plik) + skanuj_jsx(teksty_jsx([plik]).get(plik, []))
+def _teksty_jsx(wpisy: list[dict[str, object]]) -> list[tuple[int, str]]:
+    return [
+        (int(str(wpis["linia"])), str(wpis["tekst"])) for wpis in wpisy if wpis["rodzaj"] == "jsx"
+    ]
+
+
+def skanuj_plik_frontu(
+    plik: Path, wpisy: list[dict[str, object]] | None = None
+) -> list[tuple[int, str, str]]:
+    """Skan pliku frontu: literaly lancuchowe/szablonowe i teksty JSX."""
+    if wpisy is None:
+        wpisy = wpisy_ts([plik]).get(plik, [])
+    wyniki = skanuj_ts(plik, wpisy) + skanuj_jsx(_teksty_jsx(wpisy))
     wyniki.sort(key=lambda trafienie: trafienie[0])
     return wyniki
 
@@ -518,7 +465,8 @@ def main() -> int:
     print("GUARD: ui_math_guard (karta V12.7 — matematyka wylacznie KaTeX)")
     print("=" * 70)
 
-    for katalog in KATALOGI_FRONTU:
+    katalogi_frontu = (FRONTEND_UI, FRONTEND_UI2)
+    for katalog in katalogi_frontu:
         if not katalog.is_dir():
             print(f"BLAD: katalog nie istnieje: {katalog}")
             return 1
@@ -532,7 +480,7 @@ def main() -> int:
 
     pliki_frontu = [
         plik
-        for katalog in KATALOGI_FRONTU
+        for katalog in katalogi_frontu
         for plik in sorted(katalog.rglob("*.ts")) + sorted(katalog.rglob("*.tsx"))
     ]
     pliki_frontu = [
@@ -540,12 +488,10 @@ def main() -> int:
         for plik in pliki_frontu
         if not any(wzorzec in plik.relative_to(ROOT).as_posix() for wzorzec in WYLACZONE_WZORCE)
     ]
-    jsx = teksty_jsx(pliki_frontu)
+    wpisy = wpisy_ts(pliki_frontu)
     for plik in pliki_frontu:
         wzgledna = plik.relative_to(ROOT).as_posix()
-        trafienia = skanuj_ts(plik) + skanuj_jsx(jsx.get(plik, []))
-        trafienia.sort(key=lambda trafienie: trafienie[0])
-        for numer, linia, powod in trafienia:
+        for numer, linia, powod in skanuj_plik_frontu(plik, wpisy.get(plik, [])):
             cel = wyjatki_trafione if (wzgledna, numer) in WYJATKI_ZNANE else wszystkie
             cel.append((wzgledna, numer, linia, powod))
 
