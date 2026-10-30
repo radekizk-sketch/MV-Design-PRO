@@ -26,6 +26,11 @@ wersja 05.2022-2, obowiązująca od 02.04.2024, załącznik 5/A–F, s. 25–31]
 | 5/C | toroidalne rozdzielcze | BKR 100/5/5; linia 200–400/5 do /5/5/5; TR 800/1200/5/5/5/5 | 0,2S, FS5, 10 VA | 16 kA |
 | 5/D | toroidalne sieciowe | 200–400/5/5 | 0,2S, FS5, 5 VA | 8 kA |
 
+**Uwaga o izolacji toroidów 5/C–D:** standard podaje **24/0,72 kV**,
+tj. napięcie sieci i izolację przekładnika toroidalnego. Pole `um_kv`
+samego toroidu to 0,72 kV, nie 24 kV; nie wolno na tej podstawie
+uznawać go za przekładnik izolujący tor SN.
+
 **Rdzenie pozostałe:** normatywny wyciąg wskazuje, że ich pełna specyfikacja leży w odrębnych standardach pól. Nie dopisywano im fikcyjnie 5P20, ALF, Rct czy klas. W rekordzie `core_count` to liczba rdzeni z przekładni, a `secondary_cores` zawiera WYŁĄCZNIE parametry podane jednoznacznie w źródle.
 
 ### Dodatkowe zasady IRiESD
