@@ -544,7 +544,7 @@ export interface VTCatalogType extends CatalogType {
 /** Rodzina producenta CT/VT — nie skonfigurowany i nieprzypisywalny aparat. */
 export interface InstrumentManufacturerFamilyCatalogType extends CatalogType {
   model_family: string;
-  transformer_kind: 'CT' | 'VT' | 'COMBINED';
+  transformer_kind: 'CT' | 'VT' | 'CT_SENSOR' | 'VT_SENSOR' | 'ZERO_SEQUENCE';
   mounting: string;
   voltage_domain: 'SN' | 'nN';
   record_kind: 'MANUFACTURER_FAMILY_NOT_SKU';
