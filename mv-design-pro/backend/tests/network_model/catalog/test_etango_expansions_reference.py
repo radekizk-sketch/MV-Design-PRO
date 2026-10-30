@@ -68,7 +68,7 @@ def test_e2tango_expansion_conflicts_are_preserved_not_silently_resolved() -> No
     index = list_etango_expansion_peripherals()
     rules = {row["id"]: row for row in index["reguly_i_niejasnosci"]}
     assert rules["R-TVRR"]["status"] == "SPRZECZNOSC_W_JEDNYM_WYDANIU"
-    assert "tylko F" in rules["R-TVRR"]["opis"]
+    assert "wyłącznie F" in rules["R-TVRR"]["opis"]
     assert rules["R-250-ARC"]["status"] == "SPRZECZNOSC_WEWNATRZ_DOKUMENTU"
     assert rules["R-450-NAMES"]["status"] == "ROZBIEZNOSC_NAZEWNICTWA"
     assert rules["R-61850-CAM"]["status"] == "POTWIERDZONE"
