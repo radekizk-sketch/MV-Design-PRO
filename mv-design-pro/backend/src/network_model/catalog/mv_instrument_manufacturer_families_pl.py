@@ -472,6 +472,9 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
             rodzina["primary_voltage_range_v"] = ["3000/√3", "22000/√3"]
             rodzina["secondary_voltage_options_v"] = ["100/√3", "110/√3", "120/√3"]
             rodzina["residual_voltage_options_v"] = ["100/3", "110/3", "120/3"]
+            if rodzina["model_family"] == "VTS 25":
+                # Osobna opcja 400/√3 V występuje w nowszej karcie VTS25.
+                rodzina["secondary_voltage_options_v"].append("400/√3")
             rodzina["secondary_taps_supported"] = True
             rodzina["rated_frequency_hz"] = 50
             rodzina["power_frequency_withstand_kv"] = 50
