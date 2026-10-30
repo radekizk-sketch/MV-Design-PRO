@@ -46,7 +46,7 @@ Wersje e²TANGO-2000 są specjalizowanymi zespołami WN, a SZR/PPZ aplikacją au
 
 ## 3. Implementacja na gałęzi tej karty
 
-- `backend/src/network_model/catalog/elektrometal_etango_family.py` — jawny indeks 17 pozycji, źródła, warianty, rozdział danych producenta od rzeczywistej konfiguracji, 8 nowych kanonicznych typów SN.
+- `backend/src/network_model/catalog/data/e2tango_rodzina_2026.json` — 17 pozycji źródłowych i warianty; `elektrometal_etango_family.py` — wczytanie oraz 8 nowych kanonicznych typów SN, bez nastaw i aktywowanych funkcji.
 - `backend/src/network_model/catalog/mv_auxiliary_catalog.py` — addytywne podłączenie nowych typów; bez modyfikacji starych identyfikatorów V0 i bez nowego schematu danych.
 - `backend/src/api/catalog.py`: `GET /api/catalog/elektrometal-etango-family` — komplet wiedzy, także detektor 50 i WN; `GET /api/catalog/mv-protection-device-types` — nadal tylko typy wybieralne w obszarze budowy SN.
 - `backend/tests/network_model/catalog/test_etango_family_reference.py` i testy API/repo — 17 pozycji bez dubli ID, warianty i źródła, 10 realnych typów SN, detektor/WN poza `add_relay`, brak sztucznych amperów z nazwy, brak nastaw/aktywacji funkcji.
