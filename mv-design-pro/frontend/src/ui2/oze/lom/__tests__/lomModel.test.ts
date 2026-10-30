@@ -10,11 +10,12 @@ import { describe, it, expect } from 'vitest';
 
 import {
   KLUCZ_WIERSZA_LOM,
+  klasaLom,
   mapujWierszLom,
   naWierszeLom,
   naZalozeniaLom,
 } from '../lomModel';
-import { fmtNastawaLom, fmtOknoLom, istotnoscLom } from '../strings';
+import { fmtNastawaLom, fmtOknoLom } from '../strings';
 import { poleWidoku, widokOchronyLomFixture } from './fixtures';
 
 /** Most nazw w testach (karta #145): prefiks odróżnia nazwę szyny od jej referencji. */
@@ -68,22 +69,20 @@ describe('naZalozeniaLom', () => {
   });
 });
 
-describe('formatery PL', () => {
-  // Intencja zachowana: kolor tagu wynika wprost z danych backendu, bez oceny w UI.
-  // Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): etykietę statusu niesie rekord
-  // backendu (`etykieta.etykieta_pl`), a kolor wynika z jego semantyki — mapa
-  // „kod statusu → etykieta" w interfejsie zniknęła (`statusLomPL`).
-  it('istotnoscLom mapuje semantykę etykiety z backendu na kolor tagu', () => {
-    const etykieta = (semantyka: 'pozytywna' | 'negatywna' | 'ostrzegawcza' | 'neutralna') => ({
-      etykieta_pl: 'etykieta z rekordu',
-      semantyka,
-    });
-    expect(istotnoscLom(etykieta('negatywna'))).toBe('err');
-    expect(istotnoscLom(etykieta('ostrzegawcza'))).toBe('warn');
-    expect(istotnoscLom(etykieta('neutralna'))).toBe('neutral');
-    expect(istotnoscLom(etykieta('pozytywna'))).toBe('ok');
+describe('klasa koloru tagu i chipu z semantyki etykiety rekordu', () => {
+  // Karta WERDYKT-MIGRACJA-190 (D19): okno nie ma własnej mapy semantyki — klasa przechodzi
+  // przez jedyne miejsce map semantyki (`tonRysunkuEtykiety`, kontrakt werdyktu §9).
+  it.each([
+    ['pozytywna', 'zielony'],
+    ['negatywna', 'czerwony'],
+    ['ostrzegawcza', 'bursztynowy'],
+    ['neutralna', 'szary'],
+  ] as const)('%s → %s', (semantyka, klasa) => {
+    expect(klasaLom({ etykieta_pl: 'etykieta z rekordu', semantyka })).toBe(klasa);
   });
+});
 
+describe('formatery PL', () => {
   it('fmtNastawaLom formatuje z jednostką i przecinkiem PL, null → kreska', () => {
     expect(fmtNastawaLom(1.0, 'Hz/s')).toBe('1,000 Hz/s');
     expect(fmtNastawaLom(null, 'Hz/s')).toBe('—');

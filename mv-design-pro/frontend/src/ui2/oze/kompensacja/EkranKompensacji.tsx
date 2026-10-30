@@ -30,7 +30,12 @@ import './kompensacja.css';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
-import { InformacjeAudytowe, TabelaWynikow, useNazwaObiektu } from '../../wyniki/wzorzec';
+import {
+  InformacjeAudytowe,
+  KartaWerdyktu,
+  TabelaWynikow,
+  useNazwaObiektu,
+} from '../../wyniki/wzorzec';
 // Zasada wywodów KaTeX: wzory w notach/komentarzach renderuje TekstZWzorami (MathInline).
 import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
@@ -151,6 +156,15 @@ function WynikKompensacji({
     [dane.candidates, uwzglednijNoc],
   );
   const kroki = useMemo(() => krokiSladuKompensacji(dane.whitebox), [dane.whitebox]);
+  // Rekord W dobranej baterii — ten sam, na którym backend oparł dobór (karta
+  // WERDYKT-MIGRACJA-190, D18); okno nie ocenia cosφ samo.
+  const rekordDoboru = useMemo(
+    () =>
+      dane.dobor === null
+        ? undefined
+        : dane.candidates.find((k) => k.catalog_ref === dane.dobor?.catalog_ref)?.wymaganie,
+    [dane.candidates, dane.dobor],
+  );
 
   return (
     <div data-testid="mvd-komp-wynik">
@@ -281,6 +295,11 @@ function WynikKompensacji({
             )}
           </dl>
           <p className="mvd-komp-komentarz">{T.doborPodstawa}</p>
+          {rekordDoboru && (
+            <div data-testid="mvd-komp-dobor-rekord">
+              <KartaWerdyktu rekord={rekordDoboru} naglowek={T.doborRekordNaglowek} />
+            </div>
+          )}
           <button
             type="button"
             className="mvd-komp-dobor-kreator"

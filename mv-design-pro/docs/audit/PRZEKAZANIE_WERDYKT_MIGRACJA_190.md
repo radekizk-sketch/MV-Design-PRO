@@ -3,7 +3,7 @@
 Gałąź `claude/mv-design-pro-twin-audit-u4lhy0-werdykt-migracja`, drzewo `/home/user/wt-werdykt`.
 Cel karty: lista `scripts/werdykt_wyjasnialny_allowlist.json` bez wpisów MIGRACJA (strażnik
 `scripts/werdykt_wyjasnialny_guard.py`). Stan bazowy karty (`b1e677ced`): MIGRACJA 190,
-ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 29, ENUM_WEWNETRZNY 64** (strażnik RC=0).
+ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 26, ENUM_WEWNETRZNY 64** (strażnik RC=0).
 
 ## Domeny
 
@@ -17,7 +17,7 @@ ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 29, ENUM_WEWNETRZNY 64** (strażnik R
 | 6. Modele analiz: siła sieci B11, adekwatność Q B10, SSCI B12, wgląd zabezpieczeń B7 | 8 | 1 | siła sieci B11 zmigrowana (rekord K SCR na węzeł i WSCR, `verdict`/`is_weak` projekcją, front pulpitu OZE i kontekst sekwencji FRT z etykietą i kartą rekordu); adekwatność Q B10 zmigrowana (rekord W: rezerwy w górę/w dół każdego źródła wobec ε i pasmo napięcia węzłów; nasycenie i naruszenie projekcją rekordów; brak danych źródła ≠ wystarczająca); SSCI B12 zmigrowana (wyjaśnienie rekordu `NIE_OCENIONO` przy polu werdyktu, model i ładunek HTTP); B7 `ProtectionInsightItem.selectivity_status` ZATRZYMANE do decyzji architekta — klasa bez producenta w produkcji (wejście zawsze `None` w `pokrycie_analiz`/`wrazliwosc_rozplywu`), a ocena pokrycia odejmuje 5 pkt za „Brak analizy zabezpieczeń”, której nic nie dostarcza |
 | 7. nN / SWZ (C25, C27, C29, C30, arkusz obwodów, E75, E77, fieldLabels) | 22 | 0 | zmigrowane: SWZ TN z rekordu W (`swz.tn`), dobór aparatu nN z rekordów K, arkusz obwodów z rekordami w komórkach; pakiet dowodowy obwodu nN (C30) — kroki 4–5 z rekordów doboru (jedna reguła), krok 6 jako dwa rekordy K zdolności wyłączania (kombinacja / goły aparat, `NIE_DOTYCZY` z powodem) ze wspólnej reguły `ocena_zdolnosci_wylaczania`, krok 7 z rekordu `th.ocena`, krok 10 z rekordu W SWZ (`swz_wymaganie`), agregat obwodu projekcją rekordów; nakładka SWZ i karta obwodu nN z etykiety rekordu (`tonRysunkuEtykiety`/`znakEtykiety` w `KartaWerdyktu.tsx`, jedna tabela warunków TN i TT/IT). ENUM_WEWNETRZNY: 4 koperty arkusza obwodów, koperta sekcji raportu nN, `communicationStatusLabel`, `BayRuntimeState.secondary_communication_status`, `BaySwitchState.communication_ok` (stan telemetrii / dostępność danych, nie ocena) |
 | 8. Proof Engine / audyt (C41, C44, C48, A36, sc_symmetrical/asymmetrical) | 19 | 0 | zamknięte (C39 i C40 liczone w domenach 10 i 1): plakietka „Weryfikacja jednostek: PASS/FAIL” zdjęta z podsumowania LaTeX (C44 „stop printing”, jak DOCX; złote `tests/golden/sc_asymmetrical/*/proof.tex` −2 linie); flagi spójności jednostek opakowań SC3F/SC1 i widoki inspektora → ENUM_WEWNETRZNY. **Audyt 2 (A36/A37/B17) zmigrowany**: nowy moduł `network_model/catalog/audit2_oceny.py` (rekordy K/W trybów BESS, planu zaczepów, bilansu eksportu, wytrzymałości aparatu, współczynnika VT; jedna reguła limitu cieplnego `limit_cieplny_aparatu_ka` dla walidatora katalogu, dowodu i widoku pól), dowody pakietu niosą rekord W (`wymaganie`), pakiet `liczby_statusow` zamiast `all_pass`/`fail_count`, raport (tekst/LaTeX/PDF/DOCX/JSON) cytuje etykietę rekordu; walidatory `/catalog/audit2/validate-*` zwracają rekordy (VT: `voltage_factor` może być `null` → `NIE_OCENIONO`; nieznany typ uziemienia 422; aparat spoza katalogu 404); widok wytrzymałości pól: `wymaganie` zamiast `werdykt`; progi eksportu 0,8/1,5/3,0 bez podstawy usunięte (rekord `BRAK_PODSTAWY`); front: etykiety rekordów w pakiecie, przeglądzie technicznym E-04, walidacji VT, wytrzymałości aparatury i ekranie aparatury zwarć; `zbuduj_widok_wytrzymalosci_aparatury.status` → ENUM (koperta C26). **C48 `api.proof_pack` zmigrowany**: panel metody IEC 60909 wkładów maszyn bez statusu PASS/FAIL (pozycje to fakty biegu; dawne „Maszyny asynchroniczne: PASS” i „Powtarzalność: PASS” nie były ocenami), reguła małych silników p. 6.6 jako zdanie z wartością obliczoną, graniczną i skutkiem — JEDNO zdanie dla kroku wywodu i pozycji panelu; usunięte fałszywe „silniki pomijalne w Ib” (program liczy wkłady wszystkich maszyn); bez silników asynchronicznych reguła „nie dotyczy” zamiast „spełniona”. Front: `SladSekcyjny` bez ikon ✓/✗ i `data-status` (D22 ×3 zdjęte razem). Fikstury harnessu `zwarcia_wklady_scena_*` zregenerowane. **C33 `equipment_proof` zmigrowany**: nowy moduł `application/equipment_proof/oceny.py` — cztery rekordy K (izolacja U_s(U_n) ≤ U_m, wyłączanie I_b/I″k ≤ I_cu, dynamiczna, cieplna) i rekord W doboru; dynamiczna i cieplna z TEGO SAMEGO budowniczego co walidator katalogu i widok pól (`oceny_wytrzymalosci_aparatu`, limit `limit_cieplny_aparatu_ka`), podstawa wyłączania z `podstawa_kryterium_wylaczania` (wspólna z widokiem pól); `EquipmentProofCheckResult.ocena` zamiast `status`, `EquipmentProofResult.wymaganie` zamiast `overall_status`/`key_results`; brak danej aparatu → `BRAK_PODSTAWY`, brak wielkości biegu → `NIE_OCENIONO` (dawniej `FAIL`); kroki dowodu z polskimi tytułami, wynik kroku = etykieta rekordu, podstawienie z relacją `relacja_latex`; t_b roboczy pod I_b z maszynami = dana przyjęta rekordu; usunięte: kod „P11” w nazwie równania, wynik kroku „OK/PASS”, równanie energetyczne EQ_P12_006b (jeden limit cieplny). Inspektor dowodów: wymagane klucze podsumowania = klucze rekordów. |
-| 9. Frontend pozostały (D18…D72, E20…E62, SLD v2 G1–G9, NnSwitchgearCard) | 38 | 15 | **SLD v2 G1–G9 i stacja T1–T4 zmigrowane** (odczyty szyn z rekordów K backendu, sekcja niżej); **kontyngencje N-1 zmigrowane** (rekordy K/W kategorii dotkliwości, sekcja niżej); **porównanie A/B D26 zmigrowane** (zdjęty próg okna „waga ≥ 4 → Poza zakresem”, sekcja niżej); reszta (kompensacja, LOM, inspektor ENM, karta rozdzielnicy nN, nakładka przepływu zwarciowego, zgodność referencyjna) nietknięta |
+| 9. Frontend pozostały (D18…D72, E20…E62, SLD v2 G1–G9, NnSwitchgearCard) | 38 | 12 | **SLD v2 G1–G9 i stacja T1–T4 zmigrowane** (odczyty szyn z rekordów K backendu, sekcja niżej); **kontyngencje N-1 zmigrowane** (rekordy K/W kategorii dotkliwości, sekcja niżej); **porównanie A/B D26 zmigrowane** (zdjęty próg okna „waga ≥ 4 → Poza zakresem”, sekcja niżej); **kompensacja D18 i LoM D19 zmigrowane** (sekcje niżej); reszta (inspektor ENM, karta rozdzielnicy nN, nakładka przepływu zwarciowego, zgodność referencyjna) nietknięta |
 | 10. Pozostałe (archiwum, importy, preflight B20, kreator C54, katalogi audit2, reference_engine) | 24 | 10 | w części przeklasyfikowane na ENUM_WEWNETRZNY z uzasadnieniem; **C39 `protection_read_model` zmigrowany** (sekcja niżej); reszta nietknięta |
 | FRT/HVRT A13 (`network_model/solvers/frt_hvrt/contracts.py`, `FrtHvrtResult.status`, `FrtScenarioResult.status`, `FrtScenarioResult.stayed_connected`) | 3 | 3 | ZATRZYMANE — rdzeń FROZEN z `scripts/rdzenie_b01.py` (wiersz „FRT/HVRT”), wymaga decyzji B-01 |
 
@@ -167,6 +167,37 @@ regeneracji złotego pliku przez kartę ZU (zmiana zamierzona po jej stronie).
 - Testy: waga 1–5 × miejsce (ranking, delty szyny, gałęzi, zabezpieczeń, podsumowanie) oraz
   zakładka × waga × obecność w rankingu (ekran). Iniekcja przywracająca próg → 10 czerwonych.
 
+## Kompensacja — rekord W doboru baterii (D18, domena 9)
+
+- Nowy moduł `backend/src/application/analyses/dobor_kompensacji_oceny.py`: każdy kandydat niesie
+  rekord W `kompensacja.cosfi_punktu` nad K `kompensacja.cosfi_punktu.{dzien,noc}` (NIE_MNIEJ,
+  limit = wymagany cosφ z zapytania projektanta, podstawa jawnie „założenie projektanta”).
+  Usunięte flagi `spelnia_dzien`/`spelnia_noc`/`spelnia` i `_meets` (cosφ `None` dawało po cichu
+  „nie spełnia”). Pomiar bez wyniku niesie powód (`odmowa obliczenia wariantu`, `brak zbieżności`,
+  `punkt bez gałęzi zasilających`) → K `NIE_OCENIONO` z powodem w brakach.
+- Dobór = pierwszy kandydat z rozstrzygnięciem liczbowym `SPELNIA` TEGO SAMEGO rekordu
+  (`spelnia_liczbowo`); powód braku doboru liczy kandydatów nierozstrzygniętych osobno.
+- Nowa zdolność dowodowa `kompensacja.dobor_baterii` (UNVALIDATED_MODEL) w
+  `solver_input/provenance.py`; pin `scripts/test_solver_input_substitute_guard.py` 609→610 plików
+  i 257→258 w application (nowy plik importuje rejestr zdolności — zmierzone).
+- Front: kolumna werdyktu czyta `wymaganie.etykieta` (spełnienie liczbowe na modelu niezwalidowanym
+  = „Brak wystarczającego dowodu”), sekcja doboru pokazuje `KartaWerdyktu` rekordu dobranego
+  kandydata — **zmiana wizualna do oceny właściciela (B-02)**.
+- Złote hashe: cztery scenariusze rodziny kompensacji zmienione wyłącznie kluczem `wymaganie`;
+  sonda rzutująca W z powrotem na stare flagi odtwarza stare hashe (`rozne: []`).
+- Rozmiar ładunku: ok. 21 KB na kandydata.
+- Testy: iloczyn zakres scenariuszy × stan dnia × stan nocy (6 stanów, w tym trzy powody braku),
+  dobór z rekordu, noc bez rozwiązania, determinizm; front: scenariusz × stan. Iniekcje:
+  `!= "NIE_SPELNIA"` jako predykat doboru → 25 czerwonych; zgubione braki → 31 czerwonych;
+  front: etykieta z flagi → 1 czerwony.
+
+## LoM — klasa koloru z jedynej mapy semantyki (D19, domena 9)
+
+- Usunięta własna mapa `istotnoscLom`/`IstotnoscTaguLom` ekranu; klasa tagu i chipu przechodzi
+  przez `tonRysunkuEtykiety` (`KartaWerdyktu.tsx`). Sufiksy klas CSS przemianowane na nazwy tonów
+  (`zielony`/`czerwony`/`bursztynowy`/`szary`), bo sufiks `ok` był słownikiem werdyktu bez rekordu.
+- Test: cztery semantyki etykiety → klasa. Iniekcja (stała klasa „szary”) → 3 czerwone (czwarty przypadek to semantyka neutralna, zgodna ze stałą).
+
 ## Naprawa przy okazji commitu łącznego
 
 - `backend/tests/ci/test_mypy_ratchet_guard.py` przypinał 161/19, choć commit C33 (`01b76169c`)
@@ -177,6 +208,6 @@ regeneracji złotego pliku przez kartę ZU (zmiana zamierzona po jej stronie).
 ## Pierwszy krok następcy
 
 Domeny 1, 6, 7 i 8 zamknięte; C40, C39, SLD v2, kontyngencje N-1 i porównanie D26 w commicie łącznym.
-Dalej: reszta domeny 9 (kompensacja D18, LOM D19, inspektor ENM E61/E62, E36, NnSwitchgearCard,
+Kompensacja D18 i LoM D19 w osobnym commicie. Dalej: reszta domeny 9 (inspektor ENM E61/E62, E36, NnSwitchgearCard,
 E20, zgodność referencyjna D71/D72) i domeny 10 (archiwum, importy, C36, C54, B20, A17,
 reference_engine); B7 i FRT A13 czekają na decyzje.

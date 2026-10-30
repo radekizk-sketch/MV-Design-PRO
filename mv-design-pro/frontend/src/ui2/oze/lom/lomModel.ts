@@ -16,6 +16,8 @@ import type {
   WierszZalozenia,
 } from '../../wyniki/wzorzec/wzorzecModel';
 import { LOM_STRINGS } from './strings';
+import type { Etykieta } from '../../wyniki/wzorzec/werdykt';
+import { tonRysunkuEtykiety, type TonyRysunku } from '../../wyniki/wzorzec/KartaWerdyktu';
 
 /**
  * Klucz wiersza (React key + wybór wiersza) — referencja pola niesiona w DANYCH wiersza,
@@ -65,4 +67,20 @@ export function naWierszeLom(
  */
 export function naZalozeniaLom(zalozenia: readonly string[]): WierszZalozenia[] {
   return zalozenia.map((tekst) => ({ etykieta: '', wartosc: tekst, zdanie: true }));
+}
+
+/**
+ * Sufiks klasy koloru tagu i chipu dla semantyki etykiety rekordu — przez JEDYNE miejsce map
+ * semantyki (`tonRysunkuEtykiety` obok `SEMANTYKA_KOLOR`, kontrakt werdyktu §9), nie przez
+ * własną mapę ekranu (karta WERDYKT-MIGRACJA-190, D19).
+ */
+const KLASY_LOM: TonyRysunku = {
+  tonOk: 'zielony',
+  tonBledu: 'czerwony',
+  tonOstrzegawczy: 'bursztynowy',
+  tonNeutralny: 'szary',
+};
+
+export function klasaLom(etykieta: Etykieta): string {
+  return tonRysunkuEtykiety(etykieta, KLASY_LOM);
 }

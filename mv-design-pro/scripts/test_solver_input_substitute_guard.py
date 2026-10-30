@@ -2462,7 +2462,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # guardem na drzewie karty (608).
         # Ta sama karta, kontyngencje N-1: 608 -> 609 (+1 `application/analyses/
         # kontyngencje_n1_oceny.py` — rekordy kategorii dotkliwosci). POMIAR guardem (609).
-        "Przeskanowano 609 plikow w zakresie: network_model, solver_input, enm, "
+        # Ta sama karta, dobor kompensacji D18: 609 -> 610 (+1 `application/analyses/
+        # dobor_kompensacji_oceny.py` — rekordy W kandydatow). POMIAR guardem (610).
+        "Przeskanowano 610 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2908,7 +2910,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Ta sama karta, C40: dlug 24/69 -> 24/67 (`protection_settings/engine.py`). POMIAR.
         # Ta sama karta, kontyngencje N-1: application 256 -> 257 (+1
         # `analyses/kontyngencje_n1_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  application: pliki_skanowane=257, dlug=24 plikow/suma 67, "
+        # Ta sama karta, dobor kompensacji D18: application 257 -> 258 (+1
+        # `analyses/dobor_kompensacji_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=258, dlug=24 plikow/suma 67, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

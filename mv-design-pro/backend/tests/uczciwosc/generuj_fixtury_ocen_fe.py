@@ -829,6 +829,50 @@ def _oceny_kontyngencji() -> dict[str, Any]:
     }
 
 
+def _oceny_kompensacji() -> dict[str, Any]:
+    """Rekordy W kandydatów doboru kompensacji (``oceny_kandydata`` — TA SAMA funkcja co
+    serwis doboru) dla fikstur ekranu „Dobór kompensacji”
+    (``ui2/oze/kompensacja/__tests__/fixtures.ts``): cosφ punktu fikstury (dzień i noc) wobec
+    wymaganego 0,95; ``brak_*`` — widok bez doboru (cosφ punktu 0,9); ``bez_wyniku_noc`` — noc
+    bez rozwiązania rozpływu (``NIE_OCENIONO``).
+    """
+    from application.analyses.dobor_kompensacji import _POWOD_NIEZBIEZNOSCI, _pusty_pomiar
+    from application.analyses.dobor_kompensacji_oceny import oceny_kandydata
+
+    def _rekord(nazwa: str, dzien: float, noc: float | None) -> Any:
+        return oceny_kandydata(
+            bus_ref="bus-a",
+            nazwa_szyny_pl="Szyna „Szyna A”",
+            nazwa_baterii_pl=nazwa,
+            dzien={"cosfi_punktu": dzien},
+            noc=None if noc is None else {"cosfi_punktu": noc},
+            cos_phi_min=0.95,
+        ).model_dump(mode="json")
+
+    kandydaci = {
+        "cap-0v3": ("Bateria SN 0,3 Mvar / 15 kV", 0.9, 0.88),
+        "cap-0v6": ("Bateria SN 0,6 Mvar / 15 kV", 0.97, 0.96),
+        "cap-0v9": ("Bateria SN 0,9 Mvar / 15 kV", 0.93, 0.9),
+    }
+    rekordy = {ref: _rekord(nazwa, dzien, None) for ref, (nazwa, dzien, _) in kandydaci.items()}
+    rekordy |= {
+        f"noc_{ref}": _rekord(nazwa, dzien, noc) for ref, (nazwa, dzien, noc) in kandydaci.items()
+    }
+    # Widok bez doboru: każdy kandydat z cosφ punktu 0,9 (dzień).
+    rekordy |= {
+        f"brak_{ref}": _rekord(nazwa, 0.9, None) for ref, (nazwa, _, _) in kandydaci.items()
+    }
+    rekordy["bez_wyniku_noc"] = oceny_kandydata(
+        bus_ref="bus-a",
+        nazwa_szyny_pl="Szyna „Szyna A”",
+        nazwa_baterii_pl="Bateria SN 0,6 Mvar / 15 kV",
+        dzien={"cosfi_punktu": 0.97},
+        noc=_pusty_pomiar(_POWOD_NIEZBIEZNOSCI),
+        cos_phi_min=0.95,
+    ).model_dump(mode="json")
+    return rekordy
+
+
 #: Plik fixtury frontu → funkcja budująca jego treść.
 FIXTURY: dict[Path, Any] = {
     _FRONTEND_SRC / "ui2" / "oze" / "frt" / "__tests__" / "rekordyOceny.json": _frt,
@@ -891,6 +935,12 @@ FIXTURY: dict[Path, Any] = {
     / "kontyngencje"
     / "__tests__"
     / "ocenyKontyngencji.json": _oceny_kontyngencji,
+    _FRONTEND_SRC
+    / "ui2"
+    / "oze"
+    / "kompensacja"
+    / "__tests__"
+    / "rekordyKompensacji.json": _oceny_kompensacji,
 }
 
 

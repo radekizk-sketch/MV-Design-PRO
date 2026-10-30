@@ -1,0 +1,2867 @@
+{
+  "bez_wyniku_noc": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Ocena niewykonana",
+      "semantyka": "neutralna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,6 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.02
+          },
+          "wzgledny": 0.0210526315789
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,6 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium spełnione. Cosφ punktu kompensowanego: 0,97 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines +0,02, punkt: Szyna „Szyna A”, względnie +2,105 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.97
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      },
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.noc",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,6 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "bieg rozpływu wariantu z próbną baterią nie dał rozwiązania — cosφ punktu nie wyznaczono"
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu z próbną baterią nie dał rozwiązania — cosφ punktu nie wyznaczono)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu z próbną baterią nie dał rozwiązania — cosφ punktu nie wyznaczono). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_OCENIONO",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): bieg rozpływu wariantu z próbną baterią nie dał rozwiązania — cosφ punktu nie wyznaczono",
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu z próbną baterią nie dał rozwiązania — cosφ punktu nie wyznaczono)",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,6 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — ocena niewykonana. Kryteria nieocenione: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — brak wyznaczonej wielkości ocenianej (bieg rozpływu wariantu z próbną baterią nie dał rozwiązania — cosφ punktu nie wyznaczono)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "brak_cap-0v3": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Wymaganie naruszone",
+      "semantyka": "negatywna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [
+      "kompensacja.cosfi_punktu.dzien"
+    ],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,3 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.05
+          },
+          "wzgledny": -0.0526315789474
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,3 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.9
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_SPELNIA",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,3 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "brak_cap-0v6": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Wymaganie naruszone",
+      "semantyka": "negatywna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [
+      "kompensacja.cosfi_punktu.dzien"
+    ],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,6 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.05
+          },
+          "wzgledny": -0.0526315789474
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,6 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.9
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_SPELNIA",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,6 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "brak_cap-0v9": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Wymaganie naruszone",
+      "semantyka": "negatywna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [
+      "kompensacja.cosfi_punktu.dzien"
+    ],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,9 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.05
+          },
+          "wzgledny": -0.0526315789474
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,9 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.9
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_SPELNIA",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,9 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "cap-0v3": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Wymaganie naruszone",
+      "semantyka": "negatywna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [
+      "kompensacja.cosfi_punktu.dzien"
+    ],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,3 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.05
+          },
+          "wzgledny": -0.0526315789474
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,3 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.9
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_SPELNIA",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,3 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "cap-0v6": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Brak wystarczającego dowodu",
+      "semantyka": "ostrzegawcza"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,6 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.02
+          },
+          "wzgledny": 0.0210526315789
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,6 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium spełnione. Cosφ punktu kompensowanego: 0,97 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines +0,02, punkt: Szyna „Szyna A”, względnie +2,105 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.97
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "BRAK_DOWODU",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,6 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,97 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines +0,02, punkt: Szyna „Szyna A”, względnie +2,105 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "cap-0v9": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Wymaganie naruszone",
+      "semantyka": "negatywna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [
+      "kompensacja.cosfi_punktu.dzien"
+    ],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,9 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.02
+          },
+          "wzgledny": -0.0210526315789
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,9 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,02 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,93 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,02, punkt: Szyna „Szyna A”, względnie −2,105 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.93
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_SPELNIA",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,02 (Szyna „Szyna A”)",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,9 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,93 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,02, punkt: Szyna „Szyna A”, względnie −2,105 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "noc_cap-0v3": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Wymaganie naruszone",
+      "semantyka": "negatywna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [
+      "kompensacja.cosfi_punktu.dzien",
+      "kompensacja.cosfi_punktu.noc"
+    ],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,3 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.05
+          },
+          "wzgledny": -0.0526315789474
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,3 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.9
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      },
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.noc",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.07
+          },
+          "wzgledny": -0.0736842105263
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,3 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,07 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,88 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,07, punkt: Szyna „Szyna A”, względnie −7,368 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.88
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      },
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_SPELNIA",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”); cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,07 (Szyna „Szyna A”)",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,3 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej); cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,88 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,07, punkt: Szyna „Szyna A”, względnie −7,368 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "noc_cap-0v6": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Brak wystarczającego dowodu",
+      "semantyka": "ostrzegawcza"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,6 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.02
+          },
+          "wzgledny": 0.0210526315789
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,6 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium spełnione. Cosφ punktu kompensowanego: 0,97 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines +0,02, punkt: Szyna „Szyna A”, względnie +2,105 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.97
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      },
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.noc",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.01
+          },
+          "wzgledny": 0.0105263157895
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,6 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — kryterium spełnione. Cosφ punktu kompensowanego: 0,96 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines +0,01, punkt: Szyna „Szyna A”, względnie +1,053 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.96
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      },
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "BRAK_DOWODU",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,6 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,97 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines +0,02, punkt: Szyna „Szyna A”, względnie +2,105 % wartości granicznej); cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,96 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines +0,01, punkt: Szyna „Szyna A”, względnie +1,053 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  },
+  "noc_cap-0v9": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "application/analyses/dobor_kompensacji.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Wymaganie naruszone",
+      "semantyka": "negatywna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [
+      "kompensacja.cosfi_punktu.dzien",
+      "kompensacja.cosfi_punktu.noc"
+    ],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,9 Mvar / 15 kV”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.dzien",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.02
+          },
+          "wzgledny": -0.0210526315789
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,9 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,02 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,93 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,02, punkt: Szyna „Szyna A”, względnie −2,105 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.93
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      },
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "application/analyses/dobor_kompensacji.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi_{\\text{punktu}} \\ge \\cos\\varphi_{\\min}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "kompensacja.cosfi_punktu.noc",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+            "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "wymagany cosφ punktu podany w zapytaniu doboru"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna „Szyna A”",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 0.95
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.05
+          },
+          "wzgledny": -0.0526315789474
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+          "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "bus-a",
+          "nazwa_pl": "Szyna „Szyna A”",
+          "opis_pl": "Punkt kompensowany z próbną baterią „Bateria SN 0,9 Mvar / 15 kV” z katalogu"
+        },
+        "slad": [
+          {
+            "krok": "kompensacja.cosfi_punktu",
+            "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+          "zastrzezenia": [
+            "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+          ],
+          "zdanie_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — kryterium naruszone. Cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna „Szyna A”",
+          "symbol_latex": "\\cos\\varphi_{\\text{punktu}}",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.9
+          },
+          "wielkosc_pl": "cosφ punktu kompensowanego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+            "regulacja stopniowa baterii i automatyka załączania",
+            "harmoniczne i rezonans baterii z siecią",
+            "przepięcia łączeniowe i prąd załączania baterii"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta",
+      "jednostka_redakcyjna": "wymagany cosφ punktu (parametr zapytania doboru)",
+      "rodzaj": "ZALOZENIE_PROJEKTOWE",
+      "status": "WSKAZANE",
+      "uwagi_pl": "wartość wymagania pochodzi z zapytania projektanta (np. z warunków przyłączenia operatora albo z umowy taryfowej); program jej nie ustala ani nie łagodzi",
+      "wydanie": "bieżący stan programu"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      },
+      {
+        "krok": "kompensacja.cosfi_punktu",
+        "opis_pl": "cosφ punktu kompensowanego z bilansu odbioru i baterii w punkcie (ślad doboru: źródło P/Q, Q_netto = Q_odb − Q_bat)",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_SPELNIA",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,02 (Szyna „Szyna A”); cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — cosφ punktu kompensowanego nie osiąga wartości granicznej o 0,05 (Szyna „Szyna A”)",
+      "zastrzezenia": [
+        "Podstawa „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”, wydanie bieżący stan programu, wymagany cosφ punktu (parametr zapytania doboru) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru) — wynik nie obejmuje: zmienność obciążenia w ciągu doby poza dwoma scenariuszami; regulacja stopniowa baterii i automatyka załączania; harmoniczne i rezonans baterii z siecią; przepięcia łączeniowe i prąd załączania baterii."
+      ],
+      "zdanie_pl": "Wymagany cosφ punktu kompensowanego z baterią „Bateria SN 0,9 Mvar / 15 kV” (wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz dzienny (generacja z modelu) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,93 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,02, punkt: Szyna „Szyna A”, względnie −2,105 % wartości granicznej); cosφ punktu kompensowanego po zainstalowaniu baterii nie mniejszy od wymaganego — scenariusz nocny (moc czynna generatorów równa zeru) (Szyna „Szyna A”) — cosφ punktu kompensowanego: 0,9 wobec wymaganych ≥ 0,95 wg wymagany cosφ punktu (parametr zapytania doboru) „Wymagany cosφ punktu kompensowanego — parametr doboru podany przez projektanta” (margines −0,05, punkt: Szyna „Szyna A”, względnie −5,263 % wartości granicznej)."
+    },
+    "wymaganie_id": "kompensacja.cosfi_punktu",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Stan ustalony sieci z próbną baterią z katalogu dopisaną do wskazanej szyny — osobny bieg rozpływu mocy wariantu na scenariusz (dzień: generacja z modelu; noc: moc czynna generatorów równa zeru).",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "POWER_FLOW",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zmienność obciążenia w ciągu doby poza dwoma scenariuszami",
+        "regulacja stopniowa baterii i automatyka załączania",
+        "harmoniczne i rezonans baterii z siecią",
+        "przepięcia łączeniowe i prąd załączania baterii"
+      ]
+    }
+  }
+}

@@ -24,8 +24,8 @@ import { EkranAnalizy, SladWywodu, useNazwaObiektu } from '../../wyniki/wzorzec'
 import { KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import type { Etykieta, RekordWerdyktu, WynikWymagania } from '../../wyniki/wzorzec/werdykt';
 import { pobierzOchronaLom, type PoleLom, type WidokOchronyLom } from '../api';
-import { KLUCZ_WIERSZA_LOM, KOLUMNY_LOM, naWierszeLom, naZalozeniaLom } from './lomModel';
-import { LOM_STRINGS, fmtNastawaLom, fmtOknoLom, istotnoscLom } from './strings';
+import { KLUCZ_WIERSZA_LOM, KOLUMNY_LOM, klasaLom, naWierszeLom, naZalozeniaLom } from './lomModel';
+import { LOM_STRINGS, fmtNastawaLom, fmtOknoLom } from './strings';
 import { PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
@@ -39,7 +39,7 @@ type StanZasobu = 'brakPrzypadku' | 'ladowanie' | 'blad' | 'gotowe';
 function TagStatusu({ etykieta }: { etykieta: Etykieta }) {
   return (
     <span
-      className={`mvd-lom-tag mvd-lom-tag--${istotnoscLom(etykieta)}`}
+      className={`mvd-lom-tag mvd-lom-tag--${klasaLom(etykieta)}`}
       data-testid="mvd-lom-tag"
       data-semantyka={etykieta.semantyka}
     >
@@ -52,7 +52,7 @@ function TagStatusu({ etykieta }: { etykieta: Etykieta }) {
 function Chip({ etykieta, wartosc }: { etykieta: Etykieta; wartosc: number }) {
   return (
     <div
-      className={`mvd-lom-chip mvd-lom-chip--${istotnoscLom(etykieta)}`}
+      className={`mvd-lom-chip mvd-lom-chip--${klasaLom(etykieta)}`}
       data-testid="mvd-lom-chip"
       data-semantyka={etykieta.semantyka}
     >

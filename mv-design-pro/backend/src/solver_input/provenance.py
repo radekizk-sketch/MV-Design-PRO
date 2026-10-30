@@ -630,6 +630,19 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta D8 analizy N-1; karta WERDYKT-MIGRACJA-190",
         ),
         CapabilityEvidence(
+            capability_id="kompensacja.dobor_baterii",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Dobór kompensacji (application/analyses/dobor_kompensacji.py): osobny bieg "
+                "rozpływu mocy wariantu z próbną baterią z katalogu na scenariusz (dzień, noc) "
+                "i cosφ punktu kompensowanego z bilansu odbioru i baterii. Zgodności rozpływu "
+                "z pomiarem ani z siecią referencyjną nie wykazano — wynik nie jest dowodem "
+                "regulacyjnym."
+            ),
+            audit_ref="karta P42/D8 doboru kompensacji; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
             capability_id="wiarygodnosc.pasma_wyniku",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

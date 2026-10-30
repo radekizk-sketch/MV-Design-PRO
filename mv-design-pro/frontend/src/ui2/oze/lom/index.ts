@@ -16,8 +16,6 @@ export {
 } from './lomModel';
 export {
   LOM_STRINGS,
-  istotnoscLom,
   fmtNastawaLom,
   fmtOknoLom,
 } from './strings';
-export type { IstotnoscTaguLom } from './strings';

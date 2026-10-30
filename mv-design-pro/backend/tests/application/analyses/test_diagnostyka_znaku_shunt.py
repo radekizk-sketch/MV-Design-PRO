@@ -287,7 +287,9 @@ def test_d8_dobor_sterowany_cosfi_punktu_wartosci_po_f98() -> None:
     # (2) cosφ PUNKTU kompensowanego — podstawa doboru; 0,6 Mvar spełnia cosφ ≥ 0,95.
     assert view["candidates"][0]["cosfi_punktu_dzien"] == pytest.approx(0.995741, abs=1e-5)
     assert view["candidates"][0]["cosfi_punktu_dzien"] > view["baseline"]["cosfi_punktu_dzien"]
-    assert view["candidates"][0]["spelnia"] is True
-    assert view["candidates"][1]["spelnia"] is False  # 1,2 Mvar przekompensowuje
+    # Rekord W kandydata (karta WERDYKT-MIGRACJA-190): spełnienie na liczbach składowej dnia.
+    dzien = [c["wymaganie"]["oceny_skladowe"][0]["status_maszynowy"] for c in view["candidates"]]
+    assert dzien[0] == "SPELNIA"
+    assert dzien[1] == "NIE_SPELNIA"  # 1,2 Mvar przekompensowuje
     assert view["dobor"] is not None
     assert view["dobor"]["rated_mvar"] == 0.6

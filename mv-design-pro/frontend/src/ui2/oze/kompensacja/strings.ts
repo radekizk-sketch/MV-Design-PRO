@@ -92,9 +92,8 @@ export const KOMPENSACJA_STRINGS = {
   // Kolumny INFORMACYJNE — cosφ przekroju sieciowego (nie steruje doborem):
   kolCosfiPrzekrojuDzien: 'cosφ przekroju sieciowego (dzień)',
   kolCosfiPrzekrojuNoc: 'cosφ przekroju sieciowego (noc)',
-  kolWerdykt: 'Werdykt doboru',
-  werdyktSpelnia: 'spełnia',
-  werdyktNieSpelnia: 'nie spełnia',
+  kolWerdykt: 'Ocena wymaganego cosφ',
+  doborRekordNaglowek: 'Ocena wymaganego cosφ punktu dla dobranej baterii',
 
   // Werdykt doboru
   doborTytul: 'Dobór baterii kompensacji',

@@ -88,8 +88,13 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from typing import Any
+from typing import Any, Final
 
+from application.analyses.dobor_kompensacji_oceny import (
+    nierozstrzygniety,
+    oceny_kandydata,
+    spelnia_liczbowo,
+)
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from application.analyses.konwencja_mocy import (
     moc_kanoniczna_punktu,
@@ -207,10 +212,25 @@ def _edge_endpoints(snapshot: dict[str, Any]) -> dict[str, tuple[str, str]]:
     return endpoints
 
 
-def _pusty_pomiar() -> dict[str, Any]:
-    """Scenariusz nieoceniony (niezbieżność / punkt poza topologią) — bez zgadywania."""
+_POWOD_ODMOWY: Final = (
+    "bieg rozpływu wariantu z próbną baterią został odmówiony (nazwana odmowa obliczenia) — "
+    "cosφ punktu nie wyznaczono"
+)
+_POWOD_NIEZBIEZNOSCI: Final = (
+    "bieg rozpływu wariantu z próbną baterią nie dał rozwiązania — cosφ punktu nie wyznaczono"
+)
+_POWOD_BEZ_GALEZI: Final = (
+    "punkt nie ma gałęzi zasilających w wyniku rozpływu wariantu — przepływu P/Q w punkcie "
+    "nie da się odczytać"
+)
+
+
+def _pusty_pomiar(powod_braku_pl: str) -> dict[str, Any]:
+    """Scenariusz nieoceniony (odmowa, niezbieżność, punkt poza topologią) — bez zgadywania;
+    ``powod_braku_pl`` trafia do braków rekordu K (karta WERDYKT-MIGRACJA-190)."""
     return {
         "converged": False,
+        "powod_braku_pl": powod_braku_pl,
         "cosfi_przekroju": None,
         "cosfi_punktu": None,
         "p_point_mw": None,
@@ -289,11 +309,11 @@ def _point_cos_phi(
     try:
         wykonaj_bieg_w_pamieci(run)
     except ODMOWY_OBLICZENIA_BIEGU:  # nazwana odmowa obliczenia = scenariusz nieoceniony
-        return _pusty_pomiar()
+        return _pusty_pomiar(_POWOD_ODMOWY)
 
     result_v1 = (run.raw_result or {}).get("result_v1") or {}
     if not bool(result_v1.get("converged", False)):
-        return _pusty_pomiar()
+        return _pusty_pomiar(_POWOD_NIEZBIEZNOSCI)
 
     snapshot = migawka.snapshot
     point_node = _graph_id_from_ref(bus_ref)
@@ -303,7 +323,7 @@ def _point_cos_phi(
         point_node=point_node,
     )
     if kanon["incydentne"] == 0:
-        return _pusty_pomiar()
+        return _pusty_pomiar(_POWOD_BEZ_GALEZI)
 
     p_point = kanon["p_mw"]
     q_przekroju = kanon["q_mvar"]  # przepływ gałęzi (kanoniczny) — wielkość przekrojowa (1)
@@ -330,16 +350,13 @@ def _point_cos_phi(
     }
 
 
-def _meets(cos_phi: float | None, cos_phi_min: float) -> bool:
-    return cos_phi is not None and cos_phi >= cos_phi_min
-
-
 def _candidate_verdict(
     base_run: CanonicalRun,
     enm: EnergyNetworkModel,
     *,
     record: dict[str, Any],
     bus_ref: str,
+    nazwa_szyny_pl: str,
     cos_phi_min: float,
     uwzglednij_noc: bool,
 ) -> dict[str, Any]:
@@ -349,9 +366,16 @@ def _candidate_verdict(
         if uwzglednij_noc
         else None
     )
-    # Dobór opiera się na cosφ PUNKTU KOMPENSOWANEGO (wielkość 2), NIE na przekroju.
-    meets_day = _meets(day["cosfi_punktu"], cos_phi_min)
-    meets_night = True if night is None else _meets(night["cosfi_punktu"], cos_phi_min)
+    # Dobór opiera się na cosφ PUNKTU KOMPENSOWANEGO (wielkość 2), NIE na przekroju —
+    # rekord W nad składowymi K dnia i nocy (karta WERDYKT-MIGRACJA-190, D18).
+    wymaganie = oceny_kandydata(
+        bus_ref=bus_ref,
+        nazwa_szyny_pl=nazwa_szyny_pl,
+        nazwa_baterii_pl=str(record["name"]),
+        dzien=day,
+        noc=night,
+        cos_phi_min=cos_phi_min,
+    )
     return {
         "catalog_ref": str(record["id"]),
         "name": str(record["name"]),
@@ -371,9 +395,7 @@ def _candidate_verdict(
         "q_przekroju_noc_mvar": None if night is None else night["q_przekroju_mvar"],
         "q_cap_eff_noc_mvar": None if night is None else night["q_cap_eff_mvar"],
         "q_netto_punktu_noc_mvar": None if night is None else night["q_netto_punktu_mvar"],
-        "spelnia_dzien": meets_day,
-        "spelnia_noc": None if night is None else meets_night,
-        "spelnia": meets_day and meets_night,
+        "wymaganie": wymaganie,
     }
 
 
@@ -469,19 +491,23 @@ def build_compensation_sizing_view(
         "cosfi_punktu_noc": None if baseline_night is None else baseline_night["cosfi_punktu"],
     }
 
+    nazwa_szyny_pl = opis_obiektu(bus, "Szyna")
     candidates = [
         _candidate_verdict(
             run,
             enm,
             record=record,
             bus_ref=bus_ref,
+            nazwa_szyny_pl=nazwa_szyny_pl,
             cos_phi_min=cos_phi_min,
             uwzglednij_noc=uwzglednij_noc,
         )
         for record in records
     ]
 
-    selected = next((c for c in candidates if c["spelnia"]), None)
+    # Dobór = pierwszy kandydat (rosnąco po mocy), którego rekord W rozstrzyga się liczbowo
+    # na „spełnia” — ten sam rekord, który widzi projektant w tabeli kandydatów.
+    selected = next((c for c in candidates if spelnia_liczbowo(c["wymaganie"])), None)
     if selected is not None:
         dobor: dict[str, Any] | None = {
             "catalog_ref": selected["catalog_ref"],
@@ -501,10 +527,20 @@ def build_compensation_sizing_view(
             powod = f"Brak baterii w katalogu dla napięcia znamionowego szyny {_round6(bus_kv)} kV."
         else:
             zakres = "dzień i noc" if uwzglednij_noc else "dzień"
-            powod = (
-                f"Żadna bateria z katalogu nie zapewnia wymaganego cosφ ≥ {cos_phi_min} "
-                f"w punkcie {bus_ref} ({zakres}); największy przegląd nie spełnia wymagania."
-            )
+            bez_wyniku = sum(1 for c in candidates if nierozstrzygniety(c["wymaganie"]))
+            if bez_wyniku:
+                # Brak wyniku ≠ niespełnienie: kandydat bez wyznaczonego cosφ punktu nie jest
+                # liczony jako niespełniający (powód braku w rekordzie kandydata).
+                powod = (
+                    f"Żadna bateria z katalogu nie wykazała wymaganego cosφ ≥ {cos_phi_min} "
+                    f"w punkcie {bus_ref} ({zakres}); dla {bez_wyniku} z {len(candidates)} "
+                    "kandydatów cosφ punktu nie wyznaczono — powód w rekordzie kandydata."
+                )
+            else:
+                powod = (
+                    f"Żadna bateria z katalogu nie zapewnia wymaganego cosφ ≥ {cos_phi_min} "
+                    f"w punkcie {bus_ref} ({zakres}); największy przegląd nie spełnia wymagania."
+                )
 
     return {
         "analysis": "compensation_sizing",
@@ -521,7 +557,9 @@ def build_compensation_sizing_view(
             run, bus_ref, cos_phi_min, uwzglednij_noc, [str(r["id"]) for r in records]
         ),
         "baseline": baseline,
-        "candidates": candidates,
+        "candidates": [
+            {**c, "wymaganie": c["wymaganie"].model_dump(mode="json")} for c in candidates
+        ],
         "dobor": dobor,
         "powod_braku": powod,
         # Ślad pełnej jawności obliczeń: semantyka po polsku, matematyka wyłącznie

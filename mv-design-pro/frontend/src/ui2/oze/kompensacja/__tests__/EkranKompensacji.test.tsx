@@ -23,6 +23,7 @@ import {
   widokBrakDoboruFixture,
   widokKompensacjiFixture,
   widokNocFixture,
+  REKORDY,
 } from './fixtures';
 
 const pobierzDobor = vi.fn();
@@ -174,9 +175,13 @@ describe('EkranKompensacji — rozdział dwóch cosφ + baseline (wymóg właśc
     expect(wiersz06).toBeDefined();
     expect(within(wiersz06!).getByText('0,9700')).toBeInTheDocument();
     expect(within(wiersz06!).getByText('0,5500')).toBeInTheDocument();
-    expect(within(wiersz06!).getByText(T.werdyktSpelnia)).toBeInTheDocument();
-    // Dokładnie jeden werdykt „spełnia" w tabeli (pozostali „nie spełnia").
-    expect(screen.getAllByText(T.werdyktSpelnia)).toHaveLength(1);
+    // Komórka oceny = etykieta REKORDU W z backendu (karta WERDYKT-MIGRACJA-190, D18):
+    // spełnione na liczbach przy modelu niezwalidowanym to „brak wystarczającego dowodu”,
+    // nie gołe „spełnia”; dwaj pozostali — „wymaganie naruszone”.
+    const rekord06 = REKORDY['cap-0v6'];
+    expect(within(wiersz06!).getByText(rekord06.etykieta.etykieta_pl)).toBeInTheDocument();
+    expect(screen.getAllByText(REKORDY['cap-0v3'].etykieta.etykieta_pl)).toHaveLength(2);
+    expect(screen.queryByText(/^spełnia$/)).toBeNull();
   });
 });
 
@@ -199,6 +204,15 @@ describe('EkranKompensacji — werdykt doboru (kryterium 1.2)', () => {
     );
     expect(within(dobor).getByTestId('mvd-komp-dobor-punktu-dzien')).toHaveTextContent('0,9700');
     expect(within(dobor).getByTestId('mvd-komp-dobor-przekroju-dzien')).toHaveTextContent('0,5500');
+  });
+
+  it('sekcja doboru niesie kartę rekordu W dobranej baterii (limit, wynik, wyjaśnienie)', async () => {
+    await uruchomBieg();
+    const karta = screen.getByTestId('mvd-komp-dobor-rekord');
+    const rekord = REKORDY['cap-0v6'];
+    expect(karta).toHaveTextContent(T.doborRekordNaglowek);
+    expect(karta).toHaveTextContent(rekord.etykieta.etykieta_pl);
+    expect(karta).toHaveTextContent(rekord.wyjasnienie.zdanie_pl);
   });
 
   it('brak doboru → uczciwy powód PL, bez sekcji dobranej baterii', async () => {

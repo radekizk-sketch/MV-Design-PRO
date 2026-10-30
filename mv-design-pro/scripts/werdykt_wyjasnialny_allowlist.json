@@ -548,20 +548,6 @@
    "wiersz_inwentarza": "C26"
   },
   {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "frontend/src/ui2/oze/kompensacja/strings.ts:KOMPENSACJA_STRINGS.werdyktNieSpelnia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Etykiety „spełnia / nie spełnia” doboru kompensacji w interfejsie (bool `spelnia_*` z backendu → tekst) — inwentarz C20/D18, fala WW-4, plan AB §8.",
-   "wiersz_inwentarza": "D18"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "frontend/src/ui2/oze/kompensacja/strings.ts:KOMPENSACJA_STRINGS.werdyktSpelnia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Etykiety „spełnia / nie spełnia” doboru kompensacji w interfejsie (bool `spelnia_*` z backendu → tekst) — inwentarz C20/D18, fala WW-4, plan AB §8.",
-   "wiersz_inwentarza": "D18"
-  },
-  {
    "sprawdzenie": "6c_mapa_statusu",
    "tozsamosc": "frontend/src/ui/enm-inspector/DiagnosticsPanel.tsx:StatusHeader.statusColor",
    "klasa": "MIGRACJA",
@@ -616,13 +602,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Scalenie gałęzi UI/UX z programem (2026-10-28): `graph.status` projekcji domeny nN (`LvDomainProjectionV1`, wartości `OK` | `brak danych`) to DOSTĘPNOŚĆ danych modelu — czy stacja ma domenę nN w modelu — a nie ocena kryterium. Trójdzielna mapa przekłada ją na stan ładowania karty nN (`gotowe` / `brak_domeny`); tekst dla człowieka pochodzi wyłącznie z `graph.reason_pl` backendu albo z komunikatu błędu pobrania, żaden werdykt ani ton oceny nie powstaje.",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/oze/lom/strings.ts:istotnoscLom",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D19 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D19"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

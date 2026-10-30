@@ -11,7 +11,7 @@ export {
   kolumnyTabeliKompensacji,
   wierszeTabeliKompensacji,
   krokiSladuKompensacji,
-  werdyktKompPL,
+  skladowaScenariusza,
 } from './kompensacjaModel';
 export {
   KOMPENSACJA_STRINGS,

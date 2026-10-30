@@ -57,6 +57,23 @@ def _reset() -> None:
     reset_enm_store()
 
 
+def _status(cand: dict, scenariusz: str | None = None) -> str:
+    """Status rekordu W kandydata albo (``scenariusz``) jego składowej K dnia/nocy."""
+    wymaganie = cand["wymaganie"]
+    if scenariusz is None:
+        return wymaganie["status_maszynowy"]
+    return next(
+        o["status_maszynowy"]
+        for o in wymaganie["oceny_skladowe"]
+        if o["kryterium_id"] == f"kompensacja.cosfi_punktu.{scenariusz}"
+    )
+
+
+def _spelnia(cand: dict) -> bool:
+    """Rozstrzygnięcie liczbowe: każda składowa K spełniona na liczbach."""
+    return all(o["status_maszynowy"] == "SPELNIA" for o in cand["wymaganie"]["oceny_skladowe"])
+
+
 def _compensation_enm(*, load_q_mvar: float, gen_p_mw: float | None) -> EnergyNetworkModel:
     """Deterministyczny model doboru kompensacji: punkt SN 15 kV zasilany jedną
     linią, z lokalnym warunkiem biernym (``load_q_mvar``) i opcjonalnym źródłem OZE.
@@ -209,8 +226,10 @@ def test_view_structure() -> None:
         "rated_kv",
         "cosfi_przekroju_dzien",
         "cosfi_punktu_dzien",
-        "spelnia",
+        "wymaganie",
     } <= set(cand)
+    # Karta WERDYKT-MIGRACJA-190 (D18): zamiast gołych flag `spelnia*` rekord W.
+    assert not {"spelnia", "spelnia_dzien", "spelnia_noc"} & set(cand)
 
 
 class TestMissingFieldsAreNotFabricatedZero:
@@ -294,14 +313,14 @@ def test_dobor_found_first_meeting_candidate() -> None:
     assert view["dobor"] is not None
     assert view["powod_braku"] is None
     # Dobór = PIERWSZY kandydat z spelnia=True (na cosφ PUNKTU kompensowanego).
-    first_ok = next(c for c in view["candidates"] if c["spelnia"])
+    first_ok = next(c for c in view["candidates"] if _spelnia(c))
     assert view["dobor"]["catalog_ref"] == first_ok["catalog_ref"]
     assert view["dobor"]["cosfi_punktu_dzien"] >= 0.90
     # Kandydaci przed doborem NIE spełniają.
     for cand in view["candidates"]:
         if cand["catalog_ref"] == view["dobor"]["catalog_ref"]:
             break
-        assert cand["spelnia"] is False
+        assert _spelnia(cand) is False
 
 
 def test_baseline_cos_phi_present() -> None:
@@ -326,7 +345,7 @@ def test_no_candidate_meets_returns_null_with_reason() -> None:
     assert view["dobor"] is None
     assert view["powod_braku"] is not None
     assert "cosφ" in view["powod_braku"]
-    assert all(c["spelnia"] is False for c in view["candidates"])
+    assert all(_status(c) == "NIE_SPELNIA" for c in view["candidates"])
 
 
 def test_no_catalog_candidate_for_bus_voltage() -> None:
@@ -353,7 +372,7 @@ def test_night_scenario_present_in_verdicts() -> None:
     for cand in view["candidates"]:
         assert cand["cosfi_punktu_noc"] is not None
         assert cand["cosfi_przekroju_noc"] is not None
-        assert cand["spelnia_noc"] is not None
+        assert _status(cand, "noc") in {"SPELNIA", "NIE_SPELNIA"}
 
 
 def test_night_scenario_changes_selection() -> None:
@@ -376,9 +395,9 @@ def test_night_scenario_changes_selection() -> None:
     day_pick_in_night = next(
         c for c in with_night["candidates"] if c["catalog_ref"] == day_only["dobor"]["catalog_ref"]
     )
-    assert day_pick_in_night["spelnia_dzien"] is True
-    assert day_pick_in_night["spelnia_noc"] is False
-    assert day_pick_in_night["spelnia"] is False
+    assert _status(day_pick_in_night, "dzien") == "SPELNIA"
+    assert _status(day_pick_in_night, "noc") == "NIE_SPELNIA"
+    assert _status(day_pick_in_night) == "NIE_SPELNIA"
 
 
 def test_night_verdict_requires_both_scenarios() -> None:
@@ -387,7 +406,10 @@ def test_night_verdict_requires_both_scenarios() -> None:
         run, bus_ref="bus_pcc", cos_phi_min=0.90, uwzglednij_noc=True
     )
     for cand in view["candidates"]:
-        assert cand["spelnia"] == (cand["spelnia_dzien"] and cand["spelnia_noc"])
+        skladowe = {o["kryterium_id"] for o in cand["wymaganie"]["oceny_skladowe"]}
+        assert skladowe == {"kompensacja.cosfi_punktu.dzien", "kompensacja.cosfi_punktu.noc"}
+        naruszone = "NIE_SPELNIA" in {_status(cand, "dzien"), _status(cand, "noc")}
+        assert (_status(cand) == "NIE_SPELNIA") is naruszone
 
 
 # --------------------------------------------------------------------------

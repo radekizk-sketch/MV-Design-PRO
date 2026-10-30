@@ -12,6 +12,16 @@
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import type { WidokDoboruKompensacji } from '../../api';
+import type { WynikWymagania } from '../../../wyniki/wzorzec/werdykt';
+import rekordyJson from './rekordyKompensacji.json';
+
+/**
+ * Rekordy W kandydatów z backendu (``oceny_kandydata`` — generator
+ * ``backend/tests/uczciwosc/generuj_fixtury_ocen_fe.py``, parytet ``test_fixtury_ocen_fe.py``):
+ * cosφ punktu fikstury wobec wymaganego 0,95 (dzień; ``noc_*`` — dzień i noc; ``brak_*`` —
+ * widok bez doboru; ``bez_wyniku_noc`` — noc bez rozwiązania rozpływu).
+ */
+export const REKORDY = rekordyJson as unknown as Record<string, WynikWymagania>;
 
 /** Przebieg wykonania (domyślnie zakończony rozpływ mocy). */
 export function przebiegFixture(over: Partial<ExecutionRun> & { id: string }): ExecutionRun {
@@ -81,9 +91,7 @@ export function widokKompensacjiFixture(): WidokDoboruKompensacji {
         q_przekroju_noc_mvar: null,
         q_cap_eff_noc_mvar: null,
         q_netto_punktu_noc_mvar: null,
-        spelnia_dzien: false,
-        spelnia_noc: null,
-        spelnia: false,
+        wymaganie: REKORDY['cap-0v3'],
       },
       {
         catalog_ref: 'cap-0v6',
@@ -104,9 +112,7 @@ export function widokKompensacjiFixture(): WidokDoboruKompensacji {
         q_przekroju_noc_mvar: null,
         q_cap_eff_noc_mvar: null,
         q_netto_punktu_noc_mvar: null,
-        spelnia_dzien: true,
-        spelnia_noc: null,
-        spelnia: true,
+        wymaganie: REKORDY['cap-0v6'],
       },
       {
         catalog_ref: 'cap-0v9',
@@ -125,9 +131,7 @@ export function widokKompensacjiFixture(): WidokDoboruKompensacji {
         q_przekroju_noc_mvar: null,
         q_cap_eff_noc_mvar: null,
         q_netto_punktu_noc_mvar: null,
-        spelnia_dzien: false,
-        spelnia_noc: null,
-        spelnia: false,
+        wymaganie: REKORDY['cap-0v9'],
       },
     ],
     dobor: {
@@ -183,8 +187,7 @@ export function widokBrakDoboruFixture(): WidokDoboruKompensacji {
     candidates: bazowy.candidates.map((k) => ({
       ...k,
       cosfi_punktu_dzien: 0.9,
-      spelnia_dzien: false,
-      spelnia: false,
+      wymaganie: REKORDY[`brak_${k.catalog_ref}`],
     })),
     dobor: null,
     powod_braku:
@@ -217,8 +220,7 @@ export function widokNocFixture(): WidokDoboruKompensacji {
         q_netto_punktu_noc_mvar: 0.6,
         p_point_night_mw: 1.0,
         q_przekroju_noc_mvar: 0.89,
-        spelnia_noc: false,
-        spelnia: false,
+        wymaganie: REKORDY['noc_cap-0v3'],
       },
       {
         ...bazowy.candidates[1],
@@ -228,8 +230,7 @@ export function widokNocFixture(): WidokDoboruKompensacji {
         q_netto_punktu_noc_mvar: 0.29,
         p_point_night_mw: 1.0,
         q_przekroju_noc_mvar: 1.73,
-        spelnia_noc: true,
-        spelnia: true,
+        wymaganie: REKORDY['noc_cap-0v6'],
       },
       {
         ...bazowy.candidates[2],
@@ -239,8 +240,7 @@ export function widokNocFixture(): WidokDoboruKompensacji {
         q_netto_punktu_noc_mvar: -0.48,
         p_point_night_mw: 1.0,
         q_przekroju_noc_mvar: 2.6,
-        spelnia_noc: false,
-        spelnia: false,
+        wymaganie: REKORDY['noc_cap-0v9'],
       },
     ],
     dobor: {

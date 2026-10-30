@@ -18,6 +18,7 @@
  */
 
 import type { DefinicjaKolumny, WierszTabeli } from '../../wyniki/wzorzec/wzorzecModel';
+import type { OcenaKryterium } from '../../wyniki/wzorzec/werdykt';
 import type { KandydatKompensacji, KrokSladuSily, WhiteboxKompensacji } from '../api';
 import { KOMPENSACJA_STRINGS as T, fmtCosfiKomp, fmtMvarKomp } from './strings';
 
@@ -25,9 +26,22 @@ import { KOMPENSACJA_STRINGS as T, fmtCosfiKomp, fmtMvarKomp } from './strings';
 // Kolumny tabeli kandydatów — wzorzec `TabelaWynikow` (ui2/wyniki/wzorzec)
 // ---------------------------------------------------------------------------
 
-/** Werdykt spełnienia progu (PL). */
-export function werdyktKompPL(spelnia: boolean): string {
-  return spelnia ? T.werdyktSpelnia : T.werdyktNieSpelnia;
+/**
+ * Składowa K rekordu W kandydata dla scenariusza (dzień / noc) — `undefined`, gdy scenariusz
+ * nie był liczony. Ostrzeżenie komórki cosφ punktu czyta status TEJ składowej (karta
+ * WERDYKT-MIGRACJA-190, D18), nie porównuje cosφ z progiem w oknie.
+ */
+export function skladowaScenariusza(
+  kandydat: KandydatKompensacji,
+  scenariusz: 'dzien' | 'noc',
+): OcenaKryterium | undefined {
+  return kandydat.wymaganie.oceny_skladowe.find(
+    (o) => o.kryterium_id === `kompensacja.cosfi_punktu.${scenariusz}`,
+  );
+}
+
+function naruszona(ocena: OcenaKryterium | undefined): boolean {
+  return ocena?.status_maszynowy === 'NIE_SPELNIA';
 }
 
 /**
@@ -87,9 +101,11 @@ function wierszKandydata(kandydat: KandydatKompensacji, uwzglednijNoc: boolean):
     cosfi_punktu_dzien: {
       wartosc: fmtCosfiKomp(kandydat.cosfi_punktu_dzien),
       sortKey: kandydat.cosfi_punktu_dzien ?? undefined,
-      ostrzezenie: !kandydat.spelnia_dzien,
+      ostrzezenie: naruszona(skladowaScenariusza(kandydat, 'dzien')),
     },
-    werdykt: { wartosc: werdyktKompPL(kandydat.spelnia) },
+    // Etykieta rekordu W (spełnione / naruszone / nieocenione / brak dowodu) — pełne
+    // wyjaśnienie w karcie rekordu doboru.
+    werdykt: { wartosc: kandydat.wymaganie.etykieta.etykieta_pl },
     // INFORMACJA (dzień): cosφ przekroju — bez werdyktu, bez tagu.
     cosfi_przekroju_dzien: {
       wartosc: fmtCosfiKomp(kandydat.cosfi_przekroju_dzien),
@@ -100,7 +116,7 @@ function wierszKandydata(kandydat: KandydatKompensacji, uwzglednijNoc: boolean):
     wiersz.cosfi_punktu_noc = {
       wartosc: fmtCosfiKomp(kandydat.cosfi_punktu_noc),
       sortKey: kandydat.cosfi_punktu_noc ?? undefined,
-      ostrzezenie: kandydat.spelnia_noc === false,
+      ostrzezenie: naruszona(skladowaScenariusza(kandydat, 'noc')),
     };
     wiersz.cosfi_przekroju_noc = {
       wartosc: fmtCosfiKomp(kandydat.cosfi_przekroju_noc),

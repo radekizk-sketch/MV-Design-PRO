@@ -1483,9 +1483,12 @@ export interface KandydatKompensacji {
   readonly q_przekroju_noc_mvar: number | null;
   readonly q_cap_eff_noc_mvar: number | null;
   readonly q_netto_punktu_noc_mvar: number | null;
-  readonly spelnia_dzien: boolean;
-  readonly spelnia_noc: boolean | null;
-  readonly spelnia: boolean;
+  /**
+   * Rekord W wymaganego cosφ punktu kompensowanego (karta WERDYKT-MIGRACJA-190, D18):
+   * składowe K `kompensacja.cosfi_punktu.dzien` i (scenariusz nocny) `….noc` z limitem,
+   * marginesem i powodem braku wyniku. Zastępuje dawne gołe flagi `spelnia*`.
+   */
+  readonly wymaganie: WynikWymagania;
 }
 
 /**

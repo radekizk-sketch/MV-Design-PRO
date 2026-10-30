@@ -9,10 +9,6 @@
  */
 
 import type { OknoNormatywneLom } from '../api';
-import type { Etykieta } from '../../wyniki/wzorzec/werdykt';
-
-/** Poziom istotności do doboru koloru tagu/statusu (wyłącznie prezentacja). */
-export type IstotnoscTaguLom = 'ok' | 'warn' | 'err' | 'neutral';
 
 export const LOM_STRINGS = {
   // Nagłówek okna
@@ -76,23 +72,6 @@ export const LOM_STRINGS = {
   spzWolne: 'SPZ wolne',
   kreska: '—',
 } as const;
-
-/**
- * Istotność tagu (dobór koloru) WYŁĄCZNIE z semantyki etykiety backendu
- * (kontrakt werdyktu wyjaśnialnego §9: interfejs mapuje tylko semantykę na kolor).
- */
-export function istotnoscLom(etykieta: Etykieta): IstotnoscTaguLom {
-  switch (etykieta.semantyka) {
-    case 'pozytywna':
-      return 'ok';
-    case 'ostrzegawcza':
-      return 'warn';
-    case 'negatywna':
-      return 'err';
-    case 'neutralna':
-      return 'neutral';
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Formatery deterministyczne (przecinek dziesiętny PL)

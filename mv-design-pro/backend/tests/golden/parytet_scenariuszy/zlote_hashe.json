@@ -8,7 +8,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "87067cc06215c1d97d41c61a7ebffd59be55f7f439f8bbfaf0f1bf9d528b39ee"
+    "sha256": "c46823a883b0db9c47693cc5a489b5b48c5b195221f4cb7c91dec1ad66e7efdb"
   },
   "dobor_kompensacji/golden/bus_sn_c_noc": {
     "parametry": {
@@ -20,7 +20,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "0d3b9538e5af73ae2d5075e98f6d14ca6301de84c59177e5cb6aaf2b69707226"
+    "sha256": "dcbe2709b9072c263baa0ca2232f92309d9d70545bcc963e3ab6ea9559369580"
   },
   "dobor_kompensacji/kompensacja/bus_pcc_dzien": {
     "parametry": {
@@ -31,7 +31,7 @@
       },
       "siec": "kompensacja"
     },
-    "sha256": "fbf74ec9924322877c70e16e136c1552179c64d27a7cde82c193aa69e1fe68d9"
+    "sha256": "b4ebc7c8d7f38df5658cdebe5c6a47a35c97178a89ae918032eceac25c56bf86"
   },
   "dobor_kompensacji/kompensacja/bus_pcc_noc": {
     "parametry": {
@@ -43,7 +43,7 @@
       },
       "siec": "kompensacja"
     },
-    "sha256": "ab7de20176351e47b0c30a18193f85018da9cf5ecb3145c60b0e6d3e63c05e3f"
+    "sha256": "57f71a1bd1b852a4d086b252684832287a5c80e0fdab44d22534901737d38616"
   },
   "hosting_capacity/golden/bus_sn_c_max20": {
     "parametry": {
