@@ -36,7 +36,7 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
     curves = repo.list_protection_curves()
     templates = repo.list_protection_setting_templates()
 
-    assert len(devices) >= 12
+    assert len(devices) >= 14
     assert len(curves) >= 8
     assert len(templates) >= 8
 
@@ -86,7 +86,7 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
     referencyjne_device_ids = {
         data["id"]
         for data in device_dicts
-        if data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
+        if data["vendor"] is None and data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
     }
     assert referencyjne_device_ids == {
         "REF-OC-100",
@@ -108,7 +108,22 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
         "EM_ETANGO_1250_V0",
         "EM_ETANGO_1600_V0",
         "EM_ETANGO_2000_V0",
+        "EM_E2TANGO_250",
+        "EM_E2TANGO_450",
     }
+
+def test_new_etango_families_are_catalogued_without_guessed_functions() -> None:
+    repo = get_default_mv_catalog()
+    for identyfikator in ("EM_E2TANGO_250", "EM_E2TANGO_450"):
+        pozycja = repo.get_protection_device_type(identyfikator)
+        assert pozycja is not None
+        assert pozycja.vendor == "ELEKTROMETAL"
+        assert pozycja.rated_current_a is None
+        assert pozycja.analytical_library_ref is None
+        assert pozycja.verification_status == "CZESCIOWO_ZWERYFIKOWANY"
+        assert pozycja.catalog_status == "REFERENCYJNY_V1"
+        assert "elektrometal-energetyka.pl" in pozycja.source_reference
+        assert "1 A lub 5 A" in (pozycja.notes_pl or "")
 
 
 def test_abb_vendor_adapter_covers_reference_devices() -> None:
