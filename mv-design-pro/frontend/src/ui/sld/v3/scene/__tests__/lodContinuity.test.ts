@@ -102,6 +102,8 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
     // `naped`, korekta właściciela 2026-10-29 pkt 4) to TEN SAM wyłącznik toru ze znakiem
     // napędu — aparat ciągłości jak `qetBreaker`; tak samo łącznik trójpołożeniowy ze znakiem
     // napędu zasobnikowego (`qetThreePositionSwitchZNapedem`, decyzja architekta 2026-10-30).
+    // Wyłącznik w wykonaniu wysuwnym (`BayPrimaryDevice.wykonanie` = WYSUWNE, rozstrzygnięcie
+    // architekta 2026-10-30 pkt 3) — ten sam wyłącznik toru ze znacznikiem członu wysuwnego „○".
     expect([...CONTINUITY_APPARATUS_SYMBOL_IDS].sort()).toEqual([
       'breaker',
       'disconnector',
@@ -111,6 +113,8 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
       'loadBreakSwitch',
       'noPoint',
       'qetBreaker',
+      'qetBreakerWysuwny',
+      'qetBreakerWysuwnyZNapedem',
       'qetBreakerZNapedem',
       'qetDisconnector',
       'qetFuseSwitch',

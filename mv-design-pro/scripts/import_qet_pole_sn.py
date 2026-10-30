@@ -72,6 +72,12 @@ FIGURY = {"line", "polygon", "rect", "ellipse", "arc", "text"}
 #: np. sprzężenie mechaniczne napędu EN 60617 02-13-26); każdy inny przerywa import.
 STYLE_KRESKI = {"normal", "dashed"}
 IGNOROWANE = {"dynamic_text", "input"}
+#: Zakończenia linii źródła: brak albo grot otwarty ``simple`` (np. strzałka przepływu energii
+#: EN 60617 02-05-01). Grot = osobny prymityw — łamana otwarta DOPISANA NA KOŃCU listy
+#: prymitywów elementu (numeracja figur źródła w manifeście bez zmian), geometria jak w QET
+#: (``PartLine::fourEndPoints``): wierzchołek w końcu linii, ramiona do punktów odległych o
+#: ``lengthN`` wzdłuż linii i o ``lengthN``/2 w poprzek. Każde inne zakończenie przerywa import.
+ZAKONCZENIA_LINII = {"none", "simple"}
 KIERUNKI = {"n": "N", "s": "S", "e": "E", "w": "W"}
 OBROT_KIERUNKU = {
     0: {"N": "N", "E": "E", "S": "S", "W": "W"},
@@ -197,9 +203,27 @@ def styl(element: ET.Element) -> dict[str, str]:
     if wynik["color"] not in ("black", "#000000"):
         raise BladImportu(f"kolor {wynik['color']!r} wymaga osobnej oceny")
     for koniec in ("end1", "end2"):
-        if element.get(koniec, "none") != "none":
+        if element.get(koniec, "none") not in ZAKONCZENIA_LINII:
             raise BladImportu(f"zakończenie linii {koniec}={element.get(koniec)!r} nieobsługiwane")
+        if element.get(koniec, "none") != "none" and element.tag != "line":
+            raise BladImportu(f"zakończenie {koniec} dopuszczone wyłącznie dla linii")
     return wynik
+
+
+def grot_linii(
+    koniec: tuple[float, float], drugi: tuple[float, float], dlugosc: float, sciezka: str
+) -> Prymityw:
+    """Grot otwarty ``simple`` w punkcie ``koniec`` linii (geometria QET ``fourEndPoints``)."""
+    dx, dy = drugi[0] - koniec[0], drugi[1] - koniec[1]
+    d = math.hypot(dx, dy)
+    if d == 0 or not 0 < dlugosc < d:
+        raise BladImportu(f"{sciezka}: grot linii dłuższy niż linia albo linia zerowa")
+    ux, uy = dx / d, dy / d
+    sx, sy = koniec[0] + ux * dlugosc, koniec[1] + uy * dlugosc
+    ox, oy = -uy * dlugosc / 2, ux * dlugosc / 2
+    return Prymityw(
+        rodzaj="polygon", punkty=((sx + ox, sy + oy), koniec, (sx - ox, sy - oy)), zamkniety=False
+    )
 
 
 @dataclass(frozen=True)
@@ -267,6 +291,7 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
         sha256=hashlib.sha256(dane).hexdigest(),
     )
     uzyte_decyzje: set[str] = set()
+    groty: list[Prymityw] = []
     for wezel in opis:
         if wezel.tag == "terminal":
             kierunek = KIERUNKI.get(wezel.get("orientation", ""))
@@ -304,16 +329,15 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             continue
         s = styl(wezel)
         if wezel.tag == "line":
+            p1 = (liczba(wezel.get("x1"), "x1"), liczba(wezel.get("y1"), "y1"))
+            p2 = (liczba(wezel.get("x2"), "x2"), liczba(wezel.get("y2"), "y2"))
             element.prymitywy.append(
-                Prymityw(
-                    rodzaj="line",
-                    punkty=(
-                        (liczba(wezel.get("x1"), "x1"), liczba(wezel.get("y1"), "y1")),
-                        (liczba(wezel.get("x2"), "x2"), liczba(wezel.get("y2"), "y2")),
-                    ),
-                    kreskowana=s["line-style"] == "dashed",
-                )
+                Prymityw(rodzaj="line", punkty=(p1, p2), kreskowana=s["line-style"] == "dashed")
             )
+            for koniec, punkt, drugi in (("1", p1, p2), ("2", p2, p1)):
+                if wezel.get(f"end{koniec}", "none") == "simple":
+                    dl = liczba(wezel.get(f"length{koniec}"), f"length{koniec}")
+                    groty.append(grot_linii(punkt, drugi, dl, sciezka))
         elif wezel.tag == "rect":
             # Prostokąt źródła (np. wtyk złącza EN 60617 03-03-05) = zamknięty wielokąt czterech
             # narożników; zaokrąglenie narożników poza podzbiorem.
@@ -376,6 +400,7 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             )
     if set(decyzje_tekstu) - uzyte_decyzje:
         raise BladImportu(f"{sciezka}: decyzje tekstu bez tekstu w źródle")
+    element.prymitywy.extend(groty)
     return element
 
 
@@ -594,7 +619,9 @@ def _powod(wpis: dict[str, Any], ident: str, co: str) -> str:
 
 #: Zakres skali lokalnej prymitywów (``skalaLokalna`` manifestu): powiększenie znaku rodzaju
 #: aparatu albo zmniejszenie doprowadzenia obwodu wtórnego przed jednokładnością rysunku.
-SKALA_LOKALNA = (0.25, 4.0)
+#: Górna granica 12: grot strzałki przepływu energii EN 60617 02-05-01 ma w źródle długość
+#: 1,5 jednostki QET (0,6 j.św.) — czytelny grot odejścia pola (7 j.św.) wymaga ×11,7.
+SKALA_LOKALNA = (0.25, 12.0)
 #: Zakres jednokładności rysunku symbolu (``skalaRysunku`` manifestu).
 SKALA_RYSUNKU = (1.0, 4.0)
 
@@ -651,11 +678,24 @@ def prymitywy_skladnikow(
         si = int(decyzja["skladnik"])
         skala = float(decyzja["skala"])
         if not SKALA_LOKALNA[0] <= skala <= SKALA_LOKALNA[1] or skala == 1:
-            raise BladImportu(f"{ident}: skala lokalna {skala} poza [0,25; 4] albo równa 1")
+            raise BladImportu(f"{ident}: skala lokalna {skala} poza [0,25; 12] albo równa 1")
         srodek = (float(decyzja["srodek"][0]), float(decyzja["srodek"][1]))
         for pi in decyzja["prymitywy"]:
             sprawdz(si, int(pi), "skala lokalna")
             wynik[si][int(pi)] = przeskaluj_prymityw(wynik[si][int(pi)], srodek, skala, ident)
+    for decyzja in wpis.get("kreskowanie", []):
+        # Linia ciągła źródła rysowana przerywaną — wyłącznie z powodem (np. kabel odejścia
+        # pola, którego nie ma w modelu: znak „poza modelem", nie przewód toru).
+        _powod(decyzja, ident, "kreskowanie")
+        si = int(decyzja["skladnik"])
+        for pi in decyzja["prymitywy"]:
+            sprawdz(si, int(pi), "kreskowanie")
+            p = wynik[si][int(pi)]
+            if p.rodzaj != "line" or p.kreskowana:
+                raise BladImportu(
+                    f"{ident}: kreskowanie — prymityw {pi} składnika {si} nie jest linią ciągłą"
+                )
+            wynik[si][int(pi)] = replace(p, kreskowana=True)
     return wynik
 
 

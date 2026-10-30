@@ -449,7 +449,8 @@ const RODZAJ_SEMANTYCZNY_QET: Readonly<Record<QetSymbolPolaSnId, SymbolId>> = {
   qetCoreBalanceCt: 'qetCoreBalanceCt',
   qetCableHead: 'cableHead',
   qetVoltageIndicator: 'voltageIndicator',
-  // Zakończenie toru pola bez kabla w modelu (EN 60617 03-01-14) — jedyny rysunek tego
+  // Zakończenie toru pola bez kabla w modelu (kabel 03-01-14 kreskowany + grot 02-05-01 w dół,
+  // decyzja właściciela 2026-10-30) — jedyny rysunek tego
   // rodzaju (rysunek kanoniczny poprzeczek czytał się jak uziemienie, usunięty).
   bayReserve: 'bayReserve',
 };

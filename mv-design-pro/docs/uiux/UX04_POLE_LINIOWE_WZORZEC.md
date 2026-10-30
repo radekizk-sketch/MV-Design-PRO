@@ -107,7 +107,7 @@ w zatwierdzeniu źródła, bajtowa równość pilnowana importerem):
 | `qetVoltageTransformer3` | **złożenie** dwóch kopii `91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt` (cztery okręgi w romb: pierwotne i trzy wtórne) — przekładnik T3 z trzema uzwojeniami wtórnymi w modelu (`uzwojenia`, decyzja właściciela 2026-10-29 pkt 1, §11.2) | `a883a2e6daec80c241594505c96295c917884adc` ×2 |
 | `qetVoltageIndicator` | `10_allpole/450_high_voltage/signal_capacitif.elmt` (przewód toru przechodzi przez symbol — uwaga manifestu) | `fa4f0d85eabef67c8dfcf4cd102fdba3bc7c91d4` |
 | `qetCableHead` | `91_en_60617/en_60617_03/en_60617_03_03/en_60617_03_03_05.elmt` (złącze wtykowe: wtyk od strony aparatu, gniazdo od strony kabla — znak rysunków Z.10/Z.11.1; dawny element zakończenia kabla `en_60617_03_04_01` usunięty z importu) | `93d917ff316a374b81696b92ddf91501d4da2b49` |
-| `bayReserve` | `91_en_60617/en_60617_03/en_60617_03_01/en_60617_03_01_14.elmt` (koniec kabla niepodłączony — koniec toru pola WOLNEGO, nigdy znak uziemienia) | `0b62c546b2fc8651ae8c8d75cab73e657e9effc6` |
+| `bayReserve` | **złożenie** `91_en_60617/en_60617_03/en_60617_03_01/en_60617_03_01_14.elmt` (przewód bez łuku końca kabla, kreskowany — kabla nie ma w modelu) + `91_en_60617/en_60617_02/en_60617_02_05/en_60617_02_05_01.elmt` (grot strzałki przepływu energii w jednym kierunku, w dół) — „odejście kablowe poza modelem", koniec toru pola WOLNEGO, nigdy znak uziemienia (decyzja właściciela 2026-10-30, §11.14) | `0b62c546b2fc8651ae8c8d75cab73e657e9effc6` + `a898d98255ccabb9b81d0e4b185723c95d5b3536` |
 | `qetCoreBalanceCt` | `91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_10.elmt` | `4742b0a5097196c28ac3c07e30ce427a95a36ad2` |
 | `qetLoadBreakSwitch` | `91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_08.elmt` (pola rodzin producentów) | `ca96486920218370b3afffb17a0ae8bfe3f6414c` |
 | `qetFuseSwitch` | `91_en_60617/en_60617_07/en_60617_07_21/en_60617_07_21_09.elmt` (pola rodzin producentów) | `8079d0cde1116a3efa45064a5211b3cbf92ba2e0` |
@@ -193,7 +193,8 @@ Pomiar rozliczeniowy (AJEE) — progi i ocena w §4.
 
 Pole wolne (bez kabla odejścia) rysuje KOMPLET aparatów rekordu: głowica GK i przekładnik
 Ferrantiego T2 są aparatami pola (rekordy modelu), więc stoją w każdym polu jak na rysunkach
-ENEA; koniec toru pola wolnego oznacza symbol „koniec kabla niepodłączony" (`bayReserve`) — nigdy
+ENEA; koniec toru pola wolnego oznacza symbol „odejście kablowe poza modelem" (`bayReserve`: kabel
+kreskowany ze strzałką w dół, decyzja właściciela 2026-10-30) — nigdy
 znak uziemienia. Pole zajęte kończy się KABLEM ODEJŚCIA — gałęzią modelu typu kabel z zacisku
 pola — którego odcinek na schemacie zaczyna się w porcie S przekładnika T2 (test
 `poleLinioweGpz.test.tsx`, opis „kabel odejścia pola jako gałąź modelu", §11.5).
@@ -1724,6 +1725,22 @@ Test: `v2/station-rozdzielnia/__tests__/barwaLacznikaJednoZrodlo.test.tsx` — i
 szczegółu {far, closer, close} przy wyłączniku sprzęgła otwartym (NOP), symbol reprezentatywny × stan;
 wyrocznia — jawna tabela literałów kolorów. Iniekcje: „NOP otwiera romb" i „uziemiony = czerwony" — czerwone
 (13 z 35 przypadków; po naprawie 35/35 zielonych).
+
+**Przekładnik Ferrantiego i tor wyjściowy pola wolnego — wykonanie.** Uwaga właściciela „bez dziwnej laski
+pod przekładnikiem Ferrantiego" dotyczyła znaku końca toru pola wolnego (`bayReserve`): pionowa kreska
+z łukiem (EN 60617 03-01-14, koniec kabla niepodłączony) pod pierścieniem T2. Pierścień T2 stoi na kablu
+odejścia bez zmian (rdzeń z przewlekanymi przewodami, znak „3", linia pomiarowa do przekaźnika). Zakończenie
+pola wolnego jest teraz złożeniem: przewód 03-01-14 bez łuku, kreskowany (kabla nie ma w modelu), z grotem
+strzałki przepływu energii w jednym kierunku EN 60617 02-05-01 skierowanym w dół (od szyny do sieci); gabaryt
+16 × 32 j.św. i port bez zmian, więc układ pola nie przesuwa się. Pole zajęte kończy się, jak dotąd, kablem
+odejścia — gałęzią modelu z portu S przekładnika T2. Importer QET zyskał dwie reguły z iniekcjami: zakończenie
+linii `simple` (grot otwarty wg geometrii QET `fourEndPoints`, dopisany na końcu listy prymitywów — numeracja
+figur źródła bez zmian; każde inne zakończenie przerywa import) i decyzję `kreskowanie` (wyłącznie linia ciągła,
+z powodem). Górna granica skali lokalnej podniesiona z 4 do 12 (grot źródła ma 1,5 jednostki QET = 0,6 j.św.).
+Testy: `backend/tests/ci/test_qet_pole_sn_import.py` (znak odejścia z wyrocznią grotu, geometria grotu
+w trzech kierunkach, iniekcje: zakończenie `triangle`, kreskowanie bez powodu i na łamanej, brak decyzji
+kreskowania), `symbols/__tests__/odejscieKablowePolaWolnego.test.tsx` (motyw × skala {0,51; 0,69; 1,02; 1,38};
+iniekcje: dawny znak z łukiem, strzałka w górę).
 
 **Do decyzji architekta (z pomiarem) — stan sprzed rozstrzygnięcia 2026-10-30.**
 

@@ -507,8 +507,9 @@ const BRAK_DANYCH_WYPOSAZENIA: FieldApparatusSpec = {
   parityKeys: ['gpz.bay.no_equipment_data'],
 };
 
-/** GEOMETRIA-STACJI (§0 pkt 5): zakończenie toru pola rezerwowego/wolnego — koniec kabla
- *  niepodłączony (EN 60617 03-01-14): kabla odpływowego nie ma w modelu. */
+/** GEOMETRIA-STACJI (§0 pkt 5): zakończenie toru pola rezerwowego/wolnego — odejście kablowe
+ *  poza modelem (kabel kreskowany ze strzałką w dół; decyzja właściciela 2026-10-30): kabla
+ *  odpływowego nie ma w modelu. */
 const ZAKONCZENIE_REZERWY: FieldApparatusSpec = { symbolId: 'bayReserve', parityKeys: ['gpz.bay.reserve'] };
 
 /** Role źródła pola OZE rysowane w GPZ (rodzaj rozstrzygnięty albo nieokreślony). */
@@ -550,7 +551,7 @@ export function jestAparatemBocznymPolaGpz(symbolId: SymbolId): boolean {
  * przy pełnej zgodności z gramatyką. Pole bez rekordu `Bay` (tor transformatora bez pola WN
  * albo pola TR w modelu) — `null` — też dostaje sylwetkę braku danych.
  * Pole źródłowe dokłada glif rodzaju źródła (element modelu, nie aparat); pole
- * rezerwowe/wolne kończy się zakończeniem rezerwy (koniec kabla niepodłączony).
+ * rezerwowe/wolne kończy się zakończeniem rezerwy (odejście kablowe poza modelem).
  */
 function specyfikacjaPolaGpz(bay: CanonicalGpzBay | null): readonly FieldApparatusSpec[] {
   const rezerwa = bay?.reserve;
@@ -1032,7 +1033,7 @@ interface TekstEtykietyAparatuGpz {
 function tekstyEtykietAparatowGpz(spec: readonly FieldApparatusSpec[]): readonly TekstEtykietyAparatuGpz[] {
   const brak: TekstEtykietyAparatuGpz = { tekst: null, najdluzszy: null };
   // Konwencja QET rozpoznawana po aparatach Z REKORDEM: zakończenie toru (`bayReserve`,
-  // EN 60617 03-01-14) jest symbolem QET bez rekordu i stoi także w torze rysowanym
+  // odejście kablowe poza modelem) jest symbolem QET bez rekordu i stoi także w torze rysowanym
   // symbolami kanonicznymi — nie może przełączać konwencji podpisów pola.
   if (!spec.some((pozycja) => pozycja.device != null && czySymbolQet(pozycja.symbolId))) {
     return spec.map(() => brak);

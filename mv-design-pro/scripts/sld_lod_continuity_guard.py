@@ -65,6 +65,12 @@ REQUIRED_CONTINUITY_APPARATUS = [
     "qetLoadBreakSwitch",
     "qetFuseSwitch",
     "qetThreePositionSwitch",
+    # Łącznik trójpołożeniowy ze znakiem napędu zasobnikowego (decyzja architekta 2026-10-30)
+    # i wyłącznik w wykonaniu wysuwnym, bez i z napędem M (rekord `wykonanie`,
+    # rozstrzygnięcie architekta 2026-10-30 pkt 3) — te same aparaty ciągłości toru.
+    "qetThreePositionSwitchZNapedem",
+    "qetBreakerWysuwny",
+    "qetBreakerWysuwnyZNapedem",
 ]
 # Powody braków, które wyrocznia MUSI umieć zgłosić (i test — sprawdzić).
 REQUIRED_GAP_REASONS = [

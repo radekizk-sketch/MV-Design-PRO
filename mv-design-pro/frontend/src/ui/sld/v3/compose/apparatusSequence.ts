@@ -23,8 +23,9 @@
  *     zagregowanym z innych gałęzi.
  * Pole rezerwowe/wolne (`MiniBlockBayDescriptor.reserve`) rysuje WSZYSTKIE aparaty swoich
  * rekordów (także głowicę kablową i przekładnik Ferrantiego — zero fabrykacji w obie strony:
- * aparat z modelu nie znika z rysunku) i kończy się symbolem `bayReserve` (EN 60617 03-01-14
- * „koniec kabla niepodłączony", bez portu S — kabla odpływowego nie ma w modelu), §0 pkt 5.
+ * aparat z modelu nie znika z rysunku) i kończy się symbolem `bayReserve` („odejście kablowe
+ * poza modelem": kabel kreskowany ze strzałką w dół — przewód EN 60617 03-01-14 bez łuku i grot
+ * 02-05-01, decyzja właściciela 2026-10-30; bez portu S — kabla odpływowego nie ma w modelu), §0 pkt 5.
  *
  * DECYZJA (mapowanie `LOAD_SWITCH`): biblioteka symboli v3 (`symbols/defs.ts`)
  * nie ma dziś dedykowanego glifu „rozłącznik" (odróżnialnego od odłącznika)

@@ -83,6 +83,12 @@
       "teksty": {}
     },
     {
+      "id": "en_60617_02_05_01",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_05/en_60617_02_05_01.elmt",
+      "upstreamBlobSha": "a898d98255ccabb9b81d0e4b185723c95d5b3536",
+      "teksty": {}
+    },
+    {
       "id": "en_60617_03_01_14",
       "sourcePath": "10_electric/91_en_60617/en_60617_03/en_60617_03_01/en_60617_03_01_14.elmt",
       "upstreamBlobSha": "0b62c546b2fc8651ae8c8d75cab73e657e9effc6",
@@ -1206,14 +1212,52 @@
     },
     {
       "symbolId": "bayReserve",
-      "namePl": "Koniec kabla niepodłączony",
-      "zlozenie": null,
-      "skladniki": [{ "element": "en_60617_03_01_14", "obrot": 90, "przesuniecie": [0, 0] }],
+      "namePl": "Odejście kablowe poza modelem",
+      "zlozenie": "kabel odejścia pola kreskowany (przewód elementu EN 60617 03-01-14 bez łuku zakończenia) zakończony grotem strzałki przepływu energii w jednym kierunku (EN 60617 02-05-01) skierowanym w dół — od szyny do sieci",
+      "skladniki": [
+        { "element": "en_60617_03_01_14", "obrot": 90, "przesuniecie": [0, 0] },
+        { "element": "en_60617_02_05_01", "obrot": 90, "przesuniecie": [0, 40] }
+      ],
       "porty": [{ "name": "top", "skladnik": 0, "zacisk": [-40, 0] }],
-      "uwaga": "Element EN 60617 03-01-14 (koniec przewodu lub kabla, niepodłączony) — zakończenie toru pola, którego kabel odpływowy nie jest jeszcze w modelu (pole wolne / rezerwowe). Obrót o 90° ustawia przewód w osi toru, z zakończeniem u dołu. Nie jest znakiem uziemienia (uziemienie występuje wyłącznie przy uziemniku).",
+      "uwaga": "Zakończenie toru pola, którego kabel odpływowy nie jest w modelu (pole wolne / rezerwowe). Decyzja właściciela 2026-10-30 (karta UX-04, uwaga „dziwna laska pod przekładnikiem Ferrantiego”): tor wyjściowy rysowany kreskowanym kablem ze strzałką w dół, bez łuku końca kabla niepodłączonego (03-01-14) — kreska przerywana mówi „kabla nie ma w modelu”, grot — kierunek odejścia od szyny. Nie jest znakiem uziemienia ani przewodem toru.",
       "przewodyJakoRysunek": {
-        "powod": "odcinek przewodu jest treścią znaku końca kabla niepodłączonego (EN 60617 03-01-14) — nie jest przewodem toru do przycięcia; gabaryt obejmuje cały znak i port"
-      }
+        "powod": "kabel odejścia jest treścią znaku zakończenia toru pola wolnego — nie jest przewodem toru do przycięcia; gabaryt obejmuje cały znak i port"
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [1],
+          "powod": "łuk końca kabla niepodłączonego (EN 60617 03-01-14) zastąpiony grotem kierunku odejścia — decyzja właściciela 2026-10-30"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [0, 1],
+          "powod": "trzon strzałki 02-05-01 pominięty — trzonem jest kreskowany kabel odejścia (składnik 0), grot stoi na jego końcu"
+        }
+      ],
+      "skalaLokalna": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0],
+          "srodek": [-40, 0],
+          "skala": 1.1428571428571428,
+          "powod": "przewód 03-01-14 (od zacisku −40 do 30) wydłużony wokół zacisku do 40 — kabel kończy się w wierzchołku grotu (80 jednostek QET = 32 j.św., gabaryt toru bez zmian)"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [2],
+          "srodek": [0, 0],
+          "skala": 11.666666666666666,
+          "powod": "grot 02-05-01 (długość źródła 1,5 jednostki QET = 0,6 j.św., nieczytelny) powiększony wokół wierzchołka do 17,5 jednostki QET = 7 j.św. długości i 7 j.św. rozpiętości — czytelny kierunek odejścia na LOD1 i LOD2"
+        }
+      ],
+      "kreskowanie": [
+        {
+          "skladnik": 0,
+          "prymitywy": [0],
+          "powod": "kabel odejścia pola wolnego nie jest w modelu — linia przerywana (decyzja właściciela 2026-10-30: tor wyjściowy kreskowany)"
+        }
+      ]
     }
   ],
   "kafelStanu": {

@@ -977,8 +977,8 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
   },
   bayReserve: {
     id: 'bayReserve',
-    namePl: 'Koniec kabla niepodłączony',
-    zlozenie: null,
+    namePl: 'Odejście kablowe poza modelem',
+    zlozenie: 'kabel odejścia pola kreskowany (przewód elementu EN 60617 03-01-14 bez łuku zakończenia) zakończony grotem strzałki przepływu energii w jednym kierunku (EN 60617 02-05-01) skierowanym w dół — od szyny do sieci',
     szerokosc: 16,
     wysokosc: 32,
     porty: [
@@ -986,13 +986,13 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     ],
     portyWtorne: [],
     doprowadzenia: [],
-    obrys: { x: 8, y: 0, width: 8, height: 32 },
-    glif: { x: 8, y: 0, width: 8, height: 32 },
+    obrys: { x: 4.5, y: 0, width: 7, height: 32 },
+    glif: { x: 4.5, y: 0, width: 7, height: 32 },
     kafel: null,
     przewody: [],
     stale: [
-      { k: 'line', x1: 8, y1: 0, x2: 8, y2: 28 },
-      { k: 'arc', d: 'M 8 28 A 4 4 0 0 0 16 28' },
+      { k: 'line', x1: 8, y1: 0, x2: 8, y2: 32, kreskowana: true },
+      { k: 'path', d: 'M 11.5 25 L 8 32 L 4.5 25', fill: 'none' },
     ],
     osprzet: [],
     noz: null,
@@ -1000,6 +1000,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     ziemia: null,
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_03/en_60617_03_01/en_60617_03_01_14.elmt', upstreamBlobSha: '0b62c546b2fc8651ae8c8d75cab73e657e9effc6', sha256: 'efbd93c234ca3e7e37f39db946ce13237165a1ccdd471149ea01368e1779c416' },
+      { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_05/en_60617_02_05_01.elmt', upstreamBlobSha: 'a898d98255ccabb9b81d0e4b185723c95d5b3536', sha256: 'ec063ecc7d68e914b08d949aee8d70be7e549175beeecc06710795cd624e20e6' },
     ],
   },
 };

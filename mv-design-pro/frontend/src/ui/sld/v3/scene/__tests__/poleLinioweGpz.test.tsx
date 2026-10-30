@@ -115,8 +115,8 @@ function odgalezienieOczekiwane(pole: WykonaniePola, laczniki: Laczniki): Odgale
 /* Pole wolne (bez kabla odejścia) rysuje KOMPLET aparatów rekordu — głowica GK i przekładnik
  * Ferrantiego T2 są aparatami pola (rekordy modelu), nie kabla, więc nie znikają, gdy kabla brak
  * (dawne przycinanie toru pola wolnego było defektem: rysunek ENEA ma GK i T2 w każdym polu).
- * Koniec toru pola wolnego oznacza symbol „koniec kabla niepodłączony" (QET EN 60617 03-01-14,
- * `bayReserve`) — nigdy znak uziemienia. Pole zajęte kończy się kablem odejścia (gałąź modelu)
+ * Koniec toru pola wolnego oznacza symbol „odejście kablowe poza modelem" (`bayReserve`: kabel
+ * kreskowany ze strzałką w dół, decyzja właściciela 2026-10-30) — nigdy znak uziemienia. Pole zajęte kończy się kablem odejścia (gałąź modelu)
  * z portu S ostatniego aparatu toru. */
 /** Adnotacje pola (§17: przekaźnik z kodami EAZ, miernik) — nie pozycje toru. */
 const ADNOTACJE = new Set(['protectionRelay', 'meter']);
