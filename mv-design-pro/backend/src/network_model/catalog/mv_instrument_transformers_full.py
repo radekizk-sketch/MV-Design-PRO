@@ -280,3 +280,62 @@ def get_all_abb_udz_vt_profiles() -> list[dict[str, Any]]:
         for voltage in (6, 15, 20)
         for mode in ("meter02", "meter02-residual3p", "meter05-residual3p")
     ]
+
+
+ABB_TPU_NAMEPLATE_SOURCE = (
+    "ABB, Instructions for Installation, Use and Maintenance for Current and "
+    "Voltage Transformers, 1VLM000610 rev.27, rys. 01 przykładowej tabliczki "
+    "TPU 70.63, 2024, 100//1/1/1/5 A, 36/70/170 kV, Ith 16(1s) kA, Idyn 40 kA; "
+    "https://library.e.abb.com/public/be6ececc53e049c7a172e37fc04a8453/"
+    "Instruction_Current%20and%20Voltage%20Instrument%20Transformers_"
+    "1VLM000610%20Rev.27%20en.pdf"
+)
+
+
+def get_abb_tpu_nameplate_example() -> list[dict[str, Any]]:
+    """Dokładny przykład TABLICZKI ABB — nie dowód bieżącej dostępności handlowej.
+
+    Rdzenie 1-4 i Ich/Idyn są podane indywidualnie na rys. 01 instrukcji ABB.
+    Nie łączymy klasy rdzenia 5P20 z FS5 rdzenia rozliczeniowego.
+    """
+    return [{
+        "id": "ct-abb-tpu70-63-tabliczka-przyklad-2024",
+        "name": "ABB TPU 70.63 — udokumentowana tabliczka 100//1/1/1/5 A",
+        "params": {
+            "manufacturer": "ABB",
+            "ratio_primary_a": 100.0,
+            "ratio_secondary_a": 1.0,
+            "accuracy_class": "0.2S",
+            "burden_va": 10.0,
+            "fs_safety_factor": 5.0,
+            "ith_ka_1s": 16.0,
+            "idyn_ka_peak": 40.0,
+            "um_kv": 36.0,
+            "construction": "SUPPORT",
+            "core_count": 4,
+            "secondary_cores": [
+                {"index": 1, "role": "PROTECTION", "secondary_a": 1.0,
+                 "accuracy_class": "5P20", "burden_va": 5.0, "rct_max_ohm": 1.0},
+                {"index": 2, "role": "BILLING", "secondary_a": 1.0,
+                 "accuracy_class": "0.2S", "burden_va": 10.0, "fs": 5.0,
+                 "extended_current_percent": 120.0},
+                {"index": 3, "role": "PROTECTION", "secondary_a": 1.0,
+                 "accuracy_class": "5P40", "burden_va": 5.0, "rct_max_ohm": 2.0},
+                {"index": 4, "role": "METERING", "secondary_a": 5.0,
+                 "accuracy_class": "0.2S", "burden_va": 10.0, "fs": 5.0,
+                 "extended_current_percent": 120.0},
+            ],
+            "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "contract_version": "2.0",
+            "source_reference": ABB_TPU_NAMEPLATE_SOURCE,
+            "verification_note": (
+                "Dane dosłownie z RYSUNKU TABLICZKI ABB TPU 70.63 (przykład "
+                "dokumentacyjny, nie aktualna oferta ani karta zamówieniowa). "
+                "Rct<=1 Ω dotyczy rdzenia 1, Rct<=2 Ω rdzenia 3 — nie "
+                "są rezystancjami rdzeni 2 i 4. 36 kV to Um WYROBU; "
+                "nie utożsamiać z katalogowym 24 kV ENEA. "
+                "Do zamówienia wymagana osobna karta aktualnej konfiguracji."
+            ),
+        },
+    }]
