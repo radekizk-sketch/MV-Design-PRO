@@ -348,7 +348,10 @@ test.describe('kd6:zrzuty', () => {
       expect(await karty.count()).toBe(3);
       for (const karta of await karty.all()) {
         const ramka = await karta.boundingBox();
-        expect(ramka?.width ?? 0, 'karta werdyktu nie może być ściśnięta').toBeGreaterThan(280);
+        // Karta w PEŁNYM układzie (etykieta obok treści) od 480 px — próg `@container` karty
+        // werdyktu. Dwie kolumny po 326 px (dawne minimum siatki 320 px) wpychały kartę
+        // w układ wąski: 4 132 px wysokości na kartę (pomiar FIX-E2E-PELNE).
+        expect(ramka?.width ?? 0, 'karta werdyktu w pełnym układzie, nie ściśnięta').toBeGreaterThanOrEqual(480);
       }
       const ramkaSekcji = await sekcja.boundingBox();
       expect(ramkaSekcji?.height ?? 0, 'sekcja aparatury o rozsądnej wysokości').toBeLessThan(20000);
