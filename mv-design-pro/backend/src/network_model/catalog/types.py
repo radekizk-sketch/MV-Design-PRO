@@ -3892,6 +3892,13 @@ class CTType:
     #: normowego. `None` znaczy „karta producenta jeszcze nie wczytana"; kryterium
     #: nasycenia liczy sie wtedy z obciazalnosci znamionowej (VA), nie z rezystancji.
     rct_ohm: float | None = None
+    # Parametry konfiguracji wymaganej przez ENEA albo jawnie zamówionego
+    # konkretnego wyrobu; znormalizowana lista rdzeni bez fikcyjnych klas.
+    um_kv: float | None = None
+    construction: str | None = None
+    core_count: int | None = None
+    primary_taps_a: tuple[float, ...] | None = None
+    secondary_cores: tuple[dict[str, Any], ...] | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog CT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -3920,6 +3927,12 @@ class CTType:
             "rct_ohm": self.rct_ohm,
             "application": rdzen_ct_z_klasy(self.accuracy_class),
             "accuracy_limit_factor": alf_ct_z_klasy(self.accuracy_class),
+            **({"um_kv": self.um_kv} if self.um_kv is not None else {}),
+            **({"construction": self.construction} if self.construction else {}),
+            **({"core_count": self.core_count} if self.core_count is not None else {}),
+            **({"primary_taps_a": list(self.primary_taps_a)} if self.primary_taps_a is not None else {}),
+            **({"secondary_cores": [dict(c) for c in self.secondary_cores]}
+               if self.secondary_cores is not None else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3953,6 +3966,17 @@ class CTType:
                 else None
             ),
             rct_ohm=(float(data["rct_ohm"]) if data.get("rct_ohm") is not None else None),
+            um_kv=(float(data["um_kv"]) if data.get("um_kv") is not None else None),
+            construction=data.get("construction"),
+            core_count=(int(data["core_count"]) if data.get("core_count") is not None else None),
+            primary_taps_a=(
+                tuple(float(v) for v in data["primary_taps_a"])
+                if data.get("primary_taps_a") is not None else None
+            ),
+            secondary_cores=(
+                tuple(dict(core) for core in data["secondary_cores"])
+                if data.get("secondary_cores") is not None else None
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog CT MV-DESIGN-PRO / dane referencyjne",
@@ -4046,6 +4070,11 @@ class VTType:
     #: Dana KONSTRUKCYJNA — nie wyprowadza sie jej z klasy ani z przekladni. `None`
     #: znaczy „karta producenta jeszcze nie wczytana", `False` — brak takiego uzwojenia.
     has_residual_winding: bool | None = None
+    # Uzwojenie resztkowe nie wynika z klasy 3P. Właściwy schemat
+    # wtórny (GWIAZDA / OTWARTY_TROJKAT) niesie osobny rejestr.
+    um_kv: float | None = None
+    primary_connection: str | None = None
+    secondary_windings: tuple[dict[str, Any], ...] | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog VT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -4068,6 +4097,10 @@ class VTType:
             "voltage_factor_duration_s": self.voltage_factor_duration_s,
             "burden_va": self.burden_va,
             "has_residual_winding": self.has_residual_winding,
+            **({"um_kv": self.um_kv} if self.um_kv is not None else {}),
+            **({"primary_connection": self.primary_connection} if self.primary_connection else {}),
+            **({"secondary_windings": [dict(w) for w in self.secondary_windings]}
+               if self.secondary_windings is not None else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -4105,6 +4138,12 @@ class VTType:
                 bool(data["has_residual_winding"])
                 if data.get("has_residual_winding") is not None
                 else None
+            ),
+            um_kv=(float(data["um_kv"]) if data.get("um_kv") is not None else None),
+            primary_connection=data.get("primary_connection"),
+            secondary_windings=(
+                tuple(dict(w) for w in data["secondary_windings"])
+                if data.get("secondary_windings") is not None else None
             ),
             **_catalog_metadata_kwargs(
                 data,
