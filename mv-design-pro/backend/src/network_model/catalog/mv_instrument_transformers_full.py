@@ -65,7 +65,10 @@ def _enea_ct(
             "fs_safety_factor": 5.0,
             "ith_ka_1s": ith_ka,
             "idyn_ka_peak": ith_ka * 2.5,
-            "um_kv": 24.0,
+            # ENEA 5/C–D: zestawienie 24/0,72 kV określa napięcie
+            # sieci 24 kV oraz izolację samego toroidalnego CT 0,72 kV.
+            # Zapisanie 24 jako Um toroidu fałszywie poświadczałoby izolację.
+            "um_kv": 0.72 if construction == "RING_PHASE_CT" else 24.0,
             "construction": construction,
             "core_count": core_count,
             "secondary_cores": cores,
@@ -81,6 +84,8 @@ def _enea_ct(
                 "wg standardu pola oraz karty zamawianego wyrobu, bez "
                 "automatycznego 5P20/FS dla nieznanych rdzeni. "
                 "Ith jest wartością WYMAGANĄ, nie wynikiem badania egzemplarza. "
+                + ("ENEA 5/C-D: 24/0,72 kV to sieć/izolacja toroidu; "
+                   if construction == "RING_PHASE_CT" else "") + 
                 "Idyn=2,5×Ith jest wartością pochodną do weryfikacji. "
                 "FS<=5 dotyczy nowych rozliczeniowych CT. "
                 "Dobór sprawdzić względem mocy umownej, obciążenia wtórnego, "
