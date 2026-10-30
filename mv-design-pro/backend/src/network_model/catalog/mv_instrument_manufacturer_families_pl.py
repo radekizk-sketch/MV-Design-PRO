@@ -61,6 +61,37 @@ ZWARPOL_SOURCE = (
     "https://www.zwarpol.com/ oraz kategorie sensorów "
     "https://www.zwarpol.com/oferta/przekladniki-i-sensory/"
 )
+ITR_CT_SOURCE = (
+    "Łukasiewicz-ITR, małomocowe sensory prądowe CR/CRR, technologia "
+    "cewki Rogowskiego, bez wtórnego CT 1/5 A: "
+    "https://energetyka.itr.org.pl/przekladniki-pradowe"
+)
+ITR_CR_SOURCE = (
+    "Łukasiewicz-ITR, rodzina CR z nierozłączalnym rdzeniem: "
+    "https://energetyka.itr.org.pl/przekladniki-pradowe-cr"
+)
+ITR_CRR_SOURCE = (
+    "Łukasiewicz-ITR, rodzina CRR z dzielonym rdzeniem: "
+    "https://energetyka.itr.org.pl/przekladniki-pradowe-crr"
+)
+ITR_UR_SOURCE = (
+    "Łukasiewicz-ITR, sensory napięciowe UR56/UR66/UR90, "
+    "różne interfejsy głowic SN i dzielnik rezystancyjny: "
+    "https://energetyka.itr.org.pl/przekladniki-napieciowe-ur"
+)
+ITR_URW_SOURCE = (
+    "Łukasiewicz-ITR, sensory napięciowe wnętrzowe URW: "
+    "https://energetyka.itr.org.pl/przekladniki-napieciowe-ur-w"
+)
+ENERGOTEST_SOURCE = (
+    "SPIE Energotest, produkowany przekładnik ziemnozwarciowy I0, "
+    "deklaracja i instrukcja użytkowania: "
+    "https://spie-energotest.pl/do-pobrania"
+)
+ZELISKO_SOURCE = (
+    "ZOE, polski dostawca układów pomiarowych z sensorami napięciowymi ZELISKO: "
+    "https://zoen.pl/oferta/uklady-pomiarowo-rozliczeniowe-sensory-napieciowe"
+)
 MBS_SOURCE = (
     "ASTAT, MBS przekładniki rozliczeniowe nN ASR/ASK, "
     "https://astat.pl/produkty/energetyka-i-miernictwo/"
@@ -191,6 +222,34 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
     for model in ("JSGO-2a", "JSGO-2b"):
         families.append(_family("ZWARPOL", model, "CT", ZWARPOL_SOURCE,
                                 mounting="SPECIAL", note="Polski producent; konfiguracje specjalne wymagają DTR."))
+    # Sensory niskomocowe wymagają wejść LPCT/LPVT i oddzielnego
+    # przeliczenia sygnału; nie są przekładnikami klasycznymi 1/5A, 100V.
+    for model, kind, mounting, source in (
+        ("CR", "CT_SENSOR", "CLOSED_RING", ITR_CR_SOURCE),
+        ("CRR", "CT_SENSOR", "SPLIT_RING", ITR_CRR_SOURCE),
+        ("UR56", "VT_SENSOR", "CABLE_CONNECTOR", ITR_UR_SOURCE),
+        ("UR66", "VT_SENSOR", "CABLE_CONNECTOR", ITR_UR_SOURCE),
+        ("UR90", "VT_SENSOR", "CABLE_CONNECTOR", ITR_UR_SOURCE),
+        ("URW", "VT_SENSOR", "INDOOR", ITR_URW_SOURCE),
+    ):
+        families.append(_family(
+            "Łukasiewicz-ITR", model, kind, source + " || " + ITR_CT_SOURCE,
+            mounting=mounting,
+            note="Sensor małej mocy: wymaga kompatybilnego wejścia pomiarowego "
+                 "i znanej charakterystyki przetwarzania. NIE zamieniać na 1A/5A ani 100V.",
+        ))
+    families.append(_family(
+        "SPIE Energotest", "I0", "ZERO_SEQUENCE", ENERGOTEST_SOURCE,
+        mounting="RING",
+        note="Przekładnik Ferrantiego do 3I0. Przekładnia/okno/obciążenie "
+             "są zależne od wariantu i wymagają instrukcji danego modelu.",
+    ))
+    families.append(_family(
+        "ZELISKO", "sensory napięciowe", "VT_SENSOR", ZELISKO_SOURCE,
+        mounting="MV_MEASUREMENT",
+        note="Portfolio sensorów; konkretny model i tor pomiarowy wymagają "
+             "karty wykonania. Nie utożsamiać z klasycznym VT 100V.",
+    ))
     families.extend([
         _family("PFIFFNER", "CT pierścieniowy", "CT", PFIFFNER_SOURCE,
                 mounting="RING", note="Producent obecny w Polsce przez PFIFFNER Polska."),
