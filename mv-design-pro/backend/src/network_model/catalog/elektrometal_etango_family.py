@@ -10,13 +10,15 @@ Brak wypełnionej DTR / kodu zamówieniowego = brak podstaw do nastaw.
 """
 from __future__ import annotations
 
-from copy import deepcopy
 import json
+from copy import deepcopy
 from typing import Any
 
 # Dane celowo proste, bez nowego modelu domenowego ani nowej tabeli SQL.
 # Źródła: oficjalne strony i karty Elektrometal Energetyka.
-_FAMILY: list[dict[str, Any]] = json.loads(\n    r'''\n[
+_FAMILY: list[dict[str, Any]] = json.loads(
+    """
+[
   {
     "id": "EM_E2TANGO_50",
     "model": "e²TANGO-50",
@@ -569,15 +571,13 @@ _FAMILY: list[dict[str, Any]] = json.loads(\n    r'''\n[
     "przekladnia_ct": null
   }
 ]
-    '''
+    """
 )
 
 # Do katalogu kanonicznego dodajemy TYLKO istniejące wyroby nadające się do
 # ręcznego doboru w polu SN. e²TANGO-50 jest DETEKTOREM, WN=poza tym zakresem,
 # SZR/PPZ=konfiguracją aplikacyjną, a 250/450 są już w katalogu (#517).
-_ALREADY_IN_CATALOG: frozenset[str] = frozenset({
-    "EM_E2TANGO_250", "EM_E2TANGO_450",
-})
+_ALREADY_IN_CATALOG: frozenset[str] = frozenset({"EM_E2TANGO_250", "EM_E2TANGO_450"})
 
 
 def list_etango_family_references() -> list[dict[str, Any]]:
@@ -592,10 +592,11 @@ def get_etango_sn_catalog_additions() -> list[dict[str, Any]]:
         if row["integracja"] != "SELECTABLE_SN" or row["id"] in _ALREADY_IN_CATALOG:
             continue
         note = row["uwagi"] + " Funkcje producenta nie są aktywowane automatycznie."
-        result.append({
-            "id": row["id"],
-            "name_pl": "Elektrometal " + row["model"],
-            "params": {
+        result.append(
+            {
+                "id": row["id"],
+                "name_pl": "Elektrometal " + row["model"],
+                "params": {
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": None,
@@ -611,6 +612,7 @@ def get_etango_sn_catalog_additions() -> list[dict[str, Any]]:
                     "czynne funkcje, przekładniki i nastawy wymagają dowodu z DTR "
                     "i konfiguracji konkretnej instancji."
                 ),
-            },
-        })
+                },
+            }
+        )
     return result
