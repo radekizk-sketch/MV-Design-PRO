@@ -541,6 +541,20 @@ export interface VTCatalogType extends CatalogType {
   secondary_windings?: readonly Record<string, unknown>[] | null;
 }
 
+/** Ferranti / zero-sequence current sensor 3I0 (nie klasyczny CT fazowy). */
+export interface FerrantiCatalogType extends CatalogType {
+  manufacturer: string;
+  model: string;
+  measurement_kind: 'ZERO_SEQUENCE_3I0';
+  construction: string;
+  turns_ratio: string;
+  window_diameter_mm?: number | null;
+  secondary_interface?: string | null;
+  test_winding?: boolean | null;
+  thermal_short_circuit_current_ka?: number | null;
+  thermal_short_circuit_duration_s?: number | null;
+}
+
 /**
  * PV Inverter Type (ZRODLO_NN_PV).
  * Source: backend PVInverterType dataclass.
@@ -741,7 +755,7 @@ export type CatalogNamespace =
 export type TypeCategory = 'LINE' | 'HV_OVERHEAD_CONDUCTOR' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
-  | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
+  | 'CT' | 'VT' | 'FERRANTI' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
   | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 
 /**
