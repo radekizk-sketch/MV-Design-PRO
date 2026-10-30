@@ -1250,8 +1250,10 @@ describe('Wykaz PTPiREE w kroku „Urządzenie” — manifest z backendu, certy
     await waitFor(() =>
       expect(screen.getByTestId('add-der-ptpiree-wykaz')).toHaveAttribute('data-stan', 'blad'));
     expect(screen.getByTestId('add-der-ptpiree-wykaz')).toHaveTextContent(
-      'rejestr PTPiREE niedostępny — Rejestr PTPiREE niedostępny: /api/catalog/ptpiree/manifest → HTTP 503 Service Unavailable',
+      'rejestr PTPiREE niedostępny — Rejestr PTPiREE niedostępny: serwer obliczeń jest chwilowo niedostępny (HTTP 503).',
     );
+    // Surowy adres zapytania nie trafia do komunikatu dla projektanta.
+    expect(screen.getByTestId('add-der-ptpiree-wykaz')).not.toHaveTextContent('/api/');
     expect(screen.getByTestId('add-der-ptpiree-wykaz')).not.toHaveTextContent(/\d+ pozycji/);
   });
 

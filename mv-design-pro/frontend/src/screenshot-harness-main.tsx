@@ -51,6 +51,7 @@ import type { ShortCircuitFlowOverlayInput } from './ui/sld-overlay/ShortCircuit
 import falownikiRozplywScenyGpzFeederWynik from './harness-fixtures/generated/falowniki_rozplyw_scena_gpz_feeder_wynik.json';
 import type { EnergyNetworkModel, LogicalViewsV1 } from './types/enm';
 import { szynyStacji } from './ui/shared/szynyStacji';
+import { bladZapytania } from './ui2/shared/bladZapytania';
 
 const EMPTY_LOGICAL_VIEWS: LogicalViewsV1 = {
   trunks: [],
@@ -247,7 +248,7 @@ function fixtureNameFromQuery(): string {
 async function loadSubstrateEnm(): Promise<EnergyNetworkModel> {
   const resp = await fetch(`/test-fixtures/${fixtureNameFromQuery()}.enm.json`);
   if (!resp.ok) {
-    throw new Error(`Failed to load fixture: ${resp.status} ${resp.statusText}`);
+    throw bladZapytania(resp, 'Nie udało się wczytać fikstury zrzutu');
   }
   const raw = await resp.json() as { enm: EnergyNetworkModel };
   return raw.enm;

@@ -206,6 +206,14 @@ SANCTIONED_CHANGES = {
         "goldeny, hashe i testy determinizmu bez zmian; straznik "
         "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 4 karty komunikatow, zbior "
+        "ODMOWY_B01_OCZEKUJACE oprozniony, 35 miejsc): zmienione WYLACZNIE argumenty "
+        "wywolan wyjatkow i komunikatow (linie 1246, 2499, 2560 bazy) oraz dolozona do "
+        "istniejacego importu z `short_circuit_core` stala `NAZWY_RODZAJOW_ZWARCIA_PL`; "
+        "porownanie drzew skladniowych wobec 1e535d489 (wymazane argumenty wyjatkow i "
+        "komunikatow, stale str, dopuszczone nazwy importu) — poza argumentami wyjatkow "
+        "i dozwolona stala IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c4.log), golden i "
+        "determinizm rdzeni bez zmian."
     ),
     "backend/src/network_model/solvers/short_circuit_contributions.py": (
         "Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "
@@ -275,6 +283,14 @@ SANCTIONED_CHANGES = {
         "goldeny, hashe i testy determinizmu bez zmian; straznik "
         "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 4 karty komunikatow, zbior "
+        "ODMOWY_B01_OCZEKUJACE oprozniony, 35 miejsc): zmienione WYLACZNIE argumenty "
+        "wywolan wyjatkow i komunikatow (macierz Y osobliwa, rodzaj zwarcia spoza IEC "
+        "60909, argument komunikatu `require_z0_bus`) oraz dodana stala rdzenia "
+        "`NAZWY_RODZAJOW_ZWARCIA_PL`; porownanie drzew skladniowych wobec 1e535d489 "
+        "(wymazane argumenty wyjatkow i komunikatow, stale str, dopuszczone nazwy "
+        "importu) — poza argumentami wyjatkow i dozwolona stala IDENTYCZNE (log "
+        "/tmp/claude-0/logs/ast_b01_c4.log), golden i determinizm rdzeni bez zmian."
     ),
     "backend/src/network_model/core/ybus.py": (
         "Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): jeden predykat `siec_zwarciowa` w"
@@ -323,6 +339,14 @@ SANCTIONED_CHANGES = {
         "przekladni <= 0 jako rekordy strukturalne (kod + odwolanie, tresc PL bez "
         "identyfikatora; te same predykaty w tej samej kolejnosci). Wpis do usuniecia "
         "po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 4 karty komunikatow, zbior "
+        "ODMOWY_B01_OCZEKUJACE oprozniony, 35 miejsc): zmienione WYLACZNIE argumenty "
+        "wywolan wyjatkow i komunikatow (ostrzezenie `warnings.append` o napieciu "
+        "zadanym wezla bilansujacego, ZeroDivisionError i ValueError z polskim tekstem, "
+        "typy bez zmian); porownanie drzew skladniowych wobec 1e535d489 (wymazane "
+        "argumenty wyjatkow i komunikatow, stale str, dopuszczone nazwy importu) — poza "
+        "argumentami wyjatkow i dozwolona stala IDENTYCZNE (log "
+        "/tmp/claude-0/logs/ast_b01_c4.log), golden i determinizm rdzeni bez zmian."
     ),
     "backend/src/network_model/solvers/frt_hvrt/": (
         "Decyzja B-01 architekta z 2026-10-29 (karta komunikatow, commit 3): w "
@@ -367,6 +391,13 @@ SANCTIONED_CHANGES = {
         "zerowej; predykat `wnosi_pojemnosc_doziemna` wspolny z gotowoscia; model bez baterii "
         "bit w bit jak przed karta (brak pol wyniku i kroku sladu). Wpis do usuniecia po "
         "scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 4 karty komunikatow, zbior "
+        "ODMOWY_B01_OCZEKUJACE oprozniony, 35 miejsc): zmienione WYLACZNIE argumenty "
+        "wywolan wyjatkow i komunikatow (dwa uzasadnienia bez kluczy pol; zmiana "
+        "wylacznie stalych str); porownanie drzew skladniowych wobec 1e535d489 (wymazane "
+        "argumenty wyjatkow i komunikatow, stale str, dopuszczone nazwy importu) — poza "
+        "argumentami wyjatkow i dozwolona stala IDENTYCZNE (log "
+        "/tmp/claude-0/logs/ast_b01_c4.log), golden i determinizm rdzeni bez zmian."
     ),
     "backend/src/network_model/solvers/short_circuit_asymmetrical_quantities.py": (
         "PACK-DOWODY: ADDYTYWNE 18 linii — stala definicyjna OPERATOR_FORTESCUE_A "
@@ -449,6 +480,15 @@ SANCTIONED_CHANGES = {
         "goldeny, hashe i testy determinizmu bez zmian; straznik "
         "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 4 karty komunikatow, zbior "
+        "ODMOWY_B01_OCZEKUJACE oprozniony, 35 miejsc): zmienione WYLACZNIE argumenty "
+        "wywolan wyjatkow i komunikatow (loader.py) oraz dodana stala rdzenia "
+        "`NAZWY_WARSTW_PL` i dolozone do istniejacego importu z `werdykt.kontrakt` "
+        "slowniki `NAZWA_RODZAJU_PODSTAWY_PL`, `NAZWA_STANU_ZRODLA_PL`; porownanie drzew "
+        "skladniowych wobec 1e535d489 (wymazane argumenty wyjatkow i komunikatow, stale "
+        "str, dopuszczone nazwy importu) — poza argumentami wyjatkow i dozwolona stala "
+        "IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c4.log), golden i determinizm rdzeni "
+        "bez zmian."
     ),
     "backend/src/network_model/solvers/ncrfg_ptpiree/": (
         "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
@@ -459,6 +499,15 @@ SANCTIONED_CHANGES = {
         "goldeny, hashe i testy determinizmu bez zmian; straznik "
         "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 4 karty komunikatow, zbior "
+        "ODMOWY_B01_OCZEKUJACE oprozniony, 35 miejsc): zmienione WYLACZNIE argumenty "
+        "wywolan wyjatkow i komunikatow (contracts.py, engine.py) oraz dodane stale "
+        "rdzenia `NAZWY_RODZAJOW_ZRODLA_PL`, `NAZWY_RODZIN_MODULU_PL`; nazwy pol w "
+        "krotkach rozjazdu wyniku sa stalymi str uzywanymi wylacznie w komunikacie; "
+        "porownanie drzew skladniowych wobec 1e535d489 (wymazane argumenty wyjatkow i "
+        "komunikatow, stale str, dopuszczone nazwy importu) — poza argumentami wyjatkow "
+        "i dozwolona stala IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c4.log), golden i "
+        "determinizm rdzeni bez zmian."
     ),
     "backend/src/network_model/solvers/phase_state_sn.py": (
         "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "

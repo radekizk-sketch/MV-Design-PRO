@@ -1,3 +1,4 @@
+import { bladZapytania } from '../shared/bladZapytania';
 /**
  * Klient czterech kryteriów wyposażenia stacji (karta KD-3).
  *
@@ -144,7 +145,7 @@ async function wyslij<T>(
     signal,
   });
   if (!odpowiedz.ok) {
-    throw new Error(`Nie udało się policzyć kryterium (HTTP ${odpowiedz.status}).`);
+    throw bladZapytania(odpowiedz, 'Nie udało się policzyć kryterium');
   }
   const dane: unknown = await odpowiedz.json();
   if (!maKsztaltWyniku(dane)) {

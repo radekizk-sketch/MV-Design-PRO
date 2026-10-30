@@ -50,6 +50,7 @@ import {
   type WynikZakresu,
   type ZakresKadru,
 } from './zakresKadru';
+import { komunikatZapytania } from '../../../../ui2/shared/bladZapytania';
 
 /** Dostępność celu menu „Dopasuj do…" dla bieżącego zaznaczenia. */
 export type DostepnoscCelu =
@@ -275,7 +276,7 @@ export function useKadrowanieWidoku(opcje: {
           if (numer !== zapytanieToru.current) return;
           const tekst =
             blad instanceof BladTopologiiZasilenia
-              ? `Nie udało się pobrać toru zasilania (HTTP ${blad.status}).`
+              ? komunikatZapytania(blad, 'Nie udało się pobrać toru zasilania')
               : 'Nie udało się pobrać toru zasilania — brak połączenia z serwerem obliczeń.';
           const szczegol =
             blad instanceof BladTopologiiZasilenia && typeof blad.szczegoly === 'object' && blad.szczegoly !== null

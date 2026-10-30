@@ -1,6 +1,6 @@
 {
   "catalog/profiles/nc_rfg/__init__.py": "3ca6b33dafc72c0f8aa90f5c96797a2a3674bf104adfdd717cfe9e8c2ab0201c",
-  "catalog/profiles/nc_rfg/loader.py": "76f0e8630a33ba8adc9fb4c348699bfcf9e4cdbf31357265989dd29e41d6dc49",
+  "catalog/profiles/nc_rfg/loader.py": "ff3e6772315b7282b8dd823adf8eb4e19a9a82aa87a32b25c288ee8369b41312",
   "catalog/profiles/nc_rfg/operatorzy/enea.yaml": "bbfb8588cc97d290a44ae06151095eff6b35e90b269f4fc385f0e9b28435d3bb",
   "catalog/profiles/nc_rfg/operatorzy/energa.yaml": "edb8061dddb69fd47c34499a825c2d28a38f344d89a7f61d7ed4e09757b68691",
   "catalog/profiles/nc_rfg/operatorzy/pge.yaml": "d76e457e4cc4859f3952ee0b30169fc8c81ea98c7a3afcedca0f5bf9d1b8ab12",
@@ -16,18 +16,18 @@
   "network_model/solvers/frt_hvrt/contracts.py": "f8fc7e09bb3548711e663c98d4286d24641c1cd09bfd039f408bd68236a417d0",
   "network_model/solvers/frt_hvrt/engine.py": "23b4a7fc030b5aa9d07b44cd1d08d2522d2d1a111659a3e32c871871e0a71641",
   "network_model/solvers/ncrfg_ptpiree/__init__.py": "8f6da0ca2c2d0541bbfa1966e5345b9881c76986c78285e51b83d6c81d247f4c",
-  "network_model/solvers/ncrfg_ptpiree/contracts.py": "554594305c243b621acbc62d88db82a340ddb59955e1247f0d34ee01dff26a6b",
-  "network_model/solvers/ncrfg_ptpiree/engine.py": "2e6cd8f27c933a4831c019da10ef5637d108a0de9790afd6c8da36b3d7c537fd",
+  "network_model/solvers/ncrfg_ptpiree/contracts.py": "0669f5f8a9caae4a2331bdf2442ec5bd9309542d9826ec1d6afe075df86b656c",
+  "network_model/solvers/ncrfg_ptpiree/engine.py": "29369d5eb50465b6972f92e50cdb532bca04e3a5587971f1a17ce567817cadaa",
   "network_model/solvers/ncrfg_ptpiree/stosowalnosc.py": "9bd4545e871e78b02d05802778778b8b1860802c2ba8baf337ea3dfd105f8a03",
   "network_model/solvers/phase_state_sn.py": "3984fc32c3e6a12207beb7215ca33e426de33bf2a21d55a641945f31ccfcb098",
   "network_model/solvers/power_flow_fast_decoupled.py": "6f746e92bc67e4a28af5883283d5be3a9a5e906527409a2c66e3a761713660fa",
   "network_model/solvers/power_flow_gauss_seidel.py": "c561e7c77baa73bfe1f7c18866e28a04e7f200d83c726b310b447d282a90bdc7",
   "network_model/solvers/power_flow_newton.py": "7fe88dbff3f514789464cd5b657c5a9ea4d6c93227a5ea7c85f4e68594c89439",
-  "network_model/solvers/power_flow_newton_internal.py": "f5157c61e13a33f0b53776ca2713eff842fa3329b8f562a68542f6f0ec5f8e63",
+  "network_model/solvers/power_flow_newton_internal.py": "777d9af58a11f809eac95fd7219efe28d63b7250e82cc10e2b304bb5c90471bf",
   "network_model/solvers/protection_iec60255.py": "3288996572ac759be34d4ac2b4d40baeb93641115ef6e169a8a79c44911d7f58",
   "network_model/solvers/short_circuit_contributions.py": "9f59acc201e50c446e7a537d8198a938e8f073abe791899cf3dd043e9f41dd6e",
-  "network_model/solvers/short_circuit_core.py": "a011633237f416e134d8a826678e4bed499b039cce4575f81f3633f93a5e41a6",
-  "network_model/solvers/short_circuit_iec60909.py": "3b022b434e7811858cae3aadd71eb894b6cef510038386d50370b2d6fecd6cc8",
+  "network_model/solvers/short_circuit_core.py": "2381f6abf752a672505587ec0c2092d1186950cf217a7fa2f91e659b66c1c7b2",
+  "network_model/solvers/short_circuit_iec60909.py": "79a1fe300cbe0c6372474ce977c959bff0b55fae78a4dd8d01665fc34dfe04b4",
   "network_model/solvers/state_estimation_wls.py": "e557ca5b3e380b9ff740f6b0c58181bb26a0bc178f1eaad79504902042cf070a",
-  "network_model/solvers/v126_academic.py": "90ed470f1fd0ba1fcda11f7174363cb9ccf9bbe79d552d20de812038ea3f283e"
+  "network_model/solvers/v126_academic.py": "917853632d5fc81fcb60410a86969fdb034bca5dde451a75e29fab88aedf8a66"
 }

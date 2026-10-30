@@ -12,6 +12,7 @@ import type {
   ProtectionCurve,
   ProtectionSettingTemplate,
 } from './types';
+import { bladZapytania, komunikatZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api/catalog/protection';
 
@@ -182,9 +183,7 @@ async function fetchProtectionJson<T>(endpoint: string): Promise<T> {
     const response = await fetch(endpoint);
 
     if (!response.ok) {
-      throw new Error(
-        `Nie udalo sie pobrac danych katalogu zabezpieczen: ${response.statusText}`,
-      );
+      throw bladZapytania(response, 'Nie udało się pobrać danych katalogu zabezpieczeń');
     }
 
     return await response.json();
@@ -245,9 +244,7 @@ export async function fetchProtectionDeviceType(
   }
 
   if (!response.ok) {
-    throw new Error(
-      `Nie udalo sie pobrac typu urzadzenia zabezpieczeniowego: ${response.statusText}`,
-    );
+    throw bladZapytania(response, 'Nie udało się pobrać typu urządzenia zabezpieczeniowego');
   }
 
   const data = (await response.json()) as Record<string, unknown>;
@@ -265,7 +262,7 @@ export async function fetchProtectionCurve(curveId: string): Promise<ProtectionC
   }
 
   if (!response.ok) {
-    throw new Error(`Nie udalo sie pobrac krzywej zabezpieczenia: ${response.statusText}`);
+    throw bladZapytania(response, 'Nie udało się pobrać krzywej zabezpieczenia');
   }
 
   const data = (await response.json()) as Record<string, unknown>;
@@ -285,7 +282,7 @@ export async function fetchProtectionSettingTemplate(
   }
 
   if (!response.ok) {
-    throw new Error(`Nie udalo sie pobrac szablonu nastaw zabezpieczenia: ${response.statusText}`);
+    throw bladZapytania(response, 'Nie udało się pobrać szablonu nastaw zabezpieczenia');
   }
 
   const data = (await response.json()) as Record<string, unknown>;
@@ -352,7 +349,7 @@ export async function exportProtectionLibrary(params?: {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(`Nie udalo sie wyeksportowac biblioteki zabezpieczen: ${response.statusText}`);
+    throw bladZapytania(response, 'Nie udało się wyeksportować biblioteki zabezpieczeń');
   }
 
   return await response.json();
@@ -375,7 +372,7 @@ export async function importProtectionLibrary(
 
   if (!response.ok) {
     // Try to parse error details
-    let errorMessage = `Import biblioteki zabezpieczen nie udal sie: ${response.statusText}`;
+    let errorMessage = komunikatZapytania(response, 'Import biblioteki zabezpieczeń nie udał się');
     try {
       const errorData = await response.json();
       if (errorData.detail) {

@@ -17,6 +17,7 @@ import type {
   CreateBatchRequest,
 } from './types';
 import { STANY_KONCOWE_SERII, czyStanKoncowyBiegu } from './types';
+import { bladOdpowiedzi } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api/study-cases';
 const EXECUTION_BASE = '/api/execution';
@@ -45,8 +46,7 @@ function buildCreateRunBody(request: CreateRunRequest): CreateRunRequest {
  */
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Błąd HTTP: ${response.status}`);
+    throw await bladOdpowiedzi(response);
   }
   return response.json();
 }
@@ -102,8 +102,7 @@ export async function deleteStudyCase(caseId: string): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Błąd HTTP: ${response.status}`);
+    throw await bladOdpowiedzi(response);
   }
 }
 

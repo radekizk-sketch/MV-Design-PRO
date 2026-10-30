@@ -28,6 +28,8 @@
 
 import type { RekordOcenyNiewykonanej } from '../wzorzec/OcenaNiewykonana';
 import { getRun, waitForRunTerminalState } from '../../../ui/study-cases/api';
+import { bladOdpowiedzi } from '../../shared/bladZapytania';
+import { etykietaStanuPrzebiegu } from '../akademickie/strings';
 
 // ---------------------------------------------------------------------------
 // Wspólny kontekst przebiegu (pochodzenie wyniku) — pola opcjonalne.
@@ -167,24 +169,10 @@ export interface PrzebiegSsci {
  */
 const ANALIZA_SSCI = 'ssci_impedance';
 
-function komunikatZeStatusu(url: string, status: number, statusText: string): string {
-  return `Zapytanie ${url} nie powiodło się: ${status} ${statusText}`;
-}
-
-async function odczytajDetal(response: Response, domyslny: string): Promise<string> {
-  try {
-    const tresc = (await response.json()) as { detail?: unknown };
-    if (typeof tresc?.detail === 'string' && tresc.detail.trim()) return tresc.detail;
-  } catch {
-    // Brak treści JSON — pozostaje komunikat ze statusem HTTP.
-  }
-  return domyslny;
-}
-
 async function getJsonZDetalem<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(await odczytajDetal(response, komunikatZeStatusu(url, response.status, response.statusText)));
+    throw await bladOdpowiedzi(response);
   }
   return response.json() as Promise<T>;
 }
@@ -196,7 +184,7 @@ async function postJsonZDetalem<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(await odczytajDetal(response, komunikatZeStatusu(url, response.status, response.statusText)));
+    throw await bladOdpowiedzi(response);
   }
   return response.json() as Promise<T>;
 }
@@ -214,7 +202,7 @@ export async function utworzPrzebiegSsci(caseId: string): Promise<PrzebiegSsci> 
   );
   const koniec = await waitForRunTerminalState(await getRun(zlecony.run_id));
   if (koniec.status !== 'DONE') {
-    throw new Error(koniec.error_message ?? `Bieg SSCI zakończył się stanem ${koniec.status}.`);
+    throw new Error(koniec.error_message ?? `Bieg analizy SSCI zakończył się stanem „${etykietaStanuPrzebiegu(koniec.status)}”.`);
   }
   return { ...zlecony, status: 'FINISHED' };
 }

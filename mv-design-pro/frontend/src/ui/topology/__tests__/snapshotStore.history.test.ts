@@ -7,7 +7,7 @@ vi.mock('../domainApi', async (importOriginal) => ({
   executeDomainOp: vi.fn(),
 }));
 
-import { domainOpsEndpoint, executeDomainOp } from '../domainApi';
+import { executeDomainOp } from '../domainApi';
 import { useSnapshotStore } from '../snapshotStore';
 
 const mockedExecuteDomainOp = vi.mocked(executeDomainOp);
@@ -141,7 +141,7 @@ describe('snapshotStore operationHistory', () => {
   it('po konflikcie wersji odświeża ENM i powtarza tę samą operację katalogową', async () => {
     const conflictError = Object.assign(
       new Error(
-        `API 409 Conflict: ${domainOpsEndpoint('case-1')} - Konflikt wersji: oczekiwany hash 'old', aktualny 'fresh'.`,
+        "Konflikt wersji: oczekiwany hash 'old', aktualny 'fresh'.",
       ),
       { status: 409, code: 'SNAPSHOT_VERSION_CONFLICT' },
     );

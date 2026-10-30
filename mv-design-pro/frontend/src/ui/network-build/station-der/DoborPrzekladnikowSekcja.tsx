@@ -29,6 +29,7 @@ import {
   pobierzRejestrGotowosci,
   type WpisRejestruGotowosci,
 } from '../../../ui2/kryteria';
+import { bladZapytania } from '../../../ui2/shared/bladZapytania';
 
 export type WerdyktKryterium = 'spelnione' | 'niespelnione' | 'informacja' | 'brak_danych';
 
@@ -94,7 +95,7 @@ export async function fetchDoborPrzekladnikow(
     + `${encodeURIComponent(generatorRef)}/instrument-transformers`;
   const response = await fetch(endpoint);
   if (!response.ok) {
-    throw new Error(`Nie udało się pobrać doboru przekładników (${response.status}).`);
+    throw bladZapytania(response, 'Nie udało się pobrać doboru przekładników');
   }
   const payload: unknown = await response.json();
   if (!maObowiazkowyKsztalt(payload)) {

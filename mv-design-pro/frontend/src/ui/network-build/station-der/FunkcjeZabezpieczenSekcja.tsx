@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { bladZapytania } from '../../../ui2/shared/bladZapytania';
 
 export interface FunkcjaWymagana {
   readonly kod: string;
@@ -62,7 +63,7 @@ export async function fetchDoborFunkcji(
     + `${encodeURIComponent(generatorRef)}/protection-functions`;
   const response = await fetch(endpoint);
   if (!response.ok) {
-    throw new Error(`Nie udało się pobrać doboru funkcji zabezpieczeniowych (${response.status}).`);
+    throw bladZapytania(response, 'Nie udało się pobrać doboru funkcji zabezpieczeniowych');
   }
   const payload: unknown = await response.json();
   if (!maObowiazkowyKsztalt(payload)) {

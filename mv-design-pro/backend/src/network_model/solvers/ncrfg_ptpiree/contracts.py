@@ -40,6 +40,19 @@ PtpireeDerKind = Literal["PV", "BESS", "FW", "OTHER"]
 #: narzędziem SN/nN (plan AB O-42), więc nie ma go w słowniku wejścia (422, nie ścieżka
 #: „wszystko nie dotyczy").
 PtpireeModuleFamily = Literal["PPM", "SyPGM"]
+#: Rodzaj źródła i rodzina modułu W TEKŚCIE odmowy (kod zostaje w polach ``der_kind``
+#: i ``module_family``); kompletność wobec literałów przypina
+#: ``tests/test_ncrfg_ptpiree_nazwy_wejscia.py``.
+NAZWY_RODZAJOW_ZRODLA_PL: dict[PtpireeDerKind, str] = {
+    "PV": "instalacja fotowoltaiczna",
+    "BESS": "magazyn energii",
+    "FW": "elektrownia wiatrowa",
+    "OTHER": "inne źródło",
+}
+NAZWY_RODZIN_MODULU_PL: dict[PtpireeModuleFamily, str] = {
+    "PPM": "moduł parku energii",
+    "SyPGM": "synchroniczny moduł wytwarzania energii",
+}
 #: Enum wewnętrzny testu (filtry, sortowanie) — nigdy odpowiedź inżynierska.
 PtpireeVerdict = Literal["pass", "fail", "no_data", "not_required"]
 #: Skąd pochodzą dane wejścia biegu: zatwierdzony model przypadku (most ENM) albo ciało
@@ -235,16 +248,20 @@ class NcRfgPtpireeTestResult(BaseModel):
         rozjazdy = [
             nazwa
             for nazwa, wartosc, z_rekordu in (
-                ("verdict", self.verdict, werdykt_maszynowy(self.ocena)),
-                ("summary_pl", self.summary_pl, self.ocena.wyjasnienie.zdanie_pl),
-                ("required", self.required, self.ocena.stosowalnosc.dotyczy),
-                ("required_reason_pl", self.required_reason_pl, self.ocena.stosowalnosc.powod_pl),
+                ("werdykt maszynowy", self.verdict, werdykt_maszynowy(self.ocena)),
+                ("podsumowanie", self.summary_pl, self.ocena.wyjasnienie.zdanie_pl),
+                ("stosowalność", self.required, self.ocena.stosowalnosc.dotyczy),
+                (
+                    "powód stosowalności",
+                    self.required_reason_pl,
+                    self.ocena.stosowalnosc.powod_pl,
+                ),
             )
             if wartosc != z_rekordu
         ]
         if rozjazdy:
             raise ValueError(
-                f"Test {self.test_id}: pola {rozjazdy} różnią się od rekordu oceny — pola "
+                f"Test {self.test_id}: pola {', '.join(rozjazdy)} różnią się od rekordu oceny — pola "
                 "pochodne są kopiami rekordu, nie osobnym predykatem."
             )
         return self
@@ -283,14 +300,16 @@ class NcRfgPtpireeModuleResult(BaseModel):
     def _spojnosc(self) -> Self:
         if self.module_type != self.klasyfikacja.modul:
             raise ValueError(
-                f"Moduł {self.der_ref}: typ modułu {self.module_type} ≠ klasyfikacja "
-                f"{self.klasyfikacja.modul}."
+                f"Moduł {self.der_ref}: typ modułu "
+                f"{self.module_type or 'brak (poniżej progu istotności)'} ≠ klasyfikacja "
+                f"{self.klasyfikacja.modul or 'brak (poniżej progu istotności)'}."
             )
         oczekiwana = technologia_modulu(self.der_kind, self.module_family)
         if self.technologia != oczekiwana:
             raise ValueError(
-                f"Moduł {self.der_ref}: technologia {self.technologia} ≠ {oczekiwana} "
-                f"(rodzaj {self.der_kind}, rodzina {self.module_family})."
+                f"Moduł {self.der_ref}: technologia zapisana w wyniku różni się od wyprowadzonej "
+                f"z rodzaju źródła „{NAZWY_RODZAJOW_ZRODLA_PL[self.der_kind]}” i rodziny "
+                f"„{NAZWY_RODZIN_MODULU_PL[self.module_family]}”."
             )
         if self.zrodlo_danych == "ZADANIE_KLIENTA" and self.dowod_certyfikatu is not None:
             raise ValueError(

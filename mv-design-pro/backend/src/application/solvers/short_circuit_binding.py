@@ -48,6 +48,7 @@ from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import DoborC, NadpisanieC, Scenario
 from network_model.odmowa_danych import odmowa_rdzenia_b01
 from network_model.solvers.short_circuit_core import (
+    NAZWY_RODZAJOW_ZWARCIA_PL,
     ShortCircuitType,
     odmowa_wezla_zwarcia_spoza_grafu,
 )
@@ -59,14 +60,6 @@ from network_model.solvers.short_circuit_iec60909 import (
 if TYPE_CHECKING:
     from application.analyses.protection.czas_wylaczenia_pola import PoleLokalne
     from enm.assembler import WejscieZwarcia
-
-#: Rodzaj zwarcia w dopełniaczu — zdanie opisu prądu, przy którym sprawdzono charakterystykę.
-_RODZAJ_ZWARCIA_PL: dict[ShortCircuitType, str] = {
-    ShortCircuitType.THREE_PHASE: "trójfazowego",
-    ShortCircuitType.SINGLE_PHASE_GROUND: "jednofazowego z ziemią",
-    ShortCircuitType.TWO_PHASE: "dwufazowego",
-    ShortCircuitType.TWO_PHASE_GROUND: "dwufazowego z ziemią",
-}
 
 
 def pola_lokalne_biegu(wejscie: WejscieZwarcia) -> Mapping[str, tuple[PoleLokalne, ...]] | None:
@@ -142,7 +135,7 @@ def czas_tb_punktu(
         wejscie.enm,
         pola,
         prad_a=prad_a,
-        rodzaj_zwarcia_pl=_RODZAJ_ZWARCIA_PL[wejscie.short_circuit_type],
+        rodzaj_zwarcia_pl=NAZWY_RODZAJOW_ZWARCIA_PL[wejscie.short_circuit_type],
     )
 
 

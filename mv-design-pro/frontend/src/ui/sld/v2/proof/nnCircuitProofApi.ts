@@ -1,3 +1,4 @@
+import { komunikatZapytania } from '../../../../ui2/shared/bladZapytania';
 /**
  * Klient API pakietu dowodowego weryfikacji obwodu nN (karta P0.10, G-21).
  *
@@ -71,7 +72,7 @@ export async function downloadLvCircuitVerificationPack(payload: NnCircuitProofR
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
       (typeof errorData.detail === 'string' && errorData.detail) ||
-        `Nie udało się pobrać pakietu dowodowego obwodu nN: ${response.statusText}`,
+        komunikatZapytania(response, 'Nie udało się pobrać pakietu dowodowego obwodu nN'),
     );
   }
 

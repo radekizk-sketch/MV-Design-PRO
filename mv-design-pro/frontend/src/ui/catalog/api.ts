@@ -34,15 +34,15 @@ import type {
   TypeCategory,
   VTCatalogType,
 } from './types';
+import { komunikatZapytania } from '../../ui2/shared/bladZapytania';
 
 export class CatalogApiError extends Error {
   constructor(
     public readonly status: number,
-    public readonly statusText: string,
     public readonly detail: string | null,
     public readonly endpoint: string,
   ) {
-    super(`${status} ${statusText}: ${detail ?? 'No detail'}`);
+    super(detail ?? komunikatZapytania({ status }, 'Zapytanie do katalogu typów nie powiodło się'));
     this.name = 'CatalogApiError';
   }
 }
@@ -55,13 +55,10 @@ export function getCatalogErrorMessage(error: unknown): string {
     if (error.detail) {
       return error.detail;
     }
-    return `Błąd API katalogów (${error.status}).`;
+    return error.message;
   }
   if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) {
     return error.message;
-  }
-  if (error instanceof Error && error.message.includes('500 Internal Server Error: No detail')) {
-    return BACKEND_UNAVAILABLE_MESSAGE;
   }
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -109,7 +106,7 @@ async function handleResponse<T>(response: Response, endpoint: string): Promise<
     } catch {
       detail = null;
     }
-    throw new CatalogApiError(response.status, response.statusText, detail, endpoint);
+    throw new CatalogApiError(response.status, detail, endpoint);
   }
 
   if (response.status === 204) {

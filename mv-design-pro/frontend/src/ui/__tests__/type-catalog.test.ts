@@ -118,7 +118,13 @@ describe('Type Catalog API', () => {
         json: async () => ({ detail: 'Catalog not found' }),
       });
 
-      await expect(fetchTypesByCategory('TRANSFORMER')).rejects.toThrow('404 Not Found');
+      // Treść odmowy backendu (`detail`) słowo w słowo; angielski `statusText` nie trafia do treści.
+      const blad = (await fetchTypesByCategory('TRANSFORMER').then(
+        () => null,
+        (e: unknown) => e,
+      )) as Error;
+      expect(blad.message).toBe('Catalog not found');
+      expect(blad.message).not.toContain('Not Found');
     });
   });
 });

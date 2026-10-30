@@ -1,3 +1,4 @@
+import { komunikatZapytania } from '../../../../ui2/shared/bladZapytania';
 /**
  * Pobranie archiwum CGMES modelu sieci z backendu (karta KASACJA-SCL-I-CIM-KLIENT,
  * decyzja K-14/D-41).
@@ -30,7 +31,7 @@ async function trescOdmowy(response: Response): Promise<string> {
   } catch {
     // Ciało odpowiedzi bywa puste albo nie-JSON — wtedy zostaje kod HTTP.
   }
-  return `Eksport CGMES: serwer odpowiedział kodem HTTP ${response.status}.`;
+  return komunikatZapytania(response, 'Eksport CGMES nie powiódł się');
 }
 
 export async function pobierzEksportCgmes(caseId: string): Promise<PobranyEksportCgmes> {

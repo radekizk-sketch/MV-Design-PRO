@@ -4,7 +4,7 @@
     "label_pl": "Dynamika czasowa (DAE)",
     "status": "partial",
     "missing_fields_pl": [
-      "Q generatora 'Blok PV' (kod 'generator.q_missing')"
+      "Q generatora 'Blok PV' (kod gotowości: generator.q_missing)"
     ],
     "blocking_object_refs": [
       "pv/521ff6586b0c5e49952a5a5e10edc605/converter"

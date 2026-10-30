@@ -131,9 +131,12 @@ describe('executeDomainOp', () => {
       json: async () => ({ detail: 'bad request' }),
     } as Response);
 
-    await expect(executeDomainOp('case-1', 'refresh_snapshot', {})).rejects.toThrow(
-      `API 422 Unprocessable Entity: ${domainOpsEndpoint('case-1')}`,
-    );
+    // Treść backendu trafia do projektanta bez prefiksu technicznego, adresu i statusText.
+    const blad = await executeDomainOp('case-1', 'refresh_snapshot', {}).catch((e: unknown) => e);
+    expect(blad).toBeInstanceOf(Error);
+    expect((blad as Error).message).toBe('bad request');
+    expect((blad as Error).message).not.toContain(domainOpsEndpoint('case-1'));
+    expect((blad as { status?: number }).status).toBe(422);
   });
 
   /**
@@ -227,7 +230,7 @@ describe('executeDomainOpPreview', () => {
     );
   });
 
-  it('odrzucenie HTTP bez treści → kod i status HTTP', async () => {
+  it('odrzucenie HTTP bez treści → opis statusu po polsku z kodem HTTP, bez statusText', async () => {
     fetchMock.mockResolvedValue({
       ok: false,
       status: 500,
@@ -237,7 +240,7 @@ describe('executeDomainOpPreview', () => {
       },
     } as unknown as Response);
     await expect(executeDomainOpPreview('case-1', 'add_sn_bay', ladunek)).rejects.toThrow(
-      /^Błąd HTTP 500: Internal Server Error$/,
+      'Operacja na modelu sieci nie powiodła się: wewnętrzny błąd serwera obliczeń (HTTP 500).',
     );
   });
 

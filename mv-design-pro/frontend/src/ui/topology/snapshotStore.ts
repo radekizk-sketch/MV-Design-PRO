@@ -212,6 +212,30 @@ export function selectElementName(
   return resolveElementName(snapshot, elementRef);
 }
 
+/**
+ * Nazwa elementu migawki do zdania dla projektanta (lista braków danych, etykiety kotwic):
+ * nazwa nadana, a gdy jej brak — oznaczenie stacji (`designation`); `null` — element jest
+ * w migawce bez nazwy i oznaczenia; `undefined` — elementu nie ma w migawce (albo migawki
+ * nie ma). Rozróżnia oba braki, żeby zdanie nie nazwało elementu spoza modelu „bez nazwy”.
+ */
+export function nazwaElementuMigawki(
+  snapshot: EnergyNetworkModel | null,
+  ref: string,
+): string | null | undefined {
+  if (!snapshot) return undefined;
+  const indeks = indeksNazw(snapshot);
+  if (!indeks.has(ref)) return undefined;
+  const nazwa = (indeks.get(ref) ?? '').trim();
+  if (nazwa) return nazwa;
+  // Bez nazwy — oznaczenie elementu (stacja: `designation`), jak backendowe
+  // `fault_loop.service._nazwa_lub_oznaczenie`; brak obu → `null` („bez nazwy”).
+  const element = kandydaciIndeksu(snapshot).find(
+    (item) => item.ref_id === ref || item.id === ref || (item.ref_id && identyfikatorGrafu(item.ref_id) === ref),
+  ) as { designation?: string | null } | undefined;
+  const oznaczenie = (element?.designation ?? '').trim();
+  return oznaczenie || null;
+}
+
 /** Elementy migawki rozpoznawane po identyfikatorze — jedna lista dla indeksu nazw i refów. */
 function kandydaciIndeksu(
   snapshot: EnergyNetworkModel,

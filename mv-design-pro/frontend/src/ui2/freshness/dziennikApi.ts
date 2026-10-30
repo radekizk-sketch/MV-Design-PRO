@@ -1,3 +1,4 @@
+import { bladZapytania } from '../shared/bladZapytania';
 /**
  * Dziennik zmian modelu — klient końcówki „co unieważniło mój wynik" (V12K-264).
  *
@@ -73,9 +74,7 @@ export async function pobierzDziennikZmian(
     { signal: options.signal },
   );
   if (!odpowiedz.ok) {
-    throw new Error(
-      `Nie udało się pobrać dziennika zmian modelu (HTTP ${odpowiedz.status}).`,
-    );
+    throw bladZapytania(odpowiedz, 'Nie udało się pobrać dziennika zmian modelu');
   }
   const dane: unknown = await odpowiedz.json();
   if (!maKsztaltDziennika(dane)) {

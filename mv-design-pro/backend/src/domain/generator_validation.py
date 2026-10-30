@@ -1,20 +1,15 @@
 """
-Generator Connection Validation — PV/BESS canonical rules (KROK 2-3).
+Kontrola mocy źródła przekształtnikowego wobec transformatora i nastawy (decyzja O-53).
 
-CANONICAL RULES (BINDING):
-A) PV/BESS nigdy nie jest 'bezposrednio do SN' (zawsze przez transformator).
-B) Wariant A (nn_side): PV/BESS po stronie nN stacji → przez transformator stacji SN/nN.
-   Wymagane: station_ref (wskazuje stacje SN/nN).
-C) Wariant B (block_transformer): PV/BESS przez transformator blokowy → do SN.
-   Wymagane: blocking_transformer_ref (wskazuje transformator blokowy) + catalog_ref transformatora.
-D) Brak connection_variant → FixAction generator.connection_variant_missing.
-E) Generatory synchroniczne NIE wymagaja connection_variant.
-F) Brak catalog_ref generatora → FixAction catalog.ref_missing.
+Jedna reguła dla każdej drogi zapisu źródła przekształtnikowego (tor atomowy, tor stacyjny,
+tor DER-SN, przypisanie typu, aktualizacja parametrów, raport zgodności) — opis reguły
+w sekcji „MOC ŹRÓDŁA PRZEKSZTAŁTNIKOWEGO” niżej.
 
-INVARIANTS:
-- Zero fabrication: brak danych → ReadinessIssue, nigdy domyslna wartosc.
-- Deterministic: sorted by element_id.
-- Immutable output.
+Reguły przyłączenia źródła (wariant przyłączenia, wskazanie stacji albo transformatora
+blokowego, powiązanie z katalogiem) sprawdza wyłącznie walidator ENM (``enm/validator.py``,
+E028/E029) i predykat grafu ``pv_bess.transformer_required`` — dawna równoległa walidacja
+``validate_generator_connections`` (bez konsumenta w produkcie) skasowana w commicie 4
+karty komunikatów (2026-10-30, ADR-025: jeden walidator).
 """
 
 from __future__ import annotations
@@ -23,192 +18,16 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from domain.readiness import (
-    ReadinessAreaV1,
-    ReadinessIssueV1,
-    ReadinessPriority,
-)
-from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, liczba_jednostek_zrodla
-from enm.nazwy_elementow import nazwa_elementu
-from enm.slownik_komunikatow import NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL, lista_pl
+from enm.models import liczba_jednostek_zrodla
 from network_model.pochodne import kw_na_mw, moc_pozorna_z_czynnej_mva, mva_na_kva
 
-# Generator types that REQUIRE connection_variant — kanoniczny zbiór przekształtnikowy
-# (karta AB-H0 Pakiet D: lokalna kopia skasowana; parytet w
-# `tests/enm/test_gen_types_przeksztaltnikowe.py`).
-_OZE_GEN_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
-_LV_VARIANTS = frozenset({"nn_side", "LV_BEHIND_STATION_TRANSFORMER"})
-_SOURCE_STATION_VARIANTS = frozenset({"SOURCE_CONNECTION_STATION"})
-_DEDICATED_MV_VARIANTS = frozenset({"block_transformer", "DEDICATED_MV_CONNECTION"})
-
-#: Decyzja O-53 — klasyfikacja wariantu przyłączenia dla kontroli mocy transformatora z
-#: TYCH SAMYCH zbiorów co walidacja przyłączenia: źródło po stronie nN stacji (także
-#: stacja przyłączeniowa źródła) i źródło z dedykowanym transformatorem blokowym.
-WARIANTY_PRZYLACZENIA_NN = _LV_VARIANTS | _SOURCE_STATION_VARIANTS
-WARIANTY_PRZYLACZENIA_TR_BLOKOWY = _DEDICATED_MV_VARIANTS
-
-
-# Nazwy wariantów przyłączenia w zdaniu — z jednej mapy słownika komunikatów.
-_WARIANT_NN_PL = f"„{NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL['nn_side']}”"
-_WARIANT_BLOK_PL = f"„{NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL['block_transformer']}”"
-_WARIANTY_DOZWOLONE_PL = lista_pl((_WARIANT_NN_PL, _WARIANT_BLOK_PL))
-
-
-def validate_generator_connections(
-    generators: list[dict[str, Any]],
-    transformers_by_ref: dict[str, dict[str, Any]],
-    stations_by_ref: dict[str, dict[str, Any]],
-) -> list[ReadinessIssueV1]:
-    """Validate PV/BESS connection rules.
-
-    Args:
-        generators: list of generator dicts with keys:
-            ref_id, name, gen_type, bus_ref, catalog_ref,
-            connection_variant, blocking_transformer_ref, station_ref
-        transformers_by_ref: ref_id → transformer dict
-        stations_by_ref: ref_id → station dict
-
-    Returns:
-        List of ReadinessIssueV1 (sorted by element_id).
-    """
-    issues: list[ReadinessIssueV1] = []
-
-    for gen in sorted(generators, key=lambda g: g.get("ref_id", "")):
-        ref_id = gen.get("ref_id", "")
-        # Nazwa z modelu albo opis rodzaju („Generator bez nazwy"), nigdy identyfikator
-        # (karta #144).
-        name = nazwa_elementu(gen, "generators")
-        gen_type = gen.get("gen_type")
-        catalog_ref = gen.get("catalog_ref")
-        connection_variant = gen.get("connection_variant")
-        blocking_tr_ref = gen.get("blocking_transformer_ref")
-        station_ref = gen.get("station_ref")
-
-        # Catalog ref required for all generators
-        if not catalog_ref:
-            issues.append(
-                ReadinessIssueV1(
-                    code="catalog.ref_missing",
-                    area=ReadinessAreaV1.CATALOGS,
-                    priority=ReadinessPriority.BLOCKER,
-                    message_pl=f"Generator '{name}' ({ref_id}): brak referencji katalogowej",
-                    element_id=ref_id,
-                    element_type="GENERATOR",
-                    fix_hint_pl="Przypisz typ z katalogu do generatora",
-                    wizard_step="K6",
-                )
-            )
-
-        # Synchronous generators don't need connection_variant
-        if gen_type not in _OZE_GEN_TYPES:
-            continue
-
-        # OZE generators MUST have connection_variant
-        if not connection_variant:
-            issues.append(
-                ReadinessIssueV1(
-                    code="generator.connection_variant_missing",
-                    area=ReadinessAreaV1.GENERATORS,
-                    priority=ReadinessPriority.BLOCKER,
-                    message_pl=(
-                        f"Generator OZE '{name}': brak wariantu przyłączenia "
-                        f"({_WARIANTY_DOZWOLONE_PL})"
-                    ),
-                    element_id=ref_id,
-                    element_type="GENERATOR",
-                    fix_hint_pl="Wybierz wariant przyłączenia w kreatorze",
-                    wizard_step="K6",
-                )
-            )
-            continue
-
-        if connection_variant in _LV_VARIANTS or connection_variant in _SOURCE_STATION_VARIANTS:
-            # Variant A: must have station_ref
-            if not station_ref:
-                issues.append(
-                    ReadinessIssueV1(
-                        code="generator.station_ref_missing",
-                        area=ReadinessAreaV1.GENERATORS,
-                        priority=ReadinessPriority.BLOCKER,
-                        message_pl=(
-                            f"Generator OZE '{name}': wariant {_WARIANT_NN_PL} "
-                            "wymaga wskazania stacji SN/nN"
-                        ),
-                        element_id=ref_id,
-                        element_type="GENERATOR",
-                        fix_hint_pl="Wskaż stację SN/nN w kreatorze",
-                        wizard_step="K6",
-                    )
-                )
-            elif station_ref not in stations_by_ref:
-                issues.append(
-                    ReadinessIssueV1(
-                        code="generator.station_ref_invalid",
-                        area=ReadinessAreaV1.GENERATORS,
-                        priority=ReadinessPriority.BLOCKER,
-                        message_pl=(
-                            f"Generator OZE '{name}': wskazana stacja nie istnieje w modelu"
-                        ),
-                        element_id=ref_id,
-                        element_type="GENERATOR",
-                        fix_hint_pl="Popraw referencję do stacji w kreatorze",
-                        wizard_step="K6",
-                    )
-                )
-
-        elif connection_variant in _DEDICATED_MV_VARIANTS:
-            # Variant B: must have blocking_transformer_ref
-            if not blocking_tr_ref:
-                issues.append(
-                    ReadinessIssueV1(
-                        code="generator.block_transformer_missing",
-                        area=ReadinessAreaV1.GENERATORS,
-                        priority=ReadinessPriority.BLOCKER,
-                        message_pl=(
-                            f"Generator OZE '{name}': wariant {_WARIANT_BLOK_PL} wymaga "
-                            "wskazania transformatora blokowego"
-                        ),
-                        element_id=ref_id,
-                        element_type="GENERATOR",
-                        fix_hint_pl="Wskaż transformator blokowy w kreatorze",
-                        wizard_step="K6",
-                    )
-                )
-            elif blocking_tr_ref not in transformers_by_ref:
-                issues.append(
-                    ReadinessIssueV1(
-                        code="generator.block_transformer_invalid",
-                        area=ReadinessAreaV1.GENERATORS,
-                        priority=ReadinessPriority.BLOCKER,
-                        message_pl=(
-                            f"Generator OZE '{name}': wskazany transformator blokowy nie "
-                            "istnieje w modelu"
-                        ),
-                        element_id=ref_id,
-                        element_type="GENERATOR",
-                        fix_hint_pl="Dodaj transformator blokowy w kreatorze",
-                        wizard_step="K5",
-                    )
-                )
-
-        else:
-            issues.append(
-                ReadinessIssueV1(
-                    code="generator.connection_variant_invalid",
-                    area=ReadinessAreaV1.GENERATORS,
-                    priority=ReadinessPriority.BLOCKER,
-                    message_pl=(
-                        f"Generator OZE '{name}': nieznany wariant przyłączenia "
-                        f"'{connection_variant}' (dozwolone: {_WARIANTY_DOZWOLONE_PL})"
-                    ),
-                    element_id=ref_id,
-                    element_type="GENERATOR",
-                    fix_hint_pl="Popraw wariant przyłączenia w kreatorze",
-                    wizard_step="K6",
-                )
-            )
-
-    return issues
+#: Decyzja O-53 — klasyfikacja wariantu przyłączenia dla kontroli mocy transformatora:
+#: źródło po stronie nN stacji (także stacja przyłączeniowa źródła) i źródło
+#: z dedykowanym transformatorem blokowym (wartości pola `Generator.connection_variant`).
+WARIANTY_PRZYLACZENIA_NN = frozenset(
+    {"nn_side", "LV_BEHIND_STATION_TRANSFORMER", "SOURCE_CONNECTION_STATION"}
+)
+WARIANTY_PRZYLACZENIA_TR_BLOKOWY = frozenset({"block_transformer", "DEDICATED_MV_CONNECTION"})
 
 
 # ===========================================================================

@@ -10,11 +10,12 @@ import { describe, expect, it } from 'vitest';
 
 import { composeLvDomainScene, WIERSZ_ETYKIETY_APARATU_POLOWA, type LvDomainScene } from '../composeLvDomainScene';
 import { scenariusz, SCENARIUSZE_NN, SLUGI_SCENARIUSZY } from '../fixtures/scenariusze';
+import { nazwaElementuWidokuNn } from '../opisyBrakowDanychNn';
 import { RASTER, TOKENY_GEOMETRII } from '../visualGrammar';
 import type { LvDomainProjectionV1 } from '../types';
 
 function scena(p: LvDomainProjectionV1): LvDomainScene {
-  return composeLvDomainScene(p.graph, p.upstream_equivalents);
+  return composeLvDomainScene(p.graph, p.upstream_equivalents, nazwaElementuWidokuNn(p.graph, () => undefined));
 }
 
 function edge(s: LvDomainScene, ref: string) {
@@ -232,7 +233,7 @@ describe('Ścieżki zasilania i ostrzeżenia — przepisane z projekcji (§37/§
 
   it('scena dla widoku „brak danych" jest pusta i nie rzuca', () => {
     const p = scenariusz('01_single_tr');
-    const s = composeLvDomainScene({ ...p.graph, status: 'brak danych', missing_data: ['station'] } as unknown as typeof p.graph, []);
+    const s = composeLvDomainScene({ ...p.graph, status: 'brak danych', missing_data: ['station'] } as unknown as typeof p.graph, [], () => undefined);
     expect(s.nodes).toHaveLength(0);
     expect(s.edges).toHaveLength(0);
   });

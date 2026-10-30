@@ -51,7 +51,7 @@ export function wynikiProby(odmowa: { komunikat: string; kod: string }): readonl
       nazwa: 'nieustalona (500)',
       odpowiedz: () => json(500, null),
       stan: 'nieustalona',
-      tresc: 'Błąd HTTP 500: Blad',
+      tresc: 'Operacja na modelu sieci nie powiodła się: wewnętrzny błąd serwera obliczeń (HTTP 500).',
       wiersz: 'Nieustalona',
     },
   ];

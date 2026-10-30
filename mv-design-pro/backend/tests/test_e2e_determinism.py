@@ -1,6 +1,6 @@
 """E2E determinism tests — KROK 5.
 
-Tests that the full chain Kreator → Domain → Validation → ExportManifest
+Tests that the chain ElementRef → ResultJoin → ExportManifest
 produces deterministic output regardless of input order.
 
 BINDING: any failure blocks merge.
@@ -10,13 +10,6 @@ import itertools
 
 from domain.element_ref import ElementRefV1, ElementTypeV1, build_element_ref_index
 from domain.export_manifest import build_export_manifest
-from domain.generator_validation import validate_generator_connections
-from domain.readiness import (
-    ReadinessAreaV1,
-    ReadinessIssueV1,
-    ReadinessPriority,
-    build_readiness_profile,
-)
 from domain.result_join import join_results
 
 # =============================================================================
@@ -56,26 +49,6 @@ def _make_generators(count: int = 5) -> list[dict]:
     return gens
 
 
-def _make_transformers(gens: list[dict]) -> dict[str, dict]:
-    """Create transformer lookup matching blocking_transformer_refs."""
-    result = {}
-    for g in gens:
-        ref = g.get("blocking_transformer_ref")
-        if ref:
-            result[ref] = {"ref_id": ref}
-    return result
-
-
-def _make_stations(gens: list[dict]) -> dict[str, dict]:
-    """Create station lookup matching station_refs."""
-    result = {}
-    for g in gens:
-        ref = g.get("station_ref")
-        if ref:
-            result[ref] = {"ref_id": ref}
-    return result
-
-
 def _make_snapshot_index(ids: list[str]) -> dict[str, ElementRefV1]:
     """Create snapshot element index from IDs."""
     return {eid: ElementRefV1(element_id=eid, element_type=ElementTypeV1.GENERATOR) for eid in ids}
@@ -84,120 +57,6 @@ def _make_snapshot_index(ids: list[str]) -> dict[str, ElementRefV1]:
 def _make_element_results(ids: list[str]) -> list[dict]:
     """Create element results list from IDs."""
     return [{"element_ref": eid, "values": {"p_mw": 1.0 * i}} for i, eid in enumerate(ids)]
-
-
-# =============================================================================
-# GENERATOR VALIDATION DETERMINISM
-# =============================================================================
-
-
-class TestGeneratorValidationDeterminism:
-    """Same generators → identical validation output regardless of order."""
-
-    def test_100x_same_output(self) -> None:
-        """Run validation 100 times — identical result each time."""
-        gens = _make_generators(10)
-        transformers = _make_transformers(gens)
-        stations = _make_stations(gens)
-
-        reference = validate_generator_connections(gens, transformers, stations)
-        ref_codes = [(i.code, i.element_id) for i in reference]
-
-        for _ in range(100):
-            result = validate_generator_connections(gens, transformers, stations)
-            codes = [(i.code, i.element_id) for i in result]
-            assert codes == ref_codes
-
-    def test_permutation_invariance(self) -> None:
-        """All permutations of 5 generators → same output."""
-        gens = _make_generators(5)
-        transformers = _make_transformers(gens)
-        stations = _make_stations(gens)
-
-        reference = validate_generator_connections(gens, transformers, stations)
-        ref_codes = [(i.code, i.element_id) for i in reference]
-
-        # Test all 120 permutations of 5 generators
-        for perm in itertools.permutations(gens):
-            result = validate_generator_connections(list(perm), transformers, stations)
-            codes = [(i.code, i.element_id) for i in result]
-            assert codes == ref_codes
-
-    def test_output_sorted_by_element_id(self) -> None:
-        gens = _make_generators(8)
-        transformers = _make_transformers(gens)
-        stations = _make_stations(gens)
-
-        issues = validate_generator_connections(gens, transformers, stations)
-        for code in {i.code for i in issues}:
-            code_issues = [i for i in issues if i.code == code]
-            ids = [i.element_id for i in code_issues]
-            assert ids == sorted(ids), f"Issues for {code} not sorted by element_id"
-
-
-# =============================================================================
-# READINESS PROFILE DETERMINISM
-# =============================================================================
-
-
-class TestReadinessProfileDeterminism:
-    """ReadinessProfileV1.content_hash is deterministic."""
-
-    def test_same_issues_same_hash(self) -> None:
-        issues = [
-            ReadinessIssueV1(
-                code="generator.connection_variant_missing",
-                area=ReadinessAreaV1.GENERATORS,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl="Test issue 1",
-                element_id="gen_001",
-            ),
-            ReadinessIssueV1(
-                code="catalog.ref_missing",
-                area=ReadinessAreaV1.CATALOGS,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl="Test issue 2",
-                element_id="gen_000",
-            ),
-        ]
-
-        profile1 = build_readiness_profile(
-            snapshot_id="snap_1",
-            snapshot_fingerprint="abc",
-            issues=issues,
-        )
-        profile2 = build_readiness_profile(
-            snapshot_id="snap_1",
-            snapshot_fingerprint="abc",
-            issues=list(reversed(issues)),
-        )
-
-        assert profile1.content_hash == profile2.content_hash
-
-    def test_100x_stable_hash(self) -> None:
-        issues = [
-            ReadinessIssueV1(
-                code=f"test.issue_{i}",
-                area=ReadinessAreaV1.TOPOLOGY,
-                priority=ReadinessPriority.WARNING,
-                message_pl=f"Issue {i}",
-                element_id=f"elem_{i:03d}",
-            )
-            for i in range(20)
-        ]
-
-        reference = build_readiness_profile(
-            snapshot_id="snap_x",
-            snapshot_fingerprint="xyz",
-            issues=issues,
-        )
-        for _ in range(100):
-            profile = build_readiness_profile(
-                snapshot_id="snap_x",
-                snapshot_fingerprint="xyz",
-                issues=issues,
-            )
-            assert profile.content_hash == reference.content_hash
 
 
 # =============================================================================
@@ -348,7 +207,7 @@ class TestElementRefIndexDeterminism:
 
 
 # =============================================================================
-# FULL CHAIN: GENERATORS → READINESS → RESULT JOIN → EXPORT
+# FULL CHAIN: ELEMENT REFS → RESULT JOIN → EXPORT
 # =============================================================================
 
 
@@ -358,8 +217,6 @@ class TestFullChainDeterminism:
     def test_e2e_chain_deterministic(self) -> None:
         """Full chain 50x → identical export manifest hash."""
         gens = _make_generators(8)
-        transformers = _make_transformers(gens)
-        stations = _make_stations(gens)
         snapshot_ids = [g["ref_id"] for g in gens]
         snapshot_index = _make_snapshot_index(snapshot_ids)
         results = _make_element_results(snapshot_ids)
@@ -367,24 +224,14 @@ class TestFullChainDeterminism:
         reference_hash = None
 
         for _ in range(50):
-            # Step 1: Validate generators
-            issues = validate_generator_connections(gens, transformers, stations)
-
-            # Step 2: Build readiness (issues from validation are already ReadinessIssueV1)
-            build_readiness_profile(
-                snapshot_id="snap_e2e",
-                snapshot_fingerprint="fp_e2e",
-                issues=issues,
-            )
-
-            # Step 3: Join results
+            # Step 1: Join results
             join = join_results(
                 snapshot_element_ids=snapshot_index,
                 element_results=results,
                 analysis_type="LOAD_FLOW",
             )
 
-            # Step 4: Build export manifest
+            # Step 2: Build export manifest
             manifest = build_export_manifest(
                 snapshot_hash="fp_e2e",
                 layout_hash="layout_e2e",
@@ -401,19 +248,11 @@ class TestFullChainDeterminism:
     def test_e2e_chain_permutation_invariant(self) -> None:
         """Permuted generator order → same export manifest hash."""
         gens = _make_generators(5)
-        transformers = _make_transformers(gens)
-        stations = _make_stations(gens)
         snapshot_ids = [g["ref_id"] for g in gens]
         snapshot_index = _make_snapshot_index(snapshot_ids)
         results = _make_element_results(snapshot_ids)
 
         def run_chain(gen_list: list[dict]) -> str:
-            issues = validate_generator_connections(gen_list, transformers, stations)
-            build_readiness_profile(
-                snapshot_id="snap_e2e",
-                snapshot_fingerprint="fp_e2e",
-                issues=issues,
-            )
             join = join_results(
                 snapshot_element_ids=snapshot_index,
                 element_results=results,
@@ -423,7 +262,7 @@ class TestFullChainDeterminism:
                 snapshot_hash="fp_e2e",
                 layout_hash="layout_e2e",
                 run_hash=join.content_hash,
-                element_ids=snapshot_ids,
+                element_ids=[g["ref_id"] for g in gen_list],
                 analysis_types=["SC_3F"],
             )
             return manifest.content_hash

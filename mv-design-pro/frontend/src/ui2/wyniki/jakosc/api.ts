@@ -34,6 +34,7 @@
  */
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
+import { bladZapytania } from '../../shared/bladZapytania';
 
 // ---------------------------------------------------------------------------
 // Wiarygodność zwarciowa (sanity-bounds)
@@ -250,7 +251,7 @@ export interface WalidacjaResponse {
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Request ${url} failed: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<T>;
 }
@@ -436,7 +437,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(`Request ${url} failed: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<T>;
 }
@@ -494,9 +495,7 @@ export async function pobierzRaportArcFlash(
     }),
   });
   if (!response.ok) {
-    throw new Error(
-      `Raport Arc Flash (${format}) nie powiódł się: ${response.status} ${response.statusText}`,
-    );
+    throw bladZapytania(response, `Raport łuku elektrycznego (${format}) nie powiódł się`);
   }
   return response.blob();
 }

@@ -48,7 +48,15 @@ from typing import Any, Literal, Self, TypeAlias, get_args
 import yaml
 from network_model.pochodne.jednostki import kw_na_mw
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, model_validator
-from werdykt.kontrakt import Jednostka, PodstawaWymagania, RodzajPodstawy, StanZrodla, Tekst
+from werdykt.kontrakt import (
+    NAZWA_RODZAJU_PODSTAWY_PL,
+    NAZWA_STANU_ZRODLA_PL,
+    Jednostka,
+    PodstawaWymagania,
+    RodzajPodstawy,
+    StanZrodla,
+    Tekst,
+)
 
 PROFILE_DIR = Path(__file__).parent
 _KATALOG_WARSTW = PROFILE_DIR / "warstwy"
@@ -106,6 +114,19 @@ RODZAJ_WARSTWY: Mapping[WarstwaNormatywna, RodzajPodstawy] = MappingProxyType(
     }
 )
 KOLEJNOSC_WARSTW: tuple[WarstwaNormatywna, ...] = get_args(WarstwaNormatywna)
+#: Warstwa profilu W TEKŚCIE odmowy (kod zostaje w polu ``warstwa``); kompletność wobec
+#: ``WarstwaNormatywna`` przypina ``tests/catalog/test_nc_rfg_nazwy_warstw.py``.
+NAZWY_WARSTW_PL: Mapping[WarstwaNormatywna, str] = MappingProxyType(
+    {
+        "NC_RFG": "rozporządzenie NC RfG (UE) 2016/631",
+        "WOS": "wymogi ogólnego stosowania (WOS)",
+        "PROCEDURA_PTPIREE": "procedura PTPiREE",
+        "WIPWC": "wykaz WiPWC",
+        "OSD": "wymagania operatora systemu dystrybucyjnego",
+        "MAGAZYNY": "wymagania krajowe dla magazynów energii",
+        "NIEUSTALONA": "warstwa o nieustalonym pochodzeniu",
+    }
+)
 #: Jednostka każdej pozycji Banku Nastaw (zapis kontraktu werdyktu §1: wartość względna z bazą).
 JEDNOSTKI_NASTAW: Mapping[NastawaBanku, str] = MappingProxyType(
     {
@@ -169,16 +190,21 @@ def _stan_zbioru(
     ``NIEUSTALONE`` musi nazywać, czego brakuje.
     """
     if len(set(identyfikatory)) != len(identyfikatory):
-        raise ValueError(f"{nazwa}: powtórzone pozycje {identyfikatory}.")
+        raise ValueError(
+            f"{nazwa}: powtórzone pozycje "
+            f"{', '.join(sorted({i for i in identyfikatory if identyfikatory.count(i) > 1}))}."
+        )
     if not identyfikatory and status != "NIEUSTALONE":
-        raise ValueError(f"{nazwa}: pusty zbiór pozycji nie może mieć stanu {status}.")
+        raise ValueError(
+            f"{nazwa}: pusty zbiór pozycji nie może mieć stanu „{NAZWA_STANU_ZRODLA_PL[status]}”."
+        )
     if najslabszy_stan([status, *stany_pozycji]) != status:
         raise ValueError(
-            f"{nazwa}: stan {status} mocniejszy niż najsłabsza pozycja "
-            f"({najslabszy_stan(stany_pozycji)})."
+            f"{nazwa}: stan „{NAZWA_STANU_ZRODLA_PL[status]}” mocniejszy niż najsłabsza pozycja "
+            f"(„{NAZWA_STANU_ZRODLA_PL[najslabszy_stan(stany_pozycji)]}”)."
         )
     if status == "NIEUSTALONE" and not uwagi_pl:
-        raise ValueError(f"{nazwa}: stan NIEUSTALONE wymaga uwag nazywających brak.")
+        raise ValueError(f"{nazwa}: stan „nieustalone” wymaga uwag nazywających brak.")
 
 
 # ---------------------------------------------------------------------------
@@ -204,8 +230,8 @@ class DokumentWarstwy(_Zamrozony):
     def _wydanie_przy_wskazaniu(self) -> Self:
         if self.status != "NIEUSTALONE" and self.wydanie is None:
             raise ValueError(
-                f"Dokument „{self.tytul}” o stanie {self.status} bez wydania — bez niego "
-                "stan dokumentu jest NIEUSTALONE."
+                f"Dokument „{self.tytul}” o stanie „{NAZWA_STANU_ZRODLA_PL[self.status]}” bez "
+                "wydania — bez niego stan dokumentu jest „nieustalone”."
             )
         return self
 
@@ -291,7 +317,11 @@ class KlasyfikacjaModulu(_Zamrozony):
     @model_validator(mode="after")
     def _komplet_progow(self) -> Self:
         if set(self.progi_kw) != set(get_args(TypModuluZProgiem)):
-            raise ValueError(f"Klasyfikacja: niekompletne progi {sorted(self.progi_kw)}.")
+            raise ValueError(
+                "Klasyfikacja: niekompletne progi mocy — progi są tylko dla typów modułu "
+                f"{', '.join(t for t in get_args(TypModuluZProgiem) if t in self.progi_kw)}, "
+                "wymagane dla B, C i D."
+            )
         return self
 
 
@@ -368,7 +398,10 @@ class NcRfgVoltageLevels(_Zamrozony):
         for nazwa, punkty in (("LVRT", self.lvrt), ("HVRT", self.hvrt)):
             czasy = [p.time_s for p in punkty]
             if any(b <= a for a, b in zip(czasy, czasy[1:], strict=False)):
-                raise ValueError(f"Obwiednia {nazwa}: czasy punktów muszą rosnąć ściśle ({czasy}).")
+                raise ValueError(
+                    f"Obwiednia {nazwa}: czasy punktów muszą rosnąć ściśle "
+                    f"({', '.join(f'{czas:g} s' for czas in czasy)})."
+                )
         return self
 
 
@@ -418,7 +451,7 @@ class PozycjaBankuNastaw(_Zamrozony):
             )
         if self.zrodlo.status == "NIEUSTALONE":
             raise ValueError(
-                f"Nastawa {self.id}: wartość bez podstawy (stan NIEUSTALONE) — brak danych jest "
+                f"Nastawa {self.id}: wartość bez podstawy (stan „nieustalone”) — brak danych jest "
                 "stanem sekcji, nie wartością."
             )
         return self
@@ -463,12 +496,12 @@ class ScenariuszBadania(_Zamrozony):
             raise ValueError(f"Scenariusz {self.id}: brak parametrów.")
         if set(self.parametry) != set(self.jednostki):
             raise ValueError(
-                f"Scenariusz {self.id}: klucze parametrów {sorted(self.parametry)} ≠ klucze "
-                f"jednostek {sorted(self.jednostki)} (liczba bez jednostki)."
+                f"Scenariusz {self.id}: klucze parametrów {', '.join(sorted(self.parametry))} ≠ "
+                f"klucze jednostek {', '.join(sorted(self.jednostki))} (liczba bez jednostki)."
             )
         if self.zrodlo.status == "NIEUSTALONE":
             raise ValueError(
-                f"Scenariusz {self.id}: scenariusz bez podstawy (stan NIEUSTALONE) — brak "
+                f"Scenariusz {self.id}: scenariusz bez podstawy (stan „nieustalone”) — brak "
                 "programu ramowego jest stanem programu badań, nie scenariuszem."
             )
         return self
@@ -525,7 +558,7 @@ class WymaganieRegulacyjne(_Zamrozony):
         if self.pokrycie_zrodlo.rodzaj != "WIPWC":
             raise ValueError(
                 f"Wymaganie {self.id}: reguła pokrycia certyfikatem pochodzi z warstwy WiPWC, "
-                f"nie z {self.pokrycie_zrodlo.rodzaj}."
+                f"nie z warstwy „{NAZWA_RODZAJU_PODSTAWY_PL[self.pokrycie_zrodlo.rodzaj]}”."
             )
         for test_id in self.testy:
             if not _kanon_testu(test_id):
@@ -548,7 +581,7 @@ class WymaganieRegulacyjne(_Zamrozony):
         ):
             raise ValueError(
                 f"Wymaganie {self.id}: flaga wykonania prawa operatora bez podstawy (stan "
-                "NIEUSTALONE) — nieustalenie zapisuje się jako brak flagi."
+                "„nieustalone”) — nieustalenie zapisuje się jako brak flagi."
             )
         return self
 
@@ -610,8 +643,9 @@ class NcRfgProfile(_Zamrozony):
     def _kolejnosc_warstw(self) -> Self:
         if tuple(w.warstwa for w in self.warstwy) != KOLEJNOSC_WARSTW:
             raise ValueError(
-                f"Profil {self.operator_id}: warstwy {[w.warstwa for w in self.warstwy]} ≠ "
-                f"kolejność kanoniczna {list(KOLEJNOSC_WARSTW)}."
+                f"Profil {self.operator_id}: warstwy w kolejności "
+                f"{', '.join(NAZWY_WARSTW_PL[w.warstwa] for w in self.warstwy)} ≠ kolejność "
+                f"kanoniczna {', '.join(NAZWY_WARSTW_PL[w] for w in KOLEJNOSC_WARSTW)}."
             )
         return self
 
@@ -674,7 +708,8 @@ def _czytaj_warstwe(sciezka: Path, warstwa: WarstwaNormatywna) -> dict[str, Any]
     dane = _czytaj_yaml(sciezka)
     if dane.get("warstwa") != warstwa:
         raise ValueError(
-            f"Plik {sciezka.name}: deklaruje warstwę {dane.get('warstwa')!r}, oczekiwana {warstwa}."
+            f"Plik {sciezka.name}: deklaruje warstwę {dane.get('warstwa')!r}, oczekiwana "
+            f"„{NAZWY_WARSTW_PL[warstwa]}”."
         )
     return dane
 
@@ -706,7 +741,10 @@ def _zrodlo(
     trafiają do każdej podstawy tej warstwy.
     """
     if status is not None and status not in _KOLEJNOSC_STANOW:
-        raise ValueError(f"Stan źródła {status!r} spoza słownika {list(_KOLEJNOSC_STANOW)}.")
+        raise ValueError(
+            f"Stan źródła {status!r} spoza słownika stanów pliku "
+            f"({', '.join(_KOLEJNOSC_STANOW)})."
+        )
     stan = dokument.status if status is None else najslabszy_stan([status, dokument.status])
     uwaga_braku = None
     if jednostka_redakcyjna is None and stan != "NIEUSTALONE":
@@ -986,13 +1024,14 @@ def _wykaz_wipwc(wipwc: dict[str, Any], dok_wipwc: DokumentWarstwy) -> WykazWipw
     wersje = {w.wersja: w for w in wykaz.wersje}
     if len(wersje) != len(wykaz.wersje):
         raise ValueError(
-            f"Warstwa WiPWC: powtórzone wersje wykazu {[w.wersja for w in wykaz.wersje]}."
+            "Warstwa WiPWC: powtórzone wersje wykazu "
+            f"{', '.join(w.wersja for w in wykaz.wersje)}."
         )
     biezaca = wersje.get(dok_wipwc.wydanie or "")
     if biezaca is None:
         raise ValueError(
             f"Warstwa WiPWC: wydanie dokumentu {dok_wipwc.wydanie!r} spoza wersji wykazu "
-            f"{sorted(wersje)}."
+            f"{', '.join(sorted(wersje))}."
         )
     if dok_wipwc.obowiazuje_od != biezaca.akceptowana_od:
         raise ValueError(
@@ -1042,10 +1081,10 @@ def _wymagania(
             poza_warstwa = set(wpis["technologie"]) - _TECHNOLOGIE_WARSTWY[warstwa]
             if poza_warstwa:
                 raise ValueError(
-                    f"Wymaganie {identyfikator} warstwy {warstwa}: technologie "
-                    f"{sorted(poza_warstwa)} spoza zakresu warstwy "
-                    f"{sorted(_TECHNOLOGIE_WARSTWY[warstwa])} (magazyn energii — warstwa "
-                    "MAGAZYNY, plan AB O-28)."
+                    f"Wymaganie {identyfikator} warstwy „{NAZWY_WARSTW_PL[warstwa]}”: "
+                    f"technologie {', '.join(sorted(poza_warstwa))} spoza zakresu warstwy "
+                    f"({', '.join(sorted(_TECHNOLOGIE_WARSTWY[warstwa]))}; magazyn energii — "
+                    "warstwa wymagań krajowych dla magazynów, plan AB O-28)."
                 )
             prawo = wpis.get("prawo_operatora", False)
             if not isinstance(prawo, bool):
@@ -1085,17 +1124,22 @@ def _wymagania(
             )
     identyfikatory = [w.id for w in wynik]
     if len(identyfikatory) != len(set(identyfikatory)):
-        raise ValueError(f"Katalog wymagań: zdublowane identyfikatory {identyfikatory}.")
+        raise ValueError(
+            "Katalog wymagań: zdublowane identyfikatory "
+            f"{', '.join(sorted({i for i in identyfikatory if identyfikatory.count(i) > 1}))}."
+        )
     nieznane_pokrycie = sorted(set(pokrycie_typy) - set(identyfikatory))
     if nieznane_pokrycie:
         raise ValueError(
-            f"Warstwa WiPWC: pokrycie certyfikatem dla wymagań spoza katalogu {nieznane_pokrycie}."
+            "Warstwa WiPWC: pokrycie certyfikatem dla wymagań spoza katalogu "
+            f"{', '.join(nieznane_pokrycie)}."
         )
     z_prawem = {w.id for w in wynik if w.prawo_operatora}
     bez_prawa = sorted(set(wpisy_prawa) - z_prawem)
     if bez_prawa:
         raise ValueError(
-            f"Warstwa OSD {osd.get('operator_id')!r}: wykonanie prawa dla wymagań {bez_prawa}, "
+            f"Warstwa OSD {osd.get('operator_id')!r}: wykonanie prawa dla wymagań "
+            f"{', '.join(bez_prawa)}, "
             "wobec których rozporządzenie nie przyznaje operatorowi prawa określenia (albo "
             "spoza katalogu)."
         )
@@ -1210,7 +1254,9 @@ def _zloz_profil(
     ):
         nieznane = sorted(set(grupy) - grupy_znane)
         if nieznane:
-            raise ValueError(f"Profil {operator_id}: {opis} — nieznane grupy {nieznane}.")
+            raise ValueError(
+                f"Profil {operator_id}: {opis} — nieznane grupy {', '.join(nieznane)}."
+            )
 
     def parametr(nazwa: str) -> tuple[dict[str, Any], PodstawaWymagania]:
         return _parametr(nazwa, osd, dok_osd, wos, dok_wos, zastane, dok_zast)

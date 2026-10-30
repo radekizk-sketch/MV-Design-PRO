@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { CatalogApiError } from '../api';
 import { TypePicker } from '../TypePicker';
 
 const fetchTypesByCategoryMock = vi.fn();
@@ -20,7 +21,7 @@ describe('TypePicker', () => {
 
   it('pokazuje przyjazny komunikat i pozwala ponowic pobranie', async () => {
     fetchTypesByCategoryMock
-      .mockRejectedValueOnce(new Error('500 Internal Server Error: No detail'))
+      .mockRejectedValueOnce(new CatalogApiError(500, null, '/api/catalog/types'))
       .mockResolvedValueOnce([
         {
           id: 'src-gpz-15kv-200mva-rx010',

@@ -53,6 +53,7 @@ import {
   type RodzinaAnalizy,
 } from './rodzinyBiegow';
 import { swiezoscBiegu, type SwiezoscBiegu, type WerdyktPrzypadku } from './swiezoscBiegu';
+import { komunikatZapytania } from '../../shared/bladZapytania';
 
 export {
   ETYKIETA_RODZINY,
@@ -227,7 +228,7 @@ async function odczytajBlad(odpowiedz: Response): Promise<string> {
   } catch {
     /* ciało bez JSON — zostaje kod HTTP */
   }
-  return `HTTP ${odpowiedz.status}`;
+  return komunikatZapytania(odpowiedz);
 }
 
 /** `GET /api/execution/runs/{run_id}/results/v1` → elementy nakładki wyniku + statusy. */

@@ -1,3 +1,4 @@
+import { bladZapytania } from '../../shared/bladZapytania';
 /*
  * Klient API okna „Wrażliwość" (karta ROUTERY-4A). Typy TS odwzorowują 1:1
  * kształt odpowiedzi końcówki (mapowanie plik:linia):
@@ -97,7 +98,7 @@ export interface WrazliwoscResponse {
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Request ${url} failed: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<T>;
 }

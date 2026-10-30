@@ -125,6 +125,143 @@ def scan_file(filepath: str) -> list[tuple[int, str, str]]:
     return violations
 
 
+# ---------------------------------------------------------------------------
+# Reguła komunikatu zapytania (karta komunikatów, commit 4, 2026-10-30).
+# Komunikat o nieudanym zapytaniu do serwera składa JEDNO miejsce:
+# `frontend/src/ui2/shared/bladZapytania.ts` (`bladZapytania`, `komunikatZapytania`).
+# Lokalne kopie dawały projektantowi surowy adres zapytania („Request ${url} failed”,
+# „Zapytanie ${url} nie powiodło się”), angielski `statusText` serwera albo goły „HTTP 404”.
+# Reguła działa na CAŁEJ treści pliku (szablon może mieć wiele linii), po usunięciu komentarzy,
+# na wszystkich plikach `frontend/src` poza testami i samym plikiem źródła prawdy.
+# ---------------------------------------------------------------------------
+
+PLIK_KOMUNIKATU_ZAPYTANIA = os.path.join("frontend", "src", "ui2", "shared", "bladZapytania.ts")
+SKAN_KOMUNIKATU_ZAPYTANIA = os.path.join("frontend", "src")
+_WYJATKI_TESTOW = ("__tests__", ".test.", ".spec.", os.path.join("src", "test") + os.sep)
+
+_KOMENTARZ_BLOKOWY_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_KOMENTARZ_LINIOWY_RE = re.compile(r"^[ \t]*//.*$", re.MULTILINE)
+_SZABLON_RE = re.compile(r"`(?:[^`\\]|\\.)*`", re.DOTALL)
+_ARGUMENT_ERROR_RE = re.compile(
+    r"new\s+Error\(\s*(?P<lit>`(?:[^`\\]|\\.)*`|'(?:[^'\\\n]|\\.)*'|\"(?:[^\"\\\n]|\\.)*\")",
+    re.DOTALL,
+)
+_STATUS_TEXT_RE = re.compile(r"\.statusText\b|\$\{[^}`]*\bstatusText\b")
+_SUROWY_ADRES_RE = re.compile(r"\$\{\s*(?:url|adres|path|sciezka|endpoint)\s*\}")
+_SLOWA_BLEDU_RE = re.compile(
+    r"nie powiod|niedostępn|nie udał|nie udal|błąd|blad|failed|request|HTTP|\$\{[^}]*\bstatus\b",
+    re.IGNORECASE,
+)
+# Kod statusu odpowiedzi HTTP wklejany lokalnie do zdania (`(HTTP ${odpowiedz.status})`,
+# `: ${res.status}`) — opis i kod statusu składa wyłącznie `komunikatZapytania`.
+_STATUS_ODPOWIEDZI_RE = re.compile(
+    r"\$\{\s*(?:response|res|resp|odpowiedz|odp|r|[a-z]+Odp)\.status\s*\}"
+)
+# Ścieżka zapytania wpisana literalnie w komunikat błędu (`POST /api/projects → 500`).
+_SCIEZKA_API_RE = re.compile(r"/api/")
+_ANGIELSKI_TRANSPORT_RE = re.compile(r"\b(?:request|failed|failure)\b", re.IGNORECASE)
+_INTERPOLACJA_RE = re.compile(r"\$\{[^}]*\}")
+# Szablon, którego JEDYNĄ treścią stałą jest „HTTP”/„API” (z „Błąd” i dwukropkiem lub bez):
+# `HTTP ${s}`, `Błąd HTTP: ${s}`, `Błąd API ${s}` — kod zamiast zdania dla projektanta.
+_GOLY_KOD_HTTP_RE = re.compile(r"^\s*(?:Błąd\s+)?(?:HTTP|API)\s*:?\s*$", re.IGNORECASE)
+
+
+def _bez_komentarzy(tresc: str) -> str:
+    """Komentarze zastąpione spacjami/nowymi liniami — numery linii zostają."""
+
+    def _zastap(m: re.Match[str]) -> str:
+        return "".join("\n" if z == "\n" else " " for z in m.group(0))
+
+    return _KOMENTARZ_LINIOWY_RE.sub(_zastap, _KOMENTARZ_BLOKOWY_RE.sub(_zastap, tresc))
+
+
+def scan_komunikat_zapytania(filepath: str) -> list[tuple[int, str, str]]:
+    """Naruszenia reguły komunikatu zapytania w jednym pliku: [(linia, fragment, powód)]."""
+    try:
+        with open(filepath, encoding="utf-8", errors="ignore") as f:
+            tresc = _bez_komentarzy(f.read())
+    except OSError:
+        return []
+    naruszenia: list[tuple[int, str, str]] = []
+
+    def _dodaj(start: int, fragment: str, powod: str) -> None:
+        linia = tresc.count("\n", 0, start) + 1
+        naruszenia.append((linia, " ".join(fragment.split())[:120], powod))
+
+    # `statusText` to angielska fraza serwera (pod HTTP/2 pusta): w kodzie produktu służy
+    # wyłącznie do składania komunikatu — w szablonie, w `detail || response.statusText`,
+    # w `catch(() => response.statusText)` i w polach klas błędów. Każdy odczyt pola
+    # (`.statusText`) i każda interpolacja w szablonie są naruszeniem; status opisuje
+    # `opisStatusuHttp`. Zmienna lokalna o tej nazwie (np. opis stanu ekranu) nie jest.
+    for m in _STATUS_TEXT_RE.finditer(tresc):
+        koniec_linii = tresc.find("\n", m.start())
+        poczatek_linii = tresc.rfind("\n", 0, m.start()) + 1
+        _dodaj(
+            m.start(),
+            tresc[poczatek_linii : koniec_linii if koniec_linii >= 0 else len(tresc)],
+            "angielski statusText serwera w komunikacie — użyj komunikatZapytania "
+            "(ui2/shared/bladZapytania.ts)",
+        )
+    for m in _SZABLON_RE.finditer(tresc):
+        szablon = m.group(0)
+        if _SUROWY_ADRES_RE.search(szablon) and _SLOWA_BLEDU_RE.search(szablon):
+            _dodaj(
+                m.start(),
+                szablon,
+                "surowy adres zapytania w komunikacie błędu — użyj bladZapytania "
+                "(adres zostaje w polu diagnostycznym)",
+            )
+        if _INTERPOLACJA_RE.search(szablon) and _GOLY_KOD_HTTP_RE.match(
+            _INTERPOLACJA_RE.sub("", szablon[1:-1])
+        ):
+            _dodaj(
+                m.start(),
+                szablon,
+                "goły kod HTTP zamiast zdania dla projektanta — użyj komunikatZapytania",
+            )
+    for m in _SZABLON_RE.finditer(tresc):
+        if _STATUS_ODPOWIEDZI_RE.search(m.group(0)):
+            _dodaj(
+                m.start(),
+                m.group(0),
+                "kod statusu HTTP wklejony lokalnie do zdania — użyj komunikatZapytania",
+            )
+    for m in _ARGUMENT_ERROR_RE.finditer(tresc):
+        if _SCIEZKA_API_RE.search(m.group("lit")):
+            _dodaj(
+                m.start(),
+                m.group("lit"),
+                "ścieżka zapytania w komunikacie błędu — użyj bladZapytania",
+            )
+        if _ANGIELSKI_TRANSPORT_RE.search(m.group("lit")):
+            _dodaj(
+                m.start(),
+                m.group("lit"),
+                "angielski komunikat nieudanego zapytania — użyj bladZapytania",
+            )
+    return naruszenia
+
+
+def naruszenia_komunikatu_zapytania(root: str) -> list[tuple[str, int, str, str]]:
+    """Reguła komunikatu zapytania na całym `frontend/src` (poza testami i źródłem prawdy)."""
+    wynik: list[tuple[str, int, str, str]] = []
+    katalog = os.path.join(root, SKAN_KOMUNIKATU_ZAPYTANIA)
+    for dirpath, dirs, filenames in os.walk(katalog):
+        dirs.sort()
+        for filename in sorted(filenames):
+            if not filename.endswith((".tsx", ".ts")) or filename.endswith(".d.ts"):
+                continue
+            filepath = os.path.join(dirpath, filename)
+            rel_path = os.path.relpath(filepath, root)
+            if rel_path == PLIK_KOMUNIKATU_ZAPYTANIA:
+                continue
+            if any(w in rel_path for w in _WYJATKI_TESTOW):
+                continue
+            for line_no, line, reason in scan_komunikat_zapytania(filepath):
+                wynik.append((rel_path, line_no, line, reason))
+    return wynik
+
+
 def main() -> int:
     print("=" * 60)
     print("GUARD: forbidden_ui_terms_guard")
@@ -153,6 +290,8 @@ def main() -> int:
                 violations = scan_file(filepath)
                 for line_no, line, reason in violations:
                     all_violations.append((rel_path, line_no, line, reason))
+
+    all_violations.extend(naruszenia_komunikatu_zapytania(root))
 
     # Report
     if all_violations:

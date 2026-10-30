@@ -1552,7 +1552,9 @@ def build_nn_circuit_report_section(
             else "niedostępne — "
             + (
                 swz_view.get("reason_pl")
-                or "; ".join(opis_braku_danych_nn(kod) for kod in swz_view.get("missing_data", []))
+                or "; ".join(
+                    opis_braku_danych_nn(enm, kod) for kod in swz_view.get("missing_data", [])
+                )
                 or "brak wyniku pętli zwarcia minimalnego"
             )
         ),

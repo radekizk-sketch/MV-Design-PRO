@@ -424,7 +424,7 @@ MODULY_KOMUNIKATOW: tuple[ZakresModulu, ...] = (
         "domain/generator_validation.py",
         powod=(
             "do operacji trafia wyłącznie odmowa kontroli mocy (`OdmowaKontroliMocy`); "
-            "`validate_generator_connections` nie ma konsumenta w produkcie (tylko testy)"
+            "reszta modułu to dane i arytmetyka reguły O-53"
         ),
         wywolania=frozenset({"OdmowaKontroliMocy"}),
     ),

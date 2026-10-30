@@ -673,7 +673,9 @@ def test_2ph_ground_depends_on_z0_and_requires_it():
 
     assert res_low.ikss_a > res_high.ikss_a
 
-    with pytest.raises(ValueError, match="Z0 bus matrix is required"):
+    with pytest.raises(
+        ValueError, match="wymaga macierzy impedancji węzłowej składowej zerowej Z0"
+    ):
         ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
             graph=graph,
             fault_node_id="B",

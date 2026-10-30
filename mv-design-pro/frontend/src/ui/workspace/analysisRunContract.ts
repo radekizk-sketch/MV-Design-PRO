@@ -7,6 +7,7 @@ import type {
   ResultCompletenessStatus,
   WorkspaceSurfaceDescriptor,
 } from './types';
+import { bladZapytania } from '../../ui2/shared/bladZapytania';
 
 export interface LabeledValueRow {
   label: string;
@@ -486,7 +487,7 @@ function normalizeAnalysisRunContract(payload: unknown): AnalysisRunContract {
 async function fetchAnalysisRunContract(runId: string): Promise<AnalysisRunContract> {
   const response = await fetch(`${ANALYSIS_RUN_API_BASE}/${runId}`);
   if (!response.ok) {
-    throw new Error(`Nie udalo sie pobrac kontraktu runu ${runId}: ${response.statusText}`);
+    throw bladZapytania(response, `Nie udało się pobrać kontraktu przebiegu ${runId}`);
   }
 
   return normalizeAnalysisRunContract(await response.json());

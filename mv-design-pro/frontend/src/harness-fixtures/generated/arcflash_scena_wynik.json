@@ -743,13 +743,14 @@
       "arc_flash_boundary_mm": 1487.7185,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "why_pl": "Arc Flash (konfiguracja VCB (elektrody pionowe w obudowie), IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
       "missing_data": [],
+      "missing_data_pl": [],
       "white_box": [
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7469 kA, V600=6.584 kA; VarCf=0.0217",
+          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, U=15.0 kV [VCB (elektrody pionowe w obudowie)]; kotwy: V14300=8.4719 kA, V2700=7.7469 kA, V600=6.584 kA; VarCf=0.0217",
           "result_pl": "I_arc = 8.5157 kA, I_arc_min = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
@@ -757,7 +758,7 @@
         {
           "symbol": "CF",
           "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
-          "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
+          "substitution_pl": "konfiguracja VCB (elektrody pionowe w obudowie), obudowa typowa",
           "result_pl": "CF = 0.9999",
           "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
           "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
@@ -847,6 +848,7 @@
       "ppe_table_provenance": null,
       "why_pl": "POZA zakresem ważności IEEE 1584-2018 (U=110.0 kV, I_bf=13.99 kA; zakres: 208 V–15 kV, I_bf 200 A–65 kA (600 V<U<=15 kV) dla tej klasy napięcia). Zastosowano metoda Ralpha Lee (teoretyczna, poza zakresem IEEE 1584-2018): E ≈ 3183.7 cal/cm², AFB ≈ 23436.2 mm, ŚOI = dane niekompletne — tablice NFPA 70E. To NIE jest wynik IEEE 1584 — metoda Lee jest teoretyczna (maksymalna moc łuku).",
       "missing_data": [],
+      "missing_data_pl": [],
       "white_box": [
         {
           "symbol": "E_Lee",
@@ -943,13 +945,14 @@
       "arc_flash_boundary_mm": 1652.2113,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "Arc Flash LV (konfiguracja VCB, IEEE 1584-2018, U<=600 V — Eq.25): prąd łuku I_arc,600 (Eq.1) ≈ 15.53 kA skorygowany do U=0.4 kV ⇒ I_arc ≈ 12.38 kA (I_arc_min ≈ 10.8 kA), energia incydentu E ≈ 9.42 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1652.2 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "why_pl": "Arc Flash nN (konfiguracja VCB (elektrody pionowe w obudowie), IEEE 1584-2018, U<=600 V — Eq.25): prąd łuku I_arc,600 (Eq.1) ≈ 15.53 kA skorygowany do U=0.4 kV ⇒ I_arc ≈ 12.38 kA (I_arc_min ≈ 10.8 kA), energia incydentu E ≈ 9.42 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1652.2 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
       "missing_data": [],
+      "missing_data_pl": [],
       "white_box": [
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,600} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\quad(\\text{Eq.1, kotwa }600\\text{ V});\\quad I_{arc} = \\left[\\left(\\tfrac{0{,}6}{U}\\right)^{2}\\!\\left(\\tfrac{1}{I_{arc,600}^{2}}-\\tfrac{0{,}6^{2}-U^{2}}{0{,}6^{2}\\,I_{bf}^{2}}\\right)\\right]^{-1/2}\\quad(\\text{Eq.25});\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=21.0926 kA, G=104.0 mm, U=0.4 kV [VCB, ścieżka LV — U<=600 V, BEZ interpolacji kotew]; I_arc,600(Eq.1)=15.5285 kA; VarCf=0.2551",
+          "substitution_pl": "I_bf=21.0926 kA, G=104.0 mm, U=0.4 kV [VCB (elektrody pionowe w obudowie), ścieżka nN — U<=600 V, BEZ interpolacji kotew]; I_arc,600(Eq.1)=15.5285 kA; VarCf=0.2551",
           "result_pl": "I_arc = 12.3832 kA (Eq.25, skorygowany do U=0.4 kV), I_arc_min = 10.8035 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc,I_arc,600 w kA; G w mm; U w kV; Eq.25 koryguje prąd łuku kotwy 600 V do RZECZYWISTEGO napięcia układu (≤600 V).",
           "table_ref": "I_arc,600[VCB,V600] (Tab.1) = open_source_IEEE_1584; Eq.25 publiczna postać zamknięta (bez tablicy)"
@@ -957,7 +960,7 @@
         {
           "symbol": "CF",
           "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
-          "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
+          "substitution_pl": "konfiguracja VCB (elektrody pionowe w obudowie), obudowa typowa",
           "result_pl": "CF = 0.9999",
           "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
           "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
@@ -967,7 +970,7 @@
           "formula_latex": "E = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_3 = k_3\\,I_{arc,600}/\\mathrm{denom}(I_{bf})\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;[\\mathrm{J/cm^2}]",
           "substitution_pl": "I_bf=21.0926 kA, I_arc,600=15.5285 kA (nieskorygowany, człon x3), I_arc=12.3832 kA (Eq.25, człon x4), G=104.0 mm, t=200.0 ms, D=455.0 mm, CF=0.9999 [wiersz kotwy 600 V, U rzeczywiste=0.4 kV]",
           "result_pl": "E = 39.4221 J/cm² = 9.4221 cal/cm² (IEEE 1584-2018, współczynniki open-source)",
-          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji po U (ścieżka LV liczy bezpośrednio dla U rzeczywistego).",
+          "unit_check_pl": "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji po U (ścieżka nN liczy bezpośrednio dla U rzeczywistego).",
           "table_ref": "E[VCB,V600] (Tab.3) = open_source_IEEE_1584"
         },
         {
@@ -1059,13 +1062,14 @@
       "arc_flash_boundary_mm": 1487.7185,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "why_pl": "Arc Flash (konfiguracja VCB (elektrody pionowe w obudowie), IEEE 1584-2018): prąd łuku I_arc ≈ 8.52 kA (I_arc_min ≈ 8.42 kA), energia incydentu E ≈ 7.69 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1487.7 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
       "missing_data": [],
+      "missing_data_pl": [],
       "white_box": [
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=8.4719 kA, V2700=7.7469 kA, V600=6.584 kA; VarCf=0.0217",
+          "substitution_pl": "I_bf=8.9701 kA, G=104.0 mm, U=15.0 kV [VCB (elektrody pionowe w obudowie)]; kotwy: V14300=8.4719 kA, V2700=7.7469 kA, V600=6.584 kA; VarCf=0.0217",
           "result_pl": "I_arc = 8.5157 kA, I_arc_min = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
@@ -1073,7 +1077,7 @@
         {
           "symbol": "CF",
           "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
-          "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
+          "substitution_pl": "konfiguracja VCB (elektrody pionowe w obudowie), obudowa typowa",
           "result_pl": "CF = 0.9999",
           "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
           "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"
@@ -1175,13 +1179,14 @@
       "arc_flash_boundary_mm": 992.4671,
       "ppe_category": "dane niekompletne — tablice NFPA 70E",
       "ppe_table_provenance": null,
-      "why_pl": "Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 4.38 kA (I_arc_min ≈ 4.33 kA), energia incydentu E ≈ 4.08 cal/cm² na odległości roboczej, granica łuku AFB ≈ 992.5 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
+      "why_pl": "Arc Flash (konfiguracja VCB (elektrody pionowe w obudowie), IEEE 1584-2018): prąd łuku I_arc ≈ 4.38 kA (I_arc_min ≈ 4.33 kA), energia incydentu E ≈ 4.08 cal/cm² na odległości roboczej, granica łuku AFB ≈ 992.5 mm, kategoria ŚOI = dane niekompletne — tablice NFPA 70E. Współczynniki z implementacji open-source MIT rwl/arcflash; do obliczeń certyfikowanych wymagana weryfikacja z licencjonowaną IEEE Std 1584-2018.",
       "missing_data": [],
+      "missing_data_pl": [],
       "white_box": [
         {
           "symbol": "I_arc",
           "formula_latex": "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
-          "substitution_pl": "I_bf=4.6116 kA, G=104.0 mm, U=15.0 kV [VCB]; kotwy: V14300=4.3593 kA, V2700=4.0235 kA, V600=3.303 kA; VarCf=0.0217",
+          "substitution_pl": "I_bf=4.6116 kA, G=104.0 mm, U=15.0 kV [VCB (elektrody pionowe w obudowie)]; kotwy: V14300=4.3593 kA, V2700=4.0235 kA, V600=3.303 kA; VarCf=0.0217",
           "result_pl": "I_arc = 4.3796 kA, I_arc_min = 4.3321 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].",
           "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
@@ -1189,7 +1194,7 @@
         {
           "symbol": "CF",
           "formula_latex": "CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})",
-          "substitution_pl": "konfiguracja VCB (w obudowie Typical)",
+          "substitution_pl": "konfiguracja VCB (elektrody pionowe w obudowie), obudowa typowa",
           "result_pl": "CF = 0.9999",
           "unit_check_pl": "CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
           "table_ref": "CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584"

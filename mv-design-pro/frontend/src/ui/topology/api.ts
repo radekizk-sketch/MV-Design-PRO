@@ -16,24 +16,29 @@ import type {
   TopologyGraphSummary,
   TopologyOpResult,
 } from '../../types/enm';
+import { BladZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api/cases';
 
-class ApiError extends Error {
+/** Odrzucenie zapytania topologii: treść backendu (`detail`) albo opis statusu po polsku. */
+class ApiError extends BladZapytania {
   constructor(
-    public status: number,
-    public statusText: string,
+    odpowiedz: Response,
     public detail: unknown,
     public endpoint: string,
   ) {
-    super(`API ${status} ${statusText}: ${endpoint}`);
+    const zBackendu =
+      detail && typeof detail === 'object' && typeof (detail as { detail?: unknown }).detail === 'string'
+        ? ((detail as { detail: string }).detail.trim() || undefined)
+        : undefined;
+    super(odpowiedz, 'Zapytanie topologii sieci nie powiodło się', zBackendu);
   }
 }
 
 async function handleResponse<T>(res: Response, endpoint: string): Promise<T> {
   if (!res.ok) {
-    const detail = await res.json().catch(() => res.statusText);
-    throw new ApiError(res.status, res.statusText, detail, endpoint);
+    const detail = await res.json().catch(() => null);
+    throw new ApiError(res, detail, endpoint);
   }
   return res.json();
 }

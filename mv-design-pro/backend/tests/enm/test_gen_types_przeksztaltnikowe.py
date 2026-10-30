@@ -49,7 +49,11 @@ def test_konsumenci_predykatu_der_uzywaja_tego_samego_obiektu() -> None:
     # i siła sieci/migotanie z własną kopią) zastąpione tym samym obiektem.
     assert cgmes_exporter._IBR_TYPES is GEN_TYPES_PRZEKSZTALTNIKOWE
     assert gotowosc_obliczen._DER_GEN_TYPES is GEN_TYPES_PRZEKSZTALTNIKOWE
-    assert generator_validation._OZE_GEN_TYPES is GEN_TYPES_PRZEKSZTALTNIKOWE
+    # Kontrola mocy O-53: technologia źródła dla KAŻDEGO rodzaju przekształtnikowego
+    # (deklaracja `domain/generator_validation.py::TECHNOLOGIA_WG_RODZAJU_GENERATORA`).
+    assert (
+        set(generator_validation.TECHNOLOGIA_WG_RODZAJU_GENERATORA) == GEN_TYPES_PRZEKSZTALTNIKOWE
+    )
 
 
 def test_zadna_kopia_zbioru_przeksztaltnikowego_w_zrodlach() -> None:

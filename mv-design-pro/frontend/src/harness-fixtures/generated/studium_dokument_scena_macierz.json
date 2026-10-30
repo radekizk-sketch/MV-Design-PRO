@@ -172,7 +172,7 @@
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
           "powody_niepelnosci": [
-            "Dana przyjęta bez walidacji: moc znamionowa czynna typu (pmax_mw) — moc odniesienia Pn wymagania = 0,215 MW, jakość danej: oszacowane — jakość danej karty katalogowej: oszacowane.",
+            "Dana przyjęta bez walidacji: moc znamionowa czynna typu katalogowego — moc odniesienia Pn wymagania = 0,215 MW, jakość danej: oszacowane — jakość danej karty katalogowej: oszacowane.",
             "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
           "etykieta": {
@@ -187,7 +187,7 @@
             ],
             "zastrzezenia": [
               "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
-              "Dana przyjęta bez walidacji: moc znamionowa czynna typu (pmax_mw) — moc odniesienia Pn wymagania = 0,215 MW, jakość danej: oszacowane — jakość danej karty katalogowej: oszacowane.",
+              "Dana przyjęta bez walidacji: moc znamionowa czynna typu katalogowego — moc odniesienia Pn wymagania = 0,215 MW, jakość danej: oszacowane — jakość danej karty katalogowej: oszacowane.",
               "Zakres ważności: punkty krzywej zdolności P–Q producenta z karty katalogowej typu wobec prostokątnego wymagania zakresu mocy biernej profilu operatora — wynik nie obejmuje: obszar między punktami krzywej producenta (porównanie wyłącznie w punktach krzywej); zależność zdolności mocy biernej od napięcia sieci (krzywa producenta bez parametru napięcia)."
             ]
           },
@@ -200,7 +200,7 @@
               "stan": "UNVALIDATED_INPUT",
               "dane_przyjete": [
                 {
-                  "nazwa_pl": "moc znamionowa czynna typu (pmax_mw) — moc odniesienia Pn wymagania",
+                  "nazwa_pl": "moc znamionowa czynna typu katalogowego — moc odniesienia Pn wymagania",
                   "wartosc": {
                     "wartosc": 0.215,
                     "jednostka": "MW"
@@ -251,7 +251,7 @@
         },
         "podstawa_pl": "dokument: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”; wydanie: 2018; jednostka redakcyjna: nie wskazano; rodzaj: wymogi ogólnego stosowania (WOS); stan źródła: nieustalone; uwagi: wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
       },
-      "odcisk_sekcji_sha256": "743463d2e428293719a00fe8ac145f57fa9ce39c497ac1b85fff3a691ac3afe7"
+      "odcisk_sekcji_sha256": "f1514da527621cb0595d7968147aa8cd8ed7e26daaab2aeef3c49e8fa2340f55"
     }
   ],
   "podsumowanie": [
@@ -267,13 +267,13 @@
   "zalozenia_pl": [
     "Dokument zestawia gotowe wyniki obliczeń — nie przelicza żadnej wielkości i nie zastępuje uzgodnień z operatorem systemu dystrybucyjnego.",
     "Sekwencja per wariant: zdolność przyłączeniowa → obszar pracy P–Q → pokrycie wymagań P–Q (ta sama, którą liczy kreator studium).",
-    "Przebieg bazowy rozpływu mocy (run_id: bea90c9a-33e0-543b-b4e3-9514eca3921a, odcisk snapshotu: 3ace2099152b0773def69e3e74024537012c279ae5a8870c705a053cc7df1c39).",
+    "Przebieg bazowy rozpływu mocy (identyfikator przebiegu bea90c9a-33e0-543b-b4e3-9514eca3921a, odcisk migawki modelu 3ace2099152b0773def69e3e74024537012c279ae5a8870c705a053cc7df1c39).",
     "Typ katalogowy przekształtnika: Karta falownika string PV Huawei SUN2000-215KTL-H3 0.215 MW / 0.8 kV (conv-pv-card-huawei-sun2000-215ktl).",
     "Profil operatora: Enea Operator (enea).",
     "Typ modułu NC RfG wyznaczony klasyfikacją art. 5 (progi warstwy WOS) z mocy przyłączalnej i napięcia węzła wariantu."
   ],
   "odciski_sekcji_sha256": {
-    "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "743463d2e428293719a00fe8ac145f57fa9ce39c497ac1b85fff3a691ac3afe7",
+    "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "f1514da527621cb0595d7968147aa8cd8ed7e26daaab2aeef3c49e8fa2340f55",
     "zalozenia": "6872d8f007514cad6440a41f8c16851978c0bd63736785249dc75bab8c4f3ea2",
     "podsumowanie": "19dd6c727e84267bfb274c2368018912c4fff1a2d5339153f455033b34a9254c"
   },

@@ -13,11 +13,14 @@ vi.mock('../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
 }));
 
+import type { EnergyNetworkModel } from '../../../types/enm';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { SekcjaPetlaZwarcia } from '../SekcjaPetlaZwarcia';
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  useSnapshotStore.setState({ snapshot: null });
 });
 
 function mockFetch(dane: unknown) {
@@ -148,9 +151,19 @@ describe('SekcjaPetlaZwarcia', () => {
     expect(sekcja).toHaveTextContent('8,12 A');
   });
 
-  it('brak danych transformatora → uczciwy komunikat z listą braków', async () => {
+  it.each([
+    ['odpływ z nazwą w modelu', 'Odpływ oświetlenia', 'element „Odpływ oświetlenia”'],
+    ['odpływ bez nazwy w modelu', '  ', 'element bez nazwy'],
+    ['odpływ spoza modelu', null, 'element spoza modelu'],
+  ] as const)('brak danych (%s) → uczciwy komunikat z listą braków', async (_opis, nazwa, miejsce) => {
     // Iniekcja: pole transformatora i pozycja z przedrostkiem elementu — tekst nazywa
-    // wielkość i miejsce (lustro `opis_braku_danych_nn`), nigdy kod maszynowy.
+    // wielkość i miejsce (lustro `opis_braku_danych_nn`) nazwą z migawki modelu, nigdy kodem
+    // maszynowym ani identyfikatorem elementu.
+    useSnapshotStore.setState({
+      snapshot: {
+        loads: nazwa === null ? [] : [{ id: 'id-odplyw_3', ref_id: 'odplyw_3', name: nazwa }],
+      } as unknown as EnergyNetworkModel,
+    });
     mockFetch({
       status: 'brak danych',
       network_system: 'TN-S',
@@ -160,8 +173,9 @@ describe('SekcjaPetlaZwarcia', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-insp-petla-brak')).toBeInTheDocument());
     const brak = screen.getByTestId('mvd-insp-petla-brak');
     expect(brak).toHaveTextContent('„Napięcie zwarcia uk”');
-    expect(brak).toHaveTextContent('brak wyłącznika różnicowoprądowego obwodu (element odplyw_3)');
+    expect(brak).toHaveTextContent(`brak wyłącznika różnicowoprądowego obwodu (${miejsce})`);
     expect(brak.textContent).not.toContain('uk_percent');
     expect(brak.textContent).not.toContain(':rcd');
+    expect(brak.textContent).not.toContain('odplyw_3');
   });
 });

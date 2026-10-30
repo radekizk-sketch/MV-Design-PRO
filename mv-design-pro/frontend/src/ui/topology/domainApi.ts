@@ -11,19 +11,19 @@ import type { DomainOpResponseV1 } from '../../types/enm';
 import type { DomainOpResponse } from '../../types/domainOps';
 import { assertCanonicalOpName } from '../../types/domainOps';
 import { normalizeEnmFixAction } from '../shared/fixActionSurfaceNormalizer';
+import { komunikatZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api/cases';
 
 class DomainApiError extends Error {
   constructor(
     public status: number,
-    public statusText: string,
     public detail: unknown,
     public endpoint: string,
     message?: string,
     public code?: string | null,
   ) {
-    super(message ?? `API ${status} ${statusText}: ${endpoint}`);
+    super(message ?? komunikatZapytania({ status }, 'Operacja na modelu sieci nie powiodła się'));
   }
 }
 
@@ -35,7 +35,7 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
-function extractApiError(detail: unknown, status: number, statusText: string, endpoint: string) {
+function extractApiError(detail: unknown, status: number) {
   const root = isRecord(detail) && 'detail' in detail ? detail.detail : detail;
   const payload = isRecord(root) ? root : isRecord(detail) ? detail : null;
   const nestedErrors = Array.isArray(payload?.errors) ? payload.errors : [];
@@ -61,11 +61,8 @@ function extractApiError(detail: unknown, status: number, statusText: string, en
 
   return {
     code: readString(payload?.code) ?? readString(payload?.error_code),
-    message: message
-      ? `API ${status} ${statusText}: ${endpoint} - ${message}`
-      : `API ${status} ${statusText}: ${endpoint}`,
-    /** Sam komunikat backendu (bez prefiksu technicznego) — dla komunikatów projektanta. */
-    komunikat: message || null,
+    /** Treść dla projektanta: komunikat backendu albo opis statusu — bez adresu i kodów. */
+    message: message || komunikatZapytania({ status }, 'Operacja na modelu sieci nie powiodła się'),
   };
 }
 
@@ -276,11 +273,10 @@ export async function executeDomainOp(
   });
 
   if (!res.ok) {
-    const detail = await res.json().catch(() => res.statusText);
-    const extracted = extractApiError(detail, res.status, res.statusText, endpoint);
+    const detail = await res.json().catch(() => null);
+    const extracted = extractApiError(detail, res.status);
     throw new DomainApiError(
       res.status,
-      res.statusText,
       detail,
       endpoint,
       extracted.message,
@@ -319,13 +315,12 @@ export async function executeDomainOpPreview(
 
   if (!res.ok) {
     const detail = await res.json().catch(() => null);
-    const extracted = extractApiError(detail, res.status, res.statusText, endpoint);
+    const extracted = extractApiError(detail, res.status);
     throw new DomainApiError(
       res.status,
-      res.statusText,
       detail,
       endpoint,
-      extracted.komunikat ?? `Błąd HTTP ${res.status}: ${res.statusText}`,
+      extracted.message,
       extracted.code,
     );
   }

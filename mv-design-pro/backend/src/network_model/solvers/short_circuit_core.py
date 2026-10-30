@@ -46,6 +46,17 @@ class ShortCircuitType(Enum):
     TWO_PHASE_GROUND = "2F+G"
 
 
+#: Rodzaj zwarcia W TEKŚCIE odmowy, w dopełniaczu („obliczenie zwarcia …”); kod zostaje
+#: w polu ``short_circuit_type``. Kompletność wobec ``ShortCircuitType`` przypina
+#: ``tests/test_short_circuit_nazwy_rodzajow.py``.
+NAZWY_RODZAJOW_ZWARCIA_PL: dict[ShortCircuitType, str] = {
+    ShortCircuitType.THREE_PHASE: "trójfazowego",
+    ShortCircuitType.SINGLE_PHASE_GROUND: "jednofazowego z ziemią",
+    ShortCircuitType.TWO_PHASE: "dwufazowego",
+    ShortCircuitType.TWO_PHASE_GROUND: "dwufazowego z ziemią",
+}
+
+
 @dataclass(frozen=True)
 class ShortCircuitCoreResult:
     z_equiv: complex
@@ -99,7 +110,10 @@ def build_zbus(graph: NetworkGraph) -> tuple[AdmittanceMatrixBuilder, np.ndarray
     try:
         z_bus = np.linalg.inv(y_bus)
     except np.linalg.LinAlgError as exc:
-        raise ValueError("Y-bus is singular; cannot compute Z-bus for short-circuit") from exc
+        raise ValueError(
+            "Macierz admitancyjna węzłowa sieci zwarciowej jest osobliwa — macierzy impedancji "
+            "węzłowej do obliczeń zwarciowych nie da się wyznaczyć."
+        ) from exc
     return builder, z_bus
 
 
@@ -110,7 +124,10 @@ def voltage_factor_for_fault(short_circuit_type: ShortCircuitType) -> float:
         return math.sqrt(3.0)
     if short_circuit_type in {ShortCircuitType.TWO_PHASE, ShortCircuitType.TWO_PHASE_GROUND}:
         return 1.0
-    raise ValueError(f"Unsupported short-circuit type: {short_circuit_type}")
+    raise ValueError(
+        "Rodzaj zwarcia spoza czterech rodzajów IEC 60909 (trójfazowe, dwufazowe, jednofazowe "
+        "z ziemią, dwufazowe z ziemią) — błąd programu."
+    )
 
 
 def compute_equivalent_impedance(
@@ -155,11 +172,14 @@ def compute_equivalent_impedance(
         ShortCircuitType.TWO_PHASE_GROUND,
     }:
         z0 = require_z0_bus(
-            f"Z0 bus matrix is required for {short_circuit_type.value} fault computation"
+            f"Obliczenie zwarcia {NAZWY_RODZAJOW_ZWARCIA_PL[short_circuit_type]} wymaga macierzy "
+            "impedancji węzłowej składowej zerowej Z0."
         )
     z_equiv = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0)
     if abs(z_equiv) == 0:
-        raise ZeroDivisionError("Equivalent impedance is zero; cannot compute Ik''")
+        raise ZeroDivisionError(
+            "Impedancja zastępcza pętli zwarcia jest zerowa — prądu Ik″ nie da się wyznaczyć."
+        )
     if z_f is None:
         return ShortCircuitCoreResult(z_equiv=z_equiv, z1=z1, z2=z2, z0=z0)
     z_equiv_f = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0, z_f=z_f)
@@ -192,15 +212,24 @@ def impedancja_petli_zwarcia(
         ShortCircuitType.TWO_PHASE_GROUND,
     }:
         if z0 is None:
-            raise ValueError(f"Z0 is required for {short_circuit_type.value} fault computation")
+            raise ValueError(
+                f"Obliczenie zwarcia {NAZWY_RODZAJOW_ZWARCIA_PL[short_circuit_type]} wymaga "
+                "impedancji składowej zerowej Z0 w miejscu zwarcia."
+            )
         z0_toru = z0 if z_f is None else z0 + 3.0 * z_f
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             return z1 + z2 + z0_toru
         denominator = z2 + z0_toru
         if abs(denominator) == 0:
-            raise ZeroDivisionError("Z2 + Z0 is zero; cannot compute Ik''")
+            raise ZeroDivisionError(
+                "Suma impedancji składowej przeciwnej i zerowej Z2 + Z0 jest zerowa — prądu Ik″ "
+                "nie da się wyznaczyć."
+            )
         return z1 + (z2 * z0_toru) / denominator
-    raise ValueError(f"Unsupported short-circuit type: {short_circuit_type}")
+    raise ValueError(
+        "Rodzaj zwarcia spoza czterech rodzajów IEC 60909 (trójfazowe, dwufazowe, jednofazowe "
+        "z ziemią, dwufazowe z ziemią) — błąd programu."
+    )
 
 
 def compute_ikss(

@@ -1,3 +1,4 @@
+import { bladZapytania } from '../shared/bladZapytania';
 /**
  * Kanoniczny rejestr kodów gotowości jako JEDYNE źródło tekstu dla kodów.
  *
@@ -37,7 +38,7 @@ export async function pobierzRejestrGotowosci(): Promise<Map<string, WpisRejestr
   wPoblizu = (async () => {
     const odpowiedz = await fetch('/api/readiness/registry');
     if (!odpowiedz.ok) {
-      throw new Error(`Nie udało się pobrać rejestru gotowości (HTTP ${odpowiedz.status}).`);
+      throw bladZapytania(odpowiedz, 'Nie udało się pobrać rejestru gotowości');
     }
     const dane: unknown = await odpowiedz.json();
     const kody =

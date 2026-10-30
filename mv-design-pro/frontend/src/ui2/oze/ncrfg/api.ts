@@ -33,6 +33,7 @@ import type {
   ZadanieWniosku,
   ZgodnoscPrzypadkuNcRfg,
 } from './typy';
+import { BladZapytania } from '../../shared/bladZapytania';
 
 export const URL_KATALOGU_NCRFG = '/api/ncrfg-tests/catalog';
 export const URL_KLASYFIKACJI_MODULU = '/api/ncrfg-tests/modul';
@@ -57,15 +58,16 @@ async function detalOdpowiedzi(response: Response): Promise<unknown> {
   }
 }
 
-function komunikatBledu(url: string, response: Response, detail: unknown): string {
-  if (typeof detail === 'string' && detail.trim()) return detail;
-  return `Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`.trim();
+/** Błąd odpowiedzi: zdanie backendu z `detail` (łańcuch), inaczej opis statusu HTTP. */
+function bladOdpowiedziNcRfg(response: Response, detail: unknown): BladZapytania {
+  const tresc = typeof detail === 'string' && detail.trim() ? detail : undefined;
+  return new BladZapytania(response, undefined, tresc);
 }
 
 async function pobierzJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(komunikatBledu(url, response, await detalOdpowiedzi(response)));
+    throw bladOdpowiedziNcRfg(response, await detalOdpowiedzi(response));
   }
   return response.json() as Promise<T>;
 }
@@ -115,7 +117,7 @@ export function klasyfikujModulNcRfg(args: {
 export async function uruchomBiegNcRfg(zadanie: ZadanieBieguNcRfg): Promise<BiegNcRfg> {
   const response = await postJson(URL_BIEGU_NCRFG, zadanie);
   if (!response.ok) {
-    throw new Error(komunikatBledu(URL_BIEGU_NCRFG, response, await detalOdpowiedzi(response)));
+    throw bladOdpowiedziNcRfg(response, await detalOdpowiedzi(response));
   }
   return response.json() as Promise<BiegNcRfg>;
 }
@@ -201,16 +203,16 @@ function jestBrakamiWniosku(detail: unknown): detail is BrakiWniosku {
   );
 }
 
-async function bladCertyfikatu(url: string, response: Response): Promise<Error> {
+async function bladCertyfikatu(response: Response): Promise<Error> {
   const detail = await detalOdpowiedzi(response);
   if (response.status === 422 && jestBrakamiCertyfikatu(detail)) return new BrakiCertyfikatuError(detail);
-  return new Error(komunikatBledu(url, response, detail));
+  return bladOdpowiedziNcRfg(response, detail);
 }
 
-async function bladWniosku(url: string, response: Response): Promise<Error> {
+async function bladWniosku(response: Response): Promise<Error> {
   const detail = await detalOdpowiedzi(response);
   if (response.status === 422 && jestBrakamiWniosku(detail)) return new BrakiWnioskuError(detail);
-  return new Error(komunikatBledu(url, response, detail));
+  return bladOdpowiedziNcRfg(response, detail);
 }
 
 /** Widok JSON certyfikatu zgodności. 422 z brakami → `BrakiCertyfikatuError`. */
@@ -220,7 +222,7 @@ export async function pobierzCertyfikat(
 ): Promise<WidokCertyfikatu> {
   const url = adresDokumentu(URL_CERTYFIKATU, caseId);
   const response = await postJson(url, zadanie);
-  if (!response.ok) throw await bladCertyfikatu(url, response);
+  if (!response.ok) throw await bladCertyfikatu(response);
   return response.json() as Promise<WidokCertyfikatu>;
 }
 
@@ -232,7 +234,7 @@ export async function pobierzPlikCertyfikatu(
 ): Promise<Blob> {
   const url = adresDokumentu(URL_CERTYFIKATU, caseId, format);
   const response = await postJson(url, zadanie);
-  if (!response.ok) throw await bladCertyfikatu(url, response);
+  if (!response.ok) throw await bladCertyfikatu(response);
   return response.blob();
 }
 
@@ -240,7 +242,7 @@ export async function pobierzPlikCertyfikatu(
 export async function pobierzWniosek(zadanie: ZadanieWniosku, caseId: string): Promise<WidokWniosku> {
   const url = adresDokumentu(URL_WNIOSKU, caseId);
   const response = await postJson(url, zadanie);
-  if (!response.ok) throw await bladWniosku(url, response);
+  if (!response.ok) throw await bladWniosku(response);
   return response.json() as Promise<WidokWniosku>;
 }
 
@@ -252,6 +254,6 @@ export async function pobierzPlikWniosku(
 ): Promise<Blob> {
   const url = adresDokumentu(URL_WNIOSKU, caseId, format);
   const response = await postJson(url, zadanie);
-  if (!response.ok) throw await bladWniosku(url, response);
+  if (!response.ok) throw await bladWniosku(response);
   return response.blob();
 }

@@ -21,6 +21,7 @@
 
 import type { PropozycjaWartosciRoboczej } from '../../../../ui/catalog/types';
 import type { OcenaKryterium } from '../../wzorzec/werdykt';
+import { komunikatZapytania } from '../../../shared/bladZapytania';
 
 /** Pochodzenie wartości parametru aparatu — pierwszeństwo rozstrzyga backend (V12K-351). */
 export type PochodzenieWartosci = 'KATALOG' | 'PROJEKTANT' | 'PROPOZYCJA';
@@ -166,7 +167,7 @@ export async function pobierzWytrzymaloscAparatury(
     // Odmowa backendu niesie powód po polsku (np. bieg scenariusza MIN) — pokazujemy go.
     const tresc = (await response.json().catch(() => null)) as { detail?: unknown } | null;
     throw new Error(
-      typeof tresc?.detail === 'string' ? tresc.detail : `HTTP ${response.status}`,
+      typeof tresc?.detail === 'string' ? tresc.detail : komunikatZapytania(response),
     );
   }
   return (await response.json()) as WidokWytrzymalosciAparatury;

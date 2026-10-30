@@ -1,3 +1,4 @@
+import { komunikatZapytania } from '../../shared/bladZapytania';
 /*
  * Klient API okna „Stan fazowy SN" (ui2/wyniki/stan-fazowy, E-31). Typy TS
  * odwzorowują 1:1 kształt odpowiedzi końcówek kanonicznych (mapowanie plik:linia).
@@ -85,7 +86,7 @@ export interface WynikiStanuFazowego {
 async function getJsonZDetalem<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    let komunikat = `Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`;
+    let komunikat = komunikatZapytania(response);
     try {
       const tresc = (await response.json()) as { detail?: unknown };
       if (typeof tresc?.detail === 'string' && tresc.detail.trim()) komunikat = tresc.detail;

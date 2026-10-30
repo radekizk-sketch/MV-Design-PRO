@@ -57,6 +57,7 @@ from network_model.solvers.short_circuit_contributions import (
     zaokraglij_cyfry_znaczace,
 )
 from network_model.solvers.short_circuit_core import (
+    NAZWY_RODZAJOW_ZWARCIA_PL,
     ShortCircuitPostProcessResult,
     ShortCircuitType,
     SkladowaNieokresowa,
@@ -1243,7 +1244,10 @@ class ShortCircuitIEC60909Solver:
         if z0 is None:
             # Nieosiągalne: `compute_equivalent_impedance` wymaga Z_0 dla 1F i 2F+G, zanim
             # powstanie ślad. Jawny błąd programu zamiast cichego zera we wzorze śladu.
-            raise ValueError(f"Z0 is required for {short_circuit_type.value} loop formula")
+            raise ValueError(
+                f"Wzór pętli zwarcia {NAZWY_RODZAJOW_ZWARCIA_PL[short_circuit_type]} wymaga "
+                "impedancji składowej zerowej Z0."
+            )
         z0_val = z0
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             return (
@@ -2496,7 +2500,10 @@ class ShortCircuitIEC60909Solver:
         ``z_f_ohm`` (karta OD-14): Zk = Z1 + Z2 + Z0 + 3·Zf.
         """
         if z0_bus is None:
-            raise ValueError("Z0 bus matrix is required for 1F fault computation")
+            raise ValueError(
+                "Obliczenie zwarcia jednofazowego z ziemią wymaga macierzy impedancji węzłowej "
+                "składowej zerowej Z0."
+            )
         return ShortCircuitIEC60909Solver._oblicz_zwarcie(
             short_circuit_type=ShortCircuitType.SINGLE_PHASE_GROUND,
             graph=graph,
@@ -2557,7 +2564,10 @@ class ShortCircuitIEC60909Solver:
         ``z_f_ohm`` (karta OD-14): Zk = Z1 + Z2·(Z0 + 3Zf)/(Z2 + Z0 + 3Zf).
         """
         if z0_bus is None:
-            raise ValueError("Z0 bus matrix is required for 2F+G fault computation")
+            raise ValueError(
+                "Obliczenie zwarcia dwufazowego z ziemią wymaga macierzy impedancji węzłowej "
+                "składowej zerowej Z0."
+            )
         return ShortCircuitIEC60909Solver._oblicz_zwarcie(
             short_circuit_type=ShortCircuitType.TWO_PHASE_GROUND,
             graph=graph,

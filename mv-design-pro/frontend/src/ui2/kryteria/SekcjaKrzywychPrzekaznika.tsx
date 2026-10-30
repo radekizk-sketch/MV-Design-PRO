@@ -19,6 +19,7 @@ import {
   type WpisRejestruGotowosci,
 } from './rejestrGotowosci';
 import { KRYTERIA_STRINGS as T } from './strings';
+import { bladZapytania } from '../shared/bladZapytania';
 
 export interface KrzywePrzekaznika {
   readonly device_type_id: string;
@@ -41,7 +42,7 @@ export async function pobierzKrzywePrzekaznika(
     { signal },
   );
   if (!odpowiedz.ok) {
-    throw new Error(`Nie udało się pobrać charakterystyk przekaźnika (HTTP ${odpowiedz.status}).`);
+    throw bladZapytania(odpowiedz, 'Nie udało się pobrać charakterystyk przekaźnika');
   }
   const dane: unknown = await odpowiedz.json();
   if (

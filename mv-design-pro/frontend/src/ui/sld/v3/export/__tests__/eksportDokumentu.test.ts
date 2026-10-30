@@ -484,7 +484,9 @@ describe('buildSldExportFile — format × źródło × dane × serwer', () => {
 
   it('cgmes: błąd serwera bez treści JSON ⇒ nazwany kod HTTP, nie pusty komunikat', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => odpowiedzSerwera(500, 'Internal Server Error', {})));
-    await expect(pobierzEksportCgmes('p')).rejects.toThrow('Eksport CGMES: serwer odpowiedział kodem HTTP 500.');
+    await expect(pobierzEksportCgmes('p')).rejects.toThrow(
+      'Eksport CGMES nie powiódł się: wewnętrzny błąd serwera obliczeń (HTTP 500).',
+    );
   });
 
   it('cgmes: brak aktywnego przypadku ⇒ nazwany wyjątek, zero wołania serwera', async () => {

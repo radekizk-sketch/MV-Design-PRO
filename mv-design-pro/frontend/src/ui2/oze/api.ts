@@ -29,6 +29,7 @@ import type {
   StatusWerdyktu,
   WynikWymagania,
 } from '../wyniki/wzorzec/werdykt';
+import { bladZapytania, komunikatZapytania } from '../shared/bladZapytania';
 
 // =============================================================================
 // Wskazanie przypadku w zapytaniu dokumentu (studium przyłączeniowe)
@@ -265,7 +266,7 @@ export interface RekordKonwertera {
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<T>;
 }
@@ -487,7 +488,7 @@ export interface ZapytaniePokryciaPQ {
 async function getJsonZDetalem<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    let komunikat = `Zapytanie ${url} nie powiodło się: ${response.status} ${response.statusText}`;
+    let komunikat = komunikatZapytania(response);
     try {
       const body = (await response.json()) as { detail?: unknown };
       if (typeof body?.detail === 'string' && body.detail.trim()) komunikat = body.detail;
@@ -1344,7 +1345,7 @@ export class DokumentStudiumBrakiError extends Error {
  * od pozostałych błędów (`detail` łańcuch → zwykły `Error`).
  */
 async function bladDokumentuStudium(response: Response): Promise<Error> {
-  let komunikat = `Zapytanie dokumentu studium nie powiodło się: ${response.status} ${response.statusText}`;
+  let komunikat = komunikatZapytania(response, 'Nie udało się przygotować dokumentu studium');
   try {
     const body = (await response.json()) as { detail?: unknown };
     const detail = body?.detail;

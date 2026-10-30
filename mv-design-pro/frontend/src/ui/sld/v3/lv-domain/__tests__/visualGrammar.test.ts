@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import { composeLvDomainScene } from '../composeLvDomainScene';
 import { scenariusz } from '../fixtures/scenariusze';
+import { nazwaElementuWidokuNn } from '../opisyBrakowDanychNn';
 import { CAD_SYMBOL_STROKE_PX } from '../../cad/CadSymbol';
 import {
   BUS_STROKE_SCREEN_PX,
@@ -52,7 +53,7 @@ describe('§25 fit-to-content — zajętość osi wiążącej, clamp, centrowani
     { name: '01', p: scenariusz('01_single_tr') },
     { name: '02', p: scenariusz('02_two_tr_qbc_open') },
     { name: '15', p: scenariusz('15_many_feeders') },
-  ].map(({ name, p }) => ({ name, scene: composeLvDomainScene(p.graph, p.upstream_equivalents) }));
+  ].map(({ name, p }) => ({ name, scene: composeLvDomainScene(p.graph, p.upstream_equivalents, nazwaElementuWidokuNn(p.graph, () => undefined)) }));
   const VIEWPORTY = [
     { w: 1400, h: 904 },
     { w: 1280, h: 704 },

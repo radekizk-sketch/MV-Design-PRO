@@ -10,6 +10,8 @@ import { useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../ui/app-state';
 import { opisyBrakowDanychNn } from '../../ui/sld/v3/lv-domain/opisyBrakowDanychNn';
+import { nazwaElementuMigawki, useSnapshotStore } from '../../ui/topology/snapshotStore';
+import { bladZapytania } from '../shared/bladZapytania';
 
 interface KomponentPetli {
   readonly label: string;
@@ -126,6 +128,8 @@ function WierszeTtIt({ tt }: { readonly tt: WynikTtIt }) {
 export function SekcjaPetlaZwarcia({ stationRef }: { stationRef: string }) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const [stan, setStan] = useState<Stan>({ rodzaj: 'ladowanie' });
+  // Opisy braków danych nazywają elementy z migawki modelu — identyfikator nie jest pokazywany.
+  const snapshot = useSnapshotStore((s) => s.snapshot);
 
   useEffect(() => {
     if (!activeCaseId || !stationRef) return;
@@ -136,7 +140,7 @@ export function SekcjaPetlaZwarcia({ stationRef }: { stationRef: string }) {
       + `?station_ref=${encodeURIComponent(stationRef)}`;
     fetch(url)
       .then((r) => {
-        if (!r.ok) throw new Error(`Zapytanie ${url} nie powiodło się: ${r.status}`);
+        if (!r.ok) throw bladZapytania(r, 'Nie udało się pobrać pętli zwarcia stacji');
         return r.json() as Promise<WidokPetli>;
       })
       .then((dane) => {
@@ -214,7 +218,7 @@ export function SekcjaPetlaZwarcia({ stationRef }: { stationRef: string }) {
         <p className="mvd-insp-petla-info" data-testid="mvd-insp-petla-brak" data-kod-odmowy={d.kod_odmowy ?? undefined}>
           {d.kod_odmowy && d.reason_pl
             ? `${d.reason_pl} (kod odmowy: ${d.kod_odmowy})`
-            : `Brak danych do wyznaczenia pętli: ${opisyBrakowDanychNn(d.missing_data) ?? 'brak opisu przyczyny w odpowiedzi'}. Uzupełnij transformator i układ uziemienia w kreatorze stacji.`}
+            : `Brak danych do wyznaczenia pętli: ${opisyBrakowDanychNn(d.missing_data, (ref) => nazwaElementuMigawki(snapshot, ref)) ?? 'brak opisu przyczyny w odpowiedzi'}. Uzupełnij transformator i układ uziemienia w kreatorze stacji.`}
         </p>
       ) : null}
     </section>

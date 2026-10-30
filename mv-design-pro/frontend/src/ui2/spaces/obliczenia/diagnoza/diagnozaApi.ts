@@ -1,3 +1,4 @@
+import { bladZapytania } from '../../../shared/bladZapytania';
 /*
  * Klient końcówek powierzchni „Diagnoza przebiegu" (karta DIAGNOZA-PRZEBIEGU, D7).
  *
@@ -99,7 +100,7 @@ export interface DiagnozaPrzebieguOdpowiedz {
 async function pobierzJson<T>(adres: string): Promise<T> {
   const odpowiedz = await fetch(adres);
   if (!odpowiedz.ok) {
-    throw new Error(`Request ${adres} failed: ${odpowiedz.status} ${odpowiedz.statusText}`);
+    throw bladZapytania(odpowiedz);
   }
   return odpowiedz.json() as Promise<T>;
 }

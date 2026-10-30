@@ -8,6 +8,7 @@ import type {
 } from './types';
 import type { EnergyNetworkModel } from '../../types/enm';
 import { mergeAnalysisCaseContexts } from './analysisCaseContextView';
+import { bladZapytania, komunikatZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api';
 
@@ -82,7 +83,7 @@ function normalizeResultsIndex(payload: ResultsIndex): ResultsIndex {
 export async function fetchResultsIndex(runId: string): Promise<ResultsIndex> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/index`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania indeksu wynikow: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania indeksu wyników');
   }
   return normalizeResultsIndex(await response.json());
 }
@@ -90,7 +91,7 @@ export async function fetchResultsIndex(runId: string): Promise<ResultsIndex> {
 export async function fetchBusResults(runId: string): Promise<BusResults> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/buses`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania wynikow wezlowych: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania wyników węzłowych');
   }
   return response.json();
 }
@@ -98,7 +99,7 @@ export async function fetchBusResults(runId: string): Promise<BusResults> {
 export async function fetchBranchResults(runId: string): Promise<BranchResults> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/branches`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania wynikow galeziowych: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania wyników gałęziowych');
   }
   return response.json();
 }
@@ -106,7 +107,7 @@ export async function fetchBranchResults(runId: string): Promise<BranchResults> 
 export async function fetchShortCircuitResults(runId: string): Promise<ShortCircuitResults> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/short-circuit`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania wynikow zwarciowych: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania wyników zwarciowych');
   }
   return response.json();
 }
@@ -114,7 +115,7 @@ export async function fetchShortCircuitResults(runId: string): Promise<ShortCirc
 export async function fetchExtendedTrace(runId: string): Promise<ExtendedTrace> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/trace`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania sladu obliczen: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania śladu obliczeń');
   }
   return response.json();
 }
@@ -122,7 +123,7 @@ export async function fetchExtendedTrace(runId: string): Promise<ExtendedTrace> 
 export async function fetchRunSnapshot(runId: string): Promise<ResultsRunSnapshot> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/snapshot`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania migawki uruchomienia: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania migawki uruchomienia');
   }
   return response.json();
 }
@@ -130,7 +131,7 @@ export async function fetchRunSnapshot(runId: string): Promise<ResultsRunSnapsho
 export async function fetchCurrentCaseSnapshot(caseId: string): Promise<EnergyNetworkModel> {
   const response = await fetch(`${API_BASE}/cases/${caseId}/enm`);
   if (!response.ok) {
-    throw new Error(`Blad pobierania biezacego modelu: ${response.statusText}`);
+    throw bladZapytania(response, 'Błąd pobierania bieżącego modelu');
   }
   return response.json();
 }
@@ -154,7 +155,7 @@ export async function downloadAnalysisRunExport(
     throw new Error(
       await readError(
         response,
-        `Blad pobierania eksportu uruchomienia ${format.toUpperCase()}: ${response.statusText}`,
+        komunikatZapytania(response, `Błąd pobierania eksportu przebiegu ${format.toUpperCase()}`),
       ),
     );
   }
@@ -206,7 +207,7 @@ export async function downloadAnalysisRunReport(
     throw new Error(
       await readError(
         response,
-        `Blad pobierania raportu ${format.toUpperCase()}: ${response.statusText}`,
+        komunikatZapytania(response, `Błąd pobierania raportu ${format.toUpperCase()}`),
       ),
     );
   }

@@ -319,6 +319,7 @@ import { useStudyCasesStore } from './ui/study-cases/store';
 import { usePowerFlowResultsStore } from './ui/power-flow-results/store';
 import type { ExecutionRun } from './ui/study-cases/types';
 import { FIELD_ROLE_LABEL_PL } from './ui/sld/v2/station-rozdzielnia/contract';
+import { bladZapytania } from './ui2/shared/bladZapytania';
 
 // --- Motyw ---------------------------------------------------------------
 /**
@@ -2379,7 +2380,7 @@ async function zasiejSceneStacji(): Promise<void> {
       frequency_hz: 50,
     }),
   });
-  if (!projektOdp.ok) throw new Error(`POST /api/projects → ${projektOdp.status}`);
+  if (!projektOdp.ok) throw bladZapytania(projektOdp, 'Nie udało się utworzyć projektu sceny');
   const projekt = (await projektOdp.json()) as { id: string };
   const przypadekOdp = await originalFetch('/api/study-cases', {
     method: 'POST',
@@ -2392,7 +2393,7 @@ async function zasiejSceneStacji(): Promise<void> {
       set_active: true,
     }),
   });
-  if (!przypadekOdp.ok) throw new Error(`POST /api/study-cases → ${przypadekOdp.status}`);
+  if (!przypadekOdp.ok) throw bladZapytania(przypadekOdp, 'Nie udało się utworzyć przypadku obliczeniowego sceny');
   const przypadek = (await przypadekOdp.json()) as { id: string };
 
   const wiazanie = (przestrzen: string, pozycja: string) => ({

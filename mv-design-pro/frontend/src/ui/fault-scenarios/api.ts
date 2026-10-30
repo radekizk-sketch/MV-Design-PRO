@@ -12,18 +12,19 @@ import type {
   ScenarioSldOverlay,
 } from './types';
 import { komunikatBleduApi } from './wspolczynnikC';
+import { bladZapytania, komunikatZapytania } from '../../ui2/shared/bladZapytania';
 
 const BASE_URL = '/api/execution';
 
 export async function fetchScenarios(studyCaseId: string): Promise<FaultScenarioListResponse> {
   const res = await fetch(`${BASE_URL}/study-cases/${studyCaseId}/fault-scenarios`);
-  if (!res.ok) throw new Error(`Błąd pobierania scenariuszy: ${res.status}`);
+  if (!res.ok) throw bladZapytania(res, 'Błąd pobierania scenariuszy');
   return res.json();
 }
 
 export async function fetchScenario(scenarioId: string): Promise<FaultScenario> {
   const res = await fetch(`${BASE_URL}/fault-scenarios/${scenarioId}`);
-  if (!res.ok) throw new Error(`Scenariusz nie znaleziony: ${res.status}`);
+  if (!res.ok) throw bladZapytania(res, 'Scenariusz nie znaleziony');
   return res.json();
 }
 
@@ -38,7 +39,7 @@ export async function createScenario(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(komunikatBleduApi(err, `Błąd tworzenia scenariusza: ${res.status}`));
+    throw new Error(komunikatBleduApi(err, komunikatZapytania(res, 'Błąd tworzenia scenariusza')));
   }
   return res.json();
 }
@@ -54,7 +55,7 @@ export async function updateScenario(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(komunikatBleduApi(err, `Błąd aktualizacji scenariusza: ${res.status}`));
+    throw new Error(komunikatBleduApi(err, komunikatZapytania(res, 'Błąd aktualizacji scenariusza')));
   }
   return res.json();
 }
@@ -65,7 +66,7 @@ export async function deleteScenario(scenarioId: string): Promise<void> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(komunikatBleduApi(err, `Błąd usuwania scenariusza: ${res.status}`));
+    throw new Error(komunikatBleduApi(err, komunikatZapytania(res, 'Błąd usuwania scenariusza')));
   }
 }
 
@@ -73,7 +74,7 @@ export async function fetchScenarioEligibility(
   scenarioId: string,
 ): Promise<ScenarioEligibilityResult> {
   const res = await fetch(`${BASE_URL}/fault-scenarios/${scenarioId}/eligibility`);
-  if (!res.ok) throw new Error(`Błąd sprawdzania uprawnień: ${res.status}`);
+  if (!res.ok) throw bladZapytania(res, 'Błąd sprawdzania uprawnień');
   return res.json();
 }
 
@@ -81,7 +82,7 @@ export async function fetchScenarioSldOverlay(
   scenarioId: string,
 ): Promise<ScenarioSldOverlay> {
   const res = await fetch(`${BASE_URL}/fault-scenarios/${scenarioId}/sld-overlay`);
-  if (!res.ok) throw new Error(`Błąd pobierania overlay: ${res.status}`);
+  if (!res.ok) throw bladZapytania(res, 'Błąd pobierania overlay');
   return res.json();
 }
 
@@ -95,7 +96,7 @@ export async function createRunFromScenario(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(komunikatBleduApi(err, `Błąd tworzenia przebiegu: ${res.status}`));
+    throw new Error(komunikatBleduApi(err, komunikatZapytania(res, 'Błąd tworzenia przebiegu')));
   }
   return res.json();
 }

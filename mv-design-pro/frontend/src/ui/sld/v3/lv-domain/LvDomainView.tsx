@@ -91,7 +91,8 @@ import type {
   LvEnergizationState,
 } from './types';
 import type { TrafienieNn } from './operacjeNn';
-import { opisyBrakowDanychNn } from './opisyBrakowDanychNn';
+import { nazwaElementuWidokuNn, opisyBrakowDanychNn } from './opisyBrakowDanychNn';
+import { nazwaElementuMigawki, useSnapshotStore } from '../../../topology/snapshotStore';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 } as const;
 const HEADER_ALLOWANCE_PX = 96;
@@ -419,7 +420,17 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   const [warningsOpen, setWarningsOpen] = useState<boolean>(false);
 
   const paleta = useMemo(() => (mono ? paletaMono() : paletaNnDlaMotywu(theme)), [theme, mono]);
-  const scene = useMemo(() => composeLvDomainScene(view, projection.upstream_equivalents), [view, projection.upstream_equivalents]);
+  // Nazwy elementów w opisach braków i kotwicy SN: z widoku domeny nN, a dla elementów spoza niej
+  // (szyna systemu SN, transformator SN/nN) — z migawki modelu; identyfikator nie jest pokazywany.
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const nazwaElementu = useMemo(
+    () => nazwaElementuWidokuNn(view, (ref) => nazwaElementuMigawki(snapshot, ref)),
+    [view, snapshot],
+  );
+  const scene = useMemo(
+    () => composeLvDomainScene(view, projection.upstream_equivalents, nazwaElementu),
+    [view, projection.upstream_equivalents, nazwaElementu],
+  );
   const domainDescriptor = useMemo(() => domainDescriptorLabel(view), [view]);
   const swzFeeders = useMemo(
     () => projection.swz_snapshot.transformers.flatMap((t) => t.feeders.map((feeder) => ({ transformerRef: t.transformer_ref, feeder }))),
@@ -511,7 +522,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     return (
       <div data-testid="lv-domain-view-root" data-status="brak-danych" style={{ background: paleta.tlo, color: paleta.kreskaBazowa, padding: 24, fontFamily: 'monospace' }}>
         {view.station_name ? `Domena nN stacji „${view.station_name}” — brak danych` : 'Domena nN — brak danych'}
-        {`: ${(view.reason_pl ?? opisyBrakowDanychNn(view.missing_data) ?? 'brak opisu przyczyny w odpowiedzi').replace(/\.$/, '')}.`}
+        {`: ${(view.reason_pl ?? opisyBrakowDanychNn(view.missing_data, nazwaElementu) ?? 'brak opisu przyczyny w odpowiedzi').replace(/\.$/, '')}.`}
       </div>
     );
   }

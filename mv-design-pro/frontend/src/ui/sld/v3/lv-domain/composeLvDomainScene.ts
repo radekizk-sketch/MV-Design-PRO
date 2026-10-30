@@ -52,7 +52,11 @@ import type {
   UpstreamEquivalentSnapshot,
 } from './types';
 import { RASTER, TOKENY_GEOMETRII as T, doRastra, plFixed, plNumber } from './visualGrammar';
-import { opisyBrakowDanychNn } from './opisyBrakowDanychNn';
+import {
+  opisElementuModelu,
+  opisyBrakowDanychNn,
+  type NazwaElementuModelu,
+} from './opisyBrakowDanychNn';
 
 // ---------------------------------------------------------------------------
 // Typy sceny.
@@ -181,21 +185,30 @@ export function anchorIdentityLabel(
   snapshot: UpstreamEquivalentSnapshot | undefined,
   systemId: string | null,
   voltageKv: number,
+  nazwaElementu: NazwaElementuModelu,
 ): string {
-  const nazwy = snapshot?.upstream_source_names?.length
-    ? snapshot.upstream_source_names
-    : snapshot?.upstream_source_ids ?? [];
+  // Źródła systemu po nazwach z backendu; migawka bez nazw (pole opcjonalne kontraktu) —
+  // nazwy z modelu po identyfikatorach, nigdy same identyfikatory.
+  const nazwy =
+    snapshot?.upstream_source_names
+    ?? (snapshot?.upstream_source_ids ?? []).map((ref) => opisElementuModelu('źródło', ref, nazwaElementu));
   const zrodla = nazwy.length ? ` · ${nazwy.join(', ')}` : '';
-  const system = systemId && !nazwy.length ? ` · szyna SN ${systemId}` : '';
+  // Identyfikator systemu SN = najmniejszy `ref_id` szyny składowej (backend `energization`):
+  // w etykiecie nazwa tej szyny z modelu, nigdy identyfikator.
+  const system =
+    systemId && !nazwy.length ? ` · ${opisElementuModelu('szyna SN', systemId, nazwaElementu)}` : '';
   return `SN ${plNumber(voltageKv)} kV${zrodla}${system}`;
 }
 
 /** Parametry strony SN (równoważnik Thevenina) — jawnie „strona SN", żeby
  *  Ik″ SN nie dało się pomylić z Ik″ na szynie nN (§3). */
-export function anchorDetailLabel(rownowaznik: UpstreamEquivalentSnapshot | undefined): string | null {
+export function anchorDetailLabel(
+  rownowaznik: UpstreamEquivalentSnapshot | undefined,
+  nazwaElementu: NazwaElementuModelu,
+): string | null {
   if (!rownowaznik) return null;
   if (rownowaznik.status !== 'OK') {
-    const powod = opisyBrakowDanychNn(rownowaznik.missing_data) ?? 'brak danych';
+    const powod = opisyBrakowDanychNn(rownowaznik.missing_data, nazwaElementu) ?? 'brak danych';
     return `Sk″/Ik″ SN: brak danych — ${powod}`;
   }
   const sk = rownowaznik.sk_mva != null ? `Sk″ SN = ${plFixed(rownowaznik.sk_mva, 1)} MVA` : 'Sk″ SN = —';
@@ -290,7 +303,8 @@ interface SectionPlan {
 
 export function composeLvDomainScene(
   view: LvDomainGraphView,
-  upstreamEquivalents: readonly UpstreamEquivalentSnapshot[] = [],
+  upstreamEquivalents: readonly UpstreamEquivalentSnapshot[],
+  nazwaElementu: NazwaElementuModelu,
 ): LvDomainScene {
   const nodes: LvDomainSceneNode[] = [];
   const edges: LvDomainSceneEdge[] = [];
@@ -923,7 +937,7 @@ export function composeLvDomainScene(
       ref: anchorRef,
       x: doRastra((left + right) / 2),
       y: anchorY,
-      label: anchorIdentityLabel(snapshot, systemId, first.uhv_kv),
+      label: anchorIdentityLabel(snapshot, systemId, first.uhv_kv, nazwaElementu),
       barLeft: left,
       barRight: right,
       meta: {
@@ -934,8 +948,8 @@ export function composeLvDomainScene(
         upstreamSourceIds: snapshot?.upstream_source_ids ?? [],
         equivalentId: snapshot?.equivalent_id ?? null,
         status: snapshot?.status ?? 'brak danych',
-        tozsamoscLabel: anchorIdentityLabel(snapshot, systemId, first.uhv_kv),
-        opisLabel: anchorDetailLabel(snapshot),
+        tozsamoscLabel: anchorIdentityLabel(snapshot, systemId, first.uhv_kv, nazwaElementu),
+        opisLabel: anchorDetailLabel(snapshot, nazwaElementu),
         labelMaxWidth,
         shared: members.length > 1,
         snapshot: snapshot as unknown as Record<string, unknown> | undefined,

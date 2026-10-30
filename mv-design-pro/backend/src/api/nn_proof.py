@@ -168,7 +168,7 @@ def download_lv_circuit_verification_pack(
             detail=(
                 wynik.get("reason_pl")
                 or "Brak danych do pakietu dowodowego: "
-                + "; ".join(opis_braku_danych_nn(kod) for kod in wynik.get("missing_data", []))
+                + "; ".join(opis_braku_danych_nn(enm, kod) for kod in wynik.get("missing_data", []))
                 + "."
             ),
         )

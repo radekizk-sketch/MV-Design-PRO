@@ -8,6 +8,7 @@ import type {
   CoordinationSummaryResponse,
   CoordinationResult,
 } from './types';
+import { komunikatZapytania } from '../../ui2/shared/bladZapytania';
 
 const API_BASE = '/api/protection-coordination';
 
@@ -102,10 +103,10 @@ export async function getCoordinationResult(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({
-      detail: `Serwer nie zwrócił wyniku koordynacji zabezpieczeń (kod HTTP ${response.status}).`,
+      detail: komunikatZapytania(response, 'Serwer nie zwrócił wyniku koordynacji zabezpieczeń'),
     }));
     throw new Error(
-      error.detail || `Serwer nie zwrócił wyniku koordynacji zabezpieczeń (kod HTTP ${response.status}).`,
+      error.detail || komunikatZapytania(response, 'Serwer nie zwrócił wyniku koordynacji zabezpieczeń'),
     );
   }
 

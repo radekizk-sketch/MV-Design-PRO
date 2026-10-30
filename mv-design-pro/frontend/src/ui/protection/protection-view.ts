@@ -15,6 +15,7 @@
 import type { ElementProtectionAssignment, ProtectionSettingsSummary } from './element-assignment';
 import type { NastawyUrzadzeniaWidok, SlownikNastaw } from './nastawyModelu';
 import type { ElementType } from '../types';
+import { bladZapytania } from '../../ui2/shared/bladZapytania';
 
 // =============================================================================
 // Kontrakt odpowiedzi backendu (tylko konsumowane pola)
@@ -158,7 +159,7 @@ export function urzadzeniaZNastawami(
 export async function fetchProtectionView(caseId: string): Promise<ProtectionViewResponse> {
   const response = await fetch(`/api/cases/${caseId}/enm/protection-view`);
   if (!response.ok) {
-    throw new Error(`Nie udało się pobrać widoku zabezpieczeń: ${response.statusText}`);
+    throw bladZapytania(response, 'Nie udało się pobrać widoku zabezpieczeń');
   }
   return normalizeProtectionViewResponse(
     (await response.json()) as Partial<ProtectionViewResponse>,

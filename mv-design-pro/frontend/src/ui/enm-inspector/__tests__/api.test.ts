@@ -125,11 +125,13 @@ describe('fetchEnmV2Projection', () => {
   it('throws a readable error when the backend rejects the projection request', async () => {
     fetchMock.mockResolvedValue({
       ok: false,
+      status: 404,
       statusText: 'Not Found',
     });
 
+    // Polskie zdanie z kodem HTTP; angielski `statusText` nie trafia do treści.
     await expect(fetchEnmV2Projection('missing-case')).rejects.toThrow(
-      'Blad pobierania projekcji ENM v2: Not Found',
+      'Błąd pobierania projekcji ENM v2: serwer nie znalazł żądanego zasobu (HTTP 404).',
     );
   });
 });

@@ -35,6 +35,7 @@ from pydantic import ValidationError
 from .nazwy_elementow import (
     SPOZA_MODELU,
     element_po_identyfikatorze,
+    nazwa_lub_oznaczenie_elementu,
     nazwa_nadana_elementu,
     nazwa_nadana_pozycji_katalogu,
 )
@@ -722,6 +723,17 @@ def opis_elementu(enm: object, ref: object, rodzaj: str) -> str:
     if element is None:
         return f"{rodzaj} {SPOZA_MODELU}"
     return _zdanie(rodzaj, nazwa_nadana_elementu(element))
+
+
+def opis_elementu_z_oznaczeniem(enm: object, ref: object, rodzaj: str) -> str:
+    """Jak ``opis_elementu``, ale element bez nazwy nazywa jego oznaczenie (``designation``,
+    np. oznaczenie stacji) — miejsce braku danych nN wskazuje element tym, co projektant
+    widzi na schemacie; „bez nazwy” dopiero przy braku obu, „spoza modelu” przy braku
+    elementu. Nigdy identyfikator."""
+    element = element_po_identyfikatorze(enm, ref)
+    if element is None:
+        return f"{rodzaj} {SPOZA_MODELU}"
+    return _zdanie(rodzaj, nazwa_lub_oznaczenie_elementu(element))
 
 
 def opis_obiektu(element: object, rodzaj: str) -> str:

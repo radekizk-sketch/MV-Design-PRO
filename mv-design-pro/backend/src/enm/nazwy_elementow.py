@@ -96,6 +96,15 @@ def nazwa_nadana_elementu(element: object) -> str | None:
     return nazwa_nadana(_pole(element, "name")) if element is not None else None
 
 
+def nazwa_lub_oznaczenie_elementu(element: object) -> str | None:
+    """Nazwa nadana elementowi, a gdy jej brak — jego oznaczenie (pole `designation`, np.
+    oznaczenie stacji) albo `None`. Lustro frontu: ``nazwaElementuMigawki``
+    (``frontend/src/ui/topology/snapshotStore.ts``)."""
+    if element is None:
+        return None
+    return nazwa_nadana_elementu(element) or nazwa_nadana(_pole(element, "designation"))
+
+
 def nazwa_galezi_bez_nazwy(branch_type: object) -> str:
     """Opis rodzaju gałęzi bez nazwy (typ ENM → polska nazwa rodzaju)."""
     return NAZWA_GALEZI_BEZ_NAZWY.get(str(branch_type), NAZWA_ELEMENTU_BEZ_NAZWY["branches"])

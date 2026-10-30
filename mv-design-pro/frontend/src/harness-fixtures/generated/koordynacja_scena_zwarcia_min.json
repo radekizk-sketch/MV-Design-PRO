@@ -208,7 +208,7 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 7.78756838608,
-      "i_dc_ka": 0.000771748680262,
+      "i_dc_ka": 0.000771748680265,
       "ik_ka": 7.78756838608,
       "ik_thevenin_ka": 7.78756838608,
       "ik_inverters_ka": 0.0,
@@ -297,7 +297,7 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 7.97088116936,
-      "i_dc_ka": 0.00364361240612,
+      "i_dc_ka": 0.00364361240613,
       "ik_ka": 7.97088116936,
       "ik_thevenin_ka": 7.97088116936,
       "ik_inverters_ka": 0.0,
@@ -386,7 +386,7 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 7.69343330775,
-      "i_dc_ka": 0.000359299442859,
+      "i_dc_ka": 0.00035929944286,
       "ik_ka": 7.69343330775,
       "ik_thevenin_ka": 7.69343330775,
       "ik_inverters_ka": 0.0,
@@ -475,7 +475,7 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 16.7365940568,
-      "i_dc_ka": 0.00546615218262,
+      "i_dc_ka": 0.00546615218263,
       "ik_ka": 16.7365940568,
       "ik_thevenin_ka": 16.7365940568,
       "ik_inverters_ka": 0.0,
@@ -724,7 +724,7 @@
       "rk_ohm": 0.212358681831,
       "xk_ohm": 1.03008681831,
       "zk_ohm": 1.05174857404,
-      "rx_ratio": 0.206156100687,
+      "rx_ratio": 0.206156100686,
       "xr_ratio": 4.85069322067,
       "kappa": 1.54799365659,
       "c_factor": 1.0,
@@ -742,11 +742,11 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 8.23414858986,
-      "i_dc_ka": 0.0179220881008,
+      "i_dc_ka": 0.0179220881009,
       "ik_ka": 8.23414858986,
       "ik_thevenin_ka": 8.23414858986,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 68.9284208472,
+      "i2t_ka2s": 68.9284208471,
       "z1_ohm": {
         "re": 0.212358681831,
         "im": 1.03008681831
@@ -1077,11 +1077,11 @@
       "ip_ka": 21.6000688778,
       "ith_ka": 8.89574399585,
       "sk_mva": 227.272727273,
-      "rk_ohm": 0.098508681831,
+      "rk_ohm": 0.0985086818309,
       "xk_ohm": 0.985086818308,
       "zk_ohm": 0.99,
       "rx_ratio": 0.1,
-      "xr_ratio": 9.99999999998,
+      "xr_ratio": 9.99999999999,
       "kappa": 1.74600185627,
       "c_factor": 1.0,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MIN",
@@ -1098,17 +1098,17 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 8.74773135136,
-      "i_dc_ka": 0.534606310768,
+      "i_dc_ka": 0.53460631077,
       "ik_ka": 8.74773135136,
       "ik_thevenin_ka": 8.74773135136,
       "ik_inverters_ka": 0.0,
       "i2t_ka2s": 79.1342612398,
       "z1_ohm": {
-        "re": 0.098508681831,
+        "re": 0.0985086818309,
         "im": 0.985086818308
       },
       "z2_ohm": {
-        "re": 0.098508681831,
+        "re": 0.0985086818309,
         "im": 0.985086818308
       },
       "z0_ohm": null,
@@ -1187,7 +1187,7 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 16.7365940568,
-      "i_dc_ka": 0.00546615218262,
+      "i_dc_ka": 0.00546615218263,
       "ik_ka": 16.7365940568,
       "ik_thevenin_ka": 16.7365940568,
       "ik_inverters_ka": 0.0,
@@ -1365,7 +1365,7 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 16.7365940568,
-      "i_dc_ka": 0.00546615218262,
+      "i_dc_ka": 0.00546615218263,
       "ik_ka": 16.7365940568,
       "ik_thevenin_ka": 16.7365940568,
       "ik_inverters_ka": 0.0,
@@ -1788,7 +1788,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "81338f1cf8fe17b289e121c7e9ee212cf0a15e05e38afa48315849b45ee4e7bd",
-      "result_hash": "cc4dcbb68b0ee303ed78211c1e4b64dee31f9cec7e31cea70fe0c0948f294c92",
+      "result_hash": "803f4cbcdb6144c611351876cc97cc734383e5807a15c93df498d1177bfb647c",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

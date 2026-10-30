@@ -15,6 +15,8 @@ import type {
   PominieteUrzadzenie,
 } from '../../../ui/protection-coordination/types';
 import type { WiarygodnoscOceny } from '../../../ui/protection-comparison/types';
+import { komunikatZapytania } from '../../shared/bladZapytania';
+import { etykietaStanuPrzebiegu } from '../akademickie/strings';
 
 /** Ocena urządzenia modelu w punkcie zwarcia jego strefy. */
 export interface OcenaUrzadzeniaWPunkcie {
@@ -91,7 +93,7 @@ async function tekstBledu(odpowiedz: Response, prefiks: string): Promise<string>
   const tresc = (await odpowiedz.json().catch(() => null)) as { detail?: unknown } | null;
   return typeof tresc?.detail === 'string' && tresc.detail.trim()
     ? tresc.detail
-    : `${prefiks} (HTTP ${odpowiedz.status}).`;
+    : komunikatZapytania(odpowiedz, prefiks);
 }
 
 /**
@@ -133,7 +135,7 @@ export async function uruchomOceneZabezpieczen(
   }
   // Stan końcowy: FINISHED albo FAILED/CANCELLED z komunikatem backendu.
   if (wynik.status !== 'FINISHED') {
-    throw new Error(wynik.error_message ?? `Bieg oceny zakończył się statusem ${wynik.status}.`);
+    throw new Error(wynik.error_message ?? `Bieg oceny zabezpieczeń zakończył się stanem „${etykietaStanuPrzebiegu(wynik.status)}”.`);
   }
   return wynik.id;
 }

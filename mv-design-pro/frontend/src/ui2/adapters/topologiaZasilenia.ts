@@ -1,3 +1,4 @@
+import { komunikatZapytania } from '../shared/bladZapytania';
 /**
  * Klient stanu zasilenia i toru zasilania z topologii łączeniowej (karta K6a, UI-07/UI-08).
  *
@@ -271,7 +272,7 @@ export class BladTopologiiZasilenia extends Error {
     public readonly szczegoly: unknown,
     public readonly endpoint: string,
   ) {
-    super(`Topologia zasilenia: HTTP ${status} (${endpoint})`);
+    super(komunikatZapytania({ status }, 'Nie udało się pobrać topologii zasilenia'));
     this.name = 'BladTopologiiZasilenia';
   }
 }
@@ -282,7 +283,7 @@ async function pobierz<T extends { podstawa: string }>(
 ): Promise<T> {
   const odpowiedz = await fetch(endpoint);
   if (!odpowiedz.ok) {
-    const szczegoly = await odpowiedz.json().catch(() => odpowiedz.statusText);
+    const szczegoly = await odpowiedz.json().catch(() => null);
     throw new BladTopologiiZasilenia(odpowiedz.status, szczegoly, endpoint);
   }
   const dane = (await odpowiedz.json()) as T;

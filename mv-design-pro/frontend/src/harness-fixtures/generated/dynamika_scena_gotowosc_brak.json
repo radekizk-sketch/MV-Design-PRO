@@ -4,10 +4,10 @@
     "label_pl": "Dynamika czasowa (DAE)",
     "status": "blocked",
     "missing_fields_pl": [
-      "Bieg dynamiki czasowej wymaga bloku parametrów dynamicznych dla KAŻDEGO wytwórcy w modelu (karta producenta, certyfikat jednostki albo profil typowy normy). Brak bloku: „Blok PV”. (kod 'dynamika.zrodlo_bez_bloku_dynamiki')",
-      "Bieg dynamiki czasowej wymaga modelu dynamicznego KAŻDEGO odbioru (profil z katalogu profili odbiorów: napięcie przejścia do stałej impedancji i pomiar częstotliwości). Brak modelu: „Odbiór”. (kod 'dynamika.odbior_bez_bloku_dynamiki')",
-      "wytwórca „Blok PV”: brak wiązania z katalogowym modelem dynamicznym (kod 'der.dynamika_missing')",
-      "odbiór „Odbiór”: brak wiązania z katalogowym profilem modelu dynamicznego odbioru (kod 'load.dynamika_missing')"
+      "Bieg dynamiki czasowej wymaga bloku parametrów dynamicznych dla KAŻDEGO wytwórcy w modelu (karta producenta, certyfikat jednostki albo profil typowy normy). Brak bloku: „Blok PV”. (kod gotowości: dynamika.zrodlo_bez_bloku_dynamiki)",
+      "Bieg dynamiki czasowej wymaga modelu dynamicznego KAŻDEGO odbioru (profil z katalogu profili odbiorów: napięcie przejścia do stałej impedancji i pomiar częstotliwości). Brak modelu dla odbiorów: „Odbiór”. (kod gotowości: dynamika.odbior_bez_bloku_dynamiki)",
+      "wytwórca „Blok PV”: brak wiązania z katalogowym modelem dynamicznym (kod gotowości: der.dynamika_missing)",
+      "odbiór „Odbiór”: brak wiązania z katalogowym profilem modelu dynamicznego odbioru (kod gotowości: load.dynamika_missing)"
     ],
     "blocking_object_refs": [
       "pv/521ff6586b0c5e49952a5a5e10edc605/converter",
@@ -28,7 +28,7 @@
     },
     {
       "kod": "dynamika.odbior_bez_bloku_dynamiki",
-      "komunikat_pl": "Bieg dynamiki czasowej wymaga modelu dynamicznego KAŻDEGO odbioru (profil z katalogu profili odbiorów: napięcie przejścia do stałej impedancji i pomiar częstotliwości). Brak modelu: „Odbiór”.",
+      "komunikat_pl": "Bieg dynamiki czasowej wymaga modelu dynamicznego KAŻDEGO odbioru (profil z katalogu profili odbiorów: napięcie przejścia do stałej impedancji i pomiar częstotliwości). Brak modelu dla odbiorów: „Odbiór”.",
       "elementy": [
         {
           "ref_id": "load/d274343dd8d90e4fc15e2f65933f1325/sn",

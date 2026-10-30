@@ -461,8 +461,9 @@ class NcRfgPtpireeSolver:
         nieznane = sorted(wymuszone - znane)
         if nieznane:
             raise ValueError(
-                f"Program szczegółowy wymusza nieznane testy {nieznane} — kanon testów PTPiREE "
-                f"obejmuje {sorted(znane)}."
+                "Program szczegółowy wymusza nieznane testy "
+                f"{', '.join(f'„{test_id}”' for test_id in nieznane)} — kanon testów "
+                f"PTPiREE obejmuje {', '.join(sorted(znane))}."
             )
         if zrodlo_danych == "ZADANIE_KLIENTA" and certyfikaty:
             raise ValueError(
@@ -472,7 +473,10 @@ class NcRfgPtpireeSolver:
         referencje = [modul.der_ref for modul in request.modules]
         obce = sorted(set(certyfikaty) - set(referencje))
         if obce:
-            raise ValueError(f"Certyfikaty dla modułów spoza żądania: {obce}.")
+            raise ValueError(
+                f"Certyfikaty urządzeń dla modułów spoza żądania (liczba modułów: {len(obce)}) — "
+                "każdy certyfikat musi dotyczyć modułu z żądania."
+            )
         input_hash = _hash(
             {
                 "zadanie": request.model_dump(mode="json"),

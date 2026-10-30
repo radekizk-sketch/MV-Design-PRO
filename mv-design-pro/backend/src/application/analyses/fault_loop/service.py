@@ -43,7 +43,11 @@ from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.maszyny_robocze import parametry_robocze_impedancji_maszyn
 from enm.models import EnergyNetworkModel, Substation, Transformer
 from enm.nazwy_elementow import nazwa_elementu
-from enm.slownik_komunikatow import etykieta_parametru, opis_obiektu
+from enm.slownik_komunikatow import (
+    etykieta_parametru,
+    opis_elementu_z_oznaczeniem,
+    opis_obiektu,
+)
 from enm.tolerancja_nn import wyspy_wezlow_nn
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
@@ -481,22 +485,25 @@ OPISY_BRAKOW_DANYCH_NN_PL: dict[str, str] = {
 BRAK_SPOZA_SLOWNIKA_NN_PL = "brak danej spoza słownika aplikacji"
 
 
-def _miejsce_braku_nn(przedrostek: str) -> str:
+def _miejsce_braku_nn(enm: object, przedrostek: str) -> str:
     """Miejsce braku z przedrostka pozycji listy braków domeny nN: ``swz`` (ocena SWZ
     odpływu), ``upstream:<transformator>`` (równoważnik sieci SN po stronie SN
-    transformatora — `lv_domain/projection_v1.py`), ``<element>`` (wskazany element)."""
+    transformatora — `lv_domain/projection_v1.py`), ``<element>`` (wskazany element).
+    Element nazywa nazwa albo oznaczenie z modelu ``enm`` — identyfikatora nie ma w treści."""
     if przedrostek == "swz":
         return "ocena samoczynnego wyłączenia zasilania"
     rownowaznik, _, transformator = przedrostek.partition(":")
     if rownowaznik == "upstream" and transformator:
-        return f"równoważnik sieci SN transformatora {transformator}"
-    return f"element {przedrostek}"
+        return opis_elementu_z_oznaczeniem(
+            enm, transformator, "równoważnik sieci SN transformatora"
+        )
+    return opis_elementu_z_oznaczeniem(enm, przedrostek, "element")
 
 
-def opis_braku_danych_nn(kod: str) -> str:
-    """Opis pozycji listy braków analiz obwodu nN — nigdy klucz maszynowy. Pozycja
-    ``<przedrostek>:<kod>`` (brak dotyczący wskazanego elementu, oceny SWZ albo
-    równoważnika SN transformatora) daje opis z nazwą miejsca przed identyfikatorem
+def opis_braku_danych_nn(enm: object, kod: str) -> str:
+    """Opis pozycji listy braków analiz obwodu nN — nigdy klucz maszynowy ani identyfikator.
+    Pozycja ``<przedrostek>:<kod>`` (brak dotyczący wskazanego elementu, oceny SWZ albo
+    równoważnika SN transformatora) dopisuje miejsce braku nazwane z modelu ``enm``
     (``_miejsce_braku_nn``). Lustro frontu: ``opisBrakuDanychNn``."""
     przedrostek, _, wlasciwy = kod.rpartition(":")
     opis = OPISY_BRAKOW_DANYCH_NN_PL.get(wlasciwy)
@@ -506,7 +513,7 @@ def opis_braku_danych_nn(kod: str) -> str:
         opis = opis_braku_transformatora(wlasciwy)
     if opis is None:
         opis = BRAK_SPOZA_SLOWNIKA_NN_PL
-    return f"{opis} ({_miejsce_braku_nn(przedrostek)})" if przedrostek else opis
+    return f"{opis} ({_miejsce_braku_nn(enm, przedrostek)})" if przedrostek else opis
 
 
 def impedancja_transformatora_dla_ukladu(

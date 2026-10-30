@@ -2054,7 +2054,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (skasowany: zero konsumentow produkcyjnych, wpis zdjety z `CONTRACT_SOURCES`);
     # `kombinacja_wniosek_pl`, `goly_aparat_wniosek_pl` (`ZdolnoscWylaczaniaDwaZdania` pakietu
     # dowodu obwodu nN — wniosek zdania slowami zamiast kodu statusu). PASS niezmieniony.
-    assert "Pol kontraktow wejsciowych: 4393." in wyjscie, wyjscie
+    # Commit 4 karty komunikatow (2026-10-30): 4393 -> 4388 — POMIAR `contract_fields()` na
+    # bazie commitu 4 `1e535d489` (`git archive`: 4393, pin zgodny) i na drzewie karty (4388).
+    # Roznica zbiorow -5, +0: `snapshot_fingerprint`, `sld_ready`, `load_flow_ready`,
+    # `short_circuit_ready`, `protection_ready` — pola `ReadinessProfileV1` skasowanego razem
+    # z bramkami `require_*` i `build_readiness_profile` (druga bramka gotowosci bez konsumenta
+    # produkcyjnego; jedyny walidator: ENM + CalculationReadiness, ADR-025). Pozostale pola
+    # profilu (`snapshot_id`, `issues`, `content_hash`) zyja w innych kontraktach — nazwy w
+    # zbiorze bez zmian. Plik `domain/readiness.py` zostaje (typy kwestii gotowosci) — liczba
+    # plikow bez zmian. PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4388." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

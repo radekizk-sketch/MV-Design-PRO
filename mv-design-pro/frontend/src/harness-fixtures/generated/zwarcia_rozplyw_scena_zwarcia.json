@@ -161,9 +161,9 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 7.15e-14,
+          "suma_modulow_pominietych_thevenin_a": 1.43e-13,
           "liczba_pominietych_falownik": 3,
-          "suma_modulow_pominietych_falownik_a": 3.63e-15
+          "suma_modulow_pominietych_falownik_a": 3.96e-15
         },
         "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
       }
@@ -182,7 +182,7 @@
         "branch_name": "Linia SN 1",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 0.0,
+        "i_ka": 1.86e-19,
         "kat_deg": null
       },
       {
@@ -190,7 +190,7 @@
         "branch_name": "TR 110/15",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 3.63e-18,
+        "i_ka": 3.78e-18,
         "kat_deg": null
       },
       {
@@ -198,7 +198,7 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 7.15e-17,
+        "i_ka": 1.43e-16,
         "kat_deg": null
       }
     ],
@@ -319,7 +319,7 @@
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 8953.14360646,
-            "im": -1.03739239421e-12
+            "im": -9.02389274415e-13
           },
           "suma_modulow_zrodel_a": 8955.25075351,
           "prad_czlonow_poprzecznych_a": {
@@ -328,9 +328,9 @@
           },
           "suma_bilansu_a": {
             "re": 8953.14360646,
-            "im": -6.82354756554e-13
+            "im": -5.47351636759e-13
           },
-          "reszta_a": 6.82354756554e-13,
+          "reszta_a": 5.47351636759e-13,
           "tolerancja_a": 8.95314360646e-06,
           "bilans_domkniety": true
         },
@@ -622,7 +622,7 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 3.2e-14,
+          "suma_modulow_pominietych_thevenin_a": 1.74e-15,
           "liczba_pominietych_falownik": 1,
           "suma_modulow_pominietych_falownik_a": 0.0
         },
@@ -643,7 +643,7 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 3.2e-17,
+        "i_ka": 1.74e-18,
         "kat_deg": null
       }
     ],
@@ -764,7 +764,7 @@
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 13984.4749902,
-            "im": -8.79296635503e-14
+            "im": 2.9709568139e-13
           },
           "suma_modulow_zrodel_a": 13984.4971416,
           "prad_czlonow_poprzecznych_a": {
@@ -773,9 +773,9 @@
           },
           "suma_bilansu_a": {
             "re": 13984.4749902,
-            "im": -4.50363378128e-14
+            "im": 3.39989007127e-13
           },
-          "reszta_a": 4.50363378128e-14,
+          "reszta_a": 3.39989007127e-13,
           "tolerancja_a": 1.39844749902e-05,
           "bilans_domkniety": true
         },
@@ -1184,7 +1184,7 @@
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 20457.5242806,
-            "im": -2.01794136956e-12
+            "im": -1.52056145453e-12
           },
           "suma_modulow_zrodel_a": 20462.3390154,
           "prad_czlonow_poprzecznych_a": {
@@ -1193,9 +1193,9 @@
           },
           "suma_bilansu_a": {
             "re": 20457.5242806,
-            "im": -1.2066965809e-12
+            "im": -7.09316665865e-13
           },
-          "reszta_a": 7.375342422e-12,
+          "reszta_a": 3.70648349967e-12,
           "tolerancja_a": 2.04575242806e-05,
           "bilans_domkniety": true
         },
@@ -1465,9 +1465,9 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 7.15e-14,
+          "suma_modulow_pominietych_thevenin_a": 1.43e-13,
           "liczba_pominietych_falownik": 3,
-          "suma_modulow_pominietych_falownik_a": 3.63e-15
+          "suma_modulow_pominietych_falownik_a": 3.96e-15
         },
         "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
       }
@@ -1486,7 +1486,7 @@
         "branch_name": "Linia SN 1",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 0.0,
+        "i_ka": 1.86e-19,
         "kat_deg": null
       },
       {
@@ -1494,7 +1494,7 @@
         "branch_name": "TR 110/15",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 3.63e-18,
+        "i_ka": 3.78e-18,
         "kat_deg": null
       },
       {
@@ -1502,7 +1502,7 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 7.15e-17,
+        "i_ka": 1.43e-16,
         "kat_deg": null
       }
     ],
@@ -1623,7 +1623,7 @@
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 8953.14360646,
-            "im": -1.03739239421e-12
+            "im": -9.02389274415e-13
           },
           "suma_modulow_zrodel_a": 8955.25075351,
           "prad_czlonow_poprzecznych_a": {
@@ -1632,9 +1632,9 @@
           },
           "suma_bilansu_a": {
             "re": 8953.14360646,
-            "im": -6.82354756554e-13
+            "im": -5.47351636759e-13
           },
-          "reszta_a": 6.82354756554e-13,
+          "reszta_a": 5.47351636759e-13,
           "tolerancja_a": 8.95314360646e-06,
           "bilans_domkniety": true
         },
@@ -1926,7 +1926,7 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 1.23e-13,
+          "suma_modulow_pominietych_thevenin_a": 1.12e-13,
           "liczba_pominietych_falownik": 1,
           "suma_modulow_pominietych_falownik_a": 0.0
         },
@@ -1947,7 +1947,7 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 1.23e-16,
+        "i_ka": 1.12e-16,
         "kat_deg": null
       }
     ],
@@ -2068,7 +2068,7 @@
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 4603.52239368,
-            "im": -3.12638803734e-13
+            "im": -2.84217094304e-13
           },
           "suma_modulow_zrodel_a": 4641.02682781,
           "prad_czlonow_poprzecznych_a": {
@@ -2077,9 +2077,9 @@
           },
           "suma_bilansu_a": {
             "re": 4603.52239368,
-            "im": -8.58423338055e-14
+            "im": -5.74206243751e-14
           },
-          "reszta_a": 9.13536818539e-13,
+          "reszta_a": 5.74206243751e-14,
           "tolerancja_a": 4.60352239368e-06,
           "bilans_domkniety": true
         },

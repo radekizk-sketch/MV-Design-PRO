@@ -1,3 +1,4 @@
+import { bladZapytania } from '../../shared/bladZapytania';
 /*
  * Klient API okna „Kontyngencje N-1" (karta EKRAN-N1, decyzja D8). Typy TS
  * odwzorowują 1:1 kształt odpowiedzi końcówek (mapowanie plik:funkcja):
@@ -234,7 +235,7 @@ export interface MacierzResponse {
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Request ${url} failed: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<T>;
 }

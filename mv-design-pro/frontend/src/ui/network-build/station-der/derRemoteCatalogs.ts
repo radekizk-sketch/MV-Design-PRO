@@ -43,11 +43,12 @@ import type {
 import { fetchDerConverterTypes, fetchTransformerTypes } from '../../catalog/api';
 import type { TransformerType } from '../../catalog/types';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
+import { bladZapytania } from '../../../ui2/shared/bladZapytania';
 
 async function getJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Request ${url} failed: ${response.status} ${response.statusText}`);
+    throw bladZapytania(response);
   }
   return response.json() as Promise<T>;
 }

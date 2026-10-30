@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import forbidden_ui_terms_guard as guard
+import pytest
 
 
 def _napisz(tmp_path: Path, tresc: str, nazwa: str = "Plik.tsx") -> str:
@@ -119,3 +120,91 @@ def test_real_repo_ui2_wyniki_and_freshness_string_literals_are_clean() -> None:
                 for line_no, line, reason in guard.scan_file(pelna_sciezka):
                     wszystkie.append((wzgledna, line_no, line, reason))
     assert wszystkie == [], wszystkie
+
+
+# ---------------------------------------------------------------------------
+# Reguła komunikatu zapytania (karta komunikatów, commit 4, 2026-10-30): jedno źródło
+# komunikatu o nieudanym zapytaniu — `frontend/src/ui2/shared/bladZapytania.ts`.
+# Iloczyn cech: {szablon w `new Error`, szablon jako wartość, literał w apostrofach}
+# × {surowy adres, statusText, goły kod HTTP, angielska fraza transportu, wklejony status,
+# ścieżka /api/}; negatywy: komentarz, zmienna lokalna `statusText`, stan biegu domeny,
+# plik źródła prawdy, pliki testów.
+# ---------------------------------------------------------------------------
+
+
+_PRZYPADKI_NARUSZEN = [
+    ("throw new Error(`Request ${url} failed: ${response.status}`);\n", "surowy adres"),
+    ("throw new Error(`Request ${url} failed: ${response.status}`);\n", "angielski komunikat"),
+    ("let k = `Zapytanie ${url} nie powiodło się`;\n", "surowy adres"),
+    ("super(`Topologia: HTTP ${status} (${endpoint})`);\n", "surowy adres"),
+    ("throw new Error(`Błąd pobierania: ${response.statusText}`);\n", "statusText"),
+    ("const m = errorData.detail || response.statusText;\n", "statusText"),
+    ("const d = await res.json().catch(() => res.statusText);\n", "statusText"),
+    ("return `HTTP ${response.status}`;\n", "goły kod HTTP"),
+    ("throw new Error(d || `Błąd HTTP: ${response.status}`);\n", "goły kod HTTP"),
+    ("const m = `Błąd API ${status}`;\n", "goły kod HTTP"),
+    ("throw new Error('GET station config failed');\n", "angielski komunikat"),
+    ('throw new Error("Failed to fetch readiness");\n', "angielski komunikat"),
+    ("throw new Error(`Nie udało się (HTTP ${odpowiedz.status}).`);\n", "kod statusu HTTP"),
+    ("throw new Error(`Błąd pobierania: ${res.status}`);\n", "kod statusu HTTP"),
+    ("throw new Error(`POST /api/projects nie powiódł się`);\n", "ścieżka zapytania"),
+    ("throw new Error(\n  `Request ${url}\n failed`,\n);\n", "surowy adres"),
+]
+
+
+@pytest.mark.parametrize(("tresc", "powod"), _PRZYPADKI_NARUSZEN)
+def test_komunikat_zapytania_iniekcja_czerwona(tmp_path: Path, tresc: str, powod: str) -> None:
+    sciezka = _napisz(tmp_path, tresc, "klient.ts")
+    naruszenia = guard.scan_komunikat_zapytania(sciezka)
+    assert any(powod in reason for _l, _c, reason in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize(
+    "tresc",
+    [
+        "// throw new Error(`Request ${url} failed: ${response.statusText}`);\n",
+        "/* `HTTP ${response.status}` */\n",
+        "const statusText = useMemo(() => 'Gotowe', []);\n",
+        "throw new Error(`Bieg zakończył się stanem ${etykieta(wynik.status)}.`);\n",
+        "key={`${licznik.status}-${x}`}\n",
+        "throw bladZapytania(response, 'Nie udało się pobrać widoku pola');\n",
+        "const url = `/api/cases/${caseId}/runs`;\n",
+    ],
+)
+def test_komunikat_zapytania_bez_falszywych_trafien(tmp_path: Path, tresc: str) -> None:
+    sciezka = _napisz(tmp_path, tresc, "klient.ts")
+    assert guard.scan_komunikat_zapytania(sciezka) == []
+
+
+def test_komunikat_zapytania_numer_linii_po_usunieciu_komentarzy(tmp_path: Path) -> None:
+    sciezka = _napisz(
+        tmp_path,
+        "/**\n * opis\n */\nconst a = 1;\nthrow new Error(`HTTP ${response.status}`);\n",
+        "klient.ts",
+    )
+    linie = {linia for linia, _c, _r in guard.scan_komunikat_zapytania(sciezka)}
+    assert linie == {5}
+
+
+def test_komunikat_zapytania_realne_repo_czyste_i_zrodlo_prawdy_wylaczone() -> None:
+    """Pin zapadki: po karcie `frontend/src` nie ma ani jednej lokalnej kopii komunikatu;
+    plik źródła prawdy (który SAM składa „HTTP <kod>”) i testy są poza regułą — iniekcja
+    jego treści do zwykłego pliku jest czerwona."""
+    import os
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(guard.__file__)))
+    assert guard.naruszenia_komunikatu_zapytania(root) == []
+    zrodlo = os.path.join(root, guard.PLIK_KOMUNIKATU_ZAPYTANIA)
+    assert os.path.isfile(zrodlo)
+    with open(zrodlo, encoding="utf-8") as f:
+        assert "(HTTP ${odpowiedz.status})" in f.read()
+
+
+def test_komunikat_zapytania_tresc_zrodla_prawdy_poza_nim_jest_czerwona(tmp_path: Path) -> None:
+    import os
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(guard.__file__)))
+    with open(os.path.join(root, guard.PLIK_KOMUNIKATU_ZAPYTANIA), encoding="utf-8") as f:
+        tresc = f.read()
+    sciezka = _napisz(tmp_path, tresc, "kopia.ts")
+    assert guard.scan_komunikat_zapytania(sciezka), "kopia źródła prawdy musi być naruszeniem"

@@ -78,7 +78,7 @@ describe('useProbaOperacji — werdykt z operacji, nie z UI', () => {
     [
       'błąd serwera 500',
       () => odpowiedz(500, null),
-      { stan: 'nieustalona', komunikat: 'Błąd HTTP 500: Blad' },
+      { stan: 'nieustalona', komunikat: 'Operacja na modelu sieci nie powiodła się: wewnętrzny błąd serwera obliczeń (HTTP 500).' },
     ],
     [
       'błąd sieci',

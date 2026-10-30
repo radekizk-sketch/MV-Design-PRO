@@ -1410,7 +1410,7 @@ class V126AcademicSolver:
         # Brak jakiejkolwiek pojemności doziemnej → C0 nie do policzenia (nie zgadujemy).
         if b0_total_s <= 0.0 or u_line_kv <= 0.0:
             reason = (
-                "Brak jawnej pojemności doziemnej B0 (b0_siemens_per_km) dla linii/kabli "
+                "Brak jawnej pojemności doziemnej B0 (na kilometr odcinka) dla linii/kabli "
                 "sieci SN — C0 nieoznaczalne (zakaz fabrykacji)."
                 if b0_total_s <= 0.0
                 else "Brak napięcia znamionowego sieci (U_l) — projekt niewykonalny."
@@ -1594,8 +1594,8 @@ class V126AcademicSolver:
         target_raw = params.get("ner_target_earth_fault_current_a")
         if target_raw is None:
             reason = (
-                "Dobór rezystora NER wymaga docelowego prądu doziemienia I_ef "
-                "(ner_target_earth_fault_current_a) — parametr projektowy nie podany."
+                "Dobór rezystora NER wymaga docelowego prądu doziemienia I_ef — parametr "
+                "projektowy nie podany."
             )
             trace.add(
                 "ner_no_target",

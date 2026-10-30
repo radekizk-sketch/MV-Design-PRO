@@ -1,3 +1,4 @@
+import { komunikatZapytania } from '../../ui2/shared/bladZapytania';
 const PROOF_LATEX_BASE = '/api/analysis-runs';
 const UZASADNIENIE_LATEX_EXPORT_PATH = ['export', 'proof', 'latex'] as const;
 
@@ -11,7 +12,7 @@ async function readError(response: Response): Promise<string> {
     // Odpowiedź może być zwykłym tekstem albo pustym body.
   }
 
-  return `HTTP ${response.status}`;
+  return komunikatZapytania(response);
 }
 
 export function buildProofLatexUrl(runId: string): string {

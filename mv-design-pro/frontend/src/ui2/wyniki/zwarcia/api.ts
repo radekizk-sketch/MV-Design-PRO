@@ -32,6 +32,7 @@ import type {
   StanDanych,
 } from '../wzorzec';
 import type { WkladZwarciowy } from './zwarciaModel';
+import { bladZapytania } from '../../shared/bladZapytania';
 
 /** Kształt 1:1 pozycji odpowiedzi backendu (`MachinePartialContribution.to_dict`). */
 export interface WkladZrodlaOdpowiedz {
@@ -201,7 +202,7 @@ export async function fetchWkladyZwarciowe(
         : {}),
     }),
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw bladZapytania(response);
   return (await response.json()) as WkladyOdpowiedz;
 }
 
@@ -378,7 +379,7 @@ export async function fetchRozplywZwarciowy(
   const response = await fetch(
     `/api/analysis-runs/${runId}/results/short-circuit/rozplyw?target_id=${encodeURIComponent(targetId)}`,
   );
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw bladZapytania(response);
   return (await response.json()) as RozplywOdpowiedz;
 }
 
@@ -539,7 +540,7 @@ export interface PasmoZwarciaOdpowiedz {
 /** Pobiera pasmo MIN/MAX zwarcia dla biegu kotwicy (dowolny scenariusz). */
 export async function fetchPasmoZwarcia(runId: string): Promise<PasmoZwarciaOdpowiedz> {
   const response = await fetch(`/api/analysis-runs/${runId}/results/short-circuit/pasmo`);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw bladZapytania(response);
   return (await response.json()) as PasmoZwarciaOdpowiedz;
 }
 

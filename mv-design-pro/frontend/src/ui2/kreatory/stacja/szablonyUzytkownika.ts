@@ -1,3 +1,4 @@
+import { bladZapytania } from '../../shared/bladZapytania';
 /**
  * Szablony stacji ZAPISANE PRZEZ UŻYTKOWNIKA (B-8, karta KD-3).
  *
@@ -53,7 +54,7 @@ export async function zapiszSzablonUzytkownika(
     }),
   });
   if (!odpowiedz.ok) {
-    throw new Error(`Nie udało się zapisać szablonu (HTTP ${odpowiedz.status}).`);
+    throw bladZapytania(odpowiedz, 'Nie udało się zapisać szablonu');
   }
   const dane: unknown = await odpowiedz.json();
   if (!maKsztaltSzablonu(dane)) {
@@ -66,7 +67,7 @@ export async function zapiszSzablonUzytkownika(
 export async function pobierzSzablonyUzytkownika(): Promise<SzablonUzytkownika[]> {
   const odpowiedz = await fetch(BAZA);
   if (!odpowiedz.ok) {
-    throw new Error(`Nie udało się wczytać szablonów użytkownika (HTTP ${odpowiedz.status}).`);
+    throw bladZapytania(odpowiedz, 'Nie udało się wczytać szablonów użytkownika');
   }
   const dane: unknown = await odpowiedz.json();
   const lista =
@@ -83,6 +84,6 @@ export async function pobierzSzablonyUzytkownika(): Promise<SzablonUzytkownika[]
 export async function usunSzablonUzytkownika(id: string): Promise<void> {
   const odpowiedz = await fetch(`${BAZA}/${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (!odpowiedz.ok) {
-    throw new Error(`Nie udało się usunąć szablonu (HTTP ${odpowiedz.status}).`);
+    throw bladZapytania(odpowiedz, 'Nie udało się usunąć szablonu');
   }
 }

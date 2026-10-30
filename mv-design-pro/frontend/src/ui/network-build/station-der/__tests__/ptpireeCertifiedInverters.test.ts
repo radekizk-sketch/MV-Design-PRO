@@ -21,6 +21,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { BladZapytania } from '../../../../ui2/shared/bladZapytania';
+
 import {
   PTPIREE_CERTYFIKATY_URL,
   PTPIREE_MANIFEST_URL,
@@ -221,11 +223,14 @@ describe('fetchPtpireeManifest / fetchPtpireeCertifiedInverters — kontrakt API
     await expect(fetchPtpireeManifest()).rejects.toThrow(/Rejestr PTPiREE niedostępny/);
   });
 
-  it('status HTTP błędu → błąd z adresem i kodem (nie połykany cicho)', async () => {
+  it('status HTTP błędu → błąd z opisem i kodem (nie połykany cicho), adres tylko w polu diagnostycznym', async () => {
     mockFetch({ certyfikaty: () => odpowiedzJson({ detail: 'x' }, 503, 'Service Unavailable') });
-    await expect(fetchPtpireeCertifiedInverters()).rejects.toThrow(
-      'Rejestr PTPiREE niedostępny: /api/catalog/ptpiree/generator-certificates → HTTP 503 Service Unavailable',
+    const blad = await fetchPtpireeCertifiedInverters().catch((e: unknown) => e);
+    expect(blad).toBeInstanceOf(BladZapytania);
+    expect((blad as BladZapytania).message).toBe(
+      'Rejestr PTPiREE niedostępny: serwer obliczeń jest chwilowo niedostępny (HTTP 503).',
     );
+    expect((blad as BladZapytania).status).toBe(503);
   });
 });
 

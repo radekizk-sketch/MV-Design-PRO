@@ -53,7 +53,7 @@ import ast
 import builtins
 import importlib.util
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -445,10 +445,9 @@ TOKENY_FORMATU_DANYCH: dict[str, str] = {
         "klucz sekcji pliku YAML operatora cytowany zmienną pętli po `bank_nastaw`, "
         "`wykonanie_prawa`"
     ),
-    "catalog/profiles/nc_rfg/loader.py:NC_RFG": "wartość klucza `warstwa` pliku YAML warstwy",
-    "catalog/profiles/nc_rfg/loader.py:PROCEDURA_PTPIREE": (
-        "wartość klucza `warstwa` pliku YAML warstwy"
-    ),
+    # Wartości klucza `warstwa` (NC_RFG, PROCEDURA_PTPIREE) — wpisy zdjęte w commicie 4: odmowa
+    # wczytania pliku warstwy nazywa oczekiwaną warstwę słowami (`NAZWY_WARSTW_PL`, decyzja
+    # B-01 2026-10-30), a zadeklarowaną wartość cytuje zapisem pliku (`!r`).
 }
 
 #: Moduły, których odmowy przechodzą przez ``komunikat_dla_projektanta`` (prefiks katalogu
@@ -509,9 +508,6 @@ HELPERY_POZA_KLASA: dict[str, str] = {
         "formatu jest jedynym precyzyjnym wskazaniem w pliku, który importuje projektant)"
     ),
     "domain/incremental_archive.py::_wartosc_enum": "format pliku paczki przyrostowej",
-    "domain/readiness.py::ReadinessGateError": (
-        "bramki `require_*` modułu gotowości bez konsumenta produkcyjnego (wyłącznie testy)"
-    ),
     "network_model/odmowa_danych.py::OdmowaNazwana": (
         "kod maszynowy trafia do zdania wyłącznie w odmowie niezmiennika „kod nie należy do "
         "treści” — dla poprawnego wywołania gałąź nie odpala"
@@ -1291,6 +1287,36 @@ KOLEKCJE_FORMATU_DANYCH: dict[str, str] = {
         "wartości pola `command` żądania API odpowiedzi na polecenie OSD"
     ),
     "catalog/cenniki/loader.py:KOLEJNOSC_STANOW": "wartości klucza `status` pliku YAML cennika",
+    "catalog/profiles/nc_rfg/loader.py:_KOLEJNOSC_STANOW": (
+        "wartości klucza `status` pliku YAML warstwy profilu NC RfG — odmowa wczytania pliku "
+        "cytuje dozwolone wartości, które autor wpisuje (decyzja B-01 2026-10-30)"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:(w.wersja for w in wykaz.wersje)": (
+        "wartości klucza `wersja` wykazu WiPWC w pliku YAML warstwy — autor pliku poprawia "
+        "powtórzony wpis po jego wartości"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:sorted(wersje)": "wartości klucza `wersja` wykazu WiPWC w pliku YAML warstwy",
+    "catalog/profiles/nc_rfg/loader.py:sorted({i for i in identyfikatory if identyfikatory.count(i) > 1})": (
+        "identyfikatory wpisów pliku YAML (klucz `id` wymagań, pozycji Banku Nastaw i programu "
+        "badań) — autor pliku usuwa duplikat po identyfikatorze, którego sam użył"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:nieznane_pokrycie": (
+        "identyfikatory wymagań (klucz `id`) wskazane w pokryciu certyfikatem pliku YAML "
+        "warstwy WiPWC, których katalog wymagań nie ma"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:bez_prawa": (
+        "identyfikatory wymagań (klucz `id`) w sekcji wykonania prawa pliku YAML operatora, "
+        "wobec których rozporządzenie nie przyznaje prawa"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:sorted(self.parametry)": "klucze sekcji `parametry` scenariusza w pliku YAML programu badań",
+    "catalog/profiles/nc_rfg/loader.py:sorted(self.jednostki)": "klucze sekcji `jednostki` scenariusza w pliku YAML programu badań",
+    "catalog/profiles/nc_rfg/loader.py:nieznane": "nazwy grup sekcji pliku YAML operatora albo WOS spoza słownika profilu",
+    "catalog/profiles/nc_rfg/loader.py:sorted(poza_warstwa)": (
+        "wartości klucza `technologie` wymagania w pliku YAML warstwy (PPM, SPGM, MAGAZYN)"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:sorted(_TECHNOLOGIE_WARSTWY[warstwa])": (
+        "dozwolone wartości klucza `technologie` wymagania tej warstwy w pliku YAML"
+    ),
     "catalog/cenniki/loader.py:WALUTY_OBSLUGIWANE": (
         "kody walut ISO 4217 klucza `waluta` pliku YAML cennika"
     ),
@@ -2155,33 +2181,111 @@ def naruszenia_sklejen(sciezka: str, plik: Path | None = None) -> list[Naruszeni
 
 #: Wywołania tworzące kolekcję — wstawione w f-string dają zapis Pythona (``['a', 'b']``).
 _KONSTRUKTORY_KOLEKCJI = frozenset({"list", "sorted", "tuple", "set", "frozenset", "dict"})
+#: Nazwy typów wyniku będących kolekcją (adnotacja ``-> list[str]``, ``-> Mapping[…]``,
+#: ``-> typing.Sequence[…]``, także w unii ``-> list[str] | None``).
+_TYPY_KOLEKCJI = frozenset(
+    {
+        "list",
+        "tuple",
+        "set",
+        "frozenset",
+        "dict",
+        "List",
+        "Tuple",
+        "Set",
+        "FrozenSet",
+        "Dict",
+        "Sequence",
+        "MutableSequence",
+        "Mapping",
+        "MutableMapping",
+        "AbstractSet",
+        "Collection",
+        "OrderedDict",
+        "defaultdict",
+        "Counter",
+        "deque",
+    }
+)
+#: Metody wbudowanych kolekcji i tekstu zwracające kolekcję albo jej widok
+#: (``dict_keys([...])``, ``['a', 'b']``) — wstawione w f-string dają zapis Pythona.
+_METODY_KOLEKCJI_WBUDOWANE = frozenset(
+    {"keys", "values", "items", "split", "rsplit", "splitlines", "most_common"}
+)
+
+
+def _typ_kolekcji(adnotacja: ast.expr | None) -> bool:
+    """Czy adnotacja wyniku jest kolekcją (także jedną ze stron unii ``X | None``)."""
+    if adnotacja is None:
+        return False
+    if isinstance(adnotacja, ast.BinOp) and isinstance(adnotacja.op, ast.BitOr):
+        return _typ_kolekcji(adnotacja.left) or _typ_kolekcji(adnotacja.right)
+    baza = adnotacja.value if isinstance(adnotacja, ast.Subscript) else adnotacja
+    if isinstance(baza, ast.Name):
+        return baza.id in _TYPY_KOLEKCJI
+    if isinstance(baza, ast.Attribute):
+        return baza.attr in _TYPY_KOLEKCJI
+    return False
 
 
 @cache
 def _funkcje_zwracajace_kolekcje(plik: Path) -> frozenset[str]:
-    """Funkcje modułu z adnotacją wyniku będącą kolekcją (``-> list[float]``, ``-> tuple[…]``)
-    — ich wynik wstawiony w f-string daje zapis Pythona."""
+    """Funkcje i metody modułu z adnotacją wyniku będącą kolekcją (``-> list[float]``,
+    ``-> tuple[…]``, ``-> Mapping[…] | None``) — ich wynik wstawiony w f-string daje zapis
+    Pythona. Nazwa zdefiniowana w module także z wynikiem niebędącym kolekcją nie wchodzi
+    (rozstrzyga jednomyślność definicji, jak w ``_wywolania_zwracajace_kolekcje_src``)."""
     if not plik.exists():
         return frozenset()
-    wynik: set[str] = set()
-    for wezel in ast.walk(_drzewo(plik)):
-        if isinstance(wezel, ast.FunctionDef | ast.AsyncFunctionDef) and wezel.returns:
-            baza = (
-                wezel.returns.value if isinstance(wezel.returns, ast.Subscript) else wezel.returns
-            )
-            if isinstance(baza, ast.Name) and baza.id in _KONSTRUKTORY_KOLEKCJI - {"sorted"}:
-                wynik.add(wezel.name)
-    return frozenset(wynik)
+    return _jednomyslne_kolekcje(_definicje_wyniku(_drzewo(plik)).items())
+
+
+def _definicje_wyniku(drzewo: ast.Module) -> dict[str, list[bool]]:
+    """Nazwa funkcji/metody → czy KAŻDA jej definicja w drzewie zwraca kolekcję."""
+    definicje: dict[str, list[bool]] = {}
+    for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.FunctionDef | ast.AsyncFunctionDef):
+            definicje.setdefault(wezel.name, []).append(_typ_kolekcji(wezel.returns))
+    return definicje
+
+
+def _jednomyslne_kolekcje(definicje: Iterable[tuple[str, list[bool]]]) -> frozenset[str]:
+    """Nazwy, których każda definicja zwraca kolekcję."""
+    return frozenset(nazwa for nazwa, wyniki in definicje if wyniki and all(wyniki))
+
+
+@cache
+def _wywolania_zwracajace_kolekcje_src() -> frozenset[str]:
+    """Funkcje i metody całego ``src`` zwracające kolekcję — nazwa wchodzi, gdy KAŻDA jej
+    definicja w ``src`` ma adnotację wyniku będącą kolekcją (jednomyślność: wywołanie
+    ``obiekt.opis()`` nie rozstrzyga klasy obiektu, więc nazwa używana w jednej klasie dla
+    tekstu, a w innej dla listy, nie jest zgadywana)."""
+    zebrane: dict[str, list[bool]] = {}
+    for plik in sorted(SRC.rglob("*.py")):
+        for nazwa, wyniki in _definicje_wyniku(_drzewo(plik)).items():
+            zebrane.setdefault(nazwa, []).extend(wyniki)
+    return _jednomyslne_kolekcje(zebrane.items())
 
 
 def _postac_kolekcji(wyrazenie: ast.expr, plik: Path) -> bool:
-    """Wywołanie konstruktora kolekcji albo funkcji modułu zwracającej kolekcję, literał
-    albo wyrażenie listowe kolekcji."""
-    if isinstance(wyrazenie, ast.Call) and isinstance(wyrazenie.func, ast.Name):
-        return (
-            wyrazenie.func.id in _KONSTRUKTORY_KOLEKCJI
-            or wyrazenie.func.id in _funkcje_zwracajace_kolekcje(plik)
-        )
+    """Wywołanie konstruktora kolekcji, funkcji albo METODY zwracającej kolekcję (moduł,
+    cały ``src``, metody wbudowane ``keys``/``values``/``items``/``split``), literał albo
+    wyrażenie listowe kolekcji."""
+    if isinstance(wyrazenie, ast.Call):
+        if isinstance(wyrazenie.func, ast.Name):
+            nazwa = wyrazenie.func.id
+            return (
+                nazwa in _KONSTRUKTORY_KOLEKCJI
+                or nazwa in _funkcje_zwracajace_kolekcje(plik)
+                or nazwa in _wywolania_zwracajace_kolekcje_src()
+            )
+        if isinstance(wyrazenie.func, ast.Attribute):
+            nazwa = wyrazenie.func.attr
+            return (
+                nazwa in _METODY_KOLEKCJI_WBUDOWANE
+                or nazwa in _funkcje_zwracajace_kolekcje(plik)
+                or nazwa in _wywolania_zwracajace_kolekcje_src()
+            )
+        return False
     return isinstance(
         wyrazenie,
         ast.List | ast.Tuple | ast.Set | ast.Dict | ast.ListComp | ast.SetComp | ast.DictComp,
@@ -2816,125 +2920,13 @@ def _poza_klasa(sciezka: str) -> bool:
     )
 
 
-#: Naruszenia reguły wartości wyliczenia, zapisu kolekcji, kodu i języka w rdzeniach
-#: zamrożonych B-01, których naprawa zmienia WYRAŻENIE wstawki komunikatu albo tekst spoza sankcji — decyzja B-01 architekta
-#: 2026-10-29 objęła wyłącznie `frt_hvrt/contracts.py` (teksty) i `state_estimation_wls.py`
-#: (wyrażenie w argumencie wyjątku); poniższe czekają na decyzję B-01 (meldunek commitu 3).
-#: Klucz ``moduł:wiersz`` → wstawka i uzasadnienie. Zbiór DOKŁADNY:
-#: ``test_odmowy_b01_oczekujace_sa_dokladnym_zbiorem`` czerwieni się, gdy wpis zniknie
-#: z kodu (naprawa po decyzji — usuń wpis) albo gdy w rdzeniu B-01 pojawi się nowe naruszenie.
-ODMOWY_B01_OCZEKUJACE: dict[str, str] = {
-    "catalog/profiles/nc_rfg/loader.py:174": (
-        "`{status}` — kod stanu źródła profilu NC RfG w odmowie spójności pozycji; naprawa: "
-        "etykieta stanu źródła zamiast kodu"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:177": (
-        "`{status}` — kod stanu źródła profilu NC RfG w odmowie spójności pozycji"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:207": (
-        "`{self.status}` — kod stanu dokumentu źródłowego w odmowie braku wydania"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:527": (
-        "`{self.pokrycie_zrodlo.rodzaj}` — kod rodzaju warstwy profilu w odmowie reguły pokrycia"
-    ),
-    "network_model/solvers/ncrfg_ptpiree/contracts.py:286": (
-        "`{self.module_type}` — kod typu modułu w odmowie niezgodności klasyfikacji"
-    ),
-    "network_model/solvers/ncrfg_ptpiree/contracts.py:292": (
-        "`{self.der_kind}` — kod technologii DER w odmowie niezgodności rodziny"
-    ),
-    "network_model/solvers/power_flow_newton_internal.py:1496": (
-        "`{branch.branch_type}` — kod rodzaju gałęzi w niedostępnej gałęzi rozdziału typów "
-        "(kandydat na błąd programu z testem zamkniętości jak `core/ybus.py`)"
-    ),
-    "network_model/solvers/short_circuit_core.py:113": (
-        "`{short_circuit_type}` — kod rodzaju zwarcia w niedostępnej gałęzi rozdziału typów"
-    ),
-    "network_model/solvers/short_circuit_core.py:158": (
-        "`{short_circuit_type.value}` — kod rodzaju zwarcia w odmowie braku macierzy Z0; "
-        "treść po angielsku („Z0 bus matrix is required for … fault computation”)"
-    ),
-    "network_model/solvers/short_circuit_core.py:195": (
-        "`{short_circuit_type.value}` — kod rodzaju zwarcia w odmowie braku impedancji Z0; "
-        "treść po angielsku („Z0 is required for … fault computation”)"
-    ),
-    "network_model/solvers/short_circuit_core.py:203": (
-        "`{short_circuit_type}` — kod rodzaju zwarcia w niedostępnej gałęzi rozdziału typów"
-    ),
-    "network_model/solvers/short_circuit_iec60909.py:1246": (
-        "`{short_circuit_type.value}` — kod rodzaju zwarcia w odmowie braku Z0 pętli; treść "
-        "po angielsku („Z0 is required for … loop formula”)"
-    ),
-    "network_model/solvers/short_circuit_core.py:102": (
-        "treść po angielsku „Y-bus is singular; cannot compute Z-bus for short-circuit”"
-    ),
-    "network_model/solvers/short_circuit_iec60909.py:2499": (
-        "treść po angielsku „Z0 bus matrix is required for 1F fault computation”"
-    ),
-    "network_model/solvers/short_circuit_iec60909.py:2560": (
-        "treść po angielsku „Z0 bus matrix is required for 2F+G fault computation”"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:172": (
-        "`{identyfikatory}` — powtórzone pozycje profilu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:294": (
-        "`{sorted(self.progi_kw)}` — progi klasyfikacji modułu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:371": (
-        "`{czasy}` — chwile punktów obwiedni profilu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:466": (
-        "`{sorted(self.parametry)}`, `{sorted(self.jednostki)}` — klucze scenariusza: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:613": (
-        "`{[w.warstwa for w in self.warstwy]}`, `{list(KOLEJNOSC_WARSTW)}` — kody warstw profilu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:677": (
-        "`{dane.get('warstwa')!r}` i `{warstwa}` — kod warstwy profilu w odmowie niezgodności pliku warstwy"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:709": (
-        "`{list(_KOLEJNOSC_STANOW)}` — kody stanów źródła: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:989": (
-        "`{[w.wersja for w in wykaz.wersje]}` — wersje wykazu WiPWC: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:994": (
-        "`{sorted(wersje)}` — wersje wykazu WiPWC: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:1045": (
-        "`{sorted(poza_warstwa)}`, `{sorted(_TECHNOLOGIE_WARSTWY[warstwa])}` — kody technologii: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:1088": (
-        "`{identyfikatory}` — identyfikatory wymagań katalogu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:1092": (
-        "`{nieznane_pokrycie}` — identyfikatory wymagań spoza katalogu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:1098": (
-        "`{bez_prawa}` — identyfikatory wymagań bez wykonania prawa: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "catalog/profiles/nc_rfg/loader.py:1213": (
-        "`{nieznane}` — nieznane grupy profilu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "network_model/solvers/ncrfg_ptpiree/contracts.py:247": (
-        "`{rozjazdy}` — klucze pól testu różne od rekordu oceny: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "network_model/solvers/ncrfg_ptpiree/engine.py:464": (
-        "`{nieznane}`, `{sorted(znane)}` — identyfikatory testów PTPiREE: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "network_model/solvers/ncrfg_ptpiree/engine.py:475": (
-        "`{obce}` — identyfikatory modułów certyfikatów spoza żądania: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
-    ),
-    "network_model/solvers/power_flow_newton_internal.py:534": (
-        "„slack.u_pu outside typical range [0.8, 1.2]” — klucz pola i treść po angielsku w ostrzeżeniu rozpływu"
-    ),
-    "network_model/solvers/v126_academic.py:1413": (
-        "`(b0_siemens_per_km)` — klucz pola pojemności doziemnej w odmowie braku B0 (nazwa wielkości „pojemność doziemna B0” stoi obok)"
-    ),
-    "network_model/solvers/v126_academic.py:1597": (
-        "`(ner_target_earth_fault_current_a)` — klucz pola docelowego prądu doziemienia w odmowie doboru rezystora NER"
-    ),
-}
+#: Naruszenia klasy w rdzeniach zamrożonych B-01 czekające na decyzję architekta. Zbiór PUSTY
+#: od decyzji B-01 z 2026-10-30 (zgoda na wszystkie 35 miejsc meldunku commitu 3: zmiana
+#: wyłącznie argumentów wyjątków i komunikatów oraz stałe słowników nazw w rdzeniach,
+#: porównanie drzew składniowych w logu commitu). Zapadka: ``test_odmowy_b01_oczekujace_sa_
+#: dokladnym_zbiorem`` przypina pusty zbiór — nowe naruszenie w rdzeniu B-01 czerwieni test
+#: i wymaga naprawy po decyzji, nie wpisu tutaj.
+ODMOWY_B01_OCZEKUJACE: dict[str, str] = {}
 
 
 def test_komunikaty_calego_src_bez_kluczy_pol() -> None:
@@ -2950,22 +2942,14 @@ def test_komunikaty_calego_src_bez_kluczy_pol() -> None:
 
 
 def test_odmowy_b01_oczekujace_sa_dokladnym_zbiorem() -> None:
-    """Każdy wpis wskazuje rdzeń B-01 i istniejące naruszenie wartości wyliczenia; żadne
-    inne naruszenie w rdzeniach B-01 nie istnieje."""
-    assert all(jest_rdzeniem_b01(wpis.rsplit(":", 1)[0]) for wpis in ODMOWY_B01_OCZEKUJACE)
-    pliki = sorted({wpis.rsplit(":", 1)[0] for wpis in ODMOWY_B01_OCZEKUJACE})
-    w_rdzeniach: dict[str, str] = {
-        f"{n.plik}:{n.linia}": n.powod
-        for sciezka in _moduly_klasy()
-        if jest_rdzeniem_b01(sciezka)
-        for n in naruszenia_klasy(sciezka)
-    }
-    assert set(w_rdzeniach) == set(ODMOWY_B01_OCZEKUJACE), w_rdzeniach
-    assert all(
-        powod.startswith(("wartość wyliczenia", "komunikat po angielsku", "zapis kolekcji", "kod "))
-        for powod in w_rdzeniach.values()
-    ), w_rdzeniach
-    assert pliki
+    """Zapadka: żadne naruszenie klasy w rdzeniach B-01 nie czeka na decyzję — zbiór
+    ``ODMOWY_B01_OCZEKUJACE`` jest pusty, a skan rdzeni (``jest_rdzeniem_b01``) nie znajduje
+    żadnego naruszenia. Rdzenie są w zakresie skanu (pusty zakres dałby fałszywą zieleń)."""
+    assert ODMOWY_B01_OCZEKUJACE == {}
+    rdzenie = [sciezka for sciezka in _moduly_klasy() if jest_rdzeniem_b01(sciezka)]
+    assert len(rdzenie) >= 10, rdzenie
+    w_rdzeniach = [str(n) for sciezka in rdzenie for n in naruszenia_klasy(sciezka)]
+    assert not w_rdzeniach, "\n".join(w_rdzeniach)
 
 
 def test_kanal_obejmuje_wyjatki_projektu_i_pomija_bledy_programu() -> None:
@@ -3498,27 +3482,26 @@ def test_wylaczenie_archiwum_klucze_sa_formatem_pliku() -> None:
         assert literaly <= zapisywane, (sciezka, sorted(literaly - zapisywane))
 
 
-def test_wylaczenie_bramek_gotowosci_bez_konsumenta() -> None:
-    """Warunek wpisu ``ReadinessGateError``: ani wyjątek, ani bramki ``require_*`` nie mają
-    konsumenta produkcyjnego (poza modułem i reeksportem pakietu)."""
-    drzewo = _drzewo(SRC / "domain/readiness.py")
-    nazwy = {"ReadinessGateError"} | {
-        w.name
-        for w in drzewo.body
-        if isinstance(w, ast.FunctionDef) and w.name.startswith("require_")
+def test_druga_bramka_gotowosci_skasowana() -> None:
+    """Jeden walidator gotowości (ADR-025, O-65): walidator ENM z ``CalculationReadiness``.
+    Dawny profil ``ReadinessProfileV1`` z bramkami ``require_*``, wyjątkiem
+    ``ReadinessGateError`` oraz walidacja przyłączenia ``validate_generator_connections`` —
+    równoległe reguły bez konsumenta w produkcie — skasowane w commicie 4 karty komunikatów.
+    Zapadka: żaden moduł ``src`` nie definiuje tych nazw ponownie."""
+    zakazane = {
+        "ReadinessProfileV1",
+        "ReadinessGateError",
+        "build_readiness_profile",
+        "validate_generator_connections",
     }
-    assert len(nazwy) == 9, nazwy
-    konsumenci = sorted(
-        p.relative_to(SRC).as_posix()
+    definicje = sorted(
+        f"{p.relative_to(SRC).as_posix()}::{w.name}"
         for p in SRC.rglob("*.py")
-        if p.relative_to(SRC).as_posix() not in {"domain/readiness.py", "domain/__init__.py"}
-        and {
-            n.id if isinstance(n, ast.Name) else n.attr if isinstance(n, ast.Attribute) else ""
-            for n in ast.walk(_drzewo(p))
-        }
-        & nazwy
+        for w in ast.walk(_drzewo(p))
+        if isinstance(w, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
+        and (w.name in zakazane or (p.name == "readiness.py" and w.name.startswith("require_")))
     )
-    assert not konsumenci, konsumenci
+    assert not definicje, definicje
 
 
 def test_wylaczenie_odmowy_nazwanej_kod_tylko_w_niezmienniku() -> None:
@@ -4304,6 +4287,43 @@ _INIEKCJE_SRC = (
     '    raise ValueError(f"Powtórzone pozycje listy: {_kolekcja_iniekcji()}.")\n'
     "\n"
     "\n"
+    "class _KlasaIniekcji:\n"
+    "    def pozycje_iniekcji(self) -> Sequence[str]:\n"
+    "        return ()\n"
+    "\n"
+    "    def opcjonalne_iniekcji(self) -> dict[str, float] | None:\n"
+    "        return None\n"
+    "\n"
+    "\n"
+    "def _i_zapis_wyniku_metody(obiekt):\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {obiekt.pozycje_iniekcji()}.")\n'
+    "\n"
+    "\n"
+    "def _i_zapis_wyniku_metody_opcjonalnej(obiekt):\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {obiekt.opcjonalne_iniekcji()}.")\n'
+    "\n"
+    "\n"
+    "def _i_zapis_kluczy_slownika(slownik):\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {slownik.keys()}.")\n'
+    "\n"
+    "\n"
+    "def _i_zapis_podzialu_tekstu(tekst):\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {tekst.split()}.")\n'
+    "\n"
+    "\n"
+    "def _i_zapis_zmiennej_z_metody(obiekt):\n"
+    "    lista = obiekt.pozycje_iniekcji()\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {lista}.")\n'
+    "\n"
+    "\n"
+    "def _ok_liczba_wyniku_metody(obiekt):\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {len(obiekt.pozycje_iniekcji())} wpisów.")\n'
+    "\n"
+    "\n"
+    "def _ok_metoda_tekstu(tekst):\n"
+    '    raise ValueError(f"Powtórzona pozycja listy: {tekst.strip()}.")\n'
+    "\n"
+    "\n"
     "def _ok_liczba_pozycji(x):\n"
     '    raise ValueError(f"Powtórzone pozycje listy: {len(x)} wpisów do usunięcia.")\n'
     "\n"
@@ -4370,6 +4390,21 @@ _OCZEKIWANE_INIEKCJE: dict[str, list[str]] = {
         "zapis kolekcji _kolekcja_iniekcji(): lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
     ],
     "_i_przeksztalcenie_kodu": ["sklejenie (t.strip() for t in ['u_n_kv']): kod u_n_kv"],
+    "_i_zapis_wyniku_metody": [
+        "zapis kolekcji obiekt.pozycje_iniekcji(): lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ],
+    "_i_zapis_wyniku_metody_opcjonalnej": [
+        "zapis kolekcji obiekt.opcjonalne_iniekcji(): lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ],
+    "_i_zapis_kluczy_slownika": [
+        "zapis kolekcji slownik.keys(): lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ],
+    "_i_zapis_podzialu_tekstu": [
+        "zapis kolekcji tekst.split(): lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ],
+    "_i_zapis_zmiennej_z_metody": [
+        "zapis kolekcji lista: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ],
 }
 
 
@@ -4403,7 +4438,9 @@ def test_iniekcje_regul_strazenika_sa_czerwone(tmp_path: Path) -> None:
     w komunikatach: typ ``Literal``/``Enum`` o wartościach-kodach (słowne — nie), kanał
     formatujący ``naruszenie``, konstruktor bazy wyjątku ``super().__init__``, kod z kropką,
     kod poza dopiskiem (dopisek ``(kod reguły: …)`` — nie), zapis kolekcji (konstruktor,
-    zmienna, wynik funkcji; liczba elementów i liczby sklejone — nie) oraz przekształcenie
+    zmienna, wynik funkcji i METODY — modułu, całego ``src`` i wbudowanej ``keys``/``split``,
+    także z adnotacją w unii; liczba elementów, liczby sklejone, liczba elementów wyniku metody
+    i metoda tekstu — nie) oraz przekształcenie
     tekstu stałymi (element przekształcany sprawdzany jak bez przekształcenia)."""
     wyniki = {
         **_naruszenia_iniekcji("network_model/core/graph.py", _INIEKCJE_SRC, tmp_path),

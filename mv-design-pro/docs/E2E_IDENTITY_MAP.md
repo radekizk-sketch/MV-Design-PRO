@@ -94,18 +94,16 @@ ResultJoinV1 laczy po `elementId` — brak zgadywania.
 | `SWITCH` | `Switch` | Edge (isNormallyOpen) | - |
 | `PROTECTION_ASSIGNMENT` | `ProtectionAssignment` | `DeviceV1 (RELAY)` | - |
 
-## ReadinessProfileV1
+## Gotowość do obliczeń (jeden walidator)
 
-Per-analysis readiness computed from Snapshot + ElementRefV1 index:
-
-| Profile | Blocking Areas | Result |
-|---------|---------------|--------|
-| `sld_ready` | TOPOLOGY, STATIONS, GENERATORS | SLD moze byc wyrenderowane |
-| `short_circuit_ready` | TOPOLOGY, SOURCES, CATALOGS | Obliczenia zwarciowe mozliwe |
-| `load_flow_ready` | TOPOLOGY, SOURCES, CATALOGS | Rozplyw mocy mozliwy |
-| `protection_ready` | TOPOLOGY, PROTECTION, CATALOGS | Analiza ochrony mozliwa |
-
-Issues grouped by `ReadinessAreaV1`: CATALOGS, TOPOLOGY, SOURCES, STATIONS, GENERATORS, PROTECTION, ANALYSIS.
+Gotowość modelu do SLD, zwarć, rozpływu i zabezpieczeń ocenia wyłącznie walidator ENM
+(`enm/validator.py`) z `CalculationReadiness` (ADR-025, O-65). Dawny profil
+`ReadinessProfileV1` z bramkami `require_*` (`sld_ready`, `short_circuit_ready`,
+`load_flow_ready`, `protection_ready`) i wyjątkiem `ReadinessGateError` był drugą, równoległą
+bramką bez konsumenta w produkcie — skasowany 2026-10-30 (commit 4 karty komunikatów; zapadka
+`tests/enm/test_klucze_pol_w_komunikatach_src.py::test_druga_bramka_gotowosci_skasowana`).
+W `domain/readiness.py` zostały typy rekordu braku `ReadinessIssueV1` / `ReadinessAreaV1` /
+`ReadinessPriority`, używane przez mosty analiz zwracające braki obok wyniku.
 
 ## ResultJoinV1
 
@@ -164,7 +162,7 @@ At EVERY layer transition, missing data → FixAction (never default/fallback):
 | File | Purpose |
 |------|---------|
 | `domain/element_ref.py` | ElementRefV1, ElementTypeV1, ElementScopeV1, CatalogRefV1 |
-| `domain/readiness.py` | ReadinessProfileV1, ReadinessIssueV1, ReadinessAreaV1, build_readiness_profile |
+| `domain/readiness.py` | ReadinessIssueV1, ReadinessAreaV1, ReadinessPriority (rekord braku) |
 | `domain/result_join.py` | ResultJoinV1, SldOverlayTokenV1, InspectorFactV1, join_results |
 | `domain/result_contract_v1.py` | ResultSetV1, OverlayPayloadV1 (FROZEN v1.0) |
 | `domain/eligibility_models.py` | AnalysisEligibilityMatrix (per-analysis eligibility) |
@@ -173,9 +171,6 @@ At EVERY layer transition, missing data → FixAction (never default/fallback):
 ### Frontend
 | File | Purpose |
 |------|---------|
-| `sld/core/elementRef.ts` | ElementRefV1, ElementTypeV1, buildElementRefIndex |
-| `sld/core/readinessProfile.ts` | ReadinessProfileV1, ReadinessIssueV1, groupIssuesByArea |
-| `sld/core/resultJoin.ts` | ResultJoinV1, SldOverlayTokenV1, InspectorFactV1, joinResults |
 | `sld/core/topologyInputReader.ts` | TopologyFixAction (komunikaty z nazwą elementu, identyfikator w `elementRef`; `FieldDeviceFixCodes` skasowane w partii integracji 10) |
 | `sld-overlay/overlayTypes.ts` | OverlayPayloadV1 (frontend mirror) |
 

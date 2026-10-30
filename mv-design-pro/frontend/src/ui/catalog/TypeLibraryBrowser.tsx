@@ -6,6 +6,7 @@ import {
   type CatalogListItem,
 } from './api';
 import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
+import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
 import {
   BRAK_DANYCH_PL,
   pradAparatuSnKatalogu,
@@ -25,35 +26,31 @@ import type {
 
 interface TabDefinition {
   id: TypeCategory;
-  label: string;
   icon: string;
 }
 
+// Etykieta zakładki = `ETYKIETY_KATEGORII_TYPOW[id]` (jedno źródło, pełny słownik).
 const TAB_DEFINITIONS: readonly TabDefinition[] = [
-  { id: 'LINE', label: 'Typy linii napowietrznych', icon: '≋' },
-  { id: 'HV_OVERHEAD_CONDUCTOR', label: 'Typy przewodów linii 110 kV', icon: '≈' },
-  { id: 'CABLE', label: 'Typy kabli SN', icon: '⟂' },
-  { id: 'SYSTEM_SOURCE', label: 'Typy zasilania systemowego SN', icon: '⚡' },
-  { id: 'TRANSFORMER', label: 'Typy transformatorów SN/nN', icon: '⬍' },
-  { id: 'SWITCH_EQUIPMENT', label: 'Typy aparatury łączeniowej SN', icon: '⎆' },
-  { id: 'MV_APPARATUS', label: 'Typy aparatury SN', icon: '◫' },
-  { id: 'LV_APPARATUS', label: 'Typy aparatury nN', icon: '▥' },
-  { id: 'LV_RCD', label: 'Typy wyłączników różnicowoprądowych nN', icon: '⊜' },
-  { id: 'LV_CABLE', label: 'Typy kabli nN', icon: '⟃' },
-  { id: 'LOAD', label: 'Typy obciążeń', icon: '◔' },
-  { id: 'CT', label: 'Typy przekładników prądowych', icon: '◎' },
-  { id: 'VT', label: 'Typy przekładników napięciowych', icon: '◌' },
-  { id: 'MEASUREMENT_TRANSFORMER', label: 'Typy przekładników pomiarowych', icon: '◍' },
-  { id: 'PV_INVERTER', label: 'Typy falowników źródeł fotowoltaicznych', icon: '☀' },
-  { id: 'BESS_INVERTER', label: 'Typy falowników magazynów energii', icon: '▣' },
-  { id: 'CONVERTER', label: 'Typy konwerterów', icon: '⟲' },
-  { id: 'PROTECTION_DEVICE', label: 'Typy zabezpieczeń', icon: '🛡' },
-  { id: 'PTPIREE_CERTIFICATE', label: 'Wykaz certyfikatów PTPiREE', icon: '☑' },
+  { id: 'LINE', icon: '≋' },
+  { id: 'HV_OVERHEAD_CONDUCTOR', icon: '≈' },
+  { id: 'CABLE', icon: '⟂' },
+  { id: 'SYSTEM_SOURCE', icon: '⚡' },
+  { id: 'TRANSFORMER', icon: '⬍' },
+  { id: 'SWITCH_EQUIPMENT', icon: '⎆' },
+  { id: 'MV_APPARATUS', icon: '◫' },
+  { id: 'LV_APPARATUS', icon: '▥' },
+  { id: 'LV_RCD', icon: '⊜' },
+  { id: 'LV_CABLE', icon: '⟃' },
+  { id: 'LOAD', icon: '◔' },
+  { id: 'CT', icon: '◎' },
+  { id: 'VT', icon: '◌' },
+  { id: 'MEASUREMENT_TRANSFORMER', icon: '◍' },
+  { id: 'PV_INVERTER', icon: '☀' },
+  { id: 'BESS_INVERTER', icon: '▣' },
+  { id: 'CONVERTER', icon: '⟲' },
+  { id: 'PROTECTION_DEVICE', icon: '🛡' },
+  { id: 'PTPIREE_CERTIFICATE', icon: '☑' },
 ] as const;
-
-const CATEGORY_LABELS: Record<TypeCategory, string> = Object.fromEntries(
-  TAB_DEFINITIONS.map((tab) => [tab.id, tab.label]),
-) as Record<TypeCategory, string>;
 
 const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   vendor: 'Dostawca',
@@ -466,7 +463,7 @@ export function TypeLibraryBrowser({
                 )}
               >
                 <span className="mr-2">{tab.icon}</span>
-                {tab.label}
+                {ETYKIETY_KATEGORII_TYPOW[tab.id]}
               </button>
             );
           })}
@@ -597,7 +594,7 @@ function TypeDetailsPanel({
           Informacje podstawowe
         </h3>
         <div className="grid grid-cols-2 gap-4">
-          <DetailField label="Kategoria" value={CATEGORY_LABELS[category]} />
+          <DetailField label="Kategoria" value={ETYKIETY_KATEGORII_TYPOW[category]} />
           <DetailField label="Producent" value={manufacturer ?? '—'} />
         </div>
       </div>

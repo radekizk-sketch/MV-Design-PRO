@@ -1,4 +1,5 @@
 import { LV_DOMAIN_PROJECTION_CONTRACT_VERSION, type LvDomainProjectionV1 } from './types';
+import { komunikatZapytania } from '../../../../ui2/shared/bladZapytania';
 
 export interface LvDomainProjectionRequest {
   readonly caseId: string;
@@ -84,7 +85,7 @@ async function responseError(response: Response): Promise<string> {
   } catch {
     // Odpowiedź bez JSON — kod HTTP nadal jest uczciwą informacją.
   }
-  return `Nie udało się pobrać domeny nN (HTTP ${response.status}).`;
+  return komunikatZapytania(response, 'Nie udało się pobrać domeny nN');
 }
 
 /** Jedyny klient danych portalu nN — dokładnie jedno żądanie atomowej projekcji. */

@@ -12,7 +12,7 @@ wywołuje REALNE drogi, którymi komunikat dochodzi do projektanta, i sprawdza g
   ``opis_bledu_walidacji`` — ta sama funkcja, którą operacje domenowe oddają projektantowi),
   rdzeń obliczeniowy (``OdmowaDanychError`` solvera podglądu, krzywych nN, ZIP, falownika,
   obciążalności, pętli zwarcia), katalog typów (odmowa niezmiennika typu), odmowa dynamiki
-  (``OdmowaDynamiki`` → ``komunikat_dla_projektanta``), rekord gotowości i migracja modelu
+  (``OdmowaDynamiki`` → ``komunikat_dla_projektanta``), walidacja modelu źródła i migracja modelu
   zastanego;
 * POLE: co najmniej dwa różne pola kontraktu w każdym źródle.
 
@@ -804,16 +804,8 @@ _DYNAMIKA = [
 ]
 
 # ---------------------------------------------------------------------------
-# Źródło: rekord gotowości i migracja modelu zastanego
+# Źródło: walidacja modelu źródła i migracja modelu zastanego
 # ---------------------------------------------------------------------------
-
-
-def _gotowosc_generatora(generator: dict[str, object]) -> str:
-    from domain.generator_validation import validate_generator_connections
-
-    pozycje = validate_generator_connections([generator], {}, {})
-    assert pozycje, "walidacja przyłączenia nie zwróciła pozycji gotowości"
-    return " ".join(f"{p.message_pl} {p.fix_hint_pl or ''}" for p in pozycje)
 
 
 def _migracja(rekord: dict[str, object], klucz: str) -> str:
@@ -829,30 +821,39 @@ def _galaz(dane: dict[str, object]) -> str:
 
 
 _GOTOWOSC_I_MIGRACJA = [
+    # Wariant przyłączenia źródła: jedyna reguła to walidator modelu `Generator`
+    # (`enm/models.py`); dawny rekord gotowości `validate_generator_connections` — druga,
+    # równoległa reguła bez konsumenta w produkcie — skasowany (ADR-025, commit 4).
     Przypadek(
-        "rekord_gotowosci",
+        "model_zrodla",
         "station_ref",
         _stala("wymaga wskazania stacji SN/nN"),
-        lambda _k: _gotowosc_generatora(
+        lambda _k: _opis_modelu(
+            "Generator",
             {
                 "ref_id": "pv-1",
                 "name": "PV 1",
                 "gen_type": "pv_inverter",
+                "bus_ref": "szyna-1",
+                "p_mw": 0.1,
                 "connection_variant": "nn_side",
-            }
+            },
         ),
     ),
     Przypadek(
-        "rekord_gotowosci",
+        "model_zrodla",
         "blocking_transformer_ref",
-        _stala("wymaga wskazania transformatora blokowego"),
-        lambda _k: _gotowosc_generatora(
+        lambda: _nazwa("blocking_transformer_ref"),
+        lambda _k: _opis_modelu(
+            "Generator",
             {
                 "ref_id": "pv-1",
                 "name": "PV 1",
                 "gen_type": "pv_inverter",
+                "bus_ref": "szyna-1",
+                "p_mw": 0.1,
                 "connection_variant": "block_transformer",
-            }
+            },
         ),
     ),
     Przypadek(
