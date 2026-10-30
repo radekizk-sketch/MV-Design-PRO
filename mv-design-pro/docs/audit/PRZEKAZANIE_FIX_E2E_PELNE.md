@@ -40,6 +40,8 @@ Scalono `e29e59e2c` (karta ZU) na polecenie koordynatora — spec `zwarcie-przez
 
 Bieg run7 (wszystkie 17 speców pierwotnie czerwonych, 48 testów, HEAD e65a2b492): 45 passed, 3 failed — kd6 ×2 (otwarte, decyzja) i s95 pełny cykl (prawy klik w dalszą połówkę otworzył menu TŁA: punkt na kresce przykryty albo ruch dwufazowy). Poprawka: wspólne `punktNaWierzchu` (sonda `elementFromPoint` wzdłuż trasy) w s95-budowa-z-kanwy i s95-zrzuty, spoczynek = trzy zgodne odczyty.
 
+Bieg run8 (s95-budowa, s95-zrzuty, kanon-menu, wyspy-menu ×3): s95-budowa zielony 3/3; s95-zrzuty czerwony 3/3 na nowej, uczciwej asercji — jedyny obiekt klasy „aparat” (aparat pola GPZ) leżał poza kadrem pod drzewem modelu (x = 91 px), a dawny klik w środek prostokąta trafiał w wiersz drzewa, więc zrzut „menu aparatu” dokumentował menu drzewa. Poprawka speca: pierwszy obiekt klasy na wierzchu, a gdy żaden — kadr całej sieci Shift+F i ponowna sonda; weryfikacja w toku.
+
 ## Znalezisko uboczne (nienaprawione)
 
 `frontend/src/ui/network-build/build-sidebar/{BuildSidebar,BuilderSection,LayersSection,NavigatorSection}.tsx`
