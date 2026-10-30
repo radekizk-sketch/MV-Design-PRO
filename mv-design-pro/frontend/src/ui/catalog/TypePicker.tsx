@@ -26,6 +26,7 @@ const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
   CT: 'Przekładniki prądowe',
   VT: 'Przekładniki napięciowe',
   FERRANTI: 'Przekładniki Ferrantiego 3I₀',
+  INSTRUMENT_FAMILY: 'Rodziny producentów — wymagają konfiguracji',
   MEASUREMENT_TRANSFORMER: 'Przekładniki pomiarowe',
   PV_INVERTER: 'Falowniki PV',
   BESS_INVERTER: 'Falowniki BESS',
@@ -65,6 +66,8 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
       return `${record.ratio_primary_v ?? '-'} / ${record.ratio_secondary_v ?? '-'} V, klasa=${record.accuracy_class ?? '-'}`;
     case 'FERRANTI':
       return `3I₀, przekładnia zwojowa ${record.turns_ratio ?? '-'}, okno ${record.window_diameter_mm ?? '-'} mm`;
+    case 'INSTRUMENT_FAMILY':
+      return `Rodzina ${record.model_family ?? '-'} (${record.transformer_kind ?? '-'}) — potrzebna karta wykonania`;
     case 'PV_INVERTER':
       return `${record.s_n_kva ?? '-'} kVA, Pmax=${record.p_max_kw ?? '-'} kW`;
     case 'BESS_INVERTER':
@@ -230,11 +233,15 @@ export function TypePicker({
                     <tr
                       key={type.id}
                       onClick={() => {
-                        onSelectType(type.id, type.name);
-                        onClose();
+                        if (category !== 'INSTRUMENT_FAMILY') {
+                          onSelectType(type.id, type.name);
+                          onClose();
+                        }
                       }}
                       className={clsx(
-                        'cursor-pointer transition-colors hover:bg-scada-hover-nav',
+                        category === 'INSTRUMENT_FAMILY'
+                          ? 'cursor-not-allowed opacity-70'
+                          : 'cursor-pointer transition-colors hover:bg-scada-hover-nav',
                         type.id === currentTypeId ? 'bg-scada-active' : '',
                       )}
                     >
