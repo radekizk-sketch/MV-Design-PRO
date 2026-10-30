@@ -50,6 +50,8 @@ import type {
   SwitchBranch,
   Transformer,
 } from '../../types/enm';
+import { RODZAJE_GALEZI } from '../../types/enm';
+import { RODZAJ_GALEZI_PL } from '../../ui/shared/rodzajGalezi';
 import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
@@ -110,28 +112,6 @@ export const KOLEKCJE_ELEMENTOW: readonly (keyof EnergyNetworkModel)[] = KOLEKCJ
   (k) => k.klucz,
 );
 
-/** Rodzaje gałęzi (`Branch.type`) — DRUGI poziom dyskryminacji „odcinka" (7 wartości, ZAMKNIĘTA lista). */
-export const TYPY_GALEZI = [
-  'line_overhead',
-  'cable',
-  'switch',
-  'breaker',
-  'bus_coupler',
-  'disconnector',
-  'fuse',
-] as const;
-export type TypGalezi = (typeof TYPY_GALEZI)[number];
-
-const ETYKIETA_TYPU_GALEZI: Readonly<Record<TypGalezi, string>> = {
-  line_overhead: 'Linia napowietrzna',
-  cable: 'Kabel',
-  switch: 'Łącznik',
-  breaker: 'Wyłącznik',
-  bus_coupler: 'Sprzęgło szyn',
-  disconnector: 'Odłącznik',
-  fuse: 'Bezpiecznik',
-};
-
 interface Znaleziony {
   element: ENMElement;
   typ: string;
@@ -147,12 +127,11 @@ function znajdzElement(model: EnergyNetworkModel, id: string): Znaleziony | null
       if (el && (el.id === id || el.ref_id === id)) {
         if (kolekcja.klucz === 'branches') {
           const galaz = el as unknown as { type?: string };
-          const typGalezi = galaz.type as TypGalezi | undefined;
-          const typEtykieta =
-            typGalezi && typGalezi in ETYKIETA_TYPU_GALEZI
-              ? ETYKIETA_TYPU_GALEZI[typGalezi]
-              : kolekcja.typEtykieta;
-          return { element: el, typ: typGalezi ?? kolekcja.typ, typEtykieta };
+          // Rodzaj gałęzi (`Branch.type`) — drugi poziom dyskryminacji „odcinka”; lista
+          // i nazwy z jednego źródła (`types/enm.ts`, `ui/shared/rodzajGalezi.ts`).
+          const typGalezi = RODZAJE_GALEZI.find((rodzaj) => rodzaj === galaz.type);
+          const typEtykieta = typGalezi ? RODZAJ_GALEZI_PL[typGalezi] : kolekcja.typEtykieta;
+          return { element: el, typ: galaz.type ?? kolekcja.typ, typEtykieta };
         }
         return { element: el, typ: kolekcja.typ, typEtykieta: kolekcja.typEtykieta };
       }

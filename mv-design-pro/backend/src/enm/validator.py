@@ -62,6 +62,7 @@ from .interlock_rules import earthing_interlock_violation
 from .migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
+    RODZAJE_GALEZI_APARATU,
     Cable,
     EnergyNetworkModel,
     GPZSection,
@@ -105,7 +106,6 @@ from .slownik_komunikatow import (
     pole,
 )
 from .topology import (
-    TYPY_LACZNIKOW_ENM,
     derive,
     podziel_krawedzie,
     punkty_podzialu_korytarza,
@@ -2390,13 +2390,13 @@ class ENMValidator:
         2026-10-22): łącznik 110 kV wchodzi do modelu wyłącznie jako łącznik topologii ze
         stanem łączeniowym, a reguła wiązania katalogowego wymaga mu typu — katalog ma jeden
         typ minimalny na rodzaj (``sw-cb-110kv``, ``sw-ds-110kv``). Gałąź łącznikowa
-        (``TYPY_LACZNIKOW_ENM``) z co najmniej jednym końcem na szynie pasma WN bez
+        (``RODZAJE_GALEZI_APARATU``) z co najmniej jednym końcem na szynie pasma WN bez
         ``catalog_ref`` — z operacji bez wskazanego aparatu albo z modelu zewnętrznego —
         nie jest przyjmowana po cichu. Ostrzeżenie nie blokuje obliczeń: łącznik bez
         impedancji nie wnosi parametru do solvera (Zasada nr 4)."""
         napiecia = {b.ref_id: b.voltage_kv for b in enm.buses}
         for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
-            if galaz.type not in TYPY_LACZNIKOW_ENM or galaz.catalog_ref:
+            if galaz.type not in RODZAJE_GALEZI_APARATU or galaz.catalog_ref:
                 continue
             napiecia_koncow = [
                 napiecia.get(ref) for ref in (galaz.from_bus_ref, galaz.to_bus_ref) if ref
@@ -2736,10 +2736,9 @@ class ENMValidator:
         """Szyny SN osiągalne ze `szyna` przez aparaty łączeniowe (wyłącznik, rozłącznik,
         odłącznik, sprzęgło, bezpiecznik) — jedna magistrala rozdzielnicy stacji. Stan
         łącznika nie ma znaczenia (struktura rozdzielnicy, nie stan ruchowy)."""
-        rodzaje = {"breaker", "switch", "disconnector", "bus_coupler", "fuse"}
         sasiedzi: dict[str, set[str]] = {}
         for galaz in enm.branches:
-            if getattr(galaz, "type", None) not in rodzaje:
+            if getattr(galaz, "type", None) not in RODZAJE_GALEZI_APARATU:
                 continue
             a = getattr(galaz, "from_bus_ref", None)
             b = getattr(galaz, "to_bus_ref", None)

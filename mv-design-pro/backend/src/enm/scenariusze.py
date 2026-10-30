@@ -40,7 +40,7 @@ gen_scaling → injections → probe_shunts; kazde nadpisanie zostawia wpis prow
 `EffectiveNetworkSnapshot.nadpisania`):
   * `out_of_service` — element NIEOBECNY w migawce efektywnej (dokladnie tak, jak
     dzisiejsza kontyngencja N-1 usuwa galaz z listy), nie „status open";
-  * `switch_states` — `status` lacznika (`TYPY_LACZNIKOW_ENM`, takze bezpiecznik) w
+  * `switch_states` — `status` lacznika (`RODZAJE_GALEZI_APARATU`, takze bezpiecznik) w
     migawce efektywnej; wpis proweniencji WYLACZNIE dla realnej zmiany (stan rowny
     modelowi nie jest nadpisaniem — migawka ma wtedy hash modelu); lacznik wylaczony
     `out_of_service` albo element nie-lacznik = `ScenariuszNieprzystajeError`;
@@ -93,11 +93,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from .bateria_kondensatorow import zapisz_tabliczke_baterii
 from .dziennik_zmian import sciezka_tymczasowa
 from .hash import compute_enm_hash, hash_migawki_enm
-from .models import EnergyNetworkModel, Generator, ShuntCapacitor
+from .models import RODZAJE_GALEZI_APARATU, EnergyNetworkModel, Generator, ShuntCapacitor
 from .nazwy_elementow import nazwa_nadana_po_identyfikatorze
 from .rewizje import digest_klucza
 from .slownik_komunikatow import NAZWY_KOLEKCJI_PL, lista_pl, opis_nazwy
-from .topology import TYPY_LACZNIKOW_ENM
 
 # ---------------------------------------------------------------------------
 # Etykiety kontraktu scenariusza dynamicznego po polsku — JEDNO źródło słów pól, rodzajów
@@ -1357,7 +1356,7 @@ def apply_scenario(
                 else "nie istnieje w modelu sieci"
             )
             raise ScenariuszNieprzystajeError(scenariusz.scenario_id, ref_id, powod)
-        if galaz.get("type") not in TYPY_LACZNIKOW_ENM:
+        if galaz.get("type") not in RODZAJE_GALEZI_APARATU:
             raise ScenariuszNieprzystajeError(
                 scenariusz.scenario_id, ref_id, "element nie jest łącznikiem ani bezpiecznikiem"
             )

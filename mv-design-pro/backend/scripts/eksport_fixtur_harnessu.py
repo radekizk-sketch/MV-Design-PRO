@@ -44,7 +44,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 from unittest.mock import patch
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -200,10 +200,14 @@ from enm.hash import compute_enm_hash  # noqa: E402
 from enm.klucz_twin import klucz_twin_projektu  # noqa: E402
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id  # noqa: E402
 from enm.models import (  # noqa: E402
+    RODZAJE_GALEZI_APARATU,
+    RODZAJE_GALEZI_LACZNIKA,
+    Cable,
     ConnectionConditions,
     EnergyNetworkModel,
     ENMHeader,
     Generator,
+    OverheadLine,
     TapChanger,
 )
 from enm.scenariusze import (  # noqa: E402
@@ -213,6 +217,7 @@ from enm.scenariusze import (  # noqa: E402
     usun_wszystkie_scenariusze,
     zapisz_scenariusz,
 )
+from enm.slownik_komunikatow import NAZWY_RODZAJOW_GALEZI_PL  # noqa: E402
 from enm.store import get_enm, reset_enm_store, set_enm  # noqa: E402
 from enm.tor_pola import szyny_stacji  # noqa: E402
 from infrastructure.persistence.db import (  # noqa: E402
@@ -1127,6 +1132,20 @@ def rodzaje_wielkosci_zwarciowych_aparatury() -> dict[str, Any]:
             rodzaj: NAZWY_RODZAJOW_APARATU_PL[rodzaj]
             for rodzaj in sorted(RODZAJE_APARATURY_LACZENIOWEJ)
         },
+        # Rodzaje gałęzi modelu (`Branch.type`) — wyrocznia list `types/enm.ts`
+        # (`RODZAJE_GALEZI`, `RODZAJE_GALEZI_LACZNIKA`, `RODZAJE_GALEZI_APARATU`) i słownika
+        # nazw `ui/shared/rodzajGalezi.ts` (`RODZAJ_GALEZI_PL`).
+        "rodzaje_galezi": {
+            "odcinek": sorted(
+                {
+                    *get_args(OverheadLine.model_fields["type"].annotation),
+                    *get_args(Cable.model_fields["type"].annotation),
+                }
+            ),
+            "lacznik": sorted(RODZAJE_GALEZI_LACZNIKA),
+            "aparat": sorted(RODZAJE_GALEZI_APARATU),
+        },
+        "nazwy_galezi": dict(sorted(NAZWY_RODZAJOW_GALEZI_PL.items())),
     }
 
 

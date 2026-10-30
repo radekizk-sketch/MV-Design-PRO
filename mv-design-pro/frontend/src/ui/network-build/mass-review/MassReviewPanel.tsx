@@ -16,6 +16,7 @@ import { OzeReview } from './OzeReview';
 import { ReadinessBlockersReview } from './ReadinessBlockersReview';
 import { IncompleteStationsReview } from './IncompleteStationsReview';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { isApparatusBranch } from '../../../types/enm';
 
 // =============================================================================
 // Types
@@ -65,7 +66,6 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
     for (const g of snapshot.generators ?? []) { if (!g.catalog_ref) missingCatalog++; }
     for (const l of snapshot.loads ?? []) { if (!l.catalog_ref) missingCatalog++; }
 
-    const switchTypes = ['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse'];
     const mvLvStationCount = (snapshot.substations ?? []).filter((station) =>
       String(station.station_type ?? '').toLowerCase() !== 'gpz',
     ).length;
@@ -73,9 +73,7 @@ export function MassReviewPanel({ isOpen, onClose, initialTab = 'catalog', class
     return {
       catalog: missingCatalog,
       transformers: snapshot.transformers?.length ?? 0,
-      switches: (snapshot.branches ?? []).filter(
-        (b) => switchTypes.includes(b.type),
-      ).length,
+      switches: (snapshot.branches ?? []).filter(isApparatusBranch).length,
       oze: snapshot.generators?.length ?? 0,
       readiness: readiness?.blockers?.length ?? 0,
       stations: mvLvStationCount,

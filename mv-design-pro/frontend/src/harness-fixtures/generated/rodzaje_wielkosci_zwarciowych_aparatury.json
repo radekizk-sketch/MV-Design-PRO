@@ -77,5 +77,33 @@
     "FUSE": "bezpiecznik",
     "LOAD_SWITCH": "rozłącznik",
     "RECLOSER": "reklozer"
+  },
+  "rodzaje_galezi": {
+    "odcinek": [
+      "cable",
+      "line_overhead"
+    ],
+    "lacznik": [
+      "breaker",
+      "bus_coupler",
+      "disconnector",
+      "switch"
+    ],
+    "aparat": [
+      "breaker",
+      "bus_coupler",
+      "disconnector",
+      "fuse",
+      "switch"
+    ]
+  },
+  "nazwy_galezi": {
+    "breaker": "wyłącznik",
+    "bus_coupler": "sprzęgło szyn",
+    "cable": "kabel",
+    "disconnector": "odłącznik",
+    "fuse": "bezpiecznik",
+    "line_overhead": "linia napowietrzna",
+    "switch": "łącznik"
   }
 }

@@ -46,7 +46,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from .models import EnergyNetworkModel
+from .models import RODZAJE_GALEZI_APARATU, EnergyNetworkModel
 from .pola import PoziomPol, czy_pole_nn, pola_stacji, poziom_pol, zacisk_pola
 from .zajetosc_pol import TYPY_ODCINKA_TERENOWEGO
 
@@ -447,12 +447,6 @@ def szyna_glowna_stacji(
 # Punkt zwarcia na zacisku pola (konsumenci wyniku zwarciowego)
 # ---------------------------------------------------------------------------
 
-#: Rodzaje gałęzi łączeniowych — zamknięty łącznik SCALA szyny w jeden węzeł elektryczny.
-#: Zbiór równy `enm.topology.TYPY_LACZNIKOW_ENM` (przypięte testem; import stamtąd zamknąłby
-#: cykl — `enm.topology` czyta przynależność szyn z tego modułu).
-TYPY_LACZNIKOW: frozenset[str] = frozenset(
-    {"switch", "breaker", "bus_coupler", "disconnector", "fuse"}
-)
 #: Znacznik szyny pomocniczej — nie jest celem zwarcia (`enm/assembler.py`).
 ZNACZNIK_SZYNY_POMOCNICZEJ = "helper_bus"
 
@@ -463,7 +457,7 @@ def wezel_elektryczny(enm: Mapping[str, Any], szyna_ref: str) -> frozenset[str]:
     do węzła szyny pola; otwarty aparat pola rozdziela węzły."""
     sasiedzi: dict[str, set[str]] = {}
     for galaz in enm.get("branches") or []:
-        if not isinstance(galaz, Mapping) or galaz.get("type") not in TYPY_LACZNIKOW:
+        if not isinstance(galaz, Mapping) or galaz.get("type") not in RODZAJE_GALEZI_APARATU:
             continue
         if galaz.get("status", "closed") != "closed":
             continue

@@ -29,13 +29,12 @@ from typing import Any
 
 import pytest
 from application.protection_settings.zacisk_zabezpieczenia import (
-    RODZAJE_LACZNIKOW,
     zacisk_lacznika_w_szeregu,
     zaciski_galezi,
 )
 from enm.domain_operations_v2 import transformatory_sciezki_zasilania
 from enm.migrations.promocja_aparatow_nn import migruj
-from enm.models import EnergyNetworkModel
+from enm.models import RODZAJE_GALEZI_APARATU, EnergyNetworkModel
 from enm.pola import pola_nn_stacji, pola_sn_stacji, zacisk_pola
 from enm.tor_pola import (
     KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
@@ -149,7 +148,7 @@ def _aparat_pola(enm: dict[str, Any], spec: dict[str, Any]) -> dict[str, Any]:
     aparaty = [
         b
         for b in enm["branches"]
-        if b.get("type") in RODZAJE_LACZNIKOW
+        if b.get("type") in RODZAJE_GALEZI_APARATU
         and {b["from_bus_ref"], b["to_bus_ref"]} == {szyna, zacisk}
     ]
     assert len(aparaty) == 1, (spec["ref_id"], aparaty)
@@ -177,7 +176,7 @@ def _szyna_glowna_niesie_tylko_aparaty(enm: dict[str, Any]) -> None:
         for szyna in szyny_z_polami:
             for b in enm["branches"]:
                 if szyna in (b["from_bus_ref"], b["to_bus_ref"]):
-                    assert b.get("type") in RODZAJE_LACZNIKOW, (stacja["name"], b["ref_id"])
+                    assert b.get("type") in RODZAJE_GALEZI_APARATU, (stacja["name"], b["ref_id"])
             for t in enm["transformers"]:
                 assert szyna not in (t["hv_bus_ref"], t["lv_bus_ref"]), (stacja["name"], t)
             for kolekcja in ("loads", "generators", "sources"):
@@ -399,7 +398,7 @@ def test_promocja_nn_wylacznik_glowny_w_torze_transformator_szyna_nn() -> None:
     # Szyna rozdzielnicy nN niesie wyłącznie aparaty pól.
     for b in model.branches:
         if wylacznik["bus_ref"] in (b.from_bus_ref, b.to_bus_ref):
-            assert b.type in RODZAJE_LACZNIKOW
+            assert b.type in RODZAJE_GALEZI_APARATU
     # Migracja jest idempotentna (drugi przebieg nic nie zmienia).
     assert migruj(model)[1] is False
 
@@ -804,11 +803,29 @@ def test_determinizm_budowy_wg_zasady_toru() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_typy_lacznikow_wezla_rowne_topologii() -> None:
-    from enm.topology import TYPY_LACZNIKOW_ENM
-    from enm.tor_pola import TYPY_LACZNIKOW
+def test_rodzaje_aparatu_i_odcinka_dziela_unie_galezi_bez_reszty() -> None:
+    """Jedno źródło rodzajów aparatu (`enm.models.RODZAJE_GALEZI_APARATU`) i rodzaje odcinka
+    (linia, kabel) dzielą unię `Branch` bez reszty i bez części wspólnej; bezpiecznik jest
+    aparatem (scala szyny), sprzęgło też."""
+    from typing import get_args
 
-    assert TYPY_LACZNIKOW == TYPY_LACZNIKOW_ENM
+    from enm.models import (
+        RODZAJE_GALEZI_LACZNIKA,
+        Cable,
+        FuseBranch,
+        OverheadLine,
+        SwitchBranch,
+    )
+
+    def rodzaje(klasa: type) -> set[str]:
+        return set(get_args(klasa.model_fields["type"].annotation))
+
+    odcinki = rodzaje(OverheadLine) | rodzaje(Cable)
+    wszystkie = odcinki | rodzaje(SwitchBranch) | rodzaje(FuseBranch)
+    assert odcinki | RODZAJE_GALEZI_APARATU == wszystkie
+    assert not odcinki & RODZAJE_GALEZI_APARATU
+    assert set(RODZAJE_GALEZI_LACZNIKA) == rodzaje(SwitchBranch)
+    assert {"fuse", "bus_coupler"} <= RODZAJE_GALEZI_APARATU
 
 
 @pytest.mark.parametrize("stan", ["closed", "open"])

@@ -4,6 +4,7 @@ import { clsx } from 'clsx';
 import { useAppStateStore } from '../../app-state/store';
 import { useNetworkBuildDerived, useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { jestRodzajemGaleziAparatu } from '../../../types/enm';
 import { useSelectionStore } from '../../selection';
 import { formatLengthKm } from '../../shared/formatPolishValue';
 import { sanitizePublicReadinessMessage } from '../../shared/publicReadinessMessage';
@@ -766,7 +767,7 @@ function isRecord(value: unknown): value is SnapshotRecord {
 }
 
 function isSwitchgearBranchRecord(item: SnapshotRecord): boolean {
-  return ['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse'].includes(asText(item.type));
+  return jestRodzajemGaleziAparatu(item.type);
 }
 
 function hasPositiveLineLength(item: SnapshotRecord): boolean {

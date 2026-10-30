@@ -33,6 +33,8 @@ import type {
   Substation,
   Transformer,
 } from '../../../types/enm';
+import { jestRodzajemGaleziAparatu, type RodzajGaleziAparatu } from '../../../types/enm';
+import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 import type { MVApparatusType } from '../../catalog/types';
 import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';
 import {
@@ -293,17 +295,6 @@ const WYKONANIE_STACJI_PL: Readonly<Record<string, string>> = {
   inna: 'inna',
 };
 
-/** Nazwa rodzaju gałęzi modelu dla projektanta — jedno źródło (karta techniczna, przegląd łączników). */
-export const RODZAJ_GALEZI_PL: Readonly<Record<Branch['type'], string>> = {
-  line_overhead: 'Linia napowietrzna',
-  cable: 'Kabel',
-  switch: 'Łącznik',
-  breaker: 'Wyłącznik',
-  bus_coupler: 'Sprzęgło szyn',
-  disconnector: 'Odłącznik',
-  fuse: 'Bezpiecznik',
-};
-
 const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> = {
   CB: 'Wyłącznik',
   LOAD_SWITCH: 'Rozłącznik',
@@ -455,8 +446,14 @@ function nazwaGalezi(ix: IndeksModelu, galaz: Branch): string {
 // Aparatura pola
 // ---------------------------------------------------------------------------
 
-const TYPY_LACZNIKOW: ReadonlySet<Branch['type']> = new Set(['breaker', 'switch', 'disconnector', 'fuse', 'bus_coupler']);
-const PRIORYTET_GALEZI: readonly Branch['type'][] = ['breaker', 'bus_coupler', 'switch', 'fuse', 'disconnector'];
+/** Pierwszeństwo rodzaju aparatu przy wyborze aparatu pola — pełność wymusza typ (`Record`). */
+const PIERWSZENSTWO_APARATU_GALEZI: Readonly<Record<RodzajGaleziAparatu, number>> = {
+  breaker: 0,
+  bus_coupler: 1,
+  switch: 2,
+  fuse: 3,
+  disconnector: 4,
+};
 const PRIORYTET_URZADZENIA: readonly BayPrimaryDevice['kind'][] = ['CB', 'LOAD_SWITCH', 'FUSE', 'DS'];
 
 /** Rodzaj aparatu SN (`device_kind` projekcji APARAT_SN) z rodzaju urządzenia pola modelu. */
@@ -514,15 +511,14 @@ interface AparatPola {
 }
 
 function aparatZGalezi(galaz: Branch): AparatPola {
-  const p = PRIORYTET_GALEZI.indexOf(galaz.type);
   return {
     ref: galaz.ref_id,
     rodzajPl: RODZAJ_GALEZI_PL[galaz.type],
     galaz,
     urzadzenie: null,
     rodzajSnModelu: RODZAJ_APARATU_SN_Z_GALEZI[galaz.type] ?? null,
-    lacznik: TYPY_LACZNIKOW.has(galaz.type),
-    priorytet: p >= 0 ? p : 99,
+    lacznik: jestRodzajemGaleziAparatu(galaz.type),
+    priorytet: jestRodzajemGaleziAparatu(galaz.type) ? PIERWSZENSTWO_APARATU_GALEZI[galaz.type] : 99,
   };
 }
 
@@ -549,7 +545,7 @@ function aparatyPola(ix: IndeksModelu, bay: Bay): AparatPola[] {
   for (const ref of bay.equipment_refs ?? []) {
     if (pokryte.has(ref)) continue;
     const galaz = ix.galezie.get(ref);
-    if (!galaz || !TYPY_LACZNIKOW.has(galaz.type)) continue;
+    if (!galaz || !jestRodzajemGaleziAparatu(galaz.type)) continue;
     wynik.push(aparatZGalezi(galaz));
     pokryte.add(ref);
   }
@@ -1325,7 +1321,7 @@ export function buildKartaTechniczna(
         if (aparat) return kartaAparatu(ix, aparat, kandydat, katalogi, dane.globalId ?? null);
       }
       const galaz = ix.galezie.get(ref);
-      if (galaz && TYPY_LACZNIKOW.has(galaz.type)) return kartaAparatu(ix, aparatZGalezi(galaz), null, katalogi, null);
+      if (galaz && jestRodzajemGaleziAparatu(galaz.type)) return kartaAparatu(ix, aparatZGalezi(galaz), null, katalogi, null);
       return null;
     }
     case 'transformer': {

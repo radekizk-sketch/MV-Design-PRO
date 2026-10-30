@@ -133,7 +133,7 @@ from .katalog_projektu_karty import (
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
-from .models import TRYBY_PRACY_ZRODLA, liczba_torow
+from .models import RODZAJE_GALEZI_APARATU, TRYBY_PRACY_ZRODLA, liczba_torow
 from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import (
     nazwa_elementu,
@@ -4439,7 +4439,7 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         return _error_response(
             "Wskazany aparat odpływowy nie istnieje w modelu sieci.", "nn.copy_feeder_not_found"
         )
-    if root.get("type") not in ("switch", "breaker", "fuse", "disconnector", "bus_coupler"):
+    if root.get("type") not in RODZAJE_GALEZI_APARATU:
         return _error_response(
             "Kopiowany odpływ musi zaczynać się od aparatu łączeniowego.",
             "nn.copy_feeder_wrong_root",

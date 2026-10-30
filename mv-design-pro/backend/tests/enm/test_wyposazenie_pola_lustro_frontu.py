@@ -7,7 +7,7 @@ po cichu — ale formularz zaproponowałby pole, którego backend nie przyjmie (
 schowałby pole, którego backend wymaga. Lustro stanu łącznika
 (``frontend/src/types/enm.ts::isSwitchBranch`` / ``isFuseBranch``) decyduje, które gałęzie
 front traktuje jako łącznik i jako łącznik z pozycją normalną — rozjazd z
-``TYPY_LACZNIKOW_ENM`` / ``TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM`` to ten sam defekt, który
+``RODZAJE_GALEZI_APARATU`` / ``TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM`` to ten sam defekt, który
 karta usuwa (dwie prawdy o punkcie podziału).
 
 KLASA, NIE INSTANCJA: porównywana jest KAŻDA tablica lustra w obie strony, nie jeden rodzaj.
@@ -19,9 +19,8 @@ import re
 import typing
 from pathlib import Path
 
-from enm.models import BayBaseModel, BayPrimaryDevice
+from enm.models import RODZAJE_GALEZI_APARATU, BayBaseModel, BayPrimaryDevice
 from enm.stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
-from enm.topology import TYPY_LACZNIKOW_ENM
 from enm.wyposazenie_pola import (
     NAZWY_RODZAJOW_APARATU_POLA_PL,
     PRZESTRZEN_KATALOGU_APARATU,
@@ -120,5 +119,5 @@ def test_predykaty_lacznika_frontu_sa_lustrem_typow_backendu() -> None:
     z_pozycja = _typy_predykatu("isSwitchBranch")
     bezpiecznik = _typy_predykatu("isFuseBranch")
     assert z_pozycja == frozenset(TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM)
-    assert z_pozycja | bezpiecznik == TYPY_LACZNIKOW_ENM
+    assert z_pozycja | bezpiecznik == RODZAJE_GALEZI_APARATU
     assert not (z_pozycja & bezpiecznik)

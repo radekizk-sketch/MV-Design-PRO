@@ -21,7 +21,7 @@
  * kontraktu ENM, ale schemat go nie czyta) i zaszyte stałe `closed/closed/open`
  * w adapterze pól źródeł.
  */
-import type { Bay, BayDeviceState, BayPrimaryDevice, Branch } from '../../../../types/enm';
+import type { Bay, BayDeviceState, BayPrimaryDevice, Branch, SwitchBranch } from '../../../../types/enm';
 
 /** Stan łącznika rysowany przez glif (`v3/symbols/glyphs.tsx` `SwitchState`). */
 export type StanLacznikaRysunku = 'closed' | 'open' | 'unknown';
@@ -46,7 +46,7 @@ const ROLA_TYPU_GALEZI: Readonly<Record<string, RolaLacznika>> = {
   disconnector: 'ds',
   switch: 'ds',
   bus_coupler: 'ds',
-};
+} satisfies Readonly<Record<SwitchBranch['type'], RolaLacznika>>;
 
 function stanRekordu(stan: BayDeviceState | undefined): StanLacznikaRysunku {
   if (stan === 'zamkniety' || stan === 'zamkniety_naped_rozbrojony') return 'closed';

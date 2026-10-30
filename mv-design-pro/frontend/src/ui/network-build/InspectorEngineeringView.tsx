@@ -58,6 +58,8 @@ import type {
   ProtectionAssignment,
   Transformer,
 } from '../../types/enm';
+import { isApparatusBranch } from '../../types/enm';
+import { RODZAJ_GALEZI_PL } from '../shared/rodzajGalezi';
 import type { NetworkBuildOperationName } from './networkBuildStore';
 import { buildOperationContext } from './operationContext';
 import { buildSldOperationContext } from '../sld/shared/sldActionExecutor';
@@ -567,16 +569,11 @@ export function buildBaySections(
 const ELEMENT_TYPE_LABELS: Record<string, string> = {
   bus: 'Szyna',
   branch: 'Gałąź',
-  line_overhead: 'Linia napowietrzna',
-  cable: 'Kabel SN',
+  // Rodzaje gałęzi modelu — z jednego słownika (`ui/shared/rodzajGalezi.ts`).
+  ...RODZAJ_GALEZI_PL,
   transformer: 'Transformator',
   source: 'Źródło zasilania',
   load: 'Obciążenie',
-  switch: 'Łącznik',
-  breaker: 'Wyłącznik',
-  disconnector: 'Odłącznik',
-  fuse: 'Bezpiecznik',
-  bus_coupler: 'Sprzęgło szynowe',
   Switch: 'Łącznik SN',
   substation: 'Stacja',
   bay: 'Pole',
@@ -898,17 +895,6 @@ function isLineCable(b: Branch): b is Branch & { type: 'line_overhead' | 'cable'
   return b.type === 'line_overhead' || b.type === 'cable';
 }
 
-function isSwitchgearBranch(b: Branch): boolean {
-  return b.type === 'switch'
-    || b.type === 'breaker'
-    || b.type === 'bus_coupler'
-    || b.type === 'disconnector'
-    || b.type === 'fuse';
-}
-
-function switchgearBranchTypeLabel(branch: Branch): string {
-  return ELEMENT_TYPE_LABELS[branch.type] ?? 'Aparat SN';
-}
 
 interface SegmentTechnicalPayload {
   length_km?: number | null;
@@ -2152,10 +2138,10 @@ function buildSectionsForElement(
   // Try branches
   const branch = snapshot.branches?.find((b) => b.ref_id === elementId);
   if (branch) {
-    if (isSwitchgearBranch(branch)) {
+    if (isApparatusBranch(branch)) {
       elementType = 'Switch';
       elementName = branch.name;
-      const apparatusLabel = switchgearBranchTypeLabel(branch);
+      const apparatusLabel = RODZAJ_GALEZI_PL[branch.type];
       const branchParent = findParentStation(elementId, snapshot);
       sections.push({
         id: 'ident',
@@ -2203,7 +2189,7 @@ function buildSectionsForElement(
       id: 'ident', label: 'Identyfikacja', fields: [
         { key: 'ref_id', label: 'Oznaczenie odcinka', value: branch.ref_id },
         { key: 'name', label: 'Nazwa', value: branch.name },
-        { key: 'type', label: 'Typ', value: ELEMENT_TYPE_LABELS[branch.type] ?? branch.type },
+        { key: 'type', label: 'Typ', value: RODZAJ_GALEZI_PL[branch.type] },
         { key: 'status', label: 'Stan', value: branch.status },
       ],
     });
@@ -2272,7 +2258,7 @@ function buildSectionsForElement(
       fields: [
         { key: 'ref_id', label: 'Oznaczenie punktu rozgałęzienia', value: branchPoint.ref_id },
         { key: 'name', label: 'Nazwa', value: branchPoint.name },
-        { key: 'type', label: 'Typ', value: ELEMENT_TYPE_LABELS[branchPoint.branch_point_type] ?? branchPoint.branch_point_type },
+        { key: 'type', label: 'Typ', value: formatElementTypeLabel(branchPoint.branch_point_type) },
       ],
     });
     sections.push({

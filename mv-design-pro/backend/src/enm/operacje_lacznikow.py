@@ -5,7 +5,7 @@ położenie w modelu bazowym); ``SwitchBranch.normal_state`` — pozycją normal
 (punkt normalnie otwarty = ``"open"``). Trzy operacje kanoniczne:
 
 * ``open_switch`` / ``close_switch`` — zmieniają WYŁĄCZNIE ``status`` łącznika (każdego
-  typu łącznikowego, łącznie z bezpiecznikiem — ``TYPY_LACZNIKOW_ENM``). Pozycji normalnej
+  typu łącznikowego, łącznie z bezpiecznikiem — ``RODZAJE_GALEZI_APARATU``). Pozycji normalnej
   nie ruszają: chwilowe otwarcie łącznika nie jest deklaracją punktu podziału.
 * ``set_normal_open_point`` — ATOMOWO: wskazany łącznik dostaje ``normal_state="open"``
   i ``status="open"``, a poprzedni punkt podziału TEGO SAMEGO pierścienia
@@ -26,9 +26,10 @@ from typing import Any, Literal
 
 from .domain_operations import _error_response, _response
 from .kopia_graniczna import kopia_graniczna_enm
+from .models import RODZAJE_GALEZI_APARATU
 from .slownik_komunikatow import lista_pl, opis_elementu, pole
 from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
-from .topology import TYPY_LACZNIKOW_ENM, poprzednie_punkty_podzialu
+from .topology import poprzednie_punkty_podzialu
 
 StanLacznika = Literal["closed", "open"]
 
@@ -60,7 +61,7 @@ def _zmien_stan(enm: dict[str, Any], payload: dict[str, Any], stan: StanLacznika
     galaz = _galaz(nowy, ref)
     if galaz is None:
         return _error_response("Wskazany łącznik nie istnieje w modelu sieci.", "switch.not_found")
-    if galaz.get("type") not in TYPY_LACZNIKOW_ENM:
+    if galaz.get("type") not in RODZAJE_GALEZI_APARATU:
         return _error_response(
             f"{opis_elementu(enm, ref, 'Element')} nie jest łącznikiem — stan otwarty albo "
             "zamknięty mają wyłącznie łączniki i bezpieczniki.",

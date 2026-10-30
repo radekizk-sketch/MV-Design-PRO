@@ -468,6 +468,18 @@ class FuseBranch(BranchBase):
     rated_voltage_kv: float | None = None
 
 
+#: Rodzaje gałęzi łącznika (``SwitchBranch.type``) — JEDNO źródło listy w backendzie,
+#: wyprowadzone z typu pola. Front dostaje je przez wyrocznię harnessu
+#: ``rodzaje_wielkosci_zwarciowych_aparatury.json`` (``rodzaje_galezi``, test parytetu
+#: ``types/enm.ts``).
+RODZAJE_GALEZI_LACZNIKA: tuple[str, ...] = get_args(SwitchBranch.model_fields["type"].annotation)
+#: Rodzaje gałęzi aparatu łączeniowego: łączniki i bezpiecznik (``FuseBranch.type``) —
+#: zamknięty aparat SCALA szyny w jeden węzeł elektryczny, linia i kabel są impedancją.
+RODZAJE_GALEZI_APARATU: frozenset[str] = frozenset(
+    (*RODZAJE_GALEZI_LACZNIKA, *get_args(FuseBranch.model_fields["type"].annotation))
+)
+
+
 Branch = Annotated[
     OverheadLine | Cable | SwitchBranch | FuseBranch,
     Field(discriminator="type"),

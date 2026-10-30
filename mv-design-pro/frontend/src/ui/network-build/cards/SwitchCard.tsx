@@ -19,7 +19,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { notify } from '../../notifications/store';
-import type { SwitchBranch, FuseBranch } from '../../../types/enm';
+import { isApparatusBranch, isSwitchBranch, type FuseBranch, type SwitchBranch } from '../../../types/enm';
 import {
   czyLacznikZPozycjaNormalna,
   czyPunktPodzialu,
@@ -107,9 +107,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
   const branch = useMemo(() => {
     const found = snapshot?.branches?.find((b) => b.ref_id === elementId);
     if (!found) return null;
-    const allowedTypes = ['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse'];
-    if (!allowedTypes.includes(found.type)) return null;
-    return found as SwitchBranch | FuseBranch;
+    return isApparatusBranch(found) ? found : null;
   }, [snapshot, elementId]);
 
   const fromBus = useMemo(
@@ -179,9 +177,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
           value: toBus ? `${toBus.name} (${toBus.voltage_kv} kV)` : branch.to_bus_ref,
           severity: !toBus ? 'error' : undefined,
         },
-        ...((branch.type === 'switch' || branch.type === 'breaker' ||
-          branch.type === 'bus_coupler' || branch.type === 'disconnector') &&
-        (branch as SwitchBranch).r_ohm != null
+        ...(isSwitchBranch(branch) && branch.r_ohm != null
           ? [
               {
                 key: 'r_ohm',

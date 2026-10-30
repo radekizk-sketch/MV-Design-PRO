@@ -19,9 +19,9 @@ import { renderHook } from '@testing-library/react';
 import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { RODZAJE_GALEZI } from '../../../types/enm';
 import {
   KOLEKCJE_ELEMENTOW,
-  TYPY_GALEZI,
   mapowanieObiektuInspektora,
   otworzDowodInspektora,
   useObiektInspektora,
@@ -93,7 +93,7 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
     );
   });
 
-  it.each(TYPY_GALEZI.map((t) => [t] as const))(
+  it.each(RODZAJE_GALEZI.map((t) => [t] as const))(
     'gałąź typu "%s": zawiera wiersze wspólne (szyny + stan) i >= 1 wiersz właściwy typu',
     (typ) => {
       const model = pustyModel();

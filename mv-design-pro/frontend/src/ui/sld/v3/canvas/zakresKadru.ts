@@ -32,6 +32,7 @@
  */
 import type { BoundingBox } from '../../v2/viewport/ViewportController';
 import type { Bay, Bus, EnergyNetworkModel, GPZSection, Substation } from '../../../../types/enm';
+import { jestRodzajemGaleziAparatu } from '../../../../types/enm';
 import type { TorElementuOdpowiedz } from '../../../../ui2/adapters/topologiaZasilenia';
 import { sceneObstacleRects, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { sheetSizeFor } from '../sheet/outline';
@@ -144,8 +145,6 @@ interface IndeksModelu {
 
 const INDEKSY_MODELU = new WeakMap<EnergyNetworkModel, IndeksModelu>();
 
-const RODZAJE_LACZNIKA: ReadonlySet<string> = new Set(['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse']);
-
 function dopisz<K, V>(mapa: Map<K, V[]>, klucz: K, wartosc: V): void {
   const lista = mapa.get(klucz);
   if (lista) lista.push(wartosc);
@@ -239,7 +238,7 @@ function indeksModelu(snapshot: EnergyNetworkModel): IndeksModelu {
   const stacjaLacznika = new Map<string, string>();
   for (const br of snapshot.branches ?? []) {
     nazwy.set(br.ref_id, br.name);
-    if (!RODZAJE_LACZNIKA.has(br.type)) continue;
+    if (!jestRodzajemGaleziAparatu(br.type)) continue;
     const z = stacjaSzyny.get(br.from_bus_ref);
     const doS = stacjaSzyny.get(br.to_bus_ref);
     if (z && z === doS) {

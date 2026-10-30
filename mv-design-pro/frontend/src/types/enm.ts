@@ -2455,8 +2455,60 @@ export function isCable(b: Branch): b is Cable {
   return b.type === 'cable';
 }
 
+/**
+ * Klasa rodzaju gałęzi modelu (`Branch.type`) — JEDNO źródło list rodzajów gałęzi i ich
+ * podziału na odcinki, łączniki i bezpiecznik. `satisfies` wiąże klasę z unią typów
+ * powyżej: rodzaj spoza unii, brak rodzaju albo rodzaj w złej klasie (np. bezpiecznik jako
+ * łącznik `SwitchBranch`) to błąd kompilacji. Parytet listy z backendem
+ * (`enm/models.py`: `SwitchBranch.type`, `FuseBranch.type`) przypina wyrocznia harnessu
+ * `rodzaje_wielkosci_zwarciowych_aparatury.json` (`rodzaje_galezi`).
+ */
+const KLASA_RODZAJU_GALEZI = {
+  line_overhead: 'odcinek',
+  cable: 'odcinek',
+  switch: 'lacznik',
+  breaker: 'lacznik',
+  bus_coupler: 'lacznik',
+  disconnector: 'lacznik',
+  fuse: 'bezpiecznik',
+} as const satisfies { readonly [K in OverheadLine['type'] | Cable['type']]: 'odcinek' } & {
+  readonly [K in SwitchBranch['type']]: 'lacznik';
+} & { readonly [K in FuseBranch['type']]: 'bezpiecznik' };
+
+/** Rodzaj gałęzi aparatu łączeniowego: łącznik (`SwitchBranch`) albo bezpiecznik (`FuseBranch`). */
+export type RodzajGaleziAparatu = SwitchBranch['type'] | FuseBranch['type'];
+
+/** Wszystkie rodzaje gałęzi modelu, w kolejności słownika klas. */
+export const RODZAJE_GALEZI: readonly Branch['type'][] = Object.keys(
+  KLASA_RODZAJU_GALEZI,
+) as Branch['type'][];
+
+/** Rodzaje gałęzi łącznika (`SwitchBranch`) — bez bezpiecznika. */
+export const RODZAJE_GALEZI_LACZNIKA: readonly SwitchBranch['type'][] = RODZAJE_GALEZI.filter(
+  (rodzaj) => KLASA_RODZAJU_GALEZI[rodzaj] === 'lacznik',
+) as SwitchBranch['type'][];
+
+/** Rodzaje gałęzi aparatu łączeniowego — łączniki i bezpiecznik. */
+export const RODZAJE_GALEZI_APARATU: readonly RodzajGaleziAparatu[] = RODZAJE_GALEZI.filter(
+  (rodzaj) => KLASA_RODZAJU_GALEZI[rodzaj] !== 'odcinek',
+) as RodzajGaleziAparatu[];
+
+/** Czy `rodzaj` (np. pole `type` rekordu migawki spoza typów) to rodzaj gałęzi aparatu. */
+export function jestRodzajemGaleziAparatu(rodzaj: unknown): rodzaj is RodzajGaleziAparatu {
+  return (
+    typeof rodzaj === 'string'
+    && Object.prototype.hasOwnProperty.call(KLASA_RODZAJU_GALEZI, rodzaj)
+    && KLASA_RODZAJU_GALEZI[rodzaj as Branch['type']] !== 'odcinek'
+  );
+}
+
 export function isSwitchBranch(b: Branch): b is SwitchBranch {
-  return ['switch', 'breaker', 'bus_coupler', 'disconnector'].includes(b.type);
+  return KLASA_RODZAJU_GALEZI[b.type] === 'lacznik';
+}
+
+/** Gałąź aparatu łączeniowego: łącznik albo bezpiecznik. */
+export function isApparatusBranch(b: Branch): b is SwitchBranch | FuseBranch {
+  return jestRodzajemGaleziAparatu(b.type);
 }
 
 export function isFuseBranch(b: Branch): b is FuseBranch {

@@ -19,6 +19,7 @@
 
 import type { RawOverlayElement } from '../../../sld-overlay/rawResultOverlayStore';
 import type { SwzApiResponse } from '../canvas/overlay';
+import type { Branch } from '../../../../types/enm';
 
 /** Stan energizacji ZACISKU / ODCINKA / WYSPY — jedna zamknięta lista (§5/§6). */
 export type LvEnergizationState = 'ENERGIZED' | 'DEENERGIZED' | 'UNKNOWN' | 'CONFLICT' | 'MULTISOURCE';
@@ -29,8 +30,8 @@ export type LvConnectivityState = 'CLOSED' | 'OPEN';
 /** Zdolność źródła rozproszonego do utrzymania napięcia w wyspie (§14). */
 export type LvDerIslandCapability = 'GRID_FOLLOWING' | 'GRID_FORMING' | 'DUAL_MODE' | 'UNKNOWN';
 
-/** Typ gałęzi ENM = TYP URZĄDZENIA rejestru symboli (§4). */
-export type LvDeviceType = 'line_overhead' | 'cable' | 'switch' | 'breaker' | 'bus_coupler' | 'disconnector' | 'fuse';
+/** Typ gałęzi ENM = TYP URZĄDZENIA rejestru symboli (§4) — ta sama unia co `Branch['type']`. */
+export type LvDeviceType = Branch['type'];
 
 /** Rola urządzenia rozstrzygnięta w backendzie z topologii (§4/§8). */
 export type LvDeviceRole = 'incomer' | 'feeder' | 'coupler' | 'boundary' | 'internal';

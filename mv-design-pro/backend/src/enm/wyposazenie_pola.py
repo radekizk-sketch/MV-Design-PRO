@@ -64,12 +64,11 @@ from werdykt.proweniencja import FieldQuality
 from .domain_operations import _error_response, _konfiguracja_pola, _response
 from .katalog_projektu import katalog_biezacy
 from .kopia_graniczna import kopia_graniczna_enm
-from .models import BayPrimaryDevice
+from .models import RODZAJE_GALEZI_APARATU, BayPrimaryDevice
 from .pola import czy_pole_nn, poziom_pol, zmien_pole
 from .pola import pole as pole_modelu
 from .pole_katalogowe import aparaty_pola_z_referencji, pole_katalogowe
 from .slownik_komunikatow import lista_pl, opis_elementu, pole
-from .topology import TYPY_LACZNIKOW_ENM
 
 StanDanychAparatu = Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"]
 TrybWyposazenia = Literal["katalog", "szablon", "wyczysc"]
@@ -470,7 +469,7 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         galezie = {
             str(g.get("ref_id")): g
             for g in nowy.get("branches", [])
-            if isinstance(g, dict) and g.get("type") in TYPY_LACZNIKOW_ENM
+            if isinstance(g, dict) and g.get("type") in RODZAJE_GALEZI_APARATU
         }
         aparaty = []
         wskazane_galezie: set[str] = set()

@@ -5,7 +5,13 @@ from enum import StrEnum
 from typing import Any
 
 from enm.bateria_kondensatorow import admitancja_zerowa_baterii_s, parametry_baterii
-from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
+from enm.models import (
+    GEN_TYPES_PRZEKSZTALTNIKOWE,
+    RODZAJE_GALEZI_LACZNIKA,
+    Cable,
+    EnergyNetworkModel,
+    OverheadLine,
+)
 from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyny_stacji
 from network_model.catalog.wartosci_robocze import PARAMETR_BATERII_UKLAD
@@ -1017,7 +1023,7 @@ def build_v126_input_from_enm(
                     is_open=is_open,
                 )
             )
-        elif branch.type in {"switch", "breaker", "bus_coupler", "disconnector"}:
+        elif branch.type in RODZAJE_GALEZI_LACZNIKA:
             r_ohm, x_ohm = _impedancja_skupiona_aparatu_ohm(branch)
             branches.append(
                 V126BranchInput(

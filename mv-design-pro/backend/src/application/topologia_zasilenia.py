@@ -33,10 +33,9 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from enm.interlock_rules import MAIN_SWITCH_KINDS, device_state_record, is_closed
-from enm.models import Bay, EnergyNetworkModel
+from enm.models import RODZAJE_GALEZI_APARATU, Bay, EnergyNetworkModel
 from enm.pola import KLUCZ_POLA_WYTWORCY, poziom_pol
 from enm.topology import (
-    TYPY_LACZNIKOW_ENM,
     PodzialKrawedzi,
     TopologyView,
     derive,
@@ -326,7 +325,7 @@ def _klucz_elementu(element: _Element) -> tuple[int, str]:
 def _nieustalone_laczniki(enm: EnergyNetworkModel) -> dict[str, _Nieustalony]:
     """Łączniki, których stanu model nie rozstrzyga (rekord aparatu pola: nieznany, awaria,
     sprzeczny z ``status`` gałęzi). Pierwszy rekord w kolejności pól i aparatów wygrywa."""
-    laczniki = {g.ref_id: g for g in enm.branches if g.type in TYPY_LACZNIKOW_ENM}
+    laczniki = {g.ref_id: g for g in enm.branches if g.type in RODZAJE_GALEZI_APARATU}
     wynik: dict[str, _Nieustalony] = {}
     for bay in sorted(enm.bays, key=lambda b: b.ref_id):
         for aparat in bay.primary_devices:
@@ -402,7 +401,7 @@ def _zbuduj_kontekst(enm: EnergyNetworkModel) -> _Kontekst:
     for bus in enm.buses:
         dodaj(_Element(bus.ref_id, "szyna", None, bus.name, (bus.ref_id,), frozenset({bus.ref_id})))
     for galaz in enm.branches:
-        rodzaj: RodzajElementu = "lacznik" if galaz.type in TYPY_LACZNIKOW_ENM else "odcinek"
+        rodzaj: RodzajElementu = "lacznik" if galaz.type in RODZAJE_GALEZI_APARATU else "odcinek"
         kotwice = tuple(s for s in (galaz.from_bus_ref, galaz.to_bus_ref) if s in szyny)
         dodaj(
             _Element(
@@ -451,7 +450,7 @@ def _zbuduj_kontekst(enm: EnergyNetworkModel) -> _Kontekst:
                     *bay.equipment_refs,
                     *(d.linked_ref or d.device_ref for d in bay.primary_devices),
                 ]
-                if r in galezie and galezie[r].type in TYPY_LACZNIKOW_ENM
+                if r in galezie and galezie[r].type in RODZAJE_GALEZI_APARATU
             }
         )
         czesc = set(aparaty)

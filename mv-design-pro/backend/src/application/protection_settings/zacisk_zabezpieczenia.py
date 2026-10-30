@@ -48,6 +48,7 @@ from typing import Any, Literal
 from application.analyses.protection.catalog.catalog_store import load_device_capability
 from domain.canonical_operations import READINESS_CODES
 from enm.katalog_projektu import katalog_dla_modelu
+from enm.models import RODZAJE_GALEZI_APARATU
 from enm.nazwy_elementow import SPOZA_MODELU
 from network_model.nazwy import nazwa_nadana
 
@@ -62,10 +63,6 @@ KOD_WYBOR_ZACISKU = "protection.relay_terminal_choice_missing"
 KOD_SPRZECZNY_Z_MODELEM = "protection.relay_terminal_contradicts_model"
 KOD_PETLA_WYLACZNIKA = "protection.relay_terminal_breaker_loop"
 
-#: Rodzaje gałęzi ENM bez impedancji — elementy łączeniowe łańcucha szeregowego.
-RODZAJE_LACZNIKOW: frozenset[str] = frozenset(
-    {"breaker", "switch", "disconnector", "bus_coupler", "fuse"}
-)
 
 #: Kolekcje ENM, których elementy są ELEMENTAMI MOCY przyłączonymi do szyn. Każde pole
 #: `EnergyNetworkModel` jest sklasyfikowane tu albo w `KOLEKCJE_BEZ_ELEMENTOW_MOCY`
@@ -207,7 +204,7 @@ def _przylaczenia(snapshot: dict[str, Any]) -> dict[str, list[_Przylaczenie]]:
             if not isinstance(element, dict) or not isinstance(element.get("ref_id"), str):
                 continue
             a, b = element.get(pole_a), element.get(pole_b)
-            laczeniowy = kolekcja == "branches" and element.get("type") in RODZAJE_LACZNIKOW
+            laczeniowy = kolekcja == "branches" and element.get("type") in RODZAJE_GALEZI_APARATU
             for szyna, druga in ((a, b), (b, a)):
                 if isinstance(szyna, str):
                     wezly.setdefault(szyna, []).append(
@@ -288,7 +285,7 @@ def _zacisk_lacznika(
             for g in migawka.get("branches") or []
             if isinstance(g, dict)
             and g.get("ref_id") == lacznik_ref
-            and g.get("type") in RODZAJE_LACZNIKOW
+            and g.get("type") in RODZAJE_GALEZI_APARATU
         ),
         None,
     )
@@ -460,7 +457,7 @@ def zaciski_galezi_migawki(snapshot: dict[str, Any] | None) -> dict[str, dict[st
         for g in migawka.get("branches") or []
         if isinstance(g, dict)
         and isinstance(g.get("ref_id"), str)
-        and g.get("type") not in RODZAJE_LACZNIKOW
+        and g.get("type") not in RODZAJE_GALEZI_APARATU
     ] + [
         t["ref_id"]
         for t in migawka.get("transformers") or []
@@ -484,7 +481,6 @@ __all__ = [
     "KOLEKCJE_GALEZI_MOCY",
     "KOLEKCJE_WEZLOWE_MOCY",
     "OdmowaZacisku",
-    "RODZAJE_LACZNIKOW",
     "ZACISKI",
     "Zacisk",
     "ZaciskZabezpieczenia",

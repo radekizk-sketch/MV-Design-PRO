@@ -41,6 +41,7 @@ from network_model.core.topologia import (
 )
 
 from .models import (
+    RODZAJE_GALEZI_APARATU,
     Cable,
     EnergyNetworkModel,
     Junction,
@@ -50,12 +51,6 @@ from .pola import poziom_pol
 from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
 from .tor_pola import szyny_stacji
 
-#: Typy gałęzi ENM będące łącznikami: zamknięty łącznik SCALA szyny w jeden węzeł
-#: topologiczny (CN → TN), linia/kabel — nie (to impedancja między dwoma węzłami).
-#: Zbiór zgodny z ``enm/mapping.py`` (``SwitchBranch.type`` + ``FuseBranch.type``).
-TYPY_LACZNIKOW_ENM: frozenset[str] = frozenset(
-    {"switch", "breaker", "bus_coupler", "disconnector", "fuse"}
-)
 #: Generatory będące maszynami z impedancją do odniesienia w zwarciu (IEC 60909-0 §4.2,
 #: równoważne źródło napięciowe): synchroniczne oraz asynchroniczne (Type 3 DFIG,
 #: SCIG). Falownik (pv_inverter, bess, wind_inverter, fw_pmsg) jest źródłem
@@ -160,7 +155,7 @@ class KrawedzTopologii:
     ref_id: str
     szyna_a: str
     szyna_b: str
-    #: ``galaz`` (linia, kabel), ``lacznik`` (``TYPY_LACZNIKOW_ENM``) albo ``transformator``.
+    #: ``galaz`` (linia, kabel), ``lacznik`` (``RODZAJE_GALEZI_APARATU``) albo ``transformator``.
     rodzaj: str
 
 
@@ -198,7 +193,7 @@ def podziel_krawedzie(snapshot: EnergyNetworkModel | Mapping[str, object]) -> Po
         if a not in znane or b not in znane:
             pominiete.append(ref)
             continue
-        lacznik = str(_pole(galaz, "type")) in TYPY_LACZNIKOW_ENM
+        lacznik = str(_pole(galaz, "type")) in RODZAJE_GALEZI_APARATU
         if _pole(galaz, "status", "closed") != "closed":
             (laczniki_otwarte if lacznik else galezie_otwarte).append(ref)
             continue

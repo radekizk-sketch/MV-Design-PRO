@@ -40,6 +40,7 @@ from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_w
 from network_model.nazwy import jest_nazwa
 
 from .load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
+from .models import RODZAJE_GALEZI_LACZNIKA
 from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from .slownik_komunikatow import (
@@ -442,7 +443,7 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         ):
             if key in data:
                 branch_data[key] = data[key]
-    elif branch_type in ("switch", "breaker", "bus_coupler", "disconnector"):
+    elif branch_type in RODZAJE_GALEZI_LACZNIKA:
         # W5-C: pozycja normalna łącznika (`SwitchBranch.normal_state`) — dana projektowa.
         for key in ("r_ohm", "x_ohm", "normal_state"):
             if key in data:

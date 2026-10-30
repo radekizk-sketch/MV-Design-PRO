@@ -24,6 +24,7 @@
  */
 import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
 import type { LvDomainGraphView } from './types';
+import { jestRodzajemGaleziAparatu } from '../../../../types/enm';
 
 /** Część grafu projekcji nN, z której czyta menu (gałęzie, szyny, odbiory, role aparatów). */
 export type GrafMenuNn = Pick<LvDomainGraphView, 'buses' | 'branches' | 'loads' | 'devices'>;
@@ -41,8 +42,6 @@ export interface TematMenuNn {
   readonly nazwa: string | null;
 }
 
-/** Typy gałęzi aparatów łączeniowych — ten sam zbiór, od którego `copy_nn_feeder` zaczyna kopię. */
-const TYPY_APARATU = new Set(['switch', 'breaker', 'fuse', 'disconnector', 'bus_coupler']);
 
 function galaz(graf: GrafMenuNn, ref: string): GrafMenuNn['branches'][number] | undefined {
   return graf.branches.find((b) => b.ref_id === ref);
@@ -61,7 +60,7 @@ export function resolveTematMenuNn(
   switch (trafienie.rodzajWezla) {
     case 'apparatus': {
       const aparat = galaz(graf, ref);
-      return aparat && TYPY_APARATU.has(String(aparat.type))
+      return aparat && jestRodzajemGaleziAparatu(aparat.type)
         ? { kind: 'nn_apparatus', ref, nazwa: aparat.name || null }
         : null;
     }
@@ -123,7 +122,9 @@ export function operacjaBezposredniaNn(actionId: string, elementId: string | nul
     const aparat = galaz(graf, elementId);
     if (!aparat) return { ok: false, powodPl: POWOD_BRAKU_OBIEKTU_PL };
     const rola = graf.devices.find((d) => d.ref_id === elementId)?.device_role ?? null;
-    if (!TYPY_APARATU.has(String(aparat.type))) return { ok: false, powodPl: POWOD_KOPII_TYPU_PL };
+    // Rodzaje aparatu z jednego źródła (`types/enm.ts`) — ten sam zbiór, od którego
+    // `copy_nn_feeder` zaczyna kopię (backend `enm.models.RODZAJE_GALEZI_APARATU`).
+    if (!jestRodzajemGaleziAparatu(aparat.type)) return { ok: false, powodPl: POWOD_KOPII_TYPU_PL };
     // Sprzęgło sekcji jest sprzęgłem z samego typu gałęzi — ta sama reguła co operacja
     // `copy_nn_feeder` (odmowa `nn.copy_feeder_wrong_root`); rola z projekcji nN dokłada
     // zasilanie rozdzielnicy i granicę domeny, których typ gałęzi nie rozróżnia.

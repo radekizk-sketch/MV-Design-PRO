@@ -82,6 +82,7 @@ from .migrations.promocja_aparatow_nn import (
 )
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
+    RODZAJE_GALEZI_APARATU,
     UKLADY_SIECI_NN,
     EnergyNetworkModel,
     GeometriaSlupaLinii,
@@ -144,7 +145,7 @@ from .slownik_komunikatow import (
     pole,
 )
 from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
-from .topology import TYPY_LACZNIKOW_ENM, punkty_podzialu_korytarza
+from .topology import punkty_podzialu_korytarza
 from .topology_ops import (
     create_branch,
     create_device,
@@ -9903,7 +9904,7 @@ def _aparat_glowny_pola(enm: dict[str, Any], rekord: dict[str, Any]) -> str | No
     galezie = {b.get("ref_id"): b for b in enm.get("branches", []) if isinstance(b, dict)}
     for ref in rekord.get("equipment_refs") or []:
         galaz = galezie.get(ref)
-        if galaz is not None and str(galaz.get("type") or "") in TYPY_LACZNIKOW_ENM:
+        if galaz is not None and str(galaz.get("type") or "") in RODZAJE_GALEZI_APARATU:
             return str(ref)
     return None
 
@@ -10280,7 +10281,7 @@ def _blad_stanu_lacznika_w_parametrach(
     """
     typ = galaz.get("type")
     ref = str(galaz.get("ref_id") or "")
-    if "status" in parameters and typ in TYPY_LACZNIKOW_ENM:
+    if "status" in parameters and typ in RODZAJE_GALEZI_APARATU:
         return _error_response(
             f"Stanu {opis_elementu(enm, ref, 'łącznika')} nie zmienia się korektą parametrów — "
             "użyj operacji otwarcia albo zamknięcia łącznika.",

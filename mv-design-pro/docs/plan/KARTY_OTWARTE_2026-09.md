@@ -1189,6 +1189,22 @@ iniekcja I3c przeniesiona na `optionLabel` karty (`String(option.vectorGroup)`) 
 33 testy `pandapower` padają z braku pakietu w środowisku). Commit 5 jest gotowy do pełnej bramki
 sesji głównej; następca nie ma kroku do wykonania w tej karcie poza odbiorem bramki.
 
+**Commit 6 (w toku, 2026-10-30) — jedno źródło rodzajów łącznika i jawny brak danych w panelu
+katalogu.** Krok 1 (WIP, niezweryfikowany): lista rodzajów gałęzi w `frontend/src/types/enm.ts`
+(`KLASA_RODZAJU_GALEZI` z `satisfies` względem unii, `RODZAJE_GALEZI`, `RODZAJE_GALEZI_LACZNIKA`,
+`RODZAJE_GALEZI_APARATU`, `jestRodzajemGaleziAparatu`, `isApparatusBranch`), słownik nazw
+przeniesiony do `frontend/src/ui/shared/rodzajGalezi.ts`. Usunięte kopie frontu:
+`SchematContextPanel.tsx`, `kartaTechnicznaElementu.ts` (`TYPY_LACZNIKOW`, `PRIORYTET_GALEZI`),
+`operacjeNn.ts`, `zakresKadru.ts`, `SwitchCard.tsx` (dwie), `SwitchReview.tsx`,
+`MassReviewPanel.tsx`, `fixActionSurfaceRuntime.ts`, `InspectorEngineeringView.tsx` (predykat
+i nazwy), `inspectorAdapter.ts` (`TYPY_GALEZI`, `ETYKIETA_TYPU_GALEZI`); `LvDeviceType` =
+`Branch['type']`. Backend: `enm.models.RODZAJE_GALEZI_LACZNIKA` / `RODZAJE_GALEZI_APARATU`
+z typów pól zamiast kopii w `topology.py`, `tor_pola.py`, `validator.py`,
+`domain_operations_v2.py`, `topology_ops.py`, `v126_contracts.py`, `nn_circuit_sheet.py`,
+`zacisk_zabezpieczenia.py`. Wyrocznia harnessu dostała `rodzaje_galezi` i `nazwy_galezi`; test
+`frontend/src/ui/shared/__tests__/rodzajGalezi.test.ts`. Następny krok: biegi celowane (vitest,
+pytest), tsc; potem punkt 2 (panel ogólny katalogu bez ukrywania pól null).
+
 ---
 
 ## LICZBY-PL

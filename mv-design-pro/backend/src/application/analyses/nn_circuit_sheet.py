@@ -146,6 +146,7 @@ from enm.dane_przyjete_galezi import dane_przyjete_biegu, dane_przyjete_galezi_w
 from enm.hash import compute_enm_hash
 from enm.mapping import ref_to_graph_id
 from enm.models import (
+    RODZAJE_GALEZI_APARATU,
     Cable,
     EnergyNetworkModel,
     FuseBranch,
@@ -175,12 +176,10 @@ from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER, MC
 from solver_input.uklad_sieci_nn import uklad_tn
 from werdykt import DanaPrzyjeta
 
-# Rodzaje gałęzi rozpoznawane jako „aparat" u początku odpływu — DOKŁADNIE ten
-# sam zestaw co `EkranSwzNn.tsx::TYPY_APARATU` (frontend nN STUDIO), żeby
-# arkusz i zakładka SWZ zgadzały się co do tego, KIEDY odpływ ma zamodelowany
-# aparat u początku (jedno źródło reguły, powielone celowo po obu stronach
-# granicy warstw — backend/frontend nie dzielą modułu Python).
-_TYPY_APARATU = frozenset({"switch", "breaker", "disconnector", "fuse"})
+# Rodzaje gałęzi rozpoznawane jako „aparat" u początku odpływu: aparaty łączeniowe modelu
+# (`enm.models.RODZAJE_GALEZI_APARATU`) bez sprzęgła szyn — sprzęgło łączy sekcje
+# rozdzielnicy, nie zaczyna odpływu (ta sama reguła co odmowa `nn.copy_feeder_wrong_root`).
+_TYPY_APARATU = RODZAJE_GALEZI_APARATU - {"bus_coupler"}
 
 # γ [MS/m przy 20°C] — konduktywność referencyjna wg IEC 60287-1-1 / PN-EN
 # 60228 (miedź: 58,0 MS/m; aluminium: 35,0 MS/m — wartości katalogowe

@@ -1,5 +1,5 @@
 import type { CanonicalOpName } from '../../types/domainOps';
-import type { EnergyNetworkModel } from '../../types/enm';
+import { isApparatusBranch, type EnergyNetworkModel } from '../../types/enm';
 import type { FixActionSurfaceDescriptor } from '../../types/fixActionSurface';
 import type { ElementType } from '../types';
 import { resolveElementTypeFromSnapshot } from './selectionResolution';
@@ -54,13 +54,7 @@ export function resolveFixActionElementType(
   }
   const branch = (snapshot.branches ?? []).find((item) => hasRefId(item, elementRef));
   if (branch) {
-    return branch.type === 'switch' ||
-      branch.type === 'breaker' ||
-      branch.type === 'bus_coupler' ||
-      branch.type === 'disconnector' ||
-      branch.type === 'fuse'
-      ? 'Switch'
-      : 'LineBranch';
+    return isApparatusBranch(branch) ? 'Switch' : 'LineBranch';
   }
   if ((snapshot.transformers ?? []).some((item) => hasRefId(item, elementRef))) {
     return 'TransformerBranch';

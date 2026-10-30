@@ -11,7 +11,8 @@ import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useSelectionStore } from '../../selection';
-import { RODZAJ_GALEZI_PL } from '../../sld/shared/kartaTechnicznaElementu';
+import { isApparatusBranch } from '../../../types/enm';
+import { RODZAJ_GALEZI_PL } from '../../shared/rodzajGalezi';
 
 // =============================================================================
 // Helpers
@@ -42,19 +43,15 @@ export function SwitchReview({ className }: SwitchReviewProps) {
   const rows = useMemo(() => {
     if (!snapshot) return [];
 
-    // Łączniki: rodzaj gałęzi 'switch'|'breaker'|'bus_coupler'|'disconnector'|'fuse'; nazwa
-    // rodzaju z jednego słownika gałęzi (wcześniej lokalny słownik po kodach wielkimi
-    // literami nazywał odłącznik „Rozłącznik”, a łącznik i sprzęgło pokazywał kodem).
-    const switchTypes = ['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse'] as const;
+    // Łączniki i bezpieczniki: rodzaje z jednego źródła (`types/enm.ts`), nazwa rodzaju
+    // z jednego słownika gałęzi (`ui/shared/rodzajGalezi.ts`).
     return (snapshot.branches ?? [])
-      .filter((b) =>
-        (switchTypes as readonly string[]).includes(b.type),
-      )
+      .filter(isApparatusBranch)
       .map((b) => ({
         id: b.ref_id,
         name: b.name,
         rodzaj: RODZAJ_GALEZI_PL[b.type],
-        state: b.status ?? 'closed',
+        state: b.status,
         isNOP: false,
         catalogRef: b.catalog_ref ?? null,
         fromBus: b.from_bus_ref,
