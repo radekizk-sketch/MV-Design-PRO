@@ -501,9 +501,9 @@ export interface CTCatalogType extends CatalogType {
    * z literą P ⇒ `protection`, klasa liczbowa ⇒ `metering`. `null`/brak = nie da się
    * ustalić (klasa nieznana albo zapis złożony opisujący dwa rdzenie).
    *
-   * `dual` katalog referencyjny wystawi dopiero z DANĄ producenta o konstrukcji
-   * dwurdzeniowej — dziś żaden z 12 typów jej nie ma, więc warunek 87T pozostaje
-   * nierozstrzygalny (jawny brak danych, nie luka kontraktu).
+   * Dla przekładnika wielordzeniowego należy odczytać `secondary_cores`,
+   * zamiast przypisywać wszystkie rdzenie do jednego pola `application`.
+   * Stare rekordy bez tej struktury pozostają modelami referencyjnymi.
    */
   application?: 'protection' | 'metering' | 'dual' | null;
   /**
