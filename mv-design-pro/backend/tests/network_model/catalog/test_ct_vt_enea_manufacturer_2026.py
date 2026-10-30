@@ -130,8 +130,8 @@ def test_ferranti_ma_odrebne_api_bez_pozornej_przekladni_pradowej() -> None:
 def test_przekladniki_osobne_licznosci_bez_duplikatow() -> None:
     repo = get_default_mv_catalog()
     # 14 CT na bazie PR #508 + 36 profili 5A-D.
-    assert len(repo.ct_types) == 50
+    assert len(repo.ct_types) == 51
     # 13 VT dotychczasowych + 6 ENEA + 9 ABB.
     assert len(repo.vt_types) == 28
-    assert len(set(repo.ct_types)) == 50
+    assert len(set(repo.ct_types)) == 51
     assert len(set(repo.vt_types)) == 28
