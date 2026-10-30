@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
+from network_model.nazwy import nazwa_nadana
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
     DanaPrzyjeta,
@@ -749,14 +750,10 @@ def _sieci_uziemienia(ladunek: Mapping[str, Any]) -> list[Mapping[str, Any]]:
 
 def _przedmiot_sieci(siec: Mapping[str, Any], bieg: _Bieg) -> Przedmiot:
     ref = siec.get("szyna_ref")
-    nazwa = siec.get("nazwa_pl")
     return Przedmiot(
         element_ref=str(ref) if isinstance(ref, str) else None,
-        nazwa_pl=(
-            str(nazwa)
-            if isinstance(nazwa, str) and nazwa.strip()
-            else (bieg.nazwa(ref) if isinstance(ref, str) else "sieć SN modelu")
-        ),
+        nazwa_pl=nazwa_nadana(siec.get("nazwa_pl"))
+        or (bieg.nazwa(ref) if isinstance(ref, str) else "sieć SN modelu"),
         opis_pl="Sieć SN połączona galwanicznie (punkt neutralny zespołu uziemiającego)",
     )
 
@@ -822,7 +819,7 @@ def oceny_uziemienia(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                         ),
                         przedmiot=Przedmiot(
                             element_ref=ref,
-                            nazwa_pl=str(rez.get("nazwa_pl") or bieg.nazwa(ref)),
+                            nazwa_pl=nazwa_nadana(rez.get("nazwa_pl")) or bieg.nazwa(ref),
                             opis_pl=f"Rezystor punktu neutralnego sieci „{przedmiot.nazwa_pl}”",
                         ),
                         zdolnosc_id=ID_UZIEMIENIE,
