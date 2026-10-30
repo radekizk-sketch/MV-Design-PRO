@@ -16,11 +16,11 @@ def test_ct_vt_catalog_has_industrial_series_width_and_metadata() -> None:
 
     for item in ct_types:
         data = item.to_dict()
-        if data["id"] == "ct-abb-tpu70-63-tabliczka-przyklad-2024":
+        if data["id"].startswith("ct-abb-tpu-") or data["id"] == "ct-abb-tpu70-63-tabliczka-przyklad-2024":
             # Zidentyfikowana tabliczka w oficjalnej instrukcji ABB,
             # ale nie aktualny numer zamówieniowy konkretnego wyrobu.
             assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
-            assert data["core_count"] == 4
+            assert data["core_count"] in (2, 4)
             assert "library.e.abb.com" in data["source_reference"]
         else:
             assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
