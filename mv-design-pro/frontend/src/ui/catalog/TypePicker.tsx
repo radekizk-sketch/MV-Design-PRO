@@ -25,6 +25,7 @@ const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
   LOAD: 'Obciążenia',
   CT: 'Przekładniki prądowe',
   VT: 'Przekładniki napięciowe',
+  FERRANTI: 'Przekładniki Ferrantiego 3I₀',
   MEASUREMENT_TRANSFORMER: 'Przekładniki pomiarowe',
   PV_INVERTER: 'Falowniki PV',
   BESS_INVERTER: 'Falowniki BESS',
@@ -62,6 +63,8 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
       return `${record.ratio_primary_a ?? '-'} / ${record.ratio_secondary_a ?? '-'} A, klasa=${record.accuracy_class ?? '-'}`;
     case 'VT':
       return `${record.ratio_primary_v ?? '-'} / ${record.ratio_secondary_v ?? '-'} V, klasa=${record.accuracy_class ?? '-'}`;
+    case 'FERRANTI':
+      return `3I₀, przekładnia zwojowa ${record.turns_ratio ?? '-'}, okno ${record.window_diameter_mm ?? '-'} mm`;
     case 'PV_INVERTER':
       return `${record.s_n_kva ?? '-'} kVA, Pmax=${record.p_max_kw ?? '-'} kW`;
     case 'BESS_INVERTER':
