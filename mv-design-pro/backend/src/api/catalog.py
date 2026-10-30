@@ -34,6 +34,7 @@ from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
 from network_model.catalog.der_dynamic.models import WindTurbineDynamicProfile
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
+from network_model.catalog.mv_ferranti_catalog import get_all_ferranti_types
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
 from network_model.catalog.niezmienniki_katalogu import (
     KODY_WIARYGODNOSCI,
@@ -337,6 +338,16 @@ def list_load_types() -> list[dict[str, Any]]:
 def list_ct_types() -> list[dict[str, Any]]:
     """List all CT types from the canonical MV catalog."""
     return [item.to_dict() for item in get_default_mv_catalog().list_ct_types()]
+
+
+@router.get("/ferranti-types")
+def list_ferranti_types() -> list[dict[str, Any]]:
+    """Przekładniki ziemnozwarciowe 3I0 — OSOBNE od katalogu CT fazowych.
+
+    Nie wprowadzać ich do `list_ct_types` (przekładnia zwojowa 1/470
+    nie jest prądową przekładnią znamionową 470/1 A).
+    """
+    return get_all_ferranti_types()
 
 
 @router.get("/vt-types")
