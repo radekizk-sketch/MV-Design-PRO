@@ -36,11 +36,13 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { opisSwiezosci } from '../../freshness';
 import {
   InformacjeAudytowe,
+  KartaWerdyktu,
   PrzyciskAkcjiStanu,
   formatZnacznikaCzasu,
   useAkcjaPrzejdzDoPrzypadkow,
 } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import type { RekordWerdyktu } from '../wzorzec/werdykt';
 import {
   OcenaNiewykonana,
   SekcjaAudytowa,
@@ -91,7 +93,7 @@ import {
 } from './prezentacja';
 import { rodzajPrezentowany, type RodzajPrezentowany } from './nieprezentowane';
 import { wierszeOdniesien, type WierszOdniesienia } from './odniesienia';
-import { maParametry, zbudujParametry, type StanPol, type WierszListy } from './parametry';
+import { maParametry, zbudujParametry, type StanPol, type WierszeList } from './parametry';
 import { FormularzParametrow } from './FormularzParametrow';
 import { useNazwaObiektu } from '../wzorzec/useNazwaObiektu';
 import {
@@ -910,10 +912,32 @@ function czyRekordOceny(wartosc: unknown): wartosc is RekordOcenyNiewykonanej {
 }
 
 /**
- * Wynik oceny analizy — CYTAT pola statusu z odpowiedzi solvera. Zero ocen w UI:
- * dla oceny zbiorczej okno zlicza wystąpienia wartości statusu (jak licznik
- * wierszy tabeli), a nie porównuje liczb z progiem. Podstawa oceny pochodzi
- * z karty katalogu (jedno źródło prawdy o kryterium).
+ * Czy wartość z odpowiedzi jest rekordem werdyktu wyjaśnialnego (poziom K albo W) — po
+ * KSZTAŁCIE: identyfikator kryterium albo wymagania, status maszynowy, etykieta i wyjaśnienie
+ * ze zdaniem. Okno nie czyta tu wartości oceny; rekord niepełny nie trafia do karty.
+ */
+function czyRekordWerdyktu(wartosc: unknown): wartosc is RekordWerdyktu {
+  if (typeof wartosc !== 'object' || wartosc === null) return false;
+  const rekord = wartosc as {
+    kryterium_id?: unknown;
+    wymaganie_id?: unknown;
+    status_maszynowy?: unknown;
+    etykieta?: { etykieta_pl?: unknown } | null;
+    wyjasnienie?: { zdanie_pl?: unknown } | null;
+  };
+  return (
+    (typeof rekord.kryterium_id === 'string' || typeof rekord.wymaganie_id === 'string')
+    && typeof rekord.status_maszynowy === 'string'
+    && typeof rekord.etykieta?.etykieta_pl === 'string'
+    && typeof rekord.wyjasnienie?.zdanie_pl === 'string'
+  );
+}
+
+/**
+ * Wynik oceny analizy. Rodzaje z kryteriami: KAŻDY rekord werdyktu wyjaśnialnego z odpowiedzi
+ * kartą `KartaWerdyktu` (kryterium, wynik, limit z podstawą, margines, wyjaśnienie, dowód) —
+ * zero ocen w UI, zero mapy „status → tekst". Rodzaje bez oceny: rekord `NIE_OCENIONO`.
+ * Pozostałe: cytat pola stanu albo wielkość bez progu, z podstawą z karty katalogu.
  */
 function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: unknown; karta: KartaKatalogu }) {
   const projekt = PREZENTACJA[rodzaj as RodzajPrezentowany];
@@ -937,33 +961,32 @@ function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: un
     );
   }
 
-  let tresc: React.ReactNode;
-  const skladowe = w.rodzaj === 'pojedynczy' && w.skladowe !== undefined
-    ? odczytaj(payload, w.skladowe.sciezkaTablicy)
-    : undefined;
-  if (w.rodzaj === 'pojedynczy' && w.skladowe !== undefined && Array.isArray(skladowe) && skladowe.length > 0) {
-    // Wynik złożony z wyników składowych: status KAŻDEGO elementu wg tej samej mapy; element
-    // spoza mapy → brak oceny całości (okno nie zgaduje i nie podstawia werdyktu).
-    const wpisy = skladowe.map((element) => {
-      const surowa = w.sciezki
-        .map((sciezka) => odczytaj(element, sciezka))
-        .find((wartosc) => typeof wartosc === 'string');
-      return typeof surowa === 'string' ? w.mapa[surowa] : undefined;
-    });
-    const ocenione = wpisy.filter((wpis): wpis is NonNullable<typeof wpis> => wpis !== undefined);
-    const spelnione = ocenione.filter((wpis) => wpis.istotnosc === 'ok').length;
-    tresc = ocenione.length === wpisy.length ? (
-      <Chip
-        tekst={S.werdyktZbiorczy(spelnione, wpisy.length, w.skladowe.obiektyDopelniacz)}
-        istotnosc={
-          spelnione === wpisy.length ? 'ok' : ocenione.some((wpis) => wpis.istotnosc === 'err') ? 'err' : 'warn'
-        }
-        testid="mvd-akad-werdykt-chip"
-      />
-    ) : (
-      <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
+  // Rekordy werdyktu wyjaśnialnego — każdy rekord pełną kartą (agregat nie zastępuje
+  // składowych: rekord wymagania niesie oceny składowe w swojej karcie).
+  if (w.rodzaj === 'rekordy') {
+    const tablica = odczytaj(payload, w.sciezka);
+    const rekordy = Array.isArray(tablica) ? tablica.filter(czyRekordWerdyktu) : [];
+    return (
+      <section className="mvd-akad-sekcja mvd-akad-werdykt" data-testid="mvd-akad-werdykt">
+        <h3 className="mvd-akad-sekcja-tytul">{S.werdyktTytul}</h3>
+        {rekordy.length > 0 ? (
+          <div className="mvd-akad-oceny" data-testid="mvd-akad-ocena">
+            {rekordy.map((rekord) => (
+              <KartaWerdyktu
+                key={'wymaganie_id' in rekord ? rekord.wymaganie_id : rekord.kryterium_id}
+                rekord={rekord}
+              />
+            ))}
+          </div>
+        ) : (
+          <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
+        )}
+      </section>
     );
-  } else if (w.rodzaj === 'pojedynczy') {
+  }
+
+  let tresc: React.ReactNode;
+  if (w.rodzaj === 'pojedynczy') {
     const surowa = w.sciezki
       .map((sciezka) => odczytaj(payload, sciezka))
       .find((wartosc) => typeof wartosc === 'string');
@@ -973,23 +996,6 @@ function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: un
     ) : (
       <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
     );
-  } else if (w.rodzaj === 'zbiorczy') {
-    const tablica = odczytaj(payload, w.sciezkaTablicy);
-    const elementy = Array.isArray(tablica) ? tablica : [];
-    const spelnione = elementy.filter(
-      (element) => String(odczytaj(element, w.kluczStatusu)) === w.wartoscSpelniona,
-    ).length;
-    const wszystkieSpelnione = elementy.length > 0 && spelnione === elementy.length;
-    tresc =
-      elementy.length === 0 ? (
-        <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
-      ) : (
-        <Chip
-          tekst={S.werdyktZbiorczy(spelnione, elementy.length, w.obiektyDopelniacz)}
-          istotnosc={wszystkieSpelnione ? 'ok' : 'err'}
-          testid="mvd-akad-werdykt-chip"
-        />
-      );
   } else {
     const wartosc = odczytaj(payload, w.sciezka);
     tresc =
@@ -1662,7 +1668,7 @@ export function EkranAnalizAkademickich({
   const [pola, setPola] = useState<StanPol>({});
   const [uziom, setUziom] = useState<StanPol>({});
   const [metody, setMetody] = useState<readonly string[]>([]);
-  const [wiersze, setWiersze] = useState<readonly WierszListy[]>([]);
+  const [wiersze, setWiersze] = useState<WierszeList>({});
 
   // Katalog kart i gotowość wszystkich analiz (dla „stanu danych" kart) — dwa
   // niezależne wołania, każde z własnym uczciwym stanem błędu.
@@ -1754,7 +1760,7 @@ export function EkranAnalizAkademickich({
     setPola({});
     setUziom({});
     setMetody([]);
-    setWiersze([]);
+    setWiersze({});
   };
 
   const uruchom = () => {
@@ -1970,13 +1976,23 @@ export function EkranAnalizAkademickich({
                       wlaczona ? [...lista, metoda] : lista.filter((pozycja) => pozycja !== metoda),
                     )
                   }
-                  onWiersz={(indeks, klucz, wartosc) =>
-                    setWiersze((lista) =>
-                      lista.map((wiersz, i) => (i === indeks ? { ...wiersz, [klucz]: wartosc } : wiersz)),
-                    )
+                  onWiersz={(lista, indeks, klucz, wartosc) =>
+                    setWiersze((stanList) => ({
+                      ...stanList,
+                      [lista]: (stanList[lista] ?? []).map((wiersz, i) =>
+                        i === indeks ? { ...wiersz, [klucz]: wartosc } : wiersz,
+                      ),
+                    }))
                   }
-                  onDodajWiersz={() => setWiersze((lista) => [...lista, {}])}
-                  onUsunWiersz={(indeks) => setWiersze((lista) => lista.filter((_, i) => i !== indeks))}
+                  onDodajWiersz={(lista) =>
+                    setWiersze((stanList) => ({ ...stanList, [lista]: [...(stanList[lista] ?? []), {}] }))
+                  }
+                  onUsunWiersz={(lista, indeks) =>
+                    setWiersze((stanList) => ({
+                      ...stanList,
+                      [lista]: (stanList[lista] ?? []).filter((_, i) => i !== indeks),
+                    }))
+                  }
                 />
               ) : null
             }

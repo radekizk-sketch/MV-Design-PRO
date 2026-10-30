@@ -152,6 +152,56 @@ Monte Carlo co 2026-09-05 (odcisk całego wejścia, n = 64 próbek), nie zmiana 
   earth_fault_detection.dane_przyjete            brak klucza                   metody przekaźnika
                                                                                ESTIMATED
   hosting_capacity[stacja].hosting_capacity_mw   7,7                           7,0 (ziarno)
+
+2026-10-30, ta sama karta, odcinek 3 (werdykty V12.6 → rekordy werdyktu wyjaśnialnego; rdzeń
+B-01 `v126_academic`). Statusy werdyktów solvera skasowane — ocenę niosą rekordy
+`OcenaKryterium`/`WynikWymagania` pod kluczem `oceny` (granica `wynik_v126_dla_powierzchni`,
+kryteria z rejestru założeń `application/analyses/v126_oceny.py`); `kompletnosc_dowodu` z rekordów.
+Kontrakt wejścia V12.6 nie ma wartości domyślnych pól liczonych: uziom fixtury dostał komplet
+danych projektanta (liczby równe dawnym domyślnym — wielkości uziomu bez zmian), silnik
+przeszedł z martwego `parameters["motors"]` (solver go nie czytał — tabela silników była
+pusta) do pola kontraktu `motors`, a niezawodność kabla wchodzi jak w moście API: wartości
+robocze rejestru niezawodności (λ na km długości) z danymi przyjętymi ESTIMATED.
+Ziarno Monte Carlo przepustowości pochodzi z pól, które analiza czyta (`POLA_HOSTINGU_*`
+solvera), nie z odcisku całego wejścia — próbka losowa przesunięta raz, świadomie.
+
+  rodzaj / wielkość                              PRZED                         PO
+  ---------------------------------------------- ----------------------------- ---------------
+  earthing_safety.safety_status                  niezgodny                     usunięte; `oceny`:
+                                                                               v126.uziom NIE_SPELNIA
+                                                                               (dotykowe NIE_SPELNIA,
+                                                                               krokowe SPELNIA)
+  insulation_coordination.arresters[]            verification_status,          usunięte; `oceny`:
+    .{verification_status,margin_ok,mcov_ok,     uzasadnienie_pl, ...          wymaganie miejsca
+    tov_ok,uzasadnienie_pl,kompletnosc_dowodu}                                 BRAK_DOWODU (U_c dobór
+                                                                               wstępny ESTIMATED)
+  earth_fault_detection.relay_support_status     spelniony (komplet metod      usunięte; `oceny`:
+                                                 przyjęty)                     NIE_OCENIONO (funkcje
+                                                                               przekaźnika niepodane)
+  transient_trv.{trv_status,trv_margin_percent,  niespelniony, −1194,86 %,     usunięte; `trv_peak_kv`
+    trv_curve[].envelope_kv}                     obwiednia bez podstawy        38,01894; `oceny`:
+                                                                               BRAK_PODSTAWY (obwiednia)
+  neutral_earthing_design.tuning_status          rozstrojony_poza_10pct        usunięte; `oceny`:
+                                                                               prąd resztkowy
+                                                                               19,866 % > 10 % (Z-6)
+                                                                               NIE_SPELNIA
+  neutral_earthing_design.kompletnosc_dowodu     PELNY                         NIEPELNY (kryterium
+                                                                               z założenia Z-6)
+  benchmark_validation.{status,                  PASS                          usunięte; `oceny`:
+    validation_report[].status}                                                NIE_OCENIONO (wartość
+                                                                               „obliczona" deklarowana)
+  motor_starting.motors                          [] (wiersz martwy)            1 silnik: I_rozr 450,44 A,
+                                                                               zapad 13,946 %, `oceny`
+                                                                               BRAK_DOWODU (cos φ_n,
+                                                                               η_n ESTIMATED)
+  reliability_contingency.indices.saifi_per_year 0,015 (λ = 0,015/rok          0,06 (λ = 0,015/(km·rok)
+                                                 bez długości, domyślna)       · 4 km, rejestr)
+  reliability_contingency.indices.saidi_min_     10,8                          43,2
+    per_year
+  power_quality_harmonics.wynik_audytowy.        NIE_OCENIONO                  usunięte (solver nie
+    nodes[].compatibility_status                                               wystawia statusu)
+  hosting_capacity[stacja].hosting_capacity_mw   7,0 (ograniczenie U_max)      7,4 (ograniczenie
+                                                                               I_galaz) — ziarno
 """
 
 from __future__ import annotations
@@ -178,10 +228,12 @@ from solver_input.v126_contracts import (  # noqa: E402
     V126BusInput,
     V126HarmonicSourceInput,
     V126InsulationInput,
+    V126MotorInput,
     V126PunktNeutralnySnInput,
     V126SiecSnInput,
     V126TransformerInput,
     V126UziemienieSnInput,
+    _NiezawodnoscGalezi,
 )
 
 # Ścieżka fixtury czytanej przez strażnika frontu.
@@ -200,6 +252,7 @@ SCIEZKA_FIXTURY = (
 REF_GPZ_SZYNA = "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn"
 REF_STACJA_SZYNA = "station/1f4c9a02b7d84e6690ab5cc31d772e18/bus_sn"
 REF_KABEL = "corridor/6d2b81f0c4e34a1b9f5d70ae2c8b4913/segment/001"
+NAZWA_KABLA = "Kabel SN GPZ Zachód – Ogrodowa"
 
 
 # Parametry biegu napięcia powrotnego (TRV) i prądu załączania — dane projektanta z formularza
@@ -215,6 +268,11 @@ PARAMETRY_TRV_PROJEKTANTA: dict[str, float] = {
 
 def model_wejsciowy() -> V126AcademicInput:
     """Model wejściowy odwzorowujący realny fragment sieci SN (GPZ + stacja)."""
+    # Intensywność uszkodzeń i czas odnowy kabla — projektant ich nie podał, więc jak w moście
+    # API (`build_v126_input_from_enm`) wchodzą wartości robocze rejestru niezawodności z danymi
+    # przyjętymi ESTIMATED; ta sama klasa podstawia wartość i zbiera daną przyjętą.
+    niezawodnosc = _NiezawodnoscGalezi({})
+    niezawodnosc_kabla = niezawodnosc.galaz(REF_KABEL, NAZWA_KABLA, "cable", 4.0)
     return V126AcademicInput(
         buses=[
             V126BusInput(
@@ -248,8 +306,10 @@ def model_wejsciowy() -> V126AcademicInput:
                 # b0 = ω·C0) — dana projektanta odcinka; bez niej I_C nieoznaczalne.
                 b0_siemens_per_km=1.2e-4,
                 ampacity_a=260.0,
+                **niezawodnosc_kabla,
             )
         ],
+        dane_przyjete_niezawodnosci=niezawodnosc.dane_przyjete(),
         transformers=[
             V126TransformerInput(
                 ref="transformer/9a71c3de5b8f42079d16e0b4a2c85f31",
@@ -275,20 +335,25 @@ def model_wejsciowy() -> V126AcademicInput:
             )
         ],
         parameters={
+            # Uziom stacji — dane projektanta (kontrakt V12.6 nie ma wartości domyślnych pól
+            # liczonych). Liczby równe dawnym domyślnym solvera, więc wielkości liczbowe fixtury
+            # się nie przesuwają; zmienia się tylko to, że są daną WPISANĄ.
             "earthing": {
                 "gpz_ref": REF_GPZ_SZYNA,
-                "fault_current_ka": 8.0,
+                "rho1_ohm_m": 100.0,
+                "rho2_ohm_m": 500.0,
+                "h1_m": 0.5,
                 "length_m": 60.0,
                 "width_m": 40.0,
+                "mesh_spacing_m": 6.0,
+                "buried_depth_m": 0.6,
+                "rods_total_length_m": 40.0,
+                "split_factor": 0.65,
+                "fault_current_ka": 8.0,
+                "fault_clearing_time_s": 0.5,
+                "surface_layer_rho_ohm_m": 2500.0,
+                "surface_layer_derating": 0.74,
             },
-            "motors": [
-                {
-                    "ref": "motor/5b0f7d1e",
-                    "bus_ref": REF_STACJA_SZYNA,
-                    "rated_kw": 630.0,
-                    "rated_voltage_kv": 6.0,
-                }
-            ],
             "benchmark_references": [
                 {
                     "network": "IEEE 14-bus",
@@ -300,6 +365,28 @@ def model_wejsciowy() -> V126AcademicInput:
             ],
             "hosting_monte_carlo_n": 64,
         },
+        # Silnik rozruchu bezpośredniego — pole kontraktu `motors` (dawniej wiersz leżał
+        # w `parameters["motors"]`, którego solver nie czyta: fixtura miała pustą tabelę
+        # silników). Dane projektanta (kontrakt bez wartości domyślnych); cos φ_n i η_n
+        # tabliczki niepodane — wartości robocze rejestru maszyn (dane przyjęte ESTIMATED).
+        motors=[
+            V126MotorInput(
+                # `ref` to „Oznaczenie silnika” wpisane przez projektanta (formularz parametrów
+                # V12.6) — oznaczenie inżynierskie, nie identyfikator maszynowy: stoi w nazwie
+                # przedmiotu rekordu werdyktu.
+                ref="M1",
+                bus_ref=REF_STACJA_SZYNA,
+                rated_kw=630.0,
+                rated_voltage_kv=6.0,
+                locked_rotor_multiplier=6.0,
+                start_power_factor=0.22,
+                start_time_s=8.0,
+                allowable_locked_rotor_time_s=20.0,
+                max_torque_pu=2.0,
+                critical_slip=0.2,
+                load_start_torque_pu=0.6,
+            )
+        ],
         # Miejsce zainstalowania ogranicznika z MODELU (w API: most `build_v126_insulation_from_enm`
         # albo `wiersze_izolacji_projektanta`, sposób pracy punktu neutralnego i k z solvera
         # doziemienia sieci). Dawniej wiersz leżał w `parameters["insulation"]`, którego
@@ -366,7 +453,8 @@ def zbuduj_odpowiedzi() -> dict[str, Any]:
     model = model_wejsciowy()
     # Indeks nazw modelu — w ścieżce API buduje go `enm.nazwy_elementow.zbuduj_indeks_nazw`
     # z migawki biegu; tu źródłem nazw są szyny modelu wejściowego (karta #144).
-    nazwy = {szyna.ref: szyna.name for szyna in model.buses}
+    # Gałęzie wejścia V12.6 nie niosą nazwy — w API indeks obejmuje każdy element migawki.
+    nazwy = {szyna.ref: szyna.name for szyna in model.buses} | {REF_KABEL: NAZWA_KABLA}
     # Uziemienie sieci SN niosą WYŁĄCZNIE analizy zależne od punktu neutralnego — tak jak
     # w ścieżce API (`build_v126_input_from_enm(analysis_type=...)`); pozostałe rodzaje
     # dostają wejście bez niego (ich odcisk wejścia, np. ziarno Monte Carlo przepustowości

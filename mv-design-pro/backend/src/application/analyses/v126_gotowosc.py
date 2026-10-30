@@ -42,11 +42,14 @@ from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from enm.uziemienie_sekcji import uziemienie_sieci
 from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv
+from pydantic import BaseModel
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 from solver_input.v126_contracts import (
     PROJEKT_UZIEMIENIA_WARIANTU,
     V126AcademicInput,
     V126AnalysisType,
+    V126EarthingInput,
+    V126MotorInput,
     brak_uziemienia_sn,
     braki_poziomu_izolacji,
     build_v126_input_from_enm,
@@ -70,32 +73,15 @@ _KOD_Q = "generator.q_missing"
 _KOD_KARTA = "generator.converter_card_missing"
 _KOD_WIDMO = "generator.harmonic_spectrum_missing"
 
-_KLUCZE_UZIOMU_WYMAGANE: tuple[str, ...] = (
-    "rho1_ohm_m",
-    "length_m",
-    "width_m",
-    "mesh_spacing_m",
-    "buried_depth_m",
-    "rods_total_length_m",
-    "split_factor",
-    "fault_current_ka",
-    "fault_clearing_time_s",
-    "surface_layer_rho_ohm_m",
-    "surface_layer_derating",
-)
-_KLUCZE_SILNIKA_WYMAGANE: tuple[str, ...] = (
-    "ref",
-    "bus_ref",
-    "rated_kw",
-    "rated_voltage_kv",
-    "locked_rotor_multiplier",
-    "start_power_factor",
-    "start_time_s",
-    "allowable_locked_rotor_time_s",
-    "max_torque_pu",
-    "critical_slip",
-    "load_start_torque_pu",
-)
+
+def _pola_wymagane(klasa: type[BaseModel]) -> tuple[str, ...]:
+    """Pola wymagane kontraktu wejścia (bez wartości domyślnej) — JEDNO źródło: warunek
+    gotowości i walidacja kontraktu solvera nie mogą się rozjechać (predykaty parami)."""
+    return tuple(nazwa for nazwa, pole in klasa.model_fields.items() if pole.is_required())
+
+
+_KLUCZE_UZIOMU_WYMAGANE: tuple[str, ...] = _pola_wymagane(V126EarthingInput)
+_KLUCZE_SILNIKA_WYMAGANE: tuple[str, ...] = _pola_wymagane(V126MotorInput)
 
 
 @dataclass(frozen=True)
@@ -757,6 +743,11 @@ def _warunki_detekcji(model: V126AcademicInput, parametry: dict[str, Any]) -> li
                 else "Brak wyposażenia przekaźnika — wskaż metody detekcji dostępne w przekaźniku"
             ),
             spelniony=isinstance(metody, list) and bool(metody),
+            # Zasada nr 4: brak wyposażenia przekaźnika nie blokuje biegu — dobór metody
+            # i nastaw biegnie, a kryterium dostępności funkcji jest NIE_OCENIONO z nazwanym
+            # brakiem (wartość robocza „przekaźnik ma każdą funkcję” rozstrzygałaby kryterium
+            # samym założeniem).
+            blokujacy=False,
             klucz_parametru="relay_methods",
         ),
     ]

@@ -6,8 +6,8 @@ czynnym sieci) — parafraza, ustalenie właściciela 2026-10-22; tekst
 w `network_model.core.ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`. Składowa zerowa:
 pkt 5.2 f) każe uwzględnić pojemności linii w sieciach uziemionych przez małą impedancję przy
 współczynniku zwarcia doziemnego > 1,4 (metoda składowych symetrycznych — pkt 5.3.2);
-obliczenie uwzględnia dziś pojemność doziemną B0 bezwarunkowo (także w sieci izolowanej, gdzie
-jest jedyną drogą prądu doziemnego) — warunek pkt 5.2 f) wdroży karta ZEROWA-POJEMNOSCI.
+warunek sprawdza złożenie macierzy składowej zerowej (karta ZEROWA-POJEMNOSCI, ``enm.mapping``:
+k z sieci bez pojemności; sieć izolowana i skompensowana — poza zakresem IEC 60909, rozdz. 1).
 
 Przed kartą `short_circuit_core.build_zbus` wstawiał B/2 linii i kabli na każdym końcu do sieci
 zgodnej (a przez Z_2 = Z_1 — także przeciwnej), a rozpływ prądu po gałęziach
@@ -358,8 +358,8 @@ def test_doziemne_siec_z_zespolem_rezystorowym_b0_zostaje_w_skladowej_zerowej(
     susceptancja: str, miejsce: str, rodzaj: str
 ) -> None:
     """Sieć uziemiona przez rezystor (Z.15): Z_1 = Z_2 bez B (pkt 5.2 f)), Z_0 z bocznikiem
-    zespołu i pojemnością doziemną B0 (B0 wchodzi dziś bezwarunkowo — warunek pkt 5.2 f)
-    wdroży karta ZEROWA-POJEMNOSCI) — prąd z rachunku ręcznego."""
+    zespołu i pojemnością doziemną B0 (warunek pkt 5.2 f) spełniony: rezystor zespołu daje
+    Z0 ≫ Z1, k > 1,4 — karta ZEROWA-POJEMNOSCI) — prąd z rachunku ręcznego."""
     migawka, szyny = _siec_z_zespolem(susceptancja)
     wiersz = _wiersz(_bieg(migawka, rodzaj), szyny[miejsce])
     z1 = _z1_reczne("promieniowa", miejsce)
@@ -403,7 +403,7 @@ def test_slad_white_box_nazywa_pominiete_admitancje_z_podstawa(
     # składowa zerowa — warunek pkt 5.2 f), metoda składowych pkt 5.3.2; uczciwy stan B0.
     assert "IEC 60909-0:2016 pkt 5.2 f)" in krok["notes"]
     assert "współczynnik zwarcia doziemnego jest większy niż 1,4" in krok["notes"]
-    assert "bez sprawdzania tego warunku" in krok["notes"]
+    assert "Warunek sprawdza złożenie macierzy składowej zerowej" in krok["notes"]
     assert "ustalenie właściciela 2026-10-22" in krok["notes"]
     assert "5.2 e)" not in krok["notes"]
     assert "do potwierdzenia" not in krok["notes"]

@@ -15,6 +15,7 @@
 
 import type { OpisSwiezosci } from '../../freshness/freshnessModel';
 import type { WierszInformacjiAudytowych } from '../wzorzec/InformacjeAudytowe';
+import { wielkoscPl } from '../wzorzec/KartaWerdyktu';
 import type {
   KluczMetrykiRaportu,
   KrokDowodu,
@@ -221,9 +222,10 @@ export function danePrzyjeteWyniku(payload: unknown): DanaPrzyjetaWyniku[] {
         for (const dana of wartosc) {
           if (!jestObiektem(dana) || typeof dana.nazwa_pl !== 'string') continue;
           const w = dana.wartosc;
+          // Zapis liczby po polsku — ten sam co karta werdyktu (`wielkoscPl`), nie surowy JS.
           const tekst =
             jestObiektem(w) && typeof w.wartosc === 'number'
-              ? `${w.wartosc} ${String(w.jednostka ?? '')}`.trim()
+              ? wielkoscPl({ wartosc: w.wartosc, jednostka: String(w.jednostka ?? '') }).trim()
               : null;
           const klucz = `${dana.nazwa_pl}::${tekst ?? ''}`;
           if (widziane.has(klucz)) continue;

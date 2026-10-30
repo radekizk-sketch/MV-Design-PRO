@@ -346,7 +346,7 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
     const pominiete = await screen.findByTestId('mvd-n1-szczegoly-pominiete');
     expect(pominiete).toHaveTextContent(T.sekcjaPominiete);
     expect(pominiete).toHaveTextContent('Obciążenie gałęzi');
-    expect(pominiete).toHaveTextContent('Brak pradu galezi');
+    expect(pominiete).toHaveTextContent('Brak prądu zacisku początkowego');
   });
 
   it('szczegóły kontyngencji z przeciążeniem podają wartość i próg z backendu', async () => {

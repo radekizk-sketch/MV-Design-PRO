@@ -129,7 +129,6 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'source.sk_min_inconsistent': EDYCJA,
   'source.u_set_pu_out_of_range': EDYCJA,
   'earthing.neutral_grounding_inconsistent': EDYCJA,
-  'earthing.electrode_data_missing': EDYCJA,
   // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA: źródło SN z danymi uziemienia pominiętymi
   // w obliczeniach — edycja parametrów źródła (kasacja opisu punktu neutralnego i Z0).
   'source.sn_neutral_data_ignored': EDYCJA,

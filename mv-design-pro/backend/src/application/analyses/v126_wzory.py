@@ -249,6 +249,9 @@ METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL: dict[str, str] = {
     "fifth_harmonic": "piątej harmonicznej",
     "51N+67N": "nadprądowa ziemnozwarciowa 51N z kierunkową 67N",
     "51N/50N": "nadprądowa ziemnozwarciowa zwłoczna 51N i bezzwłoczna 50N",
+    "51N": "nadprądowa ziemnozwarciowa zwłoczna 51N",
+    "67N": "kierunkowa ziemnozwarciowa 67N",
+    "50N": "nadprądowa ziemnozwarciowa bezzwłoczna 50N",
 }
 
 
@@ -276,13 +279,15 @@ def _podstawienie_detekcji_doziemnej(dane: Mapping[str, Any]) -> str | None:
 
 
 def _wynik_detekcji_doziemnej(dane: Mapping[str, Any], wynik: Mapping[str, Any]) -> str | None:
-    """`_earth_fault_detection`: `result={"recommended_method":…, "available":…}`."""
+    """`_earth_fault_detection`: `result={"recommended_method":…, "required_functions":[…]}`
+    — metoda zalecana i funkcje wymagane w przekaźniku. Ocenę dostępności (czy przekaźnik ma
+    każdą funkcję) niesie rekord werdyktu wyjaśnialnego biegu, nie zdanie kroku śladu."""
     del dane
     metoda = METODA_DETEKCJI_ZIEMNOZWARCIOWEJ_PL.get(str(wynik.get("recommended_method")))
-    dostepna = wynik.get("available")
-    if metoda is None or not isinstance(dostepna, bool):
+    funkcje = _metody_pl(wynik.get("required_functions"))
+    if metoda is None or funkcje is None:
         return None
-    return f"Metoda zalecana: {metoda}; dostępna w przekaźniku: {'tak' if dostepna else 'nie'}"
+    return f"Metoda zalecana: {metoda}; funkcje wymagane w przekaźniku: {funkcje}"
 
 
 # ---------------------------------------------------------------------------

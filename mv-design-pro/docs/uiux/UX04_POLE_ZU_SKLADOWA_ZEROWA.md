@@ -380,7 +380,8 @@ I_C `None` → 15,9161 A (√3·15 kV·0,000612611 S); projekt uziemienia V12.6 
 → liczony (dławik: X_L = 544,1195 Ω przy I_L = I_C; rezystor: I_R = 197,3113 A, I_F = 197,4321 A
 — patrz §3.17); I″k1 sieci rezystorowej bez zmian 216,9163 A.
 
-Wartość robocza B′0 NIE wchodzi do sieci zerowej zwarć IEC 60909 (`enm/mapping.py`, bocznik
+Akapit niżej opisuje stan sprzed warunku współczynnika zwarcia doziemnego — **zastąpiony
+przez §3.19** (B′0 modelu i B′0 roboczy pod jednym warunkiem k > 1,4). Stan dawny: wartość robocza B′0 NIE wchodziła do sieci zerowej zwarć IEC 60909 (`enm/mapping.py`, bocznik
 pojemności wyłącznie z B′0 modelu; `enm/dane_przyjete_galezi.py::galezie_z0_robocze` bez B′0).
 Podstawa: IEC 60909-0:2016 rozdz. 1 — wiersz 1F sieci izolowanej i skompensowanej jest poza
 zakresem normy (prąd pojemnościowy z B′0 roboczego niesie `doziemienie_sieci`), a pkt 5.2 f)
@@ -493,7 +494,195 @@ Dawne „przed” liczyło TOV jako wielokrotność napięcia MIĘDZYFAZOWEGO U_
 wytrzymałość TOV ogranicznika z karty brało jako 1,25·U_c niezależnie od karty; „po” liczy
 U_TOV fazowo i porównuje z wytrzymałością TOV 10 s z karty katalogowej. Detekcja doziemień
 V12.6: wyposażenie przekaźnika bez danych — komplet metod jako dana przyjęta ESTIMATED,
-nastawy startowe z podstawą (praktyka, bez wartości normowej).
+nastawy startowe z podstawą (praktyka, bez wartości normowej). Odcinek 3 zastąpił to (§3.18):
+komplet metod jako wartość robocza rozstrzygał kryterium samym założeniem, więc bez
+wyposażenia kryterium jest nieocenione, a statusy „spełniony/niespełniony” tabeli wyżej są
+rekordami werdyktu wyjaśnialnego.
+
+### 3.18 Odcinek 3: werdykty V12.6 jako rekordy wyjaśnialne, założenia jawne, kasacja mostu doziemienia (B-01)
+
+Rdzeń V12.6 (`v126_academic.py`, wersja `v126-academic-whitebox-1.4`) wystawiał werdykty
+słowem statusu bez wyjaśnienia: `verification_status` izolacji i rozruchu, `safety_status`
+uziomu, `tuning_status` dławika, `relay_support_status` detekcji, `trv_status`, status
+cieplny NER i „PASS/FAIL” walidacji, z progami zaszytymi w kodzie (10 %, 20 %, 15 %, 1,25·U_dop
+dla „wymaga ochrony”). Solver liczy odtąd wyłącznie wielkości; rekordy `OcenaKryterium` /
+`WynikWymagania` buduje `application/analyses/v126_oceny.py` na jedynej granicy wyniku
+(`application/v126_artifacts.py::wynik_v126_dla_powierzchni`, wołanej w
+`enm/canonical_analysis.py::_execute_v126` i w generatorze fixtury). Żadne kryterium V12.6 nie
+ma w programie normy z wydaniem i jednostką redakcyjną, więc progi i reguły są założeniami
+inżynierskimi programu z rejestru §7 (Z-1…Z-12, podstawa `ZALOZENIE_PROJEKTOWE` o stanie
+`WSKAZANE`); każde kryterium stosowalne stoi na danej przyjętej `ESTIMATED` swojego założenia,
+więc kompletność dowodu jest `NIEPELNY` (zasada nr 4, kontrakt werdyktu §3). Zdolności
+`v126.*` mają poziom dowodu w `solver_input/provenance.py` (model niezwalidowany; detekcja —
+deklaracja konfiguracji). Front pokazuje rekordy wyłącznie przez `KartaWerdyktu`
+(`ui2/wyniki/wzorzec`): `PREZENTACJA[...].werdykt = {rodzaj: 'rekordy', sciezka: 'oceny'}`,
+mapy statusu (`ZGODNY`, `SPELNIONY`, `SPELNIONY_IZOLACJI`, `MAPA_DOBORU_UZIEMIENIA`,
+`OCENA_NIEWYKONANA_STATUS`) i werdykt zbiorczy skasowane, 13 wpisów MIGRACJA strażnika werdyktu
+wyjaśnialnego zdjętych (zapadka w dół 252 → 239 wpisów, MIGRACJA 203 → 190).
+
+| Rodzaj | Kryteria (rekord) | Status w fixturze odpowiedzi | Co zmieniono w liczbach |
+|---|---|---|---|
+| koordynacja izolacji | napięcie pracy (Z-1), przepięcie dorywcze (Z-2, `NIE_DOTYCZY` przy doziemieniu długotrwałym), margines BIL (Z-3) | W `BRAK_DOWODU` (Z-1 SPEŁNIA, Z-3 35,71 % ≥ 20 %) | flagi `*_ok`, `verification_status`, `uzasadnienie_pl` zdjęte z wiersza |
+| bezpieczeństwo uziomu | napięcie dotykowe (Z-4), krokowe (Z-5) | W `NIE_SPELNIA` (dotykowe) | uziom bez danych → brak nazwany zamiast uziomu domyślnego ρ = 100 Ω·m, 60 × 40 m, 10 kA; pola liczone wymagane |
+| projekt uziemienia punktu neutralnego | prąd resztkowy (Z-6), energia rezystora (Z-7) | Z-6 `NIE_SPELNIA` (19,87 % > 10 %) | `residual_share_percent` addytywnie; tożsamość sieci także przy jednej sieci |
+| detekcja doziemień | funkcje przekaźnika (Z-8) | `NIE_OCENIONO` (wyposażenie nie wskazane) | metoda złożona 51N+67N / 51N/50N wymaga każdej funkcji (dawniej „+” albo „/” zaliczało przekaźnik bez 67N); „komplet metod” jako wartość robocza skasowany — rozstrzygał kryterium samym założeniem; brak wyposażenia nie blokuje gotowości (zasada nr 4) |
+| napięcie powrotne | obwiednia (IEC 62271-100, stan `NIEUSTALONE`) | `BRAK_PODSTAWY` | obwiednia modelowa (narost do 2·U_r w 88 µs) bez podstawy skasowana; wielkością główną jest szczyt u_TRV = 38,019 kV fixtury; brak tablic u_c, t_3 nazwany |
+| rozruch silników | zapad (Z-9), czas (Z-10), moment (Z-11) | W `BRAK_DOWODU` (zapad 13,946 % ≤ 15 %) | I_n = P_n/(√3·U_n·cos φ_n·η_n) z wartościami roboczymi rejestru maszyn (0,85; 0,95) zamiast 0,9; t_r/t_utyku zamiast k_LR²·t_r/t_utyku (prąd zablokowanego wirnika liczony dwa razy: dawny wskaźnik 14,4 dla silnika z zapasem 0,4); Z_th z macierzy impedancyjnej z Z_Q modelu (bez 0,1 + j0,4 Ω i bez „pierwszej gałęzi zasilającej”); źródło za transformatorem albo brak źródła → brak nazwany |
+| walidacja benchmarkowa | zgodność z wartością odniesienia (Z-12) | `NIE_OCENIONO` (deklaracja) | bieg porównuje dwie liczby podane w danych — rekord nie wystawia werdyktu; dowodem zgodności solvera z pandapower jest odchyłka mierzona w `test_ieee_benchmark_wiring.py` |
+
+Pozostałe pozycje odcinka:
+
+- Zdolność przyłączeniowa: ziarno Monte Carlo jest odciskiem projekcji pól, które analiza
+  czyta (`POLA_HOSTINGU_SZYNY/GALEZI/TRANSFORMATORA`), a obliczenie biegnie na TEJ projekcji
+  (`_projekcja_hostingu` — predykaty parami: pole spoza listy nie wchodzi ani do ziarna, ani
+  do obliczenia; wynik nie może zależeć od danych spoza odcisku). Impedancja zastępcza węzła
+  z tej samej funkcji co rozruch. Fixtura: szyna stacji 7,0 → 7,4 MW, granica krytyczna
+  U_max → I_gałęzi — dwie przyczyny razem: Z_th z macierzy (Z_Q obu szyn i kabel) zamiast
+  podziału mocy zwarciowej jednej szyny oraz nowe ziarno. Test
+  `tests/test_v126_hosting_rng_izolacja.py`: pole nieczytane × {ziarno, wynik} bez zmian,
+  pole czytane zmienia ziarno, obliczenie na projekcji = obliczenie na pełnym wejściu.
+- Niezawodność: wartości robocze λ i czasu odnowy w jednym rejestrze
+  `network_model/catalog/wartosci_robocze.py::PROPOZYCJE_NIEZAWODNOSCI` (linia napowietrzna
+  0,08/(km·rok), 3,5 h; kabel 0,015/(km·rok), 12 h; aparat 0,015/rok, 4 h — założenie
+  inżynierskie bez wartości normowej; IEEE Std 1366 definiuje wyłącznie wskaźniki). Czytają
+  go most ENM (`_NiezawodnoscGalezi` — ta sama klasa podstawia wartość i zbiera daną
+  przyjętą), katalog API `reliability-defaults` (dawna trzecia kopia z wierszem transformatora
+  0,008/rok, 48 h, którego most nie czytał — fantom skasowany) i dane przyjęte wyniku. Projektant
+  zastępuje każdą wartość parametrem `reliability_data` w formularzu analizy (lista „Dane
+  niezawodności elementów”, wybór elementu z modelu). Element bez danej nie wnosi zera — jest
+  nazwany (`elementy_bez_danych_niezawodnosci`). MAIFI = 0,12·SAIFI jako dana przyjęta.
+  Fixtura: SAIFI 0,015 → 0,06/rok, SAIDI 10,8 → 43,2 min/rok — generator fixtury dawał
+  kablowi 4 km domyślne 0,015/rok kontraktu (λ na element, nie na km); teraz wartość robocza
+  mostu 0,015/(km·rok)·4 km, jak w ścieżce API.
+- Kryterium dostrojenia ±10 % (Z-6) i wartości niezawodności są jawnymi założeniami z rejestru
+  §7 i danymi przyjętymi `ESTIMATED` w każdym rekordzie i wyniku.
+- Most doziemienia `application/analyses/earthing/ground_fault_bridge.py` SKASOWANY razem
+  z testem mostu, polami `BayEarthFaultPath.earth_electrode_resistance_ohm` /
+  `earth_return_split_factor` (backend i `types/enm.ts`) i kodem gotowości
+  `earthing.electrode_data_missing` (nigdy nie emitowany; nawigacja naprawy wskazywała
+  nieistniejącą zakładkę). Dowody (rejestr konfliktów V12K-183): 0 konsumentów produkcyjnych;
+  duplikat fizyki analizy `earthing_safety` (I_G = S_f·I_f, GPR = I_G·R_g); „napięcie
+  dotykowe” mostu było napięciem uziomu U_E = I_u·R_u (58 501 V), a I″k1 nie jest prądem
+  doziemnym sieci izolowanej ani kompensowanej. Pakiet dowodowy `EARTHING_GROUND_FAULT_SN`
+  z równaniami `EQ_EARTH_001..003` zostaje — identyfikatory są w `FROZEN_IDS` rejestru równań
+  (kontrakt FROZEN; decyzja o pakiecie należy do architekta). Rejestr gotowości 183 → 182
+  kodów, słownik `READINESS_FIXACTIONS_CANONICAL_PL.md` i fixtura frontu zregenerowane
+  generatorami.
+- Napięcie powrotne zostaje nazwaną luką: rekord `BRAK_PODSTAWY` z brakiem „tabele parametrów
+  obwiedni u_c, t_3 IEC 62271-100 — do wprowadzenia z podstawą (wydanie, tablica)”.
+- Formularz analizy: lista funkcji detekcji = słownik solvera `METODY_DETEKCJI_KOMPLET`
+  (dodane 51N, 67N, 50N — bez nich metoda złożona nie mogła być spełniona; parytet
+  `test_v126_rodzaje_parytet.py::test_funkcje_detekcji_formularza_sa_slownikiem_solvera`);
+  pola cos φ_n i η_n silnika; listy formularza niezależne (`listy` zamiast jednej `lista`).
+  Karta katalogu: `relay_methods` przestał być „wymagany” — parametr wymagany karty musi być
+  warunkiem blokującym gotowości (`test_fixtury_harnessu.py::
+  test_parametr_wymagany_karty_jest_warunkiem_blokujacym_gotowosci`).
+- Bramka odcinka (strażniki przed commitem): ranking zdarzeń niezawodności nie zastępuje
+  ciężkości nieobecnej liczbą (`severity or 0.0` w kluczu sortowania — zdarzenia z ciężkością
+  malejąco, za nimi zdarzenia bez ciężkości; `solver_input_substitute_guard`, test
+  `test_ranking_zdarzen_bez_ciezkosci_za_zdarzeniami_z_ciezkoscia`); przedmiot rekordu uziomu
+  nazwany nazwą z modelu albo jawnym „spoza modelu”, nigdy identyfikatorem stacji
+  (`nazwa_bez_identyfikatora_guard`); oznaczenie silnika `motors[].ref` jest oznaczeniem
+  projektanta (wpis listy dozwolonej strażnika z tą samą podstawą co gotowość V12.6), więc
+  fixtura odpowiedzi niesie oznaczenie inżynierskie „M1”, nie identyfikator maszynowy;
+  klucz wewnętrzny wielkości głównej napięcia powrotnego `u_TRV_max` (dawny `u_TRV,max`
+  liczony przez `ui_math_guard` jako matematyka ASCII; widoczny zapis idzie przez
+  `symbol_latex`), wyjątek strażnika przesunięty na bieżącą linię klucza `Re Z_conv,min`.
+- Bramka odcinka (vitest ekranu analiz i strażniki z CI, 2026-10-30): tekst dla projektanta
+  nie niesie identyfikatorów elementów także w powodach danych przyjętych — dana przyjęta
+  podziału mocy zwarciowej (`v126_academic._dana_przyjeta_podzialu_zrodla`) nazywa szyny
+  nazwą z modelu (dawniej `gpz/8600…/section/001/bus_sn` na ekranie rozruchu), a wartość
+  robocza niezawodności (`_NiezawodnoscGalezi.galaz(ref, nazwa, …)`) — gałęzie nazwą
+  z `enm.nazwy_elementow`; odmowa parametru `reliability_data` jest `OdmowaNazwana`
+  (kod `v126.dane_niezawodnosci_niepoprawne`, zdanie z nazwą elementu, identyfikator i pole
+  w `dane`; `odmowa_bez_identyfikatora_guard`). Przepustowość przyłączeniowa, której
+  impedancja zastępcza stoi na podziale roboczym mocy zwarciowej, niesie tę samą daną
+  przyjętą w wyniku (`dane_przyjete`, dawniej gubiona — zasada nr 4); nazwy z pełnego
+  wejścia, bo projekcja czytanych pól ich nie niesie (nazwa nie porusza ziarna Monte Carlo).
+  Liczby danych przyjętych na ekranach analiz i panelu uziemienia stacji w zapisie polskim
+  (`wielkoscPl`, jak karta werdyktu; dawniej surowy zapis JS „17.5 kV”, „0.000088 S/km”).
+  Strażnik prezentacji sprawdza także podpowiedzi (`title`) regułą surowej referencji.
+  Niezmiennik „założenie z progiem” ma jedno źródło (`ZalozenieKryterium.granica`, asercja
+  błędu programu; katalog czyta próg z niego) — `polykanie_wyjatkow_guard` bez nowych
+  `raise ValueError`. Zostaje świadomie: komunikat „Szyna silnika {ref} nie należy do
+  modelu” — szyny spoza modelu nie ma czym nazwać poza oznaczeniem podanym w danych
+  silnika (formularz wybiera szynę z listy modelu, więc ścieżka dotyczy wyłącznie wejścia
+  API spoza formularza).
+- E2E po bramce odcinka (`wyniki-jezyk-inzyniera.spec.ts`, prawdziwy backend, 2026-10-30):
+  opis odnośnika śladu kryterium wklejał liczby surowo — „wynik None %, limit 15.0 % (Z-9)”
+  przy rozruchu bez impedancji zasilania szyny i „szczyt napięcia powrotnego: None kV”.
+  Liczby śladu idą przez `werdykt.format_wielkosc` (`v126_oceny._wielkosc_sladu`), brak
+  wyniku nazywa „nie wyznaczono”. Test klasy `test_teksty_rekordow_bez_surowego_zapisu_pythona`
+  — iloczyn rodzaj × {z obiektami, bez obiektów, obiekty bez wyniku liczbowego} × każdy tekst
+  rekordu i składowych (`*_pl`, braki, zastrzeżenia): bez literałów `None/True/False/nan/inf`,
+  opis śladu bez kropki dziesiętnej. Znalezisko przy przeglądzie wzorca w innych ekranach:
+  fikstura okna „Kontyngencje N-1”, deklarowana jako przepisana z odpowiedzi backendu,
+  niosła teksty sprzed polskiego zapisu liczb („Obciazenie 134.74 % przekracza limit
+  100.0 %.”, „Brak pradu galezi w wynikach PF.”, skrócone źródła progów) — przepisana ze
+  zrzutu buildera i przypięta testem backendu
+  `test_fikstura_ekranu_niesie_teksty_aktualnej_odpowiedzi_backendu` (każdy tekst kryteriów,
+  zdanie i ślad WHITE BOX przekroczenia, powód pominięcia i wykluczenia — znak w znak).
+- Fixtura odpowiedzi V12.6 (`generuj_odpowiedzi_v126.py`) ćwiczy dane, które czyta solver:
+  uziom z pełnymi danymi projektanta (dawniej puste `earthing` liczone domyślnymi), silnik
+  w polu `motors` (dawny `parameters["motors"]` był martwy — tabela rozruchu była pusta),
+  niezawodność kabla z mostu.
+
+Sonda B-01 (fixtura odpowiedzi 14 rodzajów, `HEAD` ↔ po odcinku, różnica pól liściowych poza
+`oceny`): zmienione wyłącznie rodzaje z tabeli wyżej oraz zdolność przyłączeniowa
+i niezawodność; `opf_loss_lcc`, `ssci_impedance`, `uncertainty_sensitivity`,
+`voltage_stability` — 0 zmian; jakość energii — zdjęte `compatibility_status` węzłów (już
+`NIE_OCENIONO`). Odcisk rdzenia odświeżony (`solver_diff_guard --init`), sankcja w
+`solver_boundary_guard`.
+
+### 3.19 Pojemności linii w składowej zerowej: warunek k > 1,4 (IEC 60909-0 pkt 5.2 f), B-01)
+
+Do odcinka 3 bocznik pojemności doziemnej wchodził do macierzy Y0 zwarć bezwarunkowo z B′0
+modelu, a B′0 roboczy nie wchodził nigdy — dwa predykaty dla jednej fizyki. Teraz jeden warunek
+dla obu źródeł danej (`enm/mapping.py::_warunek_pojemnosci_zerowej`, podstawa i próg w
+`network_model/solvers/doziemienie_sn.py`: `PROG_WSPOLCZYNNIKA_ZWARCIA_DOZIEMNEGO = 1,4`,
+`wspolczynnik_zwarcia_doziemnego`, `pojemnosci_w_skladowej_zerowej`):
+
+1. każda gałąź z B′0 > 0 (model albo wartość robocza `skladowa_zerowa_galezi`) jest kandydatem;
+   B′0 < 0 — odmowa nazwana; B′0 = 0 albo nieznane bez podstawy wartości roboczej — kandydata
+   nie ma;
+2. dla każdej sieci zerowej (składowej spójnej Y0) z kandydatami k liczony jest w węzłach
+   liczonych zwarciem IEC 60909 (bez przyczyny braku wyniku zerowego, czyli w sieci uziemionej
+   przez małą impedancję) z Z1 sieci zwarciowej i Z0 złożonego BEZ pojemności:
+   k = max(|a² − (Z0 − Z1)/(2Z1 + Z0)|, |a − (Z0 − Z1)/(2Z1 + Z0)|), Z2 = Z1 (IEC 60071-1),
+   zaokrąglony do 6 miejsc;
+3. max k > 1,4 ⇒ bocznik jB0·ℓ (π, po połowie na końce) wchodzi dla WSZYSTKICH kandydatów
+   tej sieci; inaczej — dla żadnego. Sieć izolowana i skompensowana nie ma węzła liczonego
+   (poza zakresem normy, rozdz. 1), więc pojemności do Y0 zwarć nie wchodzą.
+
+Ślad WHITE BOX sieci zerowej: krok `z0_warunek_pojemnosci[n]` (gałęzie z B0·ℓ i źródłem danej
+`model`/`wartosc_robocza`, węzły z Z1, Z0 i k, próg, wynik `{k_max, pojemnosci_w_y0}`,
+podstawa normowa w notach) i — gdy pojemności weszły — `z0_line_shunt[ref]` z notą wartości
+roboczej. B′0 roboczy, który wszedł do Y0, jest daną przyjętą `ESTIMATED` wiersza 1F/2FG
+(`SiecZerowa.b0_robocze` → `WynikSieciZerowej.b0_robocze` → `zalozenia_z0_galezi(...,
+b0_galezi=...)` w `enm/assembler.py` i w danych przyjętych węzła
+`enm/dane_przyjete_galezi.py::dane_przyjete_wezla`; jeden rekord gałęzi niesie R′0/X′0 i B′0).
+Pojemność zostaje rodzajem bocznika klasyfikacji drogi zerowej (sieć z samą pojemnością —
+`poza_zakresem_iec60909`, bez niej — `brak_drogi`), ale nie domyka macierzy: kotwica numeryczna
+obejmuje składowe bez bocznika innego niż pojemność (`_przyczyny_braku_zerowej`).
+
+Sonda B-01 (parytet assemblera, 366 wpisów rejestru, stan `HEAD` ↔ po odcinku, klucz po
+kluczu): 0 zmian liczb, 0 zmian „liczba → brak liczby”; G16 i G17 (sieci uziemione
+bezpośrednio, k 0,96–1,23) bez zmian — pojemności ich linii jak dotąd nie wchodzą. Zmieniają
+się wyłącznie sieci uziemione przez rezystor z k > 1,4, których rejestr nie zawiera; w
+testach: magistrala SN z B′0 roboczym (kabel B′0 = B′1, linia 0,4·B′1, 1,5 + 3,5 km) —
+k_max: punkt neutralny bezpośrednio 1,452, rezystor 1,742, uzwojenie TR z rezystorem 1,743
+(B′0 wchodzi), uzwojenie TR uziemione bezpośrednio 1,262 (nie wchodzi; 1,426 przy 1,5 + 3,5 km,
+stąd długości 0,5 + 0,5 km w wariancie k ≤ 1,4), dławik i izolowany — brak węzła liczonego;
+kabel 10 km z B0 = 3·10⁻⁶ S/km za TR Dyn11: punkt neutralny bezpośrednio k = 1,257 (nie
+wchodzi), rezystor 40 Ω k = 1,744 (wchodzi, Z0 węzła z wyrocznią ręczną π). Rdzeń IEC 60909
+(`short_circuit_iec60909.py`, `short_circuit_core.py`) bez zmian — zmienia się wyłącznie jego
+wejście Z0-bus. Fikstury harnessu (`skladowe_scena_wynik`, `skladowe_scena_slad`)
+przeliczone generatorem: zmiana noty `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`,
+a w śladzie sieci zerowej sceny krok `z0_line_shunt[cab_main_b]` zastąpiony krokiem
+`z0_warunek_pojemnosci[1]` (kabel B0 modelu i linia B0 roboczy, brak węzła liczonego — sieć
+złota SN izolowana, pojemności poza Y0) oraz krokiem `z0_numerical_reference` (trzy węzły SN
+domknięte kotwicą zamiast dawnego bocznika pojemności). Wiersze wyniku (`rows`) identyczne
+z poprzednią fiksturą (porównanie JSON), zmienia się wyłącznie `result_hash`, bo obejmuje ślad.
 
 ## 4. Iloczyn testów
 
@@ -589,6 +778,59 @@ Odcinek 2 karty (B′0, TRV, przewód N, D31, sposób pracy punktu neutralnego):
   werdykt rozstrojenia z fixtury), `ui2/wyniki/stan-fazowy/__tests__/ekranStanuFazowego.test.tsx`
   (przewód N), `StationEarthingPanel.test.tsx` (doziemienie trybu w konfiguratorze stacji).
 
+Odcinek 3 karty (rekordy werdyktu V12.6, założenia jawne, ziarno przepustowości, niezawodność):
+
+- `tests/application/analyses/test_v126_oceny_klasa.py` — KLASA rekordów: rodzaj
+  {7 rodzajów `RODZAJE_Z_OCENAMI`} × bieg {z obiektami oceny, bez obiektów: bez
+  ograniczników, uziomu, silników, wyposażenia przekaźnika, odniesień, parametrów TRV,
+  uziemienia} × każdy rekord i składowa → etykieta i zdanie z backendu, podstawa z rejestru
+  (`§ Z-n`, `WSKAZANE`) z daną przyjętą `ESTIMATED` założenia albo norma TRV `NIEUSTALONE`,
+  kompletność `NIEPELNY` (`NIE_DOTYCZY` dla kryterium niestosowalnego), identyfikatory
+  unikalne; brak obiektu nigdy `SPELNIA`; determinizm; zdanie bez identyfikatora modelu;
+  zbiór rodzajów z rekordami = rejestr rodzajów; trzeci wariant biegu {obiekty bez wyniku
+  liczbowego: silnik na szynach bez mocy zwarciowej i impedancji zasilania} × każdy tekst
+  rekordu → bez literałów Pythona (`None/True/False/nan/inf`), opis śladu w zapisie polskim;
+- `tests/test_v126_rozruch_silnika.py` — tabliczka {cos φ_n, η_n podane, brak} × źródło {Z_Q
+  modelu, moc zwarciowa} × szyna {źródłowa, za kablem} z wyrocznią I_n, I_r, Z_th, ΔU, M_r;
+  źródło {brak, za transformatorem} → brak nazwany; t_r {<, =, >} t_utyku; M_r {≥, <} M_obc;
+  dane przyjęte ⇔ wartość robocza; pola wymagane; determinizm; konsument impedancji
+  zastępczej {rozruch, przepustowość} × źródło {Z_Q modelu, moc zwarciowa} × węzeł
+  {źródłowy, za kablem} z identyfikatorami szyn w postaci mostu ENM → dana przyjęta
+  podziału ⇔ moc zwarciowa, nazwana nazwą szyny, bez identyfikatora;
+- `tests/solver_input/test_v126_niezawodnosc_dane.py` — rodzaj gałęzi {linia, kabel, aparat}
+  × dane projektanta {brak, λ, czas odnowy, oba} × długość {znana, brak} → wartość i dana
+  przyjęta (dana ⇔ wartość robocza, powód z nazwą gałęzi, bez identyfikatora); parametr
+  {nie-słownik, ujemny, logiczny, tekst} × element {w modelu z nazwą, spoza modelu} →
+  `OdmowaNazwana` z nazwą w zdaniu i identyfikatorem w `dane`; most ENM × {bez parametru, kabel projektanta}; solver × element {z danymi,
+  bez danych} z wyrocznią SAIFI/SAIDI/MAIFI (IEEE Std 1366); katalog API = rejestr;
+- `tests/test_v126_hosting_rng_izolacja.py` — pole kontraktu {każde pole szyny, gałęzi,
+  transformatora i parametru} × {czytane, nieczytane} → ziarno i wynik (zbiory zmian pokrywają
+  każde pole kontraktu); obliczenie na projekcji = na pełnym wejściu;
+- izolacja, uziom, uziemienie, TRV, detekcja: testy wyroczni po rodzajach przepisane na
+  rekordy (`test_v126_izolacja_tryby_punktu_neutralnego.py`, `test_v126_bil_parytet.py`,
+  `test_v126_neutral_earthing_design.py` — udział I_res/I_C {poniżej, na granicy, powyżej
+  10 %}, `test_v126_ner_cieplo_zu.py`, `test_v126_trv_parametry.py`,
+  `test_v126_uziemienie_z_modelu.py` — tryb {izolowany, dławik, rezystor, bezpośredni} ×
+  wyposażenie {brak, watometryczna, sam 51N, 51N z 67N, 51N z 50N} z wyrocznią tabeli Z-8); `tests/test_v126_katalog_analiz.py` — progi karty z rejestru,
+  rejestr dokumentu §7 = rejestr kodu; `tests/ci/test_fixtury_harnessu.py` — parametr wymagany
+  karty ⇒ warunek blokujący gotowości; `tests/ci/test_v126_rodzaje_parytet.py` — funkcje
+  detekcji formularza = słownik solvera, listy formularza = listy zestawu;
+- front: `EkranAnalizAkademickich.test.tsx` (karta rekordu z fixtury dla każdego rodzaju,
+  rekord bez wyjaśnienia odfiltrowany → „brak werdyktu”, lista danych niezawodności z wyborem
+  elementu modelu i ładunkiem `reliability_data`), `parametry.test.ts` (iloczyn wierszy
+  niezawodności: pełny, jedna wielkość, ten sam element dwa razy, wiersz pusty, lista spoza
+  zestawu), `prezentacja.straznik.test.tsx` (każde pole fixtury prezentowane albo nazwane).
+- warunek pojemności zerowej (§3.19): `tests/enm/test_zero_sequence_transformer.py::
+  TestLineShuntCapacitanceZ0` — punkt neutralny {rezystor 40 Ω, bezpośrednio, izolowany} × B′0
+  {3·10⁻⁶ S/km, 0, brak} z wyrocznią ręczną k i Z0 węzła (π), B′0 ujemne → odmowa, sieć nN IT
+  × B′0 {jest, 0, brak} → przyczyna `poza_zakresem_iec60909`/`brak_drogi` i kotwica;
+  `tests/enm/test_b0_wartosc_robocza_odcinka.py` — tryb sieci {bezpośrednio, rezystor,
+  uzwojenie TR, uzwojenie TR bezpośrednio, dławik, izolowany} × źródło B′0 {model, wartość
+  robocza} × skala B′1 (`test_bocznik_y0_zwarc_z_warunku_pojemnosci`, wyrocznia k z Y0 bez
+  pojemności), zbiór danych przyjętych B′0 = zbiór gałęzi z wartością roboczą w Y0 (assembler
+  i dane przyjęte węzła), determinizm śladu; `test_v126_niezawodnosc_dane.py` — ranking
+  zdarzeń z ciężkością i bez (ciężkość nieobecna nie jest zastępowana liczbą).
+
 ## 5. Iniekcje (test czerwony bez naprawy)
 
 | Iniekcja | Wynik |
@@ -637,6 +879,33 @@ Odcinek 2 karty (B′0, TRV, przewód N, D31, sposób pracy punktu neutralnego):
 | Tryby: rezystor bez I_C (`i_metal = I_N` w trybie rezystorowym) | 26 czerwonych z 280: wyrocznie rezystora i Z.14, Z_f, 9 przypadków iloczynu, 6 testów V12.6 rezystora z modelu, 5 testów doboru NER |
 | Tryby: I_L odjęte bez I_w (część czynna I_N zdjęta w trybie kompensowanym) | 17 czerwonych z 280: wyrocznie I_res × udział I_L/I_C, AWSC załączony, Z_f, 9 przypadków iloczynu, test AWSC i Z_0,TU projektu dławika V12.6 |
 | Tryby: Z_0,TU / Z_T0 pominięte (`I_N = Σ U_f/Z_N`) | 35 czerwonych z 280: 18 przypadków iloczynu, wyrocznie trzech trybów, Z_f, 6 testów V12.6 rezystora z modelu, 2 testy V12.6 z impedancją transformatora uziemiającego |
+
+Odcinek 3 (każda iniekcja zmieniała plik źródłowy; po niej plik przywrócono i porównano
+bajtowo z kopią):
+
+| Iniekcja | Wynik |
+|---|---|
+| Rozruch: wskaźnik k_LR²·t_r/t_utyku zamiast t_r/t_utyku | 11 czerwonych z 17 (`test_v126_rozruch_silnika.py`) |
+| Rozruch: I_n z 0,9 zamiast cos φ_n·η_n | 8 czerwonych z 17 |
+| Rozruch: Z_th = Z_Q szyny źródłowej (bez sieci do węzła silnika) | 4 czerwone z 17 |
+| Rekordy: kryterium bez danej przyjętej założenia (`_ocena`) | 10 czerwonych z 24 (`test_v126_oceny_klasa.py`) |
+| Rekordy: rozruch bez silników → pusta lista rekordów | 1 czerwony z 24 |
+| Rekordy: detekcja bez danej przyjętej Z-8 przy braku wyposażenia (stan sprzed poprawki) | 2 czerwone z 24 — defekt znaleziony testem klasy, naprawiony u źródła (`oceny_detekcji`) |
+| Detekcja: metoda złożona wymaga tylko pierwszej funkcji (`SKLADNIKI_METODY_DETEKCJI[...][:1]`) | 8 czerwonych z 20 (`test_detekcja_doziemien_dane_przyjete_przekaznika`) |
+| Rejestr: próg Z-6 10 % → 12 % tylko w kodzie | 8 czerwonych: parytet dokumentu §7, progi karty z rejestru, 6 wyroczni prądu resztkowego |
+| Karta katalogu: `relay_methods` „wymagany” przy warunku nieblokującym | 2 czerwone (`test_parametr_wymagany_karty_jest_warunkiem_blokujacym_gotowosci`, `test_gotowosc_z_parametrami_rozni_sie_od_gotowosci_bez_parametrow`) |
+| Warunek k: bocznik B0 zawsze w Y0 (`wchodzi = True`) | 6 czerwonych z 242 (m.in. `test_b0_w_y0_wylacznie_przy_k_powyzej_progu[bezposrednie-b0]`, `[izolowany-b0]`) |
+| Warunek k: bocznik B0 nigdy w Y0 (`wchodzi = False`) | 17 czerwonych z 242 (m.in. `[rezystor-b0]`, determinizm śladu) |
+| B′0 roboczy poza kandydatami (dwa predykaty: model wchodzi, wartość robocza nie) | 11 czerwonych z 242 |
+| Assembler bez `b0_galezi` (B′0 roboczy w Y0 bez danej przyjętej wiersza) | 3 czerwone z 242 (`test_bocznik_y0_zwarc_z_warunku_pojemnosci[rezystor]`, `[uzwojenie_tr]`) |
+| Dane przyjęte węzła bez `b0_galezi` | 1 czerwony z 242 (`test_dane_przyjete_wielkosci_z_modelu_niosa_b0_z_macierzy_y0[k_powyzej_progu]`) |
+| Kotwica wg dawnej reguły (pojemność liczona jako bocznik domykający) | 3 czerwone i 30 błędów z 242 (osobliwa macierz sieci izolowanej) |
+| Pojemność poza klasyfikacją drogi zerowej | 1 czerwony z 245 (`test_siec_nn_izolowana_pojemnosc_klasyfikuje_droge_zerowa[b0]` — test dopisany, bo bez niego iniekcja przechodziła) |
+| Dana przyjęta podziału mocy zwarciowej z identyfikatorami szyn zamiast nazw | 4 czerwone z 25 (`test_dana_przyjeta_podzialu_zrodla_nazwana_nazwa_szyny[…moc_zwarciowa…]`) |
+| Przepustowość bez danej przyjętej podziału mocy zwarciowej (`if False`) | 2 czerwone z 25 (`[…moc_zwarciowa-hosting_capacity]`) |
+| Fixtura odpowiedzi: identyfikator gałęzi w powodzie wartości roboczej niezawodności | strażnik prezentacji czerwony (`surowaReferencjaWPodpowiedziach`, rodzaj `reliability_contingency`); fixtura przywrócona i porównana bajtowo |
+| Opis śladu kryterium z surowym zapisem liczb (`{p.wynik} {p.jednostka}`, `{szczyt} kV`) | 19 czerwonych z 46 (`test_teksty_rekordow_bez_surowego_zapisu_pythona[motor_starting-bez_wyniku_liczbowego]` i 17 innych, `test_rozruch_bez_impedancji_zasilania_nazywa_brak_wyniku_w_sladzie`) |
+| Fikstura okna kontyngencji w wersji sprzed przepisania (HEAD) | `test_fikstura_ekranu_niesie_teksty_aktualnej_odpowiedzi_backendu` czerwony |
 
 Iniekcje trybów w testach (monkeypatch w `test_doziemienie_tryby_punktu_neutralnego.py`,
 `test_v126_izolacja_tryby_punktu_neutralnego.py::test_iniekcja_k_rezystora_jak_bezposrednie`)
@@ -728,8 +997,8 @@ panelu uziemienia stacji typowana (`as const` łamał bramkę typów testów); w
 matematyki ASCII przesunięty z linią (`v126_katalog.py:453` → `:458`); dwa wpisy MIGRACJA
 strażnika werdyktu wyjaśnialnego przeniesione z ładunkiem do nowych funkcji (`_wiersz_izolacji`,
 `_ner_thermal`) bez zmiany klasy — wiersz izolacji niesie `uzasadnienie_pl` każdego kryterium,
-pełna migracja ocen V12.6 do `OcenaKryterium` pozostaje pozycją planu §8 kontraktu werdyktu
-(203 wpisy MIGRACJA, właściciel migracji poza tą kartą); dwa testy przyczyny sieci izolowanej
+pełna migracja ocen V12.6 do `OcenaKryterium` wykonana w odcinku 3 (§3.18: 13 wpisów V12.6
+zdjętych, 190 wpisów MIGRACJA innych dziedzin zostaje w planie §8 kontraktu werdyktu); dwa testy przyczyny sieci izolowanej
 przepisane do kanonu (§5).
 
 Znaleziska zgłoszone, nienaprawione w tej karcie (z uzasadnieniem):
@@ -743,7 +1012,8 @@ Znaleziska zgłoszone, nienaprawione w tej karcie (z uzasadnieniem):
   zamknięcie wymaga wprowadzenia tablic normy z wydaniem i jednostką redakcyjną (decyzja
   architekta o źródle tablic). Obwiednia TRV `_transient` (wzór jednoczęstotliwościowy) nie ma
   w kodzie podstawy normowej — zgłoszone razem z tablicami.
-- Hosting capacity V12.6: ziarno Monte Carlo jest odciskiem CAŁEGO modelu wejściowego
+- (Naprawione w odcinku 3, §3.18 — ziarno z projekcji pól czytanych.) Hosting capacity
+  V12.6: ziarno Monte Carlo jest odciskiem CAŁEGO modelu wejściowego
   (mechanizm karty HOSTING-RNG-IZOLACJA, jawny w śladzie `seed_model`), więc zmiana pola bez
   związku z hosting (tu: wiersz izolacji w fixturze `generuj_odpowiedzi_v126.py`) zmienia
   wynik fixtury 7,7 → 7,0 MW przy n = 64 losowań. Determinizm (to samo wejście → ten sam wynik)
@@ -753,9 +1023,10 @@ Znaleziska zgłoszone, nienaprawione w tej karcie (z uzasadnieniem):
 - Model dwóch sekcji przy otwartym sprzęgle: sekcja 2 bez zespołu nie ma pojemności własnych
   odcinków w teście iloczynu (odcinki są w sekcji 1), więc jej wiersz to brak nazwany zerowej
   pojemności, nie liczba — zachowanie poprawne, odnotowane jako granica iloczynu.
-- `ground_fault_bridge` (most doziemienia V12.6) nie ma konsumenta w ścieżce użytkownika;
-  kryterium dostrojenia ±10 % i wartości domyślne niezawodności V12.6 są praktyką bez
-  przywołanej normy — zgłoszone, bez zmian w tej karcie.
+- `ground_fault_bridge` (most doziemienia V12.6) bez konsumenta — SKASOWANY w odcinku 3
+  (§3.18); pakiet dowodowy `EARTHING_GROUND_FAULT_SN` zostaje, bo jego identyfikatory równań
+  są w `FROZEN_IDS` (decyzja architekta). Kryterium dostrojenia ±10 % i wartości robocze
+  niezawodności — jawne założenia rejestru §7 i dane przyjęte `ESTIMATED` (§3.18).
 - Rozpływ niesymetryczny: odbiór faza–N w sieci SN za YNd11 dostaje odmowę „brak drogi I0"
   także przy zespole uziemiającym, bo solver BFS (FROZEN) nie ma boczników. Sieci SN
   nie zasilają odbiorów faza–N (odbiory SN to transformatory SN/nN i odbiory trójfazowe),
@@ -778,3 +1049,36 @@ wejście (typ pochodzi z `uziemienie_sieci` przez `audit2_skladanie`); `der_prot
 czyta `neutral_grounding_mode` z faktów pola, które wyprowadza `_fakty_pola_wytworcy` z tej
 samej prawdy. Biegi scenariuszowe liczą wyłącznie węzeł zwarcia (konstrukcja istniejąca,
 nie defekt tej karty).
+
+## 7. Rejestr założeń inżynierskich kryteriów analiz specjalistycznych (Z-1…Z-12)
+
+Dokument podstawy rekordów oceny V12.6 (wydanie 2026-10-29, jednostka redakcyjna „§ Z-n”,
+stan `WSKAZANE`):
+„Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”. Jedno źródło w kodzie: `application/analyses/v126_oceny.py::REJESTR_ZALOZEN` —
+z niego biorą progi rekordy oceny, karta katalogu analiz (`v126_katalog.py`, „podstawa oceny”)
+i dane przyjęte. Żadne założenie nie jest wartością normową: praktyka, z której pochodzi, jest
+nazwana w kolumnie „Praktyka”, a wydanie i jednostka redakcyjna normy nie są potwierdzone
+w programie. Zmiana progu albo reguły to zmiana tej tabeli i rejestru w kodzie naraz — parytet
+pilnuje `tests/test_v126_katalog_analiz.py::test_rejestr_zalozen_dokumentu_rowny_rejestrowi_kodu`.
+
+| Paragraf | Kryterium | Treść | Próg | Praktyka |
+|---|---|---|---|---|
+| Z-1 | napięcia trwałej pracy ogranicznika | U_c ogranicznika nie mniejsze od wymaganego: przy doziemieniu długotrwałym (sieć izolowana i kompensowana) U_c,wym = U_TOV, przy doziemieniu wyłączanym U_c,wym = U_m/√3. | — | Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-2 | wytrzymałości ogranicznika na przepięcie dorywcze | Przy doziemieniu wyłączanym samoczynnie wytrzymałość ogranicznika na przepięcie dorywcze 10 s nie mniejsza od U_TOV; zakłada się wyłączenie doziemienia w czasie nie dłuższym niż 10 s (dłuższy czas wymaga krzywej TOV(t) producenta). | 10 s | Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-3 | marginesu ochrony izolacji | Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. | 20 % | Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-4 | napięcia dotykowego rażeniowego | Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-5 | napięcia krokowego | Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-6 | prądu resztkowego sieci kompensowanej | Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. | 10 % | Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej. |
+| Z-7 | obciążalności cieplnej rezystora punktu neutralnego | Energia wydzielona w rezystorze w czasie wyłączenia doziemienia E_k = I_th²·R·t_wył nie większa od energii znamionowej E_n = I_n²·R·t_n (kryterium adiabatyczne). | — | Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
+| Z-8 | dostępności metody detekcji doziemień | Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. | — | Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej. |
+| Z-9 | zapadu napięcia przy rozruchu | Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. | 15 % | Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora. |
+| Z-10 | czasu rozruchu | Czas rozruchu nie dłuższy od dopuszczalnego czasu utyku silnika (czas podany przy prądzie zablokowanego wirnika). | — | Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika. |
+| Z-11 | momentu rozruchowego | Moment rozruchowy silnika (wzór Klossa przy poślizgu s = 1, napięcie znamionowe) nie mniejszy od momentu obciążenia przy rozruchu. | — | Warunek ruszenia napędu — bez wartości normowej. |
+| Z-12 | zgodności z wartością odniesienia | Odchyłka wyniku od wartości odniesienia nie większa od tolerancji podanej z tą wartością. | — | Tolerancja jest daną odniesienia biegu (sieć odniesienia), nie wartością normową. |
+
+Poziom dowodu zdolności (`solver_input/provenance.py`, `audit_ref` „§7 (odcinek 3)”):
+koordynacja izolacji, bezpieczeństwo uziomu, projekt uziemienia punktu neutralnego, napięcie
+powrotne, rozruch silników i walidacja benchmarkowa — model niezwalidowany
+(`UNVALIDATED_MODEL`, obliczenie statyczne); detekcja doziemień — deklaracja konfiguracji
+(`DECLARATION`, porównanie zbiorów funkcji bez symulacji zjawiska). Żadna z tych zdolności nie
+jest dowodem regulacyjnym.

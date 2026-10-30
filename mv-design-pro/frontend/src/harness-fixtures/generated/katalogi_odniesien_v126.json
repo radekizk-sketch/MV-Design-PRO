@@ -85,12 +85,7 @@
         "mttr_h": 12.0
       },
       {
-        "element": "transformator_sn_nn",
-        "lambda_per_year": 0.008,
-        "mttr_h": 48.0
-      },
-      {
-        "element": "pole_sn",
+        "element": "aparat_sn",
         "lambda_per_year": 0.015,
         "mttr_h": 4.0
       }

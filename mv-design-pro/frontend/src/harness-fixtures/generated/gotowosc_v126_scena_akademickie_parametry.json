@@ -377,7 +377,7 @@
           "opis_pl": "Metody detekcji dostępne w przekaźniku wskazane przez projektanta",
           "spelniony": true,
           "elementy": [],
-          "blokujacy": true,
+          "blokujacy": false,
           "klucz_parametru": "relay_methods"
         }
       ],

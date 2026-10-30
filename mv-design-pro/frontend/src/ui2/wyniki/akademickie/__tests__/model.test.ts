@@ -233,21 +233,32 @@ describe('danePrzyjeteWyniku — dane przyjęte z odpowiedzi solvera', () => {
     ),
   ) as Record<string, unknown>;
 
-  it('koordynacja izolacji: dobór wstępny ogranicznika z wierszy `arresters[]` z jednostką', () => {
+  // Zmiana kanonu (odcinek 3 karty ZU, §3.18): kryteria V12.6 stoją na założeniach rejestru
+  // Z-1…Z-12, a każde założenie jest daną przyjętą ESTIMATED rekordu oceny — panel zbiera
+  // je razem z danymi przyjętymi wierszy (wartości robocze doboru wstępnego).
+  it('koordynacja izolacji: dobór wstępny ogranicznika z wierszy `arresters[]` z jednostką i założenia kryteriów', () => {
     const dane = danePrzyjeteWyniku(ODPOWIEDZI.insulation_coordination);
     expect(dane.map((d) => d.nazwa)).toEqual([
       'Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)',
       'Napięcie znamionowe ogranicznika U_r (dobór wstępny)',
       'Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)',
+      'Kryterium napięcia trwałej pracy ogranicznika (Z-1 rejestru założeń)',
+      'Kryterium marginesu ochrony izolacji (Z-3 rejestru założeń)',
     ]);
-    expect(dane[0]!.wartosc).toBe('17.5 kV');
+    // Zapis liczby po polsku (ten sam co karta werdyktu), nie surowy zapis JS „17.5".
+    expect(dane[0]!.wartosc).toBe('17,5 kV');
     dane.forEach((d) => expect(d.powod.length).toBeGreaterThan(0));
   });
 
-  it('detekcja doziemień: dana przyjęta bez wartości liczbowej (komplet metod przekaźnika)', () => {
+  // Zmiana kanonu (§3.18): „komplet metod przekaźnika" jako wartość robocza skasowany —
+  // rozstrzygał kryterium samym założeniem. Zostaje założenie kryterium Z-8 bez liczby.
+  it('detekcja doziemień: dana przyjęta bez wartości liczbowej (założenie kryterium Z-8)', () => {
     const dane = danePrzyjeteWyniku(ODPOWIEDZI.earth_fault_detection);
     expect(dane).toEqual([
-      expect.objectContaining({ nazwa: 'Metody detekcji dostępne w przekaźniku', wartosc: null }),
+      expect.objectContaining({
+        nazwa: 'Kryterium dostępności metody detekcji doziemień (Z-8 rejestru założeń)',
+        wartosc: null,
+      }),
     ]);
   });
 
@@ -262,6 +273,10 @@ describe('danePrzyjeteWyniku — dane przyjęte z odpowiedzi solvera', () => {
       sieci: [{ dane_przyjete: [dana(1)] }, { gleboko: { dane_przyjete: [dana(2)] } }],
     };
     expect(danePrzyjeteWyniku(ladunek).map((d) => d.wartosc)).toEqual(['1 S/km', '2 S/km']);
+    // Mała wartość B′0 po polsku, bez notacji wykładniczej i bez kropki dziesiętnej.
+    expect(danePrzyjeteWyniku({ dane_przyjete: [dana(0.0000012)] })[0]!.wartosc).toBe(
+      '0,0000012 S/km',
+    );
     expect(danePrzyjeteWyniku({ wynik: 1 })).toEqual([]);
   });
 });

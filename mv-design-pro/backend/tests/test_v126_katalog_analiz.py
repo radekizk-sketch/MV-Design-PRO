@@ -14,9 +14,9 @@ modułu (reguła KLASA §4: „deklaracja bez testu = fałszywa pewność"):
     testuje TREŚĆ katalogu, nie parytet z frontem (reużycie parsera frontu
     importem, nie kopią — zero drugiego źródła prawdy o wycofaniach);
   * kolejność prezentacji katalogu i grup;
-  * literały progów normatywnych katalogu są liczbami rzeczywiście stosowanymi
-    przez solver FROZEN (`network_model/solvers/v126_academic.py`, B-01 — nie
-    edytujemy go) — inaczej katalog cytowałby normę, której solver nie stosuje;
+  * progi kryteriów katalogu pochodzą z rejestru założeń inżynierskich
+    (`application/analyses/v126_oceny.py::REJESTR_ZALOZEN`), źródło nazywa paragraf
+    założenia, a solver nie niesie już literałów werdyktów (jedno źródło progu);
   * kontrakt `to_dict()` (pin kluczy dla frontu);
   * `katalog_odniesienia` wskazuje realną przestrzeń nazw `GET /api/catalog/v126/{ns}`;
   * każdy parametr projektanta (`od_uzytkownika[].klucz`) jest naprawdę czytany
@@ -33,16 +33,6 @@ from application.analyses import v126_katalog
 from application.analyses.v126_katalog import (
     KATALOG_ANALIZ_V126,
     KOLEJNOSC_GRUP,
-    KROTNOSC_OCHRONY_DODATKOWEJ,
-    MARGINES_BIL_MIN_PROCENT,
-    MARGINES_TRV_MIN_PROCENT,
-    PRAD_RESZTKOWY_MAX_UDZIAL_IC,
-    TDD_IEEE519_PROCENT,
-    THD_U_IEEE519_PROCENT,
-    THD_U_PNEN50160_PROCENT,
-    UDZIAL_2H_BLOKADA_87T_PROCENT,
-    WSKAZNIK_CIEPLNY_ROZRUCHU_MAX,
-    ZAPAD_ROZRUCHU_MAX_PROCENT,
     grupy_do_dict,
     karta_analizy,
     katalog_do_dict,
@@ -187,62 +177,96 @@ def test_grupy_do_dict_zawiera_wylacznie_grupy_z_karta_prezentowana_raz() -> Non
 
 
 # ---------------------------------------------------------------------------
-# Literały progów — parytet z solverem FROZEN (B-01: nie edytujemy solvera)
+# Progi kryteriów — jedno źródło: rejestr założeń inżynierskich (v126_oceny)
 # ---------------------------------------------------------------------------
 
-#: (nazwa stałej katalogu, oczekiwana wartość, fragment tekstu solvera FROZEN).
-#: Fragmenty ustalone RĘCZNIE odczytem `network_model/solvers/v126_academic.py`
-#: (karta B02-BE-TESTY §2) — solver zapisuje część progów jako BARE INT
-#: (bez „.0": `margin >= 20`, `du <= 15`, `thermal_ratio <= 1`, `min_margin >= 10`,
-#: `second_harmonic_percent >= 10`), więc test NIE porównuje `str(wartość)` z
-#: tekstem solvera wprost — to dałoby FAŁSZYWY rozjazd (wartość ta sama, zapis
-#: inny). Pozostałe 5 progów solver zapisuje jako float identyczny z katalogiem.
-#: ŻADEN z literałów nie okazał się nieobecny w solverze (zweryfikowano
-#: ręcznym odczytem źródła przy pisaniu tej karty) — gdyby był, ten test by to
-#: wykrył i raport karty B02-BE-TESTY opisałby rozjazd (NIE wolno zmieniać
-#: solvera z tej karty — poprawiałby się katalog).
-_PROGI_LITERALOW_SOLVERA: tuple[tuple[str, float, str], ...] = (
-    ("THD_U_PNEN50160_PROCENT", THD_U_PNEN50160_PROCENT, "thd > 8.0"),
-    ("THD_U_IEEE519_PROCENT", THD_U_IEEE519_PROCENT, "thd > 5.0"),
-    ("TDD_IEEE519_PROCENT", TDD_IEEE519_PROCENT, "tdd > 5.0"),
-    ("ZAPAD_ROZRUCHU_MAX_PROCENT", ZAPAD_ROZRUCHU_MAX_PROCENT, "du <= 15"),
-    ("WSKAZNIK_CIEPLNY_ROZRUCHU_MAX", WSKAZNIK_CIEPLNY_ROZRUCHU_MAX, "thermal_ratio <= 1"),
-    ("MARGINES_TRV_MIN_PROCENT", MARGINES_TRV_MIN_PROCENT, "min_margin >= 10"),
-    (
-        "UDZIAL_2H_BLOKADA_87T_PROCENT",
-        UDZIAL_2H_BLOKADA_87T_PROCENT,
-        "second_harmonic_percent >= 10",
-    ),
-    ("KROTNOSC_OCHRONY_DODATKOWEJ", KROTNOSC_OCHRONY_DODATKOWEJ, "u_touch <= 1.25 * u_touch_allow"),
+#: Literały, którymi solver oceniał wyniki przed przeniesieniem ocen do rekordów
+#: `OcenaKryterium` (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, odcinek 3). Solver liczy wielkości,
+#: nie wystawia werdyktów — powrót któregokolwiek literału oznaczałby drugie źródło progu.
+_DAWNE_PROGI_WERDYKTOW_SOLVERA: tuple[str, ...] = (
+    "thd > 8.0",
+    "thd > 5.0",
+    "tdd > 5.0",
+    "du <= 15",
+    "thermal_ratio <= 1",
+    "min_margin >= 10",
+    "1.25 * u_touch_allow",
+    "MARGINES_BIL_MIN_PROCENT",
+    "PRAD_RESZTKOWY_MAX_UDZIAL_IC",
 )
 
 
-def test_progi_jednego_zrodla_sa_stalymi_solvera() -> None:
-    """Progi przeniesione do solvera (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA): katalog nie ma
-    własnej kopii — importuje stałą solvera (jedno źródło zamiast parytetu tekstowego)."""
-    from network_model.solvers import v126_academic
-
-    for nazwa_stalej, stala_katalogu in (
-        ("MARGINES_BIL_MIN_PROCENT", MARGINES_BIL_MIN_PROCENT),
-        ("PRAD_RESZTKOWY_MAX_UDZIAL_IC", PRAD_RESZTKOWY_MAX_UDZIAL_IC),
-    ):
-        assert stala_katalogu is getattr(v126_academic, nazwa_stalej), nazwa_stalej
-        assert f"{nazwa_stalej} =" not in _tekst(Path(v126_katalog.__file__)), nazwa_stalej
-
-
-def test_literaly_progow_katalogu_sa_stosowane_przez_solver_frozen() -> None:
+def test_solver_nie_niesie_progow_werdyktow() -> None:
     tresc_solvera = _tekst(SOLVER_PY)
-    for nazwa_stalej, oczekiwana_wartosc, fragment in _PROGI_LITERALOW_SOLVERA:
-        wartosc_katalogu = getattr(v126_katalog, nazwa_stalej)
-        assert wartosc_katalogu == oczekiwana_wartosc, (
-            f"{nazwa_stalej}: wartość katalogu zmieniła się na {wartosc_katalogu} — "
-            "zaktualizuj fragment solvera w tej tabeli"
+    for literal in _DAWNE_PROGI_WERDYKTOW_SOLVERA:
+        assert literal not in tresc_solvera, (
+            f"Próg oceny {literal!r} wrócił do solvera — progi kryteriów należą do rejestru "
+            "założeń `application/analyses/v126_oceny.py::REJESTR_ZALOZEN`."
         )
-        assert fragment in tresc_solvera, (
-            f"{nazwa_stalej}: fragment solvera {fragment!r} nie znaleziony w "
-            f"{SOLVER_PY} — literał normy zniknął albo zmienił zapis (B-01: NIE "
-            "zmieniaj solvera z tej karty, popraw KATALOG)"
+
+
+def test_progi_katalogu_pochodza_z_rejestru_zalozen() -> None:
+    """Katalog nie ma własnych stałych progów: każdy próg liczbowy cytowany w karcie jest
+    wartością założenia z rejestru, a źródło nazywa paragraf założenia (nie normę)."""
+    from application.analyses.v126_oceny import REJESTR_ZALOZEN
+
+    tekst_katalogu = _tekst(Path(v126_katalog.__file__))
+    assert "_PROCENT =" not in tekst_katalogu
+    assert "_MAX =" not in tekst_katalogu
+    z_progiem = [z for z in REJESTR_ZALOZEN if z.wartosc is not None]
+    assert {z.paragraf for z in z_progiem} == {"Z-2", "Z-3", "Z-6", "Z-9"}
+    podstawy = [p for karta in KATALOG_ANALIZ_V126 for p in karta.podstawa_oceny]
+    zrodla = " ".join(p.zrodlo_pl for p in podstawy)
+    for zalozenie in REJESTR_ZALOZEN:
+        if zalozenie.paragraf == "Z-12":
+            continue  # tolerancja jest daną odniesienia biegu benchmarku (karta wycofana)
+        assert v126_katalog.zrodlo_zalozenia(zalozenie) in zrodla, zalozenie.paragraf
+    progi = {z.wartosc for z in z_progiem}
+    for podstawa in podstawy:
+        if isinstance(podstawa.wartosc_graniczna, float):
+            # Granica liczbowa karty = wartość założenia; LaTeX warunku pokazuje tę samą liczbę.
+            assert podstawa.wartosc_graniczna in progi, podstawa.symbol
+            liczba = format(podstawa.wartosc_graniczna, "g")
+            assert liczba in podstawa.warunek_latex, (podstawa.symbol, podstawa.warunek_latex)
+
+
+def test_rejestr_zalozen_dokumentu_rowny_rejestrowi_kodu() -> None:
+    """Dokument podstawy (`docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md` §7) i rejestr w kodzie
+    to JEDEN rejestr: każdy paragraf Z-n ma w tabeli dokumentu tę samą nazwę kryterium,
+    treść, próg i praktykę co `REJESTR_ZALOZEN` — rekord oceny cytuje „§ Z-n” dokumentu, więc
+    rozjazd byłby podstawą, która mówi co innego niż kod."""
+    from application.analyses.v126_oceny import DOKUMENT_ZALOZEN, REJESTR_ZALOZEN
+
+    dokument = _tekst(PROJECT_ROOT / "docs" / "uiux" / "UX04_POLE_ZU_SKLADOWA_ZEROWA.md")
+    sekcja = dokument.split("## 7. Rejestr założeń inżynierskich", 1)[1]
+    assert f"„{DOKUMENT_ZALOZEN}”" in sekcja
+    wiersze = {}
+    for linia in sekcja.splitlines():
+        if linia.startswith("| Z-"):
+            komorki = [k.strip() for k in linia.strip().strip("|").split("|")]
+            wiersze[komorki[0]] = komorki[1:]
+    assert list(wiersze) == [z.paragraf for z in REJESTR_ZALOZEN]
+    for zalozenie in REJESTR_ZALOZEN:
+        prog = (
+            "—"
+            if zalozenie.wartosc is None
+            else f"{format(zalozenie.wartosc, 'g').replace('.', ',')} {zalozenie.jednostka}"
         )
+        assert wiersze[zalozenie.paragraf] == [
+            zalozenie.nazwa_pl,
+            zalozenie.tresc_pl,
+            prog,
+            zalozenie.praktyka_pl,
+        ], zalozenie.paragraf
+
+
+def test_zalecenie_blokady_87t_ma_jeden_prog_w_solverze_i_katalogu() -> None:
+    """Zalecenie blokady od 2. harmonicznej jest regułą solvera bez podstawy normowej,
+    podaną w katalogu jako informacja — liczba w opisie katalogu musi być liczbą solvera."""
+    assert "second_harmonic_percent >= 10" in _tekst(SOLVER_PY)
+    karta = karta_analizy("transient_trv")
+    assert karta is not None
+    assert any("udział ≥ 10 %" in u for u in karta.uwagi_metody_pl)
 
 
 # ---------------------------------------------------------------------------

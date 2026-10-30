@@ -420,6 +420,54 @@ function wynikKoordynacjiDlaZadania(
 /** Biegi oceny zabezpieczeń sceny E-28 — lista rośnie po natywnym kliku „Oceń zabezpieczenia". */
 let biegiOcenySceny: { id: string; status: string; created_at: string }[] = [];
 
+/**
+ * Rejestr biegów przypadku sceny E-28 — JEDNO źródło zasiewu magazynu biegów i atrapy
+ * `GET /api/execution/study-cases/case-demo/runs` (predykaty parami). Ekran po ocenie
+ * zabezpieczeń odczytuje rejestr z serwera (`loadRuns`, karta UIUX-K8), a backend oddaje w nim
+ * KAŻDY bieg przypadku: oba biegi zwarciowe, rozpływ i bieg oceny jako `PROTECTION`
+ * (`canonical_analysis.to_execution_dict`). Wcześniej scena zasiewała magazyn trzema biegami,
+ * a lista z serwera była pusta — po natywnym kliku „Oceń” ekran tracił biegi zwarciowe
+ * i pokazywał stan zerowy zamiast wyniku oceny.
+ */
+function rejestrBiegowKoordynacji(): ExecutionRun[] {
+  return [
+    {
+      // HARNESS-RESZTA-2: identyfikatory z fixtur REALNYCH biegow backendu.
+      id: koordynacjaScenyZwarciaMax.run_id,
+      analysis_type: 'SC_3F',
+      status: 'DONE',
+      finished_at: '2026-07-28T08:00:00Z',
+      started_at: '2026-07-28T07:59:00Z',
+    } as unknown as ExecutionRun,
+    {
+      // Bieg MINIMALNY (scenariusz MIN) — bez niego czulosc jest niesprawdzalna (koordynacja
+      // odmawia bez biegu minimalnego).
+      id: koordynacjaScenyZwarciaMin.run_id,
+      analysis_type: 'SC_3F',
+      status: 'DONE',
+      finished_at: '2026-07-28T08:02:00Z',
+      started_at: '2026-07-28T08:01:00Z',
+    } as unknown as ExecutionRun,
+    {
+      id: koordynacjaScenyWynik.pf_run_id,
+      analysis_type: 'LOAD_FLOW',
+      status: 'DONE',
+      finished_at: '2026-07-28T08:05:00Z',
+      started_at: '2026-07-28T08:04:00Z',
+    } as unknown as ExecutionRun,
+    ...biegiOcenySceny.map(
+      (bieg) =>
+        ({
+          id: bieg.id,
+          analysis_type: 'PROTECTION',
+          status: 'DONE',
+          started_at: bieg.created_at,
+          finished_at: bieg.created_at,
+        }) as unknown as ExecutionRun,
+    ),
+  ];
+}
+
 const RUN_KONTRAKT_SCENY: Record<string, string> = {
   // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
   // świeżości — wariant bierze się z ROZJAZDU REWIZJI (migawka rev. 2 vs
@@ -757,6 +805,13 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       return jsonOK(koordynacjaScenyOcena);
     }
     if (url.endsWith('/protection-runs')) return jsonOK({ runs: biegiOcenySceny, total: biegiOcenySceny.length });
+    if (
+      url.endsWith('/api/execution/study-cases/case-demo/runs')
+      && (init?.method ?? 'GET').toUpperCase() === 'GET'
+    ) {
+      const rejestr = rejestrBiegowKoordynacji();
+      return jsonOK({ runs: rejestr, count: rejestr.length });
+    }
     // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
     // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
     // w realnej sieci moga wspolistniec oba warianty; backend (nie UI) osadza
@@ -1892,34 +1947,7 @@ if (creator === 'arcflash') {
   useShellStore.setState({ szczegolyAudytowe: true });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useAppStateStore.getState().setActiveCase('case-demo', 'Wariant zimowy', null, 'FRESH');
-  useExecutionRunsStore.setState({
-    runs: [
-      {
-        // HARNESS-RESZTA-2: identyfikatory z fixtur REALNYCH biegow backendu.
-        id: koordynacjaScenyZwarciaMax.run_id,
-        analysis_type: 'SC_3F',
-        status: 'DONE',
-        finished_at: '2026-07-28T08:00:00Z',
-        started_at: '2026-07-28T07:59:00Z',
-      } as unknown as ExecutionRun,
-      {
-        // Bieg MINIMALNY (scenariusz MIN) — bez niego czulosc jest niesprawdzalna (koordynacja
-        // odmawia bez biegu minimalnego).
-        id: koordynacjaScenyZwarciaMin.run_id,
-        analysis_type: 'SC_3F',
-        status: 'DONE',
-        finished_at: '2026-07-28T08:02:00Z',
-        started_at: '2026-07-28T08:01:00Z',
-      } as unknown as ExecutionRun,
-      {
-        id: koordynacjaScenyWynik.pf_run_id,
-        analysis_type: 'LOAD_FLOW',
-        status: 'DONE',
-        finished_at: '2026-07-28T08:05:00Z',
-        started_at: '2026-07-28T08:04:00Z',
-      } as unknown as ExecutionRun,
-    ],
-  } as never);
+  useExecutionRunsStore.setState({ runs: rejestrBiegowKoordynacji() } as never);
 } else if (creator === 'wyniki-stan-fazowy') {
   // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN)
   // — identyfikator z fixtury REALNEGO biegu backendu (HARNESS-RESZTA).

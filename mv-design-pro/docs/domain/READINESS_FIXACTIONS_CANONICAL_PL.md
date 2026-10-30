@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **182** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -155,7 +155,6 @@ Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.lv_earthing_system_missing` | STATIONS | 2 | BLOCKER | Transformator SN/nN nie deklaruje układu uziemienia sieci nN (TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia i SWZ nie mogą być liczone | panel: `inspector`, tab: `parametry`, focus: `lv_earthing_system` |
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
-| `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
 | `earthing.zespol_auxiliary_load_missing` | STATIONS | 3 | WARNING | Uzwojenie potrzeb własnych zespołu bez odbioru potrzeb własnych na szynie zespołu | panel: `inspector`, tab: `parametry`, focus: `odbior_pw_ref` |
 | `earthing.zespol_direct_earthing` | STATIONS | 3 | WARNING | Uziemienie bezpośrednie punktu neutralnego sieci SN poza rozwiązaniami §16 | panel: `inspector`, tab: `parametry`, focus: `uziemienie_bezposrednie` |
 | `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
@@ -247,20 +246,20 @@ Wszystkie **183** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 108 |
-| WARNING | 66 |
+| WARNING | 65 |
 | INFO | 9 |
-| **Razem** | **183** |
+| **Razem** | **182** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 20 |
 | TOPOLOGY | 7 |
 | CATALOGS | 55 |
-| STATIONS | 32 |
+| STATIONS | 31 |
 | GENERATORS | 26 |
 | PROTECTION | 15 |
 | ANALYSIS | 28 |
-| **Razem** | **183** |
+| **Razem** | **182** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

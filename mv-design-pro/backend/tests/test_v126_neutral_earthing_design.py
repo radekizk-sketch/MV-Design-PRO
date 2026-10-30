@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 
 import pytest
+from application.analyses.v126_oceny import kompletnosc_wyniku, oceny_wyniku_v126
 from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.v126_contracts import (
     V126AcademicInput,
@@ -156,6 +157,16 @@ def _run(model: V126AcademicInput) -> dict:
     return V126AcademicSolver().run(V126AnalysisType.NEUTRAL_EARTHING_DESIGN, model)
 
 
+def _oceny(wynik: dict) -> dict[str, dict]:
+    """Rekordy oceny kryteriów wyniku (granica wyniku `v126_oceny`) po identyfikatorze —
+    solver liczy wielkości, werdykt z wyjaśnieniem budują rekordy."""
+    oceny = oceny_wyniku_v126(
+        "neutral_earthing_design", wynik, wersja_silnika=None, odcisk=None, nazwy={}
+    )
+    assert oceny is not None
+    return {o.get("kryterium_id") or o["wymaganie_id"]: o for o in oceny}
+
+
 class TestPetersenResonanceTuning:
     def test_coil_inductance_matches_resonance_formula(self) -> None:
         model = _cable_network(wariant="dlawik")
@@ -203,7 +214,9 @@ class TestPetersenResonanceTuning:
         assert res["residual_current_a"] == pytest.approx(0.0, abs=1e-6)
         assert res["detuning_model"] == pytest.approx(0.0, abs=1e-6)
         assert res["residual_current_at_resonance_a"] == pytest.approx(0.0, abs=1e-9)
-        assert res["tuning_status"] == "dostrojony"
+        resztkowy = _oceny(res)["v126.uziemienie.prad_resztkowy.B1"]
+        assert resztkowy["status_maszynowy"] == "SPELNIA"
+        assert "tuning_status" not in res
         # Parametry biegu dawnego rozstrojenia/tłumienia nie istnieją — nie zmieniają wyniku.
         z_parametrami = _run(
             _cable_network(
@@ -228,9 +241,20 @@ class TestPetersenResonanceTuning:
         assert res["coil_current_model_a"] == pytest.approx(i_l, abs=1e-4)
         assert res["detuning_model"] == pytest.approx(1.0 - udzial, abs=1e-6)
         assert res["residual_current_a"] == pytest.approx(abs(IC_30KM - i_l), abs=1e-5)
-        assert res["tuning_status"] == (
-            "dostrojony" if abs(IC_30KM - i_l) <= 0.1 * IC_30KM else "rozstrojony_poza_10pct"
+        # Kryterium I_res ≤ 10 % I_C — założenie inżynierskie Z-6 (bez wartości normowej):
+        # rekord niesie wynik I_res/I_C i limit w procentach, podstawę § Z-6 i kompletność
+        # NIEPELNY.
+        resztkowy = _oceny(res)["v126.uziemienie.prad_resztkowy.B1"]
+        assert resztkowy["status_maszynowy"] == (
+            "SPELNIA" if abs(IC_30KM - i_l) <= 0.1 * IC_30KM else "NIE_SPELNIA"
         )
+        assert resztkowy["wynik"]["wartosc"] == {
+            "wartosc": pytest.approx(abs(1.0 - udzial) * 100.0, abs=1e-3),
+            "jednostka": "%",
+        }
+        assert resztkowy["limit"]["wartosc"] == {"wartosc": 10.0, "jednostka": "%"}
+        assert resztkowy["podstawa"]["jednostka_redakcyjna"] == "§ Z-6"
+        assert resztkowy["kompletnosc_dowodu"] == "NIEPELNY"
         assert res["sanity"]["status"] == "zweryfikowany"
 
     def test_residual_grows_monotonically_with_model_detuning(self) -> None:
@@ -383,7 +407,8 @@ class TestNerResistorSizing:
         # Prąd rezystora bez składowej pojemnościowej: c_max·U_f/R < c_max·|I_R + j·I_C|.
         assert thermal["i_resistor_a"] < 1.1 * res["resultant_earth_fault_current_a"]
         assert thermal["energy_rating_j"] == pytest.approx(300.0**2 * r * 10.0, rel=1e-6)
-        assert thermal["thermal_ok"] is True and thermal["status"] == "zgodny"
+        assert _oceny(res)["v126.uziemienie.energia.ZU1"]["status_maszynowy"] == "SPELNIA"
+        assert "thermal_ok" not in thermal and "status" not in thermal
 
     @pytest.mark.parametrize("przesuniecie_s", [-0.01, 0.01])
     def test_thermal_limit_is_permissible_time(self, przesuniecie_s: float) -> None:
@@ -396,8 +421,11 @@ class TestNerResistorSizing:
         res = _run(_cable_network(wariant="rezystor", parameters={"ner_clearing_time_s": t_wyl}))
         thermal = res["result"]["thermal_check"]
         ok = przesuniecie_s < 0
-        assert thermal["thermal_ok"] is ok
-        assert thermal["status"] == ("zgodny" if ok else "niezgodny")
+        energia = _oceny(res["result"])["v126.uziemienie.energia.ZU1"]
+        assert energia["status_maszynowy"] == ("SPELNIA" if ok else "NIE_SPELNIA")
+        assert energia["wynik"]["wartosc"]["wartosc"] == pytest.approx(
+            thermal["energy_dissipated_j"], rel=1e-6
+        )
 
     def test_thermal_decided_by_least_margin_resistor(self) -> None:
         slaby = REZYSTOR_300A.model_copy(update={"ref": "ZU2", "t_n_s": 0.5})
@@ -409,7 +437,9 @@ class TestNerResistorSizing:
             )
         )["result"]
         thermal = res["thermal_check"]
-        assert thermal["thermal_ok"] is False
+        oceny = _oceny(res)
+        assert oceny["v126.uziemienie.energia.ZU2"]["status_maszynowy"] == "NIE_SPELNIA"
+        assert oceny["v126.uziemienie.energia.ZU1"]["status_maszynowy"] == "SPELNIA"
         assert [w["ref"] for w in thermal["resistors"]] == ["ZU1", "ZU2"]
         assert thermal["energy_rating_j"] == pytest.approx(300.0**2 * slaby.r_ohm * 0.5, rel=1e-6)
 
@@ -438,10 +468,20 @@ class TestNerResistorSizing:
         )
         z = _run(_cable_network(wariant="rezystor", dane_przyjete=(dana,)))["result"]
         bez = _run(_cable_network(wariant="rezystor"))["result"]
-        assert z["kompletnosc_dowodu"] == "NIEPELNY"
         assert [d["nazwa_pl"] for d in z["dane_przyjete"]] == [dana.nazwa_pl]
         assert z["dane_przyjete"][0]["jakosc"] == "ESTIMATED"
-        assert bez["kompletnosc_dowodu"] == "PELNY" and bez["dane_przyjete"] == []
+        assert bez["dane_przyjete"] == []
+
+        # Dana przyjęta modelu wchodzi do dowodu rekordu oceny; kryterium cieplne stoi także na
+        # założeniu Z-7 rejestru — kompletność wyniku jest niepełna w obu biegach, a dana
+        # przyjęta modelu jest nazwana tylko w biegu, który ją niesie.
+        def _dane(wynik: dict) -> list[str]:
+            ocena = _oceny(wynik)["v126.uziemienie.energia.ZU1"]
+            return [d["nazwa_pl"] for d in ocena["dowod"]["status_danych"]["dane_przyjete"]]
+
+        assert dana.nazwa_pl in _dane(z) and dana.nazwa_pl not in _dane(bez)
+        for wynik in (z, bez):
+            assert kompletnosc_wyniku(wynik, list(_oceny(wynik).values())) == "NIEPELNY"
 
 
 class TestIncompleteData:

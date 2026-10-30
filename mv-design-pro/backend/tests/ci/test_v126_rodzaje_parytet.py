@@ -107,8 +107,16 @@ def _kontrolki_frontu() -> tuple[set[str], set[str]]:
     """(klucze pól, klucze list złożonych) zadeklarowane w `parametry.ts`."""
     parametry = _tekst(PARAMETRY_TS)
     pola = set(re.findall(r"klucz:\s*'([a-z0-9_]+)'", parametry))
-    listy = set(re.findall(r"lista:\s*'([a-z0-9_]+)'", parametry))
-    return pola, listy
+    return pola, _listy_w(parametry)
+
+
+def _listy_w(tekst: str) -> set[str]:
+    """Listy złożone zadeklarowane w `listy: ['a', 'b']` (zestaw rodzaju może mieć kilka)."""
+    return {
+        lista
+        for blok in re.findall(r"listy:\s*\[([^\]]*)\]", tekst)
+        for lista in re.findall(r"'([a-z0-9_]+)'", blok)
+    }
 
 
 def _tekst(sciezka: Path) -> str:
@@ -233,7 +241,7 @@ def _zestawy_frontu() -> dict[str, dict[str, Any]]:
         if biezacy is None:
             continue
         wynik[biezacy]["pola"] |= set(re.findall(r"klucz:\s*'([a-z0-9_]+)'", linia))
-        wynik[biezacy]["listy"] |= set(re.findall(r"lista:\s*'([a-z0-9_]+)'", linia))
+        wynik[biezacy]["listy"] |= _listy_w(linia)
         if re.search(r"uziom:\s*true", linia):
             wynik[biezacy]["uziom"] = True
         if re.search(r"metodyDetekcji:\s*true", linia):
@@ -510,3 +518,18 @@ def test_rodzina_pu_i_qu_zostaje_w_kontrakcie_solvera_jako_jawny_brak() -> None:
     for wiersz in wynik["pv_curves"] + wynik["qv_curves"] + wynik["l_index_per_bus"]:
         assert wiersz["bus_ref"] == "B1"
         assert len(wiersz["brak_danych"]) > 40, "Brak powodu merytorycznego przy wielkości"
+
+
+def test_funkcje_detekcji_formularza_sa_slownikiem_solvera() -> None:
+    """Kontrolka `relay_methods` oferuje DOKŁADNIE słownik funkcji solvera (karta UX-04, odcinek 3).
+
+    Solver wymaga dla metody złożonej (51N+67N, 51N/50N) KAŻDEJ funkcji składowej w przekaźniku;
+    funkcja słownika bez pola wyboru w oknie dawałaby ocenę niewykonalną z ekranu, a pole bez
+    funkcji w słowniku — fantom (solver go nie rozpozna).
+    """
+    from network_model.solvers.v126_academic import METODY_DETEKCJI_KOMPLET
+
+    blok = _tekst(PARAMETRY_TS).split("export const METODY_DETEKCJI", 1)[1].split("];", 1)[0]
+    wartosci = re.findall(r"wartosc:\s*'([A-Za-z0-9_]+)'", blok)
+    assert wartosci, "Parser słownika funkcji detekcji frontu nic nie widzi."
+    assert tuple(wartosci) == METODY_DETEKCJI_KOMPLET

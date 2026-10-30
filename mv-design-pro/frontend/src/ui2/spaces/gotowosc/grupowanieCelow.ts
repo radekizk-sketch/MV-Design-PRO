@@ -396,7 +396,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'vt.rated_burden_missing': 'wspolne',
   'vt.winding_category_missing': 'wspolne',
   // STATIONS (stacje)
-  'earthing.electrode_data_missing': 'stacje',
   'nn.voltage_missing': 'stacje',
   'transformer.bay_missing': 'stacje',
   'transformer.lv_earthing_system_missing': 'stacje',

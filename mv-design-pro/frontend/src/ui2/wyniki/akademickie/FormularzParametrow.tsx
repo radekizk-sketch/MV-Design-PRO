@@ -22,6 +22,7 @@ import type { GotowoscAnalizy, KartaKatalogu } from './api';
 import { AKADEMICKIE_STRINGS as S } from './strings';
 import {
   METODY_DETEKCJI,
+  POLA_NIEZAWODNOSCI,
   POLA_ODBIORCOW,
   POLA_REFERENCJI,
   POLA_SILNIKA,
@@ -31,7 +32,7 @@ import {
   type DefinicjaPola,
   type ListaZlozona,
   type StanPol,
-  type WierszListy,
+  type WierszeList,
 } from './parametry';
 
 /**
@@ -63,30 +64,35 @@ const DEFINICJE_LISTY: Record<ListaZlozona, readonly DefinicjaPola[]> = {
   benchmark_references: POLA_REFERENCJI,
   harmonic_spectra: POLA_WIDMA,
   customer_counts: POLA_ODBIORCOW,
+  reliability_data: POLA_NIEZAWODNOSCI,
 };
 const TYTUL_LISTY: Record<ListaZlozona, string> = {
   motors: S.parametrySilnikiTytul,
   benchmark_references: S.parametryReferencjeTytul,
   harmonic_spectra: S.parametryWidmoTytul,
   customer_counts: S.parametryOdbiorcyTytul,
+  reliability_data: S.parametryNiezawodnoscTytul,
 };
 const OPIS_LISTY: Record<ListaZlozona, string> = {
   motors: S.parametrySilnikiOpis,
   benchmark_references: S.parametryReferencjeOpis,
   harmonic_spectra: S.parametryWidmoOpis,
   customer_counts: S.parametryOdbiorcyOpis,
+  reliability_data: S.parametryNiezawodnoscOpis,
 };
 const DODAJ_LISTY: Record<ListaZlozona, string> = {
   motors: S.parametryDodajSilnik,
   benchmark_references: S.parametryDodajReferencje,
   harmonic_spectra: S.parametryDodajWidmo,
   customer_counts: S.parametryDodajOdbiorcow,
+  reliability_data: S.parametryDodajNiezawodnosc,
 };
 const USUN_LISTY: Record<ListaZlozona, string> = {
   motors: S.parametryUsunSilnik,
   benchmark_references: S.parametryUsunReferencje,
   harmonic_spectra: S.parametryUsunWidmo,
   customer_counts: S.parametryUsunOdbiorcow,
+  reliability_data: S.parametryUsunNiezawodnosc,
 };
 
 /** Szyny zatwierdzonego modelu (ref → nazwa) — jedno źródło z migawką ENM. */
@@ -98,6 +104,16 @@ export function useSzynyModelu(): readonly { ref: string; nazwa: string }[] {
   return szyny
     .filter((szyna): szyna is { ref_id: string; name?: string } => typeof szyna.ref_id === 'string')
     .map((szyna) => ({ ref: szyna.ref_id, nazwa: nazwaObiektuZMigawki(snapshot, szyna.ref_id) }));
+}
+
+/** Gałęzie zatwierdzonego modelu (ref → nazwa) — jedno źródło z migawką ENM (most
+ *  `niezawodnosc_z_parametrow` czyta dane niezawodności po identyfikatorze gałęzi). */
+export function useGaleziModelu(): readonly { ref: string; nazwa: string }[] {
+  const snapshot = useSnapshotStore((stan) => stan.snapshot);
+  const galezie = (snapshot?.branches ?? []) as readonly { ref_id?: string }[];
+  return galezie
+    .filter((galaz): galaz is { ref_id: string } => typeof galaz.ref_id === 'string')
+    .map((galaz) => ({ ref: galaz.ref_id, nazwa: nazwaObiektuZMigawki(snapshot, galaz.ref_id) }));
 }
 
 /** Kod warunku gotowości niosącego listę przekształtników wejścia solvera. */
@@ -132,12 +148,23 @@ function OdznakaWymagania({ wymagane }: { wymagane: boolean | null }) {
   );
 }
 
+/** Tekst opcji pustej listy wyboru: zachęta do wyboru albo stan „model nie ma obiektów". */
+function opcjaPusta(rodzaj: DefinicjaPola['rodzaj'], liczbaObiektow: number): string {
+  if (rodzaj === 'szyna') return liczbaObiektow === 0 ? S.parametrySzynaBrak : S.parametrySzynaWybierz;
+  if (rodzaj === 'galaz') return liczbaObiektow === 0 ? S.parametryGalazBrak : S.parametryGalazWybierz;
+  if (rodzaj === 'przeksztaltnik') {
+    return liczbaObiektow === 0 ? S.parametryPrzeksztaltnikBrak : S.parametryPrzeksztaltnikDomyslny;
+  }
+  return S.kreska;
+}
+
 function PoleParametru({
   definicja,
   wartosc,
   prefiks,
   wymagane,
   szyny,
+  galezie,
   przeksztaltniki,
   onZmiana,
 }: {
@@ -146,6 +173,7 @@ function PoleParametru({
   prefiks: string;
   wymagane: boolean | null;
   szyny: readonly { ref: string; nazwa: string }[];
+  galezie: readonly { ref: string; nazwa: string }[];
   przeksztaltniki: readonly { ref: string; nazwa: string }[];
   onZmiana: (klucz: string, wartosc: string) => void;
 }) {
@@ -157,23 +185,16 @@ function PoleParametru({
   if (
     definicja.rodzaj === 'wybor'
     || definicja.rodzaj === 'szyna'
+    || definicja.rodzaj === 'galaz'
     || definicja.rodzaj === 'przeksztaltnik'
   ) {
-    const obiekty = definicja.rodzaj === 'szyna' ? szyny : przeksztaltniki;
+    const obiekty =
+      definicja.rodzaj === 'szyna' ? szyny : definicja.rodzaj === 'galaz' ? galezie : przeksztaltniki;
     const opcje =
       definicja.rodzaj === 'wybor'
         ? (definicja.opcje ?? [])
         : obiekty.map((obiekt) => ({ wartosc: obiekt.ref, etykieta: obiekt.nazwa }));
-    const pusta =
-      definicja.rodzaj === 'szyna'
-        ? szyny.length === 0
-          ? S.parametrySzynaBrak
-          : S.parametrySzynaWybierz
-        : definicja.rodzaj === 'przeksztaltnik'
-          ? przeksztaltniki.length === 0
-            ? S.parametryPrzeksztaltnikBrak
-            : S.parametryPrzeksztaltnikDomyslny
-          : S.kreska;
+    const pusta = opcjaPusta(definicja.rodzaj, obiekty.length);
     return (
       <label className="mvd-akad-pole" htmlFor={id}>
         <span className="mvd-akad-pole-etyk">
@@ -228,13 +249,13 @@ export interface FormularzParametrowProps {
   readonly pola: StanPol;
   readonly uziom: StanPol;
   readonly metody: readonly string[];
-  readonly wiersze: readonly WierszListy[];
+  readonly wiersze: WierszeList;
   readonly onPole: (klucz: string, wartosc: string) => void;
   readonly onUziom: (klucz: string, wartosc: string) => void;
   readonly onMetoda: (metoda: string, wlaczona: boolean) => void;
-  readonly onWiersz: (indeks: number, klucz: string, wartosc: string) => void;
-  readonly onDodajWiersz: () => void;
-  readonly onUsunWiersz: (indeks: number) => void;
+  readonly onWiersz: (lista: ListaZlozona, indeks: number, klucz: string, wartosc: string) => void;
+  readonly onDodajWiersz: (lista: ListaZlozona) => void;
+  readonly onUsunWiersz: (lista: ListaZlozona, indeks: number) => void;
   /** Karta katalogu (kontrakt `od_uzytkownika`) — źródło odznak WYMAGANE/
    *  OPCJONALNE i sekcji „Kontrakt danych analizy" (karta V12.7 §0.4). */
   readonly karta: KartaKatalogu;
@@ -260,12 +281,8 @@ export function FormularzParametrow({
 }: FormularzParametrowProps) {
   const zestaw = zestawParametrow(rodzaj);
   const szyny = useSzynyModelu();
+  const galezie = useGaleziModelu();
   const przeksztaltniki = usePrzeksztaltnikiGotowosci(gotowosc);
-  const definicjeListy = zestaw.lista !== null ? DEFINICJE_LISTY[zestaw.lista] : [];
-  const tytulListy = zestaw.lista !== null ? TYTUL_LISTY[zestaw.lista] : '';
-  const opisListy = zestaw.lista !== null ? OPIS_LISTY[zestaw.lista] : '';
-  const dodajListy = zestaw.lista !== null ? DODAJ_LISTY[zestaw.lista] : '';
-  const usunListy = zestaw.lista !== null ? USUN_LISTY[zestaw.lista] : '';
   const [kontraktOtwarty, setKontraktOtwarty] = useState(false);
 
   const wymaganeLacznie = karta.dane.od_uzytkownika.filter((p) => p.wymagane).length;
@@ -301,6 +318,7 @@ export function FormularzParametrow({
               prefiks="mvd-akad-param"
               wymagane={czyWymaganePole(karta, 'pole', definicja.klucz)}
               szyny={szyny}
+              galezie={galezie}
               przeksztaltniki={przeksztaltniki}
               wartosc={pola[definicja.klucz] ?? ''}
               onZmiana={onPole}
@@ -318,6 +336,7 @@ export function FormularzParametrow({
               prefiks="mvd-akad-uziom"
               wymagane={czyWymaganePole(karta, 'uziom', definicja.klucz)}
               szyny={szyny}
+              galezie={galezie}
               przeksztaltniki={przeksztaltniki}
               wartosc={uziom[definicja.klucz] ?? ''}
               onZmiana={onUziom}
@@ -346,48 +365,53 @@ export function FormularzParametrow({
         </fieldset>
       )}
 
-      {zestaw.lista !== null && (
-        <div className="mvd-akad-lista" data-testid="mvd-akad-lista">
-          <h4 className="mvd-akad-sekcja-tytul">{tytulListy}</h4>
-          <p className="mvd-akad-opis">{opisListy}</p>
-          {wiersze.map((wiersz, indeks) => (
+      {zestaw.listy.map((lista) => (
+        <div className="mvd-akad-lista" data-testid={`mvd-akad-lista-${lista}`} key={lista}>
+          <h4 className="mvd-akad-sekcja-tytul">{TYTUL_LISTY[lista]}</h4>
+          <p className="mvd-akad-opis">{OPIS_LISTY[lista]}</p>
+          {(wiersze[lista] ?? []).map((wiersz, indeks) => (
             // Wiersze listy nie mają identyfikatora niezależnego od pozycji — klucz
             // pozycyjny jest tu poprawny (dodawanie/usuwanie przebudowuje listę stanu).
-            <div className="mvd-akad-lista-wiersz" key={`wiersz-${indeks}`} data-testid={`mvd-akad-lista-wiersz-${indeks}`}>
+            <div
+              className="mvd-akad-lista-wiersz"
+              key={`wiersz-${indeks}`}
+              data-testid={`mvd-akad-lista-${lista}-wiersz-${indeks}`}
+            >
               <div className="mvd-akad-pola-siatka">
-                {definicjeListy.map((definicja) => (
+                {DEFINICJE_LISTY[lista].map((definicja) => (
                   <PoleParametru
                     key={definicja.klucz}
                     definicja={definicja}
-                    prefiks={`mvd-akad-lista-${indeks}`}
-                    wymagane={zestaw.lista === null ? null : czyWymaganePole(karta, zestaw.lista, definicja.klucz)}
+                    prefiks={`mvd-akad-lista-${lista}-${indeks}`}
+                    wymagane={czyWymaganePole(karta, lista, definicja.klucz)}
                     szyny={szyny}
+                    galezie={galezie}
                     przeksztaltniki={przeksztaltniki}
                     wartosc={wiersz[definicja.klucz] ?? ''}
-                    onZmiana={(klucz, wartosc) => onWiersz(indeks, klucz, wartosc)}
+                    onZmiana={(klucz, wartosc) => onWiersz(lista, indeks, klucz, wartosc)}
                   />
                 ))}
               </div>
               <button
                 type="button"
                 className="mvd-akad-btn-wtorny"
-                data-testid={`mvd-akad-usun-wiersz-${indeks}`}
-                onClick={() => onUsunWiersz(indeks)}
+                data-testid={`mvd-akad-usun-wiersz-${lista}-${indeks}`}
+                onClick={() => onUsunWiersz(lista, indeks)}
               >
-                {usunListy}
+                {USUN_LISTY[lista]}
               </button>
             </div>
           ))}
           <button
             type="button"
             className="mvd-akad-btn-wtorny"
-            data-testid="mvd-akad-dodaj-wiersz"
-            onClick={onDodajWiersz}
+            data-testid={`mvd-akad-dodaj-wiersz-${lista}`}
+            onClick={() => onDodajWiersz(lista)}
           >
-            {dodajListy}
+            {DODAJ_LISTY[lista]}
           </button>
         </div>
-      )}
+      ))}
 
       {karta.dane.od_uzytkownika.length > 0 && (
         <div className="mvd-akad-kontrakt" data-testid="mvd-akad-kontrakt-danych">

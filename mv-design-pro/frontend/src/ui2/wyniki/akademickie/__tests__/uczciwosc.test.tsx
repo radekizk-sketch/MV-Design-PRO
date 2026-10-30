@@ -63,7 +63,6 @@ const WYNIK_E40 = {
         flicker_pst: null,
         flicker_plt: null,
         voltage_unbalance_u2_u1: 0.0,
-        compatibility_status: 'NIE_OCENIONO',
       },
     ],
     sanity: { status: 'w paśmie wiarygodności', checks_total: 3, checks_passed: 3, violations: [] },
@@ -139,9 +138,11 @@ describe('Jakość energii (E-40) — ocena niewykonana, liczby wyłącznie w au
     const tabela = within(audyt).getByTestId('mvd-akad-obiekty-wynik_audytowy.nodes');
     expect(tabela).toHaveTextContent('3049,1234');
     expect(within(audyt).getByTestId('mvd-akad-audyt-powody')).toHaveTextContent('Brak przekładni');
-    // Status węzła w audycie to etykieta oceny, nie „spełnione".
-    expect(tabela).toHaveTextContent('Ocena niewykonana');
-    expect(tabela).not.toHaveTextContent('spełnione');
+    // Intencja zachowana: węzeł w audycie nie niesie werdyktu „spełnione". Zmiana kanonu
+    // (odcinek 3 karty ZU, §3.18): backend zdjął `compatibility_status` węzłów — jedyną oceną
+    // jest rekord NIE_OCENIONO w panelu werdyktu, więc tabela audytu nie ma kolumny statusu.
+    expect(tabela).not.toHaveTextContent('Ocena niewykonana');
+    expect(tabela.textContent ?? '').not.toMatch(/spełnione|niespełnione|zgodny/);
   });
 });
 

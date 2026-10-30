@@ -263,6 +263,39 @@ def napiecia_faz_przy_doziemieniu(
     return abs(v0), abs(v_b), abs(v_c)
 
 
+#: Próg współczynnika zwarcia doziemnego warunku pojemności linii w składowej zerowej
+#: (IEC 60909-0:2016 pkt 5.2 f)): pojemności wchodzą, gdy k jest WIĘKSZY niż 1,4.
+PROG_WSPOLCZYNNIKA_ZWARCIA_DOZIEMNEGO = 1.4
+
+#: Podstawa warunku pojemności linii w składowej zerowej zwarć IEC 60909 — JEDNO źródło tekstu
+#: dla złożenia macierzy Y0 (``enm.mapping``) i jego kroku śladu WHITE BOX.
+PODSTAWA_WARUNKU_POJEMNOSCI_ZEROWEJ_PL = (
+    "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się "
+    "w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest "
+    "większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). "
+    "Współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f przy zwarciu jednofazowym "
+    "metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, Z_2 = Z_1, wyznaczony "
+    "z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy Y0) dostaje "
+    "pojemności B0 wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych "
+    "zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem "
+    "normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
+)
+
+
+def wspolczynnik_zwarcia_doziemnego(z1: complex, z2: complex, z0: complex) -> float:
+    """k = max(U_b, U_c)/U_f zwarcia jednofazowego metalicznego fazy a z impedancji składowych
+    miejsca zwarcia (dowolna spójna jednostka — Ω albo pu jednej bazy); ten sam wzór co napięcia
+    faz zdrowych doziemienia (``napiecia_faz_przy_doziemieniu``)."""
+    _, u_b, u_c = napiecia_faz_przy_doziemieniu(1.0, z1, z2, z0)
+    return max(u_b, u_c)
+
+
+def pojemnosci_w_skladowej_zerowej(wspolczynnik_k: float) -> bool:
+    """JEDEN predykat warunku pkt 5.2 f): pojemności linii w składowej zerowej, gdy k > 1,4
+    (nierówność ostra — k równy 1,4 ich nie włącza)."""
+    return wspolczynnik_k > PROG_WSPOLCZYNNIKA_ZWARCIA_DOZIEMNEGO
+
+
 def napiecia_faz_z_admitancji_sieci(
     u_f_v: float, y_s: complex, z_f_ohm: complex = 0j
 ) -> tuple[float, float, float]:
@@ -302,8 +335,9 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
     u_c: float | None = None
 
     if tryb == "bezposrednie":
-        # Uziemienie bezpośrednie: prąd zwarciowy przez Z0 sieci (rdzeń IEC 60909, pojemności
-        # doziemne w Y0) — osobny prąd pojemnościowy nie jest wielkością tego trybu.
+        # Uziemienie bezpośrednie: prąd zwarciowy przez Z0 sieci (rdzeń IEC 60909; pojemności
+        # doziemne w Y0 pod warunkiem pkt 5.2 f), ``PODSTAWA_WARUNKU_POJEMNOSCI_ZEROWEJ_PL``)
+        # — osobny prąd pojemnościowy nie jest wielkością tego trybu.
         prad = dane.ikss_iec_a
         wzor = r"I''_{k1} = \frac{3\,c\,U_f}{|Z_1 + Z_2 + Z_0 + 3 Z_f|}"
         podstawa = "IEC 60909-0:2016 — prąd zwarcia jednofazowego z ziemią (wiersz zwarcia)"
