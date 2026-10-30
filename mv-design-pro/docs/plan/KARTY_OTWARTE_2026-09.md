@@ -1189,7 +1189,7 @@ iniekcja I3c przeniesiona na `optionLabel` karty (`String(option.vectorGroup)`) 
 33 testy `pandapower` padają z braku pakietu w środowisku). Commit 5 jest gotowy do pełnej bramki
 sesji głównej; następca nie ma kroku do wykonania w tej karcie poza odbiorem bramki.
 
-**Commit 6 (w toku, 2026-10-30) — jedno źródło rodzajów łącznika i jawny brak danych w panelu
+**Commit 6 (zamknięty, 2026-10-30) — jedno źródło rodzajów łącznika i jawny brak danych w panelu
 katalogu.** Krok 1 (WIP, niezweryfikowany): lista rodzajów gałęzi w `frontend/src/types/enm.ts`
 (`KLASA_RODZAJU_GALEZI` z `satisfies` względem unii, `RODZAJE_GALEZI`, `RODZAJE_GALEZI_LACZNIKA`,
 `RODZAJE_GALEZI_APARATU`, `jestRodzajemGaleziAparatu`, `isApparatusBranch`), słownik nazw
@@ -1225,7 +1225,31 @@ gałęzi w osobnym module bez modelu sieci `frontend/src/types/rodzajeGalezi.ts`
 pola `SwitchBranch.type`, kopia `TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM` i słownik
 `_RODZAJ_GALEZI_PL` usunięte; kopie w testach (`operacjeNn.test.ts`,
 `stanAparatuParytetGlifu.test.tsx`) i `czyLacznik` w `stanLacznika.ts` czytają jedno źródło.
-Następny krok: drugi bieg weryfikacyjny (vitest related, tsc, eslint, pytest celowany, strażniki).
+Weryfikacja commitu 6 (2026-10-30, drzewo `f2cb1ab19`): vitest related 347 plików / 7474
+testów RC=0, tsc RC=0, eslint RC=0, pytest celowany `-n 3` (lista importów kroku 1 + `tests/enm`,
+`tests/golden`, `tests/invariants`, `tests/cgmes`, migawka OpenAPI, determinizm e2e) 11104
+passed RC=0, `guardy_z_ci.py` KOMPLET ZIELONY RC=0. Iniekcje (każda czerwona, drzewo
+przywrócone): bezpiecznik poza klasą rodzajów, wyrocznia bez bezpiecznika, rodzaj mapy bez
+interfejsu gałęzi (tsc TS2322 na `RODZAJE_GALEZI_ZGODNE_Z_UNIA`), bezpiecznik jako łącznik
+w mapie frontu (test lustra backendu), panel ukrywający `null`, pole schematu usunięte,
+etykieta usunięta, nazwa jakości rozjechana z backendem (front i świeżość wyroczni), skrót
+przekształtnika z pola fantomowego, jakość pól karty jako kod.
+
+Znalezisko do decyzji architekta (zmierzone, nie naprawione w commicie 6): słowniki
+`APPARATUS_KIND_LABELS_PL` (`ui/inspector/EmptyInspectorPanel.tsx:64`,
+`ui/network-build/InspectorEngineeringView.tsx:1031`, rozjechane: „port odpływu” / „port
+odpływowy”), `APPARATUS_ROLE_LABELS_PL` i porównania `apparatusKind === 'cable_head'`
+(`InspectorEngineeringView.tsx:1167`, `ui/sld/shared/sldActionExecutor.ts:609`,
+`ui/sld/v2/command/SldCommandService.ts:421`) są kluczowane słownikiem (`disconnect_bus`,
+`cable_head`, `transformer_symbol`…), którego nie emituje żaden producent kanwy v3: identyfikator
+aparatu na kanwie to `${bayRef}#${symbolId}` z `SymbolId` (`cableHead`, `currentTransformer`…,
+`ui/sld/v3/symbols/defs.ts`), a klik i temat menu niosą `ownerRef = bayRef` bez `#`
+(`scene/buildScene.ts:1727`, `canvas/canvasMenuSubject.ts`). Wszystkie testy tych ścieżek
+podają syntetyczne `…#cable_head`. Skutek: akcja „Wyprowadź ciąg główny z głowicy” i pozycja
+menu „extend-trunk” na aparacie są nieosiągalne z kanwy; identyfikatory `…/internal-bay/…`
+(`daneElementuKanwy.ts`, `InspectorEngineeringView.tsx`) pochodzą ze skasowanego
+`StationInternalView`. Rozstrzygnięcie (kasacja martwej ścieżki albo wpięcie akcji głowicy
+w temat menu pola) należy do wątku SLD — bez zmian w commicie 6.
 
 ---
 
