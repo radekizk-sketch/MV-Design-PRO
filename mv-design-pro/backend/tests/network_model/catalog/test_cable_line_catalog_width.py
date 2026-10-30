@@ -51,6 +51,7 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
     # 33 + 8 Polish 1C = 41
     assert summary["liczba_typow_1z"] == 47
     assert summary["liczba_typow_3z"] == 22
+    assert "NKT_ENEA_2026" in summary["rodziny_kabli"]
     assert summary["statusy_weryfikacji"] == [
         "CZESCIOWO_ZWERYFIKOWANY",
         "NIEWERYFIKOWANY",
