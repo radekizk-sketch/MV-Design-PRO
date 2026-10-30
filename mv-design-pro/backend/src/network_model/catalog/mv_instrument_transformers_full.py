@@ -54,10 +54,11 @@ def _enea_ct(
             "fs": 5.0, "secondary_a": 5.0,
             "source_kind": "ENEA_REQUIREMENT",
         })
-    # Historyczne profile z 2026-10-30 rozdzielały 50–100 i 200–400
-    # na dwie pozycje 50/100 lub 200/400. Nie zmieniamy ich ID:
-    # istniejące projekty mogą je referencjonować. Nowe projekty wybierają
-    # rekord z primary_taps_a w mv_ct_enea_multirange.py.
+    # Katalog musi obsłużyć istniejące aparaty JEDNOZAKRESOWE (np. 200/5 A)
+    # oraz nowe UKŁADY ENEA o przełączalnych 50–100 lub 200–400/5 A.
+    # Sam brak przełącznika nie jest podstawą do oznaczenia wyrobu jako legacy:
+    # funkcja CT (rozliczenie/EAZ), stan istniejący/nowy i warunki ENEA
+    # są kryteriami ODREBNEJ oceny zgodności projektu, nie dostępności typu.
     podzielony_zakres = (
         (annex == "A" and place == "linia" and primary_a in (200, 400))
         or (annex == "B" and place == "pole-sieciowe" and primary_a in (50, 100, 200, 400))
@@ -65,10 +66,15 @@ def _enea_ct(
         or (annex == "C" and place == "linia" and primary_a in (200, 400))
         or (annex == "D" and place == "pole-sieciowe" and primary_a in (200, 400))
     )
-    prefix = "LEGACY — pojedynczy zakres (nie wybierać do nowych projektów): " if podzielony_zakres else ""
+    # Historyczne identyfikatory pozostają, ale pojedyncza przekładnia jest
+    # normalnym typem katalogowym, nie automatycznie aparatem przestarzałym.
     return {
         "id": f"ct-enea-2024-5{annex.lower()}-{place}-{construction.lower()}-{primary_a}-5-c{core_count}",
-        "name": prefix + f"Profil ENEA 5/{annex} {place}: CT {primary_a}/5 A, {core_count} rdzenie, 0,2S FS5",
+        "name": (
+            f"CT jednozakresowy {primary_a}/5 A, {core_count} rdzenie — profil do weryfikacji"
+            if podzielony_zakres else
+            f"Profil ENEA 5/{annex} {place}: CT {primary_a}/5 A, {core_count} rdzenie, 0,2S FS5"
+        ),
         "params": {
             "ratio_primary_a": float(primary_a),
             "ratio_secondary_a": 5.0,
@@ -87,7 +93,14 @@ def _enea_ct(
             "verification_status": "REFERENCYJNY",
             "catalog_status": "REFERENCYJNY_V1",
             "contract_version": "2.0",
-            "source_reference": ENEA_METERING_SOURCE + " || " + ENEA_IRIESD_SOURCE,
+            "source_reference": (
+                "Wpis referencyjny MV-DESIGN-PRO dla aparatu jednozakresowego; "
+                "ENEA 2024 dotyczy nowego/modernizowanego układu pomiarowego "
+                "i nie potwierdza tej konfiguracji jako nowego standardowego CT; "
+                + ENEA_METERING_SOURCE + " || " + ENEA_IRIESD_SOURCE
+                if podzielony_zakres
+                else ENEA_METERING_SOURCE + " || " + ENEA_IRIESD_SOURCE
+            ),
             "verification_note": (
                 f"WYMAGANIA ENEA zał. 5/{annex}, {place}, a nie produkt producenta. "
                 f"{core_count} rdzeni wynikają ze schematu przekładni; "
@@ -103,11 +116,15 @@ def _enea_ct(
                 "Dobór sprawdzić względem mocy umownej, obciążenia wtórnego, "
                 "klasy i warunków przyłączenia."
                 + (
-                    " UWAGA: pojedynczy zakres jest HISTORYCZNYM uproszczeniem "
-                    "katalogu. Źródłowy zał.5/A-D podaje przekładnik "
-                    "wieloprzekładniowy 50–100 albo 200–400/5 A. "
-                    "Do nowej inwestycji używać kanonicznego profilu "
-                    "z primary_taps_a; ID pozostaje dla istniejących projektów."
+                    " POJEDYNCZA PRZEKŁADNIA JEST POPRAWNYM RODZAJEM APARATU: "
+                    "w istniejącej stacji lub obwodach EAZ można spotkać "
+                    "200/5 albo 400/5 A, niezależnie od typów przełączalnych. "
+                    "Ten identyfikator jest profilem REFERENCYJNYM, "
+                    "nie dowodem zgodności z nowym układem rozliczeniowym ENEA. "
+                    "Aktualny standard ENEA 5/A-D przewiduje tam m.in. "
+                    "50–100 lub 200–400/5 A. Projektant sprawdza "
+                    "rzeczywistą tabliczkę, dokumentację i warunki modernizacji. "
+                    "Nie dopisywać zaczepów do aparatu, który ich nie ma."
                     if podzielony_zakres else ""
                 )
             ),
