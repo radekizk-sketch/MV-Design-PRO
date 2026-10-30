@@ -44,6 +44,7 @@ import {
   rodzajZwarciaPL,
 } from '../zwarcia/strings';
 import { rozpakujWartoscSladu } from '../../../ui/results-inspector/traceValue';
+import { wielkoscPl } from '../wzorzec/KartaWerdyktu';
 import { SKLADOWE_STRINGS as T, uziemieniePL } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -447,7 +448,8 @@ export function doziemienieWiersza(row: ShortCircuitRow | null): WidokDoziemieni
     podwojne: d.podwojne_doziemienie_pl,
     danePrzyjete: (d.dane_przyjete ?? []).map((dana) => ({
       nazwa: dana.nazwa_pl,
-      wartosc: dana.wartosc ? `${dana.wartosc.wartosc} ${dana.wartosc.jednostka}` : null,
+      // Ten sam zapis liczb co karta werdyktu (pl-PL, 4 cyfry znaczące) — nie surowy zapis JS.
+      wartosc: dana.wartosc ? wielkoscPl(dana.wartosc) : null,
       powod: dana.powod_pl,
     })),
     niepelny: d.kompletnosc_dowodu === 'NIEPELNY',

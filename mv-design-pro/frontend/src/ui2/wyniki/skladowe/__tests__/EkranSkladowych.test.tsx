@@ -433,6 +433,12 @@ const DOZIEMIENIE_KOMPENSOWANE = {
       powod_pl: 'założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN.',
       jakosc: 'ESTIMATED',
     },
+    {
+      nazwa_pl: 'B′0 wartość robocza (Linia SN 1)',
+      wartosc: { wartosc: 0.0000012, jednostka: 'S/km' },
+      powod_pl: 'B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu.',
+      jakosc: 'ESTIMATED',
+    },
   ],
   kompletnosc_dowodu: 'NIEPELNY',
 };
@@ -497,7 +503,11 @@ describe('EkranSkladowych — doziemienie sieci SN wg sposobu pracy punktu neutr
     expect(screen.getByTestId('mvd-skladowe-doziemienie-podwojne')).toHaveTextContent('IEC 60909-3');
     expect(screen.getByTestId('mvd-skladowe-doziemienie-zastrzezenia')).toHaveTextContent('Straty czynne dławika');
     const dane = screen.getByTestId('mvd-skladowe-doziemienie-dane-przyjete');
-    expect(dane).toHaveTextContent('R0 (Zespół uziemiający sekcji 1): 1.5 Ω');
+    // Zapis liczb po polsku (ten sam co karta werdyktu): przecinek dziesiętny, także dla
+    // małych wartości B′0 — dawniej ekran pokazywał surowy zapis JS „0.0000012 S/km".
+    expect(dane).toHaveTextContent('R0 (Zespół uziemiający sekcji 1): 1,5 Ω');
+    expect(dane).toHaveTextContent('B′0 wartość robocza (Linia SN 1): 0,0000012 S/km');
+    expect(dane.textContent).not.toMatch(/\d\.\d/);
     expect(within(dane).getByText(/R0/)).toHaveAttribute(
       'title',
       'założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN.',

@@ -86,8 +86,40 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     // Bilans + składowe Z1/Z2/Z0 ze śladu WHITE BOX (krok „Zk", KaTeX) +
     // uziemienie punktu neutralnego — sekcja składowych renderuje wywód domyślnie.
     await expect(page.getByTestId('mvd-skladowe-tabela')).toBeVisible();
-    await expect(page.getByTestId('mvd-skladowe-raport-status')).toContainText('raportowalny');
-    const wierszSkladowych = fixtura('skladowe_scena_wynik').rows[0];
+    // Sieć złota ma sieć SN z punktem neutralnym izolowanym (zespół uziemiający jest jedyną
+    // prawdą o punkcie neutralnym sekcji, a sieć złota go nie ma): doziemienie SN nie jest
+    // zwarciem IEC 60909, więc wiersz SN nie niesie Z1/Z2/Z0, tylko doziemienie wg sposobu
+    // pracy punktu neutralnego. Ekran domyślnie wybiera pierwszy wiersz — sprawdzamy, że
+    // dla wiersza bez składowych NICZEGO nie fabrykuje i pokazuje prąd doziemienia z biegu.
+    const wierszeWyniku = fixtura('skladowe_scena_wynik').rows as any[];
+    const wierszDomyslny = wierszeWyniku[0];
+    if (wierszDomyslny.z1_ohm == null) {
+      await expect(page.getByTestId('mvd-skladowe-brak-kroku')).toBeVisible();
+      await expect(page.getByTestId('mvd-skladowe-z1')).toHaveCount(0);
+      const doziemienieSieci = wierszDomyslny.doziemienie_sieci;
+      expect(doziemienieSieci, 'wiersz SN bez skladowych musi niesc doziemienie sieci').toBeTruthy();
+      const pradDoziemienia = new Intl.NumberFormat('pl-PL', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+        useGrouping: false,
+      }).format(doziemienieSieci.prad_a);
+      await expect(page.getByTestId('mvd-skladowe-doziemienie-prad').locator('dd')).toHaveText(
+        `${pradDoziemienia} A`,
+      );
+    }
+    // Wywód składowych prowadzimy na PIERWSZYM wierszu, który je niesie — wybór natywnym
+    // kliknięciem w nazwę punktu (ścieżka użytkownika, nie wymuszony stan).
+    const wierszSkladowych = wierszeWyniku.find((wiersz) => wiersz.z1_ohm != null);
+    expect(wierszSkladowych, 'scena musi niesc co najmniej jeden wiersz ze skladowymi').toBeTruthy();
+    const wierszTabeli = page
+      .getByTestId('mvd-skladowe-tabela')
+      .getByTestId('mvd-wyn-wiersz')
+      .filter({ hasText: wierszSkladowych.target_name });
+    await wierszTabeli.getByText(wierszSkladowych.target_name, { exact: true }).click();
+    await expect(wierszTabeli).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('mvd-skladowe-raport-status').locator('dd')).toHaveText(
+      wierszSkladowych.reporting_status_pl,
+    );
     const z1 = wierszSkladowych.z1_ohm;
     const z0 = wierszSkladowych.z0_ohm;
     // Czesc rzeczywista i modul czesci urojonej sprawdzamy OSOBNO: znak ekran
