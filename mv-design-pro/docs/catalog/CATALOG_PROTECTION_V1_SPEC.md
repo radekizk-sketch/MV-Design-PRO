@@ -6,7 +6,7 @@
 - `SZABLON_NASTAW`: szablony nastaw
 
 ## Stan danych
-- Urządzenia: 12 rekordów
+- Urządzenia: 14 rekordów (5 profili bez marki, 7 analitycznych e²TANGO legacy, 2 częściowo zweryfikowane rodziny 250/450)
 - Krzywe: 8 rekordów
 - Szablony: 8 rekordów
 
@@ -37,3 +37,9 @@ Każdy rekord ma obowiązkowo:
 ## Zasada użycia
 - Katalog ochrony służy do doboru, mapowania i prezentacji zakresów.
 - Brak pełnej weryfikacji ma być jawnie widoczny w danych i interfejsie.
+
+## Nowa generacja Elektrometal (30.10.2026)
+- `EM_E2TANGO_250` i `EM_E2TANGO_450` są osobnymi, wybieralnymi typami rodziny w katalogu MV, opartymi na kartach producenta (numery i odnośniki zapisane w `source_reference`).
+- Numer modelu **nie** jest prądem znamionowym urządzenia. Wejście pomiarowe prądowe 1 A / 5 A jest konfigurowalne, a jego wybór musi odpowiadać CT obwodu wtórnego.
+- `analytical_library_ref=None` do czasu udokumentowania funkcji i zakresów nastaw wybranego wariantu. Istnienie dawnego wpisu analitycznego 450 nie uzasadnia automatycznego podpięcia.
+- Nie zmieniać `_V0` ani nie dopisywać ochron 67N/87T/50/51 i gotowych nastaw bez faktycznego wyposażenia i konfiguracji konkretnej instancji.
