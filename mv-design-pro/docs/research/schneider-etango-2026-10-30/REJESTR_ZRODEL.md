@@ -72,7 +72,7 @@
 
 | ID | Dowód | Ograniczenie |
 |---|---|---|
-| R01 | [CLAUDE.md](../../../../../CLAUDE.md) | Zasady repo, B-01/B-02, reguły dowodowe |
+| R01 | [CLAUDE.md](../../../../CLAUDE.md) | Zasady repo, B-01/B-02, reguły dowodowe |
 | R02 | [STAN_REPO.md](../../../STAN_REPO.md) | Starsze snapshoty mogą być nieaktualne wobec aktywnego worktree |
 | R03 | [SLD_CAD_SPEC_V3.md](../../sld/SLD_CAD_SPEC_V3.md) | Kanon SLD; klasy i konstrukcja sceny |
 | R04 | [SLD_SYMBOL_LIBRARY.md](../../sld/SLD_SYMBOL_LIBRARY.md) | Starsza paleta barw jest w konflikcie z kierunkiem e²YANKEE |
