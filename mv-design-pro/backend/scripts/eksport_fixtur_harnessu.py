@@ -48,6 +48,8 @@ from typing import Any, get_args
 from unittest.mock import patch
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+from fastapi import Response
+
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(BACKEND_DIR))
@@ -66,6 +68,23 @@ from api.canonical_run_views import (  # noqa: E402
     build_short_circuit_rozplyw_response,
     get_power_flow_result,
     get_power_flow_trace,
+)
+from api.catalog import (  # noqa: E402
+    list_bess_inverter_types,
+    list_branch_point_types,
+    list_ct_types,
+    list_load_types,
+    list_lv_apparatus_types,
+    list_lv_cable_types,
+    list_lv_rcd_types,
+    list_mv_apparatus_types,
+    list_overhead_conductor_types,
+    list_ptpiree_generator_certificates,
+    list_pv_inverter_types,
+    list_shunt_capacitor_types,
+    list_source_system_types,
+    list_surge_arrester_types,
+    list_vt_types,
 )
 from api.generators import (  # noqa: E402
     get_der_instrument_transformers,
@@ -1146,6 +1165,50 @@ def rodzaje_wielkosci_zwarciowych_aparatury() -> dict[str, Any]:
             "aparat": sorted(RODZAJE_GALEZI_APARATU),
         },
         "nazwy_galezi": dict(sorted(NAZWY_RODZAJOW_GALEZI_PL.items())),
+    }
+
+
+def pola_kart_katalogu() -> dict[str, Any]:
+    """Klucze pozycji katalogu, które serwer wysyła dla kategorii przeglądarki typów — POMIAR
+    odpowiedzi TYCH SAMYCH funkcji, które obsługują `GET /api/catalog/...` (`api/catalog.py`):
+    suma kluczy wszystkich pozycji kategorii (pozycja może pominąć klucz opcjonalny).
+
+    Wyrocznia schematu panelu ogólnego karty katalogu (`ui/catalog/polaKartyKatalogu.ts`,
+    test `ui/catalog/__tests__/polaKartyKatalogu.test.ts`): panel pokazuje KAŻDE pole
+    schematu — wartość albo „brak danych” — zamiast ukrywać pola `null` i pola pominięte.
+    Kategorie złożone przeglądarki: przekładniki = CT ∪ VT, przekształtniki = PV ∪ BESS
+    (`fetchTypesByCategory`, `ui/catalog/api.ts`).
+    """
+
+    def klucze(rekordy: list[dict[str, Any]]) -> list[str]:
+        return sorted(set().union(*(set(r) for r in rekordy)))
+
+    ct = list_ct_types()
+    vt = list_vt_types()
+    pv = list_pv_inverter_types()
+    bess = list_bess_inverter_types()
+    return {
+        "zrodlo": "api/catalog.py (funkcje obsługi GET /api/catalog/...)",
+        "kategorie": {
+            "HV_OVERHEAD_CONDUCTOR": klucze(list_overhead_conductor_types()["przewody"]),
+            "MV_APPARATUS": klucze(list_mv_apparatus_types()),
+            "LV_APPARATUS": klucze(list_lv_apparatus_types()),
+            "LV_RCD": klucze(list_lv_rcd_types()),
+            "LV_CABLE": klucze(list_lv_cable_types()),
+            "LOAD": klucze(list_load_types()),
+            "CT": klucze(ct),
+            "VT": klucze(vt),
+            "MEASUREMENT_TRANSFORMER": klucze(ct + vt),
+            "PV_INVERTER": klucze(pv),
+            "BESS_INVERTER": klucze(bess),
+            "CONVERTER": klucze(pv + bess),
+            "SYSTEM_SOURCE": klucze(list_source_system_types()),
+            "SURGE_ARRESTER": klucze(list_surge_arrester_types()),
+            "SHUNT_CAPACITOR": klucze(list_shunt_capacitor_types()),
+            "PTPIREE_CERTIFICATE": klucze(list_ptpiree_generator_certificates(Response())),
+            "BRANCH_POLE": klucze(list_branch_point_types("BRANCH_POLE")),
+            "ZKSN": klucze(list_branch_point_types("ZKSN")),
+        },
     }
 
 
@@ -5256,6 +5319,7 @@ FIXTURY: dict[str, Any] = {
     "katalog_analiz_v126": katalog_analiz_v126,
     "kody_metryk_wynikow": kody_metryk_wynikow,
     "rodzaje_wielkosci_zwarciowych_aparatury": rodzaje_wielkosci_zwarciowych_aparatury,
+    "pola_kart_katalogu": pola_kart_katalogu,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
     "identyfikatory_grafu": identyfikatory_grafu,

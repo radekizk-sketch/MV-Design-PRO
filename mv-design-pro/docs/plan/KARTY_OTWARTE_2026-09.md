@@ -1202,8 +1202,14 @@ i nazwy), `inspectorAdapter.ts` (`TYPY_GALEZI`, `ETYKIETA_TYPU_GALEZI`); `LvDevi
 z typów pól zamiast kopii w `topology.py`, `tor_pola.py`, `validator.py`,
 `domain_operations_v2.py`, `topology_ops.py`, `v126_contracts.py`, `nn_circuit_sheet.py`,
 `zacisk_zabezpieczenia.py`. Wyrocznia harnessu dostała `rodzaje_galezi` i `nazwy_galezi`; test
-`frontend/src/ui/shared/__tests__/rodzajGalezi.test.ts`. Następny krok: biegi celowane (vitest,
-pytest), tsc; potem punkt 2 (panel ogólny katalogu bez ukrywania pól null).
+`frontend/src/ui/shared/__tests__/rodzajGalezi.test.ts`. Krok 2 (WIP, niezweryfikowany): panel ogólny karty katalogu
+pokazuje KAŻDE pole schematu kategorii — schemat `frontend/src/ui/catalog/polaKartyKatalogu.ts`
+(lustro serializacji `api/catalog.py`, wyrocznia `pola_kart_katalogu.json`, test
+`polaKartyKatalogu.test.ts`), brak wartości = „brak danych”, wartości złożone czytelne (nie
+„[object Object]”); test iloczynu `panelOgolnyKatalogu.test.tsx` (19 kategorii × {pełne, null,
+pominięte}). Pomiar: 136 ze 179 pól schematu nie ma polskiej etykiety (dotąd pokazywane jako
+angielski klucz po „uczłowieczeniu”) — następny krok: słownik etykiet PL dla wszystkich pól
+z testem pełności; potem biegi celowane, tsc, eslint, strażniki.
 
 ---
 

@@ -8,6 +8,13 @@ import {
 import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
 import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
 import {
+  maBudowniczegoWierszy,
+  POLA_KARTY_KATEGORII,
+  POLA_POZA_PANELEM_OGOLNYM,
+  type KategoriaPaneluOgolnego,
+} from './polaKartyKatalogu';
+import {
+  BRAK_DANYCH_PL,
   pradAparatuSnKatalogu,
   pradKaLubBrakDanych,
   pradLacznikaKatalogu,
@@ -262,51 +269,56 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
 }
 
 /**
- * Wielkości zwarciowe pozycji aparatu SN pokazywane ZAWSZE, także bez liczby: panel
- * generyczny ukrywa pola `null`, a dla tych wielkości brak liczby niesie informację —
+ * Wielkości zwarciowe pozycji aparatu SN: brak liczby niesie dwie różne informacje —
  * „nie dotyczy” (rodzaj aparatu jej nie ma) albo „brak danych” (karta jej nie podaje).
  */
-const WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE = ['breaking_capacity_ka', 'i_th_ka'] as const;
+const WIELKOSCI_ZWARCIOWE_APARATU_SN = ['breaking_capacity_ka', 'i_th_ka'] as const;
 
+/** Wartość pola karty w panelu ogólnym: brak wartości = jawne „brak danych” (zasada nr 4). */
+function wartoscPolaKarty(value: unknown): string {
+  if (value == null || value === '') return BRAK_DANYCH_PL;
+  if (Array.isArray(value)) {
+    return value.length === 0 ? 'brak pozycji' : value.map((v) => wartoscPolaKarty(v)).join(', ');
+  }
+  if (typeof value === 'boolean') return value ? 'Tak' : 'Nie';
+  if (typeof value === 'number') return Number.isFinite(value) ? formatNumber(value) : BRAK_DANYCH_PL;
+  if (typeof value === 'object') {
+    const wpisy = Object.entries(value as Record<string, unknown>);
+    return wpisy.length === 0
+      ? BRAK_DANYCH_PL
+      : wpisy.map(([klucz, v]) => `${humanizeKey(klucz)}: ${wartoscPolaKarty(v)}`).join('; ');
+  }
+  return String(value);
+}
+
+/**
+ * Wiersze panelu ogólnego: KAŻDE pole schematu kategorii (`POLA_KARTY_KATEGORII` — lustro
+ * serializacji serwera) i każde pole rekordu spoza schematu, także `null` i pominięte —
+ * brak wartości jest jawny, nie ukryty.
+ */
 function getGenericDetailEntries(
   type: CatalogListItem,
-  category: TypeCategory,
-): Array<{ label: string; value: string }> {
+  category: KategoriaPaneluOgolnego,
+): Array<{ klucz: string; label: string; value: string }> {
   const record = type as unknown as Record<string, unknown>;
-  const zawsze: ReadonlySet<string> = new Set(
-    category === 'MV_APPARATUS' ? WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE : [],
+  const pola = [...new Set([...POLA_KARTY_KATEGORII[category], ...Object.keys(record)])].filter(
+    (key) => !POLA_POZA_PANELEM_OGOLNYM.has(key),
   );
-  // CV-4.3 K7: sk3_min_mva/ik3_min_ka/rx_ratio_min ukryte tu — panel generyczny
-  // UKRYWA pola null zamiast "brak danych" (K1), więc renderują się WYŁĄCZNIE
-  // przez bespoke `wierszeZrodlaSystemowegoMin` (etykiety PL + jawny brak danych,
-  // zero duplikatu wartości pod dwiema różnymi etykietami).
-  const hiddenKeys = new Set([
-    'id',
-    'name',
-    'manufacturer',
-    'vendor',
-    'sk3_min_mva',
-    'ik3_min_ka',
-    'rx_ratio_min',
-    // Propozycje wartości roboczych (V12K-351) mają własną sekcję — nie są daną karty.
-    'wartosci_robocze',
-  ]);
-  const presentKeys = [
-    ...Object.keys(record).filter((key) => !hiddenKeys.has(key) && record[key] != null && record[key] !== ''),
-    ...[...zawsze].filter((key) => record[key] == null),
-  ];
   const orderedKeys = [
-    ...GENERIC_FIELD_ORDER.filter((key) => presentKeys.includes(key)),
-    ...presentKeys
+    ...GENERIC_FIELD_ORDER.filter((key) => pola.includes(key)),
+    ...pola
       .filter((key) => !GENERIC_FIELD_ORDER.includes(key as (typeof GENERIC_FIELD_ORDER)[number]))
       .sort(),
   ];
 
   return orderedKeys.map((key) => ({
+    klucz: key,
     label: humanizeKey(key),
-    value: zawsze.has(key)
-      ? pradAparatuSnKatalogu(record, key as (typeof WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE)[number])
-      : formatDetailValue(record[key]),
+    value:
+      category === 'MV_APPARATUS'
+      && (WIELKOSCI_ZWARCIOWE_APARATU_SN as readonly string[]).includes(key)
+        ? pradAparatuSnKatalogu(record, key as (typeof WIELKOSCI_ZWARCIOWE_APARATU_SN)[number])
+        : wartoscPolaKarty(record[key]),
   }));
 }
 
@@ -580,7 +592,10 @@ function TypeDetailsPanel({
   type: CatalogListItem;
   category: TypeCategory;
 }) {
-  const genericEntries = useMemo(() => getGenericDetailEntries(type, category), [type, category]);
+  const genericEntries = useMemo(
+    () => (maBudowniczegoWierszy(category) ? [] : getGenericDetailEntries(type, category)),
+    [type, category],
+  );
   const manufacturer = getCatalogManufacturer(type);
 
   return (
@@ -596,7 +611,7 @@ function TypeDetailsPanel({
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <DetailField label="Kategoria" value={ETYKIETY_KATEGORII_TYPOW[category]} />
-          <DetailField label="Producent" value={manufacturer ?? '—'} />
+          <DetailField label="Producent" value={manufacturer ?? BRAK_DANYCH_PL} />
         </div>
       </div>
 
@@ -613,13 +628,12 @@ function TypeDetailsPanel({
           {category === 'SWITCH_EQUIPMENT' ? (
             <WierszeKatalogu wiersze={wierszeLacznika(type as SwitchEquipmentType)} />
           ) : null}
-          {!['LINE', 'CABLE', 'TRANSFORMER', 'SWITCH_EQUIPMENT'].includes(category) ? (
+          {!maBudowniczegoWierszy(category) ? (
             <GenericTypeDetailsPanel entries={genericEntries} />
           ) : null}
-          {/* CV-4.3 K7: dane scenariusza MIN ZRODLO_SN — bespoke (nie generyczny
-              panel powyżej), bo panel generyczny UKRYWA pola `null` zamiast
-              pokazać "brak danych" (wzór K1: `wierszeLinii` / `max_temperature_c`).
-              Dokłada się DO generycznych wpisów (Sk3/Ik3/R-X maks. już tam są). */}
+          {/* CV-4.3 K7: dane scenariusza MIN ZRODLO_SN — etykiety PL z jednostkami
+              (`wierszeZrodlaSystemowegoMin`); panel ogólny pomija te klucze, żeby ta sama
+              wartość nie wystąpiła pod dwiema etykietami. */}
           {category === 'SYSTEM_SOURCE' ? (
             <WierszeKatalogu wiersze={wierszeZrodlaSystemowegoMin(type as SourceSystemCatalogType)} />
           ) : null}
@@ -688,7 +702,7 @@ function WartosciRoboczePozycji({
 function GenericTypeDetailsPanel({
   entries,
 }: {
-  entries: Array<{ label: string; value: string }>;
+  entries: Array<{ klucz: string; label: string; value: string }>;
 }) {
   if (entries.length === 0) {
     return (
@@ -702,9 +716,10 @@ function GenericTypeDetailsPanel({
     <>
       {entries.map((entry) => (
         <DetailField
-          key={entry.label}
+          key={entry.klucz}
           label={entry.label}
           value={entry.value}
+          testId={`type-library-pole-${entry.klucz}`}
         />
       ))}
     </>
@@ -715,13 +730,15 @@ function DetailField({
   label,
   value,
   unit,
+  testId,
 }: {
   label: string;
   value: string;
   unit?: string;
+  testId?: string;
 }) {
   return (
-    <div>
+    <div data-testid={testId}>
       <dt className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</dt>
       <dd className="mt-1 text-sm text-gray-900">
         {value}

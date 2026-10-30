@@ -35,6 +35,7 @@ import type {
   VTCatalogType,
 } from './types';
 import { komunikatZapytania } from '../../ui2/shared/bladZapytania';
+import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
 
 export class CatalogApiError extends Error {
   constructor(
@@ -780,8 +781,14 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
     case 'ZKSN':
       types = await fetchBranchPointTypes('ZKSN');
       break;
-    default:
-      throw new Error(`Unknown category: ${category}`);
+    default: {
+      // Wyczerpanie unii `TypeCategory` sprawdza kompilator — nowa kategoria bez gałęzi
+      // pobierania to błąd kompilacji, nie komunikat dla projektanta.
+      const nieobslugiwana: never = category;
+      throw new Error(
+        `Przeglądarka typów nie obsługuje kategorii katalogu „${ETYKIETY_KATEGORII_TYPOW[nieobslugiwana as TypeCategory] ?? 'spoza słownika'}”.`,
+      );
+    }
   }
 
   return sortCatalogItems(types);
