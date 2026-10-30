@@ -52,9 +52,7 @@ ROLE = tuple(SZABLON_ROLI)
 
 
 def _pierwsza(slownik: dict[str, Any], warunek: Any = None) -> str:
-    return next(
-        ref for ref, typ in sorted(slownik.items()) if warunek is None or warunek(typ)
-    )
+    return next(ref for ref, typ in sorted(slownik.items()) if warunek is None or warunek(typ))
 
 
 #: Napięcie szyn SN sieci testowej [kV] (GPZ 15 kV) — pozycje „poprawne” mają poziom izolacji
@@ -150,12 +148,8 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
             },
         )
     pola_stacji = [b for b in enm["bays"] if b["substation_ref"] == stacja["ref_id"]]
-    pole_nn = next(
-        b["ref_id"] for b in pola_stacji if b["ref_id"].endswith("nn_main_breaker")
-    )
-    pola_sn = {
-        b["bay_role"]: b["ref_id"] for b in pola_stacji if b["ref_id"] != pole_nn
-    }
+    pole_nn = next(b["ref_id"] for b in pola_stacji if b["ref_id"].endswith("nn_main_breaker"))
+    pola_sn = {b["bay_role"]: b["ref_id"] for b in pola_stacji if b["ref_id"] != pole_nn}
     assert set(pola_sn) == set(ROLE), pola_sn
     return enm, pola_sn, pole_nn
 
@@ -202,19 +196,14 @@ def _ladunek_katalogowy(rola: str) -> list[dict[str, Any]]:
 @pytest.mark.parametrize("rola", ROLE)
 def test_pole_swieze_bez_szablonu_jest_brakiem_danych(siec: Any, rola: str) -> None:
     enm, pola, _ = siec
-    assert (
-        stan_danych_wyposazenia(_pole(enm, pola[rola])["primary_devices"])
-        == "BRAK_DANYCH"
-    )
+    assert stan_danych_wyposazenia(_pole(enm, pola[rola])["primary_devices"]) == "BRAK_DANYCH"
 
 
 @pytest.mark.parametrize("rola", ROLE)
 def test_tryb_katalog_daje_model(siec: Any, rola: str) -> None:
     enm, pola, _ = siec
     devices = _ladunek_katalogowy(rola)
-    wynik = _wykonaj(
-        enm, {"bay_ref": pola[rola], "mode": "katalog", "devices": devices}
-    )
+    wynik = _wykonaj(enm, {"bay_ref": pola[rola], "mode": "katalog", "devices": devices})
 
     assert wynik.get("error") is None, wynik.get("error")
     zapisane = _pole(wynik["snapshot"], pola[rola])["primary_devices"]
@@ -339,9 +328,7 @@ def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
     )
 
 
-@pytest.mark.parametrize(
-    "rola", ["FEEDER", "IN", "OUT", "TR", "COUPLER", "MEASUREMENT"]
-)
+@pytest.mark.parametrize("rola", ["FEEDER", "IN", "OUT", "TR", "COUPLER", "MEASUREMENT"])
 def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
     """Pole GPZ na rodzinie ABB UniGear ZS1, szablon = katalogowe pole rodziny tej roli:
     aparaty z BOM-u producenta, każdy z referencją szablonu aparatu (MODEL, bez danych
@@ -349,9 +336,7 @@ def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
     pola — dlatego pole FEEDER przyjmuje wyłącznie szablon FEEDER, inne odmawia."""
     rodzina = "ABB__UNIGEAR_ZS1"
     szablony = {
-        k: v
-        for k, v in _rejestr_pol_katalogowych().items()
-        if v.switchgear_family_ref == rodzina
+        k: v for k, v in _rejestr_pol_katalogowych().items() if v.switchgear_family_ref == rodzina
     }
     (szablon,) = (k for k, v in szablony.items() if v.bay_role == rola)
     enm = wykonaj(
@@ -436,9 +421,7 @@ def test_tryb_katalog_z_rodzajem_bez_katalogu_jest_propozycja(siec: Any) -> None
 @pytest.mark.parametrize("rodzaj", sorted(PRZESTRZEN_KATALOGU_APARATU))
 def test_pozycja_katalogowa_kazdej_przestrzeni(siec: Any, rodzaj: str) -> None:
     enm, pola, _ = siec
-    umiejscowienie = (
-        "GROUND_BRANCH" if rodzaj in {"ES", "SURGE_ARRESTER"} else "MIDSTREAM"
-    )
+    umiejscowienie = "GROUND_BRANCH" if rodzaj in {"ES", "SURGE_ARRESTER"} else "MIDSTREAM"
 
     def ladunek(ref: object) -> dict[str, Any]:
         wpis: dict[str, Any] = {"kind": rodzaj, "placement": umiejscowienie}
@@ -452,9 +435,7 @@ def test_pozycja_katalogowa_kazdej_przestrzeni(siec: Any, rodzaj: str) -> None:
 
     _odmowa(enm, ladunek(None), "bay_equipment.catalog_ref_missing")
     _odmowa(enm, ladunek("   "), "bay_equipment.catalog_ref_missing")
-    nieistniejaca = _odmowa(
-        enm, ladunek("pozycja-ktorej-nie-ma"), "catalog.item_not_found"
-    )
+    nieistniejaca = _odmowa(enm, ladunek("pozycja-ktorej-nie-ma"), "catalog.item_not_found")
     assert "Aparat 1" in nieistniejaca["error"]
 
 
@@ -491,9 +472,7 @@ def test_rodzaj_bez_katalogu_nie_przyjmuje_pozycji(siec: Any, rodzaj: str) -> No
         {
             "bay_ref": pola["TR"],
             "mode": "katalog",
-            "devices": [
-                {"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}
-            ],
+            "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}],
         },
         "bay_equipment.catalog_not_applicable",
     )
@@ -552,9 +531,7 @@ def test_aparat_wskazuje_lacznik_pola_i_odczyt_pola_czyta_jego_stan(siec: Any) -
     otwarte = wykonaj(wyposazone, "open_switch", {"switch_ref": lacznik})
 
     def stan_aparatu(migawka: dict[str, Any]) -> dict[str, Any]:
-        odczyt = build_field_read_model(
-            "w5c", EnergyNetworkModel.model_validate(migawka)
-        )
+        odczyt = build_field_read_model("w5c", EnergyNetworkModel.model_validate(migawka))
         (pozycja,) = (p for p in odczyt["fields"] if p["bay_ref"] == pola["OUT"])
         (aparat,) = pozycja["canonical_model"]["base_model"]["primary_devices"]
         assert aparat["linked_ref"] == lacznik
@@ -660,9 +637,7 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
         {
             "bay_ref": pole_gpz,
             "mode": "katalog",
-            "devices": [
-                {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}
-            ],
+            "devices": [{"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}],
         },
     )
     assert przyjete.get("error") is None, przyjete.get("error")
@@ -821,9 +796,7 @@ def test_brak_przekladni_nie_zostawia_pola_w_rekordzie(siec: Any, rodzaj: str) -
 
 @pytest.mark.parametrize("postac", sorted(POSTACI_ODGALEZIENIA))
 @pytest.mark.parametrize("rodzaj", RODZAJE_POL_OPCJONALNYCH)
-def test_odgalezienie_toru_krotkim_identyfikatorem(
-    siec: Any, rodzaj: str, postac: str
-) -> None:
+def test_odgalezienie_toru_krotkim_identyfikatorem(siec: Any, rodzaj: str, postac: str) -> None:
     """Odgałęzienie toru (Z.11.1: „pn" — odgałęzienie przekładnika napięciowego) przyjmuje
     wyłącznie krótki identyfikator z liter i cyfr, dla każdego rodzaju aparatu; inna postać —
     odmowa atomowa `bay_equipment.branch_invalid`."""
@@ -832,9 +805,7 @@ def test_odgalezienie_toru_krotkim_identyfikatorem(
     ladunek = {
         "bay_ref": pola["IN"],
         "mode": "katalog",
-        "devices": [
-            {"kind": rodzaj, "placement": "MIDSTREAM", "odgalezienie": wartosc}
-        ],
+        "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "odgalezienie": wartosc}],
     }
     if not poprawna:
         _odmowa(enm, ladunek, "bay_equipment.branch_invalid")
@@ -887,9 +858,7 @@ RODZAJE_WYKONANIA: dict[str, str | None] = {
 
 @pytest.mark.parametrize("postac", sorted(POSTACI_WYKONANIA))
 @pytest.mark.parametrize("rodzaj", sorted(RODZAJE_WYKONANIA))
-def test_wykonanie_wylacznie_wylacznika_ze_slownika(
-    siec: Any, rodzaj: str, postac: str
-) -> None:
+def test_wykonanie_wylacznie_wylacznika_ze_slownika(siec: Any, rodzaj: str, postac: str) -> None:
     """Iloczyn rodzaj aparatu × postać wykonania: wykonanie (stałe / wysuwne) zapisuje się
     WYŁĄCZNIE wyłącznikowi i wyłącznie ze słownika `rodzaje_aparatury.WYKONANIA_APARATU`; każdy
     inny rodzaj albo postać — odmowa atomowa `bay_equipment.execution_not_applicable` (model
@@ -920,9 +889,7 @@ def test_brak_wykonania_nie_zostawia_pola_w_rekordzie(siec: Any) -> None:
     nietknięty — `enm/hash.py::_POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE`)."""
     enm, pola, _ = siec
     aparat = {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}
-    wynik = _wykonaj(
-        enm, {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]}
-    )
+    wynik = _wykonaj(enm, {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]})
     assert wynik.get("error") is None, wynik.get("error")
     (zapisany,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
     assert zapisany.get("wykonanie") is None

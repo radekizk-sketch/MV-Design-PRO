@@ -1249,9 +1249,7 @@ class LineRun(BaseModel):
     id: str
     name: str | None = None
     run_kind: Literal["main_trunk", "branch", "ring", "loop"]
-    starting_bay_ref: (
-        str  # pole SN (GPZ albo stacji) albo punkt odgałęźny, z którego ciąg startuje
-    )
+    starting_bay_ref: str  # pole SN (GPZ albo stacji) albo punkt odgałęźny, z którego ciąg startuje
     # Port startu w JEDNEJ postaci (`domain_operations._rozwiaz_port_startu`): `ref_id` pola
     # liniowego, gdy ciąg startuje z pola; inaczej zacisk — szyna portu odgałęźnego punktu albo
     # szyna końca ciągu.
@@ -1505,12 +1503,8 @@ class Bay(ENMElement):
     def _wlasciciel_pola(self) -> Bay:
         """Pole ma DOKŁADNIE jednego właściciela: stację albo punkt rozgałęzienia ZKSN.
         Port punktu rozgałęzienia ma sens wyłącznie dla pola ZKSN."""
-        ma_stacje = isinstance(self.substation_ref, str) and bool(
-            self.substation_ref.strip()
-        )
-        ma_punkt = isinstance(self.branch_point_ref, str) and bool(
-            self.branch_point_ref.strip()
-        )
+        ma_stacje = isinstance(self.substation_ref, str) and bool(self.substation_ref.strip())
+        ma_punkt = isinstance(self.branch_point_ref, str) and bool(self.branch_point_ref.strip())
         if ma_stacje == ma_punkt:
             raise ValueError(
                 f"pole {self.ref_id!r} musi wskazywać dokładnie jednego właściciela: "
@@ -1545,9 +1539,7 @@ class BaySwitchState(BaseModel):
     # Stan ruchowy aparatu (karta #135): tryb sterowania, uzbrojenie napędu i komunikacja są
     # TELEMETRIĄ — wartość wyłącznie ze źródła runtime (`BayRuntimeState.primary_device_states`
     # albo rekord aparatu na migawce); `None` = brak telemetrii, nigdy wartość domyślna.
-    control_mode: (
-        Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"] | None
-    ) = None
+    control_mode: Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"] | None = None
     armed_for_close: bool | None = None
     armed_for_open: bool | None = None
     communication_ok: bool | None = None
@@ -1617,9 +1609,7 @@ class BayPrimaryDevice(BaseModel):
         "UNBALANCE_CT",
         "PHASE_TO_PHASE_VT",
     ]
-    placement: Literal[
-        "UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"
-    ]
+    placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
     is_controllable: bool = False
     render_variant: str | None = None
@@ -1693,9 +1683,7 @@ class BayPrimaryDevice(BaseModel):
         rodzaju, dla którego słownik go dopuszcza (`NAPEDY_RODZAJU_APARATU`), funkcje wyłączające
         na wyłączniku, funkcje mierzące na przekładniku; kody bez powtórzeń."""
         zasilajace = set(RODZAJ_APARATU_WEJSCIA.values())
-        if self.naped is not None and self.naped not in NAPEDY_RODZAJU_APARATU.get(
-            self.kind, ()
-        ):
+        if self.naped is not None and self.naped not in NAPEDY_RODZAJU_APARATU.get(self.kind, ()):
             raise ValueError(
                 f"aparat {self.device_ref!r} ({self.kind}): napęd {self.naped} nie dotyczy "
                 "aparatu tego rodzaju"
@@ -1720,9 +1708,7 @@ class BayPrimaryDevice(BaseModel):
             ("funkcje_eaz_wylaczajace", self.funkcje_eaz_wylaczajace),
         ):
             if len(set(kody)) != len(kody):
-                raise ValueError(
-                    f"aparat {self.device_ref!r}: powtórzony kod funkcji w {nazwa}"
-                )
+                raise ValueError(f"aparat {self.device_ref!r}: powtórzony kod funkcji w {nazwa}")
         return self
 
     @model_validator(mode="after")
@@ -1739,9 +1725,7 @@ class BayPrimaryDevice(BaseModel):
                     f"porty rodzaju: {', '.join(komplet) or 'brak'}"
                 )
             if port.port_id in widziane:
-                raise ValueError(
-                    f"aparat {self.device_ref!r}: powtórzony port {port.port_id!r}"
-                )
+                raise ValueError(f"aparat {self.device_ref!r}: powtórzony port {port.port_id!r}")
             widziane.add(port.port_id)
         if (
             self.switch_state is not None
@@ -1787,9 +1771,7 @@ class BayMeasurements(BaseModel):
 
 
 class BayMeasurementSet(BaseModel):
-    side: Literal[
-        "pole", "strona_szyn", "strona_odplywu", "strona_lewa", "strona_prawa"
-    ]
+    side: Literal["pole", "strona_szyn", "strona_odplywu", "strona_lewa", "strona_prawa"]
     values: BayMeasurements = Field(default_factory=BayMeasurements)
 
 
@@ -1914,9 +1896,7 @@ class BayProtectionControlUnit(BaseModel):
     spz: SpzState | None = None
     alarms: list[AlarmEntry] = []
     events: list[EventEntry] = []
-    disturbance_recorder: DisturbanceRecorderState = Field(
-        default_factory=DisturbanceRecorderState
-    )
+    disturbance_recorder: DisturbanceRecorderState = Field(default_factory=DisturbanceRecorderState)
     trends: TrendState = Field(default_factory=TrendState)
     settings_mode: Literal["automatyczne", "reczne"] = "reczne"
     settings_ref: str | None = None
@@ -1963,12 +1943,8 @@ class BayEnergizationSafetyState(BaseModel):
 class BayRuntimeState(BaseModel):
     secondary_communication_status: Literal["ok", "degraded", "offline"] = "offline"
     last_good_update_at: datetime | None = None
-    control_availability: Literal["dostepne", "czesciowo_dostepne", "niedostepne"] = (
-        "niedostepne"
-    )
-    measurement_availability: Literal["dostepne", "czesciowe", "niedostepne"] = (
-        "niedostepne"
-    )
+    control_availability: Literal["dostepne", "czesciowo_dostepne", "niedostepne"] = "niedostepne"
+    measurement_availability: Literal["dostepne", "czesciowe", "niedostepne"] = "niedostepne"
     primary_device_states: dict[str, BaySwitchState] = {}
     active_alarms: list[AlarmEntry] = []
     pending_command: BayCommandExecutionState | None = None
@@ -1983,9 +1959,7 @@ class BayScenarioState(BaseModel):
     source: Literal["bazowy", "wariant", "symulacja_przelaczen", "ruch"] = "bazowy"
 
 
-TrybPracyZrodla = Literal[
-    "praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"
-]
+TrybPracyZrodla = Literal["praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"]
 # Jeden słownik trybu pracy źródła: zapis (`set_source_operating_mode`), odczyt
 # (`application/field_read_model._generator_operating_mode`) i pole modelu niżej.
 TRYBY_PRACY_ZRODLA: tuple[str, ...] = get_args(TrybPracyZrodla)
@@ -2126,9 +2100,7 @@ class BayProjectResults(BaseModel):
 class BayCanonicalModel(BaseModel):
     schema_version: Literal["v10.bay.1"] = "v10.bay.1"
     created_from: Literal["szablon", "recznie", "migracja", "przebudowa"] = "migracja"
-    integrity_status: Literal["kompletny", "po_migracji", "wymaga_uzupelnienia"] = (
-        "po_migracji"
-    )
+    integrity_status: Literal["kompletny", "po_migracji", "wymaga_uzupelnienia"] = "po_migracji"
     audit_trail_ref: str | None = None
     base_model: BayBaseModel
     runtime_state: BayRuntimeState | None = None
@@ -2207,9 +2179,7 @@ class BranchPointSN(ENMElement):
     # W5-C: dawne `switch_state` (kopia stanu łączników portów) skasowane — stan żyje na
     # gałęziach łączników portów (`status`/`normal_state`); migracja `enm/stan_normalny.py`.
     materialized_params: dict | None = None
-    completeness_status: (
-        Literal["KOMPLETNY", "NIEKOMPLETNY", "BRAK_KATALOGU"] | None
-    ) = None
+    completeness_status: Literal["KOMPLETNY", "NIEKOMPLETNY", "BRAK_KATALOGU"] | None = None
     runtime_inputs: dict | None = None
 
 
@@ -2257,9 +2227,7 @@ class KatalogProjektu(BaseModel):
             rekordy = getattr(self, rodzaj)
             for rekord in rekordy:
                 if not rekord.id.strip():
-                    raise ValueError(
-                        f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji"
-                    )
+                    raise ValueError(f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji")
                 if rekord.id in widziane:
                     raise ValueError(
                         f"katalog_projektu: identyfikator '{rekord.id}' powtarza się w sekcji"
@@ -2417,11 +2385,7 @@ def liczba_jednostek_zrodla(element: Generator | Mapping[str, Any]) -> int:
         ilosc = element.get("quantity")
     else:
         ilosc = element.quantity
-    liczba = (
-        ilosc
-        if isinstance(ilosc, int) and not isinstance(ilosc, bool) and ilosc
-        else None
-    )
+    liczba = ilosc if isinstance(ilosc, int) and not isinstance(ilosc, bool) and ilosc else None
     if liczba is None:
         liczba = liczba_torow(element)
     if liczba < 1:

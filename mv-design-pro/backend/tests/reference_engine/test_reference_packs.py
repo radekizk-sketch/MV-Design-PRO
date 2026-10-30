@@ -148,9 +148,7 @@ class TestCreatorTemplatesComplyWithProfiles:
         )
         report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
         return [
-            f"{c.element_ref}:{c.rule_code}"
-            for c in report.packs[0].checks
-            if c.status == "fail"
+            f"{c.element_ref}:{c.rule_code}" for c in report.packs[0].checks if c.status == "fail"
         ]
 
     def test_bay_templates_comply_with_profiles_gpz(self) -> None:
@@ -187,9 +185,7 @@ class TestCreatorTemplatesComplyWithProfiles:
                 placement="DOWNSTREAM",
             )
         )
-        station = Substation(
-            ref_id="st/x", name="Stacja", station_type="gpz", bus_refs=["bus/sn"]
-        )
+        station = Substation(ref_id="st/x", name="Stacja", station_type="gpz", bus_refs=["bus/sn"])
         enm = EnergyNetworkModel(
             header=ENMHeader(name="Sabotaż"), substations=[station], bays=[bay]
         )
@@ -212,9 +208,7 @@ class TestFamilyTemplatesMatchCells:
         from reference_engine.registry import family_for_pack
 
         packs_by_family = {
-            p.switchgear_family_ref: p
-            for p in list_reference_packs()
-            if p.kind == "manufacturer"
+            p.switchgear_family_ref: p for p in list_reference_packs() if p.kind == "manufacturer"
         }
         checked = 0
         for template in list_switchgear_solution_templates_for_manufacturer(None):
@@ -243,9 +237,7 @@ class TestFamilyTemplatesMatchCells:
             )
             checks = _cell_match_check_for_bay(bay, pack, family)
             assert len(checks) == 1
-            assert (
-                checks[0].status == "pass"
-            ), f"{template.template_ref}: {checks[0].message_pl}"
+            assert checks[0].status == "pass", f"{template.template_ref}: {checks[0].message_pl}"
             checked += 1
         # 4 rodziny z celkami × 3 typy pól = 12 szablonów.
         assert checked == 12
@@ -272,9 +264,7 @@ def _niezgodnosci_pola(bay: Bay) -> list[str]:
     station = Substation(
         ref_id="st/x", name="Stacja testowa", station_type="gpz", bus_refs=["bus/sn"]
     )
-    enm = EnergyNetworkModel(
-        header=ENMHeader(name="Pole GPZ"), substations=[station], bays=[bay]
-    )
+    enm = EnergyNetworkModel(header=ENMHeader(name="Pole GPZ"), substations=[station], bays=[bay])
     report = evaluate_enm(enm, pack_ids=[FIELD_PROFILE_PACK_ID])
     return sorted(c.rule_code for c in report.packs[0].checks if c.status == "fail")
 
@@ -298,20 +288,14 @@ def test_profil_pola_liniowego_gpz_iloczyn(
     WYŁĄCZNIE na podstawie portów (`aparaty_poza_torem_glownym`)."""
     bay = _bay_from_template(szablon, "bay/gpz", "st/x")
     (cb,) = (d for d in bay.primary_devices if d.kind == "CB")
-    assert cb.wykonanie == (
-        "WYSUWNE" if szablon.wykonanie_lacznikow == "WYSUWNY" else "STALE"
-    )
+    assert cb.wykonanie == ("WYSUWNE" if szablon.wykonanie_lacznikow == "WYSUWNY" else "STALE")
     if wykonanie_cb != "z_szablonu":
         bay = bay.model_copy(
             update={
                 "primary_devices": [
                     (
                         d.model_copy(
-                            update={
-                                "wykonanie": (
-                                    None if wykonanie_cb == "brak" else wykonanie_cb
-                                )
-                            }
+                            update={"wykonanie": (None if wykonanie_cb == "brak" else wykonanie_cb)}
                         )
                         if d.kind == "CB"
                         else d
@@ -325,9 +309,7 @@ def test_profil_pola_liniowego_gpz_iloczyn(
     if not z_portami:
         bay = bay.model_copy(
             update={
-                "primary_devices": [
-                    d.model_copy(update={"ports": []}) for d in bay.primary_devices
-                ]
+                "primary_devices": [d.model_copy(update={"ports": []}) for d in bay.primary_devices]
             }
         )
     oczekiwane: list[str] = []

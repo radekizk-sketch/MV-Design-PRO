@@ -257,9 +257,7 @@ _WEZEL_KONCA_TORU: dict[str, str] = {
 #: Węzły końca TORU GŁÓWNEGO pola — tor główny to droga aparatów dwuportowych od węzła szyny
 #: do jednego z tych węzłów (``aparaty_poza_torem_glownym``). Lustro frontu
 #: ``WEZLY_KONCA_TORU`` (``rodzajeAparatuPola.ts``), równość przypina test parytetu.
-WEZLY_KONCA_TORU: frozenset[str] = frozenset(
-    {WEZEL_KABLA, WEZEL_TRANSFORMATORA, WEZEL_ODPLYWU}
-)
+WEZLY_KONCA_TORU: frozenset[str] = frozenset({WEZEL_KABLA, WEZEL_TRANSFORMATORA, WEZEL_ODPLYWU})
 
 #: Klucz SEKWENCJI aparatów (wejście ``porty_toru_pola``, nie pole rekordu aparatu):
 #: identyfikator odgałęzienia toru, w którym aparat leży. Aparaty o tym samym identyfikatorze
@@ -319,9 +317,7 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
             PORT_WYJSCIA,
         )
 
-    indeksy_toru = [
-        i for i, a in enumerate(kopie) if dwuportowy(a) and odgalezienia[i] is None
-    ]
+    indeksy_toru = [i for i, a in enumerate(kopie) if dwuportowy(a) and odgalezienia[i] is None]
     ostatni_toru = indeksy_toru[-1] if indeksy_toru else None
     wezel = WEZEL_SZYNY
     numer = 0
@@ -334,9 +330,7 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
             identyfikator = str(odgalezienie)
             biezacy = wezly_odgalezien.setdefault(identyfikator, wezel)
             if komplet == (PORT_WEJSCIA, PORT_WYJSCIA):
-                numery_odgalezien[identyfikator] = (
-                    numery_odgalezien.get(identyfikator, 0) + 1
-                )
+                numery_odgalezien[identyfikator] = numery_odgalezien.get(identyfikator, 0) + 1
                 nastepny = f"{identyfikator}{numery_odgalezien[identyfikator]}"
                 aparat["ports"] = [
                     {"port_id": PORT_WEJSCIA, "wezel": biezacy},
@@ -344,9 +338,7 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
                 ]
                 wezly_odgalezien[identyfikator] = nastepny
             elif komplet:
-                aparat["ports"] = [
-                    {"port_id": port, "wezel": biezacy} for port in komplet
-                ]
+                aparat["ports"] = [{"port_id": port, "wezel": biezacy} for port in komplet]
             continue
         if komplet == (PORT_WEJSCIA, PORT_WYJSCIA):
             if i == ostatni_toru:

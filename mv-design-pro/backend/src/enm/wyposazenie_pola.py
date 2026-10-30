@@ -180,13 +180,9 @@ NAZWY_RODZAJOW_APARATU_POLA_PL: dict[str, str] = {
 }
 
 
-def stan_danych_aparatu(
-    aparat: Mapping[str, Any] | BayPrimaryDevice
-) -> StanDanychAparatu:
+def stan_danych_aparatu(aparat: Mapping[str, Any] | BayPrimaryDevice) -> StanDanychAparatu:
     """``MODEL`` gdy aparat ma pozycję katalogową, inaczej ``PROPOZYCJA`` (wartość robocza)."""
-    ref = (
-        aparat.get("catalog_ref") if isinstance(aparat, Mapping) else aparat.catalog_ref
-    )
+    ref = aparat.get("catalog_ref") if isinstance(aparat, Mapping) else aparat.catalog_ref
     return "MODEL" if isinstance(ref, str) and ref.strip() else "PROPOZYCJA"
 
 
@@ -273,17 +269,13 @@ def _odmowa_izolacji_aparatow(
     return None
 
 
-def _odpowiedz(
-    nowy: dict[str, Any], bay_ref: str, aparaty: list[dict[str, Any]]
-) -> dict[str, Any]:
+def _odpowiedz(nowy: dict[str, Any], bay_ref: str, aparaty: list[dict[str, Any]]) -> dict[str, Any]:
     wynik = _response(
         nowy,
         updated=[bay_ref],
         selection_id=bay_ref,
         selection_type="bay",
-        events=[
-            {"event_seq": 1, "event_type": "BAY_EQUIPMENT_SET", "element_id": bay_ref}
-        ],
+        events=[{"event_seq": 1, "event_type": "BAY_EQUIPMENT_SET", "element_id": bay_ref}],
     )
     if "error" in wynik:
         return wynik
@@ -349,9 +341,7 @@ def _aparaty_z_szablonu(
         and g.get("ref_id") in (rekord.get("equipment_refs") or [])
     ]
     if len(galezie_pola) == 1:
-        aparaty = _powiaz_aparaty_pola_z_galezia(
-            aparaty, galezie_pola[0], z_polozeniem=False
-        )
+        aparaty = _powiaz_aparaty_pola_z_galezia(aparaty, galezie_pola[0], z_polozeniem=False)
     return aparaty, ref
 
 
@@ -373,10 +363,7 @@ def _sprawdz_aparat(
             "bay_equipment.device_invalid",
         )
     rodzaj = wpis.get("kind")
-    if (
-        rodzaj not in PRZESTRZEN_KATALOGU_APARATU
-        and rodzaj not in RODZAJE_BEZ_KATALOGU_SN
-    ):
+    if rodzaj not in PRZESTRZEN_KATALOGU_APARATU and rodzaj not in RODZAJE_BEZ_KATALOGU_SN:
         dopuszczalne = lista_pl(
             NAZWY_RODZAJOW_APARATU_POLA_PL[k]
             for k in (*PRZESTRZEN_KATALOGU_APARATU, *sorted(RODZAJE_BEZ_KATALOGU_SN))
@@ -399,10 +386,7 @@ def _sprawdz_aparat(
     if isinstance(rodzina_ref, str) and rodzina_ref in SWITCHGEAR_FAMILY_REGISTRY:
         rodzina = SWITCHGEAR_FAMILY_REGISTRY[rodzina_ref]
         aparat_rodziny = FAMILY_APPARATUS_FOR_ENM_KIND.get(str(rodzaj))
-        if (
-            aparat_rodziny is not None
-            and aparat_rodziny not in rodzina.allowed_apparatus_kinds
-        ):
+        if aparat_rodziny is not None and aparat_rodziny not in rodzina.allowed_apparatus_kinds:
             return _error_response(
                 f"Pole {pole('devices', 'set_bay_equipment')}: rodzina rozdzielnicy "
                 f"{opis_elementu(enm, bay_ref, 'pola')} nie przewiduje aparatu „{nazwa_rodzaju}” "
@@ -498,9 +482,7 @@ def _sprawdz_aparat(
         )
     przekladnia = wpis.get("przekladnia")
     if przekladnia is not None and (
-        rodzaj != "CORE_BALANCE_CT"
-        or not isinstance(przekladnia, str)
-        or not przekladnia.strip()
+        rodzaj != "CORE_BALANCE_CT" or not isinstance(przekladnia, str) or not przekladnia.strip()
     ):
         return _error_response(
             f"Pole {pole('devices', 'set_bay_equipment')}: aparat {numer} ({nazwa_rodzaju}) ma "
@@ -707,9 +689,7 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     # Gałąź łącznika wskazana aparatem pola (`linked_ref`) to TEN SAM fizyczny aparat — jej stan
     # obiektu jest stanem aparatu (jedno źródło: `enm.gaz_fluorowany_pola.stan_obiektu_lacznika`).
     stany_galezi = {
-        str(a["linked_ref"]): a.get("stan_obiektu")
-        for a in aparaty
-        if a.get("linked_ref")
+        str(a["linked_ref"]): a.get("stan_obiektu") for a in aparaty if a.get("linked_ref")
     }
     for galaz in nowy.get("branches") or []:
         if isinstance(galaz, dict) and galaz.get("ref_id") in stany_galezi:

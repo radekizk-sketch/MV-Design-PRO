@@ -93,18 +93,14 @@ KOMBINACJE = list(itertools.product(WYKONANIA_POLA, WYKONANIA_LACZNIKOW))
 # ---------------------------------------------------------------------------
 
 
-def tabela_odczytu(
-    pole: str, laczniki: str
-) -> list[tuple[str, str, str, str, str | None]]:
+def tabela_odczytu(pole: str, laczniki: str) -> list[tuple[str, str, str, str, str | None]]:
     rys = RYSUNEK[pole]
     wiersze: list[tuple[str, str, str, str, str | None]] = []
     if pole != "Z10":  # Z.11/Z.11.1: wskaźnik napięcia przy szynie
         wiersze.append(("VOLTAGE_INDICATOR", "OFF_PATH", "PF0", rys, None))
     if laczniki == "TROJPOLOZENIOWY":  # §13: łącznik trójpołożeniowy od szyny
         wiersze.append(("THREE_POSITION_SWITCH", "UPSTREAM", "Q1", "§13", None))
-    elif (
-        laczniki == "STALY_Z_ODLACZNIKIEM"
-    ):  # §13: odłącznik szynowy przed wyłącznikiem stałym
+    elif laczniki == "STALY_Z_ODLACZNIKIEM":  # §13: odłącznik szynowy przed wyłącznikiem stałym
         wiersze.append(("DS_BUS", "UPSTREAM", "Q1", "§13", None))
     wiersze.append(("CB", "MIDSTREAM", "Q0", "§13", None))  # wyłącznik próżniowy
     if pole != "Z10":  # odgałęzienie przekładnika napięciowego za wyłącznikiem
@@ -168,14 +164,8 @@ def rozbieznosci_z_tabela(
     ):
         faktyczne = (urz.kind, urz.placement, urz.designation_q, urz.odgalezienie)
         if faktyczne != (rodzaj, umiejscowienie, oznaczenie, odg):
-            wynik.append(
-                f"poz. {i}: {faktyczne} ≠ {(rodzaj, umiejscowienie, oznaczenie, odg)}"
-            )
-        if (
-            not urz.podstawa
-            or podstawa not in urz.podstawa
-            or "ENEA Zeszyt 1" not in urz.podstawa
-        ):
+            wynik.append(f"poz. {i}: {faktyczne} ≠ {(rodzaj, umiejscowienie, oznaczenie, odg)}")
+        if not urz.podstawa or podstawa not in urz.podstawa or "ENEA Zeszyt 1" not in urz.podstawa:
             wynik.append(f"poz. {i}: podstawa {urz.podstawa!r} bez „{podstawa}”")
     return wynik
 
@@ -184,9 +174,7 @@ def porty(aparat: dict[str, Any]) -> dict[str, str | None]:
     return {p["port_id"]: p["wezel"] for p in aparat.get("ports", [])}
 
 
-def _krotki(
-    aparaty: list[dict[str, Any]]
-) -> list[tuple[str, str, dict[str, str | None]]]:
+def _krotki(aparaty: list[dict[str, Any]]) -> list[tuple[str, str, dict[str, str | None]]]:
     return [(a["designation"], a["kind"], porty(a)) for a in aparaty]
 
 
@@ -215,15 +203,11 @@ def test_szablon_zgodny_z_tabela_odczytu(pole: str, laczniki: str):
 
 
 def test_iniekcja_zamiana_przekladnika_i_wylacznika_czerwieni_tabele():
-    zamieniony = copy.deepcopy(
-        BAY_TEMPLATE_REGISTRY[_id("Z11", "STALY_Z_ODLACZNIKIEM")]
-    )
+    zamieniony = copy.deepcopy(BAY_TEMPLATE_REGISTRY[_id("Z11", "STALY_Z_ODLACZNIKIEM")])
     cb = next(d for d in zamieniony.devices if d.kind == "CB")
     ct = next(d for d in zamieniony.devices if d.kind == "CT")
     cb.position, ct.position = ct.position, cb.position
-    assert rozbieznosci_z_tabela(
-        zamieniony, tabela_odczytu("Z11", "STALY_Z_ODLACZNIKIEM")
-    )
+    assert rozbieznosci_z_tabela(zamieniony, tabela_odczytu("Z11", "STALY_Z_ODLACZNIKIEM"))
 
 
 def test_iniekcja_odgalezienie_vt_po_stronie_szyny_czerwieni_tabele_i_porty():
@@ -251,9 +235,7 @@ def test_iniekcja_odgalezienie_vt_po_stronie_szyny_czerwieni_tabele_i_porty():
     )
     vt = next(a for a in aparaty if a["kind"] == "VT")
     q5 = next(a for a in aparaty if a["designation"] == "Q5")
-    assert (
-        porty(q5)["we"] != "w2"
-    ), "odgałęzienie przed wyłącznikiem nie wychodzi z jego wyjścia"
+    assert porty(q5)["we"] != "w2", "odgałęzienie przed wyłącznikiem nie wychodzi z jego wyjścia"
     assert porty(vt) == {"przylacze": "pn2"}
 
 
@@ -266,9 +248,7 @@ def test_porty_aparatow_szablonu_z_sekwencji(pole: str, laczniki: str):
         assert set(porty(aparat)) == set(PORTY_APARATU_POLA[aparat["kind"]])
         BayPrimaryDevice.model_validate(aparat)
     # Aparaty poza torem głównym = odgałęzienie przekładnika napięciowego (jedna reguła).
-    odgalezienie = {"Q5", "GK1", "T3"} | (
-        {"Q51"} if laczniki != "TROJPOLOZENIOWY" else set()
-    )
+    odgalezienie = {"Q5", "GK1", "T3"} | ({"Q51"} if laczniki != "TROJPOLOZENIOWY" else set())
     oczekiwane = odgalezienie if pole != "Z10" else set()
     assert aparaty_poza_torem_glownym(_krotki(aparaty)) == oczekiwane
     assert {a["designation"] for a in aparaty if a.get("odgalezienie")} == oczekiwane
@@ -291,9 +271,7 @@ def test_pary_blokad_uziemnikow_z_portow(pole: str, laczniki: str):
 
 
 def test_porty_toru_deterministyczne_idempotentne_i_nie_nadpisuja_jawnych():
-    aparaty = template_primary_devices(
-        _id("Z11", "STALY_Z_ODLACZNIKIEM"), field_ref="pole-x"
-    )
+    aparaty = template_primary_devices(_id("Z11", "STALY_Z_ODLACZNIKIEM"), field_ref="pole-x")
     bez_portow = [{k: v for k, v in a.items() if k != "ports"} for a in aparaty]
     assert porty_toru_pola(bez_portow) == aparaty
     assert porty_toru_pola(aparaty) == aparaty
@@ -308,9 +286,7 @@ def test_porty_toru_deterministyczne_idempotentne_i_nie_nadpisuja_jawnych():
 
 @pytest.mark.parametrize("w_odgalezieniu", [False, True])
 @pytest.mark.parametrize("rodzaj", sorted(PORTY_APARATU_POLA))
-def test_porty_kazdego_rodzaju_aparatu_z_jednej_listy_portow(
-    rodzaj: str, w_odgalezieniu: bool
-):
+def test_porty_kazdego_rodzaju_aparatu_z_jednej_listy_portow(rodzaj: str, w_odgalezieniu: bool):
     """Iloczyn {każdy rodzaj z JEDNEJ listy portów — w tym aparaty pola BKR (przekładnik
     niezrównoważenia: ``obwod``, przekładnik międzyfazowy: ``A``/``B``)} × {tor główny,
     odgałęzienie}: aparat dostaje KOMPLET portów swojego rodzaju; aparat nie-torowy (komplet inny
@@ -334,14 +310,10 @@ def test_porty_kazdego_rodzaju_aparatu_z_jednej_listy_portow(
 @pytest.mark.parametrize("pole,laczniki", KOMBINACJE)
 def test_przekladniki_rdzenie_z_katalogu_i_uzwojenia_vt(pole: str, laczniki: str):
     aparaty = template_primary_devices(_id(pole, laczniki), field_ref="pole-x")
-    z_katalogiem = {
-        a["kind"]: a.get("catalog_ref") for a in aparaty if a.get("catalog_ref")
-    }
+    z_katalogiem = {a["kind"]: a.get("catalog_ref") for a in aparaty if a.get("catalog_ref")}
     assert z_katalogiem == {"CT": CT_RYSUNKU[pole]}
     ct = next(a for a in aparaty if a["kind"] == "CT")
-    typ = next(
-        t for t in get_default_mv_catalog().list_ct_types() if t.id == CT_RYSUNKU[pole]
-    )
+    typ = next(t for t in get_default_mv_catalog().list_ct_types() if t.id == CT_RYSUNKU[pole])
     assert ct["rdzenie"] == [r.model_dump(mode="json") for r in typ.lista_rdzeni()]
     assert len(ct["rdzenie"]) == (3 if pole == "Z11" else 1)
     vt = [a for a in aparaty if a["kind"] == "VT"]
@@ -365,9 +337,7 @@ def test_przekladniki_rdzenie_z_katalogu_i_uzwojenia_vt(pole: str, laczniki: str
         )
     ),
 )
-def test_zestaw_eaz_szablonu_ze_slownika_i_wg_klasy(
-    pole: str, laczniki: str, klasa: str | None
-):
+def test_zestaw_eaz_szablonu_ze_slownika_i_wg_klasy(pole: str, laczniki: str, klasa: str | None):
     # Iloczyn: wykonanie × łączniki × klasa × warunek źródła 3U₀ {niespełniony, spełniony}
     # (decyzja właściciela 2026-10-29 pkt 4: 67N tylko przy potwierdzonym źródle 3U₀ i
     # Ferrantim — bez spełnionego warunku szablon funkcji nie przypisuje).
@@ -410,9 +380,7 @@ def test_zbiory_lacznikow_i_polozen_otwartych():
         "FUSE",
         "THREE_POSITION_SWITCH",
     }
-    assert (
-        MAIN_SWITCH_KINDS == RODZAJE_LACZNIKOW_TORU == RODZAJE_LACZNIKOW_POLA - {"ES"}
-    )
+    assert MAIN_SWITCH_KINDS == RODZAJE_LACZNIKOW_TORU == RODZAJE_LACZNIKOW_POLA - {"ES"}
     assert is_open("uziemiony") and not is_closed("uziemiony")
     for stan in ("nieznany", "awaria", None):
         assert not is_open(stan) and not is_closed(stan)
@@ -437,9 +405,7 @@ def test_walidator_portow_i_polozenia_uziemiony():
             {**baza, "ports": [{"port_id": "we"}, {"port_id": "we", "wezel": "w1"}]}
         )
     with pytest.raises(ValidationError, match="uziemiony"):
-        BayPrimaryDevice.model_validate(
-            {**baza, "switch_state": {"actual_state": "uziemiony"}}
-        )
+        BayPrimaryDevice.model_validate({**baza, "switch_state": {"actual_state": "uziemiony"}})
     with pytest.raises(ValidationError):
         BayPrimaryDevice.model_validate({**baza, "odgalezienie": "p n"})
 
@@ -467,9 +433,7 @@ def test_blokady_trojpolozeniowy_uziemiony_dopuszcza_zamkniety_wylacznik():
 
 def test_blokada_uziemnika_odgalezienia_nie_zalezy_od_wylacznika():
     """Z.11 stały: Q51 blokuje tylko zamknięty Q5 — zamknięty wyłącznik Q0 go nie blokuje."""
-    aparaty = template_primary_devices(
-        _id("Z11", "STALY_Z_ODLACZNIKIEM"), field_ref="p"
-    )
+    aparaty = template_primary_devices(_id("Z11", "STALY_Z_ODLACZNIKIEM"), field_ref="p")
     stany = {
         "Q1": "zamkniety",
         "Q0": "zamkniety",
@@ -504,9 +468,7 @@ RODZINY = {
 
 
 def _gpz(sekcje: int = 2, rodzina: str | None = None) -> dict[str, Any]:
-    pusty = EnergyNetworkModel(
-        header=ENMHeader(name="POLE-GPZ", defaults=ENMDefaults())
-    )
+    pusty = EnergyNetworkModel(header=ENMHeader(name="POLE-GPZ", defaults=ENMDefaults()))
     payload: dict[str, Any] = {
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
@@ -533,16 +495,13 @@ def _sprawdz_pole(enm: dict[str, Any], pole: dict[str, Any], szablon_id: str) ->
         szablon.wykonanie_pola, szablon.wykonanie_lacznikow
     )
     assert [a["designation"] for a in aparaty] == [
-        w[2]
-        for w in tabela_odczytu(szablon.wykonanie_pola, szablon.wykonanie_lacznikow)
+        w[2] for w in tabela_odczytu(szablon.wykonanie_pola, szablon.wykonanie_lacznikow)
     ]
     cb = next(a for a in aparaty if a["kind"] == "CB")
     (galaz_ref,) = pole["equipment_refs"]
     assert cb["linked_ref"] == galaz_ref and galezie[galaz_ref]["type"] == "breaker"
     assert cb.get("catalog_ref") == APARAT
-    assert pole["protection_codes"] == funkcje_eaz_szablonu(
-        szablon_id, pole.get("klasa_pola")
-    )
+    assert pole["protection_codes"] == funkcje_eaz_szablonu(szablon_id, pole.get("klasa_pola"))
     for aparat in aparaty:
         assert aparat["device_ref"].startswith(pole["ref_id"])
 
@@ -555,17 +514,12 @@ def test_gpz_kazda_sekcja_pole_liniowe_wg_izolacji_rodziny(rodzina: str | None):
     pola = _pola_liniowe(enm)
     assert len(pola) == 4
     assert {p["gpz_section_id"] for p in pola} == {
-        s["section_id"]
-        for st in enm["substations"]
-        for s in st.get("gpz_sections") or []
+        s["section_id"] for st in enm["substations"] for s in st.get("gpz_sections") or []
     }
     for pole in pola:
         _sprawdz_pole(enm, pole, RODZINY[rodzina])
     EnergyNetworkModel.model_validate(enm)
-    kody = {
-        i.code
-        for i in ENMValidator().validate(EnergyNetworkModel.model_validate(enm)).issues
-    }
+    kody = {i.code for i in ENMValidator().validate(EnergyNetworkModel.model_validate(enm)).issues}
     assert not kody & {"W050", "W051", "W052"}
 
 
@@ -585,16 +539,12 @@ def test_gpz_deterministyczny_te_same_identyfikatory_i_odcisk():
 
 @pytest.mark.parametrize("sekcje", [1, 2])
 @pytest.mark.parametrize("z_aparatem", [True, False])
-def test_funkcje_eaz_tylko_w_polu_z_aparatem_albo_szablonem(
-    z_aparatem: bool, sekcje: int
-):
+def test_funkcje_eaz_tylko_w_polu_z_aparatem_albo_szablonem(z_aparatem: bool, sekcje: int):
     """Iloczyn {aparat pola z katalogu, brak aparatu} × liczba sekcji: pole liniowe GPZ bez
     pozycji katalogowej aparatu nie ma szablonu, aparatów ani czym wyłączyć — funkcje EAZ
     z roli byłyby fabrykacją (kanon resolvera: pole bez wyłącznika = puste). Pole z aparatem
     niesie zestaw swojego szablonu."""
-    pusty = EnergyNetworkModel(
-        header=ENMHeader(name="POLE-GPZ", defaults=ENMDefaults())
-    )
+    pusty = EnergyNetworkModel(header=ENMHeader(name="POLE-GPZ", defaults=ENMDefaults()))
     payload: dict[str, Any] = {
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
@@ -609,9 +559,7 @@ def test_funkcje_eaz_tylko_w_polu_z_aparatem_albo_szablonem(
     assert len(pola) == sekcje
     for pole in pola:
         if z_aparatem:
-            assert pole[
-                "protection_codes"
-            ], "pole z wyłącznikiem niesie funkcje szablonu"
+            assert pole["protection_codes"], "pole z wyłącznikiem niesie funkcje szablonu"
             assert pole["protection_codes"] == funkcje_eaz_szablonu(
                 pole["bay_template_ref"], pole.get("klasa_pola")
             )
@@ -623,9 +571,7 @@ def test_funkcje_eaz_tylko_w_polu_z_aparatem_albo_szablonem(
 
 def test_przydzial_pola_przy_odgalezieniu_tym_samym_wzorcem():
     """Pole dokładane przydziałem odgałęzienia — TEN SAM wzorzec co pola tworzone z GPZ."""
-    pusty = EnergyNetworkModel(
-        header=ENMHeader(name="POLE-GPZ", defaults=ENMDefaults())
-    )
+    pusty = EnergyNetworkModel(header=ENMHeader(name="POLE-GPZ", defaults=ENMDefaults()))
     enm = ok(
         op(
             pusty.model_dump(mode="json"),
@@ -675,11 +621,7 @@ def test_add_sn_bay_w_sekcji_gpz_bez_szablonu_dostaje_wzorzec():
             },
         )
         enm = ok(wynik)
-        pole = next(
-            b
-            for b in enm["bays"]
-            if b["ref_id"] == wynik["selection_hint"]["element_id"]
-        )
+        pole = next(b for b in enm["bays"] if b["ref_id"] == wynik["selection_hint"]["element_id"])
         _sprawdz_pole(enm, pole, _id("Z10", "TROJPOLOZENIOWY"))
         assert pole["gpz_section_id"] == sekcja["section_id"]
 
@@ -688,9 +630,7 @@ def test_add_sn_bay_w_sekcji_gpz_bez_szablonu_dostaje_wzorzec():
     "pole_rys,laczniki,sekcja",
     list(itertools.product(WYKONANIA_POLA, WYKONANIA_LACZNIKOW, [0, 2])),
 )
-def test_set_bay_equipment_szablon_w_kazdej_sekcji(
-    pole_rys: str, laczniki: str, sekcja: int
-):
+def test_set_bay_equipment_szablon_w_kazdej_sekcji(pole_rys: str, laczniki: str, sekcja: int):
     enm = _gpz(sekcje=2, rodzina="TYP_OGOLNY_OSD__GPZ_SSIS")
     pole = _pola_liniowe(enm)[sekcja]
     szablon_id = _id(pole_rys, laczniki)
@@ -711,13 +651,11 @@ def test_set_bay_equipment_szablon_w_kazdej_sekcji(
     def _instancja(a: dict[str, Any]) -> tuple[str, str, str]:
         return (a["device_ref"], a["kind"], a.get("catalog_ref") or "")
 
-    polozenia_przed = {
-        _instancja(a): a.get("switch_state") for a in pole["primary_devices"]
-    }
+    polozenia_przed = {_instancja(a): a.get("switch_state") for a in pole["primary_devices"]}
     for aparat in rekord["primary_devices"]:
-        assert aparat.get("switch_state") == polozenia_przed.get(
-            _instancja(aparat)
-        ), aparat["device_ref"]
+        assert aparat.get("switch_state") == polozenia_przed.get(_instancja(aparat)), aparat[
+            "device_ref"
+        ]
     if szablon_id == pole["bay_template_ref"]:
         # Ten sam szablon: co najmniej jedno położenie przeniesione (inaczej asercja wyżej
         # byłaby pusta dla iloczynu, w którym przeniesienie występuje).
@@ -772,9 +710,7 @@ def test_set_bay_equipment_katalog_zachowuje_odgalezienie(pole_rys: str):
         {"bay_ref": pole["ref_id"], "mode": "katalog", "devices": urzadzenia},
     )
     po = next(b for b in ok(wynik)["bays"] if b["ref_id"] == pole["ref_id"])
-    assert [
-        (a["kind"], porty(a), a.get("odgalezienie")) for a in po["primary_devices"]
-    ] == [
+    assert [(a["kind"], porty(a), a.get("odgalezienie")) for a in po["primary_devices"]] == [
         (a["kind"], porty(a), a.get("odgalezienie")) for a in rekord["primary_devices"]
     ]
     # Iniekcja: bez `odgalezienie` obchód toru nie wie, że Q5 leży w odgałęzieniu.
@@ -844,9 +780,7 @@ def test_odmowa_operacji_i_walidatora_z_jednej_reguly(rodzina, szablon_id, klasa
     rekord["klasa_pola"] = klasa
     kody = {
         i.code: i
-        for i in ENMValidator()
-        .validate(EnergyNetworkModel.model_validate(zastany))
-        .issues
+        for i in ENMValidator().validate(EnergyNetworkModel.model_validate(zastany)).issues
     }
     oczekiwany = {
         "pole.wykonanie_lacznikow_niezgodne_z_izolacja": "W050",
@@ -862,9 +796,7 @@ def test_szablon_gpz_poza_gpz_odrzucony_w047():
 
     enm = zbuduj_scene("stacja_na_odcinku", "wolne_kilka").enm
     pole_sn = next(
-        b
-        for b in enm["bays"]
-        if not b.get("gpz_section_id") and b.get("bay_role") == "OUT"
+        b for b in enm["bays"] if not b.get("gpz_section_id") and b.get("bay_role") == "OUT"
     )
     odmowa = op(
         enm,
@@ -922,9 +854,7 @@ def test_odcisk_pustych_list_jak_brak_pola():
     # tracą świeżości wyników), a wartość nadana jest treścią modelu.
     enm = _gpz()
     assert any(
-        aparat.get("przekladnia")
-        for pole in enm["bays"]
-        for aparat in pole["primary_devices"]
+        aparat.get("przekladnia") for pole in enm["bays"] for aparat in pole["primary_devices"]
     )
     bez = copy.deepcopy(enm)
     z_pusta = copy.deepcopy(enm)
@@ -952,9 +882,7 @@ def test_odcisk_pustych_list_jak_brak_pola():
     # Wykonanie wyłącznika (stałe / wysuwne, rozstrzygnięcie architekta 2026-10-30 pkt 3):
     # szablon pola GPZ nadaje je wyłącznikowi, wartość nadana jest treścią modelu.
     assert any(
-        aparat.get("wykonanie")
-        for pole in enm["bays"]
-        for aparat in pole["primary_devices"]
+        aparat.get("wykonanie") for pole in enm["bays"] for aparat in pole["primary_devices"]
     )
     tylko_wykonanie = copy.deepcopy(z_pusta)
     for pole, zrodlowe in zip(tylko_wykonanie["bays"], enm["bays"], strict=True):
@@ -965,14 +893,10 @@ def test_odcisk_pustych_list_jak_brak_pola():
     assert hash_migawki_enm(tylko_wykonanie) != hash_migawki_enm(z_pusta)
 
 
-def _z_polozeniem_q1(
-    enm: dict[str, Any], stan: str
-) -> tuple[dict[str, Any], dict[str, Any]]:
+def _z_polozeniem_q1(enm: dict[str, Any], stan: str) -> tuple[dict[str, Any], dict[str, Any]]:
     nowy = copy.deepcopy(enm)
     pole = _pola_liniowe(nowy)[0]
-    q1 = next(
-        a for a in pole["primary_devices"] if a["kind"] == "THREE_POSITION_SWITCH"
-    )
+    q1 = next(a for a in pole["primary_devices"] if a["kind"] == "THREE_POSITION_SWITCH")
     q1["switch_state"] = {"actual_state": stan}
     return nowy, pole
 

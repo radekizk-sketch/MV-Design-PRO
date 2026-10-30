@@ -72,9 +72,7 @@ class BayDeviceTemplate(BaseModel):
     ]
     designation_q: str  # oznaczenie Q (Q1, Q2, ...)
     position: int  # 0..n od góry do dołu
-    placement: Literal[
-        "UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"
-    ]
+    placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     optional: bool = False
     # Podstawa pozycji w szablonie (rysunek/punkt standardu), np. „ENEA Zeszyt 1, Z.10".
     # Szablon bez podstawy normatywnej (kanon pól RMU) — None.
@@ -107,13 +105,9 @@ class BayDeviceTemplate(BaseModel):
                 "dla wyłącznika."
             )
         if self.rdzenie and self.kind != "CT":
-            raise ValueError(
-                f"Szablon aparatu {self.designation_q}: rdzenie wyłącznie dla CT."
-            )
+            raise ValueError(f"Szablon aparatu {self.designation_q}: rdzenie wyłącznie dla CT.")
         if self.uzwojenia and self.kind != "VT":
-            raise ValueError(
-                f"Szablon aparatu {self.designation_q}: uzwojenia wyłącznie dla VT."
-            )
+            raise ValueError(f"Szablon aparatu {self.designation_q}: uzwojenia wyłącznie dla VT.")
         if self.przekladnia is not None and self.kind != "CORE_BALANCE_CT":
             raise ValueError(
                 f"Szablon aparatu {self.designation_q}: przekładnia wyłącznie dla przekładnika "
@@ -212,23 +206,14 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
     def _obwod(oznaczenie: str, rodzaj: str, numer: int | None, kto: str) -> None:
         aparat = aparaty.get(oznaczenie)
         if aparat is None or aparat.kind != rodzaj:
-            raise ValueError(
-                f"Szablon {nazwa}, {kto}: {oznaczenie} nie jest aparatem {rodzaj}."
-            )
+            raise ValueError(f"Szablon {nazwa}, {kto}: {oznaczenie} nie jest aparatem {rodzaj}.")
         if numer is not None and numer > len(getattr(aparat, liczba_obwodow[rodzaj])):
-            raise ValueError(
-                f"Szablon {nazwa}, {kto}: {oznaczenie} nie ma obwodu nr {numer}."
-            )
+            raise ValueError(f"Szablon {nazwa}, {kto}: {oznaczenie} nie ma obwodu nr {numer}.")
 
     obwody_eaz: set[tuple[str, int]] = set()
     for p in obwody.powiazania:
-        if (
-            p.wylacznik is not None
-            and getattr(aparaty.get(p.wylacznik), "kind", None) != "CB"
-        ):
-            raise ValueError(
-                f"Szablon {nazwa}, {p.funkcja}: {p.wylacznik} nie jest wyłącznikiem."
-            )
+        if p.wylacznik is not None and getattr(aparaty.get(p.wylacznik), "kind", None) != "CB":
+            raise ValueError(f"Szablon {nazwa}, {p.funkcja}: {p.wylacznik} nie jest wyłącznikiem.")
         for w in p.wejscia:
             if w.aparat is None:
                 continue
@@ -240,9 +225,7 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
         klucz = (przypisanie.aparat, przypisanie.numer)
         rodzaj = getattr(aparaty.get(przypisanie.aparat), "kind", "")
         if rodzaj not in liczba_obwodow:
-            raise ValueError(
-                f"Szablon {nazwa}: {przypisanie.aparat} nie jest przekładnikiem."
-            )
+            raise ValueError(f"Szablon {nazwa}: {przypisanie.aparat} nie jest przekładnikiem.")
         _obwod(przypisanie.aparat, rodzaj, przypisanie.numer, "przypisanie obwodu")
         if klucz in obwody_eaz or klucz in obwody_poza:
             raise ValueError(f"Szablon {nazwa}: obwód {klucz} ma dwa przeznaczenia.")
@@ -270,21 +253,11 @@ BAY_TEMPLATE_LINE_IN = BayTemplate(
     bay_role="IN",
     description="Pole liniowe wejściowe SN — kabel/linia od ciągu nadrzędnego.",
     devices=[
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"
-        ),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"),
         BayDeviceTemplate(
             kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"
         ),
@@ -300,21 +273,11 @@ BAY_TEMPLATE_LINE_OUT = BayTemplate(
     bay_role="OUT",
     description="Pole liniowe wyjściowe SN — kabel/linia do ciągu podrzędnego.",
     devices=[
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"
-        ),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"),
         BayDeviceTemplate(
             kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"
         ),
@@ -414,9 +377,7 @@ def odmowa_wykonania_lacznikow_w_izolacji(
     """
     if wykonanie_lacznikow is None or insulation_type is None:
         return None
-    if wykonanie_lacznikow not in _WYKONANIA_NIEDOPUSZCZONE_W_IZOLACJI.get(
-        insulation_type, ()
-    ):
+    if wykonanie_lacznikow not in _WYKONANIA_NIEDOPUSZCZONE_W_IZOLACJI.get(insulation_type, ()):
         return None
     dopuszczone = ", ".join(
         NAZWY_WYKONANIA_LACZNIKOW_PL[w]
@@ -464,9 +425,7 @@ OPIS_WARUNKU_FUNKCJI_EAZ_PL: dict[str, str] = {
 }
 
 
-def bez_niespelnionych_warunkow(
-    kody: Iterable[str], warunki: Collection[str]
-) -> list[str]:
+def bez_niespelnionych_warunkow(kody: Iterable[str], warunki: Collection[str]) -> list[str]:
     """Zestaw funkcji bez funkcji warunkowych (`WARUNKI_FUNKCJI_EAZ`), których warunek nie
     jest w ``warunki``. Kolejność wejścia zachowana. JEDNO miejsce reguły dla każdej drogi
     przypisania funkcji EAZ do pola."""
@@ -561,9 +520,7 @@ _OPIS_CT_WYKONANIA_POLA: dict[str, str] = {
 #: wyłącznie w Z.11 (pomiar rozliczeniowy, uzwojenie II — układy regulacyjne); w Z.11.1 rysunek
 #: pozostawia uzwojenia I i II niepodłączone, a napięcie po stronie linii (napięcie zwrotne)
 #: mierzy uzwojenie III — bloki U>/U< i f</f>/df/dt (`obwody_wtorne_pola`, jak w Z.11).
-_UZWOJENIA_VT_WYKONANIA_POLA: dict[
-    str, tuple[UzwojeniePrzekladnikaNapieciowego, ...]
-] = {
+_UZWOJENIA_VT_WYKONANIA_POLA: dict[str, tuple[UzwojeniePrzekladnikaNapieciowego, ...]] = {
     wykonanie: (
         UzwojeniePrzekladnikaNapieciowego(
             przekladnia="SN/√3 / 0,1/√3",
@@ -633,19 +590,13 @@ def _sekwencja_pola_liniowego_gpz(
             "wykonanie": "WYSUWNE" if wykonanie_lacznikow == "WYSUWNY" else "STALE",
             "podstawa": (
                 f"{podstawa} — wyłącznik z napędem; {_PODSTAWA_P13} — wyłącznik próżniowy"
-                + (
-                    ", poziomo wysuwny na wózku"
-                    if wykonanie_lacznikow == "WYSUWNY"
-                    else ""
-                )
+                + (", poziomo wysuwny na wózku" if wykonanie_lacznikow == "WYSUWNY" else "")
             ),
         }
     )
     if z_vt:
         odg = ODGALEZIENIE_PRZEKLADNIKA_NAPIECIOWEGO
-        podstawa_odg = (
-            f"{podstawa} — odgałęzienie przekładnika napięciowego za wyłącznikiem"
-        )
+        podstawa_odg = f"{podstawa} — odgałęzienie przekładnika napięciowego za wyłącznikiem"
         if trojpolozeniowy:
             plan.append(
                 {
@@ -749,13 +700,9 @@ def _identyfikator_szablonu_pola_liniowego_gpz(
     return f"bay_template_gpz_line_enea_{wykonanie_pola.lower()}_{wykonanie_lacznikow.lower()}"
 
 
-def _szablon_pola_liniowego_gpz(
-    wykonanie_pola: str, wykonanie_lacznikow: str
-) -> BayTemplate:
+def _szablon_pola_liniowego_gpz(wykonanie_pola: str, wykonanie_lacznikow: str) -> BayTemplate:
     return BayTemplate(
-        template_id=_identyfikator_szablonu_pola_liniowego_gpz(
-            wykonanie_pola, wykonanie_lacznikow
-        ),
+        template_id=_identyfikator_szablonu_pola_liniowego_gpz(wykonanie_pola, wykonanie_lacznikow),
         name=nazwa_roli_pola_sn("LINIA_OUT"),
         bay_role="OUT",
         description=(
@@ -784,19 +731,13 @@ BAY_TEMPLATES_GPZ_LINE: tuple[BayTemplate, ...] = tuple(
 )
 
 
-def szablon_pola_liniowego_gpz(
-    wykonanie_pola: str, wykonanie_lacznikow: str
-) -> BayTemplate:
+def szablon_pola_liniowego_gpz(wykonanie_pola: str, wykonanie_lacznikow: str) -> BayTemplate:
     """Szablon pola liniowego GPZ dla pary wykonań (KeyError — para spoza iloczynu)."""
-    identyfikator = _identyfikator_szablonu_pola_liniowego_gpz(
-        wykonanie_pola, wykonanie_lacznikow
-    )
+    identyfikator = _identyfikator_szablonu_pola_liniowego_gpz(wykonanie_pola, wykonanie_lacznikow)
     for szablon in BAY_TEMPLATES_GPZ_LINE:
         if szablon.template_id == identyfikator:
             return szablon
-    raise KeyError(
-        f"Brak szablonu pola liniowego GPZ: {wykonanie_pola} × {wykonanie_lacznikow}"
-    )
+    raise KeyError(f"Brak szablonu pola liniowego GPZ: {wykonanie_pola} × {wykonanie_lacznikow}")
 
 
 #: Szablon domyślny pola liniowego budowanego z GPZ (`domain_operations.create_gpz`): pole
@@ -813,9 +754,7 @@ def szablon_domyslny_pola_liniowego_gpz(insulation_type: str | None) -> BayTempl
     izolacja powietrzna → wyłącznik stały z odłącznikiem szynowym, pozostałe i brak rodziny →
     łącznik trójpołożeniowy. System proponuje wykonanie zgodne ze standardem zamiast odmawiać
     zapisu (ZASADA NR 4); projektant zmienia je wyborem szablonu."""
-    niedopuszczone = _WYKONANIA_NIEDOPUSZCZONE_W_IZOLACJI.get(
-        insulation_type or "", frozenset()
-    )
+    niedopuszczone = _WYKONANIA_NIEDOPUSZCZONE_W_IZOLACJI.get(insulation_type or "", frozenset())
     wykonanie = next(w for w in WYKONANIA_LACZNIKOW_POLA if w not in niedopuszczone)
     return szablon_pola_liniowego_gpz("Z10", wykonanie)
 
@@ -871,9 +810,7 @@ OPIS_WYMOGU_PL: dict[str, str] = {
 def _wymogi(
     klasa: str, wpisy: tuple[tuple[str, str, str], ...]
 ) -> tuple[tuple[str, str, str], ...]:
-    return tuple(
-        (kod, wymog, f"{PODSTAWA_KLASY_POLA[klasa]} {pkt}") for kod, wymog, pkt in wpisy
-    )
+    return tuple((kod, wymog, f"{PODSTAWA_KLASY_POLA[klasa]} {pkt}") for kod, wymog, pkt in wpisy)
 
 
 #: Wymagania funkcji EAZ wg klasy pola: (kod słownika `funkcje_eaz`, wymóg, podstawa). Funkcje
@@ -1038,9 +975,7 @@ def odmowa_klasy_pola(
     )
 
 
-def odmowa_szablonu_tylko_gpz(
-    tylko_gpz: bool, *, pole_gpz: bool, opis_pola: str
-) -> str | None:
+def odmowa_szablonu_tylko_gpz(tylko_gpz: bool, *, pole_gpz: bool, opis_pola: str) -> str | None:
     """Zdanie odmowy, gdy szablon pola rozdzielni GPZ wskazano w polu stacji spoza GPZ."""
     if not tylko_gpz or pole_gpz:
         return None
@@ -1105,21 +1040,11 @@ BAY_TEMPLATE_TRANSFORMER = BayTemplate(
     bay_role="TR",
     description="Pole transformatorowe SN — przyłączenie transformatora SN/nN.",
     devices=[
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"
-        ),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="DS_LINE", designation_q="Q9", position=3, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=4, placement="GROUND_BRANCH"),
         BayDeviceTemplate(
             kind="TRANSFORMER_DEVICE",
             designation_q="TR",
@@ -1140,15 +1065,9 @@ BAY_TEMPLATE_MEASUREMENT = BayTemplate(
     bay_role="MEASUREMENT",
     description="Pole pomiarowe SN — boczny tor pomiarowy z przekładnikami napięciowymi.",
     devices=[
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="VT", designation_q="T2", position=1, placement="OFF_PATH"
-        ),
-        BayDeviceTemplate(
-            kind="ES", designation_q="Q8", position=2, placement="GROUND_BRANCH"
-        ),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="VT", designation_q="T2", position=1, placement="OFF_PATH"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=2, placement="GROUND_BRANCH"),
     ],
     ports=[BayPortTemplate(kind="sn_measurement", suffix="meas")],
 )
@@ -1159,18 +1078,10 @@ BAY_TEMPLATE_COUPLER = BayTemplate(
     bay_role="COUPLER",
     description="Sprzęgło sekcyjne — łącznik dwóch sekcji szyny SN.",
     devices=[
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q2", position=2, placement="DOWNSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="ES", designation_q="Q8", position=3, placement="GROUND_BRANCH"
-        ),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q2", position=2, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=3, placement="GROUND_BRANCH"),
     ],
     funkcje_eaz=["51", "50"],
     ports=[
@@ -1200,24 +1111,12 @@ BAY_TEMPLATE_DER_PV = BayTemplate(
     bay_role="OZE",
     description="Pole źródłowe SN dla farmy PV — przyłączenie inwerterów + transformatora.",
     devices=[
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="VT", designation_q="T2", position=3, placement="OFF_PATH"
-        ),
-        BayDeviceTemplate(
-            kind="DS_LINE", designation_q="Q9", position=4, placement="DOWNSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="ES", designation_q="Q8", position=5, placement="GROUND_BRANCH"
-        ),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="VT", designation_q="T2", position=3, placement="OFF_PATH"),
+        BayDeviceTemplate(kind="DS_LINE", designation_q="Q9", position=4, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=5, placement="GROUND_BRANCH"),
         BayDeviceTemplate(
             kind="CABLE_HEAD", designation_q="GK", position=6, placement="DOWNSTREAM"
         ),
@@ -1256,12 +1155,8 @@ BAY_TEMPLATE_RESERVE = BayTemplate(
     bay_role="FEEDER",
     description="Pole rezerwowe — przygotowane miejsce dla przyszłego przyłączenia.",
     devices=[
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="ES", designation_q="Q8", position=1, placement="GROUND_BRANCH"
-        ),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=1, placement="GROUND_BRANCH"),
     ],
     ports=[BayPortTemplate(kind="sn_reserve", suffix="reserve")],
 )
@@ -1272,15 +1167,9 @@ BAY_TEMPLATE_AUX = BayTemplate(
     bay_role="FEEDER",
     description="Pole potrzeb własnych stacji — zasilanie urządzeń pomocniczych.",
     devices=[
-        BayDeviceTemplate(
-            kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="FUSE", designation_q="F1", position=1, placement="MIDSTREAM"
-        ),
-        BayDeviceTemplate(
-            kind="ES", designation_q="Q8", position=2, placement="GROUND_BRANCH"
-        ),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="FUSE", designation_q="F1", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q8", position=2, placement="GROUND_BRANCH"),
     ],
     ports=[BayPortTemplate(kind="sn_reserve", suffix="aux")],
 )
@@ -1308,9 +1197,7 @@ PODSTAWA_POLA_POMIARU_NAPIECIA_Z17 = (
 #: napięcie zerowe zabezpieczeń ziemnozwarciowych pól liniowych sekcji). Odczyt rysunku
 #: 2026-10-29 (współrzędne strony 2480×3509 px: tabliczka x≈600–860, y≈2010–2180; uzwojenie III
 #: — symbol trójkąta pod gwiazdami, linia do wejścia Uo> i obwodu „Z,Zz”).
-UZWOJENIA_VT_POLA_POMIARU_NAPIECIA_Z17: tuple[
-    UzwojeniePrzekladnikaNapieciowego, ...
-] = (
+UZWOJENIA_VT_POLA_POMIARU_NAPIECIA_Z17: tuple[UzwojeniePrzekladnikaNapieciowego, ...] = (
     UzwojeniePrzekladnikaNapieciowego(
         przekladnia="SN/√3 / 0,1/√3",
         moc_va=10.0,
@@ -1448,11 +1335,7 @@ def odlaczenie_wysunieciem_wylacznika(primary_devices: Iterable[Any]) -> bool:
     domysłu, także dla pola z szablonem „WYSUWNY", którego wyłącznik zapisano jako stały).
     """
     for aparat in primary_devices:
-        kind = (
-            aparat.get("kind")
-            if isinstance(aparat, dict)
-            else getattr(aparat, "kind", None)
-        )
+        kind = aparat.get("kind") if isinstance(aparat, dict) else getattr(aparat, "kind", None)
         wykonanie = (
             aparat.get("wykonanie")
             if isinstance(aparat, dict)
@@ -1576,15 +1459,11 @@ def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | No
     for kod in kody:
         wymogi: list[WymogFunkcjiWKlasie] = []
         for klasa in klasy:
-            wpis = next(
-                (w for w in WYMAGANIA_EAZ_KLASY_POLA[klasa] if w[0] == kod), None
-            )
+            wpis = next((w for w in WYMAGANIA_EAZ_KLASY_POLA[klasa] if w[0] == kod), None)
             if wpis is not None:
                 wymog, podstawa = wpis[1], wpis[2]
                 weryfikacja: StatusWeryfikacji = (
-                    "INTERPRETACJA"
-                    if (klasa, kod) in _WYMOGI_Z_INTERPRETACJI
-                    else "ODCZYT_TEKSTU"
+                    "INTERPRETACJA" if (klasa, kod) in _WYMOGI_Z_INTERPRETACJI else "ODCZYT_TEKSTU"
                 )
             # Zestaw rysunku w klasie z KAŻDYM warunkiem spełnionym: profil opisuje wzorzec,
             # a nie stan konkretnego pola (warunek przypisania niesie `warunek_pl`).
@@ -1630,11 +1509,7 @@ def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | No
                 wymagalnosc_pl=OPIS_WYMAGALNOSCI_PROFILU_PL[wymagalnosc],
                 na_rysunku=kod in rysunek,
                 wymogi=wymogi,
-                warunek_pl=(
-                    OPIS_WARUNKU_FUNKCJI_EAZ_PL[warunek]
-                    if warunek is not None
-                    else None
-                ),
+                warunek_pl=(OPIS_WARUNKU_FUNKCJI_EAZ_PL[warunek] if warunek is not None else None),
             )
         )
     return wynik
@@ -1656,18 +1531,14 @@ FUNKCJE_EAZ_ROLI_BEZ_SZABLONU: dict[str, tuple[str, ...]] = {
 }
 
 
-def funkcje_eaz_roli(
-    bay_role: str, warunki: Collection[str] = frozenset()
-) -> list[str]:
+def funkcje_eaz_roli(bay_role: str, warunki: Collection[str] = frozenset()) -> list[str]:
     """Funkcje EAZ roli pola: szablonu kanonicznego roli albo — dla roli bez szablonu
     kanonicznego — ``FUNKCJE_EAZ_ROLI_BEZ_SZABLONU``; pusta lista dla roli spoza obu tablic.
     Bez funkcji warunkowych o niespełnionym warunku (`bez_niespelnionych_warunkow`)."""
     szablon = SZABLON_KANONICZNY_ROLI.get(bay_role)
     if szablon is not None:
         return bez_niespelnionych_warunkow(szablon.funkcje_eaz, warunki)
-    return bez_niespelnionych_warunkow(
-        FUNKCJE_EAZ_ROLI_BEZ_SZABLONU.get(bay_role, ()), warunki
-    )
+    return bez_niespelnionych_warunkow(FUNKCJE_EAZ_ROLI_BEZ_SZABLONU.get(bay_role, ()), warunki)
 
 
 # ---------------------------------------------------------------------------
@@ -1712,9 +1583,7 @@ def _main_apparatus_primary_kind(apparatus_kind: str | None) -> str | None:
     → typ aparatu pierwotnego. Pole wyłącznikowe (CB) vs rozłącznikowe
     (LOAD_SWITCH/DS/FUSE). `None` = brak jawnego wyboru (zostaje typ z szablonu).
     """
-    normalized = (
-        apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
-    )
+    normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
     if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK"}:
         return "DS"
     if normalized in {"LOAD_SWITCH", "LS", "ROZLACZNIK", "ROZŁĄCZNIK"}:
@@ -1853,9 +1722,7 @@ def mv_source_field_primary_devices(
     (`field_ref` + pozycja) — ten sam wynik dla tego samego pola, zero seedu.
     """
     main_kind = (
-        "LOAD_SWITCH"
-        if str(switching_device).strip().upper() in {"LBS", "LOAD_SWITCH"}
-        else "CB"
+        "LOAD_SWITCH" if str(switching_device).strip().upper() in {"LBS", "LOAD_SWITCH"} else "CB"
     )
 
     plan: list[tuple[str, str, str]] = [
@@ -1900,9 +1767,7 @@ def get_bay_template(template_id: str) -> BayTemplate:
 
     if template_id not in BAY_TEMPLATE_REGISTRY:
         available = ", ".join(sorted(BAY_TEMPLATE_REGISTRY.keys()))
-        raise BrakZasobuError(
-            f"Unknown bay_template_id: {template_id}. Available: {available}"
-        )
+        raise BrakZasobuError(f"Unknown bay_template_id: {template_id}. Available: {available}")
     return BAY_TEMPLATE_REGISTRY[template_id]
 
 
@@ -2033,20 +1898,14 @@ def config_ref_for_template(template_ref: str) -> str:
 
 def config_ref_for_mv_source(switching_device: str) -> str:
     """Stabilny identyfikator konfiguracji pola źródłowego SN (W2b) — kanoniczny."""
-    main = (
-        "lbs"
-        if str(switching_device).strip().upper() in {"LBS", "LOAD_SWITCH"}
-        else "cb"
-    )
+    main = "lbs" if str(switching_device).strip().upper() in {"LBS", "LOAD_SWITCH"} else "cb"
     return f"kanoniczny:mv_source_{main}"
 
 
 def _canonical_config_entry(template: BayTemplate) -> dict[str, Any]:
     """Jeden przypadek macierzy z kanonicznego szablonu pola (uwaga 16)."""
     config_ref = config_ref_for_template(template.template_id)
-    primary_devices = template_primary_devices(
-        template.template_id, field_ref=config_ref
-    )
+    primary_devices = template_primary_devices(template.template_id, field_ref=config_ref)
     return {
         "config_ref": config_ref,
         "source": "kanoniczny",
@@ -2105,18 +1964,12 @@ def enumerate_canonical_configurations() -> list[dict[str, Any]]:
     słowników (JSON-serializowalnych) z `config_ref` (uwaga 10), grupą funkcjonalną
     (uwaga 15), rolą pola i zmaterializowanymi `primary_devices` (tor pierwotny).
     """
-    entries: list[dict[str, Any]] = [
-        _canonical_config_entry(t) for t in list_bay_templates()
-    ]
+    entries: list[dict[str, Any]] = [_canonical_config_entry(t) for t in list_bay_templates()]
     entries.append(
-        _mv_source_config_entry(
-            switching_device="CB", ct=True, vt=False, surge_arrester=True
-        )
+        _mv_source_config_entry(switching_device="CB", ct=True, vt=False, surge_arrester=True)
     )
     entries.append(
-        _mv_source_config_entry(
-            switching_device="LBS", ct=True, vt=True, surge_arrester=True
-        )
+        _mv_source_config_entry(switching_device="LBS", ct=True, vt=True, surge_arrester=True)
     )
     return sorted(entries, key=lambda e: str(e["config_ref"]))
 

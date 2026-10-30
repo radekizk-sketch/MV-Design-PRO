@@ -647,9 +647,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         # Karta W3-B (mapa 4 #3): jedyna droga edycji obwodu wtórnego po utworzeniu —
         # `update_element_parameters` odrzuca kolekcję `measurements`. Opis czyta
         # projektant (treść komunikatu operacji, karta #142) — bez kodów.
-        description_pl=(
-            "Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku"
-        ),
+        description_pl=("Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku"),
         target_layer="Domain / NetworkModel",
         required_fields=(
             "measurement_ref",
@@ -1204,9 +1202,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
     "add_grid_source_sn": {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
         "gpz_line_field_apparatus": KsztaltObiektu(
-            pola=frozenset(
-                {"apparatus_kind", "catalog_binding", "catalog_item_id", "catalog_ref"}
-            ),
+            pola=frozenset({"apparatus_kind", "catalog_binding", "catalog_item_id", "catalog_ref"}),
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
             },
@@ -1446,9 +1442,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     ),
                 ),
                 "station_auxiliary": KsztaltObiektu(
-                    pola=frozenset(
-                        {"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}
-                    ),
+                    pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
                 ),
                 "switchgear": KsztaltObiektu(
                     pola=frozenset({"manufacturer_ref", "switchgear_family_ref"}),
@@ -1456,9 +1450,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             },
         ),
         "station_auxiliary": KsztaltObiektu(
-            pola=frozenset(
-                {"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}
-            ),
+            pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
         ),
         "transformer": KsztaltObiektu(
             pola=frozenset(
@@ -1532,9 +1524,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
                 "zero_sequence": KsztaltObiektu(
-                    pola=frozenset(
-                        {"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}
-                    ),
+                    pola=frozenset({"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}),
                 ),
             },
         ),
@@ -1647,9 +1637,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     ),
                 ),
                 "station_auxiliary": KsztaltObiektu(
-                    pola=frozenset(
-                        {"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}
-                    ),
+                    pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
                 ),
                 "switchgear": KsztaltObiektu(
                     pola=frozenset({"manufacturer_ref", "switchgear_family_ref"}),
@@ -1657,9 +1645,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             },
         ),
         "station_auxiliary": KsztaltObiektu(
-            pola=frozenset(
-                {"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}
-            ),
+            pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
         ),
         "transformer": KsztaltObiektu(
             pola=frozenset(
@@ -1749,9 +1735,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
                 "zero_sequence": KsztaltObiektu(
-                    pola=frozenset(
-                        {"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}
-                    ),
+                    pola=frozenset({"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}),
                 ),
             },
         ),
@@ -4468,9 +4452,7 @@ def opis_kodu_gotowosci_pl(kod: str) -> str:
     """
     spec = READINESS_CODES.get(kod)
     if spec is None:
-        raise KeyError(
-            f"Kod gotowości „{kod}” nie ma komunikatu w rejestrze READINESS_CODES."
-        )
+        raise KeyError(f"Kod gotowości „{kod}” nie ma komunikatu w rejestrze READINESS_CODES.")
     return spec.message_pl
 
 
@@ -4565,9 +4547,7 @@ def _obce_w_obiekcie(
             if not _w_kontrakcie(klucz, ksztalt.pola):
                 wynik.append(f"{prefiks}.{klucz}")
             elif klucz in ksztalt.zagniezdzone:
-                _obce_w_obiekcie(
-                    wartosc, ksztalt.zagniezdzone[klucz], f"{prefiks}.{klucz}", wynik
-                )
+                _obce_w_obiekcie(wartosc, ksztalt.zagniezdzone[klucz], f"{prefiks}.{klucz}", wynik)
 
 
 def klucze_spoza_kontraktu(op_name: str, payload: dict[str, Any]) -> list[str]:

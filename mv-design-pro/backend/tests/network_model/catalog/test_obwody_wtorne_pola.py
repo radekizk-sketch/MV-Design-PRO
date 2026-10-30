@@ -52,9 +52,7 @@ from network_model.catalog.obwody_wtorne_pola import (
     powiazania_aparatow_pola,
 )
 
-SZABLONY = list(
-    itertools.product(WYKONANIA_POLA_LINIOWEGO_GPZ, WYKONANIA_LACZNIKOW_POLA)
-)
+SZABLONY = list(itertools.product(WYKONANIA_POLA_LINIOWEGO_GPZ, WYKONANIA_LACZNIKOW_POLA))
 
 # --- wyrocznia rysunku (odczyt obrazów s.89 Z.10, s.90 Z.11, s.91 Z.11.1; 2026-10-29) ---------
 # Wejście: (rodzaj, aparat, numer) albo ("SYGNAL", nazwa); wyjścia — sygnały rysunku.
@@ -128,9 +126,7 @@ DO_WYLACZNIKA["Z11_1"] = DO_WYLACZNIKA["Z11"] = {"Blok. ZW", "ZW", "OW1"}
 
 
 def _klucz(w: WejscieFunkcjiEaz) -> tuple[object, ...]:
-    return (
-        ("SYGNAL", w.sygnal) if w.rodzaj == "SYGNAL" else (w.rodzaj, w.aparat, w.numer)
-    )
+    return ("SYGNAL", w.sygnal) if w.rodzaj == "SYGNAL" else (w.rodzaj, w.aparat, w.numer)
 
 
 @pytest.mark.parametrize("wykonanie,laczniki", SZABLONY)
@@ -151,9 +147,7 @@ def test_powiazania_zgodne_z_wyrocznia_rysunku(wykonanie: str, laczniki: str) ->
     assert do_wylacznika == DO_WYLACZNIKA[wykonanie]
     wylacznik = next(d for d in szablon.devices if d.kind == "CB")
     for p in obwody.powiazania:
-        assert (p.wylacznik == wylacznik.designation_q) == bool(
-            set(p.wyjscia) & do_wylacznika
-        )
+        assert (p.wylacznik == wylacznik.designation_q) == bool(set(p.wyjscia) & do_wylacznika)
     poza = {(o.aparat, o.numer): o.odbiornik_pl for o in obwody.obwody_przekladnikow}
     assert poza == POZA_EAZ[wykonanie]
     # Napędy łączników rysunku (s.89, s.90, s.91 w 400 dpi): Q0 silnikowy „M", Q1 łącznik
@@ -166,9 +160,7 @@ def test_powiazania_zgodne_z_wyrocznia_rysunku(wykonanie: str, laczniki: str) ->
 
 
 @pytest.mark.parametrize("wykonanie,laczniki", SZABLONY)
-def test_kazdy_rdzen_i_uzwojenie_ma_jedno_przeznaczenie(
-    wykonanie: str, laczniki: str
-) -> None:
+def test_kazdy_rdzen_i_uzwojenie_ma_jedno_przeznaczenie(wykonanie: str, laczniki: str) -> None:
     szablon = szablon_pola_liniowego_gpz(wykonanie, laczniki)
     assert szablon.obwody_wtorne is not None
     eaz = {
@@ -248,9 +240,7 @@ def test_iniekcja_powiazanie_dwukrotne() -> None:
         ),
     ],
 )
-def test_iniekcja_wejscie_na_niewlasciwym_aparacie(
-    wejscie: dict, komunikat: str
-) -> None:
+def test_iniekcja_wejscie_na_niewlasciwym_aparacie(wejscie: dict, komunikat: str) -> None:
     obwody = _obwody()
     pierwsze = obwody["powiazania"][0]  # type: ignore[index]
     pierwsze["wejscia"] = [{**wejscie, "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"}]
@@ -401,9 +391,7 @@ def test_naped_z_szablonu_na_lacznikach_pola(wykonanie: str, laczniki: str) -> N
         obwody,
         szablon.funkcje_eaz,
     )
-    z_napedem = {
-        (a.get("designation"), a["kind"], a["naped"]) for a in aparaty if a.get("naped")
-    }
+    z_napedem = {(a.get("designation"), a["kind"], a["naped"]) for a in aparaty if a.get("naped")}
     oczekiwane = {("Q0", "CB", "SILNIKOWY")}
     if laczniki == "TROJPOLOZENIOWY":
         oczekiwane.add(("Q1", "THREE_POSITION_SWITCH", "ZASOBNIKOWY_RECZNY"))
@@ -416,18 +404,14 @@ def test_naped_z_szablonu_na_lacznikach_pola(wykonanie: str, laczniki: str) -> N
 
 
 @pytest.mark.parametrize("wykonanie,laczniki", SZABLONY)
-def test_przekladnia_ferrantiego_z_szablonu_do_rekordu_pola(
-    wykonanie: str, laczniki: str
-) -> None:
+def test_przekladnia_ferrantiego_z_szablonu_do_rekordu_pola(wykonanie: str, laczniki: str) -> None:
     szablon = szablon_pola_liniowego_gpz(wykonanie, laczniki)
     (ferranti,) = (d for d in szablon.devices if d.kind == "CORE_BALANCE_CT")
     assert ferranti.przekladnia == "1/100"
     aparaty = template_primary_devices(szablon.template_id, field_ref="pole-test")
     (rekord,) = (a for a in aparaty if a["kind"] == "CORE_BALANCE_CT")
     assert rekord["przekladnia"] == "1/100"
-    assert all(
-        "przekladnia" not in a for a in aparaty if a["kind"] != "CORE_BALANCE_CT"
-    )
+    assert all("przekladnia" not in a for a in aparaty if a["kind"] != "CORE_BALANCE_CT")
     BayPrimaryDevice.model_validate(rekord)
 
 
@@ -502,9 +486,7 @@ PROFIL["Z11_1"] = PROFIL["Z11"] = {
 
 
 @pytest.mark.parametrize("wykonanie,laczniki", SZABLONY)
-def test_profil_eaz_statusy_i_wymogi_w_kazdej_klasie(
-    wykonanie: str, laczniki: str
-) -> None:
+def test_profil_eaz_statusy_i_wymogi_w_kazdej_klasie(wykonanie: str, laczniki: str) -> None:
     szablon = szablon_pola_liniowego_gpz(wykonanie, laczniki)
     profil = profil_eaz_szablonu(szablon.template_id)
     assert profil is not None
@@ -545,9 +527,7 @@ def test_profil_tylko_dla_pola_liniowego_gpz_i_deterministyczny() -> None:
     assert all(t.obwody_wtorne is None for t in inne)
     assert profil_eaz_szablonu("szablon-nieznany") is None
     for szablon in BAY_TEMPLATES_GPZ_LINE:
-        assert profil_eaz_szablonu(szablon.template_id) == profil_eaz_szablonu(
-            szablon.template_id
-        )
+        assert profil_eaz_szablonu(szablon.template_id) == profil_eaz_szablonu(szablon.template_id)
 
 
 def test_api_szablonow_niesie_profil_i_obwody() -> None:
@@ -556,9 +536,7 @@ def test_api_szablonow_niesie_profil_i_obwody() -> None:
     wynik = {w["template_ref"]: w for w in list_bay_templates_endpoint(pole_gpz=True)}
     for szablon in BAY_TEMPLATES_GPZ_LINE:
         wpis = wynik[szablon.template_id]
-        assert [p["kod"] for p in wpis["profil_eaz"]] == list(
-            PROFIL[szablon.wykonanie_pola]
-        )
+        assert [p["kod"] for p in wpis["profil_eaz"]] == list(PROFIL[szablon.wykonanie_pola])
         assert wpis["obwody_wtorne"] == szablon.obwody_wtorne.model_dump(mode="json")
     rmu = wynik["bay_template_line_out"]
     assert rmu["profil_eaz"] is None and rmu["obwody_wtorne"] is None
@@ -603,32 +581,19 @@ def test_odcisk_szablonu_bez_pol_addytywnych_none() -> None:
     gpz = szablon_pola_liniowego_gpz("Z11_1", "TROJPOLOZENIOWY")
     zrzut_gpz = postac_odcisku_szablonu(gpz)
     assert zrzut_gpz["obwody_wtorne"] == gpz.obwody_wtorne.model_dump(mode="json")
-    assert [
-        a.get("przekladnia") for a in zrzut_gpz["devices"] if "przekladnia" in a
-    ] == ["1/100"]
+    assert [a.get("przekladnia") for a in zrzut_gpz["devices"] if "przekladnia" in a] == ["1/100"]
     # Wartość nadana zmienia odcisk; zdjęta do `None` — wraca do odcisku bez pola.
     bez_obwodow = gpz.model_copy(update={"obwody_wtorne": None})
     assert _odcisk(gpz) != _odcisk(bez_obwodow)
-    aparaty_bez_przekladni = [
-        d.model_copy(update={"przekladnia": None}) for d in gpz.devices
-    ]
+    aparaty_bez_przekladni = [d.model_copy(update={"przekladnia": None}) for d in gpz.devices]
     bez_przekladni = bez_obwodow.model_copy(update={"devices": aparaty_bez_przekladni})
     assert _odcisk(bez_obwodow) != _odcisk(bez_przekladni)
-    assert all(
-        "przekladnia" not in a
-        for a in postac_odcisku_szablonu(bez_przekladni)["devices"]
-    )
+    assert all("przekladnia" not in a for a in postac_odcisku_szablonu(bez_przekladni)["devices"])
     # Wykonanie wyłącznika (rozstrzygnięcie architekta 2026-10-30 pkt 3) — to samo prawo.
     assert all("wykonanie" not in a for a in zrzut["devices"])
-    assert [a["wykonanie"] for a in zrzut_gpz["devices"] if "wykonanie" in a] == [
-        "STALE"
-    ]
+    assert [a["wykonanie"] for a in zrzut_gpz["devices"] if "wykonanie" in a] == ["STALE"]
     bez_wykonania = gpz.model_copy(
-        update={
-            "devices": [d.model_copy(update={"wykonanie": None}) for d in gpz.devices]
-        }
+        update={"devices": [d.model_copy(update={"wykonanie": None}) for d in gpz.devices]}
     )
     assert _odcisk(gpz) != _odcisk(bez_wykonania)
-    assert all(
-        "wykonanie" not in a for a in postac_odcisku_szablonu(bez_wykonania)["devices"]
-    )
+    assert all("wykonanie" not in a for a in postac_odcisku_szablonu(bez_wykonania)["devices"])
