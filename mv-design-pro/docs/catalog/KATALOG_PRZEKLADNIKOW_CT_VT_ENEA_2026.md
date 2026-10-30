@@ -7,7 +7,7 @@ Dwie klasy wpisów, których NIE wolno mieszać:
 - **Rodzina producenta:** dopuszczalne kombinacje z publikacji producenta. Dopóki nie ma osobnego numeru zamówieniowego/DTR, status nadal REFERENCYJNY_V1. NIE nazywamy jej potwierdzonym wyrobem.
 
 W bazie wyjściowej było **14 przekładników CT** (12 modeli referencyjnych plus 2 sieciowe ENEA 5/B) oraz **13 VT**.
-Po tej gałęzi: **68 CT** (36 nowych ENEA 5/A-D oraz 18 ABB TPU), **31 VT** (6 nowych ENEA 5/E-F, 9 ABB UDZ 24-1, 3 ESITAS VTB) oraz **5 Ferranti 3I0** w osobnym katalogu.
+Po tej gałęzi: **70 CT** (36 nowych ENEA 5/A-D oraz 18 ABB TPU i 2 ZWARPOL JSGO), **37 VT** (6 nowych ENEA 5/E-F, 9 ABB UDZ 24-1, 3 ESITAS VTB i 6 RITZ VES) oraz **5 Ferranti 3I0** w osobnym katalogu.
 Liczby dotyczą katalogu z gałęzi bazowej PR #508; PR jest na nią nałożony.
 
 ## ENEA Operator — przekładniki prądowe
@@ -100,9 +100,11 @@ bibliotece przekładników — **nie** jest modelowany jako CT fazowy.
 ## Nowi producenci z rynku polskiego
 
 Osobny katalog `/api/catalog/instrument-transformer-families` obejmuje **49
-rodzin 12 producentów**, m.in. KPB Intra, RITZ, Arteche, ALCE Elektrik,
+rodzin 15 producentów**, m.in. KPB Intra, RITZ, Arteche, ALCE Elektrik,
 ESITAS, PLESSE, ZWARPOL, PFIFFNER, MBS, Łukasiewicz-ITR,
-SPIE Energotest i ZELISKO. Są to rodziny doborowe, bez wymyślonych
+SPIE Energotest i ZELISKO, a teraz także **TESAR Polska, KONČAR
+i POLCONTACT WARSZAWA**. Osiem kolejnych rodzin udokumentowano
+bez tworzenia sztucznych kombinacji zakresów. Są to rodziny doborowe, bez wymyślonych
 tabliczek CT/VT. Dodatkowe trzy zidentyfikowane typy VT ESITAS
 VTB10/20-K z polskiej oferty zostały włączone do listy VT.
 
@@ -111,11 +113,11 @@ Szczegóły, źródła i zasady w:
 
 ## Technika wdrożenia i Ubuntu
 
-- `get_default_mv_catalog().list_ct_types()`: 68 modeli CT fazowych/profili wymagań.
-- `get_default_mv_catalog().list_vt_types()`: 31 VT.
-- `GET /api/catalog/ferranti-types`: 5 osobnych sensorów 3I0; 49 rodzin 12 producentów w katalogu doborowym.
+- `get_default_mv_catalog().list_ct_types()`: 70 modeli CT fazowych/profili wymagań.
+- `get_default_mv_catalog().list_vt_types()`: 37 VT.
+- `GET /api/catalog/ferranti-types`: 5 osobnych sensorów 3I0; 57 rodzin 15 producentów w katalogu doborowym.
 - Nowe opcjonalne pola `secondary_cores`, `core_count`, `um_kv`, `primary_taps_a`, `secondary_windings`, `primary_connection` są przekazywane `from_dict → to_dict → REST` bez naruszania starych rekordów.
 - Dotychczasowe ID CT/VT nie są zmieniane, tylko dodano nowe.
 - Odbiór: `bash scripts/catalog_audit_ubuntu.sh` (wymaga Python 3.11 i zależności repo).
 
-**Nie oznaczać 68 CT jako 68 pełnych produktów producenta.** Większość nowych profili to formalne wymagania standardu ENEA. Prawdziwy wybór produkcyjny potrzebuje DTR/numeru zamówieniowego potwierdzającego wszystkie rdzenie, uzwojenia, Ith, Idyn, ALF/FS i rzeczywiste obciążenie.
+**Nie oznaczać 70 CT jako 68 pełnych produktów producenta.** Większość nowych profili to formalne wymagania standardu ENEA. Prawdziwy wybór produkcyjny potrzebuje DTR/numeru zamówieniowego potwierdzającego wszystkie rdzenie, uzwojenia, Ith, Idyn, ALF/FS i rzeczywiste obciążenie.

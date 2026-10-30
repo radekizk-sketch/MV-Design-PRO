@@ -100,6 +100,32 @@ MBS_SOURCE = (
 )
 
 
+
+# Dodatkowe serie potwierdzone bezpośrednio kartą producenta lub dystrybutora PL.
+TESAR_SOURCE = (
+    "TESAR Polska, DIN AD11 FD11, CT 24kV 5-2500A, VT L-N do 24kV; "
+    "https://nowa.stb.com.pl/katalogi/TESARKATALOG.pdf"
+)
+KPB_CTSO25_SOURCE = (
+    "KPB Intra Polska, CTSO 25 napowietrzny, karta producenta: "
+    "https://intrapolska.pl/uploads/produkt_files/k_kat_ctso_25.pdf"
+)
+RITZ_STANDARD_SOURCE = (
+    "RITZ, Medium Voltage Instrument Transformers, standard ASS24/VES24, "
+    "strony 18 i 27: https://ritz-international.com/wp-content/uploads/"
+    "RITZ-medium_voltage_instrument_transformers_standard_EN-1-1.pdf"
+)
+KONCAR_MV_SOURCE = (
+    "KONČAR, instrument transformers MV 3.6–52kV: "
+    "https://koncar.hr/en/koncar-instrument-transformers"
+)
+POLCONTACT_JK24_SOURCE = (
+    "POLCONTACT WARSZAWA, JK24 na kabel SN, dane 30–1000A, 5A, "
+    "klasa 0.5/10P10, strony 67–71: "
+    "https://www.polcontact-warszawa.pl/files/"
+    "Przekladniki%20pradowe%20JK%2024/1283697870/lib/1.pdf"
+)
+
 def _family(
     manufacturer: str,
     family: str,
@@ -267,6 +293,53 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
                 mounting="GIS"),
         _family("MBS", "ASK", "CT", MBS_SOURCE, mounting="INDOOR", domain="nN"),
         _family("MBS", "ASR", "CT", MBS_SOURCE, mounting="INDOOR", domain="nN"),
+    ])
+    # Dodatkowi producenci i serie (Polska + rzeczywista dystrybucja w PL).
+    families.extend([
+        _family("TESAR Polska", "AD11", "CT", TESAR_SOURCE,
+                mounting="INDOOR_DIN", um_kv=24,
+                primary_a_min=5, primary_a_max=2500,
+                secondary_current_options_a=(1, 5), core_count_max=3,
+                accuracy_options=("0.2", "0.2S", "0.5", "0.5S", "5P10", "5P20", "5P30"),
+                note="Ith do 40kA/1s dotyczy rodziny, NIE każdego wyrobu."),
+        _family("TESAR Polska", "FD11", "VT", TESAR_SOURCE,
+                mounting="INDOOR_DIN", um_kv=24,
+                core_count_max=2, accuracy_options=("0.2", "0.5", "3P", "6P"),
+                residual_capability=True,
+                note="Pomiar 100/√3V, uzwojenie 100/3V jest konfigurowalne."),
+        _family("KPB Intra", "CTSO 25", "CT", KPB_CTSO25_SOURCE,
+                mounting="OUTDOOR", um_kv=25,
+                primary_a_min=5, primary_a_max=600,
+                secondary_current_options_a=(1, 5), core_count_max=2,
+                accuracy_options=("0.2", "0.2S", "0.5", "0.5S", "5P", "10P"),
+                burden_options_va=(2.5, 5, 7.5, 10, 15, 20, 30),
+                ith_range_ka=(2, 80),
+                note="Praca pionowa. Nie wolno bez DTR połączyć maksimum Ith "
+                     "z dowolną przekładnią 5–600 A."),
+        _family("RITZ", "ASS 24", "CT", RITZ_STANDARD_SOURCE,
+                mounting="INDOOR_SUPPORT", um_kv=24,
+                primary_a_max=2500, secondary_current_options_a=(1, 5),
+                note="RITZ podaje Ith do 1000×In, max 100kA — GRANICA RODZINY."),
+        _family("RITZ", "VES 24", "VT", RITZ_STANDARD_SOURCE,
+                mounting="INDOOR", um_kv=24,
+                accuracy_options=("0.2", "0.5", "1.0"),
+                burden_options_va=(20, 50, 100),
+                residual_capability=True,
+                note="Uzwojenie 100/3V jest opcją; 6 indywidualnych "
+                     "konfiguracji pomiarowych są w katalogu VT."),
+        _family("KONČAR", "MV resin CT", "CT", KONCAR_MV_SOURCE,
+                mounting="INDOOR_OR_OUTDOOR",
+                note="Zakres producenta MV 3,6–52kV, brak wariantu zamówieniowego."),
+        _family("KONČAR", "MV resin VT", "VT", KONCAR_MV_SOURCE,
+                mounting="INDOOR_OR_OUTDOOR",
+                note="Zakres producenta MV 3,6–52kV, brak danych o indywidualnych uzwojeniach."),
+        _family("POLCONTACT WARSZAWA", "JK24 D60", "CT",
+                POLCONTACT_JK24_SOURCE, mounting="CABLE_RING_PHASE_CT",
+                um_kv=24, primary_a_min=30, primary_a_max=1000,
+                secondary_current_options_a=(5,), core_count_max=2,
+                accuracy_options=("0.5", "10P10"),
+                note="Izolację SN stanowi kabel; FS10 z archiwalnego źródła "
+                     "NIE spełnia automatycznie wymogów nowych CT rozliczeniowych ENEA."),
     ])
     if len({f["id"] for f in families}) != len(families):
         raise ValueError("Duplikat ID w rodzinach CT/VT producentów")
