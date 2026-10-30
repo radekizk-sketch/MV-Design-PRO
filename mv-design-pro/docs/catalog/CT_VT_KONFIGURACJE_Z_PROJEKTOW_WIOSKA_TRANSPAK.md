@@ -58,10 +58,11 @@ osobny tor e2TANGO.
 - **Liczba rdzeni nie jest liczbą zaczepów.** TESAR 40/5/5/5 A
   jest trójrdzeniowy z jedną przekładnią pierwotną.
 - **3P to klasa dokładności**, nie dowód istnienia 3U₀. W projekcie
-  WIOSKA potwierdzono jednak dedykowane czwarte uzwojenie
-  100/3 V, funkcję e2TANGO U0 i połączenie otwartego trójkąta
-  trzech jednofazowych VT. Tego nie wolno przenosić na inny wariant TESAR
-  bez jego schematu.
+  WIOSKA potwierdzono dedykowane czwarte uzwojenie
+  100/3 V i funkcję e2TANGO U0. **Sam opis projektowy nie przedstawia
+  jednoznacznie połączeń wtórnych trzech VT**, więc otwarty trójkąt
+  pozostaje `TO_CONFIRM` do weryfikacji na schemacie obwodów wtórnych.
+  Nie wolno przenosić uzwojenia resztkowego na inny wariant TESAR.
 - **Przykładowe obciążenie wtórne SIGMA S40:** 2,077 VA
   obliczone w projekcie TRANSPAK, a moc znamionowa CT 2,5 VA.
   Nie mylić obciążenia obwodu z parametrem producenta.
