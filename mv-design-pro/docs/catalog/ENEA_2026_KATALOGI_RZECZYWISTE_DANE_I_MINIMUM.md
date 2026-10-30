@@ -51,6 +51,25 @@ powoduje, że są to **osobne typy**, z własnym źródłem.
 jako **referencyjne poza tabelą 3 ENEA 2026**. Nie wolno ich przedstawiać jako
 aktualnie dopuszczone w standardzie ENEA.
 
+
+### Przekładniki prądowe CT — standard ENEA
+
+ENEA „Układy pomiarowe energii elektrycznej”, wersja 05.2022-2,
+obowiązuje od 02.04.2024, **załącznik 5/B**, s. 27/36:
+https://www.operator.enea.pl/media/698/uklady-pomiarowe-energii-elektrycznej-obowiazuje-od-02042024pdf.pdf
+
+| Profil rdzenia pomiarowego SN | Klasa | S_n [VA] | FS | I_th [kA/1 s] | Um [kV] |
+|---|---|---:|---:|---:|---:|
+| 5/5 A | 0,2S | 5 | 5 | 2 | 24 |
+| 15/5 A | 0,2S | 5 | 5 | 8 | 24 |
+
+Dwa rekordy `ct_enea_2024_{5|15}_5_02s_fs5` to profile **wymagań ENEA**,
+nie kompletne modele wyrobu ABB/Arteche. Parametr `idyn` wyprowadzono
+z relacji 2,5·Ith i jawnie opisano. Rezystancja Rct, typ obudowy i
+pozostałe rdzenie wymagają DTR. Nie przypisano fikcyjnego producenta.
+W szczególności **FS5** dotyczy rdzenia pomiarowego; nie należy go
+automatycznie stosować do rdzenia zabezpieczeniowego 5P.
+
 ## Hierarchia danych — globalnie
 
 1. **Wyrób producenta:** dokładna karta konkretnego typu i wersji, jednostki,
