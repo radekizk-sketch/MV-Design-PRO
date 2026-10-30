@@ -207,21 +207,17 @@ def test_zalozenie_i_dane_przyjete_z0_tylko_w_sieci_zerowej_kabla(
         z for z in (bieg.raw_result or {}).get("zalozenia") or [] if z.get("code") == KOD_Z0_ROBOCZE
     ]
     # Założenie biegu: każde zwarcie doziemne liczy Z0 całej sieci (macierz Y0), więc kabel
-    # z wartością roboczą jest nazwany niezależnie od punktu. Pozycja katalogu kabla nie niesie
-    # B′0, a projektant go nie podał — B′0 = B′1 z wartości roboczej (karta
-    # UX-04/POLE-ZU-SKLADOWA-ZEROWA, zasada nr 4) we WSZYSTKICH wariantach: susceptancja
-    # zerowa wchodzi do Y0 sieci, więc jest daną przyjętą wiersza obok R′0/X′0 z katalogu.
-    assert [z["element_ref"] for z in zalozenia] == (["C_SN"] if doziemne else [])
+    # z wartością roboczą jest nazwany niezależnie od punktu.
+    assert [z["element_ref"] for z in zalozenia] == (["C_SN"] if doziemne and pola else [])
     if zalozenia:
-        assert zalozenia[0]["parametr"] == (pola[0] if pola else "b0_siemens_per_km")
+        assert zalozenia[0]["parametr"] == pola[0]
     [wiersz] = (bieg.raw_result or {})["results"]
     dane = list(wiersz.get(KLUCZ_WIERSZA_DANE_GALEZI) or [])
     # Dana przyjęta wiersza: wyłącznie punkt w składowej sieci zerowej kabla (SN); punkt nN za
     # Dyn11 ma własną sieć zerową — Z0 kabla SN nie wchodzi do jego prądu.
-    if doziemne and szyna == N1:
+    if doziemne and pola and szyna == N1:
         assert [d["nazwa_pl"].split()[0] for d in dane] == [
-            "B′0",
-            *({"r0_ohm_per_km": "R′0", "x0_ohm_per_km": "X′0"}[p] for p in sorted(pola)),
+            {"r0_ohm_per_km": "R′0", "x0_ohm_per_km": "X′0"}[p] for p in sorted(pola)
         ]
         assert {d["jakosc"] for d in dane} == {"ESTIMATED"}
     else:
@@ -248,13 +244,12 @@ def test_rownowaznik_sn_niesie_dane_przyjete_z0(wariant: str) -> None:
     rownowaznik = build_upstream_equivalent_snapshot(enm, "z0", "ST")
     assert rownowaznik["status"] == "OK", rownowaznik
     assert rownowaznik["z0_ohm"] is not None
-    # B′0 kabla z wartości roboczej we wszystkich wariantach (kabel bez B′0 w modelu i katalogu)
-    # — równoważnik Z0 niesie go obok R′0/X′0 z katalogu.
-    assert rownowaznik["status_danych"] == "UNVALIDATED_INPUT"
-    assert {d["jakosc"] for d in rownowaznik["dane_przyjete"]} == {"ESTIMATED"}
-    nazwy = [d["nazwa_pl"].split()[0] for d in rownowaznik["dane_przyjete"]]
-    assert "B′0" in nazwy
-    assert ("R′0" in nazwy) is ("r0_ohm_per_km" in _pola_robocze(wariant))
+    if _pola_robocze(wariant):
+        assert rownowaznik["status_danych"] == "UNVALIDATED_INPUT"
+        assert {d["jakosc"] for d in rownowaznik["dane_przyjete"]} == {"ESTIMATED"}
+    else:
+        assert "dane_przyjete" not in rownowaznik
+        assert "status_danych" not in rownowaznik
 
 
 # ---------------------------------------------------------------------------
@@ -330,8 +325,7 @@ def test_konsumenci_pradow_punktu_doziemnego_niosa_dane_przyjete_z0(wariant: str
     assert _ile_z0([d.model_dump(mode="json") for d in dane_nastaw]) == oczekiwane
 
     widok_cieplny = build_wytrzymalosc_cieplna_view(bieg)
-    # B′0 kabla z wartości roboczej (kabel bez B′0) jest daną przyjętą w obu wariantach.
-    assert "dane_przyjete" in widok_cieplny
+    assert ("dane_przyjete" in widok_cieplny) is robocza
     assert _ile_z0(widok_cieplny.get("dane_przyjete", [])) == oczekiwane
 
 

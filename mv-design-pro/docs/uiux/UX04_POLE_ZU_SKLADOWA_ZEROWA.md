@@ -378,8 +378,29 @@ w jednostce S/km, kompletność dowodu NIEPEŁNY.
 Sonda (`sonda_odcinek2.py`, magistrala 1,5 + 3,5 km z katalogu bez B′0, dławik albo rezystor):
 I_C `None` → 15,9161 A (√3·15 kV·0,000612611 S); projekt uziemienia V12.6 z `missing_fields`
 → liczony (dławik: X_L = 544,1195 Ω przy I_L = I_C; rezystor: I_R = 197,3113 A, I_F = 197,4321 A
-— patrz §3.17); I″k1 sieci rezystorowej 216,9163 → 217,1240 A (bocznik pojemności w Y0:
-Z0 = 131,40 + j6,00 → 131,50 − j4,61 Ω). Testy: `tests/enm/test_b0_wartosc_robocza_odcinka.py`.
+— patrz §3.17); I″k1 sieci rezystorowej bez zmian 216,9163 A.
+
+Wartość robocza B′0 NIE wchodzi do sieci zerowej zwarć IEC 60909 (`enm/mapping.py`, bocznik
+pojemności wyłącznie z B′0 modelu; `enm/dane_przyjete_galezi.py::galezie_z0_robocze` bez B′0).
+Podstawa: IEC 60909-0:2016 rozdz. 1 — wiersz 1F sieci izolowanej i skompensowanej jest poza
+zakresem normy (prąd pojemnościowy z B′0 roboczego niesie `doziemienie_sieci`), a pkt 5.2 f)
+uwzględnia pojemności linii w składowej zerowej sieci uziemionej przez małą impedancję tylko
+przy współczynniku zwarcia doziemnego > 1,4 (warunek wdraża karta rdzenia ZEROWA-POJEMNOSCI;
+bezwarunkowy bocznik B′0 modelu jest stanem sprzed tej karty; w sieci uziemionej przez rezystor,
+gdzie k > 1,4, Y0 niesie pojemności dziś tylko z B′0 modelu, a prąd pojemnościowy z B′0
+roboczego wchodzi do I_F = √(I_R² + I_C²) bloku `doziemienie_sieci` tego samego wiersza). Pierwsza wersja odcinka wpinała
+B′0 roboczy także w Y0 — pomiar parytetu assemblera wykazał wtedy zmianę liczb wierszy
+liczonych wcześniej w dwóch sieciach rejestru uziemionych bezpośrednio, G16 i G17 (I″k1
+2005,818 → 2005,753 A i 4474,800 → 4474,153 A przy współczynniku zwarcia doziemnego
+0,96–1,23 ≤ 1,4, czyli tam, gdzie pkt 5.2 f) pojemności pomija), i dawała sondzie
+I″k1 216,9163 → 217,1240 A; poprawka przywraca te liczby. Porównanie klucz po kluczu wszystkich
+366 wpisów parytetu (stan przed odcinkiem `0344668a0` ↔ po poprawce): 0 zmian liczb na wspólnych
+ścieżkach i 0 zmian „liczba → brak liczby”; zmienione wyłącznie wpisy SC_1F i SC_2FG — przyczyna
+braku wyniku zerowego węzłów SN bez uziemienia punktu neutralnego `brak_drogi` →
+`poza_zakresem_iec60909` (sposób pracy punktu neutralnego: izolowany, §3.17) i blok
+`doziemienie_sieci` dopisany do wierszy 1F. Testy: `tests/enm/test_b0_wartosc_robocza_odcinka.py`
+(`test_bocznik_y0_zwarc_wylacznie_z_b0_modelu` — iloczyn sposobu pracy punktu neutralnego
+× B′0 modelu/brak × konsument, wyrocznia niezmienności liczb wiersza 1F przy podwojeniu B′1).
 
 ### 3.14 Napięcie powrotne (TRV) i prąd załączania V12.6 bez wartości zastępczych (B-01)
 

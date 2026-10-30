@@ -527,3 +527,31 @@ def test_impedancja_przejscia_biegu_trafia_do_doziemienia(wariant: str) -> None:
         assert d["u0_v"] == pytest.approx(U_F / abs(1.0 + z_f * y), rel=1e-5)
     # Z_f obniża prąd doziemienia względem metalicznego.
     assert d["prad_a"] < abs(U_F * y)
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "w_raporcie"),
+    [
+        ("B′0 wartość robocza (Kabel 1)", "B′0 wartość robocza (Kabel 1)"),
+        ("  B′0 wartość robocza (Kabel 2)  ", "B′0 wartość robocza (Kabel 2)"),
+        ("", None),
+        ("   ", None),
+        (None, None),
+    ],
+    ids=["zwykla", "spacje_wokol", "pusta", "same_spacje", "brak"],
+)
+def test_raport_danych_przyjetych_doziemienia_jedna_regula_nazwy(
+    nazwa: str | None, w_raporcie: str | None
+) -> None:
+    """Linia „Dane przyjęte doziemienia” raportu bierze nazwę danej przyjętej przez jedyny
+    predykat nazwy (``network_model.nazwy.jest_nazwa``): pusta i same spacje — pominięte,
+    spacje wokół — obcięte (karta NAZWY-JEDNO-ZRODLO)."""
+    from api.analysis_run_exports import _linie_doziemienia
+
+    dana = {} if nazwa is None else {"nazwa_pl": nazwa}
+    linie = _linie_doziemienia({"tryb_pl": "izolowany", "dane_przyjete": [dana]})
+    dane = [linia for linia in linie if linia.startswith("Dane przyjęte doziemienia")]
+    if w_raporcie is None:
+        assert dane == []
+    else:
+        assert dane == [f"Dane przyjęte doziemienia (wartości robocze): {w_raporcie}"]

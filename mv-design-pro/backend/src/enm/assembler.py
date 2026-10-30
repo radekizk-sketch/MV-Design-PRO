@@ -2337,9 +2337,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
     # (``droga_zerowa.z_realnym_i0``: tylko ich Z0 wchodzi do równań solvera).
     galezie_z0_robocze = [
         str(z["element_ref"])
-        for z in zalozenia_z0_galezi(
-            enm, None, galezie=droga_zerowa.z_realnym_i0, z_pojemnoscia=False
-        )
+        for z in zalozenia_z0_galezi(enm, None, galezie=droga_zerowa.z_realnym_i0)
     ]
     if galezie_z0_robocze:
         zalozenia.append(_zalozenie(KOD_Z0_ROBOCZE, galezie_z0_robocze))

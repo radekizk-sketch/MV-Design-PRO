@@ -26,7 +26,7 @@ from .uziemienie_sekcji import UziemienieSekcji
 KLUCZ_DOZIEMIENIA_SIECI = "doziemienie_sieci"
 
 
-def _zespolona(wartosc: Any) -> complex | None:
+def _zespolona(wartosc: object) -> complex | None:
     if not isinstance(wartosc, Mapping):
         return None
     return complex(float(wartosc["re"]), float(wartosc["im"]))
