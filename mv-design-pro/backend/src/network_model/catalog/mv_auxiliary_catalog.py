@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .mv_converter_catalog import ZRODLO_MODELU_REFERENCYJNEGO
+from .mv_ct_abb_tpu_standard import get_abb_tpu6_standard_types
 from .mv_instrument_transformers_full import (
     get_all_enea_ct_profiles,
     get_abb_tpu_nameplate_example,
@@ -1619,7 +1620,7 @@ def get_all_ct_types() -> list[dict]:
                 ),
             },
         },
-    ] + get_all_enea_ct_profiles() + get_abb_tpu_nameplate_example()
+    ] + get_all_enea_ct_profiles() + get_abb_tpu_nameplate_example() + get_abb_tpu6_standard_types()
 
 
 def get_all_vt_types() -> list[dict]:
