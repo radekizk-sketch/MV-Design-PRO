@@ -363,3 +363,28 @@ def test_etango_full_family_reference_api_is_distinct_from_sn_picker(
         assert "EM_E2TANGO_" + model in sn_ids
     for identyfikator in ("EM_E2TANGO_50", "EM_E2TANGO_2000_TRR", "EM_E2TANGO_SZR_PPZ"):
         assert identyfikator not in sn_ids
+
+
+def test_e2tango_expansion_peripherals_read_only_catalog_api(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/catalog/elektrometal-etango-expansions")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["wersja"] == "1.0"
+    assert body["zakres"] == "INDEKS_ZRODLOWY_KART_I_PERYFERIOW_NIE_AKTYWNY_KONFIGURATOR"
+    assert len(body["karty_rozszerzen"]) == 25
+    assert len(body["karty_pomiarowe_wybierane_przy_zamowieniu"]) == 13
+    assert len(body["peryferia"]) == 11
+    modules = {row["kod"]: row for row in body["karty_rozszerzen"]}
+    assert modules["PSU2"]["sloty_zajmowane"] == 2
+    assert modules["ARP"]["wymaga"] == ["ARC"]
+    assert modules["603I"]["slot_staly"] == "A"
+    assert modules["6O3I"]["slot_staly"] == "A"
+    assert "250" not in modules["ARC"]["modele_potwierdzone"]
+    assert body["zrodla"]["s600"]["id"] == "K-3.2.25"
+    assert all(row["status"] == "DOSTEPNY_DO_WYBORU_NIE_ZAINSTALOWANY"
+               for row in body["karty_rozszerzen"])
+    assert any(row["status"] == "SPRZECZNOSC_W_JEDNYM_WYDANIU"
+               for row in body["reguly_i_niejasnosci"])
+    assert all(row["rodzaj"] != "KARTA_ROZSZERZEN" for row in body["peryferia"])

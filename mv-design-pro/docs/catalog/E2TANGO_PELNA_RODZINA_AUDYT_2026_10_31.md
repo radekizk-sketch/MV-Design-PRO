@@ -58,3 +58,7 @@ Wersje e²TANGO-2000 są specjalizowanymi zespołami WN, a SZR/PPZ aplikacją au
 3. **Współpraca z EAZ:** `analytical_library_ref=None` dla nowych pozycji do chwili potwierdzenia funkcji i jednostki nastaw; bibliotekę analityczną można wykorzystać do symulacji tylko ze świadomym oznaczeniem statusu danych i bez udawania DTR.
 4. **Zakres programu:** GPZ WN modelować wyłącznie jako zasilanie SN, nie wybudowywać rozdzielnicy WN ani sterowania SCADA. Warianty 2000 do indeksu wiedzy, nie do pickera pól SN.
 5. **Integracja:** PR #516 → #517 → rozszerzenie pełnej rodziny; nie scalać przed zielonym CI i kontrolą użytkownika, żadnych automatycznych zmian LOD ani zestawów zabezpieczeń.
+
+## Rozszerzenie: karty i peryferia, 31.10.2026
+
+Pełna źródłowa baza wyposażenia i reguł: [E2TANGO_KARTY_I_PERYFERIA_AUDYT_2026_10_31.md](E2TANGO_KARTY_I_PERYFERIA_AUDYT_2026_10_31.md). Dane sprzętowe w `backend/src/network_model/catalog/data/e2tango_karty_peryferia_2026.json`; publiczny odczyt GET `/api/catalog/elektrometal-etango-expansions`. Pozycje TV/TRR i niektóre zapisy 250/450 wymagają rozstrzygnięcia z DTR; nie przypisywać funkcji ani portów bez konfiguracji sprzętowej.

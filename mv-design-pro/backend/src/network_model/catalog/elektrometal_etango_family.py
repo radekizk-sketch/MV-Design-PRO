@@ -48,10 +48,22 @@ def get_etango_sn_catalog_additions() -> list[dict[str, Any]]:
                     "contract_version": "2.0",
                     "verification_note": (
                         "Producent potwierdza rodzinę i zastosowanie; "
-                        "wariant sprzętowy, czynne funkcje, przekładniki i nastawy wymagają dowodu z DTR "
-                        "i konfiguracji konkretnej instancji."
+                        "wariant sprzętowy, czynne funkcje i przekładniki "
+                        "oraz nastawy wymagają dowodu z DTR i konfiguracji "
+                        "konkretnej instancji."
                     ),
                 },
             }
         )
     return result
+
+
+def list_etango_expansion_peripherals() -> dict[str, Any]:
+    """Karty i peryferia: indeks producenta, nie automatyczny walidator obsady.
+
+    Reguły oznaczone SPRZECZNOSC nie stanowią podstawy do zatwierdzenia
+    konfiguracji kart TV/TRR. API nie dopisuje żadnej aktywnej funkcji EAZ.
+    """
+    path = _DATA_PATH.with_name("e2tango_karty_peryferia_2026.json")
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
