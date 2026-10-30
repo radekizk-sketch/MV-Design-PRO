@@ -102,7 +102,12 @@ def _enea_ct(
                 else ENEA_METERING_SOURCE + " || " + ENEA_IRIESD_SOURCE
             ),
             "verification_note": (
-                f"WYMAGANIA ENEA zał. 5/{annex}, {place}, a nie produkt producenta. "
+                (
+                    f"JEDNOZAKRESOWY CT — profil referencyjny {primary_a}/5 A, {place}. "
+                    "Nie deklaruje zgodności z nowym rozliczeniowym układem ENEA. "
+                    if podzielony_zakres else
+                    f"WYMAGANIA ENEA zał. 5/{annex}, {place}, a nie produkt producenta. "
+                )
                 f"{core_count} rdzeni wynikają ze schematu przekładni; "
                 "podano wyłącznie parametry rdzeni POMIAROWYCH, które "
                 "określa tabela ENEA. Rdzenie pozostałe należy skonfigurować "
