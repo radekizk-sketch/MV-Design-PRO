@@ -13,7 +13,9 @@ Liczby dotyczą katalogu z gałęzi bazowej PR #508; PR jest na nią nałożony.
 **Aktualizacja 30.10.2026:** zał. 5/A-D wymaga przekładników
 **50–100/5 i 200–400/5 A jako pojedynczych typów wieloprzekładniowych**,
 a nie dwóch osobnych SKU. Kanoniczne rekordy mają `primary_taps_a`;
-starsze rozbite profile zachowały ID, lecz oznaczono je `LEGACY`.
+typy jednozakresowe zachowano pod tymi samymi ID, bez oznaczenia
+`LEGACY`. **Są poprawne dla istniejących urządzeń i innych funkcji**;
+ich zgodność z nowym PPE ENEA ocenia się osobno.
 Wybór aktywnego zaczepu i podkreślenie na SLD realizuje Opus, a nie
 katalog. Szczegóły i testy: [ENEA_CT_WIELOPRZEKLADNIOWE_I_ZACZEPY_2026.md](ENEA_CT_WIELOPRZEKLADNIOWE_I_ZACZEPY_2026.md).
 
