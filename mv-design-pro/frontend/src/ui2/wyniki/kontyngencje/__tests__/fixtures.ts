@@ -66,10 +66,28 @@ export const PRZECIAZENIE: PozycjaNaruszenia = {
   wartosc: 134.7433,
   granica_pct: 100.0,
   jednostka: '%',
-  powod_pl: 'Obciazenie 134.74 % przekracza limit 100.0 %.',
+  powod_pl: 'Obciążenie 134,74 % przekracza limit 100,0 %.',
   slad_kryterium: [
-    { tekst: 'Wzor: obciazenie = |I| / I_n * 100%', latex: '\\varepsilon' },
-    { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
+    {
+      tekst: 'Wzór: obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) · 100 %',
+      latex:
+        '\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%',
+    },
+    {
+      tekst:
+        'Dane: |I_od| = 0,0808 kA, |I_do| = 0,0808 kA (wynik rozpływu), I_r,od = 0,0600 kA, I_r,do = 0,0600 kA (obciążalność gałęzi); decyduje zacisk początkowy',
+      latex: null,
+    },
+    {
+      tekst: 'Wynik: obciążenie = 134,74 %',
+      latex:
+        '\\varepsilon = \\max\\left(\\frac{0.0808}{0.0600}, \\frac{0.0808}{0.0600}\\right) \\cdot 100\\% = 134.74\\%',
+    },
+    { tekst: 'Progi: ostrzeżenie 80,0 %, przekroczenie 100,0 %', latex: null },
+    {
+      tekst: 'Porównanie z progami: Obciążenie 134,74 % przekracza limit 100,0 %.',
+      latex: null,
+    },
   ],
 };
 
@@ -82,26 +100,37 @@ const KRYTERIA: MacierzResponse['parameters']['kryteria'] = {
       + 'przekroczenie przy 100 %.',
     zrodlo_obciazalnosci_pl:
       'Gałąź: obciążalność długotrwała (prąd znamionowy odcinka) z danych elementu '
-      + 'w modelu sieci. Transformator: moc znamionowa jednostki.',
+      + 'w modelu sieci. Transformator: moc znamionowa jednostki. Brak wartości = '
+      + 'kryterium pominięte jawnie (pozycja na liście kryteria_pominiete), nigdy '
+      + 'wartość zastępcza.',
   },
   napiecie: {
     granica_warn_pct: 5.0,
     granica_fail_pct: 10.0,
-    zrodlo_progu_pl: 'Pasmo odchylenia napięcia: ostrzeżenie ±5 %, przekroczenie ±10 %.',
-    zrodlo_napiecia_pl: 'Napięcie szyny z wyniku rozpływu wariantu.',
+    zrodlo_progu_pl:
+      'Pasmo odchylenia napięcia walidacji energetycznej: ostrzeżenie ±5 %, '
+      + 'przekroczenie ±10 % napięcia znamionowego szyny.',
+    zrodlo_napiecia_pl:
+      'Napięcie szyny z wyniku rozpływu wariantu; napięcie znamionowe z danych szyny '
+      + 'w modelu sieci.',
   },
   zasilanie: {
     zrodlo_pl:
-      'Wyspa węzła bilansującego wyznaczona tą samą regułą, którą stosuje solver rozpływu.',
+      'Wyspa węzła bilansującego wyznaczona tą samą regułą, którą stosuje solver '
+      + 'rozpływu przy wyborze węzłów do rozwiązania: odbiór na szynie poza wyspą jest '
+      + 'pozbawiony zasilania.',
   },
   ocenione_kategorie: ['BRANCH_LOADING', 'TRANSFORMER_LOADING', 'VOLTAGE_DEVIATION'],
   poza_zakresem_pl:
     'Budżet strat sieciowych i bilans mocy biernej węzła bilansującego są kontrolami '
-    + 'CAŁEJ SIECI, a nie kryteriami elementu.',
+    + 'CAŁEJ SIECI (jedna pozycja na model), a nie kryteriami elementu — nie wchodzą '
+    + 'do skutków kontyngencji ani do dotkliwości. Aparaty łączeniowe i źródła nie są '
+    + 'kontyngencjami tej analizy.',
   ranking: {
     definicja_pl:
       'Dotkliwość = krotka liczników (odbiory bez zasilania, przeciążenia, naruszenia '
-      + 'napięciowe). Bez wag, bez liczby złożonej.',
+      + 'napięciowe). Ranking sortuje tę krotkę malejąco w podanej kolejności '
+      + 'kategorii, przy remisie rosnąco po element_ref. Bez wag, bez liczby złożonej.',
     kolejnosc_kategorii: ['odbiory_bez_zasilania', 'przeciazenia', 'naruszenia_napiecia'],
   },
 };
@@ -292,7 +321,7 @@ export const MACIERZ: MacierzResponse = {
           element_ref: 'ka_magistrala',
           element_id: '39aa2231-26fb-59c4-87e3-39a81c06367c',
           element_name: 'Kabel magistralny',
-          powod_pl: 'Brak pradu galezi w wynikach PF.',
+          powod_pl: 'Brak prądu zacisku początkowego w wyniku rozpływu.',
         },
       ],
       odbiory_bez_zasilania: [

@@ -53,6 +53,7 @@ from werdykt import (
     WynikKryterium,
     WynikWymagania,
     ZakresWaznosci,
+    format_wielkosc,
     ocen_kryterium,
     zagreguj_wymaganie,
 )
@@ -299,6 +300,19 @@ class _Bieg:
         return (OdnosnikSladu(wersja_silnika=self.wersja_silnika, krok=krok, opis_pl=opis_pl),)
 
 
+#: Wielkość opisu odnośnika śladu bez liczby — nazwany brak, nie zapis pustej wartości.
+NIE_WYZNACZONO = "nie wyznaczono"
+
+
+def _wielkosc_sladu(wartosc: float | None, jednostka: str) -> str:
+    """Wielkość w opisie odnośnika śladu dla projektanta: zapis polski karty werdyktu
+    (`werdykt.wyjasnienie.format_wielkosc`), brak liczby nazwany — nigdy surowy zapis
+    Pythona („None %”, „15.0 %”)."""
+    if wartosc is None:
+        return NIE_WYZNACZONO
+    return format_wielkosc(Wielkosc(wartosc=wartosc, jednostka=jednostka))
+
+
 def _dane(surowe: Any) -> tuple[DanaPrzyjeta, ...]:
     """Dane przyjęte wiersza solvera (słowniki) jako rekordy kontraktu, bez powtórzeń."""
     wynik: list[DanaPrzyjeta] = []
@@ -410,8 +424,8 @@ def _ocena(
         zakres_waznosci=zakres,
         slad=bieg.slad(
             krok,
-            f"{p.wielkosc_pl}: wynik {p.wynik} {p.jednostka}, limit {p.limit} {p.jednostka} "
-            f"({p.zalozenie.paragraf})",
+            f"{p.wielkosc_pl}: wynik {_wielkosc_sladu(p.wynik, p.jednostka)}, limit "
+            f"{_wielkosc_sladu(p.limit, p.jednostka)} ({p.zalozenie.paragraf})",
         ),
         braki_dodatkowe=braki,
     )
@@ -1012,7 +1026,9 @@ def oceny_trv(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
             niepewnosc=_NIEPEWNOSC,
             dowod=_dowod(ID_TRV, bieg, ()),
             zakres_waznosci=_ZAKRES_TRV,
-            slad=bieg.slad("trv_inrush_ferro", f"szczyt napięcia powrotnego: {szczyt} kV"),
+            slad=bieg.slad(
+                "trv_inrush_ferro", f"szczyt napięcia powrotnego: {_wielkosc_sladu(szczyt, 'kV')}"
+            ),
             braki_dodatkowe=braki,
         )
     ]

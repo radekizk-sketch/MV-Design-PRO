@@ -97,7 +97,7 @@
         "slad": [
           {
             "krok": "benchmark_regression",
-            "opis_pl": "odchyłka względna wyniku od wartości odniesienia: wynik 0.01963 %, limit 0.5 % (Z-12)",
+            "opis_pl": "odchyłka względna wyniku od wartości odniesienia: wynik 0,01963 %, limit 0,5 % (Z-12)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           }
@@ -437,7 +437,7 @@
             "slad": [
               {
                 "krok": "ieee80_sverak",
-                "opis_pl": "napięcie dotykowe rażeniowe: wynik 2381.08 V, limit 838.169 V (Z-4)",
+                "opis_pl": "napięcie dotykowe rażeniowe: wynik 2381 V, limit 838,2 V (Z-4)",
                 "run_id": null,
                 "wersja_silnika": "v126-academic-whitebox-1.4"
               }
@@ -584,7 +584,7 @@
             "slad": [
               {
                 "krok": "ieee80_sverak",
-                "opis_pl": "napięcie krokowe: wynik 1838.027 V, limit 2686.582 V (Z-5)",
+                "opis_pl": "napięcie krokowe: wynik 1838 V, limit 2687 V (Z-5)",
                 "run_id": null,
                 "wersja_silnika": "v126-academic-whitebox-1.4"
               }
@@ -660,13 +660,13 @@
         "slad": [
           {
             "krok": "ieee80_sverak",
-            "opis_pl": "napięcie dotykowe rażeniowe: wynik 2381.08 V, limit 838.169 V (Z-4)",
+            "opis_pl": "napięcie dotykowe rażeniowe: wynik 2381 V, limit 838,2 V (Z-4)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           },
           {
             "krok": "ieee80_sverak",
-            "opis_pl": "napięcie krokowe: wynik 1838.027 V, limit 2686.582 V (Z-5)",
+            "opis_pl": "napięcie krokowe: wynik 1838 V, limit 2687 V (Z-5)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           }
@@ -1015,7 +1015,7 @@
             "slad": [
               {
                 "krok": "iec60071_arrester_margin",
-                "opis_pl": "napięcie trwałej pracy ogranicznika: wynik 17.5 kV, limit 17.5 kV (Z-1)",
+                "opis_pl": "napięcie trwałej pracy ogranicznika: wynik 17,5 kV, limit 17,5 kV (Z-1)",
                 "run_id": null,
                 "wersja_silnika": "v126-academic-whitebox-1.4"
               }
@@ -1155,7 +1155,7 @@
             "slad": [
               {
                 "krok": "iec60071_arrester_margin",
-                "opis_pl": "wytrzymałość ogranicznika na przepięcie dorywcze 10 s: wynik 24.5 kV, limit 17.5 kV (Z-2)",
+                "opis_pl": "wytrzymałość ogranicznika na przepięcie dorywcze 10 s: wynik 24,5 kV, limit 17,5 kV (Z-2)",
                 "run_id": null,
                 "wersja_silnika": "v126-academic-whitebox-1.4"
               }
@@ -1334,7 +1334,7 @@
             "slad": [
               {
                 "krok": "iec60071_arrester_margin",
-                "opis_pl": "margines ochrony izolacji: wynik 35.714 %, limit 20.0 % (Z-3)",
+                "opis_pl": "margines ochrony izolacji: wynik 35,71 %, limit 20 % (Z-3)",
                 "run_id": null,
                 "wersja_silnika": "v126-academic-whitebox-1.4"
               }
@@ -1422,19 +1422,19 @@
         "slad": [
           {
             "krok": "iec60071_arrester_margin",
-            "opis_pl": "napięcie trwałej pracy ogranicznika: wynik 17.5 kV, limit 17.5 kV (Z-1)",
+            "opis_pl": "napięcie trwałej pracy ogranicznika: wynik 17,5 kV, limit 17,5 kV (Z-1)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           },
           {
             "krok": "iec60071_arrester_margin",
-            "opis_pl": "wytrzymałość ogranicznika na przepięcie dorywcze 10 s: wynik 24.5 kV, limit 17.5 kV (Z-2)",
+            "opis_pl": "wytrzymałość ogranicznika na przepięcie dorywcze 10 s: wynik 24,5 kV, limit 17,5 kV (Z-2)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           },
           {
             "krok": "iec60071_arrester_margin",
-            "opis_pl": "margines ochrony izolacji: wynik 35.714 %, limit 20.0 % (Z-3)",
+            "opis_pl": "margines ochrony izolacji: wynik 35,71 %, limit 20 % (Z-3)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           }
@@ -1751,7 +1751,7 @@
             "slad": [
               {
                 "krok": "motor_starting",
-                "opis_pl": "zapad napięcia na szynie przy prądzie rozruchowym: wynik 13.9457 %, limit 15.0 % (Z-9)",
+                "opis_pl": "zapad napięcia na szynie przy prądzie rozruchowym: wynik 13,95 %, limit 15 % (Z-9)",
                 "run_id": null,
                 "wersja_silnika": "v126-academic-whitebox-1.4"
               }
@@ -1901,7 +1901,7 @@
             "slad": [
               {
                 "krok": "motor_starting",
-                "opis_pl": "czas rozruchu: wynik 8.0 s, limit 20.0 s (Z-10)",
+                "opis_pl": "czas rozruchu: wynik 8 s, limit 20 s (Z-10)",
                 "run_id": null,
                 "wersja_silnika": "v126-academic-whitebox-1.4"
               }
@@ -2048,7 +2048,7 @@
             "slad": [
               {
                 "krok": "motor_starting",
-                "opis_pl": "moment rozruchowy silnika: wynik 0.7692 p.u. (M_n), limit 0.6 p.u. (M_n) (Z-11)",
+                "opis_pl": "moment rozruchowy silnika: wynik 0,7692 p.u. (M_n), limit 0,6 p.u. (M_n) (Z-11)",
                 "run_id": null,
                 "wersja_silnika": "v126-academic-whitebox-1.4"
               }
@@ -2133,19 +2133,19 @@
         "slad": [
           {
             "krok": "motor_starting",
-            "opis_pl": "zapad napięcia na szynie przy prądzie rozruchowym: wynik 13.9457 %, limit 15.0 % (Z-9)",
+            "opis_pl": "zapad napięcia na szynie przy prądzie rozruchowym: wynik 13,95 %, limit 15 % (Z-9)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           },
           {
             "krok": "motor_starting",
-            "opis_pl": "czas rozruchu: wynik 8.0 s, limit 20.0 s (Z-10)",
+            "opis_pl": "czas rozruchu: wynik 8 s, limit 20 s (Z-10)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           },
           {
             "krok": "motor_starting",
-            "opis_pl": "moment rozruchowy silnika: wynik 0.7692 p.u. (M_n), limit 0.6 p.u. (M_n) (Z-11)",
+            "opis_pl": "moment rozruchowy silnika: wynik 0,7692 p.u. (M_n), limit 0,6 p.u. (M_n) (Z-11)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           }
@@ -2346,7 +2346,7 @@
         "slad": [
           {
             "krok": "petersen_residual_current",
-            "opis_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci: wynik 19.866258 %, limit 10.0 % (Z-6)",
+            "opis_pl": "udział prądu resztkowego w prądzie pojemnościowym sieci: wynik 19,87 %, limit 10 % (Z-6)",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           }
@@ -4003,7 +4003,7 @@
         "slad": [
           {
             "krok": "trv_inrush_ferro",
-            "opis_pl": "szczyt napięcia powrotnego: 38.01894 kV",
+            "opis_pl": "szczyt napięcia powrotnego: 38,02 kV",
             "run_id": null,
             "wersja_silnika": "v126-academic-whitebox-1.4"
           }

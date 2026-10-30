@@ -161,3 +161,83 @@ def test_zdanie_wyjasnienia_nie_niesie_identyfikatora_modelu(odpowiedzi: dict[st
         for rekord in _rekordy(odpowiedzi[rodzaj]["oceny"]):
             zdanie = rekord["wyjasnienie"]["zdanie_pl"]
             assert not wzorzec.search(zdanie), (rodzaj, zdanie)
+
+
+def _bez_wyniku_liczbowego() -> dict[str, list[Mapping[str, Any]]]:
+    """Bieg każdego rodzaju z obiektami oceny, ale bez impedancji zasilania szyn: silnik
+    jest, zapadu nie wyznaczono (wynik kryterium pusty przy znanym limicie)."""
+    model = model_wejsciowy()
+    model = model.model_copy(
+        update={
+            "buses": [
+                szyna.model_copy(
+                    update={"fault_level_mva": None, "source_r_ohm": None, "source_x_ohm": None}
+                )
+                for szyna in model.buses
+            ]
+        }
+    )
+    nazwy = {szyna.ref: szyna.name for szyna in model.buses}
+    solver = V126AcademicSolver()
+    return {
+        rodzaj: wynik_v126_dla_powierzchni(
+            rodzaj, solver.run(V126AnalysisType(rodzaj), model), nazwy=nazwy
+        )["result"]["oceny"]
+        for rodzaj in sorted(RODZAJE_Z_OCENAMI)
+    }
+
+
+def _teksty_pl(wezel: Any, klucz: str = "") -> Iterator[tuple[str, str]]:
+    """Każdy tekst rekordu czytany przez projektanta: pola `*_pl`, zdania, listy braków
+    i zastrzeżeń, opisy odnośników śladu — ze ścieżką klucza."""
+    if isinstance(wezel, Mapping):
+        for k, v in wezel.items():
+            yield from _teksty_pl(v, k)
+    elif isinstance(wezel, list | tuple):
+        for v in wezel:
+            yield from _teksty_pl(v, klucz)
+    elif isinstance(wezel, str) and (
+        klucz.endswith("_pl") or klucz in {"czego_brakuje", "zastrzezenia", "powody_niepelnosci"}
+    ):
+        yield klucz, wezel
+
+
+_LITERAL_PYTHONA = re.compile(r"\b(?:None|True|False|nan|inf)\b")
+_KROPKA_DZIESIETNA = re.compile(r"\d\.\d")
+
+
+@pytest.mark.parametrize("wariant", ["z_obiektami", "bez_obiektow", "bez_wyniku_liczbowego"])
+@pytest.mark.parametrize("rodzaj", sorted(RODZAJE_Z_OCENAMI))
+def test_teksty_rekordow_bez_surowego_zapisu_pythona(
+    rodzaj: str,
+    wariant: str,
+    odpowiedzi: dict[str, Any],
+    bez_obiektow: dict[str, list[Mapping[str, Any]]],
+) -> None:
+    """Iloczyn: rodzaj × wariant biegu {z obiektami, bez obiektów, obiekty bez wyniku
+    liczbowego} × każdy tekst rekordu (także składowych). Dawniej opis odnośnika śladu
+    wklejał liczby surowo: „wynik None %, limit 15.0 % (Z-9)” (rozruch bez impedancji
+    zasilania) i „szczyt napięcia powrotnego: None kV”. Liczba w opisie śladu idzie przez
+    zapis polski karty werdyktu; numery norm z kropką (IEEE C57.32) żyją wyłącznie w polach
+    podstawy i danych przyjętych, więc reguła kropki dziesiętnej obejmuje opisy śladu."""
+    oceny = {
+        "z_obiektami": lambda: odpowiedzi[rodzaj]["oceny"],
+        "bez_obiektow": lambda: bez_obiektow[rodzaj],
+        "bez_wyniku_liczbowego": lambda: _bez_wyniku_liczbowego()[rodzaj],
+    }[wariant]()
+    for rekord in _rekordy(oceny):
+        tozsamosc = rekord.get("kryterium_id") or rekord.get("wymaganie_id")
+        for klucz, tekst in _teksty_pl(rekord):
+            assert not _LITERAL_PYTHONA.search(tekst), (tozsamosc, klucz, tekst)
+        for odnosnik in rekord.get("slad") or []:
+            assert not _KROPKA_DZIESIETNA.search(odnosnik["opis_pl"]), (tozsamosc, odnosnik)
+
+
+def test_rozruch_bez_impedancji_zasilania_nazywa_brak_wyniku_w_sladzie() -> None:
+    """Para do iloczynu wyżej: wariant, w którym defekt był widoczny na prawdziwym backendzie
+    (e2e „analiza specjalistyczna motor_starting”), ma wynik pusty i limit znany."""
+    (wymaganie,) = _bez_wyniku_liczbowego()["motor_starting"]
+    zapad = next(o for o in wymaganie["oceny_skladowe"] if ".zapad." in o["kryterium_id"])
+    assert zapad["wynik"] is None
+    (odnosnik,) = zapad["slad"]
+    assert "wynik nie wyznaczono, limit 15 % (Z-9)" in odnosnik["opis_pl"]

@@ -608,6 +608,20 @@ Pozostałe pozycje odcinka:
   modelu” — szyny spoza modelu nie ma czym nazwać poza oznaczeniem podanym w danych
   silnika (formularz wybiera szynę z listy modelu, więc ścieżka dotyczy wyłącznie wejścia
   API spoza formularza).
+- E2E po bramce odcinka (`wyniki-jezyk-inzyniera.spec.ts`, prawdziwy backend, 2026-10-30):
+  opis odnośnika śladu kryterium wklejał liczby surowo — „wynik None %, limit 15.0 % (Z-9)”
+  przy rozruchu bez impedancji zasilania szyny i „szczyt napięcia powrotnego: None kV”.
+  Liczby śladu idą przez `werdykt.format_wielkosc` (`v126_oceny._wielkosc_sladu`), brak
+  wyniku nazywa „nie wyznaczono”. Test klasy `test_teksty_rekordow_bez_surowego_zapisu_pythona`
+  — iloczyn rodzaj × {z obiektami, bez obiektów, obiekty bez wyniku liczbowego} × każdy tekst
+  rekordu i składowych (`*_pl`, braki, zastrzeżenia): bez literałów `None/True/False/nan/inf`,
+  opis śladu bez kropki dziesiętnej. Znalezisko przy przeglądzie wzorca w innych ekranach:
+  fikstura okna „Kontyngencje N-1”, deklarowana jako przepisana z odpowiedzi backendu,
+  niosła teksty sprzed polskiego zapisu liczb („Obciazenie 134.74 % przekracza limit
+  100.0 %.”, „Brak pradu galezi w wynikach PF.”, skrócone źródła progów) — przepisana ze
+  zrzutu buildera i przypięta testem backendu
+  `test_fikstura_ekranu_niesie_teksty_aktualnej_odpowiedzi_backendu` (każdy tekst kryteriów,
+  zdanie i ślad WHITE BOX przekroczenia, powód pominięcia i wykluczenia — znak w znak).
 - Fixtura odpowiedzi V12.6 (`generuj_odpowiedzi_v126.py`) ćwiczy dane, które czyta solver:
   uziom z pełnymi danymi projektanta (dawniej puste `earthing` liczone domyślnymi), silnik
   w polu `motors` (dawny `parameters["motors"]` był martwy — tabela rozruchu była pusta),
@@ -773,7 +787,9 @@ Odcinek 3 karty (rekordy werdyktu V12.6, założenia jawne, ziarno przepustowoś
   (`§ Z-n`, `WSKAZANE`) z daną przyjętą `ESTIMATED` założenia albo norma TRV `NIEUSTALONE`,
   kompletność `NIEPELNY` (`NIE_DOTYCZY` dla kryterium niestosowalnego), identyfikatory
   unikalne; brak obiektu nigdy `SPELNIA`; determinizm; zdanie bez identyfikatora modelu;
-  zbiór rodzajów z rekordami = rejestr rodzajów;
+  zbiór rodzajów z rekordami = rejestr rodzajów; trzeci wariant biegu {obiekty bez wyniku
+  liczbowego: silnik na szynach bez mocy zwarciowej i impedancji zasilania} × każdy tekst
+  rekordu → bez literałów Pythona (`None/True/False/nan/inf`), opis śladu w zapisie polskim;
 - `tests/test_v126_rozruch_silnika.py` — tabliczka {cos φ_n, η_n podane, brak} × źródło {Z_Q
   modelu, moc zwarciowa} × szyna {źródłowa, za kablem} z wyrocznią I_n, I_r, Z_th, ΔU, M_r;
   źródło {brak, za transformatorem} → brak nazwany; t_r {<, =, >} t_utyku; M_r {≥, <} M_obc;
@@ -888,6 +904,8 @@ bajtowo z kopią):
 | Dana przyjęta podziału mocy zwarciowej z identyfikatorami szyn zamiast nazw | 4 czerwone z 25 (`test_dana_przyjeta_podzialu_zrodla_nazwana_nazwa_szyny[…moc_zwarciowa…]`) |
 | Przepustowość bez danej przyjętej podziału mocy zwarciowej (`if False`) | 2 czerwone z 25 (`[…moc_zwarciowa-hosting_capacity]`) |
 | Fixtura odpowiedzi: identyfikator gałęzi w powodzie wartości roboczej niezawodności | strażnik prezentacji czerwony (`surowaReferencjaWPodpowiedziach`, rodzaj `reliability_contingency`); fixtura przywrócona i porównana bajtowo |
+| Opis śladu kryterium z surowym zapisem liczb (`{p.wynik} {p.jednostka}`, `{szczyt} kV`) | 19 czerwonych z 46 (`test_teksty_rekordow_bez_surowego_zapisu_pythona[motor_starting-bez_wyniku_liczbowego]` i 17 innych, `test_rozruch_bez_impedancji_zasilania_nazywa_brak_wyniku_w_sladzie`) |
+| Fikstura okna kontyngencji w wersji sprzed przepisania (HEAD) | `test_fikstura_ekranu_niesie_teksty_aktualnej_odpowiedzi_backendu` czerwony |
 
 Iniekcje trybów w testach (monkeypatch w `test_doziemienie_tryby_punktu_neutralnego.py`,
 `test_v126_izolacja_tryby_punktu_neutralnego.py::test_iniekcja_k_rezystora_jak_bezposrednie`)
