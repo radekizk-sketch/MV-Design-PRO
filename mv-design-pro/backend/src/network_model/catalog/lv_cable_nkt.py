@@ -59,8 +59,9 @@ NKT_YAKXS_SOURCE = (
 # NKT AL XLPE, nN: przekrój, R20, L, Ith1s kA, Iz w powietrzu, Iz w ziemi.
 # Gdy jeden przekrój ma różne geometrie (SE/SM), to konkretna
 # poniższa kombinacja pochodzi z JEDNEGO wiersza karty NKT.
+# 4x10 Al nie jest pozycją 3L+PEN — PEN Al wymaga co najmniej 16 mm².
+# Bezpiecznie nie publikujemy jej jako kabla PEN w obecnym modelu nN.
 NKT_YAKXS_4Z: tuple[tuple[int, float, float, float, int, int], ...] = (
-    (10, 3.08, 0.279, 0.946, 60, 74),
     (16, 1.91, 0.265, 1.513, 81, 96),
     (25, 1.2, 0.267, 2.364, 109, 126),
     (35, 0.868, 0.259, 3.309, 134, 150),
