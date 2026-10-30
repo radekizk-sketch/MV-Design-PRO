@@ -1521,19 +1521,17 @@ z biegu `guardy_z_ci` nr 3 naprawione u źródła i sprawdzone celowo (wszystkie
 i `::_port_startu_dla_szyny`; 183 testy enm portu startu zielone), pin pól kontraktów
 wejściowych 4469 → 4468 w `scripts/test_solver_input_substitute_guard.py` (70 testów zielonych).
 
-**W trakcie.** Bieg potwierdzający `guardy_z_ci.py --rownoleglosc 2` nr 4 przerwany poleceniem
-sesji głównej: 115 z 115 zadań zielonych (107 strażników CI, lint black/ruff, `npm run
-type-check`, `npm run lint`); przerwany na ostatnim etapie „testy własne strażników”
-(`python -m pytest ../scripts`), wynik tego etapu nieznany.
+**Potwierdzenie strażników (dokończone po przerwaniu).** Bieg `guardy_z_ci.py --rownoleglosc 2`
+nr 4: 115 z 115 zadań zielonych (107 strażników CI, lint black/ruff, `npm run type-check`,
+`npm run lint`), przerwany poleceniem sesji głównej na etapie „testy własne strażników”; ten etap
+dokończony osobno tym samym poleceniem co w `guardy_z_ci.py::_polecenie_samotestow`
+(`python -m pytest -q -n 2 ../scripts`, pod `flock`): rc=0, 4093 testy zielone. Stan WIP
+zabezpieczony commitem `1858cac81`; commit końcowy niesie tylko tę sekcję.
 
-**Zostało z polecenia.** (1) Dokończyć etap `pytest ../scripts` biegu strażników. (2) Commit
-końcowy bez prefiksu WIP po potwierdzeniu. (3) Meldunek z kodami wyjścia i plikami z liniami.
-Pełna bramka i pełna regresja należą do sesji głównej.
+**Zostało z polecenia.** Nic po stronie wykonawcy. Pełna bramka (`bramka_scalenia.py`) i pełna
+regresja należą do sesji głównej; werdykt wizualny B-02 — do właściciela.
 
-**Znane czerwone.** Brak znanych czerwonych testów i strażników na tym drzewie; niepotwierdzony
-pozostaje wyłącznie etap `pytest ../scripts` (jego czerwony z biegu nr 3 — pin 4468 — zielony
-w biegu celowanym).
+**Znane czerwone.** Brak znanych czerwonych testów i strażników na tym drzewie.
 
-**Pierwszy krok następcy.** Z `mv-design-pro/backend`, pod
-`flock /tmp/claude-0/bieg_priorytet.lock`: `PYTHONPATH=src:. <python> -m pytest -q -p
-no:cacheprovider ../scripts` (wyjście do pliku, kod wyjścia łapany bezpośrednio).
+**Pierwszy krok następcy.** Pełna bramka scalenia na gałęzi karty w osobnym drzewie sesji
+głównej.
