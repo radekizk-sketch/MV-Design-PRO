@@ -337,7 +337,10 @@ export interface KrokSladuDoziemienia {
   title: string;
   formula_latex: string;
   inputs: Record<string, unknown>;
+  /** Proza podstawienia (raport) — nie trafia do KaTeX-a. */
   substitution: string;
+  /** To samo podstawienie w LaTeX-u (ekran, KaTeX); `null` — wielkość nieoznaczalna. */
+  substitution_latex: string | null;
   result: Record<string, unknown>;
 }
 

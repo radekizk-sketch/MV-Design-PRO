@@ -221,13 +221,17 @@ def test_progi_katalogu_pochodza_z_rejestru_zalozen() -> None:
         if zalozenie.paragraf == "Z-12":
             continue  # tolerancja jest daną odniesienia biegu benchmarku (karta wycofana)
         assert v126_katalog.zrodlo_zalozenia(zalozenie) in zrodla, zalozenie.paragraf
-    progi = {z.wartosc for z in z_progiem}
+    progi = {z.wartosc: z for z in z_progiem}
     for podstawa in podstawy:
         if isinstance(podstawa.wartosc_graniczna, float):
-            # Granica liczbowa karty = wartość założenia; LaTeX warunku pokazuje tę samą liczbę.
+            # Granica liczbowa karty = wartość założenia; LaTeX warunku cytuje próg zapisem
+            # rejestru (`prog_latex`, przecinek dziesiętny), nie własnym literałem.
             assert podstawa.wartosc_graniczna in progi, podstawa.symbol
-            liczba = format(podstawa.wartosc_graniczna, "g")
-            assert liczba in podstawa.warunek_latex, (podstawa.symbol, podstawa.warunek_latex)
+            zalozenie = progi[podstawa.wartosc_graniczna]
+            assert podstawa.warunek_latex.endswith(zalozenie.prog_latex), (
+                podstawa.symbol,
+                podstawa.warunek_latex,
+            )
 
 
 def test_rejestr_zalozen_dokumentu_rowny_rejestrowi_kodu() -> None:

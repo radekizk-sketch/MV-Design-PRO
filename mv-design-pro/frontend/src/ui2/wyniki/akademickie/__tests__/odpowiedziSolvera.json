@@ -2260,7 +2260,7 @@
               {
                 "jakosc": "ESTIMATED",
                 "nazwa_pl": "Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń)",
-                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+                "powod_pl": "Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje.",
                 "wartosc": {
                   "jednostka": "%",
                   "wartosc": 10.0
@@ -2294,7 +2294,7 @@
             "jednostka_redakcyjna": "§ Z-6",
             "rodzaj": "ZALOZENIE_PROJEKTOWE",
             "status": "WSKAZANE",
-            "uwagi_pl": "Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+            "uwagi_pl": "Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje.",
             "wydanie": "2026-10-29"
           },
           "wartosc": {
@@ -2331,12 +2331,12 @@
           "jednostka_redakcyjna": "§ Z-6",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
-          "uwagi_pl": "Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+          "uwagi_pl": "Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje.",
           "wydanie": "2026-10-29"
         },
         "powody_niepelnosci": [
           "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-          "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej."
+          "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje."
         ],
         "przedmiot": {
           "element_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
@@ -2367,7 +2367,7 @@
           "zastrzezenia": [
             "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-6 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+            "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje.",
             "Zakres ważności: Galwanicznie połączona sieć SN z zespołem uziemiającym modelu; prąd pojemnościowy z susceptancji zerowej linii, kabli i baterii tej sieci; prąd doziemienia z impedancji punktów neutralnych w ruchu — wynik nie obejmuje: straty czynne dławika i upływność izolacji sieci (rzeczywisty prąd resztkowy jest nie mniejszy); impedancje zgodna i przeciwna sieci w prądzie rezystora (strona bezpieczna)."
           ],
           "zdanie_pl": "Prąd resztkowy dławika modelu nie większy od dopuszczalnego udziału prądu pojemnościowego sieci (Sieć SN 15 kV — GPZ Zachód — szyny SN) — kryterium naruszone. Udział prądu resztkowego w prądzie pojemnościowym sieci: 19,87 % wobec wymaganych ≤ 10 % wg § Z-6 „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO” (margines −9,866 pp, punkt: Sieć SN 15 kV — GPZ Zachód — szyny SN, względnie −98,66 % wartości granicznej)."

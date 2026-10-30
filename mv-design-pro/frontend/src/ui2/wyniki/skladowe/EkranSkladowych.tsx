@@ -392,6 +392,20 @@ export function EkranSkladowych() {
                       </ul>
                     </div>
                   )}
+                  {doziemienie.kroki.length > 0 && (
+                    <div data-testid="mvd-skladowe-doziemienie-slad">
+                      <span className="mvd-skladowe-lbl">{T.doziemienieSlad}</span>
+                      <ol className="mvd-skladowe-lista">
+                        {doziemienie.kroki.map((krok) => (
+                          <li key={krok.klucz} data-testid={`mvd-skladowe-doziemienie-krok-${krok.klucz}`}>
+                            <span>{krok.tytul}</span>
+                            <MathBlock latex={krok.wzorLatex} />
+                            {krok.podstawienieLatex && <MathBlock latex={krok.podstawienieLatex} />}
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
                   {doziemienie.niepelny && (
                     <p className="mvd-skladowe-nota" data-testid="mvd-skladowe-doziemienie-niepelny">
                       {T.doziemienieNiepelny}

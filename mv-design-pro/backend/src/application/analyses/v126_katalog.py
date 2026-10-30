@@ -716,7 +716,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 symbol_latex=r"M_{\mathrm{BIL}}",
                 warunek_latex=(
                     r"M_{\mathrm{BIL}} = \dfrac{\mathrm{BIL} - U_{\mathrm{res}}}"
-                    r"{U_{\mathrm{res}}}\cdot 100\% \geq 20\%"
+                    r"{U_{\mathrm{res}}}\cdot 100\% \geq " + Z_MARGINES_IZOLACJI.prog_latex
                 ),
             ),
             PodstawaOceny(
@@ -961,7 +961,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 _prog(Z_ZAPAD_ROZRUCHU),
                 zrodlo_zalozenia(Z_ZAPAD_ROZRUCHU),
                 symbol_latex=r"\Delta U",
-                warunek_latex=r"\Delta U \leq 15\%",
+                warunek_latex=r"\Delta U \leq " + Z_ZAPAD_ROZRUCHU.prog_latex,
             ),
             PodstawaOceny(
                 "Czas rozruchu",
@@ -1113,7 +1113,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
                 _prog(Z_PRAD_RESZTKOWY),
                 zrodlo_zalozenia(Z_PRAD_RESZTKOWY),
                 symbol_latex=r"I_{\mathrm{res}}/I_C",
-                warunek_latex=r"I_{\mathrm{res}}/I_C \leq 10\%",
+                warunek_latex=r"I_{\mathrm{res}}/I_C \leq " + Z_PRAD_RESZTKOWY.prog_latex,
             ),
             PodstawaOceny(
                 "Energia w rezystorze (sieć uziemiona przez rezystor)",
