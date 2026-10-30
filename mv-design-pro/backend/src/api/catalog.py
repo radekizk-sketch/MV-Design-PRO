@@ -744,6 +744,18 @@ def list_bay_apparatus_kinds() -> dict[str, list[str]]:
     return {role: list(kinds) for role, kinds in BAY_PRIMARY_APPARATUS_KINDS_BY_ROLE.items()}
 
 
+@router.get("/elektrometal-etango-family")
+def list_elektrometal_etango_family() -> list[dict[str, Any]]:
+    """Oficjalna baza rodziny, także detektor 50 i wykonania WN (bez wyboru w add_relay).
+
+    Jest źródłem WIEDZY o produktach, a nie listą nastaw ani funkcji
+    aktywowanych przez automatykę pola. API katalogu MV pozostaje odrębne.
+    """
+    from network_model.catalog.elektrometal_etango_family import list_etango_family_references
+
+    return list_etango_family_references()
+
+
 @router.get("/mv-protection-device-types")
 def list_mv_protection_device_types() -> list[dict[str, Any]]:
     """Zabezpieczenia z KANONICZNEGO katalogu MV (przestrzeń `ZABEZPIECZENIE`).
