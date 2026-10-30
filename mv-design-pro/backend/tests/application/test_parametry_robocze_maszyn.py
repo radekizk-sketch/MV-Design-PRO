@@ -387,7 +387,11 @@ KLUCZE_PARAMETRU_FORMULARZA = {
     "parametr",
     "nazwa_pl",
     "symbol",
+    # Postać ekranowa symbolu i jednostki niosącej symbole (karta UX-04/ZU, `ui_math_guard`):
+    # formularz składa je KaTeX-em, `symbol` zostaje identyfikatorem prozy śladu i raportu.
+    "symbol_latex",
     "jednostka",
+    "jednostka_latex",
     "dopuszczalne_od",
     "dopuszczalne_do",
     "calkowita",
@@ -407,6 +411,9 @@ def test_rejestr_dla_formularza_przez_http_i_ksztalt_kontraktu() -> None:
         assert [p["parametr"] for p in parametry] == list(PARAMETRY_MASZYNY[rodzina])
         for opis in parametry:
             assert set(opis) == KLUCZE_PARAMETRU_FORMULARZA
+            assert opis["symbol_latex"].strip(), opis["parametr"]
+            # Jednostka z symbolami bazy (`p.u. (S_rG, U_rG)`) ma postać LaTeX; zwykła — pustą.
+            assert (opis["jednostka_latex"] != "") is ("_" in opis["jednostka"]), opis["parametr"]
             # Propozycja rejestru sama przechodzi bramę wartości (inaczej obliczenie
             # przyjęłoby wartość, której projektant nie mógłby nadać). Moc znamionowa nie ma
             # liczby w rejestrze — propozycja zależy od punktu pracy elementu.

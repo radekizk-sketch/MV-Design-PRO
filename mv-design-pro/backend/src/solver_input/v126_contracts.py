@@ -834,7 +834,8 @@ def _doziemienie_szyny_izolacji(
                 if doziemienie.wspolczynnik_k is None
                 else f"solver doziemienia sieci SN — {ETYKIETA_PL_TRYBU[doziemienie.tryb]}, "
                 "doziemienie "
-                "metaliczne (IEC 60071-1: k = U_fazy zdrowej/U_f)"
+                "metaliczne (IEC 60071-1: k — stosunek największego napięcia fazy nieuszkodzonej "
+                "do napięcia fazowego przed zwarciem)"
             ),
         )
     for source in enm.sources:

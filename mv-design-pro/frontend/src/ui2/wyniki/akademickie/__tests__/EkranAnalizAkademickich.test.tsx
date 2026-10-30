@@ -38,6 +38,7 @@ import {
   zadaniaPost,
   zapytaniaGotowosci,
 } from './atrapyV126';
+import { czekajNaKatalogKart } from './katalogKart';
 
 const karta = (kod: string) => KATALOG.find((k) => k.kod === kod)!;
 
@@ -91,7 +92,7 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
   it('katalog kart pochodzi z backendu: komplet prezentowanych, w grupach i kolejności kontraktu', async () => {
     ustawFetchV126();
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    await czekajNaKatalogKart();
     const prezentowane = KATALOG.filter((k) => k.prezentowany && rodzajPrezentowany(k.kod));
     expect(prezentowane.length).toBeGreaterThan(5);
     for (const pozycja of prezentowane) {
@@ -192,7 +193,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
     expect(przedmiot).toHaveTextContent(S.przedmiotWariantOpis);
     // Powrót: katalog kart, stan analizy wyzerowany.
     fireEvent.click(screen.getByTestId('mvd-akad-powrot'));
-    expect(await screen.findByTestId('mvd-akad-katalog-kart')).toBeInTheDocument();
+    expect(await czekajNaKatalogKart()).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-akad-uruchomienie')).toBeNull();
   });
 
@@ -882,7 +883,7 @@ describe('EkranAnalizAkademickich — świeżość, tryb ekspercki, wejście tra
   it('świeżość pochodzi ze wspólnego kontraktu — bez wyników stan „brak wyników"', async () => {
     ustawFetchV126();
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    await czekajNaKatalogKart();
     expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
   });
 
@@ -933,7 +934,7 @@ describe('EkranAnalizAkademickich — brama opracowania (V126-JEZYK)', () => {
   it('tryb ekspercki: brama otwarta, okno pyta katalog kart i gotowość (kontrola dodatnia)', async () => {
     const fetchMock = ustawFetchV126();
     render(<EkranAnalizAkademickich szczegolyAudytowe />);
-    await screen.findByTestId('mvd-akad-katalog-kart');
+    await czekajNaKatalogKart();
     expect(screen.queryByTestId('mvd-akad-brama-opracowania')).not.toBeInTheDocument();
     const adresy = fetchMock.mock.calls.map((w) => String(w[0]));
     expect(adresy.some((a) => a.includes('/api/catalog/v126/analysis-catalog'))).toBe(true);

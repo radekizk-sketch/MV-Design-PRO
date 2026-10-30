@@ -2290,7 +2290,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg analizy specjalistycznej (odcisk d109e90e5735ee77)",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk d42f5cc130b13f63)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -2449,7 +2449,7 @@
     },
     "szyna_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn",
     "zastrzezenia_pl": [
-      "Straty czynne dławika i upływność izolacji sieci nie są opisane w modelu — składowa czynna I_w zawiera wyłącznie rezystor wymuszający (AWSC) i rezystancję zerową transformatora uziemiającego; rzeczywisty prąd resztkowy jest nie mniejszy.",
+      "Straty czynne dławika i upływność izolacji sieci nie są opisane w modelu — składowa czynna prądu doziemnego zawiera wyłącznie rezystor wymuszający (AWSC) i rezystancję zerową transformatora uziemiającego; rzeczywisty prąd resztkowy jest nie mniejszy.",
       "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
     ]
   },

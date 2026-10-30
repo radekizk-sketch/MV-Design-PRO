@@ -1913,7 +1913,11 @@ export function EkranAnalizAkademickich({
     return (
       <div className="mvd-akad" data-testid="mvd-akad-ekran">
         {naglowek}
-        <section className="mvd-akad-sekcja" data-testid="mvd-akad-katalog-kart">
+        <section
+          className="mvd-akad-sekcja"
+          data-testid="mvd-akad-katalog-kart"
+          aria-busy={katalog.rodzaj === 'ladowanie'}
+        >
           <h3 className="mvd-akad-sekcja-tytul">{S.katalogTytul}</h3>
           <p className="mvd-akad-opis">{S.katalogOpis}</p>
           {katalog.rodzaj === 'ladowanie' && <p className="mvd-akad-opis">{S.katalogLadowanie}</p>}

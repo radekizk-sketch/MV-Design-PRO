@@ -74,7 +74,7 @@
             "wspolczynnik_k": 1.732051,
             "z_f_ohm": null,
             "wzor_latex": "I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0",
-            "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); prąd doziemny = prąd pojemnościowy sieci. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f (IEC 60071-1).",
+            "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); prąd doziemny = prąd pojemnościowy sieci. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
             "zastrzezenia_pl": [
               "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
             ],
@@ -226,7 +226,7 @@
             "k_max": null,
             "pojemnosci_w_y0": false
           },
-          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, Z_2 = Z_1, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy Y0) dostaje pojemności B0 wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
+          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k (stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego przed zwarciem) przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, impedancja przeciwna równa zgodnej, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy admitancji zerowej) dostaje susceptancje pojemnościowe zerowe wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
         },
         {
           "key": "tr_z0_parse[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
@@ -418,7 +418,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "d30e792d26e633747fe07ef003eae85eb2b30d8d1eb9ab98921ff815bddaf8b8",
-          "result_hash": "94369fe90e1b9167deed50701097893c70e46ae17612174d4de3b95c2ce9a4e0",
+          "result_hash": "806b896de8840dcbc676ef1a4302cbbde2ebfb423809281082875125679de262",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -774,7 +774,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "d30e792d26e633747fe07ef003eae85eb2b30d8d1eb9ab98921ff815bddaf8b8",
-          "result_hash": "94369fe90e1b9167deed50701097893c70e46ae17612174d4de3b95c2ce9a4e0",
+          "result_hash": "806b896de8840dcbc676ef1a4302cbbde2ebfb423809281082875125679de262",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -1275,9 +1275,9 @@
             "wspolczynnik_k": 1.732051,
             "z_f_ohm": null,
             "wzor_latex": "I_{res} = \\sqrt{I_w^2 + (I_C - I_L)^2},\\quad v = \\frac{I_C - I_L}{I_C}",
-            "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); kompensacja prądu pojemnościowego dławikiem gaszącym (ENEA Zeszyt 1 §16, Z.13). Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f (IEC 60071-1).",
+            "podstawa_pl": "IEC 60909-0:2016 rozdz. 1 — zakres normy nie obejmuje doziemień w sieciach z punktem neutralnym izolowanym i skompensowanym (prąd doziemny nie jest prądem zwarciowym); kompensacja prądu pojemnościowego dławikiem gaszącym (ENEA Zeszyt 1 §16, Z.13). Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
             "zastrzezenia_pl": [
-              "Straty czynne dławika i upływność izolacji sieci nie są opisane w modelu — składowa czynna I_w zawiera wyłącznie rezystor wymuszający (AWSC) i rezystancję zerową transformatora uziemiającego; rzeczywisty prąd resztkowy jest nie mniejszy.",
+              "Straty czynne dławika i upływność izolacji sieci nie są opisane w modelu — składowa czynna prądu doziemnego zawiera wyłącznie rezystor wymuszający (AWSC) i rezystancję zerową transformatora uziemiającego; rzeczywisty prąd resztkowy jest nie mniejszy.",
               "Impedancje podłużne sieci (linie, kable, transformator zasilający) pominięte wobec impedancji obwodu zerowego punktu neutralnego i pojemności doziemnych — prąd doziemny nie zależy od miejsca doziemienia w sieci galwanicznej."
             ],
             "brak_pl": null,
@@ -1300,7 +1300,7 @@
               },
               {
                 "key": "doziemienie_punkty_neutralne",
-                "title": "Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego o U_f",
+                "title": "Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego o napięcie fazowe",
                 "formula_latex": "I_N = \\sum_p \\frac{U_f}{Z_{N,p} + Z_{0,p}/3},\\ I_w = \\mathrm{Re}\\,I_N,\\ I_L = -\\mathrm{Im}\\,I_N",
                 "inputs": {
                   "u_f_v": 8660.25403784,
@@ -1560,7 +1560,7 @@
             "k_max": null,
             "pojemnosci_w_y0": false
           },
-          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, Z_2 = Z_1, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy Y0) dostaje pojemności B0 wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
+          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k (stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego przed zwarciem) przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, impedancja przeciwna równa zgodnej, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy admitancji zerowej) dostaje susceptancje pojemnościowe zerowe wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
         },
         {
           "key": "tr_z0_parse[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
@@ -1777,7 +1777,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "f0c21527bb2944afda860878820961c327b85376b62ab33b0cb780fe5136c4df",
-          "result_hash": "0aa562e367168dd67b36a7b2746ca7cd8472362e4e528a8a4483980b9c525660",
+          "result_hash": "3e2f1e6ac5a2abae828810645a8288bf6998720c7cbabdf69e8af301608f5e1f",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -2133,7 +2133,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "f0c21527bb2944afda860878820961c327b85376b62ab33b0cb780fe5136c4df",
-          "result_hash": "0aa562e367168dd67b36a7b2746ca7cd8472362e4e528a8a4483980b9c525660",
+          "result_hash": "3e2f1e6ac5a2abae828810645a8288bf6998720c7cbabdf69e8af301608f5e1f",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -2859,7 +2859,7 @@
             "wspolczynnik_k": 1.742527,
             "z_f_ohm": null,
             "wzor_latex": "I_F = \\left|I_N + j I_C\\right|,\\ I_N = \\sum_p \\frac{U_f}{Z_{N,p} + Z_{0,p}/3}\\ \\ (Z_N = R_N:\\ I_F = \\sqrt{I_R^2 + I_C^2})",
-            "podstawa_pl": "Sieć uziemiona przez rezystor (ENEA Zeszyt 1 §16, Z.14/Z.15): prąd punktów neutralnych i prąd pojemnościowy sieci; prąd zwarciowy IEC 60909-0 (współczynnik c, impedancje podłużne) — wiersz zwarcia. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f (IEC 60071-1).",
+            "podstawa_pl": "Sieć uziemiona przez rezystor (ENEA Zeszyt 1 §16, Z.14/Z.15): prąd punktów neutralnych i prąd pojemnościowy sieci; prąd zwarciowy IEC 60909-0 (współczynnik c, impedancje podłużne) — wiersz zwarcia. Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
             "zastrzezenia_pl": [],
             "brak_pl": null,
             "podwojne_doziemienie_pl": null,
@@ -2881,7 +2881,7 @@
               },
               {
                 "key": "doziemienie_punkty_neutralne",
-                "title": "Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego o U_f",
+                "title": "Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego o napięcie fazowe",
                 "formula_latex": "I_N = \\sum_p \\frac{U_f}{Z_{N,p} + Z_{0,p}/3},\\ I_w = \\mathrm{Re}\\,I_N,\\ I_L = -\\mathrm{Im}\\,I_N",
                 "inputs": {
                   "u_f_v": 8660.25403784,
@@ -3184,7 +3184,7 @@
             "k_max": 1.741834,
             "pojemnosci_w_y0": true
           },
-          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, Z_2 = Z_1, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy Y0) dostaje pojemności B0 wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
+          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k (stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego przed zwarciem) przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, impedancja przeciwna równa zgodnej, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy admitancji zerowej) dostaje susceptancje pojemnościowe zerowe wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
         },
         {
           "key": "z0_line_shunt[seg/de6c34633e7795100583126168f7d5f6/segment]",
@@ -3449,7 +3449,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "6ed3edb65a24199ffb2c7ad24bd6c313289fa72d295656dc846c2447e01b675e",
-          "result_hash": "68ff717aadcf687102856b4504da52e1f4251e43703fb4afa5e24b1df45bac16",
+          "result_hash": "cc0dcdba1a00af7895c790b2baa6433ffb23404017860016ebf84f64080a8975",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -4263,7 +4263,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "6ed3edb65a24199ffb2c7ad24bd6c313289fa72d295656dc846c2447e01b675e",
-          "result_hash": "68ff717aadcf687102856b4504da52e1f4251e43703fb4afa5e24b1df45bac16",
+          "result_hash": "cc0dcdba1a00af7895c790b2baa6433ffb23404017860016ebf84f64080a8975",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -4975,7 +4975,7 @@
             "wspolczynnik_k": 1.452409,
             "z_f_ohm": null,
             "wzor_latex": "I''_{k1} = \\frac{3\\,c\\,U_f}{|Z_1 + Z_2 + Z_0 + 3 Z_f|}",
-            "podstawa_pl": "IEC 60909-0:2016 — prąd zwarcia jednofazowego z ziemią (wiersz zwarcia). Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f (IEC 60071-1).",
+            "podstawa_pl": "IEC 60909-0:2016 — prąd zwarcia jednofazowego z ziemią (wiersz zwarcia). Metoda składowych symetrycznych; współczynnik zwarcia doziemnego k — stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego sieci przed zwarciem (IEC 60071-1).",
             "zastrzezenia_pl": [],
             "brak_pl": null,
             "podwojne_doziemienie_pl": null,
@@ -5243,7 +5243,7 @@
             "k_max": 1.452037,
             "pojemnosci_w_y0": true
           },
-          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k = U_fazy zdrowej/U_f przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, Z_2 = Z_1, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy Y0) dostaje pojemności B0 wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
+          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zerowej pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4 (parafraza normy, nie cytat — ustalenie właściciela 2026-10-22). Współczynnik zwarcia doziemnego k (stosunek największego napięcia fazy nieuszkodzonej do napięcia fazowego przed zwarciem) przy zwarciu jednofazowym metalicznym (IEC 60071-1) z impedancji składowych miejsca zwarcia, impedancja przeciwna równa zgodnej, wyznaczony z sieci zerowej BEZ pojemności linii; sieć zerowa (składowa spójna macierzy admitancji zerowej) dostaje susceptancje pojemnościowe zerowe wszystkich swoich linii i kabli, gdy największe k jej węzłów liczonych zwarciem IEC 60909 jest większe niż 1,4. Sieć izolowana i skompensowana — poza zakresem normy (rozdz. 1): jej pojemności opisuje doziemienie sieci, nie macierz Y0 zwarć."
         },
         {
           "key": "z0_line_shunt[seg/de6c34633e7795100583126168f7d5f6/segment]",
@@ -5499,7 +5499,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "1576485fa109dc418d51c39c621da9ae3da94994a59ea1e7f75f6ac0eef48bdc",
-          "result_hash": "f890d9118473fa534ca7c6d211704116d00907a30e051e6f159b9671ad80b49f",
+          "result_hash": "6961f31cb82a5e1a0f157e21b98ccce6b744082dc2b1d1d74fa7a3fc7b8f8e75",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -6313,7 +6313,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "1576485fa109dc418d51c39c621da9ae3da94994a59ea1e7f75f6ac0eef48bdc",
-          "result_hash": "f890d9118473fa534ca7c6d211704116d00907a30e051e6f159b9671ad80b49f",
+          "result_hash": "6961f31cb82a5e1a0f157e21b98ccce6b744082dc2b1d1d74fa7a3fc7b8f8e75",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",

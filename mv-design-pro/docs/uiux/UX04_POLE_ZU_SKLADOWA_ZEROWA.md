@@ -1375,9 +1375,14 @@ i `SladAnalizy` — etykieta „Wzór” bez identyfikatora kroku; karta technic
 i `jednostka_latex` z backendu (fikstura frontu przegenerowana testem
 `test_parametry_robocze_maszyn.py`). Nazwa parametru katalogu V12.6 bez wzorów (kontrakt
 komunikatów gotowości). Pola kreatora mają powiązanie etykieta–kontrolka (`useId`).
-Zostaje: proza podstawy `doziemienie_sn.py` (+ regeneracja parytetu), biegi weryfikacyjne.
+Proza podstawy `doziemienie_sn.py` i źródła k w `v126_contracts.py` — słowami; parytet
+SC_1F_max przegenerowany `regeneruj.py` (liczby 40 356 parami, 0 poza tolerancją; zmiany tylko
+`podstawa_pl` ×188 i `slad[*].substitution` ×70), fikstury frontu z generatorów. Strażnik
+`ui_terminology_guard` wycina `$...$` przed kontrolą identyfikatora kodowego. Wyścig testów
+katalogu kart analiz specjalistycznych usunięty (`aria-busy` + `czekajNaKatalogKart`).
 
-**Biegi w kolejce.** Zestaw celowany backendu (bieg `cel7`) i e2e `v126-okna-zrzuty`,
-`v126-jezyk-screenshot`, `dowody-flow-ekspert-screenshot` (bieg `e2e12`) — pod blokadą;
-potem `guardy_z_ci` (limit ≥ 3600 s) i `ZRZUTY_DO_DOKUMENTACJI=1`
-`doziemienie-slad-zrzuty-screenshot`.
+**Biegi w kolejce.** Bieg `cel7` przerwany (drzewo zmieniało się w trakcie, blokada
+trzymana > 1 h). Biegi końcowe na drzewie zatwierdzonym: `tests/golden` + `tests/enm`, zestaw
+celowany backendu, `guardy_z_ci`, e2e `v126-okna-zrzuty`, `v126-jezyk-screenshot`,
+`dowody-flow-ekspert-screenshot`, `zwarcie-przez-impedancje-przejscia` oraz
+`ZRZUTY_DO_DOKUMENTACJI=1` `doziemienie-slad-zrzuty-screenshot` (skrypt `bieg.sh`).
