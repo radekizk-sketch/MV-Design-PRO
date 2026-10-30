@@ -108,7 +108,7 @@ def _enea_ct(
                     if podzielony_zakres else
                     f"WYMAGANIA ENEA zał. 5/{annex}, {place}, a nie produkt producenta. "
                 )
-                f"{core_count} rdzeni wynikają ze schematu przekładni; "
+                + f"{core_count} rdzeni wynikają ze schematu przekładni; "
                 "podano wyłącznie parametry rdzeni POMIAROWYCH, które "
                 "określa tabela ENEA. Rdzenie pozostałe należy skonfigurować "
                 "wg standardu pola oraz karty zamawianego wyrobu, bez "
