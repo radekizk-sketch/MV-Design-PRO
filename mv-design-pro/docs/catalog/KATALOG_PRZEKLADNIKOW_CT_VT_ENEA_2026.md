@@ -44,7 +44,7 @@ Nie zmienia to niezależnego rysunku ENEA Z.11.1: tam należy odczytać rzeczywi
 
 Źródło: [ABB UDZ 24-1](https://new.abb.com/medium-voltage/pl/aparatura/przekladniki-i-sensory/produkty/przekladniki-wnetrzowe-napieciowe-iec/przekladnik-napieciowy-jednobiegunowy-wnetrzowy-typu-udz-24-1) oraz karta 1VLC000774.
 
-9 konfiguracji doborowych (3 napięcia 6/15/20 kV × 3 uzwojenia):
+9 konfiguracji doborowych (3 napięcia 6/15/20 kV × 3 warianty uzwojeń):
 - **Pomiarowe:** 100/√3 V, 40 VA, kl. 0,2, bez resztkowego.
 - **Pomiarowe i resztkowe:** 100/√3 V, 20 VA, kl. 0,2 + 100/3 V, 30 VA, kl. 3P. Łączne obciążenie 50 VA, nie przekracza limitu ABB dla klasy 0,2.
 - **Pomiarowe i resztkowe:** 100/√3 V, 50 VA, kl. 0,5 + 100/3 V, 30 VA, kl. 3P, obciążenie łączne 80 VA (poniżej pułapu 125 VA dla kl. 0,5).
