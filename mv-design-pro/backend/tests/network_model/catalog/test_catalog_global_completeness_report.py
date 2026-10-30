@@ -40,3 +40,22 @@ def test_nie_uznajemy_pol_niedotyczacych_za_bledy_minimum() -> None:
     assert "i2t_prearc_a2s" not in MINIMUM["lv_fuse_link_types"]
     assert "poles" not in MINIMUM["lv_breaker_mcb_types"]
     assert "sk3_min_mva" not in MINIMUM["source_system_types"]
+
+
+def test_ct_enea_2024_uklady_pomiarowe_fs5_02s() -> None:
+    from network_model.catalog.mv_auxiliary_catalog import get_all_ct_types
+
+    katalog = {item["id"]: item["params"] for item in get_all_ct_types()}
+    for pierwotny, ith in ((5, 2.0), (15, 8.0)):
+        p = katalog[f"ct_enea_2024_{pierwotny}_5_02s_fs5"]
+        assert p["ratio_primary_a"] == float(pierwotny)
+        assert p["ratio_secondary_a"] == 5.0
+        assert p["accuracy_class"] == "0.2S"
+        assert p["burden_va"] == 5.0
+        assert p["fs_safety_factor"] == 5.0
+        assert p["ith_ka_1s"] == ith
+        assert p["idyn_ka_peak"] == 2.5 * ith
+        assert p["verification_status"] == "REFERENCYJNY"
+        assert p["catalog_status"] == "REFERENCYJNY_V1"
+        assert "załącznik 5/B" in p["source_reference"]
+        assert "nie wyrób producenta" in p["verification_note"]
