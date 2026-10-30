@@ -10,7 +10,7 @@
 import { useState } from 'react';
 // Zasada wywodów KaTeX (dyrektywa właściciela 2026-07-29): wartości założeń
 // mogą nieść wzory inline `$...$` z backendu — renderuje je TekstZWzorami.
-import { TekstZWzorami } from '../../kreatory/rama';
+import { TekstZWzorami, tekstBezWzorow } from '../../kreatory/rama';
 import type { WierszZalozenia } from './wzorzecModel';
 import { WZORZEC_STRINGS } from './strings';
 
@@ -49,7 +49,7 @@ export function SekcjaZalozen({ zalozenia, domyslnieRozwinieta = true }: SekcjaZ
                   <p
                     key={`zdanie-${i}`}
                     className="mvd-wyn-zalozenie mvd-wyn-zalozenie--zdanie"
-                    title={z.uwaga}
+                    title={z.uwaga === undefined ? undefined : tekstBezWzorow(z.uwaga)}
                     data-testid="mvd-wyn-zalozenie"
                   >
                     <TekstZWzorami tekst={String(z.wartosc)} />
@@ -58,11 +58,11 @@ export function SekcjaZalozen({ zalozenia, domyslnieRozwinieta = true }: SekcjaZ
                 <div
                   key={`${z.etykieta}-${i}`}
                   className="mvd-wyn-zalozenie"
-                  title={z.uwaga}
+                  title={z.uwaga === undefined ? undefined : tekstBezWzorow(z.uwaga)}
                   data-testid="mvd-wyn-zalozenie"
                 >
                   <span className="mvd-wyn-zalozenie-etykieta">
-                    {z.etykieta}
+                    <TekstZWzorami tekst={z.etykieta} />
                     {z.znacznik && (
                       <span className="mvd-wyn-zalozenie-znacznik" data-testid="mvd-wyn-zalozenie-znacznik">
                         {z.znacznik}

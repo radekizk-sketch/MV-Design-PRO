@@ -131,6 +131,12 @@ export interface WielkoscGlowna {
   readonly odniesienieSciezka?: string;
   /** Etykieta odniesienia, np. „dopuszczalne", „tolerancja". */
   readonly odniesienieEtykieta?: string;
+  /**
+   * Postać wartości: domyślnie liczba (wspólny formater); `tekst` — zdanie solvera dla
+   * projektanta z symbolami jako `$…$` (składane przez `TekstZWzorami`), np. uzasadnienie
+   * wyboru prądu uziomowego.
+   */
+  readonly postac?: 'tekst';
 }
 
 /** Kolumna tabeli obiektów. */
@@ -140,6 +146,11 @@ export interface KolumnaObiektu {
   readonly jednostka?: string;
   /** Kolumna statusu — renderowana jako chip werdyktu wg `mapa`. */
   readonly mapaStatusu?: MapaWerdyktu;
+  /**
+   * Postać komórki: domyślnie liczba/wartość słownikowa; `latex` — wzór LaTeX solvera
+   * (`MathInline`); `tekst` — zdanie z symbolami jako `$…$` (`TekstZWzorami`).
+   */
+  readonly postac?: 'latex' | 'tekst';
 }
 
 /** Tabela obiektów analizy (per węzeł / gałąź / aparat / silnik). */
@@ -411,13 +422,43 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         odniesienieSciezka: 'u_step_allowable_v',
         odniesienieEtykieta: 'dopuszczalne',
       },
+      // Prąd zwarcia doziemnego stacji przed redukcją — z modelu (EN 50522 tab. 1) albo
+      // nadpisanie projektanta; uzasadnienie wyboru niesie solver (karta UX-04).
+      {
+        sciezka: 'i_f_ka',
+        etykieta: 'Prąd zwarcia doziemnego stacji przed redukcją',
+        jednostka: 'kA',
+      },
+      {
+        sciezka: 'prad_uziomowy.uzasadnienie_pl',
+        etykieta: 'Podstawa prądu zwarcia doziemnego',
+        postac: 'tekst',
+      },
       { sciezka: 'r_g_ohm', etykieta: 'Rezystancja uziomu stacji', jednostka: 'Ω' },
       { sciezka: 'gpr_kv', etykieta: 'Wzrost potencjału uziomu (GPR)', jednostka: 'kV' },
       { sciezka: 'i_g_ka', etykieta: 'Prąd odprowadzany przez uziom', jednostka: 'kA' },
       { sciezka: 'split_factor', etykieta: 'Współczynnik podziału prądu zwarciowego' },
       { sciezka: 'fault_clearing_time_s', etykieta: 'Czas wyłączenia zwarcia', jednostka: 's' },
     ],
-    tabele: [],
+    tabele: [
+      {
+        // Przypadki zwarcia doziemnego stacji (strona SN i WN) wg sposobu pracy punktu
+        // neutralnego — miarodajny jest największy (EN 50522 tab. 1).
+        sciezka: 'prad_uziomowy.przypadki',
+        tytul: 'Przypadki zwarcia doziemnego stacji (EN 50522 tab. 1)',
+        kluczRef: 'bus_ref',
+        etykietaRef: 'Szyna stacji',
+        kolumny: [
+          { klucz: 'strona', etykieta: 'Strona' },
+          { klucz: 'tryb_pl', etykieta: 'Punkt neutralny' },
+          { klucz: 'wielkosc_latex', etykieta: 'Wielkość miarodajna', postac: 'latex' },
+          { klucz: 'prad_a', etykieta: 'Prąd', jednostka: 'A' },
+          { klucz: 'opis_pl', etykieta: 'Reguła', postac: 'tekst' },
+          { klucz: 'brak_pl', etykieta: 'Brak wyniku', postac: 'tekst' },
+        ],
+        tylkoGdyObecna: true,
+      },
+    ],
     nastepnyKrok:
       'Przy przekroczeniu: zagęść siatkę uziomową, dołóż uziomy pionowe albo ułóż '
       + 'warstwę tłucznia o wyższej rezystywności — i przelicz ponownie.',
@@ -436,14 +477,14 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         kluczRef: 'location_bus_ref',
         etykietaRef: 'Miejsce zainstalowania',
         kolumny: [
-          { klucz: 'u_m_kv', etykieta: 'Napięcie najwyższe sieci U_m', jednostka: 'kV' },
+          { klucz: 'u_m_kv', etykieta: 'Napięcie najwyższe sieci $U_m$', jednostka: 'kV' },
           {
             klucz: 'network_neutral',
             etykieta: 'Sposób pracy punktu neutralnego',
             mapaStatusu: TRYB_DOZIEMIENIA_IZOLACJI,
           },
           { klucz: 'earth_fault_factor', etykieta: 'Współczynnik zwarcia doziemnego k' },
-          { klucz: 'predicted_tov_kv', etykieta: 'Przepięcie dorywcze przy doziemieniu U_TOV', jednostka: 'kV' },
+          { klucz: 'predicted_tov_kv', etykieta: 'Przepięcie dorywcze przy doziemieniu $U_{\\mathrm{TOV}}$', jednostka: 'kV' },
           {
             klucz: 'tov_duration',
             etykieta: 'Czas trwania doziemienia',
@@ -520,7 +561,7 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       {
         sciezka: 'inrush.peak_multiple_in',
         etykieta: 'Krotność prądu załączenia transformatora',
-        jednostka: '× I_n',
+        jednostka: '× $I_n$',
       },
       {
         sciezka: 'inrush.second_harmonic_percent_of_peak',
@@ -650,12 +691,12 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
       { sciezka: 'coil_current_rating_a', etykieta: 'Prąd znamionowy dławika', jednostka: 'A' },
       {
         sciezka: 'coil_current_model_a',
-        etykieta: 'Prąd dławika modelu przy doziemieniu (z impedancją Z₀ transformatora uziemiającego)',
+        etykieta: 'Prąd dławika modelu przy doziemieniu (z impedancją $Z_0$ transformatora uziemiającego)',
         jednostka: 'A',
       },
       {
         sciezka: 'detuning_model',
-        etykieta: 'Rozstrojenie dławika modelu v = (I_C − I_L)/I_C (dodatnie — niedokompensowanie)',
+        etykieta: 'Rozstrojenie dławika modelu $v = (I_C - I_L)/I_C$ (dodatnie — niedokompensowanie)',
       },
       {
         sciezka: 'residual_current_a',
@@ -707,12 +748,12 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         // Sprawdzenie cieplne rezystora (IEC 60909-0 §12, IEEE Std C57.32): wielkości
         // rezystora rozstrzygającego — o najkrótszym czasie dopuszczalnym.
         sciezka: 'thermal_check.i_resistor_a',
-        etykieta: 'Największy prąd rezystora przy doziemieniu (maksymalny współczynnik napięciowy IEC 60909, z impedancją Z₀ transformatora uziemiającego)',
+        etykieta: 'Największy prąd rezystora przy doziemieniu (maksymalny współczynnik napięciowy IEC 60909, z impedancją $Z_0$ transformatora uziemiającego)',
         jednostka: 'A',
       },
       {
         sciezka: 'thermal_check.i_thermal_a',
-        etykieta: 'Prąd zastępczy cieplny rezystora I_th',
+        etykieta: 'Prąd zastępczy cieplny rezystora $I_{th}$',
         jednostka: 'A',
       },
       {
@@ -777,7 +818,7 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         kolumny: [
           { klucz: 'r_ohm', etykieta: 'Rezystancja', jednostka: 'Ω' },
           { klucz: 'i_resistor_a', etykieta: 'Największy prąd rezystora', jednostka: 'A' },
-          { klucz: 'i_thermal_a', etykieta: 'Prąd zastępczy cieplny I_th', jednostka: 'A' },
+          { klucz: 'i_thermal_a', etykieta: 'Prąd zastępczy cieplny $I_{th}$', jednostka: 'A' },
           { klucz: 'permissible_time_s', etykieta: 'Czas dopuszczalny', jednostka: 's' },
           { klucz: 'energy_dissipated_j', etykieta: 'Energia wydzielona', jednostka: 'J' },
           { klucz: 'energy_rating_j', etykieta: 'Energia znamionowa', jednostka: 'J' },
@@ -865,15 +906,15 @@ export const NAZWY_PARAMETROW: Readonly<Record<string, string>> = {
  * klucze kontraktu — dokładnie defekt oceniony na 0/10.
  */
 export const NAZWY_BRAKUJACYCH_POL: Readonly<Record<string, string>> = {
-  b0_siemens_per_km: 'susceptancja doziemna gałęzi (b₀)',
+  b0_siemens_per_km: 'susceptancja doziemna gałęzi ($b_0$)',
   nominal_kv: 'napięcie znamionowe sieci',
   ner_clearing_time_s: 'czas wyłączenia zwarcia doziemnego',
-  'uziemienie_sn.sieci.c_max': 'współczynnik napięciowy c_max sieci (IEC 60909-0 tab. 1)',
-  breaker_rated_voltage_kv: 'napięcie znamionowe wyłącznika U_r',
+  'uziemienie_sn.sieci.c_max': 'współczynnik napięciowy $c_{\\max}$ sieci (IEC 60909-0 tab. 1)',
+  breaker_rated_voltage_kv: 'napięcie znamionowe wyłącznika $U_r$',
   trv_natural_frequency_hz: 'częstotliwość własna napięcia powrotnego obwodu',
   trv_tau_s: 'stała czasowa napięcia powrotnego obwodu',
   inrush_multiple_in: 'krotność prądu załączania transformatora',
-  'uziemienie_sn.sieci.rezystory': 'rezystor punktu neutralnego zespołu uziemiającego (R, I_n, t_n)',
+  'uziemienie_sn.sieci.rezystory': 'rezystor punktu neutralnego zespołu uziemiającego ($R$, $I_n$, $t_n$)',
   'uziemienie_sn.sieci.punkty_neutralne':
     'punkty uziemienia sieci w ruchu (impedancje dławika, rezystora i transformatora uziemiającego)',
   converter_control_bandwidth_hz: 'pasmo pętli regulacji prądu przekształtnika',

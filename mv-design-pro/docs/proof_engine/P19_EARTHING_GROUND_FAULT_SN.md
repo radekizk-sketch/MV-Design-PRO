@@ -1,6 +1,10 @@
 # P19 — Doziemienia / uziemienia SN (Earthing / Ground Fault)
 
-**STATUS: CANONICAL & BINDING**
+**STATUS: SKASOWANY** (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5, 2026-10-30) — pakiet bez
+producenta w `backend/src`, z fizyką w silniku dowodów (I_E = U_0/Z_E, U_d = I_u·R_u
+„uproszczone”), dublujący dowód bezpieczeństwa uziomu V12.6 (EN 50522 tab. 1, IEEE 80).
+Dokument zostaje jako zapis historyczny; prąd zwarcia doziemnego stacji i napięcia rażeniowe
+niesie bieg `earthing_safety` (krok śladu `en50522_prad_uziomowy`).
 **Version:** 1.0
 **Reference:** P11_OVERVIEW.md, PROOF_SCHEMAS.md
 

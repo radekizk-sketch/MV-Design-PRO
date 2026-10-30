@@ -8,6 +8,7 @@
  * Komponent w pełni sterowany propsami.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import {
   ETYKIETY_POL_NASTAW,
   ETYKIETY_POL_WEJSCIA,
@@ -45,7 +46,7 @@ function BladPola({ komunikat, testid }: { komunikat?: string; testid: string })
   if (!komunikat) return null;
   return (
     <span className="mvd-oze-pole-blad" role="alert" data-testid={testid}>
-      {komunikat}
+      <TekstZWzorami tekst={komunikat} />
     </span>
   );
 }
@@ -197,7 +198,7 @@ function FormularzPanelu({
           {POLA_LICZBOWE_WEJSCIA.map((pole) => (
             <label key={pole} className="mvd-oze-field">
               <span>
-                {ETYKIETY_POL_WEJSCIA[pole]}
+                <TekstZWzorami tekst={ETYKIETY_POL_WEJSCIA[pole]} />
                 <ZnacznikPochodzenia pochodzenie={f.pochodzenieLiczb[pole]} />
               </span>
               <input
@@ -274,7 +275,7 @@ function FormularzPanelu({
         {POLA_NASTAW.map((pole) => (
           <label key={pole} className="mvd-oze-field">
             <span>
-              {ETYKIETY_POL_NASTAW[pole]}
+              <TekstZWzorami tekst={ETYKIETY_POL_NASTAW[pole]} />
               <ZnacznikPochodzenia pochodzenie={f.pochodzenieNastaw} />
             </span>
             <input

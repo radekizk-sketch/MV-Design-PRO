@@ -685,6 +685,16 @@ const SCENY: Record<string, Prowadzenie> = {
     }
   },
   'wyniki-skladowe': zwykla,
+  // Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5): ta sama sieć w czterech sposobach pracy
+  // punktu neutralnego — scena bez `sposob` to sieć izolowana, pozostałe trzy otwierane jawnie.
+  'wyniki-skladowe-doziemienie': async (page, pomiar) => {
+    await zwykla(page, pomiar);
+    for (const sposob of ['kompensowany', 'rezystor', 'bezposrednie']) {
+      await otworz(page, 'wyniki-skladowe-doziemienie', `&sposob=${sposob}`);
+      await page.waitForTimeout(500);
+      await zbierz(page, pomiar, `sposób ${sposob}`);
+    }
+  },
   'wyniki-zbieznosc': zwykla,
   'wyniki-stan-fazowy': zwykla,
   'sila-sieci': zwykla,

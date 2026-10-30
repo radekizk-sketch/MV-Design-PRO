@@ -5,8 +5,9 @@ WSZYSTKICH rodzajów PREZENTOWANYCH V12.6 (`PARAMETRY_SCENY_AKADEMICKIE`,
 `scripts/eksport_fixtur_harnessu.py` — TE SAME parametry, którymi żywi się
 scena harnessu „akademickie"), na sieci tej sceny, konstrukcją WEJŚCIA
 IDENTYCZNĄ z trasą `POST …/runs/v126/{rodzaj}` (`uzupelnij_parametry_z_modelu`
-+ `build_v126_input_from_enm` + `_with_parameter_payloads`, reużyte wprost —
-zero drugiego źródła prawdy o budowie wejścia), zbiera zmierzony zbiór
++ `api.v126_academic.wejscie_solvera_v126` — jedna składanka mostu modelu, danych
+projektanta i prądu uziomowego z modelu, reużyta wprost; zero drugiego źródła prawdy
+o budowie wejścia), zbiera zmierzony zbiór
 `step.key` i sprawdza, że KAŻDY ma wpis w `REJESTR_WZOROW_V126`. Brak wpisu
 jest czerwonym testem (karta §0.1: „Brak wpisu = czerwony test, nie cichy
 fallback"), nie cichym pominięciem formuły.
@@ -21,14 +22,16 @@ zmierzonego zbioru i musi mieć wpis w rejestrze na równi z pozostałymi.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import Any
 
-from api.v126_academic import _with_parameter_payloads
+from api.v126_academic import wejscie_solvera_v126
 from application.analyses.v126_gotowosc import uzupelnij_parametry_z_modelu
 from application.analyses.v126_katalog import KATALOG_ANALIZ_V126
 from application.analyses.v126_wzory import REJESTR_WZOROW_V126, wzbogac_kroki_latex
 from network_model.solvers.v126_academic import V126AcademicSolver
-from solver_input.v126_contracts import V126AnalysisType, build_v126_input_from_enm
+from solver_input.v126_contracts import V126AnalysisType
 
 from scripts.eksport_fixtur_harnessu import PARAMETRY_SCENY_AKADEMICKIE, _enm_sceny_akademickiej
 
@@ -50,11 +53,7 @@ def _uruchom(rodzaj: str) -> list[dict[str, Any]]:
     analysis_type = V126AnalysisType(rodzaj)
     parametry_uzytkownika = PARAMETRY_SCENY_AKADEMICKIE.get(rodzaj, {})
     parametry = uzupelnij_parametry_z_modelu(enm, analysis_type, parametry_uzytkownika)
-    model = _with_parameter_payloads(
-        build_v126_input_from_enm(enm, parameters=parametry, analysis_type=analysis_type),
-        parametry,
-        enm,
-    )
+    model = wejscie_solvera_v126(enm, analysis_type, parametry)
     envelope = V126AcademicSolver().run(analysis_type, model)
     return list(envelope["white_box_trace"])
 
@@ -105,7 +104,40 @@ def test_komplet_kluczy_sladu_ma_wpis_w_rejestrze_latex() -> None:
     # dochodzą `neutral_earthing_scheme_from_model`, `neutral_earthing_capacitive_current`,
     # `petersen_resonance_tuning`, `petersen_residual_current`; odpada gałąź braku C0
     # (12 − 1 + 4 = 15 kluczy, wszystkie z wpisem w rejestrze).
-    assert len(zmierzone_klucze) == 15, sorted(zmierzone_klucze)
+    # Pomiar 2026-10-30 (ta sama karta, commit 5): ocena uziomu liczy prąd zwarcia doziemnego
+    # stacji z modelu (EN 50522 tab. 1) — dochodzi `en50522_prad_uziomowy` (15 + 1 = 16).
+    assert len(zmierzone_klucze) == 16, sorted(zmierzone_klucze)
+
+
+#: Klucz kroku nadany w źródle solvera: literał pierwszego argumentu `trace.add(` albo
+#: drugiego argumentu `_odmowa_uziemienia_sn(trace, …)` (odmowa przekazuje klucz dalej).
+_KLUCZ_W_ZRODLE = re.compile(
+    r"(?:trace\.add\(\s*|_odmowa_uziemienia_sn\(\s*trace,\s*)\"([a-z0-9_]+)\""
+)
+_ZRODLO_SOLVERA = (
+    Path(__file__).resolve().parents[3] / "src" / "network_model" / "solvers" / "v126_academic.py"
+)
+
+
+def test_kazdy_klucz_kroku_ze_zrodla_solvera_ma_wpis_w_rejestrze() -> None:
+    """Kompletność NIEZALEŻNA od sceny: pomiar na scenie akademickiej widzi tylko gałęzie,
+    które scena uruchamia (krok baterii kondensatorów projektu uziemienia nie padał na sieci
+    złotej i latami nie miał wpisu). Tu — KAŻDY klucz nadawany w źródle solvera, w tym gałęzie
+    odmów; rejestr bez wpisu dla żadnego z nich, bez wpisów martwych."""
+    zrodlo = _ZRODLO_SOLVERA.read_text(encoding="utf-8")
+    klucze = set(_KLUCZ_W_ZRODLE.findall(zrodlo))
+    # Każde wywołanie `trace.add(` niesie klucz-literał (inaczej pomiar byłby niepełny).
+    wywolania = len(re.findall(r"trace\.add\(", zrodlo))
+    zlapane = len(re.findall(r"trace\.add\(\s*\"[a-z0-9_]+\"", zrodlo))
+    assert wywolania - zlapane == 1, "trace.add bez klucza-literału poza `_odmowa_uziemienia_sn`"
+    assert sorted(klucze - set(REJESTR_WZOROW_V126)) == []
+    assert sorted(set(REJESTR_WZOROW_V126) - klucze) == []
+
+
+def test_wykrywacz_klucza_zrodla_lapie_obie_postaci_wywolania() -> None:
+    """Iniekcja: wykrywacz klucza widzi literał `trace.add` i klucz odmowy."""
+    tekst = 'trace.add(\n    "krok_a",\n)\n_odmowa_uziemienia_sn(trace, "krok_b", powod)'
+    assert set(_KLUCZ_W_ZRODLE.findall(tekst)) == {"krok_a", "krok_b"}
 
 
 def test_wzbogac_kroki_latex_nie_mutuje_oryginalu_i_dokladakada_formule() -> None:

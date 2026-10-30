@@ -704,17 +704,17 @@ export const STACJA_STRINGS = {
   uziemieniePunktPomoc:
     'Bezpośrednio uziemiony ⇒ duży prąd zwarcia doziemnego (układy TN). Rezystor/cewka '
     + 'ograniczają prąd doziemny. Izolowany ⇒ mały prąd pojemnościowy (układ IT).',
-  uziemienieRezystancja: 'Rezystancja uziemienia R_N [Ω]',
-  uziemienieRezystancjaUziomuStacji: 'Rezystancja uziomu stacji R_B [Ω]',
+  uziemienieRezystancja: 'Rezystancja uziemienia $R_N$ [Ω]',
+  uziemienieRezystancjaUziomuStacji: 'Rezystancja uziomu stacji $R_B$ [Ω]',
   uziemienieRezystancjaUziomuStacjiPomoc:
     'Uziom punktu neutralnego transformatora (uziemionego bezpośrednio). W układzie TT pętla '
-    + 'zwarcia doziemnego domyka się przez uziom stacji R_B i uziom instalacji odbiorczej R_A '
-    + '(IEC 60364-4-41 §411.5) — bez R_B analiza TT odmawia nazwanym kodem. W układach TN wartość '
+    + 'zwarcia doziemnego domyka się przez uziom stacji $R_B$ i uziom instalacji odbiorczej $R_A$ '
+    + '(IEC 60364-4-41 §411.5) — bez $R_B$ analiza TT odmawia nazwanym kodem. W układach TN wartość '
     + 'jest zapisywana w modelu, ale pętla L-PE/L-PEN jej nie czyta.',
-  uziemienieReaktancja: 'Reaktancja dławika Petersena X_N [Ω]',
+  uziemienieReaktancja: 'Reaktancja dławika Petersena $X_N$ [Ω]',
   uziemienieRezystancjaPlaceholder: 'np. 10',
   uziemienieRezystancjaPomoc:
-    'Wymagana dla uziemienia impedancyjnego: rezystor — R_N, cewka Petersena — X_N. '
+    'Wymagana dla uziemienia impedancyjnego: rezystor — $R_N$, cewka Petersena — $X_N$. '
     + 'Backend odrzuca konfigurację bez składowej dominującej (nie podstawia zera).',
   teoriaUziemienieTytul: 'Teoria: uziemienie punktu neutralnego a zwarcie doziemne',
   teoriaUziemienieOpis:
@@ -726,8 +726,8 @@ export const STACJA_STRINGS = {
     + 'ziemnozwarciowych (51N/67N) i na napięcia dotyku.',
   teoriaUziemienieWymog:
     'Dobierz układ uziemienia i punkt neutralny do wymagań ochrony przeciwporażeniowej (czas wyłączenia '
-    + 'pętli zwarcia) oraz ciągłości zasilania. Impedancję punktu neutralnego (R_N rezystora, '
-    + 'X_N dławika) podaj z projektu — bez niej uziemienie impedancyjne nie jest konfiguracją '
+    + 'pętli zwarcia) oraz ciągłości zasilania. Impedancję punktu neutralnego ($R_N$ rezystora, '
+    + '$X_N$ dławika) podaj z projektu — bez niej uziemienie impedancyjne nie jest konfiguracją '
     + '(odmowa, nie zero).',
   teoriaUziemieniePodstawa:
     'Podstawa: PN-HD 60364-4-41 (ochrona przeciwporażeniowa), IEC 60364-4-41 (pętla zwarcia), '

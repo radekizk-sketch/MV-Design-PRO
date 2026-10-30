@@ -131,7 +131,7 @@
       "chwila_s": null,
       "metoda": "OBLICZENIE",
       "punkt_krytyczny_pl": "koniec odcinka 1 (koniec budowanego ciągu)",
-      "symbol_latex": "\\Delta U_{\\%,\\mathrm{ciąg}}",
+      "symbol_latex": "\\Delta U_{\\%,\\text{ciąg}}",
       "wartosc": {
         "jednostka": "%",
         "wartosc": 0.529109

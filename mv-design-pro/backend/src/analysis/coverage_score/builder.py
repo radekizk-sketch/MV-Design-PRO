@@ -27,7 +27,22 @@ _PROOF_WEIGHTS: tuple[tuple[str, ProofType, float], ...] = (
     ("obciążenia prądowe i przeciążenia", ProofType.LOAD_CURRENTS_OVERLOAD, 10.0),
     ("straty i energia", ProofType.LOSSES_ENERGY, 10.0),
     ("zabezpieczenia nadprądowe", ProofType.PROTECTION_OVERCURRENT, 10.0),
-    ("uziemienie — zwarcie doziemne SN", ProofType.EARTHING_GROUND_FAULT_SN, 10.0),
+)
+
+#: Ocena bezpieczeństwa uziomu stacji — waga dawnego pakietu P19 „uziemienie — zwarcie
+#: doziemne SN”. Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5): pakiet P19 skasowany (0
+#: producentów, fizyka w silniku dowodów, dubel dowodu V12.6), więc pozycja „brak dowodu
+#: uziemienia” była STAŁĄ luką — żadna praca projektanta nie mogła jej zamknąć. Pokrycie
+#: czyta teraz to, co projektant faktycznie wykonuje: zakończony bieg bezpieczeństwa uziomu
+#: V12.6 z napięciami rażeniowymi (prąd zwarcia doziemnego stacji z modelu, EN 50522 tab. 1).
+_WAGA_OCENY_UZIOMU = 10.0
+BRAK_OCENY_UZIOMU_PL = (
+    "Brak oceny: bezpieczeństwo uziomu stacji (prąd zwarcia doziemnego, napięcia rażeniowe "
+    "EN 50522)."
+)
+LUKA_UZIEMIENIA_PL = (
+    "LUKA-UZIEMIENIE: brak oceny bezpieczeństwa uziomu stacji (zwarcie doziemne, napięcia "
+    "dotykowe i krokowe)."
 )
 
 
@@ -42,7 +57,10 @@ class CoverageScoreBuilder:
         protection_curves_it: ProtectionCurvesITView | None,
         sensitivity: SensitivityView | None,
         recommendations: RecommendationView | None,
+        uziom_oceniony: bool,
     ) -> CoverageScoreView:
+        """``uziom_oceniony`` — przypadek ma zakończony bieg bezpieczeństwa uziomu stacji
+        z napięciami rażeniowymi (``application.analyses.pokrycie_analiz``)."""
         proof_types = {doc.proof_type for doc in proof_documents}
         missing_items: list[str] = []
         critical_gaps: list[str] = []
@@ -53,10 +71,10 @@ class CoverageScoreBuilder:
             if proof_type not in proof_types:
                 missing_items.append(f"Brak dowodu: {label}.")
                 score -= weight
-                if proof_type == ProofType.EARTHING_GROUND_FAULT_SN:
-                    critical_gaps.append(
-                        "LUKA-UZIEMIENIE: brak pakietu dowodu uziemienia " "(zwarcie doziemne SN)."
-                    )
+        if not uziom_oceniony:
+            missing_items.append(BRAK_OCENY_UZIOMU_PL)
+            score -= _WAGA_OCENY_UZIOMU
+            critical_gaps.append(LUKA_UZIEMIENIA_PL)
 
         if normative_report is None:
             missing_items.append("Brak raportu normatywnego.")

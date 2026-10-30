@@ -6,6 +6,7 @@
  * werdykty pochodzą wyłącznie z backendu. Brak przebiegu → jawna instrukcja.
  */
 
+import { TekstZWzorami } from '../../kreatory/rama';
 import { useState } from 'react';
 
 import { pobierzAdekwatnoscQ, type WpisZrodlaQ } from '../api';
@@ -85,7 +86,7 @@ function WpisZrodla({
       {wpis.missing_data.length > 0 ? (
         <div className="mvd-oze-metryka">
           <span>{PULPIT_STRINGS.adekwBrakDanych}</span>
-          <span>{wpis.missing_data.map((kod) => BRAKI_DANYCH_Q[kod]).join('; ')}</span>
+          <span><TekstZWzorami tekst={wpis.missing_data.map((kod) => BRAKI_DANYCH_Q[kod]).join('; ')} /></span>
         </div>
       ) : null}
       {wpis.white_box.length > 0 ? (

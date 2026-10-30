@@ -656,7 +656,9 @@ def test_moc_bierna_wytworcy_brak_jest_wylacznie_strukturalnym_zerem_agregatu() 
 
 
 def _wynik(rodzaj: V126AnalysisType, model: EnergyNetworkModel) -> dict:
-    wejscie = build_v126_input_from_enm(model)
+    # Rodzaj analizy idzie do mostu jak w API: impedancję zastępczą szyn most liczy wyłącznie
+    # dla analiz, które ją czytają (`ANALIZY_IMPEDANCJI_ZASTEPCZEJ`).
+    wejscie = build_v126_input_from_enm(model, analysis_type=rodzaj)
     return V126AcademicSolver().run(rodzaj, wejscie)["result"]
 
 

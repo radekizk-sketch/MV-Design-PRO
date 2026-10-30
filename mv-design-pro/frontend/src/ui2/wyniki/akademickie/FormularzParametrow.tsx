@@ -17,6 +17,7 @@
 import { useState, type ChangeEvent } from 'react';
 
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { TekstZWzorami, tekstBezWzorow } from '../../kreatory/rama';
 import { nazwaObiektuZMigawki, useNazwaObiektu } from '../wzorzec/useNazwaObiektu';
 import type { GotowoscAnalizy, KartaKatalogu } from './api';
 import { AKADEMICKIE_STRINGS as S } from './strings';
@@ -198,7 +199,7 @@ function PoleParametru({
     return (
       <label className="mvd-akad-pole" htmlFor={id}>
         <span className="mvd-akad-pole-etyk">
-          {etykieta}
+          <TekstZWzorami tekst={etykieta} />
           <OdznakaWymagania wymagane={wymagane} />
         </span>
         <select
@@ -213,11 +214,11 @@ function PoleParametru({
           <option value="">{pusta}</option>
           {opcje.map((opcja) => (
             <option key={opcja.wartosc} value={opcja.wartosc}>
-              {opcja.etykieta}
+              {tekstBezWzorow(opcja.etykieta)}
             </option>
           ))}
         </select>
-        {definicja.opis && <span className="mvd-akad-pole-opis">{definicja.opis}</span>}
+        {definicja.opis && <span className="mvd-akad-pole-opis"><TekstZWzorami tekst={definicja.opis} /></span>}
       </label>
     );
   }
@@ -225,7 +226,7 @@ function PoleParametru({
   return (
     <label className="mvd-akad-pole" htmlFor={id}>
       <span className="mvd-akad-pole-etyk">
-        {etykieta}
+        <TekstZWzorami tekst={etykieta} />
         <OdznakaWymagania wymagane={wymagane} />
       </span>
       <input
@@ -239,7 +240,7 @@ function PoleParametru({
           onZmiana(definicja.klucz, zdarzenie.target.value)
         }
       />
-      {definicja.opis && <span className="mvd-akad-pole-opis">{definicja.opis}</span>}
+      {definicja.opis && <span className="mvd-akad-pole-opis"><TekstZWzorami tekst={definicja.opis} /></span>}
     </label>
   );
 }
@@ -359,7 +360,7 @@ export function FormularzParametrow({
                   onMetoda(opcja.wartosc, zdarzenie.target.checked)
                 }
               />
-              <span>{opcja.etykieta}</span>
+              <span><TekstZWzorami tekst={opcja.etykieta} /></span>
             </label>
           ))}
         </fieldset>
@@ -440,12 +441,16 @@ export function FormularzParametrow({
                     // Karta #145: klucz kontraktu (`earthing.rho1_ohm_m`) nie jest tekstem
                     // dla projektanta — wiersz nazywa daną po polsku, z jednostką i opisem.
                     <tr key={parametr.klucz}>
-                      <td>{parametr.nazwa_pl}</td>
-                      <td className="mvd-num">{parametr.jednostka}</td>
+                      <td>
+                        <TekstZWzorami tekst={parametr.nazwa_pl} />
+                      </td>
+                      <td className="mvd-num"><TekstZWzorami tekst={parametr.jednostka} /></td>
                       <td>
                         <OdznakaWymagania wymagane={parametr.wymagane} />
                       </td>
-                      <td>{parametr.opis_pl}</td>
+                      <td>
+                        <TekstZWzorami tekst={parametr.opis_pl} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

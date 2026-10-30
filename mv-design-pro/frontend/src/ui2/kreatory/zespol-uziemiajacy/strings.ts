@@ -82,18 +82,18 @@ export const ZESPOL_UZIEMIAJACY_STRINGS = {
   wierszBrak: 'Brak',
 
   podsumowanieTytul: 'Podsumowanie zespołu',
-  paramUn: 'Napięcie znamionowe U_n',
-  paramZ0: 'Impedancja zerowa uzwojenia Z_0,TU',
+  paramUn: 'Napięcie znamionowe $U_n$',
+  paramZ0: 'Impedancja zerowa uzwojenia $Z_{0,\\mathrm{TU}}$',
   paramZakres: 'Zakres regulacji dławika',
-  paramR: 'Rezystancja rezystora R_N',
+  paramR: 'Rezystancja rezystora $R_N$',
   paramIn: 'Prąd znamionowy rezystora',
   wartoscRobocza: 'wartość robocza katalogu typowego (do potwierdzenia kartą producenta)',
 
   // Downstream.
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
-    'Zespół uziemia punkt neutralny sekcji: zwarcia doziemne (Ik1, IEC 60909) liczą się '
-    + 'z jego impedancji zerowej Z_0,ZU = Z_0,TU + 3·Z_N, dowód przekładników napięciowych '
+    'Zespół uziemia punkt neutralny sekcji: zwarcia doziemne ($I_{k1}$, IEC 60909) liczą się '
+    + 'z jego impedancji zerowej $Z_{0,\\mathrm{ZU}} = Z_{0,\\mathrm{TU}} + 3\\,Z_N$, dowód przekładników napięciowych '
     + 'czyta sposób uziemienia z modelu, a pola sekcji dostają drogę doziemną.',
 
   // Uczciwy stan zerowy.

@@ -14,6 +14,7 @@
  * Ten plik nic nie liczy — zbiera pola formularza i pokazuje odpowiedzi.
  */
 
+import { TekstZWzorami, tekstBezWzorow } from '../../../kreatory/rama';
 import { useEffect, useRef, useState } from 'react';
 
 import './scenariusze.css';
@@ -343,7 +344,7 @@ export function PanelScenariuszy() {
           {formularz.tryb === 'IMPEDANCE' && (
             <>
               <label className="mvd-scen-pole">
-                <span>{T.polaRezystancja}</span>
+                <span><TekstZWzorami tekst={T.polaRezystancja} /></span>
                 <input
                   type="number"
                   step="0.001"
@@ -354,7 +355,7 @@ export function PanelScenariuszy() {
                 />
               </label>
               <label className="mvd-scen-pole">
-                <span>{T.polaReaktancja}</span>
+                <span><TekstZWzorami tekst={T.polaReaktancja} /></span>
                 <input
                   type="number"
                   step="0.001"
@@ -373,7 +374,7 @@ export function PanelScenariuszy() {
             klasaPola="mvd-scen-pole"
           />
           <label className="mvd-scen-pole">
-            <span>{T.polaCzasCieplny}</span>
+            <span><TekstZWzorami tekst={T.polaCzasCieplny} /></span>
             <input
               type="number"
               step="0.1"
@@ -383,14 +384,14 @@ export function PanelScenariuszy() {
             />
           </label>
           <label className="mvd-scen-pole">
-            <span>{T.polaCzasWylaczenia}</span>
+            <span><TekstZWzorami tekst={T.polaCzasWylaczenia} /></span>
             <input
               type="number"
               step="0.01"
               data-testid="mvd-scenariusze-czas-tb"
               ref={poleTbNowegoRef}
               value={formularz.czasWylaczeniaS}
-              title={T.polaCzasWylaczeniaPodpowiedz}
+              title={tekstBezWzorow(T.polaCzasWylaczeniaPodpowiedz)}
               onChange={(e) => setFormularz({ ...formularz, czasWylaczeniaS: e.target.value })}
             />
           </label>
@@ -423,7 +424,7 @@ export function PanelScenariuszy() {
       )}
       {komunikat && (
         <p className="mvd-scen-ok" data-testid="mvd-scenariusze-komunikat">
-          {komunikat}
+          <TekstZWzorami tekst={komunikat} />
         </p>
       )}
 
@@ -447,7 +448,7 @@ export function PanelScenariuszy() {
               <th scope="col">{T.kolRodzaj}</th>
               <th scope="col">{T.kolMiejsce}</th>
               <th scope="col">{T.kolWspolczynnikC}</th>
-              <th scope="col">{T.kolCzasWylaczenia}</th>
+              <th scope="col"><TekstZWzorami tekst={T.kolCzasWylaczenia} /></th>
               <th scope="col">{T.kolAkcje}</th>
             </tr>
           </thead>
@@ -471,14 +472,14 @@ export function PanelScenariuszy() {
                       }}
                     >
                       <label className="mvd-scen-pole">
-                        <span>{T.polaCzasWylaczenia}</span>
+                        <span><TekstZWzorami tekst={T.polaCzasWylaczenia} /></span>
                         <input
                           type="number"
                           step="0.01"
                           autoFocus
                           data-testid={`mvd-scenariusze-tb-pole-${s.scenario_id}`}
                           value={edycjaTb.tekst}
-                          title={T.polaCzasWylaczeniaPodpowiedz}
+                          title={tekstBezWzorow(T.polaCzasWylaczeniaPodpowiedz)}
                           onChange={(e) => setEdycjaTb({ scenarioId: s.scenario_id, tekst: e.target.value })}
                         />
                       </label>
@@ -492,7 +493,7 @@ export function PanelScenariuszy() {
                         className="mvd-scen-akcja"
                         data-testid={`mvd-scenariusze-tb-zapisz-${s.scenario_id}`}
                       >
-                        {T.zmianaTbZapisz}
+                        <TekstZWzorami tekst={T.zmianaTbZapisz} />
                       </button>
                       <button
                         type="button"
@@ -518,7 +519,7 @@ export function PanelScenariuszy() {
                           setEdycjaTb({ scenarioId: s.scenario_id, tekst: poleCzasuWylaczenia(s.config) });
                         }}
                       >
-                        {T.zmianaTb}
+                        <TekstZWzorami tekst={T.zmianaTb} />
                       </button>
                     </>
                   )}

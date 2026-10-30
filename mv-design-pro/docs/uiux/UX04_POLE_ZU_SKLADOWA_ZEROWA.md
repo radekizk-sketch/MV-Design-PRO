@@ -527,7 +527,7 @@ wyjaśnialnego zdjętych (zapadka w dół 252 → 239 wpisów, MIGRACJA 203 → 
 | projekt uziemienia punktu neutralnego | prąd resztkowy (Z-6), energia rezystora (Z-7) | Z-6 `NIE_SPELNIA` (19,87 % > 10 %) | `residual_share_percent` addytywnie; tożsamość sieci także przy jednej sieci |
 | detekcja doziemień | funkcje przekaźnika (Z-8) | `NIE_OCENIONO` (wyposażenie nie wskazane) | metoda złożona 51N+67N / 51N/50N wymaga każdej funkcji (dawniej „+” albo „/” zaliczało przekaźnik bez 67N); „komplet metod” jako wartość robocza skasowany — rozstrzygał kryterium samym założeniem; brak wyposażenia nie blokuje gotowości (zasada nr 4) |
 | napięcie powrotne | obwiednia (IEC 62271-100, stan `NIEUSTALONE`) | `BRAK_PODSTAWY` | obwiednia modelowa (narost do 2·U_r w 88 µs) bez podstawy skasowana; wielkością główną jest szczyt u_TRV = 38,019 kV fixtury; brak tablic u_c, t_3 nazwany |
-| rozruch silników | zapad (Z-9), czas (Z-10), moment (Z-11) | W `BRAK_DOWODU` (zapad 13,946 % ≤ 15 %) | I_n = P_n/(√3·U_n·cos φ_n·η_n) z wartościami roboczymi rejestru maszyn (0,85; 0,95) zamiast 0,9; t_r/t_utyku zamiast k_LR²·t_r/t_utyku (prąd zablokowanego wirnika liczony dwa razy: dawny wskaźnik 14,4 dla silnika z zapasem 0,4); Z_th z macierzy impedancyjnej z Z_Q modelu (bez 0,1 + j0,4 Ω i bez „pierwszej gałęzi zasilającej”); źródło za transformatorem albo brak źródła → brak nazwany |
+| rozruch silników | zapad (Z-9), czas (Z-10), moment (Z-11) | W `BRAK_DOWODU` (zapad 13,946 % ≤ 15 %) | I_n = P_n/(√3·U_n·cos φ_n·η_n) z wartościami roboczymi rejestru maszyn (0,85; 0,95) zamiast 0,9; t_r/t_utyku zamiast k_LR²·t_r/t_utyku (prąd zablokowanego wirnika liczony dwa razy: dawny wskaźnik 14,4 dla silnika z zapasem 0,4); Z_th z macierzy impedancyjnej z Z_Q modelu (bez 0,1 + j0,4 Ω i bez „pierwszej gałęzi zasilającej”); źródło za transformatorem albo brak źródła → brak nazwany (stan odcinka 3; w commicie 5 Z_th z mostu modelu — kanoniczny budowniczy sieci zwarciowej z przekładnią i K_T, szyna za transformatorem dostaje liczbę, fixtura: zapad 13,946 → 21,671 %, §3.21) |
 | walidacja benchmarkowa | zgodność z wartością odniesienia (Z-12) | `NIE_OCENIONO` (deklaracja) | bieg porównuje dwie liczby podane w danych — rekord nie wystawia werdyktu; dowodem zgodności solvera z pandapower jest odchyłka mierzona w `test_ieee_benchmark_wiring.py` |
 
 Pozostałe pozycje odcinka:
@@ -536,7 +536,7 @@ Pozostałe pozycje odcinka:
   czyta (`POLA_HOSTINGU_SZYNY/GALEZI/TRANSFORMATORA`), a obliczenie biegnie na TEJ projekcji
   (`_projekcja_hostingu` — predykaty parami: pole spoza listy nie wchodzi ani do ziarna, ani
   do obliczenia; wynik nie może zależeć od danych spoza odcisku). Impedancja zastępcza węzła
-  z tej samej funkcji co rozruch. Fixtura: szyna stacji 7,0 → 7,4 MW, granica krytyczna
+  z tej samej funkcji co rozruch (od commitu 5 — z mostu modelu, §3.21). Fixtura: szyna stacji 7,0 → 7,4 MW, granica krytyczna
   U_max → I_gałęzi — dwie przyczyny razem: Z_th z macierzy (Z_Q obu szyn i kabel) zamiast
   podziału mocy zwarciowej jednej szyny oraz nowe ziarno. Test
   `tests/test_v126_hosting_rng_izolacja.py`: pole nieczytane × {ziarno, wynik} bez zmian,
@@ -564,8 +564,8 @@ Pozostałe pozycje odcinka:
   duplikat fizyki analizy `earthing_safety` (I_G = S_f·I_f, GPR = I_G·R_g); „napięcie
   dotykowe” mostu było napięciem uziomu U_E = I_u·R_u (58 501 V), a I″k1 nie jest prądem
   doziemnym sieci izolowanej ani kompensowanej. Pakiet dowodowy `EARTHING_GROUND_FAULT_SN`
-  z równaniami `EQ_EARTH_001..003` zostaje — identyfikatory są w `FROZEN_IDS` rejestru równań
-  (kontrakt FROZEN; decyzja o pakiecie należy do architekta). Rejestr gotowości 183 → 182
+  z równaniami `EQ_EARTH_001..003` — skasowany w commicie 5 decyzją architekta (§ commit 5:
+  0 producentów, dubel dowodu bezpieczeństwa uziomu V12.6). Rejestr gotowości 183 → 182
   kodów, słownik `READINESS_FIXACTIONS_CANONICAL_PL.md` i fixtura frontu zregenerowane
   generatorami.
 - Napięcie powrotne zostaje nazwaną luką: rekord `BRAK_PODSTAWY` z brakiem „tabele parametrów
@@ -590,7 +590,8 @@ Pozostałe pozycje odcinka:
   `symbol_latex`), wyjątek strażnika przesunięty na bieżącą linię klucza `Re Z_conv,min`.
 - Bramka odcinka (vitest ekranu analiz i strażniki z CI, 2026-10-30): tekst dla projektanta
   nie niesie identyfikatorów elementów także w powodach danych przyjętych — dana przyjęta
-  podziału mocy zwarciowej (`v126_academic._dana_przyjeta_podzialu_zrodla`) nazywa szyny
+  podziału mocy zwarciowej (`v126_academic._dana_przyjeta_podzialu_zrodla`; skasowana w commicie 5
+  razem z podziałem mocy zwarciowej — §3.21) nazywa szyny
   nazwą z modelu (dawniej `gpz/8600…/section/001/bus_sn` na ekranie rozruchu), a wartość
   robocza niezawodności (`_NiezawodnoscGalezi.galaz(ref, nazwa, …)`) — gałęzie nazwą
   z `enm.nazwy_elementow`; odmowa parametru `reliability_data` jest `OdmowaNazwana`
@@ -743,6 +744,145 @@ transformator ze źródła sieciowego innego poziomu napięcia nie dostaje Z_th 
 V12.6 bez przekładni, ograniczenie O-21), więc hosting i rozruch silnika takiej szyny są
 brakiem nazwanym zamiast dawnej liczby z sumy omów dwóch poziomów napięć. Zamknięcie wymaga
 macierzy z przekładnią z jednego modułu stemplowania (decyzja O-26) — zgłoszone architektowi.
+Zamknięte w commicie 5 (§3.21): Z_th z kanonicznego budowniczego sieci zwarciowej.
+
+### 3.21 Commit 5: impedancja zastępcza z mostu modelu, prąd uziomowy stacji z modelu, wzory w prozie (B-01)
+
+Zgoda B-01 architekta na zmianę rdzenia `v126_academic.py` (wersja
+`v126-academic-whitebox-1.5`) pod warunkiem sondy liczb, determinizmu 3× i wyroczni ręcznej;
+sankcja w `solver_boundary_guard.SANCTIONED_CHANGES`, odcisk SHA-256 odświeżony wyłącznie dla
+tego pliku (`guard_references/solver_hashes.json`, 1 wiersz). `short_circuit_core.py` bez
+zmian — most woła istniejące `build_zbus`.
+
+**Impedancja zastępcza szyny (Z_th).** Dawniej solver składał Z_th sam: z mocy zwarciowej
+szyny („podział mocy zwarciowej” z daną przyjętą), z Z_Q szyny albo z omowej macierzy V12.6
+bez przekładni (szyna za transformatorem dostawała brak, ograniczenie O-21). Teraz
+Z_th = Z_bus[k,k]·Z_b,k liczy most modelu (`solver_input/v126_contracts.py::
+impedancje_zastepcze_szyn`) kanonicznym budowniczym sieci zwarciowej
+(`short_circuit_core.build_zbus`: przekładnia, K_T wg IEC 60909-0:2016 §6.3.3 eq. 12a, Z_Q wg
+§6.2.1 eq. 6), wyłącznie dla analiz, które ją czytają (`ANALIZY_IMPEDANCJI_ZASTEPCZEJ` =
+przepustowość i rozruch silnika). Wyspa bez impedancji do odniesienia
+(`NetworkGraph.wezly_bez_impedancji_do_odniesienia` — jedna definicja, przeniesiona
+z `enm/canonical_analysis.py`) nie dostaje Z_th, a solver nazywa brak. Solver czyta Z_th
+wyłącznie z pól szyny `thevenin_r_ohm`/`thevenin_x_ohm`; podział mocy zwarciowej i jego dana
+przyjęta skasowane (jedna prawda: most modelu).
+
+Wyrocznia ręczna (`tests/solver_input/test_impedancja_zastepcza_mostu_v126.py`, 44 testy):
+zasilanie 110 kV (S″kQ = 3000 MVA, R/X = 0,1, c_max = 1,1) — T1 110/15 kV 25 MVA
+(u_k = 11 %, P_k = 120 kW) — szyna SN — kabel 3 km — szyna SN2 — T2 15/0,4 kV 0,63 MVA
+(u_k = 6 %, c_max = 1,05) — szyna nN. Liczby kontrolne z jawnych wzorów: Z_SN =
+0,050561 + j1,051721 Ω, K_T transformatora nN = 0,963336. Iloczyn: szyna {WN, SN, SN2, nN} ×
+analiza {przepustowość, rozruch} × wyspa {z, bez}; ślad przepustowości
+`impedancje_zastepcze_ohm` równy wyroczni; sieci wzorcowe gn01–gn06 — każda szyna zasilana
+ma Z_th, szyna nN mniejszą moc zwarciową niż szyna WN; determinizm wejścia 3×.
+
+Sonda przed/po (przepustowość przyłączeniowa, n = 64 losowania, każde wejście 3 razy — ten sam
+hash na HEAD i po zmianie):
+
+| Wejście | Szyna | HEAD [MW] | Po [MW] |
+|---|---|---|---|
+| fixtura odpowiedzi | stacja | 7,4 | 7,3 |
+| gn01 | szyna nN | brak | 1,2 |
+| gn02 | szyna nN | brak | 1,1 |
+| gn03 | węzeł łącznika 2 | 10,0 | 5,8 |
+| gn04 | szyna nN | brak | 2,0 |
+| gn05 | szyna nN | brak | 1,9 |
+| gn06 | szyna nN | brak | 2,0 |
+| `golden_enm_cgmes` | szyna SN główna | brak | 10,0 |
+| `golden_enm_cgmes` | szyna SN b | brak | 6,6 |
+| `golden_enm_cgmes` | szyna SN c | brak | 6,2 |
+| `golden_enm_cgmes` | szyna nN | brak | 1,6 |
+
+Szyny dalej w sieci zmieniają się o około ±0,3 MW także przez nowe ziarno (projekcja pól
+czytanych obejmuje teraz pola Z_th). Rozruch silnika w fixturze odpowiedzi: Z_th
+0,454761 + j0,971303 → 0,959 + j1,363 Ω (z przekładnią zamiast omowej sumy dwóch poziomów
+napięć), zapad 13,9457 → 21,6705 %: kryterium zapadu Z-9 przechodzi z „spełnia”
+(13,95 % ≤ 15 %) na „nie spełnia” (21,67 % > 15 %), rekord rozruchu z `BRAK_DOWODU` na
+`NIE_SPELNIA` (kompletność `NIEPELNY` — założenie Z-9 i wartości robocze tabliczki). Determinizm 3× solvera dla każdego z 14 rodzajów (fixtura odpowiedzi)
+i dla każdego rodzaju sceny akademickiej z gotowością potwierdzoną (wejście i wynik): zgodny.
+
+**Prąd zwarcia doziemnego stacji z modelu (EN 50522:2010 tab. 1).** Dawniej bieg oceny uziomu
+brał prąd wyłącznie z parametru projektanta, a bieg sceny meldował „nie wskazano szyny
+stacji”, choć szyna była wskazana (druga, ręczna składanka wejścia gubiła prąd z modelu).
+Teraz jedna składanka wejścia (`api/v126_academic.py::wejscie_solvera_v126`) dokłada
+`prad_uziomowy` z `application/analyses/v126_prad_uziomowy.py::doloz_prad_uziomowy` (ta sama
+funkcja co gotowość): przypadki stacji — każda galwanicznie połączona sieć SN stacji wg sposobu
+pracy punktu neutralnego oraz strona WN — liczone TĄ SAMĄ drogą co bieg zwarciowy
+(`enm/canonical_analysis.py::zwarcia_doziemne_szyn`, punkty zwarcia bez węzłów pomocniczych —
+ta sama reguła `ZNACZNIK_SZYNY_POMOCNICZEJ` co assembler). Wielkość miarodajna
+(`v126_academic.wielkosc_pradu_uziomowego`): WN oraz SN z rezystorem albo uziemiona
+bezpośrednio — I″k1; izolowana — I_C; kompensowana z dławikiem w stacji —
+√(I_L² + I_res²), bez dławika w stacji — I_res; rozstrzyga największy przypadek. Wpis
+projektanta jest nadpisaniem `ESTIMATED` z prądem modelu w uzasadnieniu; przypadek
+nieoznaczalny niesie przyczynę (bez liczby). Scena akademicka: I_F = 13,5609 kA (WN 110 kV,
+I″k1), przypadek SN kompensowany 294,09 A. Ekran oceny uziomu pokazuje prąd przed redukcją,
+podstawę wyboru i tabelę przypadków (strona, sposób pracy, wielkość jako wzór, prąd, reguła,
+przyczyna braku). Pakiet dowodowy `EARTHING_GROUND_FAULT_SN` (P19) skasowany — 0 producentów,
+dubel dowodu bezpieczeństwa uziomu V12.6 (`legacy_public_path_guard`, grupa ZU5).
+
+**Wzory w prozie, liczby po polsku.** Symbole w tekstach katalogu kart, gotowości (warunki,
+dane z modelu, propozycje) i wyniku solvera jako wzory inline `$…$` renderowane przez
+`TekstZWzorami`; `opis_pl` warunku gotowości (renderowany wprost i w komunikacie 422) bez `$`
+i bez zapisu ASCII symboli; liczby przez `werdykt.format_liczba` (warstwa aplikacji)
+i `_lp_tekst` (solver) — przecinek dziesiętny. `ui_math_guard` PIN 9 → 0. Klasa KaTeX
+w trybie ścisłym: polskie litery w `\mathrm{}` (`F_{\mathrm{przekaźnika}}`,
+`\Delta U_{\%,\mathrm{ciąg}}`, „zespołu”) dają ostrzeżenie `unicodeTextInMathMode` i czcionkę
+zastępczą — zamienione na `\text{}` u źródła (katalog i oceny V12.6, ocena doboru magistrali,
+rejestr wzorów); pomiar przed naprawą: 1022 wzory we wszystkich fixturach harnessu,
+8 naruszeń. Rejestr wzorów kroków (`v126_wzory.py`) ma wpis dla każdego klucza kroku
+w źródle solvera (test kompletności z regexu źródła; pin wpisów 15 → 16).
+
+**Ekran składowych — ślad doziemienia w czterech sposobach (zrzuty dla B-02).** Scena
+harnessu `wyniki-skladowe-doziemienie` (parametr `sposob`) karmi produkcyjny ekran E-29
+odpowiedziami REALNEGO biegu 1F (`doziemienie_sposoby_scena.json`, generator
+`eksport_fixtur_harnessu.py::doziemienie_sposoby_scena`) na sieci wyroczni §3.20; spec
+`e2e/doziemienie-slad-zrzuty-screenshot.spec.ts` (4 sposoby × 2 motywy) sprawdza prąd, każdy
+krok śladu złożony przez KaTeX, krok prądu własnego modelu obecny i cudzych nieobecny,
+i zapisuje PNG do `docs/uiux/zrzuty/ux04-doziemienie/`. Werdykt wizualny należy do
+właściciela. Przy okazji: scena E-29 wkładała do magazynu modelu kopertę odpowiedzi
+`/snapshot` zamiast modelu (most nazw nie widział szyn) — naprawione.
+
+**Ślad prądu uziomowego — proza kroku bez LaTeX-u.** `guardy_z_ci` na drzewie commitu wykrył
+w polu `substitution` kroku `en50522_prad_uziomowy` wzór `$I''_{k1}$` (kontrakt kroku śladu:
+LaTeX wyłącznie w polach `*_latex`, `slad_proza_bez_latex_guard`, 3 wystąpienia w fixturze
+sceny akademickiej). Przyczyna: jedno zdanie `powod` służyło dwóm kontraktom — uzasadnieniu
+wyniku (proza ze wzorami dla `TekstZWzorami`) i podstawieniu kroku (proza bez LaTeX-u). Teraz
+oba zdania powstają z tych samych wartości (nazwa przypadku, prąd, liczba przypadków), a
+podstawienie nie niesie wzoru symbolu (symbol ma kolumna `wielkosc_latex` przypadku w danych
+kroku). Test iloczynu `test_prad_stacji_z_modelu_iloczyn_sposob_wn_zrodlo` (4 sposoby × strona
+WN × źródło prądu) i test węzła pomocniczego stosują predykat strażnika do całego śladu biegu
+API oraz przypinają relację podstawienie ↔ uzasadnienie. Ten sam bieg strażników ujawnił dwa
+inne zapisy: `solver_input_substitute_guard` — `z.ikss_a or 0.0` w kluczu wyboru największego
+I″k1 (`v126_prad_uziomowy.py`, gałąź po filtrze `is not None`, ale wzorzec podstawienia zera
+za brak danej) przepisany na jawną listę par bez podstawienia; `polykanie_wyjatkow_guard` —
+pin `raise ValueError` w `application/**` 80 → 79 (pomiar na b1e677ced i na drzewie commitu:
+kontrola zamrożonych identyfikatorów równań P19 skasowana z pakietem). Asercja powodu
+nadpisania w `test_v126_prad_uziomowy.py` oczekiwała kropki dziesiętnej, choć solver pisze
+przecinkiem (`_lp_tekst`) — 8 wariantów nadpisania było czerwonych; asercja przepisana do
+zapisu polskiego. Test ekranu `pradUziomowy.test.tsx` dostał jawny budżet czasu 20 s na test
+(pomiar: 3,6 s w biegu pojedynczym, 14,8 s / 3 testy w puli 85 plików — przekroczenie
+domyślnych 5 s przez obciążenie maszyny, asercje bez zmian).
+
+**Etykiety wielkości sekcji doziemienia (E-29).** Zrzuty sceny czterech sposobów pokazały
+etykiety z symbolami ASCII („Napięcie fazowe U_f”, „Prąd pojemnościowy sieci I_C”, „U0”,
+„Z_f”, „v = (I_C − I_L)/I_C”) — `ui_math_guard` ich nie widzi (wzorce: `<=`, `sqrt(`, potęga,
+` * `, indeks z przecinkiem; goły indeks `X_y` poza wzorcami). Etykiety niosą teraz symbole
+jako `$…$`, ekran składa `<dt>` przez `TekstZWzorami`; test „sieć kompensowana” przypina każdą
+etykietę (KaTeX obecny, bez surowego `$`; iniekcja zwykłego `{w.etykieta}` — czerwony).
+Pomiar klasy poza tą sekcją (2026-10-30, `grep` literałów `'…X_y…'` poza `$…$` w `ui2/**`
+bez testów; linie z identyfikatorami `data-`/`mvd-` i importami odfiltrowane): przed naprawą
+sekcji 151 linii, po niej 145 linii w 49 plikach, z tego 66 w `strings.ts` (m.in. stan
+fazowy: kolumny `U_A`/`I_N`, zwarcia: `Z_f`, `|Z_Q|`, SSCI: `Z_grid`, `Re_min`, koordynacja:
+`I_k2min`), oraz proza backendu podstawy doziemienia „k = U_fazy zdrowej/U_f”
+(`doziemienie_sn.py:89`, `v126_contracts.py:837`) i etykieta `StationConfigurator.tsx:648`
+(warstwa `ui/`). To klasa przekrojowa (wiele ekranów, wzorzec strażnika do rozszerzenia,
+podstawa doziemienia wchodzi do szkieletu parytetu assemblera) — zgłoszona architektowi do
+orkiestracji z tym pomiarem.
+
+Uwaga warsztatowa: black uruchomiony jednym wywołaniem na plikach `backend/` i `scripts/`
+formatuje z szerokością 88 (konfiguracja z katalogu wspólnego) — przeformatowanie 44 plików
+cofnięte skryptem porównującym AST; pliki `scripts/` formatowane z `--config
+backend/pyproject.toml`.
 
 ## 4. Iloczyn testów
 
@@ -850,13 +990,13 @@ Odcinek 3 karty (rekordy werdyktu V12.6, założenia jawne, ziarno przepustowoś
   zbiór rodzajów z rekordami = rejestr rodzajów; trzeci wariant biegu {obiekty bez wyniku
   liczbowego: silnik na szynach bez mocy zwarciowej i impedancji zasilania} × każdy tekst
   rekordu → bez literałów Pythona (`None/True/False/nan/inf`), opis śladu w zapisie polskim;
-- `tests/test_v126_rozruch_silnika.py` — tabliczka {cos φ_n, η_n podane, brak} × źródło {Z_Q
-  modelu, moc zwarciowa} × szyna {źródłowa, za kablem} z wyrocznią I_n, I_r, Z_th, ΔU, M_r;
-  źródło {brak, za transformatorem} → brak nazwany; t_r {<, =, >} t_utyku; M_r {≥, <} M_obc;
-  dane przyjęte ⇔ wartość robocza; pola wymagane; determinizm; konsument impedancji
-  zastępczej {rozruch, przepustowość} × źródło {Z_Q modelu, moc zwarciowa} × węzeł
-  {źródłowy, za kablem} z identyfikatorami szyn w postaci mostu ENM → dana przyjęta
-  podziału ⇔ moc zwarciowa, nazwana nazwą szyny, bez identyfikatora;
+- `tests/test_v126_rozruch_silnika.py` (stan commitu 5) — tabliczka {cos φ_n, η_n podane,
+  brak} × impedancja zastępcza {podana na wejściu szyny, brak — także gdy szyna niesie samą
+  moc zwarciową albo Z_Q} × szyna {źródłowa, za kablem} z wyrocznią I_n, I_r, Z_th, ΔU, M_r;
+  brak Z_th → brak nazwany (solver nie składa impedancji zastępczej sam); t_r {<, =, >}
+  t_utyku; M_r {≥, <} M_obc; dane przyjęte ⇔ wartość robocza; pola wymagane; determinizm.
+  Wyrocznia Z_th z przekładnią i K_T —
+  `tests/solver_input/test_impedancja_zastepcza_mostu_v126.py` (§3.21);
 - `tests/solver_input/test_v126_niezawodnosc_dane.py` — rodzaj gałęzi {linia, kabel, aparat}
   × dane projektanta {brak, λ, czas odnowy, oba} × długość {znana, brak} → wartość i dana
   przyjęta (dana ⇔ wartość robocza, powód z nazwą gałęzi, bez identyfikatora); parametr
@@ -961,8 +1101,8 @@ bajtowo z kopią):
 | Dane przyjęte węzła bez `b0_galezi` | 1 czerwony z 242 (`test_dane_przyjete_wielkosci_z_modelu_niosa_b0_z_macierzy_y0[k_powyzej_progu]`) |
 | Kotwica wg dawnej reguły (pojemność liczona jako bocznik domykający) | 3 czerwone i 30 błędów z 242 (osobliwa macierz sieci izolowanej) |
 | Pojemność poza klasyfikacją drogi zerowej | 1 czerwony z 245 (`test_siec_nn_izolowana_pojemnosc_klasyfikuje_droge_zerowa[b0]` — test dopisany, bo bez niego iniekcja przechodziła) |
-| Dana przyjęta podziału mocy zwarciowej z identyfikatorami szyn zamiast nazw | 4 czerwone z 25 (`test_dana_przyjeta_podzialu_zrodla_nazwana_nazwa_szyny[…moc_zwarciowa…]`) |
-| Przepustowość bez danej przyjętej podziału mocy zwarciowej (`if False`) | 2 czerwone z 25 (`[…moc_zwarciowa-hosting_capacity]`) |
+| Dana przyjęta podziału mocy zwarciowej z identyfikatorami szyn zamiast nazw (mechanizm i test skasowane w commicie 5, §3.21) | 4 czerwone z 25 (`test_dana_przyjeta_podzialu_zrodla_nazwana_nazwa_szyny[…moc_zwarciowa…]`) |
+| Przepustowość bez danej przyjętej podziału mocy zwarciowej (`if False`; mechanizm skasowany w commicie 5) | 2 czerwone z 25 (`[…moc_zwarciowa-hosting_capacity]`) |
 | Fixtura odpowiedzi: identyfikator gałęzi w powodzie wartości roboczej niezawodności | strażnik prezentacji czerwony (`surowaReferencjaWPodpowiedziach`, rodzaj `reliability_contingency`); fixtura przywrócona i porównana bajtowo |
 | Opis śladu kryterium z surowym zapisem liczb (`{p.wynik} {p.jednostka}`, `{szczyt} kV`) | 19 czerwonych z 46 (`test_teksty_rekordow_bez_surowego_zapisu_pythona[motor_starting-bez_wyniku_liczbowego]` i 17 innych, `test_rozruch_bez_impedancji_zasilania_nazywa_brak_wyniku_w_sladzie`) |
 | Fikstura okna kontyngencji w wersji sprzed przepisania (HEAD) | `test_fikstura_ekranu_niesie_teksty_aktualnej_odpowiedzi_backendu` czerwony |
@@ -975,6 +1115,23 @@ bajtowo z kopią):
 | Odcinek 4: ekran podstawia prozę `substitution` do KaTeX-a | 2 czerwone z 21 (`EkranSkladowych.test.tsx` — ślad WHITE BOX, krok bez podstawienia LaTeX) |
 | Odcinek 4: ekran bez kroków śladu | 2 czerwone z 21 (jw.) |
 | Odcinek 4: `warunek_latex` z literałem `10\%` i stała Z-6 12 % | `test_prog_zalozenia_z_jednego_zrodla_w_rekordzie` i parytet dokumentu §7 czerwone |
+| Commit 5: kompensowany z dławikiem w stacji bez I_L (`math.hypot` → I_res) | `test_v126_prad_uziomowy.py::test_prad_stacji_z_modelu_iloczyn_sposob_wn_zrodlo[…]` czerwony |
+| Commit 5: sieć SN z rezystorem poza regułą I″k1 | jw. czerwony |
+| Commit 5: strona WN poza regułą I″k1 | jw. czerwony (`[izolowany-liczona-model]`) |
+| Commit 5: punkty zwarcia przypadków z węzłami pomocniczymi | jw. czerwony |
+| Commit 5: szyna pomocnicza przyjęta jako szyna stacji (`if False`) | jw. czerwony |
+| Commit 5: wskrzeszony pakiet `earthing_ground_fault_sn.py` z `EarthingGroundFaultPackInput` | `legacy_public_path_guard` rc 1 (`resurrected-definition`, grupa ZU5) |
+| Commit 5: dawny zapis ASCII `sladWzorBieg` (ślad rozpływu OSD) | `wzorySladuLatex.test.ts` czerwony |
+| Commit 5: symbol ASCII `U_dot,dop` w prozie katalogu | `test_proza_katalogu_niesie_symbole_wylacznie_jako_wzory_inline` czerwony |
+| Commit 5: surowa liczba z kropką w uzasadnieniu prądu z modelu (solver) | `test_zdania_solvera_bez_kropki_dziesietnej[earthing_safety]` czerwony |
+| Commit 5: Z_b szyny z pierwszego węzła macierzy zamiast z węzła szyny | `test_z_th_szyny_z_mostu_rowna_wyroczni[bez_wyspy-WN-hosting_capacity]` czerwony |
+| Commit 5: wpis `en50522_prad_uziomowy` usunięty z rejestru wzorów | `test_v126_wzory.py` czerwony (kompletność rejestru ze źródła) |
+| Commit 5: `\mathrm{przekaźnika}` w fixturze katalogu (pole `wartosc_graniczna`) | `wzoryLatexFixtur.test.ts` czerwony — dopiero po rozszerzeniu skanu na KAŻDE pole tekstowe z `$…$`; przy filtrze `*_pl` iniekcja przechodziła (test poprawiony) |
+| Commit 5: tabela przypadków prądu uziomowego zdjęta z prezentacji | `pradUziomowy.test.tsx` czerwony (2 z 3) |
+| Commit 5: surowy float prądu w danej gotowości uziomu | `test_gotowosc_bez_kropki_dziesietnej_i_bez_symboli_ascii[earthing_safety-parametry_sceny]` czerwony |
+| Commit 5: etykieta warunku „… wyłącznika U_r” (symbol ASCII) | `test_gotowosc_bez_kropki_dziesietnej_i_bez_symboli_ascii[transient_trv-bez_parametrow]` czerwony |
+| Commit 5: podstawienie kroku `en50522_prad_uziomowy` = uzasadnienie ze wzorem `$I''_{k1}$` | `test_prad_stacji_z_modelu_iloczyn_sposob_wn_zrodlo[izolowany-liczona-model]` czerwony |
+| Commit 5: etykiety wielkości doziemienia E-29 renderowane jako zwykły tekst (`{w.etykieta}`) | `EkranSkladowych.test.tsx` „sieć kompensowana” czerwony (`$I_C$` w etykiecie) |
 
 Iniekcje trybów w testach (monkeypatch w `test_doziemienie_tryby_punktu_neutralnego.py`,
 `test_v126_izolacja_tryby_punktu_neutralnego.py::test_iniekcja_k_rezystora_jak_bezposrednie`)
@@ -1088,15 +1245,15 @@ Znaleziska zgłoszone, nienaprawione w tej karcie (z uzasadnieniem):
   wynik fixtury 7,7 → 7,0 MW przy n = 64 losowań. Determinizm (to samo wejście → ten sam wynik)
   jest zachowany; rozrzut to skutek małego n fixtury (domyślnie n = 1000). Zawężenie ziarna do
   pól wpływających na hosting zmienia wszystkie wyniki hosting — decyzja architekta (B-01).
-  Sonda ziarna odcinka 4 (§3.20) ujawniła szyny zasilane przez transformator bez Z_th
+  Sonda ziarna odcinka 4 (§3.20; zamknięte w commicie 5, §3.21) ujawniła szyny zasilane przez transformator bez Z_th
   (macierz V12.6 bez przekładni, O-21/O-26) — zgłoszone architektowi z wariantami.
 - Glif ZU na końcu toru pola SLD — wstrzymany (werdykt wizualny B-02).
 - Model dwóch sekcji przy otwartym sprzęgle: sekcja 2 bez zespołu nie ma pojemności własnych
   odcinków w teście iloczynu (odcinki są w sekcji 1), więc jej wiersz to brak nazwany zerowej
   pojemności, nie liczba — zachowanie poprawne, odnotowane jako granica iloczynu.
 - `ground_fault_bridge` (most doziemienia V12.6) bez konsumenta — SKASOWANY w odcinku 3
-  (§3.18); pakiet dowodowy `EARTHING_GROUND_FAULT_SN` zostaje, bo jego identyfikatory równań
-  są w `FROZEN_IDS` (decyzja architekta). Kryterium dostrojenia ±10 % i wartości robocze
+  (§3.18); pakiet dowodowy `EARTHING_GROUND_FAULT_SN` skasowany w commicie 5 (decyzja
+  architekta: wepnij albo skasuj, jeśli dubluje dowód V12.6 — dubluje). Kryterium dostrojenia ±10 % i wartości robocze
   niezawodności — jawne założenia rejestru §7 i dane przyjęte `ESTIMATED` (§3.18).
 - Rozpływ niesymetryczny: odbiór faza–N w sieci SN za YNd11 dostaje odmowę „brak drogi I0"
   także przy zespole uziemiającym, bo solver BFS (FROZEN) nie ma boczników. Sieci SN
@@ -1121,6 +1278,31 @@ czyta `neutral_grounding_mode` z faktów pola, które wyprowadza `_fakty_pola_wy
 samej prawdy. Biegi scenariuszowe liczą wyłącznie węzeł zwarcia (konstrukcja istniejąca,
 nie defekt tej karty).
 
+### 6.1 Inwentarz klas commitu 5
+
+| Klasa | Miejsce (`plik:linia`) | Co zrobiono |
+|---|---|---|
+| Producent Z_th szyny | `solver_input/v126_contracts.py:611` `impedancje_zastepcze_szyn`, wołany w `:1741` dla `ANALIZY_IMPEDANCJI_ZASTEPCZEJ` (`:606`) | Z_bus[k,k]·Z_b,k z `short_circuit_core.build_zbus` (jeden budowniczy z biegiem IEC 60909) |
+| Konsument Z_th | `network_model/solvers/v126_academic.py:3299` `_impedancja_zastepcza_szyny` (przepustowość i rozruch), pola projekcji `:709` `POLA_HOSTINGU_SZYNY` | czyta wyłącznie `thevenin_*`; podział mocy zwarciowej, Z_Q szyny jako Z_th i dana przyjęta podziału skasowane; brak → brak nazwany |
+| Wyspa bez odniesienia | `network_model/core/graph.py:390` `NetworkGraph.wezly_bez_impedancji_do_odniesienia` | jedna definicja dla biegu zwarciowego (`enm/canonical_analysis.py`) i mostu V12.6 (dawniej funkcja modułu `canonical_analysis`) |
+| Składanie wejścia solvera z modelu | `api/v126_academic.py:226` `wejscie_solvera_v126` (bieg API `:343`, sceny: `scripts/eksport_fixtur_harnessu.py`, `tests/uczciwosc/pomocnicze.py:85`, `tests/application/analyses/test_v126_wzory.py:56`); gotowość `application/analyses/v126_gotowosc.py:1228` | jedna składanka biegu; gotowość składa model bez danych formularzy (świadomie — ocenia braki parametrów, a nie liczy), ale z TĄ SAMĄ funkcją prądu uziomowego `doloz_prad_uziomowy` |
+| Prąd uziomowy stacji | `application/analyses/v126_prad_uziomowy.py:175` `prad_uziomowy_z_modelu`, `:274` `doloz_prad_uziomowy`; `enm/canonical_analysis.py:2560` `zwarcia_doziemne_szyn`, `:2517` `_doziemienie_sieci_wezla` (jeden predykat doziemienia wiersza biegu i przypadku stacji); `v126_academic.py:132` `wielkosc_pradu_uziomowego`, `:1909` `_prad_uziomowy` | EN 50522 tab. 1 z modelu; nadpisanie projektanta `ESTIMATED`; przypadek bez wyniku z przyczyną |
+| Węzeł pomocniczy (zacisk pola, punkt podziału) | `enm/assembler.py` (`ZNACZNIK_SZYNY_POMOCNICZEJ` zamiast literału `"helper_bus"`), `v126_prad_uziomowy.py:184`, `:199` | ten sam znacznik dla celu zwarcia biegu i przypadków stacji; szyna pomocnicza jako szyna uziomu → odmowa nazwana |
+| Dubel dowodu uziomu | `application/proof_engine/packs/earthing_ground_fault_sn.py` (skasowany), `types.py`, `proof_generator.py`, `equation_registry.py`, `proof_inspector/inspector.py`, `unit_verifier.py`, reguły NR_P19 w `analysis/normative/*`, pokrycie (`analysis/coverage_score/builder.py`, `application/analyses/pokrycie_analiz.py`), UI (`ui/shell/V12OverlayModeController.tsx`, `ui/workspace/WorkspaceSurfaceRouter.tsx`, `routerDisplayHelpers.ts`) | skasowane; nawrót pilnuje `legacy_public_path_guard` (ZU5) |
+| Symbol ASCII w prozie | katalog (`v126_katalog.py`), gotowość (`v126_gotowosc.py` — warunki, dane z modelu, propozycje), solver (`v126_academic.py` — uzasadnienia prądu uziomowego), ekrany ui2 (ślad OSD, obszar OZE, arkusz, estymacja, SSCI, aparatura) | wzory `$…$` przez `TekstZWzorami`; `opis_pl` warunku gotowości bez `$` (renderowany wprost i w 422); `ui_math_guard` PIN 0 |
+| Liczba z kropką w prozie | `v126_gotowosc.py` (`format_liczba`), `v126_academic.py` (`_lp_tekst`) | przecinek dziesiętny; test `test_v126_liczby_po_polsku.py` (każdy rodzaj × {bez parametrów, parametry sceny}) |
+| Polska litera w `\mathrm{}` | `v126_katalog.py` (4×), `v126_oceny.py:971`, `ocena_doboru_magistrali.py:596`, `v126_wzory.py:397` | `\text{}`; testy KaTeX `strict: 'error'` na wszystkich fixturach harnessu i tekstach backendu |
+| Kompletność rejestru wzorów kroków | `application/analyses/v126_wzory.py` (wpis `en50522_prad_uziomowy`) | test porównuje rejestr z kluczami `trace.add` w źródle solvera |
+| Pole prozy kroku śladu V12.6 (`substitution`, `result_pl`) | `v126_academic.py` `_prad_uziomowy` — trzy gałęzie `trace.add("en50522_prad_uziomowy", …)` (z modelu, nadpisanie, nazwany brak); pozostałe kroki 14 rodzajów w korpusie fixtur (`akademickie_scena_biegi.json`, `odpowiedziSolvera.json`) | podstawienie bez wzoru symbolu; korpus 1188 kroków / 18 dokumentów zielony w `slad_proza_bez_latex_guard`; predykat strażnika w teście iloczynu biegu API |
+
+Świadomie poza zmianą (uzasadnienie merytoryczne): `enm/mapping.py` `BrakWynikuZerowego.opis_pl`
+(zapis „I_C”, „√(I_w² + (I_C − I_L)²)”) oraz teksty łańcucha werdyktu V12.6 (`v126_oceny.py`
+— opisy kryteriów, `dane_przyjete` solvera, `message_pl` SSCI, wartości robocze) — to zdania
+rekordów werdyktu wyjaśnialnego, które przepisuje równoległa karta 190 wpisów MIGRACJA strażnika
+werdyktu (wspólne fixtury `skladowe_scena_wynik.json` i odpowiedzi; zmiana tutaj dałaby konflikt
+regeneracji tych samych plików). Pola `formula` śladu solvera zostają w zapisie ASCII z założenia
+— ekran czyta `formula_latex` z rejestru `v126_wzory.py`.
+
 ## 7. Rejestr założeń inżynierskich kryteriów analiz specjalistycznych (Z-1…Z-12)
 
 Dokument podstawy rekordów oceny V12.6 (wydanie 2026-10-29, jednostka redakcyjna „§ Z-n”,
@@ -1139,7 +1321,7 @@ pilnuje `tests/test_v126_katalog_analiz.py::test_rejestr_zalozen_dokumentu_rowny
 | Z-3 | marginesu ochrony izolacji | Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. | 20 % | Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-4 | napięcia dotykowego rażeniowego | Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-5 | napięcia krokowego | Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-6 | prądu resztkowego sieci kompensowanej | Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. | 10 % | Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje. |
+| Z-6 | prądu resztkowego sieci kompensowanej | Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. | 10 % | Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie — prąd dławika równy prądowi pojemnościowemu sieci (s. 30), wartości dopuszczalnej nie podaje. |
 | Z-7 | obciążalności cieplnej rezystora punktu neutralnego | Energia wydzielona w rezystorze w czasie wyłączenia doziemienia E_k = I_th²·R·t_wył nie większa od energii znamionowej E_n = I_n²·R·t_n (kryterium adiabatyczne). | — | Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-8 | dostępności metody detekcji doziemień | Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. | — | Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej. |
 | Z-9 | zapadu napięcia przy rozruchu | Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. | 15 % | Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora. |
@@ -1153,3 +1335,86 @@ powrotne, rozruch silników i walidacja benchmarkowa — model niezwalidowany
 (`UNVALIDATED_MODEL`, obliczenie statyczne); detekcja doziemień — deklaracja konfiguracji
 (`DECLARATION`, porównanie zbiorów funkcji bez symulacji zjawiska). Żadna z tych zdolności nie
 jest dowodem regulacyjnym.
+
+## Przekazanie (stan bieżący, 2026-10-30)
+
+Sekcja aktualizowana przy każdym commicie. Niczego nie wypchnięto (gałąź wypycha architekt).
+
+**Parytet assemblera SC_1F_max — ZAMKNIĘTY.** Przyczyna ustalona pomiarem: commit b1e677ced
+zmienił ślad solvera doziemienia (`doziemienie_sn.py`), a poddrzewo
+`results[*].doziemienie_sieci.slad` nie jest na liście `KLUCZE_SLADU_LICZBOWEGO` harnessu, więc
+wchodzi do szkieletu porównywanego dokładnie. Różnice wyłącznie pod
+`$.results[*].doziemienie_sieci.slad[*]`: nowy klucz `substitution_latex` (408 kroków), przecinek
+dziesiętny w `substitution` (338 kroków), nowy krok `doziemienie_prad_bezposrednie` na `slad[0]`
+w trybie bezpośrednim (G16/00 i G17/00, po 4 wiersze). Liczby: 40 284 porównane parami —
+0 poza tolerancją. Złoty plik `tests/golden/parytet_assemblera/zlote_hashe.json` przegenerowany
+`regeneruj.py` (57 wpisów SC_1F_max; `liczby` tylko G16/00 i G17/00: 247 → 283) — wszedł
+w commit e73b336a1. Weryfikacja: `tests/golden` + `tests/enm` z nowym złotym plikiem na drzewie
+b1e677ced pod blokadą biegów ciężkich — kod wyjścia 0, 7350 passed (675 s).
+
+**Commit 5 — zrobione** (opis §3.21, §5, §6.1): Z_th z mostu modelu przez `build_zbus`
+z przekładnią, prąd uziomowy EN 50522 tab. 1 z modelu, kasacja P19, wzory w prozie, KaTeX
+ścisły, scena i spec zrzutowy doziemienia E-29, odcisk `solver_hashes.json` (v126_academic),
+piny mypy 163/21 i `raise ValueError` 79, trzy strażniki naprawione po `guardy_z_ci`
+(`slad_proza_bez_latex_guard`, `solver_input_substitute_guard`, `polykanie_wyjatkow_guard`),
+etykiety wielkości doziemienia E-29 jako wzory, spec `v126-okna-zrzuty` z szyną stacji z modelu
+własnej sieci.
+
+**Decyzja architekta w sprawie `ui_math_guard` — wykonana i zweryfikowana (biegi końcowe niżej).**
+Strażnik wykrywa goły indeks symbolu (`U_f`, `I_C`, `Z_0`, `I_Δn`, `φ_r`) w tekstach UI
+(`ui2/**` i dwa moduły katalogu backendu); skan Pythona po drzewie `ast` pomija wyłącznie pola
+`*_latex` i identyfikator `symbol` w parze z `symbol_latex`, skan TS — wartość właściwości
+`*_latex:`/`*Latex:`; stała kodu TS (`'V_MAGNITUDE'`) jest kodem tylko poza modułem `strings.ts`
+i poza właściwością tekstową. Pomiar przed naprawą: 122 trafienia w 31 plikach, po naprawie
+0 = PIN; samotest 66 passed, iniekcje (wyłączenie wzorca, reguły pary, kontekstu `strings.ts`,
+reguły pola LaTeX TS) czerwienią. Naprawa: symbole jako `$…$` składane przez `TekstZWzorami`,
+atrybuty i natywne `<option>` przez `tekstBezWzorow`. Klasa dynamiczna (symbol z danych
+renderowany tekstem): SSCI — kolumna „Wzór” z `formula_latex`; ślady migotania, łuku
+i `SladAnalizy` — etykieta „Wzór” bez identyfikatora kroku; karta techniczna katalogu —
+`symbolLatex` 54 definicji przez `MathInline`; rejestr maszyn wirujących — `symbol_latex`
+i `jednostka_latex` z backendu (fikstura frontu przegenerowana testem
+`test_parametry_robocze_maszyn.py`). Nazwa parametru katalogu V12.6 bez wzorów (kontrakt
+komunikatów gotowości). Pola kreatora mają powiązanie etykieta–kontrolka (`useId`).
+Proza podstawy `doziemienie_sn.py` i źródła k w `v126_contracts.py` — słowami; parytet
+SC_1F_max przegenerowany `regeneruj.py` (liczby 40 356 parami, 0 poza tolerancją; zmiany tylko
+`podstawa_pl` ×188 i `slad[*].substitution` ×70), fikstury frontu z generatorów. Strażnik
+`ui_terminology_guard` wycina `$...$` przed kontrolą identyfikatora kodowego. Wyścig testów
+katalogu kart analiz specjalistycznych usunięty (`aria-busy` + `czekajNaKatalogKart`).
+
+**Biegi w kolejce.** Bieg `cel7` przerwany (drzewo zmieniało się w trakcie, blokada
+trzymana > 1 h). Biegi końcowe na drzewie zatwierdzonym: `tests/golden` + `tests/enm`, zestaw
+celowany backendu, `guardy_z_ci`, e2e `v126-okna-zrzuty`, `v126-jezyk-screenshot`,
+`dowody-flow-ekspert-screenshot`, `zwarcie-przez-impedancje-przejscia` oraz
+`ZRZUTY_DO_DOKUMENTACJI=1` `doziemienie-slad-zrzuty-screenshot` (skrypt `bieg.sh`).
+**Bieg końcowy, etap `tests/golden` + `tests/enm` (13:02–13:12): 1 failed, 7349 passed.**
+Czerwony `test_nazwy_pol_sa_slowami_frontu` — etykiety ZIP frontu niosą wzory (`$a_P$`), a nazwy
+pól w komunikatach operacji backendu są tekstem. Naprawa u źródła testu: etykieta frontu jest
+porównywana w postaci tekstowej (`_odczyt_bez_wzorow`: ograniczniki i klamry znikają, indeks po
+podkreślniku; segment z poleceniem LaTeX jawnie się rozjeżdża). Przy okazji wykryta klasa
+„pierwsze trafienie”: `bus_ref` ma w `akademickie/parametry.ts` trzy etykiety (`POLA_UZIOMU`,
+`POLA_SILNIKA`, `POLA_ODBIORCOW`), a parser brał pierwszą — silnik był sprawdzany względem etykiety
+uziomu. Parser zwraca teraz `NIEJEDNOZNACZNA` przy kilku różnych etykietach tego samego klucza;
+wpisy słownika wskazują stałą (`plik.ts STALA.klucz`: 25 wpisów uziomu i silnika, `feeder_ref`
+w `ODBIOR_STRINGS` — `ODBIOR_SN_STRINGS` ma tę samą etykietę z inną treścią). Iniekcja (silnik
+bez stałej, nazwa uziomu) — czerwień; plik testu 106 passed.
+
+**Biegi końcowe — stan zamknięcia (2026-10-30).** Zestaw celowany backendu (13 katalogów i plików
+testów, xdist 4): 4 failed, 24 556 passed — cztery skutki commitu 5 naprawione u źródła
+(commit f25913de1: inwentarz `build_zbus`, wpisy czasów po kasacji P19, zakres wpisów pakietu L,
+pin mypy w metateście). `guardy_z_ci`: 107/107 strażników zielonych, lint i type-check zielone,
+samotesty 2 failed, 4601 passed — naprawione (commit 88de3b242: pin pól kontraktów 4503 z pomiarem,
+glob testu wzorów bez plików testów). E2E: `v126-okna-zrzuty`, `v126-jezyk-screenshot`,
+`dowody-flow-ekspert-screenshot`, `zwarcie-przez-impedancje-przejscia` — powtórka na czystym
+drzewie 19 passed, kod 0; `ZRZUTY_DO_DOKUMENTACJI=1` `doziemienie-slad-zrzuty-screenshot` 9 passed,
+osiem PNG odświeżonych (werdykt wizualny — właściciel, B-02).
+
+**Następca — co zostaje (pomiar, nie odroczenie w obrębie decyzji architekta).** Decyzja dotyczyła
+tekstów UI `ui2/**` (pin 0) i prozy `doziemienie_sn.py` (zrobione). Poza nią zmierzone i niezrobione:
+proza backendu z gołymi indeksami (2101 surowych trafień w 195 plikach, z fałszywymi trafieniami;
+największe `proof_engine` 885, `solvers` 355, `analyses` 168, `catalog` 167), warstwa `ui/**`
+(173 trafienia w 28 plikach), symbole spłaszczone do Unicode w `ui2` (`Ik″`, `Ith`, `Pmax`, `cosφ`:
+~253 literały w 42 plikach, także osie wykresów SVG) oraz nazwy pól w komunikatach operacji
+(`a_P`, `k_pf` — tekst API bez KaTeX-a). Każda z tych klas wymaga decyzji architekta o zakresie
+strażnika; specy e2e `menu-schematu-nn`, `w5e-ttit-nn`, `kanon-menu-sld` podają dane
+transformatorów 110/SN przy równoważniku SN (ten sam defekt co naprawiony spec Z_f, karta GPZ-MODEL)
+— w zakresie równoległej karty czerwonych e2e pełnego biegu.

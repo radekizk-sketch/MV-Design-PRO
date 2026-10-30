@@ -62,8 +62,8 @@ async function dodajZrodloSn(request: APIRequestContext, caseId: string): Promis
             catalog_item_id: SOURCE_ID,
             catalog_item_version: CATALOG_VERSION,
           },
-          hv_voltage_kv: 110.0,
-          transformer_sn_mva: 25.0,
+          // Równoważnik sieci na szynach SN GPZ zawiera już impedancję transformatorów 110/SN —
+          // operacja odmawia danych transformatorów w tym trybie (karta GPZ-MODEL).
         },
       },
     },
@@ -185,8 +185,10 @@ test('zwarcie przez impedancję przejścia: kreator → bieg → ekran z Z_f w z
   const zalozenia = page.getByTestId('mvd-wyn-zalozenia');
   const wierszZf = zalozenia
     .getByTestId('mvd-wyn-zalozenie')
-    .filter({ hasText: 'Impedancja przejścia w miejscu zwarcia Z_f' });
+    .filter({ hasText: 'Impedancja przejścia w miejscu zwarcia' });
   await expect(wierszZf).toHaveCount(1);
+  // Symbol $Z_f$ etykiety składa KaTeX (`ui_math_guard`, karta UX-04/ZU) — węzeł wzoru, nie ASCII.
+  await expect(wierszZf.locator('[data-testid="math-rendered"][data-latex="$Z_f$"]')).toHaveCount(1);
   await expect(wierszZf).toContainText('2,0000 + j0,0000');
   await expect(wierszZf).toHaveAttribute('title', /poza zakresem normy IEC 60909/);
 

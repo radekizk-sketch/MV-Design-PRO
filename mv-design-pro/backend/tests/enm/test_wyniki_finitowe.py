@@ -18,7 +18,6 @@ from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from application.result_mapping.canonical_run_to_resultset_v1 import (
     build_resultset_v1_from_canonical_run,
 )
-from enm.assembler import wezly_bez_impedancji_do_odniesienia
 from enm.canonical_analysis import (
     OGRANICZENIE_WYNIK_NIEFIZYCZNY,
     POWOD_WEZEL_BEZ_ODNIESIENIA,
@@ -147,7 +146,7 @@ def test_zwarcie_w_wyspie_bez_impedancji_do_odniesienia_jest_nieraportowalne_z_t
     run = _bieg(enm, klucz="wyspa-sc-topologia", analysis_type="short_circuit_sn", options=_SC_3F)
     _execute_short_circuit(run)
     raw = run.raw_result
-    bez_odniesienia = wezly_bez_impedancji_do_odniesienia(zbuduj_graf(enm.model_dump(mode="json")))
+    bez_odniesienia = zbuduj_graf(enm.model_dump(mode="json")).wezly_bez_impedancji_do_odniesienia()
     assert bez_odniesienia, "fikstura ma mieć wyspę bez impedancji do odniesienia"
     wiersze = {str(row["fault_node_id"]): row for row in raw["results"]}
     wyspowe = [row for node_id, row in wiersze.items() if node_id in bez_odniesienia]

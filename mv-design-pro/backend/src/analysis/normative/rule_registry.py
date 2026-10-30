@@ -54,18 +54,6 @@ RULES: tuple[NormativeRule, ...] = (
         key="selectivity_ok",
     ),
     NormativeRule(
-        rule_id="NR_P19_001",
-        title_pl="Napięcie dotykowe",
-        proof_type=ProofType.EARTHING_GROUND_FAULT_SN,
-        key="u_touch_v",
-    ),
-    NormativeRule(
-        rule_id="NR_P19_002",
-        title_pl="Prąd doziemny",
-        proof_type=ProofType.EARTHING_GROUND_FAULT_SN,
-        key="i_earth_a",
-    ),
-    NormativeRule(
         rule_id="NR_P11_001",
         title_pl="SC3F dostępność wyników (Ik″/ip/Ith)",
         proof_type=ProofType.SC3F_IEC60909,

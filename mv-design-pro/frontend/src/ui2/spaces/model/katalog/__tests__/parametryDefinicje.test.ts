@@ -1,4 +1,5 @@
 // @vitest-environment node
+import katex from 'katex';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -18,6 +19,13 @@ describe('parametryDefinicje — słownik definicji parametrów', () => {
       expect(def.etykieta.trim().length, klucz).toBeGreaterThan(0);
       expect(def.norma.trim().length, klucz).toBeGreaterThan(0);
       expect(def.definicja.trim().length, klucz).toBeGreaterThan(0);
+    }
+  });
+
+  it('każdy symbol ma postać LaTeX, którą KaTeX składa bez błędu (zero ASCII na ekranie)', () => {
+    for (const [klucz, def] of Object.entries(DEFINICJE_PARAMETROW)) {
+      expect(def.symbolLatex.trim().length, klucz).toBeGreaterThan(0);
+      expect(() => katex.renderToString(def.symbolLatex, { throwOnError: true }), klucz).not.toThrow();
     }
   });
 

@@ -597,9 +597,7 @@ function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
     <ol className="mvd-jakosc-slad" data-testid="mvd-jakosc-mig-slad">
       {kroki.map((krok) => (
         <li key={krok.symbol} className="mvd-jakosc-slad-krok">
-          <span className="mvd-jakosc-slad-etyk">
-            {JAKOSC_STRINGS.sladWzor} ({krok.symbol})
-          </span>
+          <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWzor}</span>
           <MathBlock latex={krok.formula_latex} />
           {krok.substitution_pl && (
             <>
@@ -838,9 +836,7 @@ function SladArcFlash({ kroki }: { kroki: readonly KrokArcFlash[] }) {
     <ol className="mvd-jakosc-slad" data-testid="mvd-jakosc-af-slad">
       {kroki.map((krok) => (
         <li key={krok.symbol} className="mvd-jakosc-slad-krok">
-          <span className="mvd-jakosc-slad-etyk">
-            {JAKOSC_STRINGS.sladWzor} ({krok.symbol})
-          </span>
+          <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWzor}</span>
           <MathBlock latex={krok.formula_latex} />
           {krok.substitution_pl && (
             <>

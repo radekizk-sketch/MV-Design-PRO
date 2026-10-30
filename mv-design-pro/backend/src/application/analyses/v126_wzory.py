@@ -30,13 +30,14 @@ pola, nie fabrykowana wartość.
 
 KOMPLETNOŚĆ. Rejestr niesie WPIS DLA KAŻDEGO `step.key`, jaki solver V12.6
 kiedykolwiek nadaje (`grep -n 'trace\\.add(' network_model/solvers/
-v126_academic.py`, 27 unikatowych kluczy — dwa wywołania `benchmark_regression`
-dzielą jeden wpis, bo niosą IDENTYCZNY zapis wzoru). Test kompletności
-(`backend/tests/application/analyses/test_v126_wzory.py`) uruchamia WSZYSTKIE
-PREZENTOWANE rodzaje V12.6 na sieci złotej (parametry `scripts/
-eksport_fixtur_harnessu.py`), zbiera zmierzony zbiór `step.key` i sprawdza,
-że każdy ma wpis tutaj — brak wpisu jest czerwonym testem, nie cichym
-pominięciem.
+v126_academic.py`, pomiar 2026-10-30: 31 unikatowych kluczy z 34 wywołań — klucze
+odmowy uziemienia SN przechodzą przez `_odmowa_uziemienia_sn`, kilka kluczy dzieli
+wpis, bo niesie IDENTYCZNY zapis wzoru). Testy kompletności
+(`backend/tests/application/analyses/test_v126_wzory.py`): (1) KAŻDY klucz nadawany
+w źródle solvera ma wpis, a rejestr nie ma wpisów martwych — niezależnie od sceny;
+(2) WSZYSTKIE PREZENTOWANE rodzaje V12.6 uruchomione na sieci złotej (parametry
+`scripts/eksport_fixtur_harnessu.py`) dają zbiór `step.key` z wpisem tutaj — brak
+wpisu jest czerwonym testem, nie cichym pominięciem.
 """
 
 from __future__ import annotations
@@ -292,8 +293,8 @@ def _wynik_detekcji_doziemnej(dane: Mapping[str, Any], wynik: Mapping[str, Any])
 
 # ---------------------------------------------------------------------------
 # Rejestr — KAŻDY `step.key` nadawany przez `trace.add(...)` w
-# `network_model/solvers/v126_academic.py` (27 unikatowych kluczy, pomiar
-# `grep -c 'trace\.add('` == 28 wywołań, `benchmark_regression` dzieli wpis).
+# `network_model/solvers/v126_academic.py` (31 unikatowych kluczy, pomiar 2026-10-30:
+# `grep -c 'trace\.add('` == 34 wywołania; przypięte testem kompletności źródła).
 # `formula_latex` jest ZAPISEM ASCII/Unicode `formula` solvera W LATEX — cytat
 # przy każdym wpisie wskazuje linię solvera, z której wzór pochodzi.
 # ---------------------------------------------------------------------------
@@ -342,6 +343,11 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
         r"\left(1 + \dfrac{1}{1+h\sqrt{20/A}}\right)\right]",
         podstawienie=_podstawienie_sverak,
     ),
+    # _earthing — prąd zwarcia doziemnego stacji przed redukcją z modelu: największa wielkość
+    # miarodajna przypadków stacji (strona SN i WN) wg EN 50522:2010 tab. 1.
+    "en50522_prad_uziomowy": WzorKroku(
+        r"I_F = \max_k I_{F,k}\ \text{(wielkość miarodajna przypadku stacji, EN 50522 tab. 1)}"
+    ),
     # _neutral_earthing_design — typ projektu z wariantu zespołu uziemiającego modelu
     # (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA §0 pkt 4; decyzja logiczna, bez jednostek).
     "neutral_earthing_scheme_from_model": WzorKroku(
@@ -354,6 +360,13 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
     ),
     "earth_fault_no_grounding_model": WzorKroku(
         r"\text{brak sposobu uziemienia w modelu} \Rightarrow \text{metoda niewyznaczana}"
+    ),
+    # _neutral_earthing_design — susceptancja zerowa baterii kondensatorów sieci (gwiazda
+    # uziemiona wnosi B0 = B1, pozostałe układy połączeń — zero).
+    "neutral_earthing_shunt_capacitors": WzorKroku(
+        r"B_{0,\mathrm{bat}} = B_{\mathrm{bat}}\ \text{(gwiazda uziemiona, } Y_0 = Y_1\text{)}"
+        r"\text{,}\quad B_{0,\mathrm{bat}} = 0\ "
+        r"\text{(gwiazda izolowana, podwójna gwiazda, trójkąt)}"
     ),
     # _neutral_earthing_design, linia 1349-1361 (brak C0 — dane niekompletne).
     "neutral_earthing_no_c0": WzorKroku(
@@ -381,7 +394,7 @@ REJESTR_WZOROW_V126: dict[str, WzorKroku] = {
     ),
     # _ner_design — brak danych rezystora punktu neutralnego albo punktów uziemienia w ruchu.
     "ner_no_resistor": WzorKroku(
-        r"R_N = R_{\mathrm{zespołu}}\text{,}\quad "
+        r"R_N = R_{\text{zespołu}}\text{,}\quad "
         r"I_{\mathrm{ef}} = \left|\sum_p \dfrac{U_f}{Z_{N,p} + Z_{0,p}/3} + j I_C\right|"
     ),
     # _ner_design — rezystory punktu neutralnego z modelu (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA).

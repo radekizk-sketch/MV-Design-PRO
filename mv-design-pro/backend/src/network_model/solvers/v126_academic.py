@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import random
+from dataclasses import dataclass
 from itertools import combinations
 from typing import Any
 
@@ -21,6 +22,7 @@ from network_model.odmowa_danych import (
     RekordOdmowy,
 )
 from network_model.solvers.doziemienie_sn import (
+    ETYKIETA_PL_TRYBU,
     DaneDoziemienia,
     PunktNeutralnyDoziemienia,
     WynikDoziemienia,
@@ -33,10 +35,10 @@ from solver_input.v126_contracts import (
     V126AnalysisType,
     V126BranchInput,
     V126BusInput,
+    V126PrzypadekPraduUziomowegoInput,
     V126PunktNeutralnySnInput,
     V126RezystorSnInput,
     V126SiecSnInput,
-    V126TransformerInput,
     brak_uziemienia_sn,
 )
 
@@ -84,7 +86,14 @@ POLA_KARTY_ZCONV: tuple[tuple[str, str], ...] = (
 # (51N+67N, 51N/50N) wymaga swoich funkcji w przekaźniku. Niezawodność: dane przyjęte
 # intensywności uszkodzeń, czasu odnowy i MAIFI. Ziarno losowania przepustowości — odcisk pól,
 # które analiza czyta, nie całego modelu.
-V126_SOLVER_VERSION = "v126-academic-whitebox-1.4"
+# 1.5 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5, decyzja architekta wariant (a)):
+# impedancja zastępcza sieci w szynie przepustowości i rozruchu silnika przychodzi z wejścia
+# (`V126BusInput.thevenin_*`, most liczy ją kanonicznym budowniczym sieci zwarciowej IEC 60909
+# z przekładnią i K_T) — szyny zasilane przez transformator (SN za transformatorem WN/SN, nN)
+# mają wynik zamiast braku; własna macierz omowa V12.6 bez przekładni nie służy już tym
+# analizom. Kryterium prądowe przepustowości pomija gałęzie otwarte. Uziom: prąd uziomowy
+# I_E z modelu (EN 50522 tab. 1 wg sposobu pracy punktu neutralnego) albo wartość projektanta.
+V126_SOLVER_VERSION = "v126-academic-whitebox-1.5"
 
 
 #: Typ projektu uziemienia punktu neutralnego (słownik `PROJEKT_UZIEMIENIA_WARIANTU`) po polsku —
@@ -93,6 +102,98 @@ _PROJEKT_UZIEMIENIA_PL: dict[str, str] = {
     "petersen_coil": "projekt dławika gaszącego",
     "resistor_grounded": "projekt rezystora uziemiającego",
 }
+
+
+#: Podstawa wyboru prądu uziomowego (prąd odprowadzany przez uziom stacji przed redukcją).
+PODSTAWA_PRADU_UZIOMOWEGO_PL = (
+    "EN 50522:2010 tab. 1 — prąd miarodajny dla napięć rażeniowych uziomu wg sposobu pracy "
+    "punktu neutralnego; $I_E = r\\,I_F$; uziom wymiaruje się na przypadek najniekorzystniejszy"
+)
+
+
+@dataclass(frozen=True)
+class WielkoscPraduUziomowego:
+    """Prąd miarodajny jednego przypadku zwarcia doziemnego stacji (EN 50522:2010 tab. 1).
+
+    ``prad_a`` — I_F przed redukcją [A] albo ``None`` (``brak_pl`` nazywa przyczynę z modelu);
+    ``symbol`` — identyfikator wielkości (klucz wiersza), ``symbol_latex`` — jej zapis LaTeX
+    (ekran składa go KaTeX-em), ``opis_pl`` — wiersz tablicy z symbolami jako `$…$`;
+    ``dane_przyjete`` — dane przyjęte TEJ wielkości (doziemienia sieci albo I″k1 rdzenia
+    IEC 60909)."""
+
+    prad_a: float | None
+    symbol: str
+    symbol_latex: str
+    opis_pl: str
+    brak_pl: str | None
+    dane_przyjete: tuple[JsonDict, ...]
+
+
+def wielkosc_pradu_uziomowego(
+    przypadek: V126PrzypadekPraduUziomowegoInput,
+) -> WielkoscPraduUziomowego:
+    """Wielkość miarodajna EN 50522:2010 tab. 1 przypadku — JEDNA reguła solvera i gotowości.
+
+    Sieć WN stacji oraz sieć SN uziemiona przez rezystor albo bezpośrednio (mała impedancja):
+    I″k1 rdzenia IEC 60909. Sieć SN izolowana: I_C. Sieć SN skompensowana: I_res, a gdy dławik
+    gaszący stoi w tej stacji — √(I_L² + I_res²) (przez uziom płynie także prąd dławika).
+    """
+    dane_doz = tuple(d.model_dump(mode="json") for d in przypadek.dane_przyjete_doziemienia)
+    dane_ikss = tuple(d.model_dump(mode="json") for d in przypadek.dane_przyjete_ikss)
+    if przypadek.strona == "WN" or przypadek.tryb in ("rezystor", "bezposrednie"):
+        opis = (
+            "sieć WN uziemiona przez małą impedancję — $I_E = r\\,I''_{k1}$; pełny $I''_{k1}$ "
+            "bez odjęcia prądu powracającego przez uziemione punkty neutralne transformatorów "
+            "stacji (zapas)"
+            if przypadek.strona == "WN"
+            else "sieć SN uziemiona przez małą impedancję (rezystor albo bezpośrednio) — "
+            "$I_E = r\\,I''_{k1}$"
+        )
+        return WielkoscPraduUziomowego(
+            prad_a=przypadek.ikss_a,
+            symbol="I″k1",
+            symbol_latex="I''_{k1}",
+            opis_pl=opis,
+            brak_pl=None if przypadek.ikss_a is not None else przypadek.brak_ikss_pl,
+            dane_przyjete=dane_ikss,
+        )
+    brak = None if przypadek.prad_doziemienia_a is not None else przypadek.brak_doziemienia_pl
+    if przypadek.tryb == "izolowany":
+        return WielkoscPraduUziomowego(
+            prad_a=przypadek.prad_doziemienia_a,
+            symbol="I_C",
+            symbol_latex="I_C",
+            opis_pl="sieć SN z izolowanym punktem neutralnym — $I_E = r\\,I_C$",
+            brak_pl=brak,
+            dane_przyjete=dane_doz,
+        )
+    if przypadek.tryb == "kompensowany" and przypadek.dlawik_w_stacji:
+        prad = (
+            None
+            if przypadek.prad_doziemienia_a is None or przypadek.i_l_a is None
+            else math.hypot(przypadek.i_l_a, przypadek.prad_doziemienia_a)
+        )
+        return WielkoscPraduUziomowego(
+            prad_a=prad,
+            symbol="√(I_L² + I_res²)",
+            symbol_latex="\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}",
+            opis_pl=(
+                "sieć SN skompensowana, dławik gaszący w tej stacji — "
+                "$I_E = r\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$"
+            ),
+            brak_pl=(
+                None if prad is not None else brak or "Prąd dławików sieci nie został wyznaczony."
+            ),
+            dane_przyjete=dane_doz,
+        )
+    return WielkoscPraduUziomowego(
+        prad_a=przypadek.prad_doziemienia_a,
+        symbol="I_res",
+        symbol_latex="I_{\\mathrm{res}}",
+        opis_pl="sieć SN skompensowana, dławik gaszący poza tą stacją — $I_E = r\\,I_{\\mathrm{res}}$",
+        brak_pl=brak,
+        dane_przyjete=dane_doz,
+    )
 
 
 def _brakujace_pola_karty_zconv(converter: Any) -> list[str]:
@@ -263,51 +364,6 @@ def _z_zrodla_szyny(bus: Any) -> tuple[complex, bool] | None:
         z = bus.nominal_kv**2 / bus.fault_level_mva
         return complex(PODZIAL_R_Z_ROBOCZY * z, PODZIAL_X_Z_ROBOCZY * z), True
     return None
-
-
-def _skladowe_spojne(model: Any, *, z_transformatorami: bool) -> dict[str, int]:
-    """Numer składowej spójnej każdej szyny po gałęziach zamkniętych (i transformatorach)."""
-    refy = [bus.ref for bus in model.buses]
-    rodzic = {ref: ref for ref in refy}
-
-    def znajdz(ref: str) -> str:
-        while rodzic[ref] != ref:
-            rodzic[ref] = rodzic[rodzic[ref]]
-            ref = rodzic[ref]
-        return ref
-
-    pary = [(b.from_bus_ref, b.to_bus_ref) for b in model.branches if not b.is_open]
-    if z_transformatorami:
-        pary += [(t.hv_bus_ref, t.lv_bus_ref) for t in model.transformers]
-    for a, b in pary:
-        if a in rodzic and b in rodzic:
-            ra, rb = znajdz(a), znajdz(b)
-            if ra != rb:
-                rodzic[max(ra, rb)] = min(ra, rb)
-    numery: dict[str, int] = {}
-    wynik: dict[str, int] = {}
-    for ref in refy:
-        wynik[ref] = numery.setdefault(znajdz(ref), len(numery))
-    return wynik
-
-
-def _dana_przyjeta_podzialu_zrodla(model: Any, refy: list[str]) -> JsonDict:
-    """Dana przyjęta podziału mocy zwarciowej szyn ``refy``. Szyny nazwane nazwą z modelu
-    (``bus.name``) — tekst czyta projektant, identyfikator szyny nie jest jej oznaczeniem.
-    ``model`` to PEŁNE wejście biegu (projekcja przepustowości nie niesie nazw, bo nazwa nie
-    może poruszyć ziarna Monte Carlo)."""
-    nazwy = {bus.ref: bus.name for bus in model.buses}
-    nazwy_szyn = [nazwy[ref] for ref in refy]
-    return {
-        "nazwa_pl": "Impedancja źródła sieciowego z mocy zwarciowej szyny",
-        "wartosc": None,
-        "powod_pl": (
-            f"Wejście bez impedancji Z_Q modelu dla szyn: {', '.join(sorted(nazwy_szyn))} — "
-            f"Z = U_n²/S_k, R = {_lp(PODZIAL_R_Z_ROBOCZY)}·Z, X = {_lp(PODZIAL_X_Z_ROBOCZY)}·Z "
-            "(wartość robocza solvera; most modelu podaje Z_Q wg IEC 60909-0 §6.2.1)."
-        ),
-        "jakosc": "ESTIMATED",
-    }
 
 
 #: Polskie nazwy parametrów obwodu napięcia powrotnego (komunikat braku, ślad WHITE BOX).
@@ -637,6 +693,15 @@ def _lp(wartosc: Any, wzor: str = "g") -> str:
     return format(float(wartosc), wzor).replace(".", ",")
 
 
+def _lp_tekst(wartosc: Any) -> str:
+    """Wynik liczbowy w zdaniu dla projektanta (``result_pl``, uzasadnienia): przecinek
+    dziesiętny, cyfry takie, jakie niesie zaokrąglona wartość wyniku; brak liczby nazwany.
+    """
+    if wartosc is None:
+        return "nie wyznaczono"
+    return str(wartosc).replace(".", ",")
+
+
 #: Pola wejścia CZYTANE przez analizę zdolności przyłączeniowej — JEDNO źródło dla projekcji
 #: wejścia (`V126AcademicSolver._projekcja_hostingu`, na której biegnie obliczenie) i dla
 #: odcisku ziarna Monte Carlo (`_ziarno_hostingu`): pole spoza tych list nie wchodzi ani do
@@ -646,29 +711,14 @@ POLA_HOSTINGU_SZYNY: tuple[str, ...] = (
     "nominal_kv",
     "voltage_pu",
     "load_mw",
-    "fault_level_mva",
-    "source_r_ohm",
-    "source_x_ohm",
+    "thevenin_r_ohm",
+    "thevenin_x_ohm",
 )
 POLA_HOSTINGU_GALEZI: tuple[str, ...] = (
     "ref",
-    "from_bus_ref",
     "to_bus_ref",
     "is_open",
-    "length_km",
-    "r_ohm_per_km",
-    "x_ohm_per_km",
-    "b_siemens_per_km",
     "ampacity_a",
-)
-POLA_HOSTINGU_TRANSFORMATORA: tuple[str, ...] = (
-    "ref",
-    "hv_bus_ref",
-    "lv_bus_ref",
-    "sn_mva",
-    "uhv_kv",
-    "uk_percent",
-    "pk_kw",
 )
 
 
@@ -1347,8 +1397,8 @@ class V126AcademicSolver:
             },
             "Impedancja filtru w jednostkach względnych, skalowana impedancją bazową [Ω]; wzmocnienia regulatorów bezwymiarowe.",
             result_pl=(
-                f"Impedancja wyjściowa przekształtnika przy {probe_f} Hz: "
-                f"{_round(abs(comp['z_conv_ohm']), 4)} \u03a9"
+                f"Impedancja wyjściowa przekształtnika przy {_lp(probe_f)} Hz: "
+                f"{_lp_tekst(_round(abs(comp['z_conv_ohm']), 4))} \u03a9"
             ),
         )
         trace.add(
@@ -1367,8 +1417,8 @@ class V126AcademicSolver:
             {"z_grid_at_f_min": self._phasor(complex(z_grid_rows[0]["re"], z_grid_rows[0]["im"]))},
             "Odwrócenie macierzy admitancyjnej [S] daje impedancję [Ω].",
             result_pl=(
-                f"Impedancja sieci przy {frequencies[0]} Hz: "
-                f"{_round(math.hypot(z_grid_rows[0]['re'], z_grid_rows[0]['im']), 4)} \u03a9"
+                f"Impedancja sieci przy {_lp(frequencies[0])} Hz: "
+                f"{_lp_tekst(_round(math.hypot(z_grid_rows[0]['re'], z_grid_rows[0]['im']), 4))} \u03a9"
             ),
         )
         trace.add(
@@ -1387,7 +1437,7 @@ class V126AcademicSolver:
             "Iloraz impedancji [Ω/Ω] jest bezwymiarowy.",
             result_pl=(
                 f"Najmniejsza część rzeczywista impedancji przekształtnika: "
-                f"{_round(re_zconv_min, 4)} \u03a9 przy {re_zconv_min_f} Hz"
+                f"{_lp_tekst(_round(re_zconv_min, 4))} \u03a9 przy {_lp(re_zconv_min_f)} Hz"
             ),
         )
 
@@ -1695,7 +1745,7 @@ class V126AcademicSolver:
             {"saidi_min_per_year": _round(saidi, 4), "saifi_per_year": _round(saifi, 5)},
             "Intensywność uszkodzeń [1/rok] razy czas odtworzenia [h] razy 60 daje [min/rok].",
             result_pl=(
-                f"Przerwy na odbiorcę: {_round(saidi, 4)} min/rok, {_round(saifi, 5)} 1/rok"
+                f"Przerwy na odbiorcę: {_lp_tekst(_round(saidi, 4))} min/rok, {_lp_tekst(_round(saifi, 5))} 1/rok"
             ),
         )
         from network_model.catalog.wartosci_robocze import (
@@ -1773,6 +1823,9 @@ class V126AcademicSolver:
             from solver_input.v126_contracts import V126EarthingInput
 
             data = V126EarthingInput.model_validate(surowe)
+        prad = self._prad_uziomowy(model, data, trace)
+        if "i_f_ka" not in prad:
+            return prad
         area = data.length_m * data.width_m
         conductors_x = math.floor(data.width_m / data.mesh_spacing_m) + 1
         conductors_y = math.floor(data.length_m / data.mesh_spacing_m) + 1
@@ -1781,7 +1834,7 @@ class V126AcademicSolver:
             1 / max(lc, 1e-9)
             + 1 / math.sqrt(20 * area) * (1 + 1 / (1 + data.buried_depth_m * math.sqrt(20 / area)))
         )
-        ig_ka = data.fault_current_ka * data.split_factor
+        ig_ka = prad["i_f_ka"] * data.split_factor
         gpr_kv = ig_ka * rg
         n = max(conductors_x, conductors_y)
         ki = 1 + 0.172 * n
@@ -1807,7 +1860,7 @@ class V126AcademicSolver:
             {"r_g_ohm": _round(rg, 6), "gpr_kv": _round(gpr_kv, 6)},
             "Rezystywność [Ω·m] razy odwrotność długości [1/m] daje rezystancję [Ω]; prąd [kA] razy rezystancja [Ω] daje napięcie [kV].",
             result_pl=(
-                f"Rezystancja uziomu: {_round(rg, 6)} \u03a9; wzrost potencjału: {_round(gpr_kv, 6)} kV"
+                f"Rezystancja uziomu: {_lp_tekst(_round(rg, 6))} \u03a9; wzrost potencjału: {_lp_tekst(_round(gpr_kv, 6))} kV"
             ),
         )
         # K-08: sanity-bounds IEEE 80 / EN 50522 — Rg, GPR, napięcia rażenia skończone i ≥ 0.
@@ -1830,7 +1883,7 @@ class V126AcademicSolver:
         )
         return {
             "sanity": sanity,
-            "gpz_ref": data.gpz_ref,
+            "bus_ref": data.bus_ref,
             "soil_model": {"rho1": data.rho1_ohm_m, "rho2": data.rho2_ohm_m, "h1": data.h1_m},
             "grid_geometry": {
                 "length_m": data.length_m,
@@ -1840,13 +1893,150 @@ class V126AcademicSolver:
             },
             "r_g_ohm": _round(rg, 6),
             "gpr_kv": _round(gpr_kv, 6),
+            "i_f_ka": _round(prad["i_f_ka"], 6),
             "i_g_ka": _round(ig_ka, 6),
             "split_factor": data.split_factor,
+            "prad_uziomowy": prad["prad_uziomowy"],
+            "dane_przyjete": prad["dane_przyjete"],
             "u_touch_calculated_v": _round(u_touch, 3),
             "u_touch_allowable_v": _round(u_touch_allow, 3),
             "u_step_calculated_v": _round(u_step, 3),
             "u_step_allowable_v": _round(u_step_allow, 3),
             "fault_clearing_time_s": data.fault_clearing_time_s,
+        }
+
+    @staticmethod
+    def _prad_uziomowy(model: V126AcademicInput, data: Any, trace: TraceBuilder) -> JsonDict:
+        """Prąd zwarcia doziemnego stacji I_F przed redukcją (EN 50522:2010 tab. 1).
+
+        Przypadki z modelu (``model.prad_uziomowy``): wielkość miarodajna każdego wg
+        ``wielkosc_pradu_uziomowego``, rozstrzyga największa (uziom wymiaruje się na przypadek
+        najniekorzystniejszy). ``fault_current_ka`` projektanta nadpisuje model — dana przyjęta
+        ESTIMATED z wartością z modelu w powodzie. Bez obu — nazwany brak (przyczyny z modelu),
+        nigdy prąd domyślny. Zwraca ``i_f_ka``, ``prad_uziomowy`` (przypadki i rozstrzygnięcie)
+        i ``dane_przyjete`` albo wynik braku (bez ``i_f_ka``)."""
+        przypadki = [] if model.prad_uziomowy is None else model.prad_uziomowy.przypadki
+        wiersze: list[JsonDict] = []
+        policzalne: list[tuple[float, str, JsonDict, WielkoscPraduUziomowego]] = []
+        for przypadek in przypadki:
+            wielkosc = wielkosc_pradu_uziomowego(przypadek)
+            wiersz = {
+                "strona": przypadek.strona,
+                "nazwa_pl": przypadek.nazwa_pl,
+                "bus_ref": przypadek.bus_ref,
+                "tryb": przypadek.tryb,
+                "tryb_pl": (None if przypadek.tryb is None else ETYKIETA_PL_TRYBU[przypadek.tryb]),
+                "stan_awsc": przypadek.stan_awsc,
+                "wielkosc": wielkosc.symbol,
+                "wielkosc_latex": wielkosc.symbol_latex,
+                "opis_pl": wielkosc.opis_pl,
+                "prad_a": (None if wielkosc.prad_a is None else _round(wielkosc.prad_a, 4)),
+                "brak_pl": wielkosc.brak_pl,
+            }
+            wiersze.append(wiersz)
+            if wielkosc.prad_a is not None:
+                policzalne.append((wielkosc.prad_a, przypadek.nazwa_pl, wiersz, wielkosc))
+        najwiekszy = max(policzalne, key=lambda p: (p[0], p[1])) if policzalne else None
+        dane_modelu: list[JsonDict] = []
+        for _prad, _nazwa, _wiersz, wielkosc in policzalne:
+            for dana in wielkosc.dane_przyjete:
+                if dana not in dane_modelu:
+                    dane_modelu.append(dana)
+        # Przyczyny braku prądu z modelu — jedna lista dla nadpisania i dla braku.
+        przyczyny = [str(w["brak_pl"]) for w in wiersze if w["brak_pl"]]
+        if model.prad_uziomowy is not None and model.prad_uziomowy.brak_pl:
+            przyczyny.insert(0, model.prad_uziomowy.brak_pl)
+        if model.prad_uziomowy is None:
+            przyczyny.append("nie wskazano szyny stacji w modelu")
+        if data.fault_current_ka is not None:
+            i_f_ka = float(data.fault_current_ka)
+            z_modelu = (
+                f"prąd z modelu {_lp_tekst(_round(najwiekszy[0] / 1000.0, 6))} kA — {najwiekszy[1]}"
+                if najwiekszy is not None
+                else "model nie wyznaczył prądu"
+                + (": " + "; ".join(przyczyny) if przyczyny else "")
+            )
+            rozstrzyga = "nadpisanie projektanta"
+            powod = (
+                f"Prąd zwarcia doziemnego stacji wpisany przez projektanta zamiast prądu "
+                f"z modelu ({z_modelu})."
+            )
+            podstawienie = powod
+            dane: list[JsonDict] = [
+                {
+                    "nazwa_pl": "Prąd zwarcia doziemnego stacji (nadpisanie projektanta)",
+                    "wartosc": {"wartosc": _round(i_f_ka, 6), "jednostka": "kA"},
+                    "powod_pl": powod,
+                    "jakosc": "ESTIMATED",
+                }
+            ]
+        elif najwiekszy is not None:
+            i_f_ka = najwiekszy[0] / 1000.0
+            rozstrzyga = najwiekszy[1]
+            prad_tekst = f"{_lp_tekst(_round(najwiekszy[0], 4))} A"
+            zakres = (
+                f" — największy prąd przypadków stacji policzonych z modelu (policzono "
+                f"{len(policzalne)} z {len(wiersze)})."
+            )
+            # Uzasadnienie wyniku (proza z wzorami `$…$`, ekran składa je przez KaTeX) i
+            # podstawienie kroku śladu (pole PROZY kontraktu kroku — bez LaTeX-u,
+            # `slad_proza_bez_latex_guard`; symbol wielkości niesie kolumna `wielkosc_latex`
+            # przypadku w danych kroku) — z tych samych wartości.
+            powod = (
+                f"Rozstrzyga przypadek „{najwiekszy[1]}” (${najwiekszy[3].symbol_latex}$"
+                f" = {prad_tekst}){zakres}"
+            )
+            podstawienie = f"Rozstrzyga przypadek „{najwiekszy[1]}” ({prad_tekst}){zakres}"
+            dane = dane_modelu
+        else:
+            komunikat = (
+                "Prąd zwarcia doziemnego stacji nieoznaczalny — model nie daje prądu "
+                "odprowadzanego przez uziom (EN 50522 tab. 1), a projektant nie podał wartości"
+                + (": " + "; ".join(przyczyny) if przyczyny else "")
+                + ". Napięć rażeniowych nie wyznaczono."
+            )
+            trace.add(
+                "en50522_prad_uziomowy",
+                "I_F = max po przypadkach stacji wielkości miarodajnej EN 50522 tab. 1",
+                {"przypadki": wiersze},
+                komunikat,
+                {"i_f_ka": None},
+                "Prąd [A].",
+                result_pl=komunikat,
+            )
+            return {
+                "status": "dane niekompletne",
+                "message_pl": komunikat,
+                "missing_fields": ["prad_uziomowy"],
+                "bus_ref": data.bus_ref,
+                "prad_uziomowy": {"przypadki": wiersze, "rozstrzyga": None},
+                "sanity": _sanity_block([], has_inputs=False),
+            }
+        trace.add(
+            "en50522_prad_uziomowy",
+            "I_F = max po przypadkach stacji wielkości miarodajnej EN 50522 tab. 1",
+            {
+                "przypadki": wiersze,
+                "nadpisanie_projektanta_ka": data.fault_current_ka,
+                "podstawa": PODSTAWA_PRADU_UZIOMOWEGO_PL,
+            },
+            podstawienie,
+            {"i_f_ka": _round(i_f_ka, 6), "rozstrzyga": rozstrzyga},
+            "Prąd [A] dzielony przez 1000 daje prąd [kA].",
+            result_pl=(
+                f"Prąd zwarcia doziemnego stacji przed redukcją: {_lp_tekst(_round(i_f_ka, 6))} kA "
+                f"({rozstrzyga})"
+            ),
+        )
+        return {
+            "i_f_ka": i_f_ka,
+            "prad_uziomowy": {
+                "przypadki": wiersze,
+                "rozstrzyga": rozstrzyga,
+                "uzasadnienie_pl": powod,
+                "podstawa_pl": PODSTAWA_PRADU_UZIOMOWEGO_PL,
+            },
+            "dane_przyjete": dane,
         }
 
     # D-06a/b: PROJEKT UZIEMIENIA PUNKTU NEUTRALNEGO SIECI (dławik Petersena /
@@ -2082,7 +2272,9 @@ class V126AcademicSolver:
             f"Ic=√3·{_round(omega, 4)}·{_round(c0_farad, 12)}·{u_line_v}",
             {"c0_farad": _round(c0_farad, 12), "ic_a": _round(ic_a, 4)},
             "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l.",
-            result_pl=(f"{przedrostek}Prąd pojemnościowy doziemienia sieci: {_round(ic_a, 4)} A"),
+            result_pl=(
+                f"{przedrostek}Prąd pojemnościowy doziemienia sieci: {_lp_tekst(_round(ic_a, 4))} A"
+            ),
         )
 
         if scheme == "resistor_grounded" or scheme == "resistor":
@@ -2177,8 +2369,8 @@ class V126AcademicSolver:
             },
             "1/((rad/s)²·F)=H; 1/((rad/s)·F)=Ω; prąd dławika [A] = Ic [A].",
             result_pl=(
-                f"{przedrostek}Dławik gaszący dostrojony do rezonansu: {_round(l_coil_h, 8)} H, "
-                f"{_round(x_coil_ohm, 4)} Ω, prąd znamionowy {_round(i_coil_a, 4)} A"
+                f"{przedrostek}Dławik gaszący dostrojony do rezonansu: {_lp_tekst(_round(l_coil_h, 8))} H, "
+                f"{_lp_tekst(_round(x_coil_ohm, 4))} Ω, prąd znamionowy {_lp_tekst(_round(i_coil_a, 4))} A"
             ),
         )
         projekt: JsonDict = {
@@ -2269,12 +2461,12 @@ class V126AcademicSolver:
             },
             "√(A²+A²)=A; (A−A)/A — bezwymiarowe.",
             result_pl=(
-                f"{przedrostek}Prąd resztkowy dławika modelu: {_round(i_res_a, 4)} A"
-                + ("" if v is None else f" (rozstrojenie {_round(100.0 * v, 2)} %)")
+                f"{przedrostek}Prąd resztkowy dławika modelu: {_lp_tekst(_round(i_res_a, 4))} A"
+                + ("" if v is None else f" (rozstrojenie {_lp_tekst(_round(100.0 * v, 2))} %)")
                 + (
                     ""
                     if awsc is None or awsc.prad_a is None
-                    else f"; po załączeniu AWSC {_round(awsc.prad_a, 4)} A"
+                    else f"; po załączeniu AWSC {_lp_tekst(_round(awsc.prad_a, 4))} A"
                 )
             ),
         )
@@ -2398,8 +2590,8 @@ class V126AcademicSolver:
             },
             "V/Ω=A; √(A²+A²)=A.",
             result_pl=(
-                f"{przedrostek}Rezystancja uziemiająca punktu neutralnego: {_round(r_ohm, 4)} Ω; "
-                f"wynikowy prąd doziemienia: {_round(i_ef_a, 4)} A"
+                f"{przedrostek}Rezystancja uziemiająca punktu neutralnego: {_lp_tekst(_round(r_ohm, 4))} Ω; "
+                f"wynikowy prąd doziemienia: {_lp_tekst(_round(i_ef_a, 4))} A"
             ),
         )
 
@@ -2557,8 +2749,8 @@ class V126AcademicSolver:
             "V/Ω = A; A²·s = A²·s ⇒ s.",
             result_pl=(
                 f"{przedrostek}Dopuszczalny czas trwania doziemienia dla rezystora "
-                f"{rozstrzygajacy['nazwa_pl']}: {rozstrzygajacy['permissible_time_s']} s "
-                f"(prąd rezystora {rozstrzygajacy['i_resistor_a']} A)"
+                f"{rozstrzygajacy['nazwa_pl']}: {_lp_tekst(rozstrzygajacy['permissible_time_s'])} s "
+                f"(prąd rezystora {_lp_tekst(rozstrzygajacy['i_resistor_a'])} A)"
             ),
         )
         wspolne: JsonDict = {
@@ -2615,8 +2807,8 @@ class V126AcademicSolver:
             "A²·Ω·s = W·s = J; porównanie J z J.",
             result_pl=(
                 f"{przedrostek}Energia wydzielona w rezystorze: "
-                f"{rozstrzygajacy['energy_dissipated_j']} J "
-                f"(znamionowa: {rozstrzygajacy['energy_rating_j']} J)"
+                f"{_lp_tekst(rozstrzygajacy['energy_dissipated_j'])} J "
+                f"(znamionowa: {_lp_tekst(rozstrzygajacy['energy_rating_j'])} J)"
             ),
         )
         return {
@@ -2882,7 +3074,7 @@ class V126AcademicSolver:
             result_pl=(
                 "Przebiegu napięcia powrotnego nie wyznaczono — brak parametrów obwodu"
                 if szczyt is None
-                else f"Największa wartość napięcia powrotnego: {szczyt} kV"
+                else f"Największa wartość napięcia powrotnego: {_lp_tekst(szczyt)} kV"
             ),
         )
         # K-08: sanity-bounds IEC 62271 — szczyt TRV skończony, krotność udaru i 2. harmoniczna fizyczne.
@@ -3028,9 +3220,7 @@ class V126AcademicSolver:
                 )
             i_n = motor.rated_kw / (math.sqrt(3) * motor.rated_voltage_kv * cos_phi * sprawnosc)
             i_start = i_n * motor.locked_rotor_multiplier
-            z_th, powod_braku_z, robocze_z = self._impedancja_zastepcza_szyny(model, motor.bus_ref)
-            if robocze_z:
-                dane.append(_dana_przyjeta_podzialu_zrodla(model, robocze_z))
+            z_th, powod_braku_z = self._impedancja_zastepcza_szyny(model, motor.bus_ref)
             du = (
                 None
                 if z_th is None
@@ -3068,8 +3258,9 @@ class V126AcademicSolver:
             "I_n = P_n/(√3·U_n·cos φ_n·η_n); I_r = k_LR·I_n; ΔU = |Z_th|·I_r/U_f·100 %; "
             "t_r/t_utyku; M_r = 2·M_max/(1/s_k + s_k)",
             {"motors": len(model.motors)},
-            "Impedancja zastępcza sieci w węźle silnika — przekątna macierzy impedancyjnej "
-            "z impedancją zasilania systemowego (Z_Q modelu); czas rozruchu odniesiony do "
+            "Impedancja zastępcza sieci w węźle silnika — przekątna macierzy Z-bus sieci "
+            "zwarciowej IEC 60909 modelu (przekładnia i K_T transformatorów, Z_Q zasilania, Z″ "
+            "maszyn), odniesiona do napięcia znamionowego szyny; czas rozruchu odniesiony do "
             "dopuszczalnego czasu utyku przy prądzie zablokowanego wirnika.",
             {
                 "voltage_dip_percent": [row["voltage_dip_percent"] for row in rows],
@@ -3114,48 +3305,31 @@ class V126AcademicSolver:
         )
         return {"motors": rows, "sanity": sanity}
 
+    @staticmethod
     def _impedancja_zastepcza_szyny(
-        self, model: V126AcademicInput, bus_ref: str
-    ) -> tuple[complex | None, str | None, list[str]]:
-        """Impedancja zastępcza sieci (Thévenin) w węźle przy 50 Hz: przekątna macierzy
-        impedancyjnej z impedancją zasilania systemowego szyn źródłowych
-        (`_driving_point_impedance`, ta sama droga co SSCI — jedna prawda o sieci zasilającej).
+        model: V126AcademicInput, bus_ref: str
+    ) -> tuple[complex | None, str | None]:
+        """Impedancja zastępcza sieci (Thévenin) w węźle przy 50 Hz — z WEJŚCIA szyny
+        (``thevenin_r_ohm``/``thevenin_x_ohm``): most modelu liczy ją kanonicznym budowniczym
+        sieci zwarciowej IEC 60909 (`solver_input.v126_contracts.impedancje_zastepcze_szyn` —
+        przekładnia transformatora, K_T, Z_Q, Z″ maszyn), solver jej nie odtwarza własną
+        macierzą (decyzja O-26: bez czwartego budowniczego admitancji; dawna przekątna macierzy
+        omowej V12.6 nie miała przekładni, więc szyna zasilana przez transformator zostawała
+        bez wyniku).
 
-        Zwraca ``(Z_th, powód braku, referencje szyn źródłowych z podziałem roboczym mocy
-        zwarciowej)`` — daną przyjętą z nazwami szyn buduje wołający
-        (`_dana_przyjeta_podzialu_zrodla` na pełnym wejściu biegu). ``Z_th = None`` (nazwany brak, bez liczby
-        zastępczej), gdy w obszarze galwanicznym węzła nie ma źródła sieciowego albo gdy
-        źródło zasila węzeł przez transformator — macierz V12.6 nie ma przekładni
-        transformatora, więc omy dwóch poziomów napięć nie dodają się (ograniczenie
-        zarejestrowane modelu V12.6; dawny zapas „pierwsza gałąź zasilająca albo 0,1 + j0,4 Ω”
-        dawał liczbę bez sieci zasilającej)."""
-        refy = [bus.ref for bus in model.buses]
-        if bus_ref not in refy:
-            return None, f"Szyna silnika {bus_ref} nie należy do modelu.", []
-        galwaniczne = _skladowe_spojne(model, z_transformatorami=False)
-        pelne = _skladowe_spojne(model, z_transformatorami=True)
-        zrodla = {bus.ref: _z_zrodla_szyny(bus) for bus in model.buses}
-        zrodla_obszaru = [
-            ref for ref, z in zrodla.items() if z is not None and pelne[ref] == pelne[bus_ref]
-        ]
-        if not zrodla_obszaru:
+        Zwraca ``(Z_th, powód braku)``; ``Z_th = None`` (nazwany brak, bez liczby zastępczej),
+        gdy szyny nie ma w modelu albo wejście nie niesie jej impedancji zastępczej (wyspa bez
+        źródła sieciowego i maszyny wirującej — brak impedancji do odniesienia)."""
+        szyna = next((bus for bus in model.buses if bus.ref == bus_ref), None)
+        if szyna is None:
+            return None, f"Szyna {bus_ref} nie należy do modelu."
+        if szyna.thevenin_r_ohm is None or szyna.thevenin_x_ohm is None:
             return (
                 None,
-                "W obszarze sieci węzła nie ma źródła sieciowego z impedancją zasilania — "
-                "impedancji zastępczej sieci nie wyznaczono.",
-                [],
+                "Węzeł nie ma impedancji zastępczej sieci — w jego wyspie nie ma źródła "
+                "sieciowego ani maszyny wirującej z impedancją do odniesienia.",
             )
-        if any(galwaniczne[ref] != galwaniczne[bus_ref] for ref in zrodla_obszaru):
-            return (
-                None,
-                "Źródło sieciowe zasila węzeł przez transformator — macierz admitancyjna "
-                "analizy nie ma przekładni transformatora, więc impedancji zastępczej sieci "
-                "w węźle nie wyznaczono.",
-                [],
-            )
-        robocze = [ref for ref in zrodla_obszaru if (z := zrodla[ref]) is not None and z[1]]
-        z_diag = self._driving_point_impedance(model, 1.0, with_source_shunt=True)
-        return complex(z_diag[refy.index(bus_ref)]), None, robocze
+        return complex(szyna.thevenin_r_ohm, szyna.thevenin_x_ohm), None
 
     @staticmethod
     def _hosting_capacity_bus_seed(seed_modelu: int, bus_ref: str) -> int:
@@ -3184,10 +3358,10 @@ class V126AcademicSolver:
         losowanie Monte Carlo, a więc wynik zdolności przyłączeniowej.
 
         Pola czytane: szyny — referencja, napięcie znamionowe, napięcie robocze, obciążenie
-        czynne i impedancja zasilania (moc zwarciowa, Z_Q); gałęzie — zaciski, stan, długość,
-        impedancja i susceptancja jednostkowa (macierz admitancyjna impedancji zastępczej)
-        i obciążalność; transformatory — zaciski, moc, napięcie górne, napięcie zwarcia
-        i straty obciążeniowe (macierz admitancyjna); liczba losowań Monte Carlo.
+        czynne i impedancja zastępcza sieci Z_th (z mostu modelu — niesie w sobie sieć:
+        gałęzie, transformatory z przekładnią, Z_Q i maszyny, więc ich zmiana zmienia ziarno
+        przez Z_th); gałęzie — zacisk odbiorczy, stan i obciążalność (kryterium prądowe toru
+        zasilającego szynę); liczba losowań Monte Carlo. Transformatory nie są czytane wprost.
         """
         szyny = [
             V126BusInput.model_construct(**_pola_elementu(bus, POLA_HOSTINGU_SZYNY))
@@ -3197,16 +3371,9 @@ class V126AcademicSolver:
             V126BranchInput.model_construct(**_pola_elementu(branch, POLA_HOSTINGU_GALEZI))
             for branch in model.branches
         ]
-        transformatory = [
-            V126TransformerInput.model_construct(
-                **_pola_elementu(transformer, POLA_HOSTINGU_TRANSFORMATORA)
-            )
-            for transformer in model.transformers
-        ]
         return V126AcademicInput.model_construct(
             buses=szyny,
             branches=galezie,
-            transformers=transformatory,
             parameters={
                 "hosting_monte_carlo_n": int(model.parameters.get("hosting_monte_carlo_n", 1000))
             },
@@ -3215,7 +3382,7 @@ class V126AcademicSolver:
     @staticmethod
     def _ziarno_hostingu(projekcja: V126AcademicInput) -> int:
         """Ziarno modelu analizy przepustowości: odcisk projekcji czytanych pól w postaci
-        KANONICZNEJ — szyny, gałęzie i transformatory posortowane wg referencji (to zbiory
+        KANONICZNEJ — szyny i gałęzie posortowane wg referencji (to zbiory
         elementów sieci; kolejność wpisów jest artefaktem budowy modelu i nie może poruszyć
         losowania żadnej szyny — karta HOSTING-RNG-IZOLACJA, własność T1)."""
 
@@ -3228,24 +3395,17 @@ class V126AcademicSolver:
                 (_pola_elementu(g, POLA_HOSTINGU_GALEZI) for g in projekcja.branches),
                 key=lambda g: str(g["ref"]),
             ),
-            "transformers": sorted(
-                (_pola_elementu(t, POLA_HOSTINGU_TRANSFORMATORA) for t in projekcja.transformers),
-                key=lambda t: str(t["ref"]),
-            ),
             "monte_carlo_n": projekcja.parameters["hosting_monte_carlo_n"],
         }
         return int(_hash(odcisk)[:12], 16)
 
     def _hosting_capacity(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
-        # Obliczenie i ziarno stoją na JEDNEJ projekcji czytanych pól (`_projekcja_hostingu`);
-        # pełne wejście służy wyłącznie nazwom szyn w danej przyjętej (nazwy nie wchodzą do
-        # ziarna ani do obliczenia).
-        pelne_wejscie = model
+        # Obliczenie i ziarno stoją na JEDNEJ projekcji czytanych pól (`_projekcja_hostingu`).
         model = self._projekcja_hostingu(model)
-        robocze_zrodla: set[str] = set()
         seed = self._ziarno_hostingu(model)
         results: list[JsonDict] = []
         seeds_by_bus: JsonDict = {}
+        impedancje_zastepcze: JsonDict = {}
         simulations = int(model.parameters["hosting_monte_carlo_n"])
         for bus in model.buses:
             # HOSTING-RNG-IZOLACJA (dług zarejestrowany przy MOST-WEJSCIA-V126,
@@ -3263,8 +3423,12 @@ class V126AcademicSolver:
             seed_bus = self._hosting_capacity_bus_seed(seed, bus.ref)
             seeds_by_bus[bus.ref] = seed_bus
             rng = random.Random(seed_bus)
-            z_th, powod_braku_z, robocze_z = self._impedancja_zastepcza_szyny(model, bus.ref)
-            robocze_zrodla.update(robocze_z)
+            z_th, powod_braku_z = self._impedancja_zastepcza_szyny(model, bus.ref)
+            impedancje_zastepcze[bus.ref] = (
+                None
+                if z_th is None
+                else {"r_ohm": _round(z_th.real, 6), "x_ohm": _round(z_th.imag, 6)}
+            )
             if z_th is None:
                 results.append(
                     {
@@ -3287,10 +3451,13 @@ class V126AcademicSolver:
             # prądowe policzone z liczby wziętej z powietrza. Odczyt wyniesiony
             # też POZA pętlę Monte Carlo — nie zależy od losowania, a liczył się
             # sto tysięcy razy na szynę.
+            # Gałąź otwarta nie jest torem zasilającym — jej obciążalność nie ogranicza szyny.
             obciazalnosci = [
                 branch.ampacity_a
                 for branch in model.branches
-                if branch.to_bus_ref == bus.ref and branch.ampacity_a is not None
+                if branch.to_bus_ref == bus.ref
+                and not branch.is_open
+                and branch.ampacity_a is not None
             ]
             ampacity = max(obciazalnosci) if obciazalnosci else None
             for candidate_mw in [x * 0.1 for x in range(1, 101)]:
@@ -3337,7 +3504,10 @@ class V126AcademicSolver:
                 "seed_model": seed,
                 "seed_bus_rule": "int(sha256(f'{seed_model}:{bus_ref}')[:12], 16)",
                 "seeds_by_bus": seeds_by_bus,
+                "impedancje_zastepcze_ohm": impedancje_zastepcze,
             },
+            "ΔU = P_netto·|Z_th|/U_n², Z_th — przekątna macierzy Z-bus sieci zwarciowej IEC 60909 "
+            "modelu w szynie (przekładnia i K_T transformatorów, Z_Q zasilania, Z″ maszyn). "
             "Obciążenie losowane z rozkładu beta, generacja z rozkładu normalnego obciętego "
             "do zakresu fizycznego; KAŻDA szyna losuje z WŁASNEGO podstrumienia — ziarno "
             "szyny wyprowadzone jawnie z pary (ziarno modelu, referencja szyny), więc "
@@ -3368,14 +3538,7 @@ class V126AcademicSolver:
             ],
             has_inputs=len(model.buses) > 0,
         )
-        wynik: JsonDict = {"hosting_capacity": results, "sanity": sanity}
-        if robocze_zrodla:
-            # Impedancja zastępcza węzłów stoi na podziale roboczym mocy zwarciowej — dana
-            # przyjęta wyniku (zasada nr 4), jak w wierszu rozruchu silnika.
-            wynik["dane_przyjete"] = [
-                _dana_przyjeta_podzialu_zrodla(pelne_wejscie, sorted(robocze_zrodla))
-            ]
-        return wynik
+        return {"hosting_capacity": results, "sanity": sanity}
 
     def _opf_loss_lcc(self, model: V126AcademicInput, trace: TraceBuilder) -> JsonDict:
         branch_rows: list[JsonDict] = []
@@ -3441,7 +3604,7 @@ class V126AcademicSolver:
             {"total_losses_kw": _round(total_kw, 5), "annual_kwh": _round(annual_kwh, 3)},
             "Kwadrat prądu [A²] razy rezystancja [Ω] daje moc [W]; moc [kW] razy czas [h] daje energię [kWh].",
             result_pl=(
-                f"Straty mocy: {_round(total_kw, 5)} kW; straty energii: {_round(annual_kwh, 3)} kWh/rok"
+                f"Straty mocy: {_lp_tekst(_round(total_kw, 5))} kW; straty energii: {_lp_tekst(_round(annual_kwh, 3))} kWh/rok"
             ),
         )
         return {
@@ -3527,7 +3690,7 @@ class V126AcademicSolver:
             "Wielkości tego samego rodzaju; odchyłka wyrażona w %.",
             result_pl=(
                 f"Największa odchyłka od referencji: "
-                f"{max((row['delta_percent'] for row in rows), default=0.0)} %"
+                f"{_lp_tekst(max((row['delta_percent'] for row in rows), default=0.0))} %"
             ),
         )
         return {
@@ -3576,7 +3739,7 @@ class V126AcademicSolver:
             "Tolerancje katalogowe propagowane jako niezależne składowe wariancji wyniku.",
             {"expanded_uncertainty_percent_k2": _round(expanded, 5)},
             "Pierwiastek z sumy kwadratów udziałów procentowych daje niepewność w %.",
-            result_pl=(f"Niepewność rozszerzona (k = 2): {_round(expanded, 5)} %"),
+            result_pl=(f"Niepewność rozszerzona (k = 2): {_lp_tekst(_round(expanded, 5))} %"),
         )
         ranked = sorted(sensitivities, key=lambda item: -item["sigma_contribution_percent"])
         total = sum(item["sigma_contribution_percent"] for item in ranked) or 1.0

@@ -29,6 +29,18 @@ export const CASE_ID = GOTOWOSC.case_id;
 export const RUN_ID = 'run-akad-abc';
 
 /**
+ * Fragmenty prozy tekstu backendu poza wzorami `$…$` — tekst widoczny na ekranie po złożeniu
+ * wzorów KaTeX-em (`TekstZWzorami`) zawiera każdy z nich; sam wzór KaTeX składa inaczej niż
+ * zapis źródłowy, więc asercja treści porównuje prozę, a obecność wzoru sprawdza `.katex`.
+ */
+export function fragmentyProzy(tekst: string): string[] {
+  return tekst
+    .split(/\$[^$]+\$/)
+    .map((fragment) => fragment.trim())
+    .filter((fragment) => fragment !== '');
+}
+
+/**
  * Migawka z nazwami sieci złotej — JEDNO miejsce z harnessem scen
  * (`src/harness-fixtures/migawkaSieciZlotej.ts`); re-eksport dla testów okna.
  */

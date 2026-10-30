@@ -167,10 +167,10 @@ export function krokiSladuPQ(widok: WidokPokryciaPQ): KrokSladuSily[] {
       formula_latex:
         'q_{\\text{wym,min}} = u_{\\min} \\cdot P_{n};\\quad q_{\\text{wym,max}} = u_{\\max} \\cdot P_{n}',
       substitution_pl:
-        `Pn = ${fmtMWPQ(dane.pn_mw)} MW; `
-        + `udzial_min = ${dane.udzial_q_min_pct_pn}; udzial_max = ${dane.udzial_q_max_pct_pn}`,
+        `$P_n$ = ${fmtMWPQ(dane.pn_mw)} MW; `
+        + `$u_{\\min}$ = ${dane.udzial_q_min_pct_pn}; $u_{\\max}$ = ${dane.udzial_q_max_pct_pn}`,
       result_pl:
-        `q_wym ∈ [${fmtMvarPQ(wymaganie.q_wymagane_min_mvar)}${KRZYWE_STRINGS.rozdzielaczPasma}`
+        `$q_{\\text{wym}}$ ∈ [${fmtMvarPQ(wymaganie.q_wymagane_min_mvar)}${KRZYWE_STRINGS.rozdzielaczPasma}`
         + `${fmtMvarPQ(wymaganie.q_wymagane_max_mvar)}] Mvar`,
     },
     {

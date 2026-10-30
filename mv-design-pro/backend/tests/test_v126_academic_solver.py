@@ -74,7 +74,7 @@ def _academic_input() -> V126AcademicInput:
             # Komplet danych uziomu i silnika — pola wymagane kontraktu (dawne wartości
             # domyślne kontraktu liczyły uziom i silnik, których nikt nie opisał).
             "earthing": {
-                "gpz_ref": "GPZ",
+                "bus_ref": "B1",
                 "rho1_ohm_m": 100.0,
                 "length_m": 60.0,
                 "width_m": 40.0,

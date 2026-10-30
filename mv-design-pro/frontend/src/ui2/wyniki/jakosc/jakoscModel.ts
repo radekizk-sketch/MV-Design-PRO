@@ -595,8 +595,8 @@ export function naZalozeniaCieplne(
   return [
     {
       etykieta: 'Kryterium',
-      wartosc: 'I_th ≤ I_th(1s) / √t',
-      uwaga: 'IEC 60949 — równoważna energia cieplna I²·t = const (nagrzewanie adiabatyczne).',
+      wartosc: '$I_{th} \\leq I_{th(1\\,\\mathrm{s})} / \\sqrt{t}$',
+      uwaga: 'IEC 60949 — równoważna energia cieplna $I^2 t = \\mathrm{const}$ (nagrzewanie adiabatyczne).',
     },
     {
       etykieta: 'Miejsce zwarcia',

@@ -114,6 +114,19 @@ async function siecTla(
 }
 
 /**
+ * Szyna stacji sieci tła — szyna źródła sieciowego GPZ (jedyna szyna rozdzielni; zaciski
+ * końcowe odcinków to węzły pomocnicze, których uziom nie dotyczy). Czytana z modelu
+ * backendu, nie zakładana w specu: identyfikator szyny powstaje w operacji domenowej.
+ */
+async function szynaStacjiTla(request: APIRequestContext, caseId: string): Promise<string> {
+  const odpowiedz = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm`);
+  expect(odpowiedz.ok()).toBeTruthy();
+  const enm = (await odpowiedz.json()) as { sources: { bus_ref: string }[] };
+  expect(enm.sources).toHaveLength(1);
+  return enm.sources[0].bus_ref;
+}
+
+/**
  * Rodzaj liczący WPROST z modelu, POTWIERDZONY przez REALNĄ gotowość backendu na sieci
  * tła (nie założony w specu). Preferowana propagacja niepewności; brak jakiegokolwiek
  * prezentowanego rodzaju POTWIERDZONEGO bez parametrów jest jawnym niepowodzeniem.
@@ -217,6 +230,7 @@ test('B-02 — zrzuty okna „Analizy specjalistyczne" na realnym backendzie (ob
   test.setTimeout(600000);
   mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
   const seed = await siecTla(request);
+  const szynaStacji = await szynaStacjiTla(request, seed.caseId);
   const rodzajZModelu = await rodzajPotwierdzonyBezParametrow(request, seed.caseId);
   await otworzAplikacje(page, seed);
   await otworzOknoSpecjalistyczne(page);
@@ -247,7 +261,7 @@ test('B-02 — zrzuty okna „Analizy specjalistyczne" na realnym backendzie (ob
     });
 
     // 3. Formularz uziomu wypełniony (wartości z fixtury backendu) — REALNA gotowość POTWIERDZONA.
-    await wypelnijUziomIPotwierdz(page);
+    await wypelnijUziomIPotwierdz(page, { bus_ref: szynaStacji });
     // Panel warsztatu przewija się WEWNĘTRZNIE (kontener), więc `fullPage` nie rozwija
     // treści — badana sekcja jest przewijana do kadru przed zrzutem (dowód „widoczne",
     // nie „gdzieś niżej").
