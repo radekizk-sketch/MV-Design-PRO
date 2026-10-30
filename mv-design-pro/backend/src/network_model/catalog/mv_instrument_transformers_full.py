@@ -174,8 +174,9 @@ def _enea_vt(*, annex: str, voltage_kv: int) -> dict[str, Any]:
             "accuracy_class": "0.2", "burden_va": 10.0,
             "um_kv": 7.2 if voltage_kv == 6 else 24.0,
             "primary_connection": "PHASE_EARTH",
-            # Nie twierdzimy obecności uzwojenia w otwartym trójkącie.
-            "has_residual_winding": False,
+            # Annex 5/E-F nie potwierdza ani obecności, ani definitywnego
+            # braku osobnego uzwojenia resztkowego w wersji wyrobu.
+            "has_residual_winding": None,
             "secondary_windings": secondary_windings,
             "verification_status": "REFERENCYJNY",
             "catalog_status": "REFERENCYJNY_V1",
@@ -187,7 +188,7 @@ def _enea_vt(*, annex: str, voltage_kv: int) -> dict[str, Any]:
                 "otwartego trójkąta. Podano pierwszy tor 0–10 VA kl.0,2; "
                 "pozostałe wtórne i konfigurację gwiazda/ochrona należy "
                 "doprecyzować wg schematu pola. W tym profilu nie ma "
-                "potwierdzonego osobnego uzwojenia 0,1/3 kV do 3U0; "
+                "potwierdzonych danych osobnego uzwojenia 0,1/3 kV do 3U0; "
                 "nie zastępować go klasą 3P."
             ),
         },
