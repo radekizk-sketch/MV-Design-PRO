@@ -23,6 +23,7 @@ const TAB_LABELS = [
   'Typy przekładników prądowych',
   'Typy przekładników napięciowych',
   'Przekładniki Ferrantiego 3I₀',
+  'Rodziny przekładników producentów',
   'Typy przekładników pomiarowych',
   'Typy falowników źródeł fotowoltaicznych',
   'Typy falowników magazynów energii',
@@ -300,6 +301,22 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
     construction: 'CLOSED_RING',
     window_diameter_mm: 120,
   }],
+  INSTRUMENT_FAMILY: [{
+    id: 'instrument-family-pl-kpb-intra-cts-17-sw',
+    name: 'KPB Intra CTS 17.SW — rodzina CT',
+    manufacturer: 'KPB Intra',
+    model_family: 'CTS 17.SW',
+    transformer_kind: 'CT',
+    mounting: 'INDOOR',
+    voltage_domain: 'SN',
+    record_kind: 'MANUFACTURER_FAMILY_NOT_SKU',
+    um_kv: 17.5,
+    primary_a_min: 5,
+    primary_a_max: 3200,
+    catalog_status: 'REFERENCYJNY_V1',
+    source_reference: 'https://intrapolska.pl/',
+    verification_note: 'Rodzina — brak skonfigurowanej tabliczki znamionowej',
+  }],
   // Kategoria łączy CT+VT+Ferranti (dług V12T-018): `fetchTypesByCategory` zwraca
   // `[...CTCatalogType, ...VTCatalogType, ...FerrantiCatalogType]` (`api.ts`), więc fixture niesie
   // rekordy w KSZTAŁCIE realnego dostawcy, nie zmyślony wspólny typ.
@@ -574,6 +591,16 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getByText('Przekładnia zwojowa czujnika 3I₀')).toBeInTheDocument();
     expect(screen.getByText('1/470')).toBeInTheDocument();
     expect(screen.queryByText('Przekładnia pierwotna [A]')).not.toBeInTheDocument();
+  });
+
+  it('rodzina KPB Intra jest widoczna, ale nieprzypisywalna jako aparat', async () => {
+    const onSelectType = vi.fn();
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser initialTab="INSTRUMENT_FAMILY" onSelectType={onSelectType} />);
+    await user.click(await screen.findByText('KPB Intra CTS 17.SW — rodzina CT'));
+    expect(screen.getByText('Rodzina producenta')).toBeInTheDocument();
+    expect(screen.getByText('CTS 17.SW')).toBeInTheDocument();
+    expect(onSelectType).not.toHaveBeenCalled();
   });
 
   it('filters visible types by search query', async () => {
