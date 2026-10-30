@@ -53,6 +53,30 @@ U_m = 24 kV, izolacja 24/50/125 kV, Fv=1,9 przez 8 h. Otwartym trójkątem jest 
 
 **Ważne:** kombinacje są dozwolone przez zakres kart rodzinnych, lecz nie oznaczają istnienia zamawialnego SKU bez potwierdzenia producenta. Stąd `REFERENCYJNY_V1`, nie `ZWERYFIKOWANY`.
 
+## ABB TPU — wykonania producenta, a nie profile ENEA
+
+Na podstawie [ABB „Przekładniki prądowe TPU 4x.xx, 5x.xx i 6x.xx”,
+wydanie 05.2014, str. 35, tabela standardowych wykonań TPU 6x.xx](https://library.e.abb.com/public/a30bcdbdd6e74381b444c9356675fb28/TPU-katalog-09052014_LR.pdf)
+dodano **17 jednoznacznych konfiguracji** 24 kV: przekładnie 20–3200/5/5 A,
+dwa rdzenie **0,5 FS5 (pomiarowy) + 5P10/5P15 (zabezpieczeniowy)**,
+znamionowe moce 15–30 VA i odpowiadające jednemu wierszowi
+wytrzymałości Ith/Idyn. Są to udokumentowane standardowe wykonania
+z katalogu 2014 — **nie gwarancja dostępności w roku 2026**.
+
+**W szczególności nie wolno podmieniać 0,5 FS5 na 0,2S FS5:**
+takie wykonanie nie jest automatycznie właściwym doborem do nowego
+rozliczeniowego układu ENEA. Karty producenta i wymagania operatora
+są dwoma niezależnymi kryteriami.
+
+Dodatkowo wprowadzono **1 przykład rzeczywistej tabliczki ABB TPU 70.63**
+z oficjalnej instrukcji 1VLM000610 rev. 27: 100//1/1/1/5 A,
+4 osobne rdzenie (5P20, 0,2S FS5, 5P40, 0,2S FS5),
+Um=36 kV, Ith=16 kA/1 s i Idyn=40 kA.
+Rezystancje wtórne Rct≤1 Ω oraz Rct≤2 Ω dotyczą dwóch KONKRETNYCH
+rdzeni zabezpieczeniowych, nie całego CT. To egzemplarz z ilustracji
+instrukcji, nie potwierdzony obecny numer zamówieniowy.
+[Źródło ABB](https://library.e.abb.com/public/be6ececc53e049c7a172e37fc04a8453/Instruction_Current%20and%20Voltage%20Instrument%20Transformers_1VLM000610%20Rev.27%20en.pdf).
+
 ## Ferranti 3I0 — osobna rodzina
 
 Nie przenosimy czujników ziemnozwarciowych do zwykłej listy CT fazowych (1 A/5 A). Ich przekładnia `1/120` lub `1/470` jest zwojowa/czujnikowa, nie tabliczkowym CT fazowym `120/1` lub `470/1`.
@@ -62,6 +86,11 @@ Nie przenosimy czujników ziemnozwarciowych do zwykłej listy CT fazowych (1 A/5
 - Wymóg ENEA stacji 110/SN: Ferranti w przedziale kablowym, osiowość przepustu, kabel/kable i dodatkowe złącze testowe wyprowadzone na listwę obwodów wtórnych.
 
 Nie wszystkie czujniki CSH mają potwierdzone dodatkowe złącze wymagane przez ENEA; przy doborze do GPZ potrzebna osobna ocena tej cechy. Dane nieznane NIE są wypełniane zmyślonymi liczbami.
+
+Przeglądarka typów w frontendzie prezentuje rdzenie CT i uzwojenia VT
+jako oddzielne pozycje z mocą, klasą, FS/ALF i połączeniem.
+Ferranti ma własną kategorię oraz znajduje się w zbiorczej
+bibliotece przekładników — **nie** jest modelowany jako CT fazowy.
 
 ## Technika wdrożenia i Ubuntu
 
