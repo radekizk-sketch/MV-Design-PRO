@@ -78,16 +78,39 @@ def test_wymagania_mniejszego_zaczepu_i_toroid_072_kv() -> None:
         assert "dla MNIEJSZEGO zaczepu" in p["verification_note"]
 
 
-def test_ena_historyczne_id_zachowane_ale_jawnie_oznaczone() -> None:
+def test_pojedyncze_200_5_400_5_nie_moga_byc_legacy_ani_usuniete() -> None:
+    """ENEA ma przełączalne w nowych PPE, lecz istniejące CT mogą być 200/5.
+
+    Np. przetarg ENEA GPZ Kościan 2026: istniejące 4MC 200/5/5 A,
+    wymiana na 200-400/5/5/5 A w przebudowywanym polu.
+    """
     repo = get_default_mv_catalog()
-    legacy = [item for item in get_all_enea_ct_profiles()
-              if item["name"].startswith("LEGACY")]
-    assert len(legacy) > 0
-    assert all("primary_taps_a" not in item["params"] for item in legacy)
-    assert all("HISTORYCZNYM uproszczeniem" in item["params"]["verification_note"]
-               for item in legacy)
-    assert all(item["id"] in repo.ct_types for item in legacy)
-    assert any("5a-linia" in item["id"] and "-200-" in item["id"] for item in legacy)
+    single = [
+        item for item in get_all_enea_ct_profiles()
+        if item["name"].startswith("CT jednozakresowy")
+    ]
+    assert single
+    assert not any("LEGACY" in item["name"] for item in single)
+    assert not any("nie wybierać" in item["name"].lower() for item in single)
+    assert all(item["id"] in repo.ct_types for item in single)
+    assert all("primary_taps_a" not in item["params"] for item in single)
+    assert all("Nie deklaruje zgodności z nowym" in item["params"]["verification_note"]
+               for item in single)
+    assert all("Nie dopisywać zaczepów" in item["params"]["verification_note"]
+               for item in single)
+    assert all(item["params"]["catalog_status"] == "REFERENCYJNY_V1"
+               for item in single)
+    assert any("5a-linia" in item["id"] and "-200-" in item["id"] for item in single)
+    assert any("5a-linia" in item["id"] and "-400-" in item["id"] for item in single)
+    # Prawidłowy aparat jednozakresowy nie dostaje fikcyjnych dodatkowych zaczepów.
+    ct = next(item for item in single
+              if "5a-linia" in item["id"] and "-200-" in item["id"])
+    loaded = repo.ct_types[ct["id"]].to_dict()
+    assert loaded["ratio_primary_a"] == 200.0
+    assert loaded["ratio_secondary_a"] == 5.0
+    assert "primary_taps_a" not in loaded
+    assert CTType.from_dict(loaded).to_dict() == loaded
+
 
 
 def test_enea_nn_200_400_800_przekladniki_pomiarowe() -> None:
