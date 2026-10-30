@@ -38,8 +38,14 @@ głębokość 0,7 m, współczynnik obciążenia 0,7, kable w trójkąt.
 X jest obliczone dla f=50 Hz z udokumentowanego L.
 R0/X0 w obecnym silniku wynika z jawnych założeń, nie z pomiarów NKT.
 
-Wprowadzono trzy nowe modele:
-`cable-enea-2026-nkt-xruhakxs1-{70|150|240}-25`.
+Wprowadzono sześć nowych modeli — trzy warianty XRUHAKXS1 i trzy XUHAKXS1:
+`cable-enea-2026-nkt-{xruhakxs1|xuhakxs1}-{70|150|240}-25`.
+
+NKT, `XUHAKXS1 12/20 kV`, `CTL00352 rev. 1`, str. 1–2:
+https://sklep.enexon.pl/amfile/file/download/file/845270/product/236262/
+Parametry R20/C/L/Ith/Iz dla tych trzech przekrojów są identyczne z powyższymi
+według **odrębnej karty** CTL00352. Różnica w wykonaniu/uszczelnieniu
+powoduje, że są to **osobne typy**, z własnym źródłem.
 **Bez zmiany identyfikatorów** historycznych: cztery modele
 `cable-enea-operator-*` są zachowane dla projektów, ale oznaczone
 jako **referencyjne poza tabelą 3 ENEA 2026**. Nie wolno ich przedstawiać jako
