@@ -89,7 +89,7 @@ def test_esitas_trzy_numery_z_polskiej_oferty_roundtrip_bez_fv_uzwojenia_resztko
         assert item["id"] in repo.vt_types
         d = repo.vt_types[item["id"]].to_dict()
         assert VTType.from_dict(d).to_dict() == d
-    assert len(repo.ct_types) == 86
+    assert len(repo.ct_types) == 103
     assert len(repo.vt_types) == 37
 
 
