@@ -187,6 +187,54 @@ describe('TabelaWynikow — dowód (2× klik), próg → tag, tryb ekspercki', (
     expect(p.onOtworzDowod).toHaveBeenCalledWith('dowod-b');
   });
 
+  /**
+   * FIX-E2E-PELNE — cel gestu dwukliku. Pierwszy klik w wartość zaznacza wiersz, zaznaczenie
+   * rozwija inspektor powłoki i tabela przepływa: drugi klik i `dblclick` lądują POZA
+   * wartością, w której gest się zaczął (spec `parytety-fala2` L-11). Iloczyn: miejsce
+   * drugiego kliku {ta sama wartość · komórka innego wiersza · element poza tabelą}
+   * × wiersz wybieralny {tak · nie}. Kolejność zdarzeń jak w przeglądarce:
+   * click(detail 1) → click(detail 2) → dblclick(detail 2).
+   */
+  for (const miejsce of ['ta-sama-wartosc', 'inny-wiersz', 'poza-tabela'] as const) {
+    for (const wybieralny of [true, false]) {
+      it(`gest dwukliku: drugi klik w ${miejsce}, wiersz ${wybieralny ? 'wybieralny' : 'niewybieralny'} → wywód wartości z pierwszego kliku, raz`, () => {
+        const onWybierz = vi.fn();
+        const p = props(wybieralny ? { onWybierzWiersz: onWybierz } : {});
+        render(
+          <>
+            <TabelaWynikow {...p} />
+            <button type="button">obok tabeli</button>
+          </>,
+        );
+        const wartosc = screen.getByText('20,50').closest('button')!;
+        const drugi =
+          miejsce === 'ta-sama-wartosc'
+            ? wartosc
+            : miejsce === 'inny-wiersz'
+              ? screen.getByText('18,00')
+              : screen.getByText('obok tabeli');
+        fireEvent.click(wartosc, { detail: 1 });
+        fireEvent.click(drugi, { detail: 2 });
+        fireEvent.doubleClick(drugi, { detail: 2 });
+        expect(p.onOtworzDowod).toHaveBeenCalledTimes(1);
+        expect(p.onOtworzDowod).toHaveBeenCalledWith('dowod-b');
+        // Drugi klik gestu nie zaznacza innego wiersza.
+        if (wybieralny) expect(onWybierz.mock.calls.map((c) => c[0])).toEqual(['Szyna B', ...(miejsce === 'ta-sama-wartosc' ? ['Szyna B'] : [])]);
+      });
+    }
+  }
+
+  it('gest zakończony klikiem gdzie indziej: późniejszy dwuklik innego miejsca nie otwiera wywodu', () => {
+    const p = props();
+    render(<TabelaWynikow {...p} />);
+    fireEvent.click(screen.getByText('20,50').closest('button')!, { detail: 1 });
+    const inna = screen.getByText('18,00');
+    fireEvent.click(inna, { detail: 1 });
+    fireEvent.click(inna, { detail: 2 });
+    fireEvent.doubleClick(inna, { detail: 2 });
+    expect(p.onOtworzDowod).not.toHaveBeenCalled();
+  });
+
   it('komórka bez dowodRef nie jest przyciskiem', () => {
     render(<TabelaWynikow {...props()} />);
     const komorka = screen.getByText('18,00');
