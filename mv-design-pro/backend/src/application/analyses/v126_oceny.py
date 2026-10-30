@@ -54,6 +54,7 @@ from werdykt import (
     WynikKryterium,
     WynikWymagania,
     ZakresWaznosci,
+    format_liczba,
     format_wielkosc,
     ocen_kryterium,
     zagreguj_wymaganie,
@@ -116,6 +117,23 @@ class ZalozenieKryterium:
         ), f"Założenie {self.paragraf} nie ma progu liczbowego."
         return Wielkosc(wartosc=self.wartosc, jednostka=self.jednostka)
 
+    @property
+    def prog_latex(self) -> str:
+        """Próg założenia w zapisie LaTeX warunku (przecinek dziesiętny ``{,}``) — warunek
+        rekordu i karty katalogu cytują próg stąd, nie własnym literałem (jedno źródło)."""
+        granica = self.granica()
+        liczba = format_liczba(granica.wartosc).replace(",", "{,}")
+        return liczba + _JEDNOSTKA_LATEX[granica.jednostka]
+
+
+#: Jednostki progów rejestru w zapisie LaTeX (zamknięty zbiór: % i s).
+_JEDNOSTKA_LATEX = {"%": r"\%", "s": r"\,\mathrm{s}"}
+
+#: Progi rejestru — JEDNA liczba dla treści założenia, progu porównania i warunku LaTeX.
+_PROG_TOV_S = 10.0
+_PROG_MARGINESU_BIL_PCT = 20.0
+_PROG_PRADU_RESZTKOWEGO_PCT = 10.0
+_PROG_ZAPADU_ROZRUCHU_PCT = 15.0
 
 _BEZ_WYDANIA = "wydanie i jednostka redakcyjna niepotwierdzone w programie"
 
@@ -130,19 +148,21 @@ Z_PRZEPIECIE_DORYWCZE = ZalozenieKryterium(
     "Z-2",
     "wytrzymałości ogranicznika na przepięcie dorywcze",
     "Przy doziemieniu wyłączanym samoczynnie wytrzymałość ogranicznika na przepięcie dorywcze "
-    "10 s nie mniejsza od U_TOV; zakłada się wyłączenie doziemienia w czasie nie dłuższym "
-    "niż 10 s (dłuższy czas wymaga krzywej TOV(t) producenta).",
+    f"{format_liczba(_PROG_TOV_S)} s nie mniejsza od U_TOV; zakłada się wyłączenie doziemienia "
+    f"w czasie nie dłuższym niż {format_liczba(_PROG_TOV_S)} s (dłuższy czas wymaga krzywej "
+    "TOV(t) producenta).",
     f"Reguła z praktyki IEC 60099-5 ({_BEZ_WYDANIA}).",
-    10.0,
+    _PROG_TOV_S,
     "s",
 )
 Z_MARGINES_IZOLACJI = ZalozenieKryterium(
     "Z-3",
     "marginesu ochrony izolacji",
-    "Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %.",
+    "Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż "
+    f"{format_liczba(_PROG_MARGINESU_BIL_PCT)} %.",
     "Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu "
     f"nie jest potwierdzona w programie; {_BEZ_WYDANIA}).",
-    20.0,
+    _PROG_MARGINESU_BIL_PCT,
     "%",
 )
 Z_NAPIECIE_DOTYKOWE = ZalozenieKryterium(
@@ -162,11 +182,13 @@ Z_NAPIECIE_KROKOWE = ZalozenieKryterium(
 Z_PRAD_RESZTKOWY = ZalozenieKryterium(
     "Z-6",
     "prądu resztkowego sieci kompensowanej",
-    "Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia "
-    "sieci.",
-    "Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości "
-    "normowej.",
-    10.0,
+    "Prąd resztkowy dławika modelu nie większy niż "
+    f"{format_liczba(_PROG_PRADU_RESZTKOWEGO_PCT)} % prądu pojemnościowego doziemienia sieci.",
+    "Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani "
+    "rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — "
+    "ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu "
+    "i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje.",
+    _PROG_PRADU_RESZTKOWEGO_PCT,
     "%",
 )
 Z_ENERGIA_REZYSTORA = ZalozenieKryterium(
@@ -189,10 +211,11 @@ Z_METODA_DETEKCJI = ZalozenieKryterium(
 Z_ZAPAD_ROZRUCHU = ZalozenieKryterium(
     "Z-9",
     "zapadu napięcia przy rozruchu",
-    "Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %.",
+    "Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż "
+    f"{format_liczba(_PROG_ZAPADU_ROZRUCHU_PCT)} %.",
     "Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad "
     "dopuszczalny zależy od odbiorów szyny i warunków operatora.",
-    15.0,
+    _PROG_ZAPADU_ROZRUCHU_PCT,
     "%",
 )
 Z_CZAS_ROZRUCHU = ZalozenieKryterium(
@@ -595,7 +618,7 @@ def oceny_izolacji(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                 opis_pl="Margines ochrony izolacji nie mniejszy od wymaganego",
                 warunek_latex=(
                     r"M_{\mathrm{BIL}} = \dfrac{\mathrm{BIL} - U_{\mathrm{res}}}"
-                    r"{U_{\mathrm{res}}}\cdot 100\% \geq 20\%"
+                    r"{U_{\mathrm{res}}}\cdot 100\% \geq " + Z_MARGINES_IZOLACJI.prog_latex
                 ),
                 relacja="NIE_MNIEJ",
                 wielkosc_pl="margines ochrony izolacji",
@@ -840,7 +863,7 @@ def oceny_uziemienia(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                         "Prąd resztkowy dławika modelu nie większy od dopuszczalnego udziału "
                         "prądu pojemnościowego sieci"
                     ),
-                    warunek_latex=r"I_{\mathrm{res}}/I_C \leq 10\%",
+                    warunek_latex=r"I_{\mathrm{res}}/I_C \leq " + Z_PRAD_RESZTKOWY.prog_latex,
                     relacja="NIE_WIECEJ",
                     wielkosc_pl="udział prądu resztkowego w prądzie pojemnościowym sieci",
                     symbol_latex=r"I_{\mathrm{res}}/I_C",
@@ -1080,7 +1103,7 @@ def oceny_rozruchu(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                 kryterium_id=f"v126.rozruch.zapad.{ref}",
                 zalozenie=Z_ZAPAD_ROZRUCHU,
                 opis_pl="Zapad napięcia na szynie przy rozruchu nie większy od dopuszczalnego",
-                warunek_latex=r"\Delta U \leq 15\%",
+                warunek_latex=r"\Delta U \leq " + Z_ZAPAD_ROZRUCHU.prog_latex,
                 relacja="NIE_WIECEJ",
                 wielkosc_pl="zapad napięcia na szynie przy prądzie rozruchowym",
                 symbol_latex=r"\Delta U",

@@ -88,7 +88,8 @@
               "b0_s": 0.00010212,
               "brak_b0_pl": null
             },
-            "substitution": "I_C = √3·15 kV·0.00010212 S = 2.6532 A",
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
             "result": {
               "i_c_a": 2.6532
             }
@@ -103,7 +104,8 @@
               "i_w_a": null,
               "z_f_ohm": null
             },
-            "substitution": "|0.0000 + j2.6532| A = 2.6532 A",
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
             "result": {
               "prad_a": 2.6532,
               "rozstrojenie": null
@@ -121,7 +123,8 @@
               },
               "z_f_ohm": null
             },
-            "substitution": "U0 = 8660.25 V; U_b = 15000.00 V; U_c = 15000.00 V",
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
             "result": {
               "u0_v": 8660.254,
               "u_faza_b_v": 15000.0,
@@ -540,7 +543,8 @@
               "b0_s": 0.00010212,
               "brak_b0_pl": null
             },
-            "substitution": "I_C = √3·15 kV·0.00010212 S = 2.6532 A",
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
             "result": {
               "i_c_a": 2.6532
             }
@@ -555,7 +559,8 @@
               "i_w_a": null,
               "z_f_ohm": null
             },
-            "substitution": "|0.0000 + j2.6532| A = 2.6532 A",
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
             "result": {
               "prad_a": 2.6532,
               "rozstrojenie": null
@@ -573,7 +578,8 @@
               },
               "z_f_ohm": null
             },
-            "substitution": "U0 = 8660.25 V; U_b = 15000.00 V; U_c = 15000.00 V",
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
             "result": {
               "u0_v": 8660.254,
               "u_faza_b_v": 15000.0,
@@ -706,7 +712,8 @@
               "b0_s": 0.00010212,
               "brak_b0_pl": null
             },
-            "substitution": "I_C = √3·15 kV·0.00010212 S = 2.6532 A",
+            "substitution": "I_C = √3·15 kV·0,0001021 S = 2,6532 A",
+            "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}0001021\\ \\mathrm{S} = 2{,}6532\\ \\mathrm{A}",
             "result": {
               "i_c_a": 2.6532
             }
@@ -721,7 +728,8 @@
               "i_w_a": null,
               "z_f_ohm": null
             },
-            "substitution": "|0.0000 + j2.6532| A = 2.6532 A",
+            "substitution": "|0,0000 + j2,6532| A = 2,6532 A",
+            "substitution_latex": "\\left|0{,}0000 + j\\,2{,}6532\\right|\\ \\mathrm{A} = 2{,}6532\\ \\mathrm{A}",
             "result": {
               "prad_a": 2.6532,
               "rozstrojenie": null
@@ -739,7 +747,8 @@
               },
               "z_f_ohm": null
             },
-            "substitution": "U0 = 8660.25 V; U_b = 15000.00 V; U_c = 15000.00 V",
+            "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+            "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
             "result": {
               "u0_v": 8660.254,
               "u_faza_b_v": 15000.0,
@@ -1166,7 +1175,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "aaaa6bb149b5b7b01c66d417629e8f086e3d701053416ffec2995ca5afbbaa7c",
+      "result_hash": "487d875acdd7b3e1e84adeadf057d428806ec3e84dabab6d28a31a156006dbc4",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

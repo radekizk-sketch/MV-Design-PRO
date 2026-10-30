@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import cmath
 import math
+import re
 from dataclasses import replace
 from typing import Any
 
@@ -555,3 +556,163 @@ def test_raport_danych_przyjetych_doziemienia_jedna_regula_nazwy(
         assert dane == []
     else:
         assert dane == [f"Dane przyjęte doziemienia (wartości robocze): {w_raporcie}"]
+
+
+# ---------------------------------------------------------------------------
+# Warunek odbioru właściciela (2026-10-29): TA SAMA sieć × cztery sposoby pracy punktu
+# neutralnego × wielkości {prąd doziemny, U0, U_b, U_c, k} — wyrocznia ręczna z DANYCH
+# WEJŚCIOWYCH (równoważnik 110 kV, pozycja katalogu transformatora, B′0 kabla, pozycje
+# katalogu zespołu), bez wiersza wyniku jako źródła impedancji.
+#
+# Wyrocznia IEC 60909-0:2016 Z_1 punktu (szyna SN stacji):
+#   Z_Q = c·U_nQ²/S″_kQ · (U_rTLV/U_rTHV)², R_Q/X_Q = 0,1 (§6.2);
+#   Z_T = (u_r + j·√(u_k² − u_r²))·U_rT²/S_rT, K_T = 0,95·c_max/(1 + 0,6·x_T) (§6.3.3);
+#   Z_1 = Z_2 = Z_Q + K_T·Z_T.
+# Z_0 punktu: rezystor Z_0,TU + 3·R_N, bezpośrednie Z_0,TU; pojemności B_0·ℓ kabla wchodzą
+# równolegle, gdy k bez nich > 1,4 (IEC 60909-0 pkt 5.2 f)) — wyrocznia sprawdza warunek.
+# Prąd: izolowany I_C = √3·U_n·B_0ℓ; kompensowany I_res = √(I_w² + (I_C − I_L)²) z
+# I_N = U_f/(jX_L + Z_0,TU/3); rezystor I_F z I_N = U_f/(R_N + Z_0,TU/3) i I_C; bezpośrednie
+# I″_k1 = √3·c·U_n/|2Z_1 + Z_0|. Napięcia: sieci izolowana/skompensowana U0 = U_f,
+# U_b = U_c = √3·U_f; uziemione — z impedancji składowych punktu (``wyrocznia_napiec``).
+# ---------------------------------------------------------------------------
+
+SPOSOBY = ("izolowany", "kompensowany", "rezystor", "bezposrednie")
+SK_Q_MVA = 3000.0
+U_NQ_KV = 110.0
+RX_Q = 0.1
+
+
+def _z1_reczne() -> complex:
+    from network_model.catalog.mv_transformer_catalog import get_wn_sn_transformer_types
+
+    tr = next(t for t in get_wn_sn_transformer_types() if t["id"] == zu.TRAFO_WN_SN)["params"]
+    s_rt, u_lv, u_hv = tr["rated_power_mva"], tr["voltage_lv_kv"], tr["voltage_hv_kv"]
+    z_q = zu.C_MAX * U_NQ_KV**2 / SK_Q_MVA * (u_lv / u_hv) ** 2
+    x_q = z_q / math.sqrt(1.0 + RX_Q**2)
+    u_r = tr["pk_kw"] / 1000.0 / s_rt
+    u_k = tr["uk_percent"] / 100.0
+    z_baza = u_lv**2 / s_rt
+    z_t = complex(u_r, math.sqrt(u_k**2 - u_r**2)) * z_baza
+    k_t = 0.95 * zu.C_MAX / (1.0 + 0.6 * z_t.imag / z_baza)
+    return complex(RX_Q * x_q, x_q) + k_t * z_t
+
+
+def _wyrocznia_sposobu(tryb: str) -> dict[str, float]:
+    b0 = _b0_odcinkow_s(ODCINKI["kabel"])
+    i_c = SQ3 * UN_V * b0
+    if tryb in ("izolowany", "kompensowany"):
+        punkty = [] if tryb == "izolowany" else [(complex(0.0, zu.X_L), zu.Z0_TU)]
+        o = wyrocznia_pradu(tryb, i_c, punkty)
+        return {"prad": o["prad"], "u0": U_F, "u_b": SQ3 * U_F, "u_c": SQ3 * U_F, "k": SQ3}
+    z1 = _z1_reczne()
+    z0 = zu.Z0_TU + (3.0 * zu.R_N if tryb == "rezystor" else 0.0)
+    _, ub, uc = wyrocznia_napiec(z1, z1, z0)
+    assert max(ub, uc) / U_F > 1.4, "warunek pkt 5.2 f): pojemności wchodzą do Z_0"
+    z0 = 1.0 / (1.0 / z0 + 1j * b0)
+    u0, ub, uc = wyrocznia_napiec(z1, z1, z0)
+    if tryb == "rezystor":
+        prad = wyrocznia_pradu(tryb, i_c, [(complex(zu.R_N, 0.0), zu.Z0_TU)])["prad"]
+    else:
+        prad = SQ3 * zu.C_MAX * UN_V / abs(2.0 * z1 + z0)
+    return {"prad": prad, "u0": u0, "u_b": ub, "u_c": uc, "k": max(ub, uc) / U_F}
+
+
+_POLE_WIELKOSCI = {
+    "prad": "prad_a",
+    "u0": "u0_v",
+    "u_b": "u_faza_b_v",
+    "u_c": "u_faza_c_v",
+    "k": "wspolczynnik_k",
+}
+
+
+def _bieg_sposobu(tryb: str) -> tuple[dict, dict, dict]:
+    """(doziemienie, wiersz wyniku, wiersz odpowiedzi) szyny SN stacji — realna ścieżka biegu."""
+    migawka = _z_odcinkami(zu._siec(WARIANT_TRYBU[tryb]), ODCINKI["kabel"])
+    szyna = zu._szyny(migawka)[0]
+    run = _bieg_szyny(migawka, szyna, (), klucz=f"sposob-{tryb}")
+    wiersz = zu._wiersz(run, szyna)
+    return wiersz["doziemienie_sieci"], wiersz, zu._wiersz_odpowiedzi(run, szyna)
+
+
+@pytest.fixture(scope="module")
+def cztery_sposoby() -> dict[str, tuple[dict, dict, dict]]:
+    """Jeden bieg realnej ścieżki na sposób — ta sama sieć (GPZ 110/15 kV + 2 km kabla)."""
+    return {tryb: _bieg_sposobu(tryb) for tryb in SPOSOBY}
+
+
+@pytest.mark.parametrize("wielkosc", sorted(_POLE_WIELKOSCI))
+@pytest.mark.parametrize("tryb", SPOSOBY)
+def test_ta_sama_siec_cztery_sposoby_z_wyroczni_recznej(
+    cztery_sposoby: dict[str, tuple[dict, dict, dict]], tryb: str, wielkosc: str
+) -> None:
+    d, wiersz, _ = cztery_sposoby[tryb]
+    assert d["tryb"] == tryb
+    oczekiwane = _wyrocznia_sposobu(tryb)[wielkosc]
+    assert d[_POLE_WIELKOSCI[wielkosc]] == pytest.approx(oczekiwane, rel=1e-5)
+    if tryb == "bezposrednie" and wielkosc == "prad":
+        # Prąd trybu bezpośredniego JEST prądem I″k1 wiersza IEC 60909 (jedna prawda).
+        assert d["prad_a"] == pytest.approx(wiersz["ikss_a"], abs=1e-4)
+
+
+#: Model nazwany w wyniku: charakter prądu, klucz kroku prądu w śladzie WHITE BOX.
+MODEL_SPOSOBU = {
+    "izolowany": ("pojemnosciowy", "doziemienie_prad_izolowany"),
+    "kompensowany": ("resztkowy", "doziemienie_prad_kompensowany"),
+    "rezystor": ("rezystancyjno_pojemnosciowy", "doziemienie_prad_rezystor"),
+    "bezposrednie": ("zwarciowy", "doziemienie_prad_bezposrednie"),
+}
+
+
+def test_cztery_sposoby_rozroznialne_liczbami_i_nazwa_modelu(
+    cztery_sposoby: dict[str, tuple[dict, dict, dict]],
+) -> None:
+    """Żaden sposób nie redukuje się do innego: prądy parami różne (o więcej niż 1 %), napięcia
+    sieci uziemionych różne od nieuziemionych, nazwa modelu, wzór, podstawa i ślad — różne."""
+    d = {tryb: cztery_sposoby[tryb][0] for tryb in SPOSOBY}
+    for i, a in enumerate(SPOSOBY):
+        for b in SPOSOBY[i + 1 :]:
+            assert abs(d[a]["prad_a"] - d[b]["prad_a"]) > 0.01 * max(d[a]["prad_a"], d[b]["prad_a"])
+            for pole in ("tryb_pl", "charakter_pl", "wzor_latex", "podstawa_pl"):
+                assert d[a][pole] != d[b][pole], (a, b, pole)
+    # Fizyka: sieć izolowana i skompensowana mają to samo przesunięcie punktu neutralnego
+    # (U0 = U_f, k = √3) — rozróżnia je prąd; uziemione mają U0 < U_f, a k ≠ √3 (rezystor
+    # z prądem pojemnościowym sieci daje k nieco PONAD √3, uziemienie bezpośrednie — poniżej).
+    assert d["izolowany"]["u0_v"] == pytest.approx(d["kompensowany"]["u0_v"], rel=1e-12)
+    for tryb in ("rezystor", "bezposrednie"):
+        assert d[tryb]["u0_v"] < U_F
+        assert d[tryb]["wspolczynnik_k"] != pytest.approx(SQ3, rel=1e-3)
+    assert d["rezystor"]["wspolczynnik_k"] > SQ3 > d["bezposrednie"]["wspolczynnik_k"]
+    assert d["rezystor"]["u0_v"] != pytest.approx(d["bezposrednie"]["u0_v"], rel=1e-3)
+    for tryb, (charakter, klucz) in MODEL_SPOSOBU.items():
+        assert d[tryb]["charakter"] == charakter
+        klucze = [k["key"] for k in d[tryb]["slad"]]
+        assert klucz in klucze
+        assert {k for _, k in MODEL_SPOSOBU.values()} & set(klucze) == {klucz}
+        # Sieci nieuziemione: prąd doziemny nie jest prądem zwarciowym IEC 60909.
+        wiersz = cztery_sposoby[tryb][1]
+        if tryb in ("izolowany", "kompensowany"):
+            assert wiersz["ikss_a"] is None
+            assert wiersz["brak_wyniku_zerowego"]["przyczyna"] == "poza_zakresem_iec60909"
+        else:
+            assert wiersz["ikss_a"] is not None
+
+
+@pytest.mark.parametrize("tryb", SPOSOBY)
+def test_slad_doziemienia_po_polsku_i_z_latex_do_ekranu(
+    cztery_sposoby: dict[str, tuple[dict, dict, dict]], tryb: str
+) -> None:
+    """Ślad WHITE BOX doziemienia: proza podstawienia z przecinkiem dziesiętnym (raport),
+    to samo podstawienie w ``substitution_latex`` (ekran, KaTeX) z ``{,}``; raport niesie
+    każdy krok śladu z tytułem (model nazwany)."""
+    d = cztery_sposoby[tryb][0]
+    assert d["slad"]
+    for krok in d["slad"]:
+        assert not re.search(r"\d\.\d", krok["substitution"]), krok["substitution"]
+        latex = krok["substitution_latex"]
+        assert latex and not re.search(r"\d\.\d", latex) and "{,}" in latex, latex
+        liczby_prozy = re.findall(r"\d+,\d+", krok["substitution"])
+        assert [x.replace(",", "{,}") for x in liczby_prozy] == re.findall(r"\d+\{,\}\d+", latex)
+    linie = _sc_row_bilans_linie(cztery_sposoby[tryb][2])
+    for krok in d["slad"]:
+        assert f"Ślad doziemienia — {krok['title']}: {krok['substitution']}" in linie

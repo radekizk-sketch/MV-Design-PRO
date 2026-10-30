@@ -830,6 +830,12 @@ def _linie_doziemienia(doziemienie: dict[str, Any]) -> tuple[str, ...]:
         f" | U_c={_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
         f" | k={_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
         f"Podstawa doziemienia: {doziemienie.get('podstawa_pl')}",
+        # Ślad WHITE BOX trybu (model nazwany krokami: I_C, I_N, prąd trybu, napięcia).
+        *(
+            f"Ślad doziemienia — {krok.get('title')}: {krok.get('substitution')}"
+            for krok in doziemienie.get("slad") or ()
+            if isinstance(krok, dict) and krok.get("substitution")
+        ),
     ]
     if doziemienie.get("brak_pl"):
         linie.append(f"Brak wyniku doziemienia: {doziemienie['brak_pl']}")

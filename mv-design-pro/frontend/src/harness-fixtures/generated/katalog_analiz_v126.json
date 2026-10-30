@@ -558,7 +558,7 @@
           "jednostka": "%",
           "warunek_pl": "I_res = √(I_w² + (I_C − I_L)²) dławika modelu (I_L, I_w z impedancji punktów neutralnych w ruchu) ≤ udział prądu pojemnościowego",
           "wartosc_graniczna": 10.0,
-          "zrodlo_pl": "założenie inżynierskie Z-6 programu — Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej.",
+          "zrodlo_pl": "założenie inżynierskie Z-6 programu — Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje.",
           "symbol_latex": "I_{\\mathrm{res}}/I_C",
           "warunek_latex": "I_{\\mathrm{res}}/I_C \\leq 10\\%",
           "wzor_latex": "",

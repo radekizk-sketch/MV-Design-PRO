@@ -403,6 +403,16 @@ export interface WidokDoziemienia {
   readonly podwojne: string | null;
   readonly danePrzyjete: readonly { nazwa: string; wartosc: string | null; powod: string }[];
   readonly niepelny: boolean;
+  /** Ślad WHITE BOX solvera doziemienia — kroki nazywają zastosowany model sposobu pracy. */
+  readonly kroki: readonly KrokDoziemienia[];
+}
+
+export interface KrokDoziemienia {
+  readonly klucz: string;
+  readonly tytul: string;
+  readonly wzorLatex: string;
+  /** Podstawienie WYŁĄCZNIE z `substitution_latex` backendu (proza nie idzie do KaTeX-a). */
+  readonly podstawienieLatex: string | null;
 }
 
 function fmtA(n: number | null): string | null {
@@ -453,5 +463,11 @@ export function doziemienieWiersza(row: ShortCircuitRow | null): WidokDoziemieni
       powod: dana.powod_pl,
     })),
     niepelny: d.kompletnosc_dowodu === 'NIEPELNY',
+    kroki: (d.slad ?? []).map((krok) => ({
+      klucz: krok.key,
+      tytul: krok.title,
+      wzorLatex: krok.formula_latex,
+      podstawienieLatex: krok.substitution_latex ?? null,
+    })),
   };
 }

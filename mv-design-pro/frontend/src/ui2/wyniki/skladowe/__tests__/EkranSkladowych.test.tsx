@@ -423,7 +423,51 @@ const DOZIEMIENIE_KOMPENSOWANE = {
   zastrzezenia_pl: ['Straty czynne dławika i upływność izolacji sieci nie są opisane w modelu.'],
   brak_pl: null,
   podwojne_doziemienie_pl: 'Podwójne zwarcie doziemne opisuje IEC 60909-3; program go nie liczy.',
-  slad: [],
+  // Ślad WHITE BOX z realnego biegu (wariant dławika, `doziemienie_sn.oblicz_doziemienie`):
+  // proza podstawienia (raport) i to samo podstawienie w LaTeX-u (ekran).
+  slad: [
+    {
+      key: 'doziemienie_prad_pojemnosciowy',
+      title: 'Prąd pojemnościowy sieci galwanicznej',
+      formula_latex: 'I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0',
+      inputs: {},
+      substitution: 'I_C = √3·15 kV·0,000245 S = 6,3664 A',
+      substitution_latex:
+        'I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}000245\\ \\mathrm{S} = 6{,}3664\\ \\mathrm{A}',
+      result: { i_c_a: 6.3664 },
+    },
+    {
+      key: 'doziemienie_punkty_neutralne',
+      title: 'Prąd obwodu punktów neutralnych przy przesunięciu punktu neutralnego o U_f',
+      formula_latex:
+        'I_N = \\sum_p \\frac{U_f}{Z_{N,p} + Z_{0,p}/3},\\ I_w = \\mathrm{Re}\\,I_N,\\ I_L = -\\mathrm{Im}\\,I_N',
+      inputs: {},
+      substitution: 'I_N = 0,5516 − j97,7396 A',
+      substitution_latex: 'I_N = 0{,}5516 - j\\,97{,}7396\\ \\mathrm{A}',
+      result: {},
+    },
+    {
+      key: 'doziemienie_prad_kompensowany',
+      title: 'Prąd resztkowy sieci skompensowanej',
+      formula_latex: 'I_{res} = \\sqrt{I_w^2 + (I_C - I_L)^2},\\quad v = \\frac{I_C - I_L}{I_C}',
+      inputs: {},
+      substitution: '|0,5516 − j91,3732| A = 91,3748 A; v = -14,3523',
+      substitution_latex:
+        '\\left|0{,}5516 - j\\,91{,}3732\\right|\\ \\mathrm{A} = 91{,}3748\\ \\mathrm{A};\\quad v = -14{,}3523',
+      result: { prad_a: 91.3748 },
+    },
+    {
+      key: 'doziemienie_napiecia_faz',
+      title: 'Napięcia przy doziemieniu (impedancje podłużne pominięte)',
+      formula_latex:
+        'U_0 = \\frac{U_f}{|1 + Z_f Y|},\\ U_b = U_f\\left|a^2 - \\frac{1}{1 + Z_f Y}\\right|,\\ U_c = U_f\\left|a - \\frac{1}{1 + Z_f Y}\\right|',
+      inputs: {},
+      substitution: 'U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V',
+      substitution_latex:
+        'U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}',
+      result: {},
+    },
+  ],
   stan_awsc: 'spoczynek',
   opis_uziemienia_pl: 'Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący.',
   dane_przyjete: [
@@ -455,6 +499,7 @@ const DOZIEMIENIE_IZOLOWANE = {
   rozstrojenie: null,
   wzor_latex: 'I_C = 3\\,\\omega C_0 U_f = \\sqrt{3}\\,U_n B_0',
   zastrzezenia_pl: [],
+  slad: [],
   dane_przyjete: [],
   kompletnosc_dowodu: 'PELNY',
 };
@@ -515,6 +560,46 @@ describe('EkranSkladowych — doziemienie sieci SN wg sposobu pracy punktu neutr
     expect(screen.getByTestId('mvd-skladowe-doziemienie-niepelny')).toHaveTextContent(T.doziemienieNiepelny);
   });
 
+  it('ślad WHITE BOX doziemienia: kroki nazywają model, wzór i podstawienie przez KaTeX, proza poza KaTeX-em', async () => {
+    mockFetchZDoziemieniem(DOZIEMIENIE_KOMPENSOWANE);
+    render(<EkranSkladowych />);
+    const slad = await screen.findByTestId('mvd-skladowe-doziemienie-slad');
+    expect(slad).toHaveTextContent(T.doziemienieSlad);
+    for (const krok of DOZIEMIENIE_KOMPENSOWANE.slad) {
+      const el = within(slad).getByTestId(`mvd-skladowe-doziemienie-krok-${krok.key}`);
+      expect(el).toHaveTextContent(krok.title);
+      const latex = within(el)
+        .getAllByTestId('math-rendered')
+        .map((m) => m.getAttribute('data-latex'));
+      // Matematyka WYŁĄCZNIE z pól `*_latex` backendu — KaTeX parsuje oba (bez zapasowego tekstu).
+      expect(latex).toEqual(
+        krok.substitution_latex ? [krok.formula_latex, krok.substitution_latex] : [krok.formula_latex],
+      );
+      expect(within(el).queryByTestId('math-fallback')).not.toBeInTheDocument();
+      // Proza podstawienia (zapis raportu) nie trafia na ekran ani do KaTeX-a.
+      expect(el.textContent).not.toContain(krok.substitution);
+    }
+  });
+
+  it('krok śladu bez podstawienia LaTeX (B_0 nieoznaczalne) → sam wzór, proza braku nie idzie do KaTeX-a', async () => {
+    const [pierwszy, ...reszta] = DOZIEMIENIE_KOMPENSOWANE.slad;
+    mockFetchZDoziemieniem({
+      ...DOZIEMIENIE_KOMPENSOWANE,
+      slad: [
+        { ...pierwszy, substitution: 'B_0 nieoznaczalne: odcinek bez B′0', substitution_latex: null },
+        ...reszta,
+      ],
+    });
+    render(<EkranSkladowych />);
+    const el = await screen.findByTestId(`mvd-skladowe-doziemienie-krok-${pierwszy.key}`);
+    expect(
+      within(el)
+        .getAllByTestId('math-rendered')
+        .map((m) => m.getAttribute('data-latex')),
+    ).toEqual([pierwszy.formula_latex]);
+    expect(el.textContent).not.toContain('odcinek bez B′0');
+  });
+
   it('sieć izolowana: tylko prąd pojemnościowy — bez I_L, I_w i v; komplet danych bez noty o niepełnym dowodzie', async () => {
     mockFetchZDoziemieniem(DOZIEMIENIE_IZOLOWANE);
     render(<EkranSkladowych />);
@@ -527,6 +612,8 @@ describe('EkranSkladowych — doziemienie sieci SN wg sposobu pracy punktu neutr
     expect(screen.queryByTestId('mvd-skladowe-doziemienie-zastrzezenia')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-skladowe-doziemienie-dane-przyjete')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-skladowe-doziemienie-niepelny')).not.toBeInTheDocument();
+    // Ładunek bez kroków śladu — bez pustej sekcji śladu.
+    expect(screen.queryByTestId('mvd-skladowe-doziemienie-slad')).not.toBeInTheDocument();
   });
 
   it('wiersz 1F bez doziemienia sieci (punkt poza siecią SN, starszy bieg) → uczciwy brak', async () => {

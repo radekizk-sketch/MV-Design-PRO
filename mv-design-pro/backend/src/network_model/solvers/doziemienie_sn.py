@@ -54,6 +54,7 @@ from network_model.pochodne.punkt_neutralny import (
     prad_pojemnosciowy_doziemienia_a,
     stopien_rozstrojenia,
 )
+from werdykt import format_liczba
 
 CharakterPradu = Literal["pojemnosciowy", "resztkowy", "rezystancyjno_pojemnosciowy", "zwarciowy"]
 
@@ -213,20 +214,54 @@ def _z(wartosc: complex | None) -> dict[str, float] | None:
     return None if wartosc is None else {"re": wartosc.real, "im": wartosc.imag}
 
 
+def _pl(wartosc: float, wzor: str) -> str:
+    """Liczba podstawienia śladu w zapisie polskim (przecinek dziesiętny) o stałej liczbie
+    miejsc — podstawienie czyta projektant (ekran składowych, raport), nie tylko audyt."""
+    return format(wartosc, wzor).replace(".", ",")
+
+
+def _tex(wartosc: float, wzor: str) -> str:
+    """Liczba podstawienia w LaTeX-u: przecinek dziesiętny jako ``{,}`` (bez odstępu KaTeX-a)."""
+    return format(wartosc, wzor).replace(".", "{,}")
+
+
+def _zespolona_pl(z: complex) -> str:
+    """Liczba zespolona prozy podstawienia: ``a + jb`` / ``a − jb`` (znak przy ``j``)."""
+    znak = "−" if z.imag < 0.0 else "+"
+    return f"{_pl(z.real, '.4f')} {znak} j{_pl(abs(z.imag), '.4f')}"
+
+
+def _zespolona_tex(z: complex) -> str:
+    """Liczba zespolona podstawienia LaTeX: ``a + j\\,b`` / ``a - j\\,b``."""
+    znak = "-" if z.imag < 0.0 else "+"
+    return rf"{_tex(z.real, '.4f')} {znak} j\,{_tex(abs(z.imag), '.4f')}"
+
+
+def _napiecia_latex(u0: float, u_b: float, u_c: float) -> str:
+    return (
+        rf"U_0 = {_tex(u0, '.2f')}\ \mathrm{{V}};\quad U_b = {_tex(u_b, '.2f')}\ \mathrm{{V}};"
+        rf"\quad U_c = {_tex(u_c, '.2f')}\ \mathrm{{V}}"
+    )
+
+
 def _krok(
     key: str,
     title: str,
     formula_latex: str,
     inputs: dict[str, Any],
     substitution: str,
+    substitution_latex: str | None,
     result: dict[str, Any],
 ) -> dict[str, Any]:
+    """Krok śladu: ``substitution`` — proza podstawienia (raport), ``substitution_latex`` —
+    to samo podstawienie do KaTeX-a (ekran; matematyka wyłącznie z pól ``*_latex``)."""
     return {
         "key": key,
         "title": title,
         "formula_latex": formula_latex,
         "inputs": inputs,
         "substitution": substitution,
+        "substitution_latex": substitution_latex,
         "result": result,
     }
 
@@ -309,6 +344,7 @@ _TYTUL_PRADU: dict[str, str] = {
     "izolowany": "Prąd doziemienia — prąd pojemnościowy sieci",
     "kompensowany": "Prąd resztkowy sieci skompensowanej",
     "rezystor": "Prąd doziemienia sieci uziemionej przez rezystor",
+    "bezposrednie": "Prąd zwarcia jednofazowego z ziemią IEC 60909 (wiersz zwarcia)",
 }
 
 
@@ -346,6 +382,29 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                 "Sieć uziemiona bezpośrednio: prąd i napięcia doziemienia wyznacza zwarcie "
                 "jednofazowe IEC 60909 w punkcie zwarcia (impedancje składowych punktu)."
             )
+        else:
+            # Ślad nazywa model trybu: prąd jest wynikiem rdzenia IEC 60909 (współczynnik c
+            # w rdzeniu), tu tylko zapis impedancji pętli punktu zwarcia, z której wynika.
+            petla = z_skladowe[0] + z_skladowe[1] + z_skladowe[2] + 3.0 * z_f
+            slad.append(
+                _krok(
+                    "doziemienie_prad_bezposrednie",
+                    _TYTUL_PRADU[tryb],
+                    wzor,
+                    {
+                        "z1_ohm": _z(z_skladowe[0]),
+                        "z2_ohm": _z(z_skladowe[1]),
+                        "z0_ohm": _z(z_skladowe[2]),
+                        "z_f_ohm": _z(dane.z_f_ohm),
+                        "ikss_iec_a": _r(prad),
+                    },
+                    f"|Z_1 + Z_2 + Z_0 + 3Z_f| = |{_zespolona_pl(petla)}| Ω; "
+                    f"I″k1 = {_pl(prad, '.4f')} A (rdzeń IEC 60909)",
+                    rf"\left|Z_1 + Z_2 + Z_0 + 3 Z_f\right| = \left|{_zespolona_tex(petla)}\right|"
+                    rf"\ \Omega;\quad I''_{{k1}} = {_tex(prad, '.4f')}\ \mathrm{{A}}",
+                    {"prad_a": _r(prad), "petla_ohm": _r(abs(petla))},
+                )
+            )
     else:
         if dane.b0_s == 0.0:
             zastrzezenia.append(ZASTRZEZENIE_ZEROWEJ_POJEMNOSCI_PL)
@@ -360,9 +419,17 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                 r"I_C = 3\,\omega C_0 U_f = \sqrt{3}\,U_n B_0",
                 {"u_n_kv": dane.napiecie_kv, "b0_s": dane.b0_s, "brak_b0_pl": dane.brak_b0_pl},
                 (
-                    f"I_C = √3·{dane.napiecie_kv:g} kV·{dane.b0_s:.6g} S = {i_c:.4f} A"
-                    if i_c is not None
+                    f"I_C = √3·{format_liczba(dane.napiecie_kv)} kV·{format_liczba(dane.b0_s)} S "
+                    f"= {_pl(i_c, '.4f')} A"
+                    if i_c is not None and dane.b0_s is not None
                     else f"B_0 nieoznaczalne: {dane.brak_b0_pl}"
+                ),
+                (
+                    rf"I_C = \sqrt{{3}}\cdot {format_liczba(dane.napiecie_kv).replace(',', '{,}')}"
+                    rf"\ \mathrm{{kV}}\cdot {format_liczba(dane.b0_s).replace(',', '{,}')}"
+                    rf"\ \mathrm{{S}} = {_tex(i_c, '.4f')}\ \mathrm{{A}}"
+                    if i_c is not None and dane.b0_s is not None
+                    else None
                 ),
                 {"i_c_a": _r(i_c)},
             )
@@ -388,7 +455,8 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                             for p in dane.punkty
                         ],
                     },
-                    f"I_N = {i_n.real:.4f} − j{-i_n.imag:.4f} A",
+                    f"I_N = {_zespolona_pl(i_n)} A",
+                    rf"I_N = {_zespolona_tex(i_n)}\ \mathrm{{A}}",
                     {"i_w_a": _r(i_w), "i_l_a": _r(i_l)},
                 )
             )
@@ -432,9 +500,22 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                         "i_w_a": _r(i_w),
                         "z_f_ohm": _z(dane.z_f_ohm),
                     },
-                    f"|{i_metal.real:.4f} + j{i_metal.imag:.4f}| A"
-                    + (f" przez Z_f → {prad:.4f} A" if dane.z_f_ohm else f" = {prad:.4f} A")
-                    + (f"; v = {rozstrojenie:.4f}" if rozstrojenie is not None else ""),
+                    f"|{_zespolona_pl(i_metal)}| A"
+                    + (
+                        f" przez Z_f → {_pl(prad, '.4f')} A"
+                        if dane.z_f_ohm
+                        else f" = {_pl(prad, '.4f')} A"
+                    )
+                    + (f"; v = {_pl(rozstrojenie, '.4f')}" if rozstrojenie is not None else ""),
+                    rf"\left|{_zespolona_tex(i_metal)}\right|"
+                    r"\ \mathrm{A}"
+                    + (r"\ \xrightarrow{Z_f}\ " if dane.z_f_ohm else " = ")
+                    + rf"{_tex(prad, '.4f')}\ \mathrm{{A}}"
+                    + (
+                        rf";\quad v = {_tex(rozstrojenie, '.4f')}"
+                        if rozstrojenie is not None
+                        else ""
+                    ),
                     {"prad_a": _r(prad), "rozstrojenie": _r(rozstrojenie, 6)},
                 )
             )
@@ -448,7 +529,8 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                         r"U_0 = \frac{U_f}{|1 + Z_f Y|},\ U_b = U_f\left|a^2 - "
                         r"\frac{1}{1 + Z_f Y}\right|,\ U_c = U_f\left|a - \frac{1}{1 + Z_f Y}\right|",
                         {"u_f_v": u_f_v, "y_s": _z(y_s), "z_f_ohm": _z(dane.z_f_ohm)},
-                        f"U0 = {u0:.2f} V; U_b = {u_b:.2f} V; U_c = {u_c:.2f} V",
+                        f"U0 = {_pl(u0, '.2f')} V; U_b = {_pl(u_b, '.2f')} V; U_c = {_pl(u_c, '.2f')} V",
+                        _napiecia_latex(u0, u_b, u_c),
                         {"u0_v": _r(u0), "u_faza_b_v": _r(u_b), "u_faza_c_v": _r(u_c)},
                     )
                 )
@@ -469,7 +551,8 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                     "z0_ohm": _z(z_skladowe[2]),
                     "z_f_ohm": _z(dane.z_f_ohm),
                 },
-                f"U0 = {u0:.2f} V; U_b = {u_b:.2f} V; U_c = {u_c:.2f} V",
+                f"U0 = {_pl(u0, '.2f')} V; U_b = {_pl(u_b, '.2f')} V; U_c = {_pl(u_c, '.2f')} V",
+                _napiecia_latex(u0, u_b, u_c),
                 {"u0_v": _r(u0), "u_faza_b_v": _r(u_b), "u_faza_c_v": _r(u_c)},
             )
         )

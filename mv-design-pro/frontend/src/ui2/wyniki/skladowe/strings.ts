@@ -135,6 +135,7 @@ export const SKLADOWE_STRINGS = {
   doziemienieZastrzezenia: 'Zastrzeżenia',
   doziemienieDanePrzyjete: 'Dane przyjęte (wartości robocze)',
   doziemienieNiepelny: 'Wynik na wartościach roboczych albo z brakiem — dowód niepełny.',
+  doziemienieSlad: 'Ślad obliczenia (model zastosowany dla sposobu pracy punktu neutralnego)',
 
   // Raportowalność wybranego punktu.
   raportTytul: 'Raportowalność wybranego punktu',

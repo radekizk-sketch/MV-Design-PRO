@@ -34,6 +34,7 @@ from application.analyses.v126_oceny import (
 from application.v126_artifacts import wynik_v126_dla_powierzchni
 from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.v126_contracts import V126AnalysisType
+from werdykt import format_liczba
 
 from tests.ci.generuj_odpowiedzi_v126 import model_wejsciowy, zbuduj_odpowiedzi
 
@@ -241,3 +242,47 @@ def test_rozruch_bez_impedancji_zasilania_nazywa_brak_wyniku_w_sladzie() -> None
     assert zapad["wynik"] is None
     (odnosnik,) = zapad["slad"]
     assert "wynik nie wyznaczono, limit 15 % (Z-9)" in odnosnik["opis_pl"]
+
+
+_ZALOZENIA_Z_PROGIEM = {f"§ {z.paragraf}": z for z in REJESTR_ZALOZEN if z.wartosc is not None}
+
+
+@pytest.mark.parametrize("wariant", ["z_obiektami", "bez_obiektow"])
+@pytest.mark.parametrize("rodzaj", sorted(RODZAJE_Z_OCENAMI))
+def test_prog_zalozenia_z_jednego_zrodla_w_rekordzie(
+    rodzaj: str,
+    wariant: str,
+    odpowiedzi: dict[str, Any],
+    bez_obiektow: dict[str, list[Mapping[str, Any]]],
+) -> None:
+    """Iloczyn: rodzaj × bieg × każdy rekord, którego limit stoi na założeniu z progiem
+    liczbowym (Z-2, Z-3, Z-6, Z-9). Próg występuje w rekordzie
+    trzy razy — limit porównania, warunek LaTeX i treść założenia w danej przyjętej — i ma być
+    JEDNĄ liczbą rejestru (`ZalozenieKryterium.prog_latex`, `format_liczba`). Dawniej warunek
+    LaTeX rekordu i treść założenia niosły własne literały („≤ 10\\%”, „nie większy niż 10 %”),
+    więc zmiana progu w rejestrze zostawiała na ekranie warunek z dawną liczbą."""
+    oceny = odpowiedzi[rodzaj]["oceny"] if wariant == "z_obiektami" else bez_obiektow[rodzaj]
+    sprawdzone = 0
+    for rekord in _rekordy(oceny):
+        limit = rekord.get("limit") or {}
+        podstawa = limit.get("podstawa") or {}
+        zalozenie = _ZALOZENIA_Z_PROGIEM.get(podstawa.get("jednostka_redakcyjna"))
+        if zalozenie is None:
+            continue
+        sprawdzone += 1
+        if (limit.get("wartosc") or {}).get("jednostka") == zalozenie.jednostka:
+            # Próg jest limitem kryterium (Z-3, Z-6, Z-9). Z-2 ma próg czasu (10 s) przy limicie
+            # U_TOV w kV — tam próg żyje wyłącznie w treści założenia.
+            assert limit["wartosc"]["wartosc"] == zalozenie.wartosc, rekord["kryterium_id"]
+            assert rekord["kryterium"]["warunek_latex"].endswith(zalozenie.prog_latex), rekord[
+                "kryterium"
+            ]["warunek_latex"]
+        if not (rekord.get("stosowalnosc") or {}).get("dotyczy", True):
+            continue  # kryterium niestosowalne nie stoi na założeniu (bez danej przyjętej)
+        dane = rekord["dowod"]["status_danych"]["dane_przyjete"]
+        (dana,) = (d for d in dane if f"({zalozenie.paragraf} rejestru" in d["nazwa_pl"])
+        assert f"{format_liczba(zalozenie.wartosc)} {zalozenie.jednostka}" in dana["powod_pl"]
+    if rodzaj in {"neutral_earthing_design", "motor_starting", "insulation_coordination"} and (
+        wariant == "z_obiektami"
+    ):
+        assert sprawdzone > 0, "iloczyn bez rekordu z progiem — test nic nie sprawdza"

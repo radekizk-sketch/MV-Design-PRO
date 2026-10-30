@@ -684,6 +684,66 @@ złota SN izolowana, pojemności poza Y0) oraz krokiem `z0_numerical_reference` 
 domknięte kotwicą zamiast dawnego bocznika pojemności). Wiersze wyniku (`rows`) identyczne
 z poprzednią fiksturą (porównanie JSON), zmienia się wyłącznie `result_hash`, bo obejmuje ślad.
 
+### 3.20 Odcinek 4: sposób pracy punktu neutralnego w śladzie, ekranie i raporcie; próg założenia z jednego źródła
+
+Warunek odbioru właściciela (2026-10-29) — cztery sposoby pracy punktu neutralnego, każdy swoim
+modelem, nazwanym w wyniku, w śladzie WHITE BOX, na ekranie i w raporcie:
+
+- Ślad solvera doziemienia (`network_model/solvers/doziemienie_sn.py`, warstwa solverów poza
+  listą FROZEN) niesie przy każdym kroku podstawienie dwa razy: prozę `substitution` (raport,
+  przecinek dziesiętny — dawniej „0.000245 S”, „|0.5516 + j-91.3732| A”) i `substitution_latex`
+  (ekran, KaTeX, przecinek `{,}`; `null`, gdy wielkość nieoznaczalna — brak B_0). Liczba
+  zespolona ze znakiem przy `j` (`a − jb`, dawniej `+ j-b`). Tryb bezpośredni dostał krok
+  `doziemienie_prad_bezposrednie` (prąd I″k1 rdzenia IEC 60909 z impedancją pętli
+  |Z_1 + Z_2 + Z_0 + 3Z_f| punktu) — dawniej jego ślad miał tylko krok napięć, więc model
+  trybu nie był nazwany w śladzie.
+- Ekran składowych (`ui2/wyniki/skladowe/EkranSkladowych.tsx`, sekcja doziemienia) pokazuje
+  „Ślad obliczenia” — tytuł kroku, wzór i podstawienie przez `MathBlock` wyłącznie z pól
+  `*_latex` backendu (`model.ts::doziemienieWiersza` → `kroki`); proza podstawienia nie idzie
+  do KaTeX-a. Dawniej `doziemienie_sieci.slad` nie miał żadnego czytelnika.
+- Raport (`api/analysis_run_exports.py::_linie_doziemienia`) dopisuje linię „Ślad doziemienia —
+  {tytuł}: {podstawienie}” dla każdego kroku.
+
+Wartości tej samej sieci (GPZ 110/15 kV 25 MVA, S″kQ = 3000 MVA, R/X = 0,1, kabel 2 km,
+B′0 = 2π·50·390 nF/km, zespół ZNyn11 z dławikiem 100 A albo rezystorem 200 A; szyna SN stacji),
+każda z wyrocznią ręczną z danych wejściowych (test
+`test_ta_sama_siec_cztery_sposoby_z_wyroczni_recznej`; Z_1 = Z_Q + K_T·Z_T = 0,05056 + j1,05172 Ω
+wg IEC 60909-0:2016 §6.2/§6.3.3, Z_0 z pojemnościami wg warunku k > 1,4):
+
+| Sposób | Model | Prąd w miejscu doziemienia | U0 [V] | U_b / U_c [V] | k |
+|---|---|---|---|---|---|
+| izolowany | I_C = √3·U_n·B_0 | 6,3664 A (pojemnościowy) | 8 660,25 | 15 000,00 / 15 000,00 | 1,7321 |
+| kompensowany | I_res = √(I_w² + (I_C − I_L)²) | 91,3748 A (I_L = 97,7396 A, I_w = 0,5516 A, v = −14,3523) | 8 660,25 | 15 000,00 / 15 000,00 | 1,7321 |
+| rezystor | I_F = \|I_N + jI_C\| | 197,3290 A (I_w = 197,3113 A, I_L = 9,0096 A) | 8 650,66 | 14 883,63 / 15 090,73 | 1,7425 |
+| bezpośredni | I″k1 = √3·c·U_n/\|2Z_1 + Z_0\| | 3 456,1058 A (zwarciowy IEC 60909) | 6 486,76 | 11 984,96 / 12 578,23 | 1,4524 |
+
+Rozróżnialność (`test_cztery_sposoby_rozroznialne_liczbami_i_nazwa_modelu`): prądy parami różne
+o więcej niż 1 %; tryb, charakter, wzór i podstawa parami różne; każdy sposób ma w śladzie
+dokładnie jeden krok prądu swojego modelu; sieć izolowana i skompensowana mają to samo
+przesunięcie punktu neutralnego (U0 = U_f — fizyka, rozróżnia je prąd) i wiersz IEC bez
+liczby z przyczyną „poza zakresem IEC 60909”; rezystor daje k ponad √3, uziemienie
+bezpośrednie — poniżej.
+
+Kryterium prądu resztkowego ±10 % (Z-6): rejestr źródeł nie ma podstawy normowej tej liczby
+(ENEA Zeszyt 1 §16 wymaga doboru uziemienia w analizie projektu i zakazuje pracy w rezonansie
+I_L = I_C, s. 30, wartości nie podaje) — praktyka Z-6 mówi to wprost, próg jest założeniem
+projektowym `ESTIMATED`, a ocena na nim ma kompletność `NIEPELNY` (zasada nr 4). Próg każdego
+założenia ma jedno źródło: `ZalozenieKryterium.granica()` daje limit rekordu, treść założenia,
+`powod_pl` danej przyjętej i nowe `prog_latex` (koniec `warunek_latex` w `v126_oceny.py`
+i `v126_katalog.py`; dawniej literał `10\%`, `20\%`, `15\%` obok stałej) — test
+`test_prog_zalozenia_z_jednego_zrodla_w_rekordzie`.
+
+Ziarno Monte Carlo hosting capacity — zawężone do projekcji pól czytanych w odcinku 3
+(`6bfd4bcab`, `v126_academic.py:644` `POLA_HOSTINGU_*`, `:3216` `_ziarno_hostingu`). Sonda
+(8 wejść: fikstura V12.6, `golden_enm_cgmes`, gn01–gn06; każde wejście 3 razy — ten sam hash
+przed i po): zmiana liczb wyłącznie przez nowe ziarno (np. fikstura 7,6 → 7,4 MW, gn01 6,0 →
+5,8 MW), szyny z wynikiem 10,0 MW bez zmian. Sonda ujawniła skutek kasacji zapasu impedancji
+w odcinku 3 (`_impedancja_zastepcza_szyny`, `v126_academic.py:3117`): szyna zasilana przez
+transformator ze źródła sieciowego innego poziomu napięcia nie dostaje Z_th (macierz omowa
+V12.6 bez przekładni, ograniczenie O-21), więc hosting i rozruch silnika takiej szyny są
+brakiem nazwanym zamiast dawnej liczby z sumy omów dwóch poziomów napięć. Zamknięcie wymaga
+macierzy z przekładnią z jednego modułu stemplowania (decyzja O-26) — zgłoszone architektowi.
+
 ## 4. Iloczyn testów
 
 wariant {izolowany, dławik, dławik + AWSC spoczynek, dławik + AWSC załączony, rezystor,
@@ -906,6 +966,15 @@ bajtowo z kopią):
 | Fixtura odpowiedzi: identyfikator gałęzi w powodzie wartości roboczej niezawodności | strażnik prezentacji czerwony (`surowaReferencjaWPodpowiedziach`, rodzaj `reliability_contingency`); fixtura przywrócona i porównana bajtowo |
 | Opis śladu kryterium z surowym zapisem liczb (`{p.wynik} {p.jednostka}`, `{szczyt} kV`) | 19 czerwonych z 46 (`test_teksty_rekordow_bez_surowego_zapisu_pythona[motor_starting-bez_wyniku_liczbowego]` i 17 innych, `test_rozruch_bez_impedancji_zasilania_nazywa_brak_wyniku_w_sladzie`) |
 | Fikstura okna kontyngencji w wersji sprzed przepisania (HEAD) | `test_fikstura_ekranu_niesie_teksty_aktualnej_odpowiedzi_backendu` czerwony |
+| Odcinek 4: sieć z rezystorem przez model bezpośredni (`TRYB_DOZIEMIENIA_TYPU["resistor_grounded"]`) | 6 czerwonych z 25 (`test_ta_sama_siec_cztery_sposoby_z_wyroczni_recznej[rezystor-*]` ×5, rozróżnialność) |
+| Odcinek 4: sieć kompensowana jak izolowana | 6 czerwonych z 25 (`[kompensowany-*]` ×5, rozróżnialność) |
+| Odcinek 4: pojemności nigdy w Z_0 (`pojemnosci_w_skladowej_zerowej` → `False`) | 9 czerwonych z 25 (`[rezystor-k/u0/u_b/u_c]`, `[bezposrednie-*]`) |
+| Odcinek 4: podstawienie LaTeX śladu z kropką dziesiętną | 4 czerwone z 25 (`test_slad_doziemienia_po_polsku_i_z_latex_do_ekranu[*]`) |
+| Odcinek 4: raport bez linii śladu doziemienia | 4 czerwone z 25 (jw.) |
+| Odcinek 4: tryb bezpośredni bez kroku prądu swojego modelu w śladzie | 1 czerwony z 25 (rozróżnialność) |
+| Odcinek 4: ekran podstawia prozę `substitution` do KaTeX-a | 2 czerwone z 21 (`EkranSkladowych.test.tsx` — ślad WHITE BOX, krok bez podstawienia LaTeX) |
+| Odcinek 4: ekran bez kroków śladu | 2 czerwone z 21 (jw.) |
+| Odcinek 4: `warunek_latex` z literałem `10\%` i stała Z-6 12 % | `test_prog_zalozenia_z_jednego_zrodla_w_rekordzie` i parytet dokumentu §7 czerwone |
 
 Iniekcje trybów w testach (monkeypatch w `test_doziemienie_tryby_punktu_neutralnego.py`,
 `test_v126_izolacja_tryby_punktu_neutralnego.py::test_iniekcja_k_rezystora_jak_bezposrednie`)
@@ -942,7 +1011,7 @@ bajtowo z kopią.
 | (13) profil referencyjny pola ZU | `reference_engine/registry.py::profile_id_for_bay`, pakiet `iec62271` (backend i kopia frontu `ui/sld/reference/iec62271.pack.json`), `docs/sld/REFERENCE_ENGINE_SPEC_V1.md` §4–§5 | rola `ZU` dostała profil `earthing_unit` (ENEA Zeszyt 1 Zał. 13–15: DS → CB → CT → głowica mostu; transformator uziemiający w polu zakazany — jest zespołem modelu); dotąd pole ZU z aparatami nie podlegało żadnej kontroli. Przy okazji tabela profili specyfikacji dostała brakujący wiersz `capacitor_bank` karty BKR. Lustro frontu `referenceProfileIdForFieldRole`: `EARTHING_UNIT` → `earthing_unit` (wiersz 14) |
 | (15) rola ZU w kreatorze pola SN i rodzaj pola katalogowego | `ui2/kreatory/pole/polaSnModel.ts` (`ROLE_KOLEJNOSC`, `bayKindZRoli`), `network_model/catalog/switchgear/complete_mv_bay_template.py` (`BayKind`, opis rodzaju), `catalog/bay_templates.py::FIELD_TYPES_WITHOUT_TEMPLATE`, `reference_engine/compliance.py::_BAY_ROLE_TO_FAMILY_BAY_KIND`, front `ui/catalog/BayTemplatePicker.tsx`, `ui2/kreatory/stacja/konfiguratorRozdzielnicy.ts::ROLA_Z_FUNKCJI_POLA` | kreator pola SN nie oferował roli ZU (test „każda rola z jednej listy ról modelu” czerwony na drzewie scalonym), a `bayKindZRoli` dawałby dla ZU rodzaj liniowy odpływowy (szablony pól liniowych producentów). Teraz rodzaj pola katalogowego `zespol_uziemiajacy` (rola kanonu `ZESPOL_UZIEMIAJACY`), jawnie bez szablonu w katalogu (rejestr braków, fikstura katalogu konfiguracji pól zregenerowana generatorem `gen_field_configurations_catalog.py`), bez roli operacji stacyjnej SN/nN; kreator oferuje ZU, zespół dodaje kreator zespołu uziemiającego na zacisku pola |
 | (18) sposób pracy punktu neutralnego — jedna tabela trybu | `network_model/core/uziemienie.py:130` (`TRYB_DOZIEMIENIA_TYPU`), `:144` (`tryb_doziemienia_typu`), `:141` (`TRYBY_IEC60909`); czytelnicy: `enm/mapping.py:566` (bocznik uzwojenia), `:1222`, `:1273–1295` (przyczyna `poza_zakresem_iec60909`), `enm/uziemienie_sekcji.py:382`, `:534` (tryb sekcji i punktu) | tryb zamiast kategorii izolowany/uziemiony; izolowany i kompensowany nie dostają liczby z modelu Z1+Z2+Z0 (przyczyna „poza zakresem IEC 60909” zamiast „brak drogi”) |
-| (19) solver doziemienia SN | `network_model/solvers/doziemienie_sn.py:282` (`oblicz_doziemienie`), `:234` (`prad_punktow_neutralnych_a`), `:248` (napięcia z impedancji składowych), `:266` (napięcia z admitancji sieci) | nowy solver warstwy solverów (poza listą FROZEN): I_C, I_res, I_F, Z.14, Z_f, U0 i napięcia faz zdrowych, ślad WHITE BOX, zastrzeżenia, dane przyjęte |
+| (19) solver doziemienia SN | `network_model/solvers/doziemienie_sn.py:351` (`oblicz_doziemienie`), `:269` (`prad_punktow_neutralnych_a`), `:283` (napięcia z impedancji składowych), `:334` (napięcia z admitancji sieci) | nowy solver warstwy solverów (poza listą FROZEN): I_C, I_res, I_F, Z.14, Z_f, U0 i napięcia faz zdrowych, ślad WHITE BOX (proza i `substitution_latex` każdego kroku, krok prądu każdego trybu — odcinek 4), zastrzeżenia, dane przyjęte |
 | (20) konsumenci wyniku doziemienia | `enm/doziemienie_sieci.py:35` (`doziemienie_wiersza`) ← `enm/canonical_analysis.py:2857` (wiersz 1F i wiersz odpowiedzi); `api/analysis_run_exports.py:815` (`_linie_doziemienia`, raport); `enm/uziemienie_sekcji.py:538`, `:591` (`dane_doziemienia`, `doziemienie` — konfigurator stacji, front `StationConfigurator.tsx`); `solver_input/v126_contracts.py:607` (`_doziemienie_szyny_izolacji`), `:665` (`wiersze_izolacji_projektanta`); `network_model/solvers/v126_academic.py:2016` (projekt uziemienia), `:2038` (`_petersen_design`), `:2209` (`_ner_design`) | wszystkie czytają jeden wynik `oblicz_doziemienie`; prąd dławików Z.14 z punktów neutralnych modelu (`punkty_neutralne`), nie z parametru `prad_dlawikow_a` (skasowany) |
 | (21) koordynacja izolacji V12.6 | `network_model/solvers/v126_academic.py:359` (`K_ROBOCZY_TRYBU`), `:412` (`_wiersz_izolacji`), `:567` (`_uzasadnienie_izolacji`), `:2520` (`_insulation`); front `ui2/wyniki/akademickie/prezentacja.ts` (kolumna uzasadnienia) | U_TOV = k·U_m/√3 z k trybu; kryteria wg czasu doziemienia; uzasadnienie każdego kryterium; wersja solvera 1.3 |
 | (22) kontrakty wejściowe V12.6 | `solver_input/v126_contracts.py:40` (`_WejscieV126`, `extra="forbid"`) | parametr spoza kontraktu (np. dawny `prad_dlawikow_a`) to błąd walidacji, nie cicho zignorowane pole; `V126RunRequest` bez zmian (koperta żądania) |
@@ -1019,6 +1088,8 @@ Znaleziska zgłoszone, nienaprawione w tej karcie (z uzasadnieniem):
   wynik fixtury 7,7 → 7,0 MW przy n = 64 losowań. Determinizm (to samo wejście → ten sam wynik)
   jest zachowany; rozrzut to skutek małego n fixtury (domyślnie n = 1000). Zawężenie ziarna do
   pól wpływających na hosting zmienia wszystkie wyniki hosting — decyzja architekta (B-01).
+  Sonda ziarna odcinka 4 (§3.20) ujawniła szyny zasilane przez transformator bez Z_th
+  (macierz V12.6 bez przekładni, O-21/O-26) — zgłoszone architektowi z wariantami.
 - Glif ZU na końcu toru pola SLD — wstrzymany (werdykt wizualny B-02).
 - Model dwóch sekcji przy otwartym sprzęgle: sekcja 2 bez zespołu nie ma pojemności własnych
   odcinków w teście iloczynu (odcinki są w sekcji 1), więc jej wiersz to brak nazwany zerowej
@@ -1068,7 +1139,7 @@ pilnuje `tests/test_v126_katalog_analiz.py::test_rejestr_zalozen_dokumentu_rowny
 | Z-3 | marginesu ochrony izolacji | Margines ochrony M_BIL = (BIL − U_res)/U_res·100 % nie mniejszy niż 20 %. | 20 % | Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-4 | napięcia dotykowego rażeniowego | Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-5 | napięcia krokowego | Napięcie krokowe uziomu nie większe od dopuszczalnego U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f (ciało 70 kg). | — | Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
-| Z-6 | prądu resztkowego sieci kompensowanej | Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. | 10 % | Kryterium metody z praktyki kompensacji rezonansowej (ENEA Zeszyt 1 §16) — bez wartości normowej. |
+| Z-6 | prądu resztkowego sieci kompensowanej | Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. | 10 % | Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje. |
 | Z-7 | obciążalności cieplnej rezystora punktu neutralnego | Energia wydzielona w rezystorze w czasie wyłączenia doziemienia E_k = I_th²·R·t_wył nie większa od energii znamionowej E_n = I_n²·R·t_n (kryterium adiabatyczne). | — | Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie). |
 | Z-8 | dostępności metody detekcji doziemień | Metoda zalecana wg sposobu pracy punktu neutralnego (sieć izolowana — watometryczna, kompensowana z dławikiem dostrojonym — watometryczna, rozstrojonym — admitancyjna, przez rezystor — 51N z 67N, uziemiona bezpośrednio — 51N z 50N), a przekaźnik ma każdą funkcję metody zalecanej. | — | Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej. |
 | Z-9 | zapadu napięcia przy rozruchu | Zapad napięcia na szynie przy prądzie rozruchowym silnika nie większy niż 15 %. | 15 % | Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora. |
