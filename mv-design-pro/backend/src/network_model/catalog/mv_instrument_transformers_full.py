@@ -1,0 +1,262 @@
+"""Udokumentowane profile CT/VT: ENEA Operator 2024 i ABB UDZ 24-1.
+
+Kontrakt: profile ENEA są wymaganiami układu, NIE kartą gotowego wyrobu.
+Rekord rodziny ABB to konfiguracja dopuszczona przez zakres karty producenta,
+NIE konkretny numer zamówieniowy bez indywidualnej karty wykonania.
+
+Nie wolno:
+* przenosić FS5 na rdzeń zabezpieczeniowy (5P);
+* utożsamiać uzwojenia 3P z otwartym trójkątem 3U0;
+* tworzyć własnego Ith/Rct konkretnego ABB, gdy karty go nie podają.
+"""
+from __future__ import annotations
+
+from math import sqrt
+from typing import Any
+
+ENEA_METERING_SOURCE = (
+    "ENEA Operator, Układy pomiarowe energii elektrycznej, wersja 05.2022-2,"
+    " obowiązuje od 02.04.2024, załącznik 5 A-F, s.25-31; "
+    "https://www.operator.enea.pl/media/698/"
+    "uklady-pomiarowe-energii-elektrycznej-obowiazuje-od-02042024pdf.pdf"
+)
+ENEA_IRIESD_SOURCE = (
+    "ENEA Operator, IRiESD v2.3, pkt II.4.7.1.13-15, "
+    "FS<=5 w nowych układach, 25-100% obciążenia wtórnego, "
+    "wyjątek pozostawienia FS>5 tylko w modernizowanych układach: "
+    "https://operator.enea.pl/uploads-ev2/Operator/teczka-prasowa/"
+    "Komunikaty/2024/15.11.2024/5_RiESD_tj.%20od%201.07.2025_zmiany_pkt2i3_KA38.pdf"
+)
+ABB_UDZ24_SOURCE = (
+    "ABB, UDZ 24-1 Indoor voltage transformer, 1VLC000774, "
+    "Basic technical specifications, 24/50/125 kV, 1.9Un/8h; "
+    "https://new.abb.com/medium-voltage/pl/aparatura/przekladniki-i-sensory/"
+    "produkty/przekladniki-wnetrzowe-napieciowe-iec/"
+    "przekladnik-napieciowy-jednobiegunowy-wnetrzowy-typu-udz-24-1"
+)
+
+
+def _enea_ct(
+    *, annex: str, place: str, primary_a: int, burden_va: float,
+    ith_ka: float, core_count: int, construction: str, local_metering: bool,
+) -> dict[str, Any]:
+    """Jeden wariant WYMAGAŃ danej przekładni — nie karta aparatu."""
+    cores: list[dict[str, Any]] = [{
+        "index": 1, "role": "BILLING",
+        "accuracy_class": "0.2S", "burden_va": burden_va,
+        "fs": 5.0, "secondary_a": 5.0,
+        "source_kind": "ENEA_REQUIREMENT",
+    }]
+    if local_metering:
+        cores.append({
+            "index": 2, "role": "LOCAL_METERING",
+            "accuracy_class": "0.2", "burden_va": 10.0,
+            "fs": 5.0, "secondary_a": 5.0,
+            "source_kind": "ENEA_REQUIREMENT",
+        })
+    return {
+        "id": f"ct-enea-2024-5{annex.lower()}-{place}-{construction.lower()}-{primary_a}-5-c{core_count}",
+        "name": f"Profil ENEA 5/{annex} {place}: CT {primary_a}/5 A, {core_count} rdzenie, 0,2S FS5",
+        "params": {
+            "ratio_primary_a": float(primary_a),
+            "ratio_secondary_a": 5.0,
+            "accuracy_class": "0.2S",
+            "burden_va": burden_va,
+            "fs_safety_factor": 5.0,
+            "ith_ka_1s": ith_ka,
+            "idyn_ka_peak": ith_ka * 2.5,
+            "um_kv": 24.0,
+            "construction": construction,
+            "core_count": core_count,
+            "secondary_cores": cores,
+            "verification_status": "REFERENCYJNY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "contract_version": "2.0",
+            "source_reference": ENEA_METERING_SOURCE + " || " + ENEA_IRIESD_SOURCE,
+            "verification_note": (
+                f"WYMAGANIA ENEA zał. 5/{annex}, {place}, a nie produkt producenta. "
+                f"{core_count} rdzeni wynikają ze schematu przekładni; "
+                "podano wyłącznie parametry rdzeni POMIAROWYCH, które "
+                "określa tabela ENEA. Rdzenie pozostałe należy skonfigurować "
+                "wg standardu pola oraz karty zamawianego wyrobu, bez "
+                "automatycznego 5P20/FS dla nieznanych rdzeni. "
+                "Ith jest wartością WYMAGANĄ, nie wynikiem badania egzemplarza. "
+                "Idyn=2,5×Ith jest wartością pochodną do weryfikacji. "
+                "FS<=5 dotyczy nowych rozliczeniowych CT. "
+                "Dobór sprawdzić względem mocy umownej, obciążenia wtórnego, "
+                "klasy i warunków przyłączenia."
+            ),
+        },
+    }
+
+
+def get_all_enea_ct_profiles() -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    # Zał. 5/B: sieciowe, pola EOP/odbiorca lub odbiorca-wytwórca
+    for primary, ith in ((50, 8.0), (100, 8.0), (200, 8.0), (400, 8.0)):
+        for cores in (2, 3):
+            records.append(_enea_ct(
+                annex="B", place="pole-sieciowe", primary_a=primary,
+                burden_va=5.0, ith_ka=ith, core_count=cores,
+                construction="SUPPORT", local_metering=False,
+            ))
+    # Zał. 5/A: rozdzielcze wsporcze, BKR, linie, transformator
+    for count in (2, 3):
+        records.append(_enea_ct(
+            annex="A", place="bkr", primary_a=100,
+            burden_va=10.0, ith_ka=16.0, core_count=count,
+            construction="SUPPORT", local_metering=(count == 3),
+        ))
+    for primary in (200, 400):
+        for count in (2, 3, 4):
+            records.append(_enea_ct(
+                annex="A", place="linia", primary_a=primary,
+                burden_va=10.0, ith_ka=16.0, core_count=count,
+                construction="SUPPORT", local_metering=(count >= 3),
+            ))
+    for primary in (800, 1000, 1200, 1600):
+        records.append(_enea_ct(
+            annex="A", place="transformator", primary_a=primary,
+            burden_va=10.0, ith_ka=16.0, core_count=4,
+            construction="SUPPORT", local_metering=True,
+        ))
+    # Zał. 5/C: toroidalne rozdzielcze (Um w standardzie 24/0,72)
+    for count in (2, 3):
+        records.append(_enea_ct(
+            annex="C", place="bkr", primary_a=100,
+            burden_va=10.0, ith_ka=16.0, core_count=count,
+            construction="RING_PHASE_CT", local_metering=(count == 3),
+        ))
+    for primary in (200, 400):
+        for count in (2, 3):
+            records.append(_enea_ct(
+                annex="C", place="linia", primary_a=primary,
+                burden_va=10.0, ith_ka=16.0, core_count=count,
+                construction="RING_PHASE_CT", local_metering=(count == 3),
+            ))
+    for primary in (800, 1200):
+        records.append(_enea_ct(
+            annex="C", place="transformator", primary_a=primary,
+            burden_va=10.0, ith_ka=16.0, core_count=4,
+            construction="RING_PHASE_CT", local_metering=True,
+        ))
+    # Zał. 5/D: toroidalne SIECIOWE, oddzielne od Ferrantiego 3I0
+    for primary in (200, 400):
+        records.append(_enea_ct(
+            annex="D", place="pole-sieciowe", primary_a=primary,
+            burden_va=5.0, ith_ka=8.0, core_count=2,
+            construction="RING_PHASE_CT", local_metering=False,
+        ))
+    return records
+
+
+def _enea_vt(*, annex: str, voltage_kv: int) -> dict[str, Any]:
+    # Tabele 5/E-F: 6, 15, 20 kV, trzy napięcia 0,1/sqrt(3) wtórne.
+    # Trzecie uzwojenie NIE JEST dowodem otwartego trójkąta.
+    primary = voltage_kv * 1000.0 / sqrt(3.0)
+    secondary = 100.0 / sqrt(3.0)
+    secondary_windings = [
+        {"index": 1, "role": "BILLING", "rated_voltage_v": secondary,
+         "accuracy_class": "0.2", "burden_va_min": 0.0, "burden_va_max": 10.0,
+         "connection": "STAR_PER_PHASE_BANK"},
+        {"index": 2, "role": "LOCAL_OR_PROTECTION", "rated_voltage_v": secondary,
+         "accuracy_class": "0.5" if annex == "E" else None,
+         "burden_va": 7.5 if annex == "E" else None,
+         "connection": "TO_CONFIRM"},
+        {"index": 3, "role": "UNSPECIFIED", "rated_voltage_v": secondary,
+         "connection": "TO_CONFIRM"},
+    ]
+    return {
+        "id": f"vt-enea-2024-5{annex.lower()}-{voltage_kv}kv-triple-starprofile",
+        "name": f"Profil ENEA 5/{annex} VT {voltage_kv}/√3 kV / 0,1/√3 kV ×3",
+        "params": {
+            "ratio_primary_v": primary, "ratio_secondary_v": secondary,
+            "accuracy_class": "0.2", "burden_va": 10.0,
+            "um_kv": 7.2 if voltage_kv == 6 else 24.0,
+            "primary_connection": "PHASE_EARTH",
+            # Nie twierdzimy obecności uzwojenia w otwartym trójkącie.
+            "has_residual_winding": False,
+            "secondary_windings": secondary_windings,
+            "verification_status": "REFERENCYJNY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "contract_version": "2.0",
+            "source_reference": ENEA_METERING_SOURCE,
+            "verification_note": (
+                f"Profil wymagań ENEA, zał. 5/{annex}, nie karta wyrobu. "
+                "Trzy wtórne napięcia 0,1/√3 kV nie oznaczają automatycznie "
+                "otwartego trójkąta. Podano pierwszy tor 0–10 VA kl.0,2; "
+                "pozostałe wtórne i konfigurację gwiazda/ochrona należy "
+                "doprecyzować wg schematu pola. W tym profilu nie ma "
+                "potwierdzonego osobnego uzwojenia 0,1/3 kV do 3U0; "
+                "nie zastępować go klasą 3P."
+            ),
+        },
+    }
+
+
+def get_all_enea_vt_profiles() -> list[dict[str, Any]]:
+    return [
+        _enea_vt(annex=annex, voltage_kv=voltage)
+        for annex in ("E", "F") for voltage in (6, 15, 20)
+    ]
+
+
+def _abb_udz24_profile(voltage_kv: int, mode: str) -> dict[str, Any]:
+    primary = voltage_kv * 1000.0 / sqrt(3.0)
+    secondary = 100.0 / sqrt(3.0)
+    # Łączna moc przy klasie 0.2 nie może przekroczyć 50 VA w dwóch uzwojeniach.
+    configs = {
+        "meter02": ("0.2", 40.0, False),
+        "meter02-residual3p": ("0.2", 20.0, True),
+        "meter05-residual3p": ("0.5", 50.0, True),
+    }
+    metering_class, metering_va, residual = configs[mode]
+    secondaries: list[dict[str, Any]] = [
+        {"index": 1, "role": "METERING", "rated_voltage_v": secondary,
+         "accuracy_class": metering_class, "burden_va": metering_va,
+         "connection": "STAR_PER_PHASE_BANK"}
+    ]
+    if residual:
+        secondaries.append({
+            "index": 2, "role": "RESIDUAL_3U0",
+            "rated_voltage_v": 100.0 / 3.0,
+            "accuracy_class": "3P",
+            "burden_va": 30.0,
+            "connection": "OPEN_DELTA_THREE_PHASE_BANK",
+        })
+    return {
+        "id": f"vt-abb-udz24-1-{voltage_kv}kv-{mode}",
+        "name": f"ABB UDZ 24-1 {voltage_kv}/√3 kV, {mode} (konfiguracja)",
+        "params": {
+            "manufacturer": "ABB",
+            "ratio_primary_v": primary, "ratio_secondary_v": secondary,
+            "accuracy_class": metering_class, "burden_va": metering_va,
+            "um_kv": 24.0, "rated_voltage_factor": 1.9,
+            "voltage_factor_duration_s": 28800.0,
+            "primary_connection": "PHASE_EARTH",
+            "has_residual_winding": residual,
+            "secondary_windings": secondaries,
+            "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "contract_version": "2.0",
+            "source_reference": ABB_UDZ24_SOURCE,
+            "verification_note": (
+                "ABB UDZ 24-1: konfiguracja DOBOROWA w zakresie katalogu rodziny, "
+                "nie konkretny wariant dostawy z numerem zamówieniowym. "
+                "Producent potwierdza 24/50/125 kV, Fv=1,9/8h, 0,2 (do 50 VA), "
+                "0,5 (do 125 VA), dodatkowe 30VA/3P z 100/3 V. "
+                "Dla 0,2 dwa obciążone uzwojenia mają sumę nie większą niż "
+                "50 VA (20+30). Otwarty trójkąt to połączenie trzech "
+                "UZWOJEŃ RESZTKOWYCH w zestawie 3 faz, a nie klasa 3P. "
+                "Przed użyciem wymaga karty konkretnej konfiguracji."
+            ),
+        },
+    }
+
+
+def get_all_abb_udz_vt_profiles() -> list[dict[str, Any]]:
+    return [
+        _abb_udz24_profile(voltage, mode)
+        for voltage in (6, 15, 20)
+        for mode in ("meter02", "meter02-residual3p", "meter05-residual3p")
+    ]
