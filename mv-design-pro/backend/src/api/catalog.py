@@ -35,6 +35,9 @@ from network_model.catalog.der_dynamic.models import WindTurbineDynamicProfile
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.mv_ferranti_catalog import get_all_ferranti_types
+from network_model.catalog.mv_instrument_manufacturer_families_pl import (
+    get_all_instrument_transformer_manufacturer_families_pl,
+)
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
 from network_model.catalog.niezmienniki_katalogu import (
     KODY_WIARYGODNOSCI,
@@ -338,6 +341,18 @@ def list_load_types() -> list[dict[str, Any]]:
 def list_ct_types() -> list[dict[str, Any]]:
     """List all CT types from the canonical MV catalog."""
     return [item.to_dict() for item in get_default_mv_catalog().list_ct_types()]
+
+
+@router.get("/instrument-transformer-families")
+def list_instrument_transformer_families() -> list[dict[str, Any]]:
+    """Rodziny producentów na rynku PL — tylko DOBÓR, nie typ zamawialny.
+
+    Celowo NIE są typami CTType/VTType: brak zgodnych tabliczek
+    znamionowych jednoznacznie łączących I1/I2, rdzenie, moce,
+    dokładności, Ith i FS/ALF. `record_kind` ostrzega przed przypisaniem
+    rodziny bez konfiguracji do fizycznego elementu.
+    """
+    return get_all_instrument_transformer_manufacturer_families_pl()
 
 
 @router.get("/ferranti-types")
