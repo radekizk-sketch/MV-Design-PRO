@@ -42,6 +42,21 @@ ABB_TPU6_FAMILY_SOURCE = (
     "https://library.e.abb.com/public/"
     "ad0a0539e0c94a4dbbaa84a103c58006/TPU%206x.xx_1VLC000502%20Rev.11%2C%20en.pdf"
 )
+KPB_CTB25_SOURCE = (
+    "KPB Intra Polska, CTB 25, karta k_kat_ctb_25_(22_03), "
+    "5–1000 A, 1/5 A, 1–3 rdzenie, 2–80 kA/1s: "
+    "https://intrapolska.pl/uploads/produkt_files/k_kat_ctb_25_%2822_03%29.pdf"
+)
+KPB_VTS25_DTR_SOURCE = (
+    "KPB Intra Polska, VTS 25, karta k_kat_vts_25, "
+    "25/50/125 kV, 1–4 uzwojenia, opcjonalny obwód resztkowy: "
+    "https://intrapolska.pl/uploads/produkt_files/k_kat_vts_25.pdf"
+)
+KPB_VTS25_SCH_SOURCE = (
+    "KPB Intra Polska, VTS 25 Sch, wykonanie do rozdzielnic SM6: "
+    "https://intrapolska.pl/produkt/27/50/"
+    "przekladniki%20napieciowe%20wnetrzowe/vts%2025%20sch.htm"
+)
 KPB_HOME = "KPB Intra Polska, baza wiedzy / wyroby: https://intrapolska.pl/"
 RITZ_SOURCE = (
     "ZELAP-PROAT, polski dostawca RITZ: GS, GIS, GE, GSES; "
@@ -243,13 +258,32 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
                      "według strony producenta. FS 5/10, ALF 5/10/15/20 "
                      "to możliwości rodziny, nie parametry dowolnej kombinacji. "
                      "Ith konkretnego egzemplarza niepotwierdzone."),
+        _family("KPB Intra", "CTB 25", "CT", KPB_CTB25_SOURCE,
+                mounting="INDOOR_BUSHING", um_kv=25,
+                primary_a_min=5, primary_a_max=1000,
+                secondary_current_options_a=(1, 5), core_count_max=3,
+                accuracy_options=("0.2", "0.2S", "0.5", "0.5S", "1", "3", "5P", "10P"),
+                burden_options_va=(2.5, 5, 7.5, 10, 15, 20, 30, 40, 50, 60),
+                ith_range_ka=(2, 80),
+                note="Przepustowy CT z odczepami wtórnymi. FS 5/10 i "
+                     "ALF 5/10/15/20 to zakresy rodziny, "
+                     "nie potwierdzona tabliczka jednego egzemplarza."),
         _family("KPB Intra", "CTSO 17", "CT", KPB_HOME, mounting="OUTDOOR"),
-        _family("KPB Intra", "VTS 25", "VT", KPB_VTS25_SOURCE,
+        _family("KPB Intra", "VTS 25", "VT", KPB_VTS25_DTR_SOURCE,
                 mounting="INDOOR", um_kv=25, core_count_max=4,
                 accuracy_options=("0.2", "0.5", "1", "3", "3P", "6P"),
                 burden_options_va=(2.5, 5, 7.5, 10, 15, 20, 30, 50, 100, 150),
                 residual_capability=True,
-                note="Uzwojenie 100/3 V jest OPCJĄ, nie cechą wszystkich wariantów."),
+                note="Uzwojenie resztkowe i odczepy wtórne są OPCJĄ. "
+                     "DTR VTS25 podaje 100/3, 110/3, 120/3 V jako opcje "
+                     "napięcia resztkowego; nie utożsamiać 3P z 3U0."),
+        _family("KPB Intra", "VTS 25 Sch", "VT", KPB_VTS25_SCH_SOURCE,
+                mounting="INDOOR_SM6", um_kv=25, core_count_max=4,
+                accuracy_options=("0.2", "0.5", "1", "3", "3P", "6P"),
+                burden_options_va=(2.5, 5, 7.5, 10, 15, 20, 30, 50, 100, 150),
+                residual_capability=True,
+                note="Wykonanie do rozdzielnicy SM6; uzwojenia resztkowe "
+                     "i odczepy wtórne są opcjami, nie stałą konfiguracją."),
         _family("KPB Intra", "VTS 38", "VT", KPB_HOME, mounting="INDOOR"),
         _family("KPB Intra", "VTO 38", "VT", KPB_HOME, mounting="OUTDOOR"),
     ])
@@ -422,6 +456,27 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
             rodzina["lightning_impulse_withstand_kv_max"] = 125
             rodzina["rated_frequency_options_hz"] = [50, 60]
             rodzina["number_of_secondaries_max_depends_on_design"] = True
+    for rodzina in families:
+        if rodzina["manufacturer"] != "KPB Intra":
+            continue
+        if rodzina["model_family"] == "CTB 25":
+            rodzina["secondary_reconnection_supported"] = True
+            rodzina["primary_reconnection_supported"] = False
+            rodzina["fs_options"] = [5, 10]
+            rodzina["alf_options"] = [5, 10, 15, 20]
+            rodzina["rated_frequency_hz"] = 50
+            rodzina["power_frequency_withstand_kv"] = 50
+            rodzina["lightning_impulse_withstand_kv"] = 125
+            rodzina["mass_kg"] = 22
+        if rodzina["model_family"] in ("VTS 25", "VTS 25 Sch"):
+            rodzina["primary_voltage_range_v"] = ["3000/√3", "22000/√3"]
+            rodzina["secondary_voltage_options_v"] = ["100/√3", "110/√3", "120/√3"]
+            rodzina["residual_voltage_options_v"] = ["100/3", "110/3", "120/3"]
+            rodzina["secondary_taps_supported"] = True
+            rodzina["rated_frequency_hz"] = 50
+            rodzina["power_frequency_withstand_kv"] = 50
+            rodzina["lightning_impulse_withstand_kv"] = 125
+            rodzina["limiting_output_va_range"] = [200, 500]
     if len({f["id"] for f in families}) != len(families):
         raise ValueError("Duplikat ID w rodzinach CT/VT producentów")
     return families
