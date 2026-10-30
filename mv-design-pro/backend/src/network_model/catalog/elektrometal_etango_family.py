@@ -55,3 +55,13 @@ def get_etango_sn_catalog_additions() -> list[dict[str, Any]]:
             }
         )
     return result
+
+def list_etango_expansion_peripherals() -> dict[str, Any]:
+    """Karty i peryferia: indeks producenta, nie automatyczny walidator obsady.
+
+    Reguły oznaczone SPRZECZNOSC nie stanowią podstawy do zatwierdzenia
+    konfiguracji kart TV/TRR. API nie dopisuje żadnej aktywnej funkcji EAZ.
+    """
+    path = _DATA_PATH.with_name("e2tango_karty_peryferia_2026.json")
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return data
