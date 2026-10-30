@@ -11,6 +11,7 @@ Brief 2 §6/9 + plan rebuild §3 + STATION_INTERNAL_SLD.md.
 
 from __future__ import annotations
 
+from collections.abc import Collection, Iterable
 from typing import Any, Literal
 
 from enm.rola_pola_sn import (
@@ -26,6 +27,7 @@ from network_model.catalog.funkcje_eaz import (
 )
 from network_model.catalog.obwody_wtorne_pola import (
     OBWODY_WTORNE_WYKONANIA_POLA,
+    RODZAJ_APARATU_WEJSCIA,
     ObwodyWtornePola,
     StatusWeryfikacji,
 )
@@ -188,11 +190,7 @@ def _sprawdz_obwody_wtorne(szablon: BayTemplate) -> None:
             f"szablonu {sorted(szablon.funkcje_eaz)}."
         )
     liczba_obwodow = {"CT": "rdzenie", "VT": "uzwojenia"}
-    rodzaj_wejscia = {
-        "RDZEN_CT": "CT",
-        "UZWOJENIE_VT": "VT",
-        "PRZEKLADNIK_FERRANTIEGO": "CORE_BALANCE_CT",
-    }
+    rodzaj_wejscia = RODZAJ_APARATU_WEJSCIA
 
     def _obwod(oznaczenie: str, rodzaj: str, numer: int | None, kto: str) -> None:
         aparat = aparaty.get(oznaczenie)
@@ -283,7 +281,7 @@ BAY_TEMPLATE_LINE_OUT = BayTemplate(
 # Operator „Stacje elektroenergetyczne 110 kV", Zeszyt 1 — rysunki Z.10 (s.89) „Pole linii
 # odpływowej SN", Z.11.1 (s.91) „Pole linii SN z pomiarem napięcia zwrotnego", Z.11 (s.90)
 # „Pole linii SN z pomiarem rozliczeniowym energii i napięcia zwrotnego" oraz §13 „Rozdzielnia
-# SN" (druk s.23–25). Odczyt rysunków (pozycje, kolejność, interpretacje):
+# SN" (druk s.23–26). Odczyt rysunków (pozycje, kolejność, interpretacje):
 # `docs/uiux/GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md`. Szablony RMU (`bay_template_line_out`)
 # opisują stacje SN/nN, których ten standard nie obejmuje — dlatego pole GPZ ma WŁASNE szablony.
 #
@@ -311,7 +309,7 @@ BAY_TEMPLATE_LINE_OUT = BayTemplate(
 # trójpołożeniowego, §13 „uziemienie wyprowadzeń uziemnikami stałymi"] → głowica kablowa →
 # przekładnik Ferrantiego na kablu (1/100, bez przerwy toru). Odłącznika liniowego i osobnego
 # uziemnika kabla przy łączniku trójpołożeniowym standard NIE rysuje: kabel uziemia się przez
-# zamknięty wyłącznik przy łączniku trójpołożeniowym w położeniu „uziemiony" (§13, druk s.24).
+# zamknięty wyłącznik przy łączniku trójpołożeniowym w położeniu „uziemiony" (§13, druk s.25).
 #
 # Oznaczenia aparatów — WARTOŚĆ ROBOCZA (ZASADA NR 4), dana modelu edytowalna przez projektanta,
 # z JEDNEGO schematu: praktyka DIN 40719-2 dla łączników (Q0 wyłącznik albo rozłącznik toru, Q1
@@ -348,7 +346,7 @@ _PODSTAWA_WYKONANIA_POLA: dict[str, str] = {
     "Z11_1": "ENEA Zeszyt 1, Z.11.1 (s.91)",
     "Z11": "ENEA Zeszyt 1, Z.11 (s.90)",
 }
-_PODSTAWA_P13 = "ENEA Zeszyt 1, §13 (druk s.23–25)"
+_PODSTAWA_P13 = "ENEA Zeszyt 1, §13 (druk s.23–26)"
 
 #: Izolacja rozdzielnicy (`SwitchgearFamily.insulation_type`), w której standard NIE dopuszcza
 #: wykonania łączników: §13 dla izolacji powietrznej wymienia wyłącznie wyłącznik stały
@@ -382,8 +380,58 @@ def odmowa_wykonania_lacznikow_w_izolacji(
     )
 
 
+# ---------------------------------------------------------------------------
+# Funkcje EAZ WARUNKOWE (decyzja właściciela 2026-10-29, karta UX-04/POLE-LINIOWE-WZORZEC).
+# Funkcja, której wielkości wejściowej pole nie dostarcza samo, trafia do zestawu funkcji pola
+# (`Bay.protection_codes`) WYŁĄCZNIE przy spełnionym warunku rozstrzygniętym na MODELU
+# (`enm.zrodlo_napiecia_zerowego.warunki_funkcji_eaz_pola`). Rysunek standardu ją niesie
+# (`BayTemplate.funkcje_eaz`, `PozycjaProfiluEaz.na_rysunku`), ale przypisanie bez potwierdzonego
+# źródła byłoby funkcją bez wejścia — fikcją, a nie zabezpieczeniem.
+#
+# 67N (kierunkowe ziemnozwarciowe): ENEA Zeszyt 1, Z.10 (s.89) i Z.11.1 (s.91) — blok
+# „Zab. ziemnozwarciowe" ma wejście I0 z przekładnika Ferrantiego 1/100 i wejście U0 z obwodu
+# okrężnego „Z, Zz"; obwód „Z, Zz" WYCHODZI z pola pomiaru napięcia SN (Z.17, s.97): uzwojenie III
+# przekładnika SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3 (15 VA, kl. 3P) w otwartym trójkącie zasila
+# wejście Uo> sterownika pola i obwód okrężny „Z,Zz". Zeszyt 1 §26.9: zabezpieczenia od zwarć
+# doziemnych pól liniowych mierzą „składowe zerowe prądu (I0) i napięcia (U0)". Ten sam warunek
+# obowiązuje KAŻDY szablon i każdą drogę przypisania (szablon kanonu, szablon producenta, rola
+# pola) — `bez_niespelnionych_warunkow`.
+# ---------------------------------------------------------------------------
+
+#: Warunek przypisania funkcji 67N: źródło 3U₀ i kryterium prądowe I0 potwierdzone w modelu.
+WARUNEK_ZRODLA_U0 = "ZRODLO_U0"
+#: Funkcja warunkowa → warunek jej przypisania (lista ZAMKNIĘTA, przypięta testem
+#: `tests/enm/test_zrodlo_napiecia_zerowego.py`).
+WARUNKI_FUNKCJI_EAZ: dict[str, str] = {"67N": WARUNEK_ZRODLA_U0}
+OPIS_WARUNKU_FUNKCJI_EAZ_PL: dict[str, str] = {
+    WARUNEK_ZRODLA_U0: (
+        "przypisana wyłącznie przy źródle napięcia zerowego 3U₀ powiązanym w modelu — uzwojeniu "
+        "otwartego trójkąta przekładnika napięciowego pola pomiaru napięcia szyn tej samej sekcji "
+        "(ENEA Zeszyt 1, Z.17 s.97, obwód okrężny „Z, Zz”) albo tego pola — i kryterium prądowym "
+        "z przekładnika Ferrantiego pola"
+    ),
+}
+
+
+def bez_niespelnionych_warunkow(kody: Iterable[str], warunki: Collection[str]) -> list[str]:
+    """Zestaw funkcji bez funkcji warunkowych (`WARUNKI_FUNKCJI_EAZ`), których warunek nie
+    jest w ``warunki``. Kolejność wejścia zachowana. JEDNO miejsce reguły dla każdej drogi
+    przypisania funkcji EAZ do pola."""
+    return [
+        kod
+        for kod in kody
+        if (warunek := WARUNKI_FUNKCJI_EAZ.get(kod)) is None or warunek in warunki
+    ]
+
+
 #: Funkcje EAZ wg rysunku (kody słownika `funkcje_eaz`). Z.10: I>, I>>, zabezpieczenie
-#: ziemnozwarciowe z wejściami Io i U0, ZS, LRW, SPZ, SCO1/SCO2 i SPZ po SCO. Z.11/Z.11.1:
+#: ziemnozwarciowe z wejściami Io i U0, ZS, LRW, SPZ, SCO1/SCO2 i SPZ po SCO. Blok „Zab.
+#: ziemnozwarciowe" rysunku ma wejście Io z przekładnika Ferrantiego (czerwona linia z zacisku 2
+#: przekładnika 1/100) i wejście U0 z obwodu okrężnego „Z, Zz" pod znakiem kierunku „↦" nad
+#: członami t1, t2 — zestaw rozdziela go na kryterium prądowe Io> (51N, z samego przekładnika
+#: Ferrantiego pola, BEZ warunku) i kierunkowe (67N, warunkowe — źródło 3U₀ spoza pola, decyzja
+#: właściciela 2026-10-29). Pole bez potwierdzonego źródła 3U₀ ma więc zabezpieczenie
+#: ziemnozwarciowe prądowe z przekładnika Ferrantiego, a nie żadnego. Z.11/Z.11.1:
 #: I>, I> kierunkowe (ZS), I>>, ziemnozwarciowe, U>, U<, f<, f>, df/dt, ZS, LRW, SPZ, SPZE,
 #: wyłączenie od zabezpieczeń transformatora (OWG), automatyka blokowania od napięcia
 #: zwrotnego (NZ — Zeszyt 1 §26.9.3 i §26.10.3; rysunek s.91 niesie jej obwód pomiaru napięcia
@@ -392,11 +440,12 @@ def odmowa_wykonania_lacznikow_w_izolacji(
 #: funkcji (z czego mierzy, na co działa) — `obwody_wtorne_pola`. Zestaw wg KLASY pola (odbiorcze,
 #: mieszane, dedykowane wytwórcy — IRiESD II.4.5.4.2) wyprowadza `funkcje_eaz_pola_liniowego`.
 _FUNKCJE_EAZ_WYKONANIA_POLA: dict[str, list[str]] = {
-    "Z10": ["51", "50", "67N", "ZS", "50BF", "79", "SCO", "SPZ/SCO"],
+    "Z10": ["51", "50", "51N", "67N", "ZS", "50BF", "79", "SCO", "SPZ/SCO"],
     "Z11_1": [
         "51",
         "50",
         "67",
+        "51N",
         "67N",
         "27",
         "59",
@@ -858,13 +907,18 @@ _KODY_DOPISYWANE_KLASY: dict[str, tuple[tuple[str, str], ...]] = {
 }
 
 
-def funkcje_eaz_pola_liniowego(wykonanie_pola: str, klasa_pola: str | None) -> list[str]:
+def funkcje_eaz_pola_liniowego(
+    wykonanie_pola: str, klasa_pola: str | None, warunki: Collection[str] = frozenset()
+) -> list[str]:
     """Funkcje EAZ pola liniowego GPZ: zestaw rysunku wykonania (Z.10/Z.11.1/Z.11) skorygowany
-    klasą pola. Klasa nieustalona (`None`) — zestaw rysunku bez korekty. Kolejność rysunku;
-    kod dopisany klasą stoi za wskazanym kodem rysunku (na początku, gdy rysunek go nie ma)."""
+    klasą pola, bez funkcji warunkowych o niespełnionym warunku (``warunki`` — warunki spełnione
+    w modelu, `enm.zrodlo_napiecia_zerowego.warunki_funkcji_eaz_pola`; domyślnie żaden — 67N nie
+    trafia do pola bez potwierdzonego źródła 3U₀). Klasa nieustalona (`None`) — zestaw rysunku bez
+    korekty klasy. Kolejność rysunku; kod dopisany klasą stoi za wskazanym kodem rysunku (na
+    początku, gdy rysunek go nie ma)."""
     zestaw = list(_FUNKCJE_EAZ_WYKONANIA_POLA[wykonanie_pola])
     if klasa_pola is None:
-        return zestaw
+        return bez_niespelnionych_warunkow(zestaw, warunki)
     usuwane = _KODY_ZAKAZANE_KLASY[klasa_pola] | _KODY_POMIJANE_KLASY[klasa_pola]
     zestaw = [kod for kod in zestaw if kod not in usuwane]
     for kod, po_kodzie in _KODY_DOPISYWANE_KLASY[klasa_pola]:
@@ -875,7 +929,9 @@ def funkcje_eaz_pola_liniowego(wykonanie_pola: str, klasa_pola: str | None) -> l
         else:
             # Rysunek nie ma kodu odniesienia — kod klasy otwiera zestaw (pozycja listy, nie dana).
             zestaw.insert(0, kod)
-    return zestaw
+    # Funkcje warunkowe odpadają NA KOŃCU: kod dopisany klasą może stać za kodem warunkowym
+    # (81U za 67N w polu odbiorczym), więc pozycja kodu klasy nie zależy od spełnienia warunku.
+    return bez_niespelnionych_warunkow(zestaw, warunki)
 
 
 def odmowa_klasy_pola(
@@ -1093,6 +1149,120 @@ BAY_TEMPLATE_AUX = BayTemplate(
 )
 
 
+# ---------------------------------------------------------------------------
+# Decyzja właściciela 2026-10-29 (karta UX-04/POLE-LINIOWE-WZORZEC): pole pomiaru napięcia SN
+# rozdzielni GPZ wg ENEA Zeszyt 1, Z.17 (s.97) — źródło napięcia zerowego 3U₀ funkcji 67N pól
+# liniowych sekcji (obwód okrężny „Z,Zz”, `enm.zrodlo_napiecia_zerowego`).
+# ---------------------------------------------------------------------------
+
+#: Podstawa pola pomiaru napięcia: rysunek Z.17, wymóg jednego pola na sekcję (§13 s.25) i gniazda
+#: przekładników bez wkładek bezpiecznikowych (§13 s.26), zestaw funkcji §26.9.8.
+PODSTAWA_POLA_POMIARU_NAPIECIA_Z17 = (
+    "ENEA Zeszyt 1, Z.17 (s.97) „Pole pomiaru napięcia SN”; §13 (s.25) — pola pomiaru napięcia "
+    "po jednym w każdej sekcji; §13 (s.26) — gniazda dla bezpośredniego przyłączenia "
+    "przekładników napięciowych, bez wkładek bezpiecznikowych; §26.9.8 — zabezpieczenia pól "
+    "pomiaru napięcia"
+)
+
+#: Uzwojenia przekładnika napięciowego Z.17 (tabliczka rysunku s.97): SN/√3 / 0,1/√3 / 0,1/√3 /
+#: 0,1/3 — I 0-10 VA kl. 0,2 (obwód „UL1-2-3-N Pom. en.” — pomiar energii), II 15 VA kl. 0,5/3P
+#: (wejście sterownika pola: U>, U<, f<, df/dt; obwód okrężny „UL1,UL2,UL3,N” i automatyka SZR),
+#: III 15 VA kl. 3P w OTWARTYM TRÓJKĄCIE (wejście Uo> sterownika pola i obwód okrężny „Z,Zz” —
+#: napięcie zerowe zabezpieczeń ziemnozwarciowych pól liniowych sekcji). Odczyt rysunku
+#: 2026-10-29 (współrzędne strony 2480×3509 px: tabliczka x≈600–860, y≈2010–2180; uzwojenie III
+#: — symbol trójkąta pod gwiazdami, linia do wejścia Uo> i obwodu „Z,Zz”).
+UZWOJENIA_VT_POLA_POMIARU_NAPIECIA_Z17: tuple[UzwojeniePrzekladnikaNapieciowego, ...] = (
+    UzwojeniePrzekladnikaNapieciowego(
+        przekladnia="SN/√3 / 0,1/√3", moc_va=10.0, klasa="0,2", przeznaczenie=("POMIAR",)
+    ),
+    UzwojeniePrzekladnikaNapieciowego(
+        przekladnia="SN/√3 / 0,1/√3",
+        moc_va=15.0,
+        klasa="0,5/3P",
+        przeznaczenie=("POMIAR", "ZABEZPIECZENIA"),
+    ),
+    UzwojeniePrzekladnikaNapieciowego(
+        przekladnia="SN/√3 / 0,1/3",
+        moc_va=15.0,
+        klasa="3P",
+        przeznaczenie=("ZABEZPIECZENIA",),
+        otwarty_trojkat=True,
+    ),
+)
+
+#: Funkcje EAZ pola pomiaru napięcia — §26.9.8 w kolejności tekstu: U> (59), U< (27), 3Uo>
+#: (59N), f< (81U) ze stopniami SCO 1 i 2 (SCO) i SPZ po SCO (SPZ/SCO), df/dt (81R); rysunek
+#: s.97 — bloki „U>, U<, Uo>, f<, df/dt” sterownika pola i obwody okrężne SCO1, SCO2, SCO/SPZ.
+FUNKCJE_EAZ_POLA_POMIARU_NAPIECIA_Z17: tuple[str, ...] = (
+    "59",
+    "27",
+    "59N",
+    "81U",
+    "SCO",
+    "SPZ/SCO",
+    "81R",
+)
+
+BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17 = BayTemplate(
+    template_id="bay_template_gpz_pomiar_napiecia_enea_z17",
+    name=nazwa_roli_pola_sn("POMIAROWE"),
+    bay_role="MEASUREMENT",
+    description=(
+        "Pole pomiaru napięcia SN rozdzielni GPZ (ENEA Z.17) — łącznik trójpołożeniowy z napędem, "
+        "wskaźnik napięcia, przekładnik napięciowy wtykowy z uzwojeniem otwartego trójkąta "
+        "(źródło napięcia zerowego 3U₀ sekcji)."
+    ),
+    podstawa=PODSTAWA_POLA_POMIARU_NAPIECIA_Z17,
+    render_variant="qet_en60617",
+    wykonanie_lacznikow="TROJPOLOZENIOWY",
+    tylko_gpz=True,
+    funkcje_eaz=list(FUNKCJE_EAZ_POLA_POMIARU_NAPIECIA_Z17),
+    devices=[
+        BayDeviceTemplate(
+            kind="THREE_POSITION_SWITCH",
+            designation_q="Q1",
+            position=0,
+            placement="UPSTREAM",
+            podstawa=(
+                "ENEA Z.17 (s.97) — łącznik trójpołożeniowy z napędem (szyna / otwarty / "
+                f"uziemiony); {_PODSTAWA_P13}"
+            ),
+        ),
+        BayDeviceTemplate(
+            kind="VOLTAGE_INDICATOR",
+            designation_q="PF1",
+            position=1,
+            placement="OFF_PATH",
+            podstawa=f"ENEA Z.17 (s.97) — wskaźnik napięcia; {_PODSTAWA_P13} — wskaźniki stacjonarne",
+        ),
+        BayDeviceTemplate(
+            kind="CABLE_HEAD",
+            designation_q="GK1",
+            position=2,
+            placement="OFF_PATH",
+            odgalezienie=ODGALEZIENIE_PRZEKLADNIKA_NAPIECIOWEGO,
+            podstawa=(
+                "ENEA Z.17 (s.97) — złącze wtykowe przekładnika; §13 (s.26) — gniazda dla "
+                "bezpośredniego przyłączenia przekładników napięciowych, bez wkładek "
+                "bezpiecznikowych"
+            ),
+        ),
+        BayDeviceTemplate(
+            kind="VT",
+            designation_q="T1",
+            position=3,
+            placement="OFF_PATH",
+            odgalezienie=ODGALEZIENIE_PRZEKLADNIKA_NAPIECIOWEGO,
+            uzwojenia=list(UZWOJENIA_VT_POLA_POMIARU_NAPIECIA_Z17),
+            podstawa=(
+                "ENEA Z.17 (s.97) — przekładnik napięciowy SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3, "
+                "trzy jednofazowe (znacznik „3”), uzwojenie III w otwartym trójkącie"
+            ),
+        ),
+    ],
+    ports=[BayPortTemplate(kind="sn_measurement", suffix="meas")],
+)
+
 BAY_TEMPLATE_REGISTRY: dict[str, BayTemplate] = {
     t.template_id: t
     for t in [
@@ -1100,6 +1270,7 @@ BAY_TEMPLATE_REGISTRY: dict[str, BayTemplate] = {
         BAY_TEMPLATE_LINE_OUT,
         BAY_TEMPLATE_TRANSFORMER,
         BAY_TEMPLATE_MEASUREMENT,
+        BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
         BAY_TEMPLATE_COUPLER,
         BAY_TEMPLATE_DER_PV,
         BAY_TEMPLATE_DER_BESS,
@@ -1136,17 +1307,21 @@ def odlaczenie_wysunieciem_wylacznika(bay_template_ref: str | None) -> bool:
 
 
 def funkcje_eaz_szablonu(
-    template_id: str | None, klasa_pola: str | None = None
+    template_id: str | None,
+    klasa_pola: str | None = None,
+    warunki: Collection[str] = frozenset(),
 ) -> list[str] | None:
-    """Funkcje EAZ kanonicznego szablonu pola; `None` — szablon spoza rejestru kanonu. Szablon
-    pola liniowego GPZ: zestaw rysunku skorygowany klasą pola (`funkcje_eaz_pola_liniowego`);
-    inny szablon klasy nie ma (klasa dotyczy pola linii SN)."""
+    """Funkcje EAZ kanonicznego szablonu pola przypisywane do pola; `None` — szablon spoza
+    rejestru kanonu. Szablon pola liniowego GPZ: zestaw rysunku skorygowany klasą pola
+    (`funkcje_eaz_pola_liniowego`); inny szablon klasy nie ma (klasa dotyczy pola linii SN).
+    Każdy szablon — bez funkcji warunkowych o niespełnionym warunku
+    (`bez_niespelnionych_warunkow`)."""
     szablon = BAY_TEMPLATE_REGISTRY.get(template_id or "")
     if szablon is None:
         return None
     if szablon.wykonanie_pola is not None:
-        return funkcje_eaz_pola_liniowego(szablon.wykonanie_pola, klasa_pola)
-    return list(szablon.funkcje_eaz)
+        return funkcje_eaz_pola_liniowego(szablon.wykonanie_pola, klasa_pola, warunki)
+    return bez_niespelnionych_warunkow(szablon.funkcje_eaz, warunki)
 
 
 # ---------------------------------------------------------------------------
@@ -1175,7 +1350,10 @@ OPIS_WYMOGU_PROFILU_PL: dict[str, str] = {
 }
 OPIS_WYMAGALNOSCI_PROFILU_PL: dict[str, str] = {
     "OBOWIAZKOWA": "obowiązkowa w każdej klasie pola, w której wykonanie jest dopuszczone",
-    "WARIANTOWA": "zależna od klasy pola albo od rodzaju linii (IRiESD II.4.5.4.2)",
+    "WARIANTOWA": (
+        "zależna od klasy pola, od rodzaju linii (IRiESD II.4.5.4.2) albo od warunku przypisania "
+        "(źródło wielkości wejściowej funkcji w modelu)"
+    ),
     "OPCJONALNA": "dopuszczalna albo na żądanie operatora — nie jest wymagana z mocy listy",
 }
 _WYMOGI_WYMAGANE = frozenset({"OBOWIAZKOWA", "WG_RYSUNKU"})
@@ -1212,6 +1390,9 @@ class PozycjaProfiluEaz(BaseModel):
     wymagalnosc_pl: str
     na_rysunku: bool
     wymogi: list[WymogFunkcjiWKlasie]
+    #: Warunek przypisania funkcji warunkowej (`WARUNKI_FUNKCJI_EAZ`) — zdanie z podstawą;
+    #: `None` — funkcja bez warunku przypisania.
+    warunek_pl: str | None = None
 
 
 def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | None:
@@ -1243,7 +1424,11 @@ def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | No
                 weryfikacja: StatusWeryfikacji = (
                     "INTERPRETACJA" if (klasa, kod) in _WYMOGI_Z_INTERPRETACJI else "ODCZYT_TEKSTU"
                 )
-            elif kod in funkcje_eaz_pola_liniowego(wykonanie, klasa):
+            # Zestaw rysunku w klasie z KAŻDYM warunkiem spełnionym: profil opisuje wzorzec,
+            # a nie stan konkretnego pola (warunek przypisania niesie `warunek_pl`).
+            elif kod in funkcje_eaz_pola_liniowego(
+                wykonanie, klasa, frozenset(WARUNKI_FUNKCJI_EAZ.values())
+            ):
                 wymog, podstawa = "WG_RYSUNKU", f"{szablon.podstawa}; {funkcja_eaz(kod).podstawa}"
                 weryfikacja = "ZWERYFIKOWANE_NA_RYSUNKU"
             else:
@@ -1260,10 +1445,17 @@ def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | No
                 )
             )
         zbior = {w.wymog for w in wymogi}
+        warunek = WARUNKI_FUNKCJI_EAZ.get(kod)
+        # Funkcja warunkowa jest WARIANTOWA zawsze: nawet wymagana w każdej klasie trafia do
+        # pola dopiero przy spełnionym warunku (decyzja właściciela 2026-10-29 — 67N).
         wymagalnosc: WymagalnoscFunkcjiProfilu = (
-            "OBOWIAZKOWA"
-            if zbior <= _WYMOGI_WYMAGANE
-            else "OPCJONALNA" if zbior <= _WYMOGI_OPCJONALNE else "WARIANTOWA"
+            "WARIANTOWA"
+            if warunek is not None
+            else (
+                "OBOWIAZKOWA"
+                if zbior <= _WYMOGI_WYMAGANE
+                else "OPCJONALNA" if zbior <= _WYMOGI_OPCJONALNE else "WARIANTOWA"
+            )
         )
         wynik.append(
             PozycjaProfiluEaz(
@@ -1273,6 +1465,7 @@ def profil_eaz_szablonu(template_id: str | None) -> list[PozycjaProfiluEaz] | No
                 wymagalnosc_pl=OPIS_WYMAGALNOSCI_PROFILU_PL[wymagalnosc],
                 na_rysunku=kod in rysunek,
                 wymogi=wymogi,
+                warunek_pl=OPIS_WARUNKU_FUNKCJI_EAZ_PL[warunek] if warunek is not None else None,
             )
         )
     return wynik
@@ -1294,13 +1487,14 @@ FUNKCJE_EAZ_ROLI_BEZ_SZABLONU: dict[str, tuple[str, ...]] = {
 }
 
 
-def funkcje_eaz_roli(bay_role: str) -> list[str]:
+def funkcje_eaz_roli(bay_role: str, warunki: Collection[str] = frozenset()) -> list[str]:
     """Funkcje EAZ roli pola: szablonu kanonicznego roli albo — dla roli bez szablonu
-    kanonicznego — ``FUNKCJE_EAZ_ROLI_BEZ_SZABLONU``; pusta lista dla roli spoza obu tablic."""
+    kanonicznego — ``FUNKCJE_EAZ_ROLI_BEZ_SZABLONU``; pusta lista dla roli spoza obu tablic.
+    Bez funkcji warunkowych o niespełnionym warunku (`bez_niespelnionych_warunkow`)."""
     szablon = SZABLON_KANONICZNY_ROLI.get(bay_role)
     if szablon is not None:
-        return list(szablon.funkcje_eaz)
-    return list(FUNKCJE_EAZ_ROLI_BEZ_SZABLONU.get(bay_role, ()))
+        return bez_niespelnionych_warunkow(szablon.funkcje_eaz, warunki)
+    return bez_niespelnionych_warunkow(FUNKCJE_EAZ_ROLI_BEZ_SZABLONU.get(bay_role, ()), warunki)
 
 
 # ---------------------------------------------------------------------------
@@ -1665,7 +1859,9 @@ def _canonical_config_entry(template: BayTemplate) -> dict[str, Any]:
         "template_id": template.template_id,
         "name": template.name,
         "primary_devices": primary_devices,
-        "protection_codes": list(template.funkcje_eaz),
+        # Zestaw, który operacja zapisze w polu bez wskazanej klasy i bez spełnionych warunków
+        # funkcji warunkowych — TA SAMA reguła co resolver operacji (`funkcje_eaz_szablonu`).
+        "protection_codes": funkcje_eaz_szablonu(template.template_id) or [],
         "wykonanie_pola": template.wykonanie_pola,
         "wykonanie_lacznikow": template.wykonanie_lacznikow,
         "tylko_gpz": template.tylko_gpz,

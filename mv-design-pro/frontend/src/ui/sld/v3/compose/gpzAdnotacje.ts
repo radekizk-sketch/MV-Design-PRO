@@ -496,8 +496,9 @@ export interface ElementPolaGpz {
 }
 
 /**
- * Tła pól: obrys wszystkich symboli i adnotacji zabezpieczeń pola z marginesem
- * GRID/2 (symbole stoją na siatce, więc krawędzie tła leżą na półsiatce). Kolejność wyjścia = kolejność pól na wejściu (deterministyczna).
+ * Tła pól: obrys wszystkich symboli, adnotacji zabezpieczeń i etykiet pola (podpis pola, opisy
+ * zabezpieczeń — karta UX-04) z marginesem GRID/2 (symbole i sloty etykiet stoją na siatce, więc
+ * lewa i górna krawędź tła leżą na półsiatce). Kolejność wyjścia = kolejność pól na wejściu (deterministyczna).
  * Pola bez żadnego narysowanego elementu nie dostają tła (nie ma czego podświetlić).
  */
 export function panelePolGpz(

@@ -27,22 +27,42 @@ oznaczenie, numer rdzenia/uzwojenia) sprawdza walidator `BayTemplate`.
 
 from __future__ import annotations
 
-from typing import Literal
+from collections.abc import Collection, Mapping, Sequence
+from typing import Any, Literal
 
 from network_model.catalog.funkcje_eaz import kody_spoza_slownika
 from pydantic import BaseModel, Field, model_validator
 
 __all__ = [
     "OBWODY_WTORNE_WYKONANIA_POLA",
+    "POLA_POWIAZAN_APARATU",
+    "RODZAJ_APARATU_WEJSCIA",
+    "RodzajNapeduWylacznika",
     "ObwodyWtornePola",
     "PowiazanieFunkcjiEaz",
     "PrzypisanieObwoduPrzekladnika",
     "SygnalPola",
     "StatusWeryfikacji",
     "WejscieFunkcjiEaz",
+    "powiazania_aparatow_pola",
 ]
 
 StatusWeryfikacji = Literal["ZWERYFIKOWANE_NA_RYSUNKU", "ODCZYT_TEKSTU", "INTERPRETACJA"]
+
+#: Rodzaj napędu wyłącznika wzorca (ENEA Z.10/Z.11/Z.11.1 rysują silnik „M" przy wyłączniku).
+#: Jeden słownik dla szablonu (`ObwodyWtornePola.naped_wylacznika`) i rekordu aparatu ENM
+#: (`BayPrimaryDevice.naped`).
+RodzajNapeduWylacznika = Literal["SILNIKOWY"]
+
+#: Rodzaj aparatu pola (`BayPrimaryDevice.kind`), z którego mierzy wejście funkcji EAZ — jedno
+#: źródło dla walidatora szablonu (`bay_templates._sprawdz_obwody_wtorne`), odczytu pola
+#: (`enm.pole_liniowe_gpz._opis_wejscia`) i materializacji powiązań na aparatach
+#: (`powiazania_aparatow_pola`).
+RODZAJ_APARATU_WEJSCIA: dict[str, str] = {
+    "RDZEN_CT": "CT",
+    "UZWOJENIE_VT": "VT",
+    "PRZEKLADNIK_FERRANTIEGO": "CORE_BALANCE_CT",
+}
 
 _ZW: StatusWeryfikacji = "ZWERYFIKOWANE_NA_RYSUNKU"
 _OT: StatusWeryfikacji = "ODCZYT_TEKSTU"
@@ -123,7 +143,7 @@ class ObwodyWtornePola(BaseModel):
     """Obwody wtórne wzorca pola — jedno źródło relacji rysunku dla API szablonów i karty pola."""
 
     podstawa: str
-    naped_wylacznika: Literal["SILNIKOWY"]
+    naped_wylacznika: RodzajNapeduWylacznika
     naped_weryfikacja: StatusWeryfikacji
     powiazania: list[PowiazanieFunkcjiEaz]
     sygnaly: list[SygnalPola]
@@ -181,6 +201,16 @@ _UWAGA_WSPOLNE_WEJSCIE_PRADOWE = (
 _UWAGA_STEROWNIK = (
     "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania "
     "wyłącznikiem sterownika jest wnioskiem z układu rysunku"
+)
+#: Kryterium prądowe Io bloku ziemnozwarciowego (51N). Linia Io z zacisku 2 przekładnika
+#: Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe" jest na rysunku; wydzielenie jej jako
+#: funkcji bez kierunku jest wnioskiem z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga
+#: źródła 3U₀ spoza pola, a prąd zerowy pole mierzy samo.
+_UWAGA_KRYTERIUM_PRADOWE_IO = (
+    "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest "
+    "na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji "
+    "właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego "
+    "„Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo"
 )
 
 
@@ -340,9 +370,9 @@ def _sygnaly(z_vt: bool, wyjscia_wylacznika: tuple[str, ...]) -> list[SygnalPola
             obwod="OKREZNY",
             sterownik_pola=True,
             znaczenie_pl="napięcia fazowe szyn sekcji",
-            weryfikacja=_IN,
-            uwaga="obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); "
-            "rysunek pola podaje same oznaczenia faz",
+            weryfikacja=_ZW,
+            uwaga="obwód okrężny napięć szyn: Z.17 (s.97) wyprowadza na obwód „UL1,UL2,UL3,N” "
+            "uzwojenie II (0,1/√3, 15 VA, kl. 0,5/3P) przekładnika pola pomiaru napięcia sekcji",
         ),
         SygnalPola(
             nazwa="Pobudzenie LRW",
@@ -364,9 +394,12 @@ def _sygnaly(z_vt: bool, wyjscia_wylacznika: tuple[str, ...]) -> list[SygnalPola
             obwod="OKREZNY",
             znaczenie_pl="napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia "
             "ziemnozwarciowego)",
-            weryfikacja=_IN,
-            uwaga="rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok "
-            "przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
+            weryfikacja=_ZW,
+            uwaga="rysunek pola doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok "
+            "przekładnika Ferrantiego (Io); Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III "
+            "(0,1/3, 15 VA, kl. 3P) w otwartym trójkącie przekładnika pola pomiaru napięcia "
+            "sekcji — źródło napięcia zerowego 3U₀ (powiązanie wskazuje się w wyposażeniu pola: "
+            "„Źródło napięcia zerowego 3U₀”)",
         ),
     ]
     return wylacznik + nadrzedne + okrezne
@@ -394,6 +427,15 @@ def _powiazania_wspolne(
             wyjscia=list(wyjscia_wylacznika),
             wylacznik="Q0",
             weryfikacja=_ZW,
+        ),
+        PowiazanieFunkcjiEaz(
+            funkcja="51N",
+            blok_rysunku="Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+            wejscia=[_FERRANTI],
+            wyjscia=list(wyjscia_wylacznika),
+            wylacznik="Q0",
+            weryfikacja=_IN,
+            uwaga=_UWAGA_KRYTERIUM_PRADOWE_IO,
         ),
         PowiazanieFunkcjiEaz(
             funkcja="67N",
@@ -585,3 +627,65 @@ def _obwody_wykonania(wykonanie_pola: str) -> ObwodyWtornePola:
 OBWODY_WTORNE_WYKONANIA_POLA: dict[str, ObwodyWtornePola] = {
     wykonanie: _obwody_wykonania(wykonanie) for wykonanie in ("Z10", "Z11_1", "Z11")
 }
+
+
+#: Pola rekordu aparatu pola wyprowadzane z obwodów wtórnych wzorca (`powiazania_aparatow_pola`).
+POLA_POWIAZAN_APARATU = ("naped", "funkcje_eaz_zasilane", "funkcje_eaz_wylaczajace")
+
+
+def powiazania_aparatow_pola(
+    aparaty: Sequence[Mapping[str, Any]],
+    obwody: ObwodyWtornePola | None,
+    funkcje_pola: Collection[str],
+) -> list[dict[str, Any]]:
+    """Powiązania obwodów wtórnych wzorca przeniesione na rekordy aparatów pola (nowe słowniki).
+
+    Reguła ta sama co odczyt pola (`enm.pole_liniowe_gpz._obwody_funkcji`): wejście funkcji
+    wskazuje aparat pola po OZNACZENIU i RODZAJU (`RODZAJ_APARATU_WEJSCIA`), wyłącznik
+    wykonawczy — wyłącznik (`CB`) o oznaczeniu `PowiazanieFunkcjiEaz.wylacznik`. Wynik:
+
+    * ``funkcje_eaz_zasilane`` — przekładnik (CT, VT, Ferrantiego): kody funkcji, które z niego
+      mierzą (kolejność powiązań wzorca, bez powtórzeń);
+    * ``funkcje_eaz_wylaczajace`` — wyłącznik: kody funkcji, które na niego działają;
+    * ``naped`` — wyłącznik wykonawczy: napęd wzorca (`ObwodyWtornePola.naped_wylacznika`).
+
+    Przenoszone są WYŁĄCZNIE powiązania funkcji, które pole ma (`funkcje_pola` =
+    `Bay.protection_codes`): zestaw pola liniowego jest korygowany klasą pola (IRiESD
+    II.4.5.4.2 — bez SCO w polu z generacją, bez SPZ w polu dedykowanym wytwórcy,
+    `bay_templates.funkcje_eaz_pola_liniowego`), a funkcja, której pole nie ma, nie mierzy
+    z przekładnika i nie działa na wyłącznik. Jedno źródło zestawu funkcji dla przekaźnika
+    pola na rysunku i powiązań aparatów (predykat parami).
+
+    Aparat, którego wzorzec nie wiąże (inne oznaczenie, inny rodzaj, pole bez obwodów
+    wzorca), tych pól nie dostaje — dawne wartości są zdejmowane, więc ponowne wyposażenie
+    pola nie zostawia powiązań aparatu, którego wzorzec już nie wiąże."""
+    wynik = [{k: v for k, v in a.items() if k not in POLA_POWIAZAN_APARATU} for a in aparaty]
+    if obwody is None:
+        return wynik
+    po_oznaczeniu: dict[str, list[dict[str, Any]]] = {}
+    for aparat in wynik:
+        oznaczenie = aparat.get("designation")
+        if isinstance(oznaczenie, str) and oznaczenie:
+            po_oznaczeniu.setdefault(oznaczenie, []).append(aparat)
+
+    def _dopisz(aparat: dict[str, Any], klucz: str, kod: str) -> None:
+        lista = aparat.setdefault(klucz, [])
+        if kod not in lista:
+            lista.append(kod)
+
+    obecne = set(funkcje_pola)
+    for p in obwody.powiazania:
+        if p.funkcja not in obecne:
+            continue
+        if p.wylacznik is not None:
+            for aparat in po_oznaczeniu.get(p.wylacznik, []):
+                if aparat.get("kind") == "CB":
+                    _dopisz(aparat, "funkcje_eaz_wylaczajace", p.funkcja)
+                    aparat["naped"] = obwody.naped_wylacznika
+        for w in p.wejscia:
+            if w.aparat is None:
+                continue
+            for aparat in po_oznaczeniu.get(w.aparat, []):
+                if aparat.get("kind") == RODZAJ_APARATU_WEJSCIA[w.rodzaj]:
+                    _dopisz(aparat, "funkcje_eaz_zasilane", p.funkcja)
+    return wynik

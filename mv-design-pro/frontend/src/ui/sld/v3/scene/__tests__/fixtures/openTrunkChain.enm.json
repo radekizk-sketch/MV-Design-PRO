@@ -44,7 +44,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -92,7 +93,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/709b330e6195072d50c999810decd888/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -126,8 +128,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/709b330e6195072d50c999810decd888/sn_field/001",
@@ -141,7 +142,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/709b330e6195072d50c999810decd888/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -194,7 +196,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/709b330e6195072d50c999810decd888/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -237,7 +240,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/de823a0832c1e622106802c02f9191c8/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -278,7 +282,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/06f639cc48f509573bab7e65b9d8ded7/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -918,7 +923,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "83bd7d7eca9213e05dba9996ff810413062622e8063cf01ec0f79389cc070eaf",
+      "hash_sha256": "43e836e3a3f93de4b54a4cd9b2f80330c9a6b94e4da3505b3d517a245e64e308",
       "name": "Łańcuch odcinków magistrali",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"

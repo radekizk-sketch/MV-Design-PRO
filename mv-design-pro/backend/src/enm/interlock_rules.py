@@ -30,7 +30,7 @@ from .models import Bay, BayPrimaryDevice, BaySwitchState
 #
 # Łącznik trójpołożeniowy w położeniu „uziemiony" NIE jest uziemnikiem tej reguły: uziemia
 # stronę wyłącznika przy odciętej szynie, a uziemienie kabla przez ZAMKNIĘTY wyłącznik jest
-# dopuszczone (ENEA Zeszyt 1 §13, druk s.24). Dla reguły jest łącznikiem toru OTWARTYM
+# dopuszczone (ENEA Zeszyt 1 §13, druk s.25). Dla reguły jest łącznikiem toru OTWARTYM
 # (`STANY_OTWARTE_W_TORZE`). Zgodę na samo uziemienie (strona wyłącznika bez napięcia na całej
 # topologii wynikowej) rozstrzyga walidacja łączeń na topologii, nie ta reguła pola.
 MAIN_SWITCH_KINDS: frozenset[str] = RODZAJE_LACZNIKOW_TORU

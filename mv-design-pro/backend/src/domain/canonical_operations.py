@@ -265,7 +265,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         ),
         target_layer="Domain / NetworkModel",
         required_fields=("bay_ref", "mode"),
-        optional_fields=("devices", "bay_template_ref", "klasa_pola"),
+        optional_fields=("devices", "bay_template_ref", "klasa_pola", "zrodlo_u0_ref"),
         creates_elements=False,
     ),
     "set_object_state": OperationSpec(
@@ -1753,10 +1753,15 @@ CIAGI_LINIOWE: dict[str, SkutekCiagu] = {
     ),
     "continue_trunk_segment_sn": SkutekCiagu(
         "trunk_id",
-        "Dopisuje utworzony odcinek na koniec ciągu `trunk_id` (brak albo nieznana magistrala → "
-        "pierwsza magistrala modelu); ciąg zakładany, gdy magistrala go nie ma (początek: "
-        "`field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę ciągu "
-        "i numer `order`.",
+        "Dopisuje utworzony odcinek na koniec ciągu, który start odcinka KONTYNUUJE (jedna reguła "
+        "ciągłości: ciąg pusty, start na końcu ostatniego odcinka ciągu albo w tej samej stacji "
+        "co ten koniec). Ciąg `trunk_id`, którego start nie kontynuuje — odmowa "
+        "`trunk.start_not_at_trunk_end`; brak albo nieznany ciąg → ciąg kończący się na starcie, "
+        "inaczej pusty, inaczej NOWY ciąg z tego startu (`run_kind` `branch`, korytarz "
+        "promieniowy, port startu = zacisk odcinka; z pola GPZ — przydział pola zapisany "
+        "dwustronnie i nazwa „Magistrala NN”). Ciąg zakładany, gdy magistrala go nie ma "
+        "(początek: `field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę "
+        "ciągu i numer `order`.",
     ),
     "start_branch_segment_sn": SkutekCiagu(
         None,
@@ -2172,7 +2177,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
     # Karta UX-04/POLE-LINIOWE-WZORZEC: wykonanie łączników szablonu pola niedopuszczone
-    # w izolacji rodziny rozdzielnicy (W050; ENEA Zeszyt 1, §13, druk s.23–25).
+    # w izolacji rodziny rozdzielnicy (W050; ENEA Zeszyt 1, §13, druk s.23–26).
     "bay.switching_execution_insulation_mismatch": ReadinessCodeSpec(
         code="bay.switching_execution_insulation_mismatch",
         area=ReadinessArea.STATIONS,
@@ -2280,6 +2285,19 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Dwa aparaty pola noszą to samo oznaczenie — oznaczenie aparatu musi być jednoznaczne "
             "w obrębie pola (IEC 81346-1)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
+    # Decyzja właściciela 2026-10-29: funkcja 67N pola bez potwierdzonego źródła 3U₀ — W064.
+    "bay.earth_fault_u0_source_unconfirmed": ReadinessCodeSpec(
+        code="bay.earth_fault_u0_source_unconfirmed",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Pole ma zabezpieczenie ziemnozwarciowe kierunkowe (67N) bez potwierdzonego źródła "
+            "napięcia zerowego 3U₀ — przekładnika z uzwojeniem otwartego trójkąta w polu pomiaru "
+            "napięcia szyn tej sekcji (ENEA Zeszyt 1, Z.17)"
         ),
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),

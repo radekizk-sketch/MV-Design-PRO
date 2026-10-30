@@ -41,7 +41,6 @@ export type SymbolId =
   | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
   | 'derUnknown'       // źródło nieokreślone (rodzaj nierozstrzygnięty w modelu)
   | 'bayNoEquipment'   // brak danych wyposażenia pola (sylwetka bez stanu, karta GEOMETRIA-STACJI)
-  | 'bayReserve'       // zakończenie pola rezerwowego/wolnego (bez głowicy i odejścia)
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — mini-RMU (sylwetka)
   | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
@@ -78,6 +77,11 @@ export interface SymbolDef {
   readonly ports: readonly SymbolPort[];
   /** Polska nazwa dla inspektora/tooltipa (spec §9 — zero enumów w UI). */
   readonly labelPl: string;
+  /** Porty OBWODU WTÓRNEGO (zacisk uzwojenia wtórnego przekładnika, cewka wyłączająca
+   *  i napęd wyłącznika) — zaczepienie linii pomiarowych i linii wyłączania przekaźnika.
+   *  Osobno od `ports`: nie są portami toru pola (tor pierwotny łączy się wyłącznie
+   *  przez `ports`). Puste dla symboli bez obwodu wtórnego. */
+  readonly secondaryPorts: readonly SymbolPort[];
 }
 
 function def(
@@ -86,8 +90,9 @@ function def(
   height: number,
   ports: readonly SymbolPort[],
   labelPl: string,
+  secondaryPorts: readonly SymbolPort[] = [],
 ): SymbolDef {
-  return { id, width, height, ports, labelPl };
+  return { id, width, height, ports, labelPl, secondaryPorts };
 }
 
 export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
@@ -279,13 +284,6 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 32, dir: 'S' },
   ], 'Brak danych wyposażenia pola'),
-  // GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola REZERWOWEGO (`bay_kind` „rezerwowe",
-  // ten sam predykat co backend `enm/rodzaj_stacji.py`) albo pola WOLNEGO (pole liniowe,
-  // do którego zacisku model nie przyłącza żadnego odcinka). Bez głowicy kablowej
-  // i bez odejścia — JEDEN port N; za nim nic się nie przyłącza.
-  bayReserve: def('bayReserve', 16, 16, [
-    { name: 'top', x: 8, y: 0, dir: 'N' },
-  ], 'Pole rezerwowe (bez odejścia)'),
   // UX-04/POLE-BKR-MODEL: bateria kondensatorów równoległych SN (`ShuntCapacitor` ENM) na
   // końcu toru pola — element MODELU, którego pole jest nośnikiem (jak transformator pola TR),
   // nie aparat pola. JEDEN port N (za baterią nic się nie przyłącza). Gabaryt 32×40
@@ -354,7 +352,15 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   // wielokrotnością GRID w bboxie 24×24, wybór wizualnie równoważny).
   protectionRelay: def('protectionRelay', 24, 24, [
     { name: 'link', x: 0, y: 8, dir: 'W' },
-  ], 'Przekaźnik zabezpieczeniowy'),
+  ], 'Przekaźnik zabezpieczeniowy', [
+    // Karta UX-04/POLE-LINIOWE-WZORZEC (korekta P0 pkt 6): wejście pomiarowe przekaźnika —
+    // linie pomiarowe z przekładników pola (ENEA Zeszyt 1, Z.10/Z.11.1).
+    // Trzy wejścia (kolejność przydziału `WEJSCIA_POMIAROWE_PRZEKAZNIKA`): lewe pod wejściem
+    // wyłączania i dwa dolne — źródło ma własne wejście, linie się nie zlewają.
+    { name: 'pomiar-lewy', x: 0, y: 16, dir: 'W' },
+    { name: 'pomiar', x: 8, y: 24, dir: 'S' },
+    { name: 'pomiar-prawy', x: 16, y: 24, dir: 'S' },
+  ]),
   // F9.9 (spec §17.1): miernik — okrąg 24×24 (3×GRID), TA SAMA średnica co
   // przekaźnik (§17.3 nie różnicuje gabarytu). Spec nie przewiduje rysowanej
   // linii do miernika (kotwiczenie WYŁĄCZNIE pozycją, §17.2 „okrąg M przy
@@ -403,7 +409,7 @@ function definicjeSymboliQet(): Record<QetSymbolPolaSnId, SymbolDef> {
   const wynik = {} as Record<QetSymbolPolaSnId, SymbolDef>;
   for (const id of Object.keys(QET_SYMBOLE_POLA_SN) as QetSymbolPolaSnId[]) {
     const q = QET_SYMBOLE_POLA_SN[id];
-    wynik[id] = def(id, q.szerokosc, q.wysokosc, q.porty, `${q.namePl} (EN 60617)`);
+    wynik[id] = def(id, q.szerokosc, q.wysokosc, q.porty, `${q.namePl} (EN 60617)`, q.portyWtorne);
   }
   return wynik;
 }
@@ -425,6 +431,7 @@ export function czySymbolQet(id: SymbolId): id is QetSymbolPolaSnId {
  */
 const RODZAJ_SEMANTYCZNY_QET: Readonly<Record<QetSymbolPolaSnId, SymbolId>> = {
   qetBreaker: 'breaker',
+  qetBreakerZNapedem: 'breaker',
   qetDisconnector: 'disconnector',
   qetLoadBreakSwitch: 'loadBreakSwitch',
   qetFuseSwitch: 'fuseSwitch',
@@ -432,9 +439,14 @@ const RODZAJ_SEMANTYCZNY_QET: Readonly<Record<QetSymbolPolaSnId, SymbolId>> = {
   qetThreePositionSwitch: 'qetThreePositionSwitch',
   qetCurrentTransformer: 'currentTransformer',
   qetVoltageTransformer: 'voltageTransformer',
+  qetVoltageTransformer2: 'voltageTransformer',
+  qetVoltageTransformer3: 'voltageTransformer',
   qetCoreBalanceCt: 'qetCoreBalanceCt',
   qetCableHead: 'cableHead',
   qetVoltageIndicator: 'voltageIndicator',
+  // Zakończenie toru pola bez kabla w modelu (EN 60617 03-01-14) — jedyny rysunek tego
+  // rodzaju (rysunek kanoniczny poprzeczek czytał się jak uziemienie, usunięty).
+  bayReserve: 'bayReserve',
 };
 
 export function rodzajSymbolu(id: SymbolId): SymbolId {
@@ -520,6 +532,7 @@ export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
   // dwupołożeniowych (pole z wyłącznikiem pokazuje na L0 wyłącznik).
   'breaker',
   'qetBreaker',
+  'qetBreakerZNapedem',
   'disconnector',
   'qetDisconnector',
   'loadBreakSwitch',

@@ -71,7 +71,7 @@ import {
 import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
 import type { SafeInsets } from '../../v2/viewport/ViewportController';
 import type { RouteVertex } from '../layout/route';
-import { labelReservationRect } from '../layout/labels';
+import { labelReservationRect, zaczepTekstuEtykiety } from '../layout/labels';
 import { buildKanonicznyRefSzynyWgBazy, kanonicznyRefSzynyUchwytu } from './canvasMenuSubject';
 import {
   boundingBoxOfRect,
@@ -2292,6 +2292,8 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
   const cx = planned.rect.x + planned.rect.width / 2;
   const cy = planned.rect.y + planned.rect.height / 2;
   const textTransform = label.rotated ? `rotate(-90, ${cx}, ${cy})` : undefined;
+  // Wiersze bloku przekaźnika: tekst w krawędzi prostokąta planu (`zaczepTekstuEtykiety`).
+  const zaczep = zaczepTekstuEtykiety(planned.rect, label.wyrownanieTekstu, label.rotated === true);
   return (
     <g
       data-testid={`sld-v3-label-${index}`}
@@ -2312,9 +2314,9 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
         />
       )}
       <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
+        x={zaczep.x}
+        y={zaczep.y}
+        textAnchor={zaczep.textAnchor}
         dominantBaseline="middle"
         transform={textTransform}
         fill={palette.baseStroke}

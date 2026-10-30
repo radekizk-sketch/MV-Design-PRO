@@ -45,7 +45,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -93,7 +94,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -127,8 +129,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/001",
@@ -142,7 +143,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -195,7 +197,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -238,7 +241,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/7cddf2522393c53a01400984580df18d/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -279,7 +283,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/1ba313c68f25dbab1e8b6a3de6ee936d/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -325,7 +330,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -373,7 +379,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -407,8 +414,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/001",
@@ -422,7 +428,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -475,7 +482,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -518,7 +526,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/14f1b33bc028a5a5098ecbb8c67c13e7/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -559,7 +568,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/5a3f4ff06db406079e16be100188dda1/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "bay_role": "TR",
@@ -1774,7 +1784,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "98266e6f4d4cf2aaf6c8dcccf969d89f6c8e82b8da3a1cf254930169cbeddde2",
+      "hash_sha256": "05961cde2233dd5e7df99d56c3bde7369afe37e16497dc397d81698dd2092616",
       "name": "GPZ — ścieżka danych (pola, CT, zabezpieczenia)",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"

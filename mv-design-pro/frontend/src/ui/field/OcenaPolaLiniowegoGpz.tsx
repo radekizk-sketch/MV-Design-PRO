@@ -14,6 +14,61 @@
 import { NAZWA_WERYFIKACJI_PL, type ObwodyWtornePola } from '../catalog/api';
 import type { NapiecieZwrotnePola, ObwodFunkcjiPola, OcenaPolaLiniowego } from './useFieldReadModel';
 import { NAZWA_KLASY_POLA_PL } from './wyposazeniePola';
+import './ocenaPolaLiniowego.css';
+
+/** Kolumna tabeli oceny: nazwa (nagłówek tabeli ORAZ etykieta komórki w układzie blokowym
+ *  wąskiego kontenera — `ocenaPolaLiniowego.css`) i szerokość w układzie tabeli. Jedno źródło
+ *  obu napisów; parę nagłówek ↔ `data-etykieta` komórki przypina test komponentu. */
+interface KolumnaOceny {
+  readonly naglowek: string;
+  readonly szerokosc: string;
+}
+
+/** Szerokości z treści: podstawa normowa i przyczyna to zdania, funkcja i ocena — krótkie. */
+const KOLUMNY_OCENY_FUNKCJI = [
+  { naglowek: 'Funkcja', szerokosc: 'w-[18%]' },
+  { naglowek: 'Kryterium i podstawa', szerokosc: 'w-[32%]' },
+  { naglowek: 'Ocena', szerokosc: 'w-[14%]' },
+  { naglowek: 'Przyczyna i dowód', szerokosc: 'w-[36%]' },
+] as const satisfies readonly KolumnaOceny[];
+
+const KOLUMNY_OBWODOW_FUNKCJI = [
+  { naglowek: 'Funkcja', szerokosc: 'w-[20%]' },
+  { naglowek: 'Blok rysunku', szerokosc: 'w-[14%]' },
+  { naglowek: 'Z czego mierzy', szerokosc: 'w-[32%]' },
+  { naglowek: 'Działa na', szerokosc: 'w-[18%]' },
+  { naglowek: 'Źródło', szerokosc: 'w-[16%]' },
+] as const satisfies readonly KolumnaOceny[];
+
+const KOLUMNY_SYGNALOW_POLA = [
+  { naglowek: 'Sygnał', szerokosc: 'w-[18%]' },
+  { naglowek: 'Kierunek', szerokosc: 'w-[12%]' },
+  { naglowek: 'Obwód', szerokosc: 'w-[16%]' },
+  { naglowek: 'Znaczenie', szerokosc: 'w-[34%]' },
+  { naglowek: 'Źródło', szerokosc: 'w-[20%]' },
+] as const satisfies readonly KolumnaOceny[];
+
+/** Szerokości kolumn i wiersz nagłówka tabeli oceny z jednej listy kolumn. */
+function NaglowekTabeli({ kolumny }: { readonly kolumny: readonly KolumnaOceny[] }): JSX.Element {
+  return (
+    <>
+      <colgroup>
+        {kolumny.map((k) => (
+          <col key={k.naglowek} className={k.szerokosc} />
+        ))}
+      </colgroup>
+      <thead className="text-scada-muted">
+        <tr role="row">
+          {kolumny.map((k, i) => (
+            <th key={k.naglowek} role="columnheader" className={i < kolumny.length - 1 ? 'pr-2 font-medium' : 'font-medium'}>
+              {k.naglowek}
+            </th>
+          ))}
+        </tr>
+      </thead>
+    </>
+  );
+}
 
 function formatKw(p: number): string {
   return `${p.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} kW`;
@@ -29,7 +84,7 @@ export function OcenaPolaLiniowegoGpz({ ocena }: OcenaPolaLiniowegoGpzProps): JS
     <section
       data-testid="ocena-pola-liniowego"
       data-klasa={ocena.klasa_oceny}
-      className="border-t border-scada-border px-3 py-2 text-[length:var(--mvd-font-size-data)] text-scada-text"
+      className="mvd-ocena-pola border-t border-scada-border px-3 py-2 text-[length:var(--mvd-font-size-data)] text-scada-text"
     >
       <h3 className="font-semibold">Ocena pola liniowego GPZ wg klasy pola</h3>
       <p data-testid="ocena-pola-liniowego-klasa" className="mt-1">
@@ -64,36 +119,33 @@ export function OcenaPolaLiniowegoGpz({ ocena }: OcenaPolaLiniowegoGpzProps): JS
             : ' Przekładnik prądowy pola nie ma rdzenia rozliczeniowego.'
           : ''}
       </p>
-      <table data-testid="ocena-pola-liniowego-funkcje" className="mt-2 w-full table-fixed border-collapse text-left">
-        {/* Szerokości z treści: podstawa normowa i przyczyna to zdania, funkcja i ocena — krótkie. */}
-        <colgroup>
-          <col className="w-[18%]" />
-          <col className="w-[32%]" />
-          <col className="w-[14%]" />
-          <col className="w-[36%]" />
-        </colgroup>
-        <thead className="text-scada-muted">
-          <tr>
-            <th className="pr-2 font-medium">Funkcja</th>
-            <th className="pr-2 font-medium">Kryterium i podstawa</th>
-            <th className="pr-2 font-medium">Ocena</th>
-            <th className="font-medium">Przyczyna i dowód</th>
-          </tr>
-        </thead>
+      <table
+        role="table"
+        data-testid="ocena-pola-liniowego-funkcje"
+        className="mvd-ocena-pola-tabela mt-2 w-full table-fixed border-collapse text-left"
+      >
+        <NaglowekTabeli kolumny={KOLUMNY_OCENY_FUNKCJI} />
         <tbody>
           {ocena.oceny_funkcji.map((f) => (
-            <tr key={f.kod} data-kod={f.kod} data-status={f.status} className="border-t border-scada-border align-top">
-              <td className="pr-2">{f.funkcja_pl}</td>
-              <td className="pr-2">
+            <tr key={f.kod} role="row" data-kod={f.kod} data-status={f.status} className="border-t border-scada-border align-top">
+              <td role="cell" data-etykieta={KOLUMNY_OCENY_FUNKCJI[0].naglowek} className="pr-2">
+                {f.funkcja_pl}
+              </td>
+              <td role="cell" data-etykieta={KOLUMNY_OCENY_FUNKCJI[1].naglowek} className="pr-2">
                 {f.kryterium}
                 <div className="text-scada-muted">{f.podstawa}</div>
               </td>
               {/* Etykieta i wyjaśnienie z backendu (`werdykt.etykiety`, poziom kryterium) — karta
                   nie ma własnej mapy „status → tekst” (kontrakt werdyktu §9). */}
-              <td className="pr-2" data-semantyka={f.etykieta.semantyka}>
+              <td
+                role="cell"
+                data-etykieta={KOLUMNY_OCENY_FUNKCJI[2].naglowek}
+                className="pr-2"
+                data-semantyka={f.etykieta.semantyka}
+              >
                 {f.etykieta.etykieta_pl}
               </td>
-              <td>
+              <td role="cell" data-etykieta={KOLUMNY_OCENY_FUNKCJI[3].naglowek}>
                 {f.wyjasnienie.przyczyna_pl}
                 {f.wyjasnienie.czego_brakuje.length > 0 ? (
                   <div>Brakuje: {f.wyjasnienie.czego_brakuje.join('; ')}.</div>
@@ -155,34 +207,36 @@ function ObwodyFunkcji({ obwody }: { readonly obwody: readonly ObwodFunkcjiPola[
       <p className="mt-1 text-scada-muted">
         Stan funkcji (aktywna, odstawiona, zablokowana) nieustalony — należy do nastaw zabezpieczeń, których model pola jeszcze nie niesie.
       </p>
-      <table data-testid="ocena-pola-liniowego-obwody" className="mt-1 w-full table-fixed border-collapse text-left">
-        <colgroup>
-          <col className="w-[20%]" />
-          <col className="w-[14%]" />
-          <col className="w-[32%]" />
-          <col className="w-[18%]" />
-          <col className="w-[16%]" />
-        </colgroup>
-        <thead className="text-scada-muted">
-          <tr>
-            <th className="pr-2 font-medium">Funkcja</th>
-            <th className="pr-2 font-medium">Blok rysunku</th>
-            <th className="pr-2 font-medium">Z czego mierzy</th>
-            <th className="pr-2 font-medium">Działa na</th>
-            <th className="font-medium">Źródło</th>
-          </tr>
-        </thead>
+      <table
+        role="table"
+        data-testid="ocena-pola-liniowego-obwody"
+        className="mvd-ocena-pola-tabela mt-1 w-full table-fixed border-collapse text-left"
+      >
+        <NaglowekTabeli kolumny={KOLUMNY_OBWODOW_FUNKCJI} />
         <tbody>
           {obwody.map((o) => (
-            <tr key={o.kod} data-kod={o.kod} data-obecna={String(o.obecna)} data-weryfikacja={o.weryfikacja} className="border-t border-scada-border align-top">
-              <td className="pr-2">
+            <tr
+              key={o.kod}
+              role="row"
+              data-kod={o.kod}
+              data-obecna={String(o.obecna)}
+              data-weryfikacja={o.weryfikacja}
+              className="border-t border-scada-border align-top"
+            >
+              <td role="cell" data-etykieta={KOLUMNY_OBWODOW_FUNKCJI[0].naglowek} className="pr-2">
                 {o.funkcja_pl}
                 {o.obecna ? null : <div className="text-scada-muted">we wzorcu, poza zestawem funkcji pola</div>}
               </td>
-              <td className="pr-2">{o.blok_rysunku ?? '—'}</td>
-              <td className="pr-2">{o.wejscia_pl.join('; ')}</td>
-              <td className="pr-2">{o.wyjscia_pl}</td>
-              <td title={o.uwaga ?? undefined}>
+              <td role="cell" data-etykieta={KOLUMNY_OBWODOW_FUNKCJI[1].naglowek} className="pr-2">
+                {o.blok_rysunku ?? '—'}
+              </td>
+              <td role="cell" data-etykieta={KOLUMNY_OBWODOW_FUNKCJI[2].naglowek} className="pr-2">
+                {o.wejscia_pl.join('; ')}
+              </td>
+              <td role="cell" data-etykieta={KOLUMNY_OBWODOW_FUNKCJI[3].naglowek} className="pr-2">
+                {o.wyjscia_pl}
+              </td>
+              <td role="cell" data-etykieta={KOLUMNY_OBWODOW_FUNKCJI[4].naglowek} title={o.uwaga ?? undefined}>
                 {NAZWA_WERYFIKACJI_PL[o.weryfikacja]}
                 {o.uwaga ? <div className="text-scada-muted">{o.uwaga}</div> : null}
               </td>
@@ -202,34 +256,29 @@ function SygnalyPola({ obwody }: { readonly obwody: ObwodyWtornePola }): JSX.Ele
       <p data-testid="ocena-pola-liniowego-naped" className="mt-1 text-scada-muted">
         {obwody.podstawa}. Napęd wyłącznika: silnikowy (M) — {NAZWA_WERYFIKACJI_PL[obwody.naped_weryfikacja]}.
       </p>
-      <table data-testid="ocena-pola-liniowego-sygnaly" className="mt-1 w-full table-fixed border-collapse text-left">
-        <colgroup>
-          <col className="w-[18%]" />
-          <col className="w-[12%]" />
-          <col className="w-[16%]" />
-          <col className="w-[34%]" />
-          <col className="w-[20%]" />
-        </colgroup>
-        <thead className="text-scada-muted">
-          <tr>
-            <th className="pr-2 font-medium">Sygnał</th>
-            <th className="pr-2 font-medium">Kierunek</th>
-            <th className="pr-2 font-medium">Obwód</th>
-            <th className="pr-2 font-medium">Znaczenie</th>
-            <th className="font-medium">Źródło</th>
-          </tr>
-        </thead>
+      <table
+        role="table"
+        data-testid="ocena-pola-liniowego-sygnaly"
+        className="mvd-ocena-pola-tabela mt-1 w-full table-fixed border-collapse text-left"
+      >
+        <NaglowekTabeli kolumny={KOLUMNY_SYGNALOW_POLA} />
         <tbody>
           {obwody.sygnaly.map((s) => (
-            <tr key={s.nazwa} data-sygnal={s.nazwa} data-weryfikacja={s.weryfikacja} className="border-t border-scada-border align-top">
-              <td className="pr-2">{s.nazwa}</td>
-              <td className="pr-2">{KIERUNEK_PL[s.kierunek]}</td>
-              <td className="pr-2">
+            <tr key={s.nazwa} role="row" data-sygnal={s.nazwa} data-weryfikacja={s.weryfikacja} className="border-t border-scada-border align-top">
+              <td role="cell" data-etykieta={KOLUMNY_SYGNALOW_POLA[0].naglowek} className="pr-2">
+                {s.nazwa}
+              </td>
+              <td role="cell" data-etykieta={KOLUMNY_SYGNALOW_POLA[1].naglowek} className="pr-2">
+                {KIERUNEK_PL[s.kierunek]}
+              </td>
+              <td role="cell" data-etykieta={KOLUMNY_SYGNALOW_POLA[2].naglowek} className="pr-2">
                 {OBWOD_PL[s.obwod]}
                 {s.sterownik_pola ? <div className="text-scada-muted">sterownik pola</div> : null}
               </td>
-              <td className="pr-2">{s.znaczenie_pl ?? 'rozwinięcia skrótu standard nie podaje'}</td>
-              <td title={s.uwaga ?? undefined}>
+              <td role="cell" data-etykieta={KOLUMNY_SYGNALOW_POLA[3].naglowek} className="pr-2">
+                {s.znaczenie_pl ?? 'rozwinięcia skrótu standard nie podaje'}
+              </td>
+              <td role="cell" data-etykieta={KOLUMNY_SYGNALOW_POLA[4].naglowek} title={s.uwaga ?? undefined}>
                 {NAZWA_WERYFIKACJI_PL[s.weryfikacja]}
                 {s.uwaga ? <div className="text-scada-muted">{s.uwaga}</div> : null}
               </td>

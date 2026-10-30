@@ -50,8 +50,10 @@ import type { SymbolPort } from '../core/grid';
 
 export type CadPrimitive =
   /** `nozStanu` = kreska NOŻA (styku ruchomego): w stanie NIEZNANYM renderer
-   *  rysuje ją przerywaną; kwalifikatory obracane z nożem zostają ciągłe. */
-  | { readonly k: 'line'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly w?: number; readonly nozStanu?: boolean }
+   *  rysuje ją przerywaną; kwalifikatory obracane z nożem zostają ciągłe. `kreskowana` =
+   *  linia przerywana RYSUNKU źródła (sprzężenie mechaniczne napędu EN 60617 02-13-26) —
+   *  niezależna od stanu. */
+  | { readonly k: 'line'; readonly x1: number; readonly y1: number; readonly x2: number; readonly y2: number; readonly w?: number; readonly nozStanu?: boolean; readonly kreskowana?: boolean }
   | { readonly k: 'circle'; readonly cx: number; readonly cy: number; readonly r: number; readonly fill?: 'ink' | 'none' | 'paper'; readonly w?: number }
   | { readonly k: 'arc'; readonly d: string; readonly w?: number }
   | { readonly k: 'path'; readonly d: string; readonly fill?: 'ink' | 'none' | 'paper'; readonly w?: number }

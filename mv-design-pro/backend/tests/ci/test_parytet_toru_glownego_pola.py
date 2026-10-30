@@ -31,7 +31,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-from network_model.catalog.bay_templates import BAY_TEMPLATES_GPZ_LINE, template_primary_devices
+from network_model.catalog.bay_templates import (
+    BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
+    BAY_TEMPLATES_GPZ_LINE,
+    template_primary_devices,
+)
 from network_model.catalog.rodzaje_aparatury import aparaty_poza_torem_glownym, porty_toru_pola
 
 BACKEND = Path(__file__).resolve().parents[2]
@@ -113,6 +117,17 @@ def przypadki() -> list[dict[str, Any]]:
         ]
     )
     wynik.append(_przypadek("pole_bkr_przekladniki_miedzyfazowe_w_odgalezieniu", bkr))
+    # Pole pomiaru napięcia ENEA Z.17: tor główny kończy się na węźle końca toru (``pn`` za
+    # łącznikiem trójpołożeniowym), a wskaźnik napięcia, głowica i przekładnik napięciowy stoją
+    # w odgałęzieniu od tego węzła — gałąź zaczyna się na węźle końca toru, nie przed nim.
+    wynik.append(
+        _przypadek(
+            BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.template_id,
+            template_primary_devices(
+                BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.template_id, field_ref="pole-x"
+            ),
+        )
+    )
     return wynik
 
 
@@ -130,8 +145,9 @@ def test_fikstura_parytetu_toru_glownego_rowna_backendowi():
 def test_przypadki_pokrywaja_odgalezienia_i_iniekcje():
     wynik = {p["nazwa"]: p for p in przypadki()}
     z_odgalezieniem = [n for n, p in wynik.items() if p["poza_torem_glownym"]]
-    # Sześć szablonów Z.11.1/Z.11, odgałęzienie od szyny i pole BKR mają odgałęzienie; Z.10 — nie.
-    assert len(z_odgalezieniem) == 8
+    # Sześć szablonów Z.11.1/Z.11, odgałęzienie od szyny, pole BKR i pole pomiaru napięcia Z.17
+    # mają odgałęzienie; Z.10 — nie.
+    assert len(z_odgalezieniem) == 9
     assert all("z10" not in n for n in z_odgalezieniem)
     # Tor niejednoznaczny (dwie drogi / zero dróg) — brak wniosku, pusty zbiór.
     assert wynik["iniekcja_dwie_drogi_do_konca_toru"]["poza_torem_glownym"] == []
@@ -146,6 +162,13 @@ def test_przypadki_pokrywaja_odgalezienia_i_iniekcje():
         {"port_id": "B", "wezel": "rozladowanie1"},
     ]
     assert porty_vt["T7"] == [{"port_id": "obwod", "wezel": "kabel"}]
+    # Pole Z.17: głowica kablowa i przekładnik napięciowy leżą w odgałęzieniu od węzła końca
+    # toru (reguła „gałąź może zaczynać się na węźle końca toru", parytet z `torPolaZPortow`);
+    # wskaźnik napięcia (jeden port na węźle końca toru) leży na węźle toru — jak przekładnik
+    # niezrównoważenia pola BKR.
+    z17 = wynik[BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.template_id]
+    assert sorted(a["designation"] for a in z17["aparaty"]) == ["GK1", "PF1", "Q1", "T1"]
+    assert z17["poza_torem_glownym"] == ["GK1", "T1"]
 
 
 if __name__ == "__main__":

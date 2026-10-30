@@ -44,7 +44,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -92,7 +93,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a7caf2f7359a3922248142a74018d199/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -126,8 +128,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/a7caf2f7359a3922248142a74018d199/sn_field/001",
@@ -141,7 +142,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a7caf2f7359a3922248142a74018d199/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -194,7 +196,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a7caf2f7359a3922248142a74018d199/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -237,7 +240,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/76715d7aba7976d5e0a3cb48ebf5501b/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -278,7 +282,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/2f302e33cc77a419f4d83ca77d4271fc/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -326,7 +331,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/e7293959a70cd6dcebcd700accd9a068/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -360,8 +366,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/e7293959a70cd6dcebcd700accd9a068/sn_field/001",
@@ -375,7 +380,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/e7293959a70cd6dcebcd700accd9a068/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -428,7 +434,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/e7293959a70cd6dcebcd700accd9a068/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -471,7 +478,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/dc7ff86f44ad1ac32b23c048ec48c36f/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -512,7 +520,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/11b4eb16f84ed3f76c0188bbc96747d2/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -1824,7 +1833,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "600c68a71af7b4a5fcf950703de2fbc01bc1adb3724a63921d81d34232584832",
+      "hash_sha256": "d22acc9930473718f9879ba70bcba4ca2f23c47e4b83bd928841f3a8f92fb61b",
       "name": "Elementy ciągu — wezel",
       "revision": 11,
       "updated_at": "2026-09-25T00:00:00Z"

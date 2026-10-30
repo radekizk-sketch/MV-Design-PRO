@@ -412,6 +412,10 @@ _KOLEKCJE_TEKSTOW: dict[str, str] = {
         "zdania sprzeczności nastaw z `bledy_nastaw` — funkcje nazwane `etykieta_funkcji`, "
         "pola nazwami polskimi (karta BIEG-ZABEZPIECZEN-Z-MODELU)"
     ),
+    "enm/wyposazenie_pola.py:zrodlo_po.braki_zrodla": (
+        "zdania braków źródła napięcia zerowego 3U₀ z `zrodlo_u0_pola` — pola nazwane "
+        "`opis_elementu`, kody braków osobno w `kody_brakow` (karta UX-04/POLE-LINIOWE-WZORZEC)"
+    ),
     "enm/slownik_komunikatow.py:opisy": (
         "opisy błędów walidacji złożone z nazw pól formularza i opisów rodzaju błędu"
     ),

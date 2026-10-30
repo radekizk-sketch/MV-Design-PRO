@@ -306,6 +306,9 @@ export interface PozycjaProfiluEaz {
   readonly wymagalnosc_pl: string;
   readonly na_rysunku: boolean;
   readonly wymogi: readonly WymogFunkcjiWKlasie[];
+  /** Warunek przypisania funkcji warunkowej (67N — przekładnik Ferrantiego i potwierdzone
+   *  źródło 3U₀, decyzja właściciela 2026-10-29); `null` — funkcja bez warunku. */
+  readonly warunek_pl?: string | null;
 }
 
 /** Sygnał wzorca pola — lustro `obwody_wtorne_pola.SygnalPola`. */

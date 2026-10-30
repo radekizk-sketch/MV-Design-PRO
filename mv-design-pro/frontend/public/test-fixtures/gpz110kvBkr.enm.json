@@ -5,12 +5,12 @@
         "apparatus_catalog_ref": null,
         "bay_number": null,
         "bay_role": "OUT",
-        "bay_template_ref": null,
+        "bay_template_ref": "bay_template_gpz_line_enea_z10_trojpolozeniowy",
         "branch_point_port_id": null,
         "branch_point_ref": null,
         "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "catalog_bindings": null,
-        "config_id": null,
+        "config_id": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy",
         "equipment_refs": [
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus"
         ],
@@ -18,6 +18,7 @@
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "apparatus_kind": "BREAKER",
@@ -39,12 +40,249 @@
         "name": "Pole liniowe GPZ 1.1",
         "outgoing_destination_ref": null,
         "ports": [],
-        "primary_devices": [],
-        "protection_codes": [],
+        "primary_devices": [
+          {
+            "catalog_ref": null,
+            "designation": "Q1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::0",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "THREE_POSITION_SWITCH",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "UPSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "szyna"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": {
+              "actual_state": "zamkniety",
+              "armed_for_close": null,
+              "armed_for_open": null,
+              "cause_code": null,
+              "commanded_state": null,
+              "communication_ok": null,
+              "control_mode": null,
+              "interlock_blocked": null,
+              "last_command_at": null,
+              "last_state_change_at": null
+            },
+            "symbol_ref": "symbol:three_position_switch",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "designation": "Q0",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::1",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "CB",
+            "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus",
+            "naped": "SILNIKOWY",
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w1"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cb",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+            "designation": "T1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::2",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
+            "is_controllable": false,
+            "kind": "CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w2"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [
+              {
+                "fs": null,
+                "klasa": "5P20",
+                "moc_va": 15.0,
+                "przekladnia": "200-400/5",
+                "przeznaczenie": [
+                  "ZABEZPIECZENIA"
+                ]
+              }
+            ],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:ct",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "PF1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::3",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "VOLTAGE_INDICATOR",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:voltage_indicator",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "GK",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::4",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "CABLE_HEAD",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w3"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cable_head",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "T2",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::5",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N"
+            ],
+            "is_controllable": false,
+            "kind": "CORE_BALANCE_CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "obwod",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": "1/100",
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:core_balance_ct",
+            "uzwojenia": []
+          }
+        ],
+        "protection_codes": [
+          "51",
+          "50",
+          "51N",
+          "ZS",
+          "50BF",
+          "79",
+          "SCO",
+          "SPZ/SCO"
+        ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -52,18 +290,19 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
         "bay_number": null,
         "bay_role": "OUT",
-        "bay_template_ref": null,
+        "bay_template_ref": "bay_template_gpz_line_enea_z10_trojpolozeniowy",
         "branch_point_port_id": null,
         "branch_point_ref": null,
         "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
         "catalog_bindings": null,
-        "config_id": null,
+        "config_id": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy",
         "equipment_refs": [
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus"
         ],
@@ -71,6 +310,7 @@
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "apparatus_kind": "BREAKER",
@@ -92,12 +332,249 @@
         "name": "Pole liniowe GPZ 1.2",
         "outgoing_destination_ref": null,
         "ports": [],
-        "primary_devices": [],
-        "protection_codes": [],
+        "primary_devices": [
+          {
+            "catalog_ref": null,
+            "designation": "Q1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::0",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "THREE_POSITION_SWITCH",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "UPSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "szyna"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": {
+              "actual_state": "zamkniety",
+              "armed_for_close": null,
+              "armed_for_open": null,
+              "cause_code": null,
+              "commanded_state": null,
+              "communication_ok": null,
+              "control_mode": null,
+              "interlock_blocked": null,
+              "last_command_at": null,
+              "last_state_change_at": null
+            },
+            "symbol_ref": "symbol:three_position_switch",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "designation": "Q0",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::1",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "CB",
+            "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus",
+            "naped": "SILNIKOWY",
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w1"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cb",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+            "designation": "T1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::2",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
+            "is_controllable": false,
+            "kind": "CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w2"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [
+              {
+                "fs": null,
+                "klasa": "5P20",
+                "moc_va": 15.0,
+                "przekladnia": "200-400/5",
+                "przeznaczenie": [
+                  "ZABEZPIECZENIA"
+                ]
+              }
+            ],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:ct",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "PF1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::3",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "VOLTAGE_INDICATOR",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:voltage_indicator",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "GK",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::4",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "CABLE_HEAD",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w3"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cable_head",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "T2",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::5",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N"
+            ],
+            "is_controllable": false,
+            "kind": "CORE_BALANCE_CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "obwod",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": "1/100",
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:core_balance_ct",
+            "uzwojenia": []
+          }
+        ],
+        "protection_codes": [
+          "51",
+          "50",
+          "51N",
+          "ZS",
+          "50BF",
+          "79",
+          "SCO",
+          "SPZ/SCO"
+        ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -105,18 +582,19 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
         "bay_number": null,
         "bay_role": "OUT",
-        "bay_template_ref": null,
+        "bay_template_ref": "bay_template_gpz_line_enea_z10_trojpolozeniowy",
         "branch_point_port_id": null,
         "branch_point_ref": null,
         "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
         "catalog_bindings": null,
-        "config_id": null,
+        "config_id": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy",
         "equipment_refs": [
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus"
         ],
@@ -124,6 +602,7 @@
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "apparatus_kind": "BREAKER",
@@ -145,12 +624,249 @@
         "name": "Pole liniowe GPZ 2.1",
         "outgoing_destination_ref": null,
         "ports": [],
-        "primary_devices": [],
-        "protection_codes": [],
+        "primary_devices": [
+          {
+            "catalog_ref": null,
+            "designation": "Q1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::0",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "THREE_POSITION_SWITCH",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "UPSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "szyna"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": {
+              "actual_state": "zamkniety",
+              "armed_for_close": null,
+              "armed_for_open": null,
+              "cause_code": null,
+              "commanded_state": null,
+              "communication_ok": null,
+              "control_mode": null,
+              "interlock_blocked": null,
+              "last_command_at": null,
+              "last_state_change_at": null
+            },
+            "symbol_ref": "symbol:three_position_switch",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "designation": "Q0",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::1",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "CB",
+            "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus",
+            "naped": "SILNIKOWY",
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w1"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cb",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+            "designation": "T1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::2",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
+            "is_controllable": false,
+            "kind": "CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w2"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [
+              {
+                "fs": null,
+                "klasa": "5P20",
+                "moc_va": 15.0,
+                "przekladnia": "200-400/5",
+                "przeznaczenie": [
+                  "ZABEZPIECZENIA"
+                ]
+              }
+            ],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:ct",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "PF1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::3",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "VOLTAGE_INDICATOR",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:voltage_indicator",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "GK",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::4",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "CABLE_HEAD",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w3"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cable_head",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "T2",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::5",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N"
+            ],
+            "is_controllable": false,
+            "kind": "CORE_BALANCE_CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "obwod",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": "1/100",
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:core_balance_ct",
+            "uzwojenia": []
+          }
+        ],
+        "protection_codes": [
+          "51",
+          "50",
+          "51N",
+          "ZS",
+          "50BF",
+          "79",
+          "SCO",
+          "SPZ/SCO"
+        ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -158,18 +874,19 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
         "bay_number": null,
         "bay_role": "OUT",
-        "bay_template_ref": null,
+        "bay_template_ref": "bay_template_gpz_line_enea_z10_trojpolozeniowy",
         "branch_point_port_id": null,
         "branch_point_ref": null,
         "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
         "catalog_bindings": null,
-        "config_id": null,
+        "config_id": "kanoniczny:bay_template_gpz_line_enea_z10_trojpolozeniowy",
         "equipment_refs": [
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus"
         ],
@@ -177,6 +894,7 @@
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "apparatus_kind": "BREAKER",
@@ -198,12 +916,249 @@
         "name": "Pole liniowe GPZ 2.2",
         "outgoing_destination_ref": null,
         "ports": [],
-        "primary_devices": [],
-        "protection_codes": [],
+        "primary_devices": [
+          {
+            "catalog_ref": null,
+            "designation": "Q1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::0",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "THREE_POSITION_SWITCH",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "UPSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "szyna"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": {
+              "actual_state": "zamkniety",
+              "armed_for_close": null,
+              "armed_for_open": null,
+              "cause_code": null,
+              "commanded_state": null,
+              "communication_ok": null,
+              "control_mode": null,
+              "interlock_blocked": null,
+              "last_command_at": null,
+              "last_state_change_at": null
+            },
+            "symbol_ref": "symbol:three_position_switch",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "designation": "Q0",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::1",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "CB",
+            "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus",
+            "naped": "SILNIKOWY",
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w1"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cb",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
+            "designation": "T1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::2",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
+            "is_controllable": false,
+            "kind": "CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w2"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [
+              {
+                "fs": null,
+                "klasa": "5P20",
+                "moc_va": 15.0,
+                "przekladnia": "200-400/5",
+                "przeznaczenie": [
+                  "ZABEZPIECZENIA"
+                ]
+              }
+            ],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:ct",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "PF1",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::3",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "VOLTAGE_INDICATOR",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "w3"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:voltage_indicator",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "GK",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::4",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "CABLE_HEAD",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w3"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cable_head",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "T2",
+            "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::5",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N"
+            ],
+            "is_controllable": false,
+            "kind": "CORE_BALANCE_CT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "obwod",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": "1/100",
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:core_balance_ct",
+            "uzwojenia": []
+          }
+        ],
+        "protection_codes": [
+          "51",
+          "50",
+          "51N",
+          "ZS",
+          "50BF",
+          "79",
+          "SCO",
+          "SPZ/SCO"
+        ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
@@ -211,7 +1166,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -230,6 +1186,7 @@
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001",
+        "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
           "apparatus_kind": "BREAKER",
@@ -253,105 +1210,233 @@
             "designation": "Q0",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::0",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay_device",
+            "naped": null,
+            "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "szyna"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
             "render_variant": "kanoniczny",
             "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
-            "symbol_ref": "symbol:cb"
+            "symbol_ref": "symbol:cb",
+            "uzwojenia": []
           },
           {
             "catalog_ref": "ct_50_1_0_5_5va_arteche",
             "designation": "T1",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::1",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w1"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "w2"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [
+              {
+                "fs": 10.0,
+                "klasa": "0.5",
+                "moc_va": 5.0,
+                "przekladnia": "50/1",
+                "przeznaczenie": [
+                  "POMIAR"
+                ]
+              }
+            ],
             "render_variant": "kanoniczny",
             "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
-            "symbol_ref": "symbol:ct"
+            "symbol_ref": "symbol:ct",
+            "uzwojenia": []
           },
           {
             "catalog_ref": null,
             "designation": null,
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::2",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "w2"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
             "render_variant": "kanoniczny",
             "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
-            "symbol_ref": "symbol:cable_head"
+            "symbol_ref": "symbol:cable_head",
+            "uzwojenia": []
           },
           {
             "catalog_ref": "arrester-abb-polim-d-17p5kv-10ka",
             "designation": "F1",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::3",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "SURGE_ARRESTER",
             "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
             "render_variant": "kanoniczny",
             "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
-            "symbol_ref": "symbol:surge_arrester"
+            "symbol_ref": "symbol:surge_arrester",
+            "uzwojenia": []
           },
           {
             "catalog_ref": "ct_50_1_0_5_5va_arteche",
             "designation": "T5",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::4",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "UNBALANCE_CT",
             "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
             "operating_state": null,
             "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "obwod",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
             "render_variant": "kanoniczny",
             "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
-            "symbol_ref": "symbol:unbalance_ct"
+            "symbol_ref": "symbol:unbalance_ct",
+            "uzwojenia": []
           },
           {
             "catalog_ref": "vt_15kv_100v_05_abb",
             "designation": "T11",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::5",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "PHASE_TO_PHASE_VT",
             "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "A",
+                "wezel": "kabel"
+              },
+              {
+                "port_id": "B",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
             "render_variant": "kanoniczny",
             "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
-            "symbol_ref": "symbol:phase_to_phase_vt"
+            "symbol_ref": "symbol:phase_to_phase_vt",
+            "uzwojenia": []
           },
           {
             "catalog_ref": "vt_15kv_100v_05_abb",
             "designation": "T12",
             "device_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay::dev::6",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "PHASE_TO_PHASE_VT",
             "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
+            "ports": [
+              {
+                "port_id": "A",
+                "wezel": "kabel"
+              },
+              {
+                "port_id": "B",
+                "wezel": "kabel"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
             "render_variant": "kanoniczny",
             "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
-            "symbol_ref": "symbol:phase_to_phase_vt"
+            "symbol_ref": "symbol:phase_to_phase_vt",
+            "uzwojenia": []
           }
         ],
         "protection_codes": [
@@ -366,12 +1451,14 @@
         "ref_id": "sn/2628199620b4b49a291f7ece9293cd78/bay",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "sn/2628199620b4b49a291f7ece9293cd78/bay_terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -387,6 +1474,7 @@
         "r_ohm": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/coupler/001",
         "source_mode": null,
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "to_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
         "type": "bus_coupler",
@@ -426,6 +1514,7 @@
         "r_ohm": 0.0,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus",
         "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
           "gpz_field_device"
@@ -468,6 +1557,7 @@
         "r_ohm": 0.0,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus",
         "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
           "gpz_field_device"
@@ -510,6 +1600,7 @@
         "r_ohm": 0.0,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus",
         "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
           "gpz_field_device"
@@ -552,6 +1643,7 @@
         "r_ohm": 0.0,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus",
         "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
           "gpz_field_device"
@@ -593,6 +1685,7 @@
         "r_ohm": 0.0,
         "ref_id": "sn/2628199620b4b49a291f7ece9293cd78/bay_device",
         "source_mode": "KATALOG",
+        "stan_obiektu": "PROJEKTOWANY",
         "status": "closed",
         "tags": [
           "gpz_field_device",
@@ -762,7 +1855,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "9752bd0126cc12c50754dca44348456c6816858409ffcf6f6a21c13acd78c45b",
+      "hash_sha256": "c85fbf73418456ea4d150e2f6fb5b25f2c6cfebcf1decc2359917c57e8064163",
       "name": "GPZ z polem baterii kondensatorów",
       "revision": 1,
       "updated_at": "2026-09-25T00:00:00Z"

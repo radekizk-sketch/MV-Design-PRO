@@ -125,7 +125,7 @@ import {
   type RouteNode,
   type RouteVertex,
 } from '../layout/route';
-import { WARIANT_RYSUNKU_QET, czyZakonczenieToruKablowego, symbolIdForPrimaryDeviceKind } from '../compose/apparatusSequence';
+import { czyZakonczenieToruKablowego, symboleRodzajuAparatu } from '../compose/apparatusSequence';
 import { RODZAJE_LACZNIKOW_POLA, RODZAJE_LACZNIKOW_TORU } from '../compose/rodzajeAparatuPola';
 import { createUnikalnyTestId } from '../compose/unikalnyTestId';
 import {
@@ -199,7 +199,7 @@ import {
   protectionAnnotationDetailForLod,
 } from '../compose/protectionMarking';
 import {
-  protectionFunctionTopologyGaps,
+  brakiTopologiiFunkcjiPola,
   protectionTopologyGapLabel,
 } from '../compose/protectionTopologyValidation';
 import type {
@@ -405,6 +405,51 @@ const LATERAL_SUBTREE_CLEARANCE = Math.max(MIN_SUBTREE_CLEARANCE, MIN_PARALLEL_C
 const OPEN_RUN_PIECE_SPAN = 6 * GRID;
 /** §16-v3: połowa długości słupka terminalnego (kreska prostopadła ±GRID). */
 const OPEN_TERMINAL_TICK_HALF = GRID;
+/** §16-v3: rezerwacja pionowa biegu otwartego POD jego poziomem — słupek
+ *  terminalny i etykieta „koniec otwarty" (L2) mieszczą się w 4×GRID. JEDNO
+ *  źródło dla KAŻDEGO biegu otwartego (ciąg główny bez stacji, feeder z pola
+ *  GPZ bez stacji, odgałęzienie bez stacji): kolejna treść pakowana pod biegiem
+ *  startuje dopiero za tą rezerwacją, więc dwa biegi nigdy nie leżą na jednej
+ *  kresce (defekt karty UX-04: bieg ciągu głównego i feeder z pola drugiej
+ *  sekcji na tym samym poziomie pod GPZ — dwa kable jedną linią). */
+const OPEN_RUN_BAND_BELOW = 4 * GRID;
+/** Odstęp poziomów sąsiednich biegów otwartych z pól GPZ: 2×GRID światła nad
+ *  biegiem + rezerwacja `OPEN_RUN_BAND_BELOW` pod nim (ta sama reguła, co odstęp
+ *  dwóch kolejnych biegów pakowanych kursorem). */
+const OPEN_RUN_LEVEL_STEP = 2 * GRID + OPEN_RUN_BAND_BELOW;
+/** Klucz ciągu głównego w planie biegów otwartych z pól GPZ (feedery mają klucz = id ciągu). */
+const KLUCZ_CIAGU_GLOWNEGO_GPZ = '#ciag-glowny';
+
+/** Bieg otwarty wychodzący z pola GPZ — wejście planu poziomów. */
+interface BiegOtwartyZPolaGpz {
+  /** `KLUCZ_CIAGU_GLOWNEGO_GPZ` albo id ciągu feedera. */
+  readonly klucz: string;
+  /** X dolnego portu pola GPZ, z którego bieg schodzi. */
+  readonly portX: number;
+}
+
+/**
+ * Karta UX-04 (pole liniowe GPZ): poziomy biegów OTWARTYCH wychodzących z pól GPZ
+ * (ciąg główny bez stacji i feedery bez stacji) — układ ZAGNIEŻDŻONY. Każdy bieg
+ * schodzi pionem z portu swojego pola i skręca W PRAWO na swoim poziomie. Bieg z pola
+ * leżącego bardziej na prawo dostaje poziom WYŻSZY, więc jego poziom zaczyna się na
+ * prawo od pionów wszystkich biegów niższych, a jego pion kończy się nad ich
+ * poziomami: zero przecięć i zero nakładań między kablami różnych pól. Dawniej
+ * kolejność poziomów wynikała z kolejności rysowania (ciąg główny zawsze tuż pod
+ * GPZ), a pion feedera z pola prawego przecinał poziom ciągu głównego — węzeł T
+ * (`resolveTeeJunctions`) zamieniał to przecięcie w KROPKĘ, czyli fikcyjne połączenie
+ * dwóch kabli z dwóch różnych pól. Determinizm: remis X (nie występuje — każde pole
+ * ma własny port) rozstrzyga klucz.
+ */
+function poziomyBiegowOtwartychZPolGpz(
+  poziomBazowy: number,
+  biegi: readonly BiegOtwartyZPolaGpz[],
+): ReadonlyMap<string, number> {
+  const kolejnosc = [...biegi].sort(
+    (a, b) => b.portX - a.portX || (a.klucz < b.klucz ? -1 : a.klucz > b.klucz ? 1 : 0),
+  );
+  return new Map(kolejnosc.map((bieg, i) => [bieg.klucz, poziomBazowy + i * OPEN_RUN_LEVEL_STEP]));
+}
 const GPZ_NODE_CODE = 'GPZ';
 const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
 /** Obrys symbolu `noPoint` wyśrodkowanego w punkcie (cx, cy) — JEDNO źródło dla
@@ -885,8 +930,17 @@ interface TeeJunctionResult {
   readonly dots: readonly RouteVertex[];
 }
 
-function resolveTeeJunctions(segments: readonly PreviewSegment[]): TeeJunctionResult {
-  const crossings = interiorCrossings(segments).filter((c) => !c.involvesBus);
+function resolveTeeJunctions(
+  segments: readonly PreviewSegment[],
+  kableZPolGpz: ReadonlySet<string>,
+): TeeJunctionResult {
+  // Węzeł T (S7-P2) dotyczy ZEJŚCIA odgałęzienia, które kończy się na kablu
+  // poziomym. Pion trasy kabla z pola GPZ schodzi z własnego pola — jego przecięcie
+  // z cudzym kablem jest skrzyżowaniem bez połączenia (mostek §22.1); kropka byłaby
+  // fikcyjnym połączeniem dwóch pól (karta UX-04).
+  const crossings = interiorCrossings(segments).filter(
+    (c) => !c.involvesBus && !(c.vOwnerRef != null && kableZPolGpz.has(c.vOwnerRef)),
+  );
   if (crossings.length === 0) return { segments, dots: [] };
   const cutsBySeg = new Map<number, RouteVertex[]>();
   const dotKeys = new Set<string>();
@@ -1691,13 +1745,14 @@ function composeRowStation(
   // `protection.topology.*` niosą WYŁĄCZNIE „obecność ostrzeżenia" w
   // `missingData` (jeden kod per gap, `protectionTopologyGapCode`); TEKST
   // odtworzony tu przez PONOWNE wywołanie TEJ SAMEJ czystej funkcji
-  // (`protectionFunctionTopologyGaps`) na `measureInput.snBays` — wzorzec
+  // (`brakiTopologiiFunkcjiPola` — ten sam kontekst domenowy co kompozycja) na
+  // `measureInput.snBays` — wzorzec
   // `bay.protection.trip_link_unresolved` wyżej (żaden per-bay szczegół nie
   // jest przenoszony przez surowy string kod, WHITE BOX).
   if (composition.missingData.some((code) => code.startsWith('protection.topology.'))) {
     const affected: string[] = [];
     measureInput.snBays.forEach((bay) => {
-      const gaps = protectionFunctionTopologyGaps(bay.protectionMarking?.codes ?? [], bay.primaryDevices);
+      const gaps = brakiTopologiiFunkcjiPola(bay, bay.protectionMarking?.codes ?? []);
       gaps.forEach((gap) => affected.push(`${bay.bayRef} (${protectionTopologyGapLabel(gap)})`));
     });
     stopNotes.push(
@@ -3893,6 +3948,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           : `GPZ: pole „${brak.bayRef}" — ${brak.przyczyna}.`,
       );
     }
+    // F10.5 (spec §20.2), parytet ze stacjami: braki topologiczne funkcji pól SN GPZ (np. 67N
+    // bez potwierdzonego źródła 3U₀) — ostrzeżenie, NIE błąd blokujący; treść z tej samej
+    // funkcji co adnotacja „!" przy przekaźniku (`brakiTopologiiFunkcjiPola`).
+    if (gpzLayout.brakiTopologiiFunkcji.length > 0) {
+      stopNotes.push(
+        'GPZ: walidacja topologiczna funkcji zabezpieczeń (spec §20.2) — ostrzeżenia (NIE błąd blokujący): '
+          + gpzLayout.brakiTopologiiFunkcji
+            .map((pole) => `${pole.bayRef} (${pole.gaps.map(protectionTopologyGapLabel).join('; ')})`)
+            .join(', ')
+          + '.',
+      );
+    }
     // Kompozycja RENDEROWANA (render-LOD) — na TYM SAMYM originie co wyrównanie.
     // KD-5 (dług nazwany w V12K-285): na L0 blok GPZ NIE jest rysowany polami —
     // sekcja 4 emituje zamiast tego jego reprezentację ZWINIĘTĄ (jeden symbol
@@ -3941,6 +4008,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           ownerRef: s.bayRef,
           elementKind: 'protectionAnnotation',
           protectionCodes: s.protectionCodes,
+          // F10.5 (spec §20.2), parytet ze stacjami (`composeRowStation`): adnotacja „!".
+          topologyGaps: s.protectionTopologyGaps,
+          // Karta UX-04 (uwaga właściciela 2026-10-29 pkt 5): ramka bloku przekaźnika układu
+          // powiązań — przepisana 1:1, rysuje ją `ProtectionRelayGlyph`.
+          ...(s.ramkaBloku ? { ramkaBlokuPrzekaznika: s.ramkaBloku } : {}),
         },
       })),
     );
@@ -4015,6 +4087,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // Feedery z pól GPZ (2026-07-17, po odbiorze „100% klasy przemysłowej"):
   // licznik przydziału KOLEJNYCH pól liniowych GPZ (pierwsze = magistrala).
   let gpzFeederCount = 0;
+  /** Karta UX-04 (pole liniowe GPZ): `ownerRef` kawałków trasy KABLA Z POLA GPZ — od
+   *  dolnego portu pola GPZ do pierwszej stacji ciągu albo do końca biegu otwartego
+   *  (ciąg główny i każdy feeder z pola GPZ). Pion takiej trasy schodzi z WŁASNEGO
+   *  pola, więc nigdy nie kończy się na kablu, który przecina — przecięcie z nim to
+   *  skrzyżowanie bez połączenia (mostek §22.1), a nie węzeł T (`resolveTeeJunctions`). */
+  const kableZPolGpz = new Set<string>();
   // SCHEMAT-10 S7-P1 (V12K-137): packer interwałowy pasm lateralnych. S9-1:
   // JEDEN packer na całą scenę, ale kursor jest USTAWIANY na strop pasa zejść
   // KAŻDEGO wiersza arkusza (`setCursor`) — dzięki temu odgałęzienia stacji
@@ -4064,6 +4142,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           );
     sheetRowLayouts[sheetRowIndex] = rowLayout;
     const isLastSheetRow = sheetRowIndex === sheetRowLayouts.length - 1;
+    /** §16-v3: dół rezerwacji biegu otwartego ciągu głównego tego wiersza (wiersz 0
+     *  bez stacji) — `null`, gdy wiersz nie ma takiego biegu. Kursor pakowania
+     *  treści pod wierszem nie wchodzi powyżej (`OPEN_RUN_BAND_BELOW`). */
+    let openTrunkRunReservedBottom: number | null = null;
     /** Stacje TEGO wiersza arkusza (podciąg `mainRow`). */
     const rowStations: RowStation[] = [];
     /** Prawa krawędź wiersza magistrali (bez odgałęzień). */
@@ -4136,6 +4218,76 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       sheetRowIndex === 0 ? gpzChannelSlot : null,
     );
     const lateralChannelXById = channelPlan.byRunId;
+    // ODEJŚCIA-ZAGNIEŻDŻONE: kolejność kompozycji — w obrębie jednej szczeliny
+    // kanałów płytszy lateral na kanale skrajnym prawym (`kolejnoscKompozycjiLateralow`).
+    const rowRunsKompozycji = kolejnoscKompozycjiLateralow(rowBranchRuns, channelPlan);
+    /** Feedery z pól GPZ TEGO wiersza: przydział pola i jego dolny port — JEDNO źródło
+     *  dla planu poziomów biegów otwartych (niżej) i budowy feederów (sekcja 6).
+     *  KANON DEDYKOWANYCH PÓL (dyrektywa właściciela, 2026-07-17): relacja
+     *  pierwszoklasowa `corridor.meta.gpz_field_ref` (przydział backendu
+     *  `_allocate_gpz_line_field_for_branch`); dla migawek bez przydziału — KOLEJNE
+     *  pole liniowe w kolejności kompozycji (licznik rośnie tylko dla feederów, którym
+     *  pole znaleziono — jak dawny `gpzFeederCount`). */
+    const feederyPolGpz = new Map<string, {
+      readonly assignedFieldRef: unknown;
+      readonly lineBayCount: number;
+      readonly port: { readonly x: number; readonly y: number } | null;
+      /** Bieg otwarty: ciąg bez żadnej stacji, ale z segmentami ENM. */
+      readonly otwarty: boolean;
+    }>();
+    if (gpzGeometry != null && gpzData != null) {
+      const lineBayRefs = findGpzLineBayRefs(gpzData);
+      const corridorsSnapshotu =
+        (snapshot as { corridors?: ReadonlyArray<{ ref_id?: string; meta?: Record<string, unknown> }> }).corridors ?? [];
+      for (const run of rowRunsKompozycji) {
+        const cableRun = cableRunById.get(run.id);
+        if ((cableRun?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) !== gpzData.id) continue;
+        const assignedFieldRef = corridorsSnapshotu.find((c) => c.ref_id === run.id)?.meta?.['gpz_field_ref'];
+        const feederBayRef =
+          typeof assignedFieldRef === 'string' && assignedFieldRef
+            ? assignedFieldRef
+            : lineBayRefs[1 + gpzFeederCount];
+        const port = feederBayRef ? gpzBayBottomPort(gpzGeometry, feederBayRef) : null;
+        if (port) gpzFeederCount += 1;
+        feederyPolGpz.set(run.id, {
+          assignedFieldRef,
+          lineBayCount: lineBayRefs.length,
+          port,
+          // Ten sam predykat co `buildRowLayout(...).measureInputs.length === 0`
+          // (każda stacja obecna w `stationById` daje wejście pomiaru).
+          otwarty: !run.stationRefs.some((id) => stationById.has(id)) && (cableRun?.segmentPaths?.length ?? 0) > 0,
+        });
+      }
+    }
+    /** Biegi otwarte z pól GPZ TEGO wiersza (feedery bez stacji) — wejście planu poziomów. */
+    const otwarteFeederyPolGpz: BiegOtwartyZPolaGpz[] = [...feederyPolGpz.entries()]
+      .filter(([, f]) => f.otwarty && f.port != null)
+      .map(([runId, f]) => ({ klucz: runId, portX: f.port!.x }));
+    /** Ciąg główny bez stacji (wiersz 0) jest biegiem otwartym spod pola GPZ. */
+    const ciagGlownyOtwarty =
+      sheetRowIndex === 0 && rowStations.length === 0 && gpzGeometry != null && gpzData != null
+      && (mainCableRun?.segmentPaths?.length ?? 0) > 0;
+    /** Plan poziomów biegów otwartych z pól GPZ. Z ciągiem głównym otwartym: liczony
+     *  TU, bo poziom ciągu głównego jest też poziomem kotwic punktów odgałęźnych na
+     *  nim; bez niego — przy pierwszym feederze otwartym (`zaplanujFeederyOtwarte`),
+     *  pod treścią spakowaną do tej chwili. */
+    let planBiegowOtwartychGpz: ReadonlyMap<string, number> | null = ciagGlownyOtwarty
+      ? poziomyBiegowOtwartychZPolGpz(openRunCorridorY(gpzGeometry!), [
+          // Ten sam port co trasa biegu niżej (`findGpzTrunkBottomPort`, funkcja czysta
+          // poza notatkami — notatki trafią do `stopNotes` przy rysowaniu biegu).
+          { klucz: KLUCZ_CIAGU_GLOWNEGO_GPZ, portX: findGpzTrunkBottomPort(gpzGeometry!, gpzData!, []).x },
+          ...otwarteFeederyPolGpz,
+        ])
+      : null;
+    const zaplanujFeederyOtwarte = (poziomBazowy: number): ReadonlyMap<string, number> => {
+      if (planBiegowOtwartychGpz == null) {
+        planBiegowOtwartychGpz = poziomyBiegowOtwartychZPolGpz(poziomBazowy, otwarteFeederyPolGpz);
+        // Rezerwacja całego pasa biegów otwartych naraz — kolejna treść (feedery ze
+        // stacjami, odgałęzienia) pakuje się pod nim.
+        packer.setCursor(Math.max(...planBiegowOtwartychGpz.values()) + OPEN_RUN_BAND_BELOW);
+      }
+      return planBiegowOtwartychGpz;
+    };
     const trunkForbiddenCutXs = new Set<number>([
       ...channelPlan.byRunId.values(),
       ...channelPlan.byBranchPointRef.values(),
@@ -4147,8 +4299,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // biegiem otwartym pod GPZ (`openRunCorridorY`) — kotwica punktu leży na TYM
     // poziomie, inaczej nie trafiłaby w tor i punkt zostałby bez symbolu.
     const branchPointCorridorY =
-      sheetRowIndex === 0 && rowStations.length === 0 && gpzGeometry
-        ? openRunCorridorY(gpzGeometry)
+      planBiegowOtwartychGpz != null && ciagGlownyOtwarty
+        ? planBiegowOtwartychGpz.get(KLUCZ_CIAGU_GLOWNEGO_GPZ)!
         : interStationCorridorY(rowLayout, lod);
     const rowAnchorBySegmentRef = new Map<string, RowBranchAnchor>();
     const rowAnchorByRef = new Map<string, RouteVertex>();
@@ -4265,12 +4417,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
               // F13.4 (spec §22.4, D3-6): odcinek GPZ→S0 to trasa CIĄGU GŁÓWNEGO.
               meta: { kind: 'snTrunk', ownerRef: gpzChain[pi], elementKind: 'segment' },
             });
+            kableZPolGpz.add(gpzChain[pi]);
           });
         } else {
+          const ref = incomingSegmentRef(mainCableRun, first.id);
           allSegments.push({
             points: route.points,
-            meta: { kind: 'snTrunk', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
+            meta: { kind: 'snTrunk', ownerRef: ref, elementKind: 'segment' },
           });
+          if (ref) kableZPolGpz.add(ref);
         }
         allRouteGeoms.push({ points: route.points });
         if (lod === 2) {
@@ -4438,7 +4593,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const gpzPort = gpzGeometry ? findGpzTrunkBottomPort(gpzGeometry, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const paths = mainCableRun!.segmentPaths!;
-        const belowY = openRunCorridorY(gpzGeometry!);
+        const belowY = planBiegowOtwartychGpz!.get(KLUCZ_CIAGU_GLOWNEGO_GPZ)!;
         // Karta SLD-SUBSTRAT (kontynuacja): bieg otwarty sięga ZA ostatnią
         // kotwicę punktu odgałęźnego, który na nim leży (np. ZKSN na pierwszym
         // odcinku, stacja klienta w odgałęzieniu) — ta sama reguła co ogon ciągu.
@@ -4493,6 +4648,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           allRouteGeoms.push({ points });
         });
         emitOpenTerminalTick(xEnd, belowY, true, paths[paths.length - 1].segmentRef, lod === 2);
+        // Kawałki za punktem odgałęźnym też należą do biegu z pola GPZ (ten sam kabel
+        // z pola) — ich piony nie istnieją (bieg poziomy), więc rejestr ich nie zmienia.
+        for (const sp of paths) kableZPolGpz.add(sp.segmentRef);
+        openTrunkRunReservedBottom = Math.max(...planBiegowOtwartychGpz!.values()) + OPEN_RUN_BAND_BELOW;
       } else {
         stopNotes.push(
           'Ciąg główny z segmentami ENM, ale bez stacji I bez portu GPZ — bieg otwarty nie ma punktu zaczepienia (sieć bez zasilania).',
@@ -4631,11 +4790,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // wiersza startują poniżej (kursor packera ustawiony na `dropBandBottom`).
     const dropBandTop = mainRowBottom;
     const dropBandBottom = snapUp(mainRowBottom + dropBandHeight);
-    packer.setCursor(dropBandBottom);
+    packer.setCursor(Math.max(dropBandBottom, openTrunkRunReservedBottom ?? dropBandBottom));
 
-    // ODEJŚCIA-ZAGNIEŻDŻONE: kolejność kompozycji — w obrębie jednej szczeliny
-    // kanałów płytszy lateral na kanale skrajnym prawym (`kolejnoscKompozycjiLateralow`).
-    const rowRunsKompozycji = kolejnoscKompozycjiLateralow(rowBranchRuns, channelPlan);
     for (let li = 0; li < rowRunsKompozycji.length; li++) {
     const run = rowRunsKompozycji[li];
     const cableRun = cableRunById.get(run.id);
@@ -4648,11 +4804,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // zasilony z KOLEJNEGO wolnego pola liniowego GPZ (własny pion od portu
     // głowicy tego pola — na lewo od wszystkich wierszy, więc bez kolizji;
     // przecięcia z korytarzem magistrali dostają mostki §22.1 automatycznie).
-    const isGpzFeeder =
-      gpzGeometry != null &&
-      gpzData != null &&
-      (cableRun?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
-    if (isGpzFeeder) {
+    const feederPolaGpz = feederyPolGpz.get(run.id);
+    if (feederPolaGpz) {
       // KANON DEDYKOWANYCH PÓL (dyrektywa właściciela, 2026-07-17): z jednego
       // pola liniowego NIGDY nie wychodzą dwa kable — każde wyprowadzenie na
       // sieć ma WŁASNE pole. Relacja pierwszoklasowa:
@@ -4662,34 +4815,28 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // wolne pole liniowe w kolejności kompozycji. Brak dedykowanego pola ⇒
       // ciąg NIE jest rysowany (uczciwy stopNote — rysowanie feederu z
       // cudzego pola byłoby fabrykacją elektrycznie błędnego układu).
-      const corridorRecord = (
-        (snapshot as { corridors?: ReadonlyArray<{ ref_id?: string; meta?: Record<string, unknown> }> }).corridors ?? []
-      ).find((c) => c.ref_id === run.id);
-      const assignedFieldRef = corridorRecord?.meta?.['gpz_field_ref'];
-      const lineBayRefs = findGpzLineBayRefs(gpzData!);
-      const feederBayRef =
-        typeof assignedFieldRef === 'string' && assignedFieldRef
-          ? assignedFieldRef
-          : lineBayRefs[1 + gpzFeederCount];
-      const feederPort = feederBayRef ? gpzBayBottomPort(gpzGeometry!, feederBayRef) : null;
+      // Przydział pola i port — z JEDNEGO wyliczenia (`feederyPolGpz`, wyżej).
+      const feederPort = feederPolaGpz.port;
       if (!feederPort) {
         stopNotes.push(
-          `Feeder z pola GPZ „${run.id}": brak DEDYKOWANEGO pola liniowego GPZ (przydział=${String(assignedFieldRef ?? 'brak')}, pól liniowych=${lineBayRefs.length}) — ciąg pominięty; z jednego pola nie wolno wyprowadzić dwóch kabli.`,
+          `Feeder z pola GPZ „${run.id}": brak DEDYKOWANEGO pola liniowego GPZ (przydział=${String(feederPolaGpz.assignedFieldRef ?? 'brak')}, pól liniowych=${feederPolaGpz.lineBayCount}) — ciąg pominięty; z jednego pola nie wolno wyprowadzić dwóch kabli.`,
         );
         continue;
       }
-      gpzFeederCount += 1;
       const gpzBottom = snapUp(gpzGeometry!.bbox.y + gpzGeometry!.bbox.height);
       let feederLayout = buildRowLayout(
         run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true,
       );
 
       if (feederLayout.measureInputs.length === 0) {
-        // Feeder OTWARTY (bez stacji) — bieg §16-v3 od portu pola GPZ.
+        // Feeder OTWARTY (bez stacji) — bieg §16-v3 od portu pola GPZ, na poziomie
+        // z planu biegów otwartych z pól GPZ (układ zagnieżdżony, zero przecięć).
         const openPaths = cableRun?.segmentPaths ?? [];
         if (openPaths.length > 0) {
           const riserX = feederPort.x;
-          const yRow = Math.max(snapUp(packer.nextTop()) + 2 * GRID, gpzBottom + 2 * GRID);
+          const yRow = zaplanujFeederyOtwarte(
+            Math.max(snapUp(packer.nextTop()) + 2 * GRID, gpzBottom + 2 * GRID),
+          ).get(run.id)!;
           const xEnd = Math.max(mainRowDx, snapUp(riserX) + openPaths.length * OPEN_RUN_PIECE_SPAN);
           openPaths.forEach((sp, i) => {
             const to = xEnd - (openPaths.length - 1 - i) * OPEN_RUN_PIECE_SPAN;
@@ -4718,7 +4865,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             allRouteGeoms.push({ points });
           });
           emitOpenTerminalTick(xEnd, yRow, true, openPaths[openPaths.length - 1].segmentRef, lod === 2);
-          packer.setCursor(yRow + 4 * GRID);
+          for (const sp of openPaths) kableZPolGpz.add(sp.segmentRef);
           lateralRunIds.push(run.id);
         }
         continue;
@@ -4794,12 +4941,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             points: piecePoints,
             meta: { kind: 'sn', ownerRef: feederChain[pi], elementKind: 'segment' },
           });
+          kableZPolGpz.add(feederChain[pi]);
         });
       } else {
+        const ref = incomingSegmentRef(cableRun, first.id);
         allSegments.push({
           points: inPoints,
-          meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, first.id), elementKind: 'segment' },
+          meta: { kind: 'sn', ownerRef: ref, elementKind: 'segment' },
         });
+        if (ref) kableZPolGpz.add(ref);
       }
       allRouteGeoms.push({ points: inPoints });
       if (lod === 2) {
@@ -4989,8 +5139,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           allRouteGeoms.push({ points });
         });
         emitOpenTerminalTick(channelX, yEnd, false, openPaths[openPaths.length - 1].segmentRef, lod === 2);
-        // Rezerwacja pionowa: słupek + etykieta L2 mieszczą się w 4×GRID.
-        packer.setCursor(yEnd + 4 * GRID);
+        packer.setCursor(yEnd + OPEN_RUN_BAND_BELOW);
         lateralRunIds.push(run.id);
       }
       continue;
@@ -5708,7 +5857,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // lateralnych (styk KOŃCEM zamiast przecięcia wnętrza) + kropka węzłowa.
   // `interiorCrossings` sn×sn → 0; piony/poziomy/załamania NIEZMIENIONE
   // (rozcięcie współliniowe), elektryka niezmieniona (ten sam `ownerRef`).
-  const tee = resolveTeeJunctions(allSegments);
+  const tee = resolveTeeJunctions(allSegments, kableZPolGpz);
   if (tee.dots.length > 0) {
     allSegments.length = 0;
     allSegments.push(...tee.segments);
@@ -6293,12 +6442,7 @@ export function allBusbarLabelsValid(scene: SceneV3): boolean {
 // (kanonicznym i QET) — zero drugiej, ręcznej listy symboli łączników.
 function symboleRodzajow(rodzaje: ReadonlySet<BayPrimaryDeviceKind>): ReadonlySet<SymbolId> {
   const wynik = new Set<SymbolId>();
-  for (const rodzaj of rodzaje) {
-    for (const wariant of [null, WARIANT_RYSUNKU_QET]) {
-      const symbol = symbolIdForPrimaryDeviceKind(rodzaj, wariant);
-      if (symbol) wynik.add(symbol);
-    }
-  }
+  for (const rodzaj of rodzaje) symboleRodzajuAparatu(rodzaj).forEach((symbol) => wynik.add(symbol));
   return wynik;
 }
 const SWITCH_SYMBOLS: ReadonlySet<SymbolId> = symboleRodzajow(RODZAJE_LACZNIKOW_POLA);
@@ -6393,11 +6537,10 @@ export function switchSymbolUnambiguityGaps(scene: SceneV3): readonly SwitchSymb
 
   // (a) mapowanie kind→symbolId jednoznaczne (poza wyjątkiem udokumentowanym).
   const kindsBySymbol = new Map<SymbolId, BayPrimaryDeviceKind[]>();
-  // UX-04: jednoznaczność w OBU wariantach rysunku (kanonicznym i QET).
-  for (const wariant of [null, WARIANT_RYSUNKU_QET]) {
-    for (const kind of ALL_BAY_PRIMARY_DEVICE_KINDS) {
-      const symbolId = symbolIdForPrimaryDeviceKind(kind, wariant);
-      if (symbolId == null || !SWITCH_SYMBOLS.has(symbolId)) continue;
+  // UX-04: jednoznaczność we WSZYSTKICH rysunkach rodzaju (oba warianty × cechy rekordu).
+  for (const kind of ALL_BAY_PRIMARY_DEVICE_KINDS) {
+    for (const symbolId of symboleRodzajuAparatu(kind)) {
+      if (!SWITCH_SYMBOLS.has(symbolId)) continue;
       const list = kindsBySymbol.get(symbolId) ?? [];
       if (!list.includes(kind)) list.push(kind);
       kindsBySymbol.set(symbolId, list);
@@ -6958,7 +7101,7 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
 export function sceneSegmentEndpointGaps(scene: SceneV3): readonly SceneSegmentEndpointGap[] {
   const portKeys = new Set<string>();
   scene.symbols.forEach((s) => {
-    symbolPortsInWorld(s).forEach((p) => portKeys.add(`${p.x},${p.y}`));
+    symbolAllPortsInWorld(s).forEach((p) => portKeys.add(`${p.x},${p.y}`));
     // L0 (spec §7): `stationCollapsed` (16×16, symbol zbiorczy stacji) łączy
     // się WŁASNYM ŚRODKIEM, nie krawędzią — konwencja routingu L0 od F6b
     // (`composeRowStation`, gałąź `lod===0`; `SYMBOL_DEFS.stationCollapsed.
@@ -7101,7 +7244,7 @@ export function symbolWireCollisions(scene: SceneV3): readonly SymbolWireCollisi
   const hits: SymbolWireCollision[] = [];
   scene.symbols.forEach((sym, si) => {
     const rect = symbolRect(sym);
-    const ports = symbolPortsInWorld(sym);
+    const ports = symbolAllPortsInWorld(sym);
     scene.segments.forEach((seg, sei) => {
       if (ports.some((p) => pointTouchesSegment(p, seg))) return;
       const pts = seg.points;
@@ -8507,6 +8650,28 @@ function symbolPortsInWorld(sym: PreviewSymbol): readonly RouteVertex[] {
   return SYMBOL_DEFS[sym.symbolId].ports.map((p) => ({ x: sym.x + p.x, y: sym.y + p.y }));
 }
 
+/** Porty toru ORAZ zaciski obwodu wtórnego (`SymbolDef.secondaryPorts`: zacisk wtórny
+ *  przekładnika, cewka wyłączająca, wejścia przekaźnika) w świecie. Zakotwiczenia legalne
+ *  dla końców odcinków i styku symbol↔przewód; spójność toru mocy (`sceneConnectivityIndex`)
+ *  liczy WYŁĄCZNIE `symbolPortsInWorld` — obwód wtórny nie łączy toru pierwotnego. */
+function symbolAllPortsInWorld(sym: PreviewSymbol): readonly RouteVertex[] {
+  const def = SYMBOL_DEFS[sym.symbolId];
+  return [...def.ports, ...def.secondaryPorts].map((p) => ({ x: sym.x + p.x, y: sym.y + p.y }));
+}
+
+/** Rodzaje aparatów będących źródłem linii pomiarowej przekaźnika (przekładniki). */
+const RODZAJE_ZRODEL_POMIARU: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'currentTransformer',
+  'voltageTransformer',
+  'qetCoreBalanceCt',
+]);
+
+/** Pole właściciela linii pomiarowej (`<bayRef>#measurement-link` albo `…-<n>` dla kolejnych
+ *  źródeł pola). */
+function poleLiniiPomiarowej(ownerRef: string | undefined): string | undefined {
+  return ownerRef?.replace(/#measurement-link(-\d+)?$/, '');
+}
+
 export interface SourceConnectivityGap {
   readonly sourceId: string;
 }
@@ -8775,12 +8940,12 @@ export function protectionMarkingGaps(scene: SceneV3): readonly ProtectionMarkin
       const touchesOwnBreaker = breakerSymbols.some(
         (b) =>
           b.meta?.ownerRef === bayRef &&
-          symbolPortsInWorld(b).some((p) => p.x === first?.x && p.y === first?.y),
+          symbolAllPortsInWorld(b).some((p) => p.x === first?.x && p.y === first?.y),
       );
       const touchesOwnRelay = relaySymbols.some(
         (r) =>
           r.meta?.ownerRef === bayRef &&
-          symbolPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
+          symbolAllPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
       );
       if (!touchesOwnBreaker || !touchesOwnRelay) {
         gaps.push({ reason: 'trip-line-endpoint-mismatch', ownerRef: seg.meta?.ownerRef });
@@ -8941,28 +9106,28 @@ export interface SecondaryLinkDualityGap {
 export function secondaryLinkDualityGaps(scene: SceneV3): readonly SecondaryLinkDualityGap[] {
   const gaps: SecondaryLinkDualityGap[] = [];
   const relaySymbols = scene.symbols.filter((s) => s.symbolId === 'protectionRelay');
-  const ctSymbols = scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'currentTransformer');
+  const ctSymbols = scene.symbols.filter((s) => RODZAJE_ZRODEL_POMIARU.has(rodzajSymbolu(s.symbolId)));
   const breakerSymbols = scene.symbols.filter((s) => rodzajSymbolu(s.symbolId) === 'breaker');
   const measurementSegs = scene.segments.filter((s) => s.meta?.kind === 'measurementLink');
   const tripSegs = scene.segments.filter((s) => s.meta?.kind === 'protectionTrip');
 
   measurementSegs.forEach((seg) => {
-    const bayRef = seg.meta?.ownerRef?.replace(/#measurement-link$/, '');
+    const bayRef = poleLiniiPomiarowej(seg.meta?.ownerRef);
     const first = seg.points[0];
     const last = seg.points[seg.points.length - 1];
 
     const touchesOwnCt = ctSymbols.some(
-      (ct) => ct.meta?.ownerRef === bayRef && symbolPortsInWorld(ct).some((p) => p.x === first?.x && p.y === first?.y),
+      (ct) => ct.meta?.ownerRef === bayRef && symbolAllPortsInWorld(ct).some((p) => p.x === first?.x && p.y === first?.y),
     );
     const touchesOwnRelay = relaySymbols.some(
-      (r) => r.meta?.ownerRef === bayRef && symbolPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
+      (r) => r.meta?.ownerRef === bayRef && symbolAllPortsInWorld(r).some((p) => p.x === last?.x && p.y === last?.y),
     );
     if (!touchesOwnCt || !touchesOwnRelay) {
       gaps.push({ reason: 'measurement-link-endpoint-mismatch', ownerRef: seg.meta?.ownerRef });
     }
 
     const touchesAnyBreaker = breakerSymbols.some((b) =>
-      symbolPortsInWorld(b).some(
+      symbolAllPortsInWorld(b).some(
         (p) => (p.x === first?.x && p.y === first?.y) || (p.x === last?.x && p.y === last?.y),
       ),
     );

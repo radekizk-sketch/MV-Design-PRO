@@ -44,7 +44,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -92,7 +93,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/b2904594a55a273351e46fd8c613116c/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -126,8 +128,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/b2904594a55a273351e46fd8c613116c/sn_field/001",
@@ -141,7 +142,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/b2904594a55a273351e46fd8c613116c/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -185,7 +187,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/b2904594a55a273351e46fd8c613116c/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -238,7 +241,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/b2904594a55a273351e46fd8c613116c/sn_field_terminal/003",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -281,7 +285,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/3d5a157693e464e518803216da7e19d3/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -835,7 +840,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "7c50b620884b5d315f6d84712fcf98a4b5f6bb11823d6912b2aaa11313add1bf",
+      "hash_sha256": "4e3e309c9e8b4708a68d1410f119f84fe566ac433ee401f7a760a0f36a7bc54a",
       "name": "Stacja z polem pomiarowym",
       "revision": 5,
       "updated_at": "2026-09-25T00:00:00Z"

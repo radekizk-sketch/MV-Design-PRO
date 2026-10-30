@@ -31,8 +31,24 @@ import {
  *  grubszy od toru pierwotnego). */
 export const CAD_SYMBOL_STROKE_PX = 1.4;
 
-/** Wzór kreski przerywanej stanu nieznanego [u] — skaluje się z symbolem. */
+/** Wzór kreski przerywanej stanu nieznanego [u] — skaluje się z symbolem (kreska
+ *  `non-scaling-stroke` w px ekranu, kreskowanie w jednostkach symbolu). */
 export const CAD_DASH_NIEZNANY = '1.5 1';
+
+/**
+ * Wzór kreski przerywanej dla kreski w JEDNOSTKACH SCENY (`nonScalingStroke = false`, symbole
+ * QET pola liniowego SN): kreska i przerwa proporcjonalne do grubości kreski — przy końcach
+ * zaokrąglonych (`strokeLinecap: round`) każdy odcinek wydłuża się o grubość kreski, więc stały
+ * wzór `1,5 1` przy grubości ≥ 1 zlewał się w linię ciągłą (nóż stanu nieznanego i sprzężenie
+ * napędu rysowały się jak ciągłe). Widoczna kreska = 2 × grubość, widoczna przerwa = grubość.
+ */
+export function wzorKreskiPrzerywanejSceny(gruboscKreski: number): string {
+  return `${gruboscKreski} ${2 * gruboscKreski}`;
+}
+
+function wzorKreskiPrzerywanej(w: number | undefined, ctx: KontekstRysunkuCad): string {
+  return ctx.nonScaling ? CAD_DASH_NIEZNANY : wzorKreskiPrzerywanejSceny(grubosc(w, ctx));
+}
 
 export interface CadSymbolProps {
   readonly id: CadSymbolId;
@@ -99,7 +115,7 @@ function rysujPrymityw(p: CadPrimitive, i: number, ctx: KontekstRysunkuCad): JSX
           x2={p.x2}
           y2={p.y2}
           {...kreska(p.w, ctx)}
-          strokeDasharray={p.nozStanu && ctx.state === 'unknown' ? CAD_DASH_NIEZNANY : undefined}
+          strokeDasharray={p.kreskowana || (p.nozStanu && ctx.state === 'unknown') ? wzorKreskiPrzerywanej(p.w, ctx) : undefined}
           data-cad={p.nozStanu ? 'noz' : 'line'}
         />
       );

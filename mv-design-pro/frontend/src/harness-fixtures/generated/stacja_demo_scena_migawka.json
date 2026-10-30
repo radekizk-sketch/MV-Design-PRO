@@ -43,7 +43,8 @@
         "gpz_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -91,7 +92,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/000",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -125,8 +127,7 @@
       "protection_codes": [
         "51",
         "50",
-        "51N",
-        "67N"
+        "51N"
       ],
       "protection_ref": null,
       "ref_id": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field/001",
@@ -140,7 +141,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/001",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -193,7 +195,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/002",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -236,7 +239,8 @@
         "nn_main_breaker"
       ],
       "terminal_bus_ref": "nn/96503b2ec9d195fbcd6ae113fa37bb06/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -277,7 +281,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/5820057e3af41f320969fd379542962e/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     }
   ],
   "branch_points": [],
@@ -795,7 +800,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "a06ec2d93f04660cac37c40cd0e984cd296892d5ed5882b823fdc8742ffe4814",
+    "hash_sha256": "14f37d849d1c43c17514e5ecdaf69b80c3e129dd5245b53da19d21e3cdf855a6",
     "name": "Projekt demonstracyjny",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

@@ -127,6 +127,10 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         # Ta sama karta (rozszerzenie 2): klasa pola liniowego (IRiESD II.4.5.4.2). `None` =
         # klasa nieustalona — poza odciskiem; zadeklarowana jest treścią modelu.
         "klasa_pola",
+        # Ta sama karta (decyzja właściciela 2026-10-29): powiązanie źródła napięcia zerowego
+        # 3U₀ pola. `None` = źródło niepowiązane — poza odciskiem; powiązanie jest treścią
+        # modelu (rozstrzyga przypisanie funkcji 67N).
+        "zrodlo_u0_ref",
     ),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
@@ -224,7 +228,17 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
 #: (połączenia aparatów pola). Przypięte testem `tests/enm/test_pole_liniowe_gpz_szablony.py`
 #: (`test_odcisk_pustych_list_jak_brak_pola`).
 _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_PUSTE: dict[str, dict[str, tuple[str, ...]]] = {
-    "bays": {"primary_devices": ("ports", "rdzenie", "uzwojenia")},
+    # Poprawki P0 2026-10-29: powiązania obwodów wtórnych wzorca na aparacie (funkcje EAZ
+    # mierzące z przekładnika, działające na wyłącznik) — pusta lista = aparat bez powiązań.
+    "bays": {
+        "primary_devices": (
+            "ports",
+            "rdzenie",
+            "uzwojenia",
+            "funkcje_eaz_zasilane",
+            "funkcje_eaz_wylaczajace",
+        )
+    },
 }
 
 #: Ta sama karta (korekta właściciela 2026-10-28): pola ELEMENTÓW ZAGNIEŻDŻONYCH o wartości
@@ -234,7 +248,8 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_PUSTE: dict[str, dict[str, tuple[str, ...]]] 
 #: Ferrantiego (`BayPrimaryDevice.przekladnia`) — to samo prawo; test odcisku:
 #: `tests/enm/test_pole_liniowe_gpz_szablony.py::test_odcisk_pustych_list_jak_brak_pola`.
 _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] = {
-    "bays": {"primary_devices": ("stan_obiektu", "odgalezienie", "przekladnia")},
+    # Poprawki P0 2026-10-29: napęd wyłącznika wykonawczego wzorca (`BayPrimaryDevice.naped`).
+    "bays": {"primary_devices": ("stan_obiektu", "odgalezienie", "przekladnia", "naped")},
 }
 
 #: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja

@@ -295,6 +295,48 @@ export interface OwnedLabel {
    * podłączenie bez zmiany istniejących wytwórców/testów.
    */
   readonly unresolved?: boolean;
+  /** Wyrównanie tekstu w prostokącie etykiety (`WyrownanieTekstu`). Niesie je KAŻDA etykieta
+   *  warstwy adnotacji zabezpieczeń (`ownerKind: 'protection'` — wiersze listy kodów EAZ
+   *  i odniesienia źródła 3U₀, adnotacje CT/VT, numer urządzenia „52"; test
+   *  `poleLinioweGpz.test.tsx`). `undefined` = tekst wyśrodkowany w prostokącie.
+   *  Geometrycznie NEUTRALNE (`rect` bez zmian). */
+  readonly wyrownanieTekstu?: WyrownanieTekstu;
+}
+
+/**
+ * Wyrównanie tekstu w prostokącie etykiety: `'poczatek'` — tekst od lewej krawędzi
+ * prostokąta (`text-anchor: start`), `'koniec'` — do prawej (`text-anchor: end`).
+ *
+ * DLACZEGO. Szerokość prostokąta jest SZACUNKIEM z długości tekstu (`measureTextWidth`,
+ * 0,62 em na znak — deterministyczna geometria sceny bez metryk czcionki), a rysowany tusz
+ * ma szerokość z metryk czcionki: dla wiersza kodów „51N · ZS · 50BF · 79 · SCO" tusz jest
+ * węższy od szacunku, dla wiersza z wielkimi literami — szerszy. Tekst wyśrodkowany
+ * w prostokącie zaczyna się więc w każdym wierszu w innym miejscu: wiersze bloku przekaźnika
+ * pola GPZ rozjeżdżały się o (szacunek − tusz)/2 (zrzut pola Z.10 2026-10-29: wiersz 1 od
+ * x = 535 px, wiersz 2 od x = 499 px przy wspólnej lewej krawędzi prostokątów). Wiersze
+ * kolumny trzymają wspólną krawędź prostokątów, więc tekst kotwiczy się w tej krawędzi:
+ * etykieta z prawej strony kotwicy (`placement: 'right'` — wiersze bloku układu powiązań,
+ * pasmo adnotacji CT/VT za torem, „52" przy wyłączniku) — `'poczatek'`, wiersze
+ * prawo-dosunięte do rezerwacji kolumny (układ stacji, `placement: 'below'`) — `'koniec'`.
+ * Pozostałe etykiety zostają wyśrodkowane (`undefined`).
+ */
+export type WyrownanieTekstu = 'poczatek' | 'koniec';
+
+/** Punkt zaczepienia tekstu etykiety w jej prostokącie — JEDNO źródło dla renderu kanwy
+ *  (`SceneLabelNode`) i podglądu kompozycji (`PreviewLabelNode`); eksport DXF/PDF czyta
+ *  `text-anchor` z markupu. Pion: środek prostokąta (`dominant-baseline: middle`). Etykieta
+ *  obrócona (bieg toru pionowego) zostaje wyśrodkowana — obrót jest wokół środka prostokąta,
+ *  a wiersze bloku nigdy nie są obracane. */
+export function zaczepTekstuEtykiety(
+  rect: V3Rect,
+  wyrownanie: WyrownanieTekstu | undefined,
+  rotated: boolean,
+): { readonly x: number; readonly y: number; readonly textAnchor: 'start' | 'middle' | 'end' } {
+  const y = rect.y + rect.height / 2;
+  if (rotated || wyrownanie === undefined) return { x: rect.x + rect.width / 2, y, textAnchor: 'middle' };
+  return wyrownanie === 'poczatek'
+    ? { x: rect.x, y, textAnchor: 'start' }
+    : { x: rect.x + rect.width, y, textAnchor: 'end' };
 }
 
 /**
@@ -725,6 +767,9 @@ export interface SimpleAnchoredOwnerInput {
    *  co `anchor`) — przenoszony 1:1 na `OwnedLabel.obrysKotwicy`. Przesunięcie
    *  kotwicy przesuwa go razem z nią (`przesunKotwiczonaEtykiete`). */
   readonly obrysKotwicy?: V3Rect;
+  /** Wyrównanie tekstu w prostokącie — przenoszone 1:1 na `OwnedLabel.wyrownanieTekstu`
+   *  (etykiety warstwy adnotacji zabezpieczeń). */
+  readonly wyrownanieTekstu?: WyrownanieTekstu;
 }
 
 /** Przesunięcie etykiety zakotwiczonej o (dx, dy): kotwica i obrys symbolu
@@ -743,7 +788,15 @@ export function przesunKotwiczonaEtykiete(
   };
 }
 
-function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
+/**
+ * Prostokąt slotu etykiety zakotwiczonej prostej — JEDNO źródło położenia: rozmieszczenie
+ * etykiet (`resolveSimpleAnchoredLabel`) i obrys tła pola GPZ (`compose/gpz.ts`, karta
+ * UX-04: tło pola obejmuje podpis pola i opisy jego zabezpieczeń). Dwa niezależne wzory
+ * slotu rozjechałyby się przy pierwszej zmianie prześwitu albo przyciągania do siatki.
+ */
+export function prostokatEtykietyZakotwiczonej(
+  owner: Pick<SimpleAnchoredOwnerInput, 'text' | 'labelClass' | 'anchor' | 'placement' | 'clearance'>,
+): V3Rect {
   const width = measureLabelWidth(owner.text, owner.labelClass);
   const height = labelLineHeight(owner.labelClass);
   const przeswit = owner.clearance ?? GRID;
@@ -777,6 +830,11 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
   const jawnyPrzeswit = owner.clearance !== undefined;
   const snapX = jawnyPrzeswit && owner.placement === 'left' ? snapDown : snapToGrid;
   const snapY = jawnyPrzeswit && owner.placement === 'above' ? snapDown : snapToGrid;
+  return { x: snapX(x), y: snapY(y), width, height };
+}
+
+function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
+  const rect = prostokatEtykietyZakotwiczonej(owner);
   return {
     ownerRef: owner.ownerRef,
     ownerKind: owner.ownerKind,
@@ -784,7 +842,7 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
     labelRole: LABEL_ROLE_BY_OWNER_KIND[owner.ownerKind],
     text: owner.text,
     slotIndex: 1,
-    rect: { x: snapX(x), y: snapY(y), width, height },
+    rect,
     // KD-11: strona slotu względem kotwicy — kierunek, w którym prostokąt
     // rośnie, gdy render powiększa pismo tożsamości do rozmiaru minimalnego
     // (etykieta „above" rośnie w górę, więc prześwit od toru zostaje).
@@ -799,6 +857,8 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
     ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
     // K2b×K3: obrys symbolu kotwicy — strony zastępcze planu etykiet.
     ...(owner.obrysKotwicy !== undefined ? { obrysKotwicy: owner.obrysKotwicy } : {}),
+    // Wiersze bloku przekaźnika: wyrównanie tekstu do wspólnej krawędzi prostokątów.
+    ...(owner.wyrownanieTekstu !== undefined ? { wyrownanieTekstu: owner.wyrownanieTekstu } : {}),
   };
 }
 

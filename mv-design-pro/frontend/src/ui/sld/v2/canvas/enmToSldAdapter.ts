@@ -1832,7 +1832,8 @@ function collectStationTransformerUnits(
  *  - oznaczenie: numer dyspozytorski (`bay_number`), krótka nazwa odpływu, skrót roli, nazwa;
  *  - stany łączników z modelu (`stanyAparatowPolaZModelu`: `status` gałęzi łączeniowych pola);
  *  - tor pierwotny i konfiguracja pola z danych rekordu.
- * ADNOTACJE pola (oznaczenie zabezpieczeń, miernik, CT, VT) blok stacji NIE projektuje —
+ * ADNOTACJE pola (oznaczenie zabezpieczeń, miernik, CT, VT, odniesienie źródła napięcia
+ * zerowego 3U₀ funkcji 67N) blok stacji NIE projektuje —
  * dokładnie tak, jak rysowała je produkcyjna ścieżka pól stacji przed kartą W5-B (stacje
  * budowane operacjami). Rzutowanie `protection_codes` rekordów pól stacji powiększa arkusz
  * substratu 52 stacji z 8328×5771 do 11096×7467 (171 okręgów przekaźnika) — to zmiana wyglądu
@@ -2198,6 +2199,12 @@ export function projectBayPrimaryDevices(
       // Karta UX-04 (stan obiektu): stan instancji aparatu z jego rekordu (ten sam, który
       // ocenia zakaz gazów fluorowanych, `enm/gaz_fluorowany_pola.py`); `null` = nieustalony.
       stanObiektu: device.stan_obiektu ?? null,
+      // Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): napęd, powiązania funkcji EAZ
+      // i liczba uzwojeń wtórnych z rekordu — pola obecne tylko, gdy rekord je niesie.
+      ...(device.naped ? { naped: device.naped } : {}),
+      ...(device.funkcje_eaz_zasilane?.length ? { funkcjeEazZasilane: [...device.funkcje_eaz_zasilane] } : {}),
+      ...(device.funkcje_eaz_wylaczajace?.length ? { funkcjeEazWylaczajace: [...device.funkcje_eaz_wylaczajace] } : {}),
+      ...(device.uzwojenia?.length ? { liczbaUzwojenWtornych: device.uzwojenia.length } : {}),
     }));
 }
 

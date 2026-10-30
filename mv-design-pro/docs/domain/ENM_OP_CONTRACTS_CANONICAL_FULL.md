@@ -145,7 +145,7 @@ Rejestr liczy **53** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `open_switch` | Otwarcie łącznika w modelu bazowym (pozycja normalna bez zmian) | `switch_ref` | — | nie | `enm/operacje_lacznikow.py::open_switch` |
 | `przepnij_element_na_pole` | Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym | `element_ref` | `field_ref` | nie | `enm/domain_operations.py::przepnij_element_na_pole` |
 | `set_bay_apparatus_position` | Położenie łącznika pola bez własnej gałęzi (odłącznik, uziemnik, łącznik trójpołożeniowy) — zamknięty, otwarty albo uziemiony, z regułą blokad pola | `bay_ref`, `device_ref`, `actual_state` | — | nie | `enm/polozenie_aparatu_pola.py::set_bay_apparatus_position` |
-| `set_bay_equipment` | Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu pola albo usunięcie wyposażenia | `bay_ref`, `mode` | `bay_template_ref`, `devices`, `klasa_pola` | nie | `enm/wyposazenie_pola.py::set_bay_equipment` |
+| `set_bay_equipment` | Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu pola albo usunięcie wyposażenia | `bay_ref`, `mode` | `bay_template_ref`, `devices`, `klasa_pola`, `zrodlo_u0_ref` | nie | `enm/wyposazenie_pola.py::set_bay_equipment` |
 | `set_normal_open_point` | Przeniesienie punktu normalnie otwartego (NOP) na wskazany łącznik — poprzedni punkt podziału tego samego pierścienia zostaje zamknięty | `switch_ref` | `close_ref` | nie | `enm/operacje_lacznikow.py::set_normal_open_point` |
 | `set_object_state` | Oznaczenie pola SN (z aparatami), jednego aparatu pola albo łącznika poza polem jako istniejącego w sieci albo projektowanego | `stan_obiektu` | `bay_ref`, `device_ref`, `switch_ref` | nie | `enm/stan_obiektu_pola.py::set_object_state` |
 | `start_branch_segment_sn` | Rozpoczęcie nowego odgałęzienia od magistrali SN | — | `catalog_binding`, `dlugosc_m`, `from_bus_ref`, `from_ref`, `segment` | tak | `enm/domain_operations.py::start_branch_segment_sn` |
@@ -309,7 +309,7 @@ Ciąg liniowy (`line_runs`, `enm/models.py::LineRun`) to magistrala albo odgał�
 | Operacja | Klucz ciągu | Skutek w `line_runs` |
 |---|---|---|
 | `add_grid_source_sn` | — | Zakłada ciąg magistrali GPZ (`run_kind` `main_trunk`, id = id magistrali, bez odcinków) z początkiem w pierwszym polu liniowym GPZ i jego zacisku. |
-| `continue_trunk_segment_sn` | `trunk_id` | Dopisuje utworzony odcinek na koniec ciągu `trunk_id` (brak albo nieznana magistrala → pierwsza magistrala modelu); ciąg zakładany, gdy magistrala go nie ma (początek: `field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę ciągu i numer `order`. |
+| `continue_trunk_segment_sn` | `trunk_id` | Dopisuje utworzony odcinek na koniec ciągu, który start odcinka KONTYNUUJE (jedna reguła ciągłości: ciąg pusty, start na końcu ostatniego odcinka ciągu albo w tej samej stacji co ten koniec). Ciąg `trunk_id`, którego start nie kontynuuje — odmowa `trunk.start_not_at_trunk_end`; brak albo nieznany ciąg → ciąg kończący się na starcie, inaczej pusty, inaczej NOWY ciąg z tego startu (`run_kind` `branch`, korytarz promieniowy, port startu = zacisk odcinka; z pola GPZ — przydział pola zapisany dwustronnie i nazwa „Magistrala NN”). Ciąg zakładany, gdy magistrala go nie ma (początek: `field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę ciągu i numer `order`. |
 | `delete_element` | — | Usuwa z `segments` i `stations` każdego ciągu odcinki i stacje usunięte wprost albo kaskadą (numeracja `order` od nowa) — para do czyszczenia magistral; ciąg bez odcinków zostaje razem z magistralą. |
 | `insert_branch_pole_on_segment_sn` | — | Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali i ciągu). Wstawienie na końcu odcinka nie dzieli go. |
 | `insert_section_switch_sn` | — | Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali i ciągu). Łącznik nie jest odcinkiem ciągu (magistrala wymienia go między połówkami). |
@@ -1832,9 +1832,10 @@ Typ spoza rejestru jest błędem kontraktu (`backend/tests/enm/test_rejestr_zdar
 skanuje wszystkie emisje w handlerach).
 
 <!-- GENEROWANE:zdarzenia-domenowe:POCZATEK -->
-Rejestr `DOMAIN_EVENT_TYPES` liczy **67** typów:
+Rejestr `DOMAIN_EVENT_TYPES` liczy **68** typów:
 
 - `AUX_LOAD_CREATED`
+- `BAY_APPARATUS_POSITION_SET`
 - `BAY_EQUIPMENT_SET`
 - `BESS_INVERTER_CREATED`
 - `BESS_SOURCE_CREATED`

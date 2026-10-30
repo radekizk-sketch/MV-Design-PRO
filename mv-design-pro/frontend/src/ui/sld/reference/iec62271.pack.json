@@ -20,7 +20,7 @@
       "forbidden": ["TRANSFORMER_DEVICE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
       "canonical_order": ["THREE_POSITION_SWITCH", "DS", "CB", "CT", "DS", "CABLE_HEAD", "CORE_BALANCE_CT"],
       "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
-      "notes_pl": "Odłączenie od szyny: łącznik trójpołożeniowy (izolacja gazowa bez gazów fluorowanych albo stało-powietrzna, ENEA Zeszyt 1 Z.10 s.89 i §13) albo odłącznik szynowy (izolacja powietrzna, §13) albo wysunięcie wyłącznika poziomo wysuwnego (§13) → wyłącznik → przekładnik prądowy → (wskaźnik napięcia bocznie) → głowica kablowa → przekładnik Ferrantiego na kablu. Odgałęzienie przekładnika napięciowego za wyłącznikiem (Z.11.1/Z.11: łącznik odgałęzienia, głowica, przekładnik) leży poza torem głównym (porty aparatów) i nie podlega kolejności toru. Uziemienie pola: łącznik trójpołożeniowy (uziemienie kabla przez zamknięty wyłącznik, §13 druk s.24) albo uziemnik stały wyprowadzenia (bocznie). Odłącznik liniowy dopuszczony w kolejności dla rozdzielnic wyłącznikowych spoza Z.10 (Z.10 go nie rysuje)."
+      "notes_pl": "Odłączenie od szyny: łącznik trójpołożeniowy (izolacja gazowa bez gazów fluorowanych albo stało-powietrzna, ENEA Zeszyt 1 Z.10 s.89 i §13) albo odłącznik szynowy (izolacja powietrzna, §13) albo wysunięcie wyłącznika poziomo wysuwnego (§13) → wyłącznik → przekładnik prądowy → (wskaźnik napięcia bocznie) → głowica kablowa → przekładnik Ferrantiego na kablu. Odgałęzienie przekładnika napięciowego za wyłącznikiem (Z.11.1/Z.11: łącznik odgałęzienia, głowica, przekładnik) leży poza torem głównym (porty aparatów) i nie podlega kolejności toru. Uziemienie pola: łącznik trójpołożeniowy (uziemienie kabla przez zamknięty wyłącznik, §13 druk s.25) albo uziemnik stały wyprowadzenia (bocznie). Odłącznik liniowy dopuszczony w kolejności dla rozdzielnic wyłącznikowych spoza Z.10 (Z.10 go nie rysuje)."
     },
     {
       "profile_id": "rmu_line",
@@ -69,13 +69,13 @@
     {
       "profile_id": "measurement",
       "name_pl": "Pole pomiarowe",
-      "required": ["DS", "VT"],
-      "one_of_groups": [],
-      "optional": ["ES", "SURGE_ARRESTER"],
-      "forbidden": ["TRANSFORMER_DEVICE", "CABLE_HEAD", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
-      "canonical_order": ["DS"],
-      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
-      "notes_pl": "Boczny tor pomiarowy z przekładnikami napięciowymi (VT z definicji poza osią toru, §18.1)."
+      "required": ["VT"],
+      "one_of_groups": [["THREE_POSITION_SWITCH", "DS"]],
+      "optional": ["ES", "SURGE_ARRESTER", "VOLTAGE_INDICATOR", "CABLE_HEAD"],
+      "forbidden": ["TRANSFORMER_DEVICE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["THREE_POSITION_SWITCH", "DS"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER", "VOLTAGE_INDICATOR"],
+      "notes_pl": "Boczny tor pomiarowy z przekładnikami napięciowymi (VT z definicji poza osią toru, §18.1). Odłączenie od szyny: odłącznik albo łącznik trójpołożeniowy (pole pomiaru napięcia ENEA Zeszyt 1 Z.17 s.97). Złącze wtykowe przekładnika napięciowego (§13 s.26 — gniazda dla bezpośredniego przyłączenia przekładników, bez wkładek bezpiecznikowych) leży w odgałęzieniu za łącznikiem, poza torem głównym — głowica w torze głównym pola pomiarowego narusza kolejność toru."
     },
     {
       "profile_id": "coupler",

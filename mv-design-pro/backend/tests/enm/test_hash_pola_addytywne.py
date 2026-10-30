@@ -123,6 +123,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             # odcisku: `tests/enm/test_hash_w5b_bays.py`).
             "stan_obiektu",
             "klasa_pola",
+            # Ta sama karta (decyzja właściciela 2026-10-29 pkt 4): `Bay.zrodlo_u0_ref`
+            # (powiązanie źródła 3U₀ funkcji 67N; test odcisku: `test_hash_w5b_bays.py`).
+            "zrodlo_u0_ref",
         ),
         "generators": (
             "dynamika",

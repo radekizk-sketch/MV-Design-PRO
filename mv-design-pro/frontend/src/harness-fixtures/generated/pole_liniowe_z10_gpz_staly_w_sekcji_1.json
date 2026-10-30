@@ -25,7 +25,9 @@
       {
         "attachment_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
         "bay_role": "OUT",
-        "corridor_refs": [],
+        "corridor_refs": [
+          "corridor/81f5bf85417d716a6168b82c48539a9f/run"
+        ],
         "field_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
         "occupied": true,
         "segment_refs": [
@@ -41,10 +43,33 @@
         "occupied": false,
         "segment_refs": [],
         "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+      },
+      {
+        "attachment_bus_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal",
+        "bay_role": "MEASUREMENT",
+        "corridor_refs": [],
+        "field_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay",
+        "occupied": false,
+        "segment_refs": [],
+        "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
       }
     ],
     "secondary_connectors": [],
     "terminals": [
+      {
+        "branch_id": null,
+        "element_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
+        "port_id": "trunk_start",
+        "status": "ZAJETY",
+        "trunk_id": "corridor/81f5bf85417d716a6168b82c48539a9f/run"
+      },
+      {
+        "branch_id": null,
+        "element_id": "bus/a40aac5dfd5da2982a74d4b05edb8f82/downstream",
+        "port_id": "trunk_end",
+        "status": "OTWARTY",
+        "trunk_id": "corridor/81f5bf85417d716a6168b82c48539a9f/run"
+      },
       {
         "branch_id": null,
         "element_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
@@ -54,7 +79,7 @@
       },
       {
         "branch_id": null,
-        "element_id": "bus/a40aac5dfd5da2982a74d4b05edb8f82/downstream",
+        "element_id": "bus/3d5b4481534721c0121ef7dae10da9ef/downstream",
         "port_id": "trunk_end",
         "status": "OTWARTY",
         "trunk_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/corridor_01"
@@ -62,13 +87,37 @@
     ],
     "trunks": [
       {
+        "corridor_ref": "corridor/81f5bf85417d716a6168b82c48539a9f/run",
+        "corridor_type": "radial",
+        "embedded_objects": [],
+        "no_point_refs": [],
+        "segments": [
+          "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment"
+        ],
+        "terminals": [
+          {
+            "branch_id": null,
+            "element_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
+            "port_id": "trunk_start",
+            "status": "ZAJETY",
+            "trunk_id": "corridor/81f5bf85417d716a6168b82c48539a9f/run"
+          },
+          {
+            "branch_id": null,
+            "element_id": "bus/a40aac5dfd5da2982a74d4b05edb8f82/downstream",
+            "port_id": "trunk_end",
+            "status": "OTWARTY",
+            "trunk_id": "corridor/81f5bf85417d716a6168b82c48539a9f/run"
+          }
+        ]
+      },
+      {
         "corridor_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/corridor_01",
         "corridor_type": "radial",
         "embedded_objects": [],
         "no_point_refs": [],
         "segments": [
-          "seg/3d5b4481534721c0121ef7dae10da9ef/segment",
-          "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment"
+          "seg/3d5b4481534721c0121ef7dae10da9ef/segment"
         ],
         "terminals": [
           {
@@ -80,7 +129,7 @@
           },
           {
             "branch_id": null,
-            "element_id": "bus/a40aac5dfd5da2982a74d4b05edb8f82/downstream",
+            "element_id": "bus/3d5b4481534721c0121ef7dae10da9ef/downstream",
             "port_id": "trunk_end",
             "status": "OTWARTY",
             "trunk_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/corridor_01"
@@ -137,9 +186,12 @@
             "designation": "Q1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::0",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "DS",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -167,9 +219,20 @@
             "designation": "Q0",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::1",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/apparatus",
+            "naped": "SILNIKOWY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -197,9 +260,17 @@
             "designation": "T1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::2",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -237,9 +308,12 @@
             "designation": "PF1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::3",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "OFF_PATH",
@@ -263,9 +337,12 @@
             "designation": "Q8",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::4",
             "earthing_role": "field_earth",
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "ES",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "GROUND_BRANCH",
@@ -289,9 +366,12 @@
             "designation": "GK",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::5",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -319,9 +399,14 @@
             "designation": "T2",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001::dev::6",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N"
+            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -344,7 +429,7 @@
         "protection_codes": [
           "51",
           "50",
-          "67N",
+          "51N",
           "ZS",
           "50BF",
           "79",
@@ -363,7 +448,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -411,9 +497,12 @@
             "designation": "Q1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::0",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "DS",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -441,9 +530,20 @@
             "designation": "Q0",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::1",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/apparatus",
+            "naped": "SILNIKOWY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -471,9 +571,17 @@
             "designation": "T1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::2",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -511,9 +619,12 @@
             "designation": "PF1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::3",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "OFF_PATH",
@@ -537,9 +648,12 @@
             "designation": "Q8",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::4",
             "earthing_role": "field_earth",
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "ES",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "GROUND_BRANCH",
@@ -563,9 +677,12 @@
             "designation": "GK",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::5",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -593,9 +710,14 @@
             "designation": "T2",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002::dev::6",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N"
+            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -618,7 +740,7 @@
         "protection_codes": [
           "51",
           "50",
-          "67N",
+          "51N",
           "ZS",
           "50BF",
           "79",
@@ -637,7 +759,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -661,6 +784,7 @@
         "manufacturer_ref": null,
         "meta": {
           "apparatus_kind": "BREAKER",
+          "assigned_corridor_ref": "corridor/81f5bf85417d716a6168b82c48539a9f/run",
           "catalog_binding": {
             "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
             "catalog_item_version": "2024.1",
@@ -685,9 +809,12 @@
             "designation": "Q1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::0",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -726,9 +853,21 @@
             "designation": "Q0",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::1",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "67N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/apparatus",
+            "naped": "SILNIKOWY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -756,9 +895,17 @@
             "designation": "T1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::2",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -796,9 +943,12 @@
             "designation": "PF1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::3",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "OFF_PATH",
@@ -822,9 +972,12 @@
             "designation": "GK",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::4",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -852,9 +1005,15 @@
             "designation": "T2",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001::dev::5",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N",
+              "67N"
+            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -877,6 +1036,7 @@
         "protection_codes": [
           "51",
           "50",
+          "51N",
           "67N",
           "ZS",
           "50BF",
@@ -896,7 +1056,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay::dev::3"
       },
       {
         "apparatus_catalog_ref": null,
@@ -944,9 +1105,12 @@
             "designation": "Q1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::0",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -985,9 +1149,21 @@
             "designation": "Q0",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::1",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "67N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/apparatus",
+            "naped": "SILNIKOWY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -1015,9 +1191,17 @@
             "designation": "T1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::2",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -1055,9 +1239,12 @@
             "designation": "PF1",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::3",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "OFF_PATH",
@@ -1081,9 +1268,12 @@
             "designation": "GK",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::4",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -1111,9 +1301,15 @@
             "designation": "T2",
             "device_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002::dev::5",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N",
+              "67N"
+            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -1136,6 +1332,7 @@
         "protection_codes": [
           "51",
           "50",
+          "51N",
           "67N",
           "ZS",
           "50BF",
@@ -1155,7 +1352,215 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay::dev::3"
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "MEASUREMENT",
+        "bay_template_ref": "bay_template_gpz_pomiar_napiecia_enea_z17",
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "catalog_bindings": null,
+        "config_id": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17",
+        "equipment_refs": [
+          "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_device"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": "NAPIECIA_SZYN",
+        "gpz_section_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002",
+        "id": "50ed20b8-1dc7-5614-8b0b-36ccda98adc1",
+        "klasa_pola": null,
+        "manufacturer_ref": null,
+        "meta": {
+          "apparatus_kind": "MEASUREMENT",
+          "catalog_binding": null,
+          "default_device_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_device",
+          "field_status": "CONFIGURED_FOR_TRUNK"
+        },
+        "metadane_pochodzenia": null,
+        "name": "Pole pomiarowe",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [
+          {
+            "catalog_ref": null,
+            "designation": "Q1",
+            "device_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay::dev::0",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": true,
+            "kind": "THREE_POSITION_SWITCH",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "UPSTREAM",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "szyna"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "odplyw"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:three_position_switch",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "PF1",
+            "device_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay::dev::1",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "VOLTAGE_INDICATOR",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": null,
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "odplyw"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:voltage_indicator",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "GK1",
+            "device_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay::dev::2",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "CABLE_HEAD",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": "pn",
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "we",
+                "wezel": "odplyw"
+              },
+              {
+                "port_id": "wy",
+                "wezel": "pn1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:cable_head",
+            "uzwojenia": []
+          },
+          {
+            "catalog_ref": null,
+            "designation": "T1",
+            "device_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay::dev::3",
+            "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
+            "is_controllable": false,
+            "kind": "VT",
+            "linked_ref": null,
+            "naped": null,
+            "odgalezienie": "pn",
+            "operating_state": null,
+            "placement": "OFF_PATH",
+            "ports": [
+              {
+                "port_id": "przylacze",
+                "wezel": "pn1"
+              }
+            ],
+            "przekladnia": null,
+            "rdzenie": [],
+            "render_variant": "qet_en60617",
+            "section_side": null,
+            "stan_obiektu": "PROJEKTOWANY",
+            "switch_state": null,
+            "symbol_ref": "symbol:vt",
+            "uzwojenia": [
+              {
+                "klasa": "0,2",
+                "moc_va": 10.0,
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
+                "przeznaczenie": [
+                  "POMIAR"
+                ]
+              },
+              {
+                "klasa": "0,5/3P",
+                "moc_va": 15.0,
+                "otwarty_trojkat": false,
+                "przekladnia": "SN/√3 / 0,1/√3",
+                "przeznaczenie": [
+                  "POMIAR",
+                  "ZABEZPIECZENIA"
+                ]
+              },
+              {
+                "klasa": "3P",
+                "moc_va": 15.0,
+                "otwarty_trojkat": true,
+                "przekladnia": "SN/√3 / 0,1/3",
+                "przeznaczenie": [
+                  "ZABEZPIECZENIA"
+                ]
+              }
+            ]
+          }
+        ],
+        "protection_codes": [
+          "59",
+          "27",
+          "59N",
+          "81U",
+          "SCO",
+          "SPZ/SCO",
+          "81R"
+        ],
+        "protection_ref": null,
+        "ref_id": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "substation_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [],
+        "terminal_bus_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal",
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -1293,6 +1698,40 @@
         ],
         "to_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
         "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+        "id": "34ca5779-d55b-587f-9cff-0b7dd859dcd6",
+        "materialized_params": null,
+        "meta": {
+          "apparatus_kind": "MEASUREMENT",
+          "bay_role": "MEASUREMENT",
+          "catalog_binding": null,
+          "field_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay",
+          "render_on_sld": false,
+          "requires_catalog_binding": true,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "terminal_bus_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal"
+        },
+        "name": "Aparat Pole pomiarowe",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": 0.0,
+        "ref_id": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_device",
+        "source_mode": null,
+        "stan_obiektu": "PROJEKTOWANY",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device",
+          "requires_catalog_binding"
+        ],
+        "to_bus_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal",
+        "type": "switch",
         "x_ohm": 0.0
       },
       {
@@ -1681,6 +2120,28 @@
       },
       {
         "frequency_hz": null,
+        "id": "47b13ee2-a05a-56e8-8019-389048561b16",
+        "meta": {
+          "field_ref": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay",
+          "port_kind": "trunk_out",
+          "render_on_sld": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+          "visual_role": "FIELD_TERMINAL"
+        },
+        "name": "Zacisk odpływowy Pole pomiarowe",
+        "nominal_limits": null,
+        "phase_system": "3ph",
+        "ref_id": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal",
+        "tags": [
+          "helper_bus",
+          "field_terminal"
+        ],
+        "voltage_kv": 15.0,
+        "zone": null
+      },
+      {
+        "frequency_hz": null,
         "id": "9627dba1-c55c-5339-baec-1b5cf1e7e796",
         "meta": {
           "render_on_sld": false,
@@ -1726,10 +2187,22 @@
         "meta": {},
         "name": "Magistrala 01",
         "ordered_segment_refs": [
-          "seg/3d5b4481534721c0121ef7dae10da9ef/segment",
-          "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment"
+          "seg/3d5b4481534721c0121ef7dae10da9ef/segment"
         ],
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/corridor_01",
+        "tags": []
+      },
+      {
+        "corridor_type": "radial",
+        "id": "4d2e4d07-5291-5d59-8932-807d91cf2e70",
+        "meta": {
+          "gpz_field_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001"
+        },
+        "name": "Magistrala 02",
+        "ordered_segment_refs": [
+          "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment"
+        ],
+        "ref_id": "corridor/81f5bf85417d716a6168b82c48539a9f/run",
         "tags": []
       }
     ],
@@ -1762,14 +2235,26 @@
           {
             "order": 1,
             "segment_ref": "seg/3d5b4481534721c0121ef7dae10da9ef/segment"
-          },
-          {
-            "order": 2,
-            "segment_ref": "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment"
           }
         ],
         "starting_bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
         "starting_port_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
+        "stations": []
+      },
+      {
+        "branch_origin_station_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
+        "id": "corridor/81f5bf85417d716a6168b82c48539a9f/run",
+        "name": "Magistrala 02",
+        "parent_run_ref": null,
+        "run_kind": "branch",
+        "segments": [
+          {
+            "order": 1,
+            "segment_ref": "seg/a40aac5dfd5da2982a74d4b05edb8f82/segment"
+          }
+        ],
+        "starting_bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
+        "starting_port_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
         "stations": []
       }
     ],

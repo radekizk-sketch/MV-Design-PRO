@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **186** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **187** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -152,6 +152,7 @@ Wszystkie **186** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `bay.apparatus_designation_duplicate` | STATIONS | 3 | WARNING | Dwa aparaty pola noszą to samo oznaczenie — oznaczenie aparatu musi być jednoznaczne w obrębie pola (IEC 81346-1) | panel: `inspector`, tab: `pola` |
+| `bay.earth_fault_u0_source_unconfirmed` | STATIONS | 3 | WARNING | Pole ma zabezpieczenie ziemnozwarciowe kierunkowe (67N) bez potwierdzonego źródła napięcia zerowego 3U₀ — przekładnika z uzwojeniem otwartego trójkąta w polu pomiaru napięcia szyn tej sekcji (ENEA Zeszyt 1, Z.17) | panel: `inspector`, tab: `pola` |
 | `bay.fluorinated_gas_not_existing` | STATIONS | 3 | WARNING | Pole albo aparat pola z gazem fluorowanym (SF₆) nie jest oznaczone jako istniejące — pole projektowane wymaga wykonania bez gazów fluorowanych | panel: `inspector`, tab: `pola` |
 | `bay.generation_fed_from_load_bay` | STATIONS | 3 | WARNING | Za polem odbiorczym pracują moduły wytwarzania — pole z generacją wymaga klasy mieszanej albo dedykowanej i wykonania Z.11.1 albo Z.11 | panel: `inspector`, tab: `pola` |
 | `bay.gpz_template_outside_gpz` | STATIONS | 3 | WARNING | Pole stacji spoza GPZ ma szablon pola liniowego rozdzielni GPZ — wybierz szablon pola stacji SN | panel: `inspector`, tab: `pola` |
@@ -250,20 +251,20 @@ Wszystkie **186** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 108 |
-| WARNING | 70 |
+| WARNING | 71 |
 | INFO | 8 |
-| **Razem** | **186** |
+| **Razem** | **187** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
 | TOPOLOGY | 7 |
 | CATALOGS | 55 |
-| STATIONS | 37 |
+| STATIONS | 38 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 29 |
-| **Razem** | **186** |
+| **Razem** | **187** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

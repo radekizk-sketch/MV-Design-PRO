@@ -181,6 +181,9 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // Rozszerzenie 5 karty: oznaczenia aparatów pola (W063) edytuje to samo wyposażenie pola na
   // karcie pola (pole „Oznaczenie aparatu", `set_bay_equipment`).
   'bay.apparatus_designation_duplicate': przestrzen('schemat', POWOD_KARTA_POLA),
+  // Decyzja właściciela 2026-10-29: źródło 3U₀ funkcji 67N (W064) wiąże karta pola (pole
+  // „Źródło napięcia zerowego 3U₀" edytora wyposażenia, `set_bay_equipment`).
+  'bay.earth_fault_u0_source_unconfirmed': przestrzen('schemat', POWOD_KARTA_POLA),
   // --- Transformatory ---------------------------------------------------------------
   'transformer.catalog_missing': KATALOG,
   'transformer.bay_missing': formularz('add_sn_bay'),

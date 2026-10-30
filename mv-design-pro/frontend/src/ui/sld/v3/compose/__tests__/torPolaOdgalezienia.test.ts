@@ -22,12 +22,16 @@ import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../../t
 import {
   bayApparatusPlanFootprint,
   czyAparatBoczny,
+  pasOdgalezienia,
   planApparatusSymbolIds,
+  polozeniaToruGlownego,
   rekordyToruPola,
   symbolAparatuPola,
   torPolaZPortow,
   type AparatSekwencjiPola,
 } from '../apparatusSequence';
+import { APPARATUS_STACK_VERTICAL_GAP } from '../../layout/apparatusStack';
+import { SYMBOL_DEFS } from '../../symbols/defs';
 import przypadki from './fixtures/parytet_toru_glownego.json';
 
 interface PrzypadekParytetu {
@@ -117,33 +121,47 @@ describe('odgałęzienie przekładnika napięciowego Z.11.1/Z.11 — obchód, pl
     expect(refy(galezie.flatMap((g) => g.aparaty))).not.toContain(braki[0].deviceRef);
   });
 
+  // Korekta P0 karty UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): pole wolne NIE traci już
+  // zakończenia toru kablowego (dawne przycinanie rezerwy usuwało GK i przekładnik
+  // Ferrantiego z toru — defekt 1/2 korekty). Tor pola jest funkcją wyłącznie rekordów.
   for (const nazwa of ['bay_template_gpz_line_enea_z11_1_trojpolozeniowy', 'bay_template_gpz_line_enea_z11_staly_z_odlacznikiem']) {
-    for (const reserve of [undefined, 'wolne'] as const) {
-      it(`${nazwa}, pole ${reserve ?? 'zajęte'}: plan — odgałęzienie poza torem głównym, gabaryt je obejmuje`, () => {
-        const lista = aparaty(przypadek(nazwa));
-        const { rekordy, galezie } = rekordyToruPola(lista, reserve);
-        // Pole wolne traci zakończenie toru kablowego wyłącznie w torze głównym.
-        expect(refy(rekordy).includes('GK')).toBe(reserve == null);
-        expect(refy(rekordy)).toContain('GK1');
-        const symbolIds = rekordy.map((d) => symbolAparatuPola(d)!);
-        const plan = planApparatusSymbolIds(symbolIds, czyAparatBoczny, { galezie });
-        expect(plan.galezie).toHaveLength(1);
-        const wGalezi = new Set(galezie.flatMap((g) => g.pozycje));
-        expect(refy(galezie[0].pozycje.map((i) => rekordy[i]))).toEqual(
-          przypadek(nazwa).poza_torem_glownym.length === 4 ? ['Q5', 'Q51', 'GK1', 'T3'] : ['Q5', 'GK1', 'T3'],
-        );
-        expect(plan.mainSequenceIndices.some((i) => wGalezi.has(i))).toBe(false);
-        expect(plan.laterals.some((l) => wGalezi.has(l.sequenceIndex))).toBe(false);
-        // Kotwica odgałęzienia = wyłącznik Q0 toru głównego.
-        expect(rekordy[plan.mainSequenceIndices[plan.galezie[0].afterMainIndex]].deviceRef).toBe('Q0');
-        // Kolumna odgałęzienia: łącznik i głowica; przekładnik (i uziemnik) — boczne.
-        expect(plan.galezie[0].plan.mainSequenceIndices.map((i) => rekordy[i].deviceRef)).toEqual(['Q5', 'GK1']);
-        const zGaleziami = bayApparatusPlanFootprint(plan);
-        const bezGalezi = bayApparatusPlanFootprint({ ...plan, galezie: [] });
-        expect(zGaleziami.lateralExtension).toBeGreaterThan(bezGalezi.lateralExtension);
-        expect(zGaleziami.height).toBeGreaterThanOrEqual(bezGalezi.height);
-        expect(zGaleziami.mainStack).toEqual(bezGalezi.mainStack);
-      });
-    }
+    it(`${nazwa}: plan — odgałęzienie poza torem głównym, gabaryt je obejmuje, tor główny pod pasem odgałęzienia`, () => {
+      const lista = aparaty(przypadek(nazwa));
+      const { rekordy, galezie } = rekordyToruPola(lista);
+      expect(refy(rekordy)).toContain('GK');
+      expect(refy(rekordy)).toContain('GK1');
+      const symbolIds = rekordy.map((d) => symbolAparatuPola(d)!);
+      const plan = planApparatusSymbolIds(symbolIds, czyAparatBoczny, { galezie });
+      expect(plan.galezie).toHaveLength(1);
+      const wGalezi = new Set(galezie.flatMap((g) => g.pozycje));
+      expect(refy(galezie[0].pozycje.map((i) => rekordy[i]))).toEqual(
+        przypadek(nazwa).poza_torem_glownym.length === 4 ? ['Q5', 'Q51', 'GK1', 'T3'] : ['Q5', 'GK1', 'T3'],
+      );
+      expect(plan.mainSequenceIndices.some((i) => wGalezi.has(i))).toBe(false);
+      expect(plan.laterals.some((l) => wGalezi.has(l.sequenceIndex))).toBe(false);
+      // Kotwica odgałęzienia = wyłącznik Q0 toru głównego.
+      const kotwica = plan.galezie[0].afterMainIndex;
+      expect(rekordy[plan.mainSequenceIndices[kotwica]].deviceRef).toBe('Q0');
+      // Kolumna odgałęzienia: łącznik i głowica; przekładnik (i uziemnik) — boczne.
+      expect(plan.galezie[0].plan.mainSequenceIndices.map((i) => rekordy[i].deviceRef)).toEqual(['Q5', 'GK1']);
+      const zGaleziami = bayApparatusPlanFootprint(plan);
+      const bezGalezi = bayApparatusPlanFootprint({ ...plan, galezie: [] });
+      expect(zGaleziami.lateralExtension).toBeGreaterThan(bezGalezi.lateralExtension);
+      expect(zGaleziami.height).toBeGreaterThanOrEqual(bezGalezi.height);
+      // Tor główny za kotwicą stoi pod CAŁYM pasem odgałęzienia (ENEA Z.11.1: przekładnik
+      // prądowy pod odgałęzieniem przekładnika napięciowego) — jedna reguła
+      // `polozeniaToruGlownego` dla gabarytu i rysunku.
+      const polozenia = polozeniaToruGlownego(plan);
+      const bez = polozeniaToruGlownego({ ...plan, galezie: [] });
+      const dolKotwicy = polozenia.y[kotwica] + SYMBOL_DEFS[plan.mainPath[kotwica]].height;
+      const minimalnie = dolKotwicy + pasOdgalezienia(plan.galezie[0]).wysokosc + APPARATUS_STACK_VERTICAL_GAP;
+      expect(polozenia.y[kotwica + 1]).toBeGreaterThanOrEqual(minimalnie);
+      expect(polozenia.y[kotwica + 1]).toBeLessThan(minimalnie + 8);
+      expect(polozenia.y.every((y) => y % 8 === 0)).toBe(true);
+      expect(polozenia.y.slice(0, kotwica + 1)).toEqual(bez.y.slice(0, kotwica + 1));
+      expect(zGaleziami.mainStack.height).toBe(polozenia.height);
+      expect(zGaleziami.mainStack.height).toBeGreaterThan(bezGalezi.mainStack.height);
+      expect(zGaleziami.mainStack.width).toBe(bezGalezi.mainStack.width);
+    });
   }
 });

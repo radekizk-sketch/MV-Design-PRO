@@ -78,6 +78,20 @@
     "terminals": [
       {
         "branch_id": null,
+        "element_id": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
+        "port_id": "trunk_start",
+        "status": "ZAJETY",
+        "trunk_id": "corridor/28d470d9243210a7262bac385a7b3499/run"
+      },
+      {
+        "branch_id": null,
+        "element_id": "bus/bd3f27fdf5ba068251883aac77eaa6c0/downstream",
+        "port_id": "trunk_end",
+        "status": "OTWARTY",
+        "trunk_id": "corridor/28d470d9243210a7262bac385a7b3499/run"
+      },
+      {
+        "branch_id": null,
         "element_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
         "port_id": "trunk_start",
         "status": "ZAJETY",
@@ -85,7 +99,7 @@
       },
       {
         "branch_id": null,
-        "element_id": "bus/bd3f27fdf5ba068251883aac77eaa6c0/downstream",
+        "element_id": "bus/a2ce629b15ab45b245bc6c723e6e7042/downstream",
         "port_id": "trunk_end",
         "status": "OTWARTY",
         "trunk_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
@@ -93,14 +107,38 @@
     ],
     "trunks": [
       {
+        "corridor_ref": "corridor/28d470d9243210a7262bac385a7b3499/run",
+        "corridor_type": "radial",
+        "embedded_objects": [],
+        "no_point_refs": [],
+        "segments": [
+          "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment"
+        ],
+        "terminals": [
+          {
+            "branch_id": null,
+            "element_id": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
+            "port_id": "trunk_start",
+            "status": "ZAJETY",
+            "trunk_id": "corridor/28d470d9243210a7262bac385a7b3499/run"
+          },
+          {
+            "branch_id": null,
+            "element_id": "bus/bd3f27fdf5ba068251883aac77eaa6c0/downstream",
+            "port_id": "trunk_end",
+            "status": "OTWARTY",
+            "trunk_id": "corridor/28d470d9243210a7262bac385a7b3499/run"
+          }
+        ]
+      },
+      {
         "corridor_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
         "corridor_type": "radial",
         "embedded_objects": [],
         "no_point_refs": [],
         "segments": [
           "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_L",
-          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R",
-          "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment"
+          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R"
         ],
         "terminals": [
           {
@@ -112,7 +150,7 @@
           },
           {
             "branch_id": null,
-            "element_id": "bus/bd3f27fdf5ba068251883aac77eaa6c0/downstream",
+            "element_id": "bus/a2ce629b15ab45b245bc6c723e6e7042/downstream",
             "port_id": "trunk_end",
             "status": "OTWARTY",
             "trunk_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01"
@@ -174,9 +212,12 @@
             "designation": "Q1",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001::dev::0",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -215,9 +256,20 @@
             "designation": "Q0",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001::dev::1",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/apparatus",
+            "naped": "SILNIKOWY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -245,9 +297,17 @@
             "designation": "T1",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001::dev::2",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -285,9 +345,12 @@
             "designation": "PF1",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001::dev::3",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "OFF_PATH",
@@ -311,9 +374,12 @@
             "designation": "GK",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001::dev::4",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -341,9 +407,14 @@
             "designation": "T2",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001::dev::5",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N"
+            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -366,7 +437,7 @@
         "protection_codes": [
           "51",
           "50",
-          "67N",
+          "51N",
           "ZS",
           "50BF",
           "79",
@@ -385,7 +456,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -433,9 +505,12 @@
             "designation": "Q1",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002::dev::0",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -474,9 +549,20 @@
             "designation": "Q0",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002::dev::1",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [
+              "51",
+              "50",
+              "51N",
+              "50BF",
+              "79",
+              "SCO",
+              "SPZ/SCO"
+            ],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/apparatus",
+            "naped": "SILNIKOWY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -504,9 +590,17 @@
             "designation": "T1",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002::dev::2",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51",
+              "50",
+              "ZS",
+              "50BF"
+            ],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "MIDSTREAM",
@@ -544,9 +638,12 @@
             "designation": "PF1",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002::dev::3",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "VOLTAGE_INDICATOR",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "OFF_PATH",
@@ -570,9 +667,12 @@
             "designation": "GK",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002::dev::4",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -600,9 +700,14 @@
             "designation": "T2",
             "device_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002::dev::5",
             "earthing_role": null,
+            "funkcje_eaz_wylaczajace": [],
+            "funkcje_eaz_zasilane": [
+              "51N"
+            ],
             "is_controllable": false,
             "kind": "CORE_BALANCE_CT",
             "linked_ref": null,
+            "naped": null,
             "odgalezienie": null,
             "operating_state": null,
             "placement": "DOWNSTREAM",
@@ -625,7 +730,7 @@
         "protection_codes": [
           "51",
           "50",
-          "67N",
+          "51N",
           "ZS",
           "50BF",
           "79",
@@ -644,7 +749,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -692,7 +798,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -726,8 +833,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field/001",
@@ -741,7 +847,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -775,8 +882,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field/002",
@@ -790,7 +896,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -824,8 +931,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field/003",
@@ -839,7 +945,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -896,7 +1003,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -937,7 +1045,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -1716,10 +1825,20 @@
         "name": "Magistrala 01",
         "ordered_segment_refs": [
           "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_L",
-          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R",
-          "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment"
+          "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R"
         ],
         "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
+        "tags": []
+      },
+      {
+        "corridor_type": "radial",
+        "id": "81c6a999-2daf-5073-804c-a852c7d7849c",
+        "meta": {},
+        "name": "Odgałęzienie SN kablowe",
+        "ordered_segment_refs": [
+          "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment"
+        ],
+        "ref_id": "corridor/28d470d9243210a7262bac385a7b3499/run",
         "tags": []
       }
     ],
@@ -1756,14 +1875,26 @@
           {
             "order": 2,
             "segment_ref": "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R"
-          },
-          {
-            "order": 3,
-            "segment_ref": "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment"
           }
         ],
         "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
         "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+        "stations": []
+      },
+      {
+        "branch_origin_station_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/002",
+        "id": "corridor/28d470d9243210a7262bac385a7b3499/run",
+        "name": "Odgałęzienie SN kablowe",
+        "parent_run_ref": null,
+        "run_kind": "branch",
+        "segments": [
+          {
+            "order": 1,
+            "segment_ref": "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment"
+          }
+        ],
+        "starting_bay_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field/002",
+        "starting_port_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
         "stations": []
       }
     ],

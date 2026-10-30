@@ -80,6 +80,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # „Dwa aparaty pola o tym samym oznaczeniu" == ten sam warunek (jedna reguła
     # `enm.oznaczenia_aparatow_pola`, rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC).
     "W063": "bay.apparatus_designation_duplicate",
+    # „Funkcja 67N bez potwierdzonego źródła napięcia zerowego 3U₀" == ten sam warunek (jedna
+    # reguła `enm.zrodlo_napiecia_zerowego`, decyzja właściciela 2026-10-29).
+    "W064": "bay.earth_fault_u0_source_unconfirmed",
     # „Sekcja GPZ bez zasilania" (wyspa bez źródła z sekcją szyn SN GPZ, karta GPZ-MODEL)
     # == ten sam warunek (jeden predykat wyspy `enm.topology.derive`).
     "E065": "source.gpz_section_unsupplied",

@@ -54,6 +54,11 @@ from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
 from enm.pole_liniowe_gpz import oceny_pol_liniowych
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
 from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
+from enm.zrodlo_napiecia_zerowego import (
+    funkcje_bez_zrodla_u0,
+    funkcje_warunkowe_szablonu_pola,
+    zrodlo_u0_pola,
+)
 from network_model.core.uziemienie import TypPunktuNeutralnego
 from pydantic import BaseModel
 
@@ -168,14 +173,29 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     # Karta UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 2): ocena pól liniowych GPZ wg klasy pola —
     # funkcje EAZ, sieć za polem, typ modułów, pomiar AJEE (`enm.pole_liniowe_gpz`, jedno źródło
     # dla walidatora W053–W057 i karty pola).
+    enm_json = enm.model_dump(mode="json")
     oceny_pol = (
         {
             ocena.bay_ref: asdict(ocena, dict_factory=_slownik_json)
-            for ocena in oceny_pol_liniowych(enm.model_dump(mode="json"))
+            for ocena in oceny_pol_liniowych(enm_json)
         }
         if any(bay.gpz_section_id for bay in enm.bays)
         else {}
     )
+    # Źródło napięcia zerowego 3U₀ pola (decyzja właściciela 2026-10-29,
+    # `enm.zrodlo_napiecia_zerowego`): rozstrzygnięcie powiązania i kandydaci dla pola, którego
+    # szablon niesie funkcję warunkową (67N) albo które ma powiązanie lub funkcję zapisaną —
+    # wejście kontrolki powiązania na karcie pola (ta sama reguła co operacja i walidator W064).
+    zrodla_u0: dict[str, dict[str, Any]] = {}
+    for rekord_pola in enm_json.get("bays") or []:
+        if (
+            funkcje_warunkowe_szablonu_pola(rekord_pola)
+            or rekord_pola.get("zrodlo_u0_ref")
+            or funkcje_bez_zrodla_u0(rekord_pola.get("protection_codes") or [])
+        ):
+            zrodla_u0[str(rekord_pola.get("ref_id"))] = asdict(
+                zrodlo_u0_pola(enm_json, rekord_pola), dict_factory=_slownik_json
+            )
 
     items: list[dict[str, Any]] = []
     migrated_count = 0
@@ -257,6 +277,9 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             latest_sc_run_id=str(latest_sc_run.id) if latest_sc_run is not None else None,
             latest_pf_run_id=str(latest_pf_run.id) if latest_pf_run is not None else None,
             measurement_chain=measurement_chain,
+            zrodlo_u0_potwierdzone=bool(
+                (zrodla_u0.get(bay.ref_id) or {}).get("potwierdzone", False)
+            ),
         )
 
         canonical_model = BayCanonicalModel(
@@ -289,6 +312,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
                     project_results.model_dump(mode="json") if project_results is not None else None
                 ),
                 "ocena_pola_liniowego": oceny_pol.get(bay.ref_id),
+                "zrodlo_u0": zrodla_u0.get(bay.ref_id),
             }
         )
 
@@ -1056,6 +1080,7 @@ def _build_project_results(
     latest_sc_run_id: str | None,
     latest_pf_run_id: str | None,
     measurement_chain: BayMeasurementChain | None,
+    zrodlo_u0_potwierdzone: bool = False,
 ) -> BayProjectResults | None:
     run_ref = latest_pf_run_id or latest_sc_run_id
     if run_ref is None:
@@ -1084,6 +1109,7 @@ def _build_project_results(
         measurement_chain=measurement_chain,
         sources_by_bus=sources_by_bus,
         transformers_by_bus=transformers_by_bus,
+        zrodlo_u0_potwierdzone=zrodlo_u0_potwierdzone,
     )
     proof_binding = BayProofBinding(
         proof_ref=f"proof:{bay.ref_id}:{run_ref}",
@@ -1257,26 +1283,40 @@ def _build_earth_fault_path(
     measurement_chain: BayMeasurementChain | None,
     sources_by_bus: dict[str, list[Source]],
     transformers_by_bus: dict[str, list[Transformer]],
+    zrodlo_u0_potwierdzone: bool = False,
 ) -> BayEarthFaultPath | None:
-    if measurement_chain is None and not sources_by_bus.get(bay.bus_ref):
+    """Ścieżka zwarcia doziemnego pola. Tor napięcia zerowego i prądu zerowego — z łańcucha
+    pomiarowego pola (encje `Measurement`), a gdy łańcuch go nie niesie — z potwierdzonego
+    źródła 3U₀ pola (`enm.zrodlo_napiecia_zerowego`: przekładnik Ferrantiego pola + powiązanie
+    z uzwojeniem otwartego trójkąta przekładnika pola pomiaru napięcia, ENEA Z.10/Z.11.1/Z.17).
+    Jedna prawda o torze 3U₀ dla przypisania 67N i dla wymagań funkcji pola wytwórcy
+    (`domain.der_protection_functions` — bez toru napięcia zerowego 67N jest kwestią otwartą)."""
+    if (
+        measurement_chain is None
+        and not sources_by_bus.get(bay.bus_ref)
+        and not zrodlo_u0_potwierdzone
+    ):
         return None
     punkt_pola = punkt_przylaczenia_pola(bay)
     transformers = transformers_by_bus.get(punkt_pola, []) if punkt_pola else []
+    prad_zerowy = (
+        measurement_chain.zero_sequence_current_source if measurement_chain is not None else "brak"
+    )
+    napiecie_zerowe = (
+        measurement_chain.zero_sequence_voltage_source if measurement_chain is not None else "brak"
+    )
+    if zrodlo_u0_potwierdzone:
+        if prad_zerowy == "brak":
+            prad_zerowy = "przekladnik_ferrantiego"
+        if napiecie_zerowe == "brak":
+            napiecie_zerowe = "otwarty_trojkat_vt"
     return BayEarthFaultPath(
         neutral_grounding_mode=_resolve_neutral_grounding_mode(
             sources=sources_by_bus.get(bay.bus_ref, []),
             transformers=transformers,
         ),
-        zero_sequence_current_source=(
-            measurement_chain.zero_sequence_current_source
-            if measurement_chain is not None
-            else "brak"
-        ),
-        zero_sequence_voltage_source=(
-            measurement_chain.zero_sequence_voltage_source
-            if measurement_chain is not None
-            else "brak"
-        ),
+        zero_sequence_current_source=prad_zerowy,
+        zero_sequence_voltage_source=napiecie_zerowe,
         closure_path_elements=sorted(
             [bay.bus_ref]
             + [source.ref_id for source in sources_by_bus.get(bay.bus_ref, [])]

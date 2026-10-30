@@ -76,16 +76,15 @@
           "wyjscia_pl": "Blokowanie ZS"
         },
         {
-          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
-          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
-          "kod": "67N",
+          "blok_rysunku": "Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+          "funkcja_pl": "Io> (51N) — ziemnozwarciowe zwłoczne (prąd zerowy)",
+          "kod": "51N",
           "obecna": true,
-          "uwaga": null,
+          "uwaga": "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo",
           "wejscia_pl": [
-            "przekładnik Ferrantiego T2, przekładnia 1/100",
-            "sygnał „Z, Zz”"
+            "przekładnik Ferrantiego T2, przekładnia 1/100"
           ],
-          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "weryfikacja": "INTERPRETACJA",
           "wyjscia_pl": "OW1 → wyłącznik Q0"
         },
         {
@@ -244,6 +243,19 @@
           ],
           "weryfikacja": "INTERPRETACJA",
           "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "obecna": false,
+          "uwaga": null,
+          "wejscia_pl": [
+            "przekładnik Ferrantiego T2, przekładnia 1/100",
+            "sygnał „Z, Zz”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
         }
       ],
       "obwody_wtorne": {
@@ -312,6 +324,26 @@
               }
             ],
             "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+            "funkcja": "51N",
+            "uwaga": "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo",
+            "wejscia": [
+              {
+                "aparat": "T2",
+                "numer": null,
+                "rodzaj": "PRZEKLADNIK_FERRANTIEGO",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
             "wyjscia": [
               "OW1"
             ],
@@ -793,8 +825,8 @@
             "nazwa": "UL1, UL2, UL3, N",
             "obwod": "OKREZNY",
             "sterownik_pola": true,
-            "uwaga": "obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); rysunek pola podaje same oznaczenia faz",
-            "weryfikacja": "INTERPRETACJA",
+            "uwaga": "obwód okrężny napięć szyn: Z.17 (s.97) wyprowadza na obwód „UL1,UL2,UL3,N” uzwojenie II (0,1/√3, 15 VA, kl. 0,5/3P) przekładnika pola pomiaru napięcia sekcji",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
             "znaczenie_pl": "napięcia fazowe szyn sekcji"
           },
           {
@@ -820,8 +852,8 @@
             "nazwa": "Z, Zz",
             "obwod": "OKREZNY",
             "sterownik_pola": false,
-            "uwaga": "rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
-            "weryfikacja": "INTERPRETACJA",
+            "uwaga": "rysunek pola doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III (0,1/3, 15 VA, kl. 3P) w otwartym trójkącie przekładnika pola pomiaru napięcia sekcji — źródło napięcia zerowego 3U₀ (powiązanie wskazuje się w wyposażeniu pola: „Źródło napięcia zerowego 3U₀”)",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
             "znaczenie_pl": "napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia ziemnozwarciowego)"
           }
         ]
@@ -877,25 +909,27 @@
         },
         {
           "co_oceniono": "obecność funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) w polu",
-          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola); źródło 3U₀: ENEA Zeszyt 1 §26.9; Z.10 (s.89) i Z.11.1 (s.91) — wejścia bloku zabezpieczenia ziemnozwarciowego: przekładnik Ferrantiego 1/100 i obwód okrężny „Z, Zz”; Z.17 (s.97) — uzwojenie III przekładnika pola pomiaru napięcia 0,1/3 w otwartym trójkącie na obwód „Z,Zz”",
           "etykieta": {
-            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
-            "semantyka": "ostrzegawcza"
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
           },
           "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
           "kod": "67N",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
-          "obecna": true,
+          "obecna": false,
           "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2",
-          "status": "SPELNIA",
+          "status": "NIE_OCENIONO",
           "wyjasnienie": {
-            "czego_brakuje": [],
-            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "czego_brakuje": [
+              "pole pomiaru napięcia szyn w tej sekcji z przekładnikiem napięciowym o uzwojeniu otwartego trójkąta (ENEA Zeszyt 1, Z.17 s.97; §13 — po jednym polu pomiaru napięcia w każdej sekcji)"
+            ],
+            "przyczyna_pl": "źródło 3U₀ pola „Pole liniowe GPZ 1.1” niepotwierdzone — funkcja 67N nie mierzy napięcia zerowego bez tego źródła (ENEA Zeszyt 1 §26.9; Z.10 (s.89) i Z.11.1 (s.91) — wejścia bloku zabezpieczenia ziemnozwarciowego: przekładnik Ferrantiego 1/100 i obwód okrężny „Z, Zz”; Z.17 (s.97) — uzwojenie III przekładnika pola pomiaru napięcia 0,1/3 w otwartym trójkącie na obwód „Z,Zz”); funkcja nieprzypisana — przypisanie wymaga źródła 3U₀ — powiąż wejście napięcia zerowego pola (obwód okrężny „Z, Zz”) z przekładnikiem napięciowym pola pomiaru napięcia szyn tej sekcji (ENEA Z.17) w wyposażeniu pola na karcie pola — albo usuń funkcję 67N z zestawu funkcji pola",
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): ocena niewykonana"
           },
           "wymog": "OBOWIAZKOWA"
         },
@@ -1378,16 +1412,15 @@
           "wyjscia_pl": "OW1 → wyłącznik Q0"
         },
         {
-          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
-          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
-          "kod": "67N",
+          "blok_rysunku": "Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+          "funkcja_pl": "Io> (51N) — ziemnozwarciowe zwłoczne (prąd zerowy)",
+          "kod": "51N",
           "obecna": true,
-          "uwaga": null,
+          "uwaga": "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo",
           "wejscia_pl": [
-            "przekładnik Ferrantiego T2, przekładnia 1/100",
-            "sygnał „Z, Zz”"
+            "przekładnik Ferrantiego T2, przekładnia 1/100"
           ],
-          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "weryfikacja": "INTERPRETACJA",
           "wyjscia_pl": "OW1 → wyłącznik Q0"
         },
         {
@@ -1497,6 +1530,19 @@
           ],
           "weryfikacja": "INTERPRETACJA",
           "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "obecna": false,
+          "uwaga": null,
+          "wejscia_pl": [
+            "przekładnik Ferrantiego T2, przekładnia 1/100",
+            "sygnał „Z, Zz”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
         },
         {
           "blok_rysunku": "SPZ tSPZ",
@@ -1615,6 +1661,26 @@
               }
             ],
             "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+            "funkcja": "51N",
+            "uwaga": "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo",
+            "wejscia": [
+              {
+                "aparat": "T2",
+                "numer": null,
+                "rodzaj": "PRZEKLADNIK_FERRANTIEGO",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
             "wyjscia": [
               "OW1"
             ],
@@ -2096,8 +2162,8 @@
             "nazwa": "UL1, UL2, UL3, N",
             "obwod": "OKREZNY",
             "sterownik_pola": true,
-            "uwaga": "obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); rysunek pola podaje same oznaczenia faz",
-            "weryfikacja": "INTERPRETACJA",
+            "uwaga": "obwód okrężny napięć szyn: Z.17 (s.97) wyprowadza na obwód „UL1,UL2,UL3,N” uzwojenie II (0,1/√3, 15 VA, kl. 0,5/3P) przekładnika pola pomiaru napięcia sekcji",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
             "znaczenie_pl": "napięcia fazowe szyn sekcji"
           },
           {
@@ -2123,8 +2189,8 @@
             "nazwa": "Z, Zz",
             "obwod": "OKREZNY",
             "sterownik_pola": false,
-            "uwaga": "rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
-            "weryfikacja": "INTERPRETACJA",
+            "uwaga": "rysunek pola doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III (0,1/3, 15 VA, kl. 3P) w otwartym trójkącie przekładnika pola pomiaru napięcia sekcji — źródło napięcia zerowego 3U₀ (powiązanie wskazuje się w wyposażeniu pola: „Źródło napięcia zerowego 3U₀”)",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
             "znaczenie_pl": "napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia ziemnozwarciowego)"
           }
         ]
@@ -2180,25 +2246,27 @@
         },
         {
           "co_oceniono": "obecność funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) w polu",
-          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola); źródło 3U₀: ENEA Zeszyt 1 §26.9; Z.10 (s.89) i Z.11.1 (s.91) — wejścia bloku zabezpieczenia ziemnozwarciowego: przekładnik Ferrantiego 1/100 i obwód okrężny „Z, Zz”; Z.17 (s.97) — uzwojenie III przekładnika pola pomiaru napięcia 0,1/3 w otwartym trójkącie na obwód „Z,Zz”",
           "etykieta": {
-            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
-            "semantyka": "ostrzegawcza"
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
           },
           "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
           "kod": "67N",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja wymagana w klasie: pole dedykowane modułom wytwarzania",
-          "obecna": true,
+          "obecna": false,
           "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 pkt 2",
-          "status": "SPELNIA",
+          "status": "NIE_OCENIONO",
           "wyjasnienie": {
-            "czego_brakuje": [],
-            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "czego_brakuje": [
+              "pole pomiaru napięcia szyn w tej sekcji z przekładnikiem napięciowym o uzwojeniu otwartego trójkąta (ENEA Zeszyt 1, Z.17 s.97; §13 — po jednym polu pomiaru napięcia w każdej sekcji)"
+            ],
+            "przyczyna_pl": "źródło 3U₀ pola „Pole liniowe GPZ 1.1” niepotwierdzone — funkcja 67N nie mierzy napięcia zerowego bez tego źródła (ENEA Zeszyt 1 §26.9; Z.10 (s.89) i Z.11.1 (s.91) — wejścia bloku zabezpieczenia ziemnozwarciowego: przekładnik Ferrantiego 1/100 i obwód okrężny „Z, Zz”; Z.17 (s.97) — uzwojenie III przekładnika pola pomiaru napięcia 0,1/3 w otwartym trójkącie na obwód „Z,Zz”); funkcja nieprzypisana — przypisanie wymaga źródła 3U₀ — powiąż wejście napięcia zerowego pola (obwód okrężny „Z, Zz”) z przekładnikiem napięciowym pola pomiaru napięcia szyn tej sekcji (ENEA Z.17) w wyposażeniu pola na karcie pola — albo usuń funkcję 67N z zestawu funkcji pola",
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole dedykowane modułom wytwarzania: ocena niewykonana"
           },
           "wymog": "OBOWIAZKOWA"
         },
@@ -2665,17 +2733,16 @@
           "wyjscia_pl": "OW1, OW2 → wyłącznik Q0"
         },
         {
-          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
-          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
-          "kod": "67N",
+          "blok_rysunku": "Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+          "funkcja_pl": "Io> (51N) — ziemnozwarciowe zwłoczne (prąd zerowy)",
+          "kod": "51N",
           "obecna": true,
-          "uwaga": "wyjścia OW1, OW2 z komórek t1, t2 — linie widoczne na rysunku; „Blok. ZW” wychodzi z nieopisanej komórki bloku zabezpieczenia ziemnozwarciowego — przypisanie tej funkcji jest interpretacją",
+          "uwaga": "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo",
           "wejscia_pl": [
-            "przekładnik Ferrantiego T2, przekładnia 1/100",
-            "sygnał „Z, Zz”"
+            "przekładnik Ferrantiego T2, przekładnia 1/100"
           ],
           "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "OW1, OW2, Blok. ZW → wyłącznik Q0"
+          "wyjscia_pl": "OW1, OW2 → wyłącznik Q0"
         },
         {
           "blok_rysunku": null,
@@ -2684,7 +2751,7 @@
           "obecna": true,
           "uwaga": null,
           "wejscia_pl": [
-            "rysunek wzorca (ENEA Zeszyt 1, Z.10 (s.89); ENEA Zeszyt 1, §13 (druk s.23–25)) nie rysuje tej funkcji — obwód pomiarowy i wyjście dobiera projektant"
+            "rysunek wzorca (ENEA Zeszyt 1, Z.10 (s.89); ENEA Zeszyt 1, §13 (druk s.23–26)) nie rysuje tej funkcji — obwód pomiarowy i wyjście dobiera projektant"
           ],
           "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
           "wyjscia_pl": "nieopisane we wzorcu"
@@ -2749,6 +2816,19 @@
           ],
           "weryfikacja": "INTERPRETACJA",
           "wyjscia_pl": "ZW → wyłącznik Q0"
+        },
+        {
+          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "obecna": false,
+          "uwaga": "wyjścia OW1, OW2 z komórek t1, t2 — linie widoczne na rysunku; „Blok. ZW” wychodzi z nieopisanej komórki bloku zabezpieczenia ziemnozwarciowego — przypisanie tej funkcji jest interpretacją",
+          "wejscia_pl": [
+            "przekładnik Ferrantiego T2, przekładnia 1/100",
+            "sygnał „Z, Zz”"
+          ],
+          "weryfikacja": "INTERPRETACJA",
+          "wyjscia_pl": "OW1, OW2, Blok. ZW → wyłącznik Q0"
         }
       ],
       "obwody_wtorne": {
@@ -2793,6 +2873,27 @@
               }
             ],
             "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1",
+              "OW2"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+            "funkcja": "51N",
+            "uwaga": "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo",
+            "wejscia": [
+              {
+                "aparat": "T2",
+                "numer": null,
+                "rodzaj": "PRZEKLADNIK_FERRANTIEGO",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
             "wyjscia": [
               "OW1",
               "OW2"
@@ -3091,8 +3192,8 @@
             "nazwa": "UL1, UL2, UL3, N",
             "obwod": "OKREZNY",
             "sterownik_pola": true,
-            "uwaga": "obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); rysunek pola podaje same oznaczenia faz",
-            "weryfikacja": "INTERPRETACJA",
+            "uwaga": "obwód okrężny napięć szyn: Z.17 (s.97) wyprowadza na obwód „UL1,UL2,UL3,N” uzwojenie II (0,1/√3, 15 VA, kl. 0,5/3P) przekładnika pola pomiaru napięcia sekcji",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
             "znaczenie_pl": "napięcia fazowe szyn sekcji"
           },
           {
@@ -3118,8 +3219,8 @@
             "nazwa": "Z, Zz",
             "obwod": "OKREZNY",
             "sterownik_pola": false,
-            "uwaga": "rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
-            "weryfikacja": "INTERPRETACJA",
+            "uwaga": "rysunek pola doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III (0,1/3, 15 VA, kl. 3P) w otwartym trójkącie przekładnika pola pomiaru napięcia sekcji — źródło napięcia zerowego 3U₀ (powiązanie wskazuje się w wyposażeniu pola: „Źródło napięcia zerowego 3U₀”)",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
             "znaczenie_pl": "napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia ziemnozwarciowego)"
           }
         ]
@@ -3175,25 +3276,27 @@
         },
         {
           "co_oceniono": "obecność funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) w polu",
-          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola); źródło 3U₀: ENEA Zeszyt 1 §26.9; Z.10 (s.89) i Z.11.1 (s.91) — wejścia bloku zabezpieczenia ziemnozwarciowego: przekładnik Ferrantiego 1/100 i obwód okrężny „Z, Zz”; Z.17 (s.97) — uzwojenie III przekładnika pola pomiaru napięcia 0,1/3 w otwartym trójkącie na obwód „Z,Zz”",
           "etykieta": {
-            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
-            "semantyka": "ostrzegawcza"
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
           },
           "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
           "kod": "67N",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
-          "obecna": true,
+          "obecna": false,
           "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 2",
-          "status": "SPELNIA",
+          "status": "NIE_OCENIONO",
           "wyjasnienie": {
-            "czego_brakuje": [],
-            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "czego_brakuje": [
+              "pole pomiaru napięcia szyn w tej sekcji z przekładnikiem napięciowym o uzwojeniu otwartego trójkąta (ENEA Zeszyt 1, Z.17 s.97; §13 — po jednym polu pomiaru napięcia w każdej sekcji)"
+            ],
+            "przyczyna_pl": "źródło 3U₀ pola „Pole liniowe GPZ 1.1” niepotwierdzone — funkcja 67N nie mierzy napięcia zerowego bez tego źródła (ENEA Zeszyt 1 §26.9; Z.10 (s.89) i Z.11.1 (s.91) — wejścia bloku zabezpieczenia ziemnozwarciowego: przekładnik Ferrantiego 1/100 i obwód okrężny „Z, Zz”; Z.17 (s.97) — uzwojenie III przekładnika pola pomiaru napięcia 0,1/3 w otwartym trójkącie na obwód „Z,Zz”); funkcja nieprzypisana — przypisanie wymaga źródła 3U₀ — powiąż wejście napięcia zerowego pola (obwód okrężny „Z, Zz”) z przekładnikiem napięciowym pola pomiaru napięcia szyn tej sekcji (ENEA Z.17) w wyposażeniu pola na karcie pola — albo usuń funkcję 67N z zestawu funkcji pola",
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania): kryterium spełnione — dowód niepełny"
+            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole odbiorcze (bez modułów wytwarzania): ocena niewykonana"
           },
           "wymog": "OBOWIAZKOWA"
         },
@@ -3489,16 +3592,15 @@
           "wyjscia_pl": "Blokowanie ZS"
         },
         {
-          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
-          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
-          "kod": "67N",
+          "blok_rysunku": "Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+          "funkcja_pl": "Io> (51N) — ziemnozwarciowe zwłoczne (prąd zerowy)",
+          "kod": "51N",
           "obecna": true,
-          "uwaga": null,
+          "uwaga": "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo",
           "wejscia_pl": [
-            "przekładnik Ferrantiego T2, przekładnia 1/100",
-            "sygnał „Z, Zz”"
+            "przekładnik Ferrantiego T2, przekładnia 1/100"
           ],
-          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "weryfikacja": "INTERPRETACJA",
           "wyjscia_pl": "OW1 → wyłącznik Q0"
         },
         {
@@ -3634,6 +3736,19 @@
           "wyjscia_pl": "Blok. ZW → wyłącznik Q0"
         },
         {
+          "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
+          "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
+          "kod": "67N",
+          "obecna": false,
+          "uwaga": null,
+          "wejscia_pl": [
+            "przekładnik Ferrantiego T2, przekładnia 1/100",
+            "sygnał „Z, Zz”"
+          ],
+          "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+          "wyjscia_pl": "OW1 → wyłącznik Q0"
+        },
+        {
           "blok_rysunku": "Sterownik pola",
           "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
           "kod": "SCO",
@@ -3725,6 +3840,26 @@
               }
             ],
             "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
+            "wyjscia": [
+              "OW1"
+            ],
+            "wylacznik": "Q0"
+          },
+          {
+            "blok_rysunku": "Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io)",
+            "funkcja": "51N",
+            "uwaga": "linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo",
+            "wejscia": [
+              {
+                "aparat": "T2",
+                "numer": null,
+                "rodzaj": "PRZEKLADNIK_FERRANTIEGO",
+                "sygnal": null,
+                "uwaga": null,
+                "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+              }
+            ],
+            "weryfikacja": "INTERPRETACJA",
             "wyjscia": [
               "OW1"
             ],
@@ -4206,8 +4341,8 @@
             "nazwa": "UL1, UL2, UL3, N",
             "obwod": "OKREZNY",
             "sterownik_pola": true,
-            "uwaga": "obwód okrężny napięć z przekładnika szyn (pole pomiaru napięcia, Z.17); rysunek pola podaje same oznaczenia faz",
-            "weryfikacja": "INTERPRETACJA",
+            "uwaga": "obwód okrężny napięć szyn: Z.17 (s.97) wyprowadza na obwód „UL1,UL2,UL3,N” uzwojenie II (0,1/√3, 15 VA, kl. 0,5/3P) przekładnika pola pomiaru napięcia sekcji",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
             "znaczenie_pl": "napięcia fazowe szyn sekcji"
           },
           {
@@ -4233,8 +4368,8 @@
             "nazwa": "Z, Zz",
             "obwod": "OKREZNY",
             "sterownik_pola": false,
-            "uwaga": "rysunek doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); napięcie zerowe — wniosek z kierunkowości bloku",
-            "weryfikacja": "INTERPRETACJA",
+            "uwaga": "rysunek pola doprowadza obwód do bloku zabezpieczenia ziemnozwarciowego obok przekładnika Ferrantiego (Io); Z.17 (s.97) wyprowadza na obwód „Z,Zz” uzwojenie III (0,1/3, 15 VA, kl. 3P) w otwartym trójkącie przekładnika pola pomiaru napięcia sekcji — źródło napięcia zerowego 3U₀ (powiązanie wskazuje się w wyposażeniu pola: „Źródło napięcia zerowego 3U₀”)",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
             "znaczenie_pl": "napięcie zerowe sieci z obwodu okrężnego (wejście U0 zabezpieczenia ziemnozwarciowego)"
           }
         ]
@@ -4290,25 +4425,27 @@
         },
         {
           "co_oceniono": "obecność funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) w polu",
-          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
+          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola); źródło 3U₀: ENEA Zeszyt 1 §26.9; Z.10 (s.89) i Z.11.1 (s.91) — wejścia bloku zabezpieczenia ziemnozwarciowego: przekładnik Ferrantiego 1/100 i obwód okrężny „Z, Zz”; Z.17 (s.97) — uzwojenie III przekładnika pola pomiaru napięcia 0,1/3 w otwartym trójkącie na obwód „Z,Zz”",
           "etykieta": {
-            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
-            "semantyka": "ostrzegawcza"
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
           },
           "funkcja_pl": "Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)",
           "kod": "67N",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
-          "obecna": true,
+          "obecna": false,
           "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 2",
-          "status": "SPELNIA",
+          "status": "NIE_OCENIONO",
           "wyjasnienie": {
-            "czego_brakuje": [],
-            "przyczyna_pl": "funkcja zadeklarowana w polu",
+            "czego_brakuje": [
+              "pole pomiaru napięcia szyn w tej sekcji z przekładnikiem napięciowym o uzwojeniu otwartego trójkąta (ENEA Zeszyt 1, Z.17 s.97; §13 — po jednym polu pomiaru napięcia w każdej sekcji)"
+            ],
+            "przyczyna_pl": "źródło 3U₀ pola „Pole liniowe GPZ 1.1” niepotwierdzone — funkcja 67N nie mierzy napięcia zerowego bez tego źródła (ENEA Zeszyt 1 §26.9; Z.10 (s.89) i Z.11.1 (s.91) — wejścia bloku zabezpieczenia ziemnozwarciowego: przekładnik Ferrantiego 1/100 i obwód okrężny „Z, Zz”; Z.17 (s.97) — uzwojenie III przekładnika pola pomiaru napięcia 0,1/3 w otwartym trójkącie na obwód „Z,Zz”); funkcja nieprzypisana — przypisanie wymaga źródła 3U₀ — powiąż wejście napięcia zerowego pola (obwód okrężny „Z, Zz”) z przekładnikiem napięciowym pola pomiaru napięcia szyn tej sekcji (ENEA Z.17) w wyposażeniu pola na karcie pola — albo usuń funkcję 67N z zestawu funkcji pola",
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+            "zdanie_pl": "Ocena obecności funkcji Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) — funkcja wymagana w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): ocena niewykonana"
           },
           "wymog": "OBOWIAZKOWA"
         },

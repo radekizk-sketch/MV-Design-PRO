@@ -38,6 +38,7 @@ from enm.pole_liniowe_gpz import (
     OcenaFunkcjiPola,
     OcenaPolaLiniowego,
 )
+from enm.zrodlo_napiecia_zerowego import KandydatZrodlaU0, ZrodloU0Pola
 from network_model.catalog.bay_templates import (
     PozycjaProfiluEaz,
     WymogFunkcjiEaz,
@@ -79,6 +80,9 @@ def test_lustro_frontu_ma_pola_dataclass_backendu():
         ("NiezgodnoscPolaLiniowego", NiezgodnoscPolaLiniowego),
         ("ObwodFunkcjiPola", ObwodFunkcjiPola),
         ("NapiecieZwrotnePola", NapiecieZwrotnePola),
+        # Decyzja właściciela 2026-10-29 pkt 4: źródło 3U₀ pola (kontrolka powiązania na karcie).
+        ("ZrodloU0Pola", ZrodloU0Pola),
+        ("KandydatZrodlaU0", KandydatZrodlaU0),
     ):
         assert _pola_interfejsu(interfejs) == [f.name for f in dataclasses.fields(klasa)], interfejs
 
@@ -156,6 +160,14 @@ def test_fikstura_pokrywa_iloczyn_cech():
     assert all(n["akcja_pl"] for o in oceny.values() for n in o["niezgodnosci"])
     statusy = {f["status"] for o in oceny.values() for f in o["oceny_funkcji"]}
     assert {"SPELNIA", "NIE_SPELNIA", "NIE_DOTYCZY"} <= statusy
+    # 67N bez potwierdzonego źródła 3U₀ (sceny bez pola pomiaru napięcia Z.17) — nieoceniona.
+    assert "NIE_OCENIONO" in statusy
+    assert all(
+        f["status"] == "NIE_OCENIONO" and f["wyjasnienie"]["czego_brakuje"]
+        for o in oceny.values()
+        for f in o["oceny_funkcji"]
+        if f["kod"] == "67N"
+    )
     assert statusy & {"BRAK_DOWODU", "NIEJEDNOZNACZNY"}
 
 

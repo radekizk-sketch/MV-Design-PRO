@@ -5,7 +5,7 @@ wszystkie z liścia `network_model.catalog.bay_templates`:
 
 * WYKONANIE ŁĄCZNIKÓW × IZOLACJA (W050, ``pole.wykonanie_lacznikow_niezgodne_z_izolacja``) —
   rozdzielnica z izolacją powietrzną dopuszcza wyłącznie wyłącznik stały z odłącznikiem
-  szynowym albo wyłącznik poziomo wysuwny (ENEA Zeszyt 1, §13, druk s.23–25). Nośniki: szablon
+  szynowym albo wyłącznik poziomo wysuwny (ENEA Zeszyt 1, §13, druk s.23–26). Nośniki: szablon
   pola (`Bay.bay_template_ref` → `BayTemplate.wykonanie_lacznikow`) i rodzina rozdzielnicy
   (`Bay.switchgear_family_ref` → `SwitchgearFamily.insulation_type` — jedno źródło medium
   izolacyjnego pola);

@@ -1607,7 +1607,8 @@
         "bay_template_ref",
         "devices",
         "klasa_pola",
-        "mode"
+        "mode",
+        "zrodlo_u0_ref"
       ],
       "zagniezdzone": {
         "devices": {

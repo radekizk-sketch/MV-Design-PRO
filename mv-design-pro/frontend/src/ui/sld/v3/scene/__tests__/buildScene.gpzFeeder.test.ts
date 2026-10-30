@@ -38,7 +38,7 @@ import {
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
-import { junctionDotGaps } from '../crossings';
+import { interiorCrossings, junctionDotGaps } from '../crossings';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -89,21 +89,28 @@ describe('feedery z pól GPZ — gpzFeeder.enm (wspólne pole, stacje na obu ci�
     });
   }
 
-  it('kanon dedykowanych pól: feeder z WŁASNEGO pola (inna kolumna X niż magistrala); styk zejścia feederu z kablem magistrali = węzeł T z kropką (0 luk)', () => {
+  it('kanon dedykowanych pól: feeder z WŁASNEGO pola (inna kolumna X niż magistrala); zejście feederu przez kabel magistrali = skrzyżowanie bez połączenia (mostek), zero kropek T', () => {
     const scene = buildSceneV3(feederEnm, 2);
-    // SCHEMAT-10 S7-P2 (V12K-137): zejście feederu z własnego pola i tak
-    // przecina poziomy kabel magistrali — S7-P2 zamienia to na węzeł T
-    // (kabel magistrali rozcięty w punkcie styku, kropka `junction`), zamiast
-    // dawnego przecięcia/mostka. Golden przepisany: intencja „feeder z własnego
-    // pola" żyje w asercjach kolumn X niżej; tu dowodzimy, że kropka jest na
-    // REALNYM węźle tras (junction_dot_probe: 0 luk), a nie fabrykowana.
+    // Karta UX-04/POLE-LINIOWE-WZORZEC (korekta właściciela 2026-10-29 pkt 8: każde połączenie
+    // na kanwie ma odpowiednik w modelu). Feeder z pola 002 i magistrala z pola 001 to dwa
+    // RÓŻNE pola GPZ — w modelu nie mają wspólnego węzła, więc przecięcie pionu feederu
+    // z poziomem magistrali jest skrzyżowaniem bez połączenia (mostek §22.1), a nie węzłem T.
+    // Dawna wersja tego testu (S7-P2, V12K-137) wymagała tu kropki `junction` — fikcyjnego
+    // połączenia dwóch pól; intencja „feeder z własnego pola" zostaje w asercjach kolumn X
+    // niżej, intencja „0 luk kropek" — w `junctionDotGaps`.
+    const trunkRef = allCorridorSegmentRefs(feederEnm).find((r) => !r.includes('branch_segment'))!;
+    const feederRef = allCorridorSegmentRefs(feederEnm).find((r) => r.includes('branch_segment'))!;
     expect(junctionDotGaps(scene, SYMBOL_DEFS)).toHaveLength(0);
-    expect(scene.symbols.filter((s) => s.symbolId === 'junction').length).toBeGreaterThan(0);
+    expect(scene.symbols.filter((s) => s.symbolId === 'junction')).toEqual([]);
+    const przeciecia = interiorCrossings(scene.segments);
+    expect(
+      przeciecia.some((c) => c.vOwnerRef === feederRef && c.hOwnerRef === trunkRef),
+      'pion feederu krzyżuje kabel magistrali (mostek), bez rozcięcia magistrali',
+    ).toBe(true);
+    expect(scene.segments.some((s) => (s.meta?.ownerRef ?? '').startsWith(`${trunkRef}#tee-`))).toBe(false);
     // Pion feederu startuje w porcie pola 002 — X różny od portu pola 001
     // (magistrali). Porty odczytane z PIERWSZYCH wierzchołków tras obu
     // ciągów (kawałek 0 każdego ciągu zaczyna się w porcie jego pola).
-    const trunkRef = allCorridorSegmentRefs(feederEnm).find((r) => !r.includes('branch_segment'))!;
-    const feederRef = allCorridorSegmentRefs(feederEnm).find((r) => r.includes('branch_segment'))!;
     const trunkStart = scene.segments.find((s) => s.meta?.ownerRef === trunkRef)!.points[0];
     const feederStart = scene.segments.find((s) => s.meta?.ownerRef === feederRef)!.points[0];
     expect(feederStart.x).not.toBe(trunkStart.x);

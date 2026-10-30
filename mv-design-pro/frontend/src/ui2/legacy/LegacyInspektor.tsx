@@ -42,9 +42,17 @@ export function LegacyInspektor({ fallback }: LegacyInspektorProps) {
   if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
     if (!panelNadOknem) return <WorkspaceSurfaceRouter region="panel" />;
     return (
-      // Jedno przewijanie: sekcje obiektu i okno techniczne mają naturalną wysokość
-      // (kolumna flex ściskałaby okno pod paskiem przy 900 px wysokości ekranu).
-      <div className="h-full min-h-0 overflow-y-auto" data-testid="inspektor-panel-nad-oknem">
+      // Jedno przewijanie — treść inspektora (`mvd-inspector-tresc`): sekcje obiektu i okno
+      // techniczne mają naturalną wysokość (kolumna flex ściskałaby okno pod paskiem przy
+      // 900 px wysokości ekranu). Kontener NIE ma własnej wysokości ani przewijania: okna
+      // E-10…E-15 są kolumnami `h-full` z ciałem `flex-1 overflow-auto`, więc kontener
+      // o wysokości kadru (dawne `h-full overflow-y-auto`) nadawał oknu wysokość kadru pod
+      // panelem elementu — przewijał się kontener, a w nim ciało okna. Pomiar 2026-10-29
+      // (UX-04, e2e okna pola Z.10/Z.11.1): ocena pola w trzecim zagnieżdżonym przewijaniu
+      // (sekcje karty pola), ostatni wiersz ucięty pod ramką sekcji przy każdej wysokości
+      // okna. Przypięte: e2e `ux04-pole-liniowe-zrzuty-screenshot.spec.ts`
+      // (`jednoPrzewijanieInspektora`) i `legacyInspektorPanelNadOknem.test.tsx`.
+      <div data-testid="inspektor-panel-nad-oknem">
         <PanelElementuKanwy stan={panelNadOknem} />
         <WorkspaceSurfaceRouter region="panel" />
       </div>

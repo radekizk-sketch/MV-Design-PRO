@@ -1957,5 +1957,70 @@
       "T5",
       "T6"
     ]
+  },
+  {
+    "aparaty": [
+      {
+        "designation": "Q1",
+        "kind": "THREE_POSITION_SWITCH",
+        "placement": "UPSTREAM",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "szyna"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "odplyw"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "PF1",
+        "kind": "VOLTAGE_INDICATOR",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "odplyw"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "GK1",
+        "kind": "CABLE_HEAD",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "we",
+            "wezel": "odplyw"
+          },
+          {
+            "port_id": "wy",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      },
+      {
+        "designation": "T1",
+        "kind": "VT",
+        "placement": "OFF_PATH",
+        "ports": [
+          {
+            "port_id": "przylacze",
+            "wezel": "pn1"
+          }
+        ],
+        "render_variant": "qet_en60617"
+      }
+    ],
+    "nazwa": "bay_template_gpz_pomiar_napiecia_enea_z17",
+    "poza_torem_glownym": [
+      "GK1",
+      "T1"
+    ]
   }
 ]

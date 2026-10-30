@@ -11,6 +11,9 @@
  * {każdy obecny w fikstorze}. Wyrocznia: rekordy fikstury (każdy wiersz funkcji niesie status
  * RAZEM z kryterium, podstawą, przyczyną i dowodem — status nigdy nie stoi sam).
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -125,5 +128,57 @@ describe('OcenaPolaLiniowegoGpz — ocena z modelu odczytu pola', () => {
     );
     expect(PRZYPADKI.some((p) => (p.ocena.obwody_funkcji ?? []).some((o) => o.blok_rysunku === null))).toBe(true);
     expect(PRZYPADKI.some((p) => (p.ocena.obwody_funkcji ?? []).some((o) => !o.obecna))).toBe(true);
+  });
+});
+
+/**
+ * Układ tabel oceny w wąskim gospodarzu (inspektor 340–560 px). Pomiar przed naprawą: tabele
+ * czterech i pięciu kolumn ze zdaniami w sekcji ok. 300 px — tekst komórek wychodził poza
+ * komórkę i nakładał się na kolumnę obok. Naprawa (`ocenaPolaLiniowego.css`): kontener
+ * `inline-size`, w wąskim kontenerze wiersz jako blok z nazwą kolumny z `data-etykieta`, w obu
+ * układach zawijanie w granicach komórki. Geometrię (zero przelewu komórki) mierzy e2e
+ * `ux04-pole-liniowe-zrzuty-screenshot.spec.ts::zrzutyOknaPola` w żywej przeglądarce — jsdom
+ * nie liczy układu. Tu: para nagłówek ↔ etykieta komórki z jednego źródła.
+ *
+ * ILOCZYN CECH: przypadek fikstury × tabela {funkcje, obwody, sygnały} × wiersz × kolumna.
+ * Iniekcja (etykieta komórki z innej kolumny albo komórka bez etykiety) czerwieni test pary.
+ */
+describe('OcenaPolaLiniowegoGpz — tabele czytelne w wąskim gospodarzu', () => {
+  const TABELE = ['ocena-pola-liniowego-funkcje', 'ocena-pola-liniowego-obwody', 'ocena-pola-liniowego-sygnaly'] as const;
+
+  for (const { nazwa, ocena } of PRZYPADKI) {
+    it(`${nazwa}: każda komórka niesie nazwę swojej kolumny — tę samą, co nagłówek tabeli`, () => {
+      render(<OcenaPolaLiniowegoGpz ocena={ocena} />);
+      expect(screen.getByTestId('ocena-pola-liniowego').classList.contains('mvd-ocena-pola')).toBe(true);
+      let komorek = 0;
+      for (const id of TABELE) {
+        const tabela = screen.getByTestId(id);
+        expect(tabela.classList.contains('mvd-ocena-pola-tabela'), `${id}: klasa układu wąskiego`).toBe(true);
+        const naglowki = Array.from(tabela.querySelectorAll('thead th')).map((th) => th.textContent ?? '');
+        expect(naglowki.length, `${id}: nagłówki`).toBeGreaterThan(0);
+        expect(tabela.querySelectorAll('col'), `${id}: szerokości kolumn`).toHaveLength(naglowki.length);
+        const wiersze = Array.from(tabela.querySelectorAll('tbody tr'));
+        expect(wiersze.length, `${id}: wiersze`).toBeGreaterThan(0);
+        for (const wiersz of wiersze) {
+          const komorki = Array.from(wiersz.querySelectorAll('td'));
+          expect(komorki.map((td) => td.getAttribute('data-etykieta')), `${id} · wiersz ${wiersz.getAttribute('data-kod') ?? wiersz.getAttribute('data-sygnal')}`).toEqual(naglowki);
+          komorek += komorki.length;
+        }
+      }
+      expect(komorek).toBeGreaterThan(0);
+    });
+  }
+
+  it('arkusz układu: kontener inline-size, blok poniżej 640 px z etykietą kolumny, zawijanie w komórce', () => {
+    const css = readFileSync(join(__dirname, '..', 'ocenaPolaLiniowego.css'), 'utf-8');
+    const zrodlo = readFileSync(join(__dirname, '..', 'OcenaPolaLiniowegoGpz.tsx'), 'utf-8');
+    expect(zrodlo).toContain("import './ocenaPolaLiniowego.css';");
+    expect(css).toMatch(/\.mvd-ocena-pola\s*\{\s*container-type:\s*inline-size;/);
+    expect(css).toMatch(/\.mvd-ocena-pola-tabela td\s*\{\s*overflow-wrap:\s*anywhere;/);
+    const wazki = css.slice(css.indexOf('@container (max-width: 639.98px)'));
+    expect(wazki.startsWith('@container')).toBe(true);
+    expect(wazki).toMatch(/\.mvd-ocena-pola-tabela td\s*\{[^}]*display:\s*block;/);
+    expect(wazki).toMatch(/\.mvd-ocena-pola-tabela thead\s*\{\s*display:\s*none;/);
+    expect(wazki).toMatch(/td \+ td::before\s*\{\s*content:\s*attr\(data-etykieta\)/);
   });
 });

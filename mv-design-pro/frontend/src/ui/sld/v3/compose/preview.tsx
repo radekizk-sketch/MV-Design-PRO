@@ -39,7 +39,7 @@ import type { UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
-import type { OwnedLabel } from '../layout/labels';
+import { zaczepTekstuEtykiety, type OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
 import type { ProtectionTopologyGap } from './protectionTopologyValidation';
 import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
@@ -411,6 +411,11 @@ export interface PreviewElementMeta {
    *  w `missingData`/inspektorze (§20.3 „zwarta, nie zasłania toru"), NIE na
    *  scenie jako osobna etykieta tekstowa. */
   readonly topologyGaps?: readonly ProtectionTopologyGap[];
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (uwaga właściciela 2026-10-29 pkt 5): ramka BLOKU
+   *  przekaźnika układu powiązań obwodów wtórnych pola GPZ (okrąg + wiersze kodów poza okręgiem
+   *  i odniesienie źródła 3U₀), względem lewego górnego rogu symbolu — WYŁĄCZNIE dla symboli
+   *  `protectionRelay`; przekazana 1:1 do `ProtectionRelayGlyph.ramkaBloku`. */
+  readonly ramkaBlokuPrzekaznika?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   /** Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej wielkości miernika
    *  (A/V z `Measurement.measurement_type`) — WYŁĄCZNIE dla symboli
    *  `meter`; `MeterGlyph` pokazuje ją zamiast mylącego „M". */
@@ -528,6 +533,7 @@ export function daneGlifuSymbolu(
     bateria: symbol.bateria,
     labelLines: meta?.protectionCodes,
     hasTopologyWarning: (meta?.topologyGaps?.length ?? 0) > 0,
+    ramkaBloku: meta?.ramkaBlokuPrzekaznika,
     // TR2W-BEZ-POLA (§0.C.5): marker „!" przy stronie WN transformatora
     // bez skonfigurowanego pola SN.
     hasFieldGapWarning: meta?.transformerFieldGap === true,
@@ -679,6 +685,7 @@ export function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly s
   const cx = label.rect.x + label.rect.width / 2;
   const cy = label.rect.y + label.rect.height / 2;
   const textTransform = label.rotated ? `rotate(-90, ${cx}, ${cy})` : undefined;
+  const zaczep = zaczepTekstuEtykiety(label.rect, label.wyrownanieTekstu, label.rotated === true);
   return (
     <g data-owner-ref={label.ownerRef} data-owner-kind={label.ownerKind} data-slot-index={label.slotIndex}>
       {label.leader && (
@@ -692,9 +699,9 @@ export function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly s
         />
       )}
       <text
-        x={cx}
-        y={cy}
-        textAnchor="middle"
+        x={zaczep.x}
+        y={zaczep.y}
+        textAnchor={zaczep.textAnchor}
         dominantBaseline="middle"
         transform={textTransform}
         fill={stroke}

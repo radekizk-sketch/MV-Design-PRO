@@ -14,16 +14,31 @@
  * Asercje: kolor kafla z JEDNEJ tabeli (`STATE_COLOR`), geometria styku zgodna ze stanem,
  * znak stanu („?", „!"), podpowiedź położenia z jednej mapy (`OPIS_POLOZENIA_PL`), kafel
  * obejmuje cały rysunek.
+ *
+ * Wymaganie właściciela 2026-10-29 (korekta P0): kafel łącznika rysowanego symbolem QET jest
+ * KWADRATEM o boku z JEDNEJ stałej (`QET_BOK_KAFLA_STANU`, 48 px w skali LOD2) — identycznym
+ * dla każdego rodzaju i każdego stanu; nie wynika z obrysu rysunku. Kafel symbolu
+ * kanonicznego (pola stacji SN/nN) pozostaje obrysem rysunku z marginesem — inna konwencja
+ * rysunku (dowód w tabeli meldunku karty). Wariant z napędem silnikowym (`naped`) wchodzi do
+ * iloczynu przez `symboleRodzajuAparatu`.
  */
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { QET_SYMBOLE_POLA_SN } from '../../cad/qet/qetPoleSn';
-import { SYMBOL_DEFS, SYMBOLE_LACZNIKOW_Z_POLOZENIEM, czyLacznikZPolozeniem, obrysSymbolu, type SymbolId } from '../defs';
+import { QET_BOK_KAFLA_STANU, QET_KRESKA_GLIFU, QET_SYMBOLE_POLA_SN, type QetSymbolPolaSnId } from '../../cad/qet/qetPoleSn';
+import {
+  SYMBOL_DEFS,
+  SYMBOLE_LACZNIKOW_Z_POLOZENIEM,
+  czySymbolQet,
+  czyLacznikZPolozeniem,
+  obrysSymbolu,
+  type SymbolId,
+} from '../defs';
 import {
   KAFEL_STANU_MARGINES,
   OPIS_POLOZENIA_PL,
   SYMBOL_GLYPHS,
+  V3_STROKE_APPARATUS,
   prostokatKaflaStanu,
   stanKaflaLacznika,
   type SwitchState,
@@ -31,9 +46,12 @@ import {
 import { DARK_SCADA_SLD_PALETTE, STATE_COLOR, type StanKafla } from '../../theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { LIGHT_TECHNICAL_V3 } from '../../export/exportPalette';
-import { WARIANT_RYSUNKU_QET, symbolIdForPrimaryDeviceKind } from '../../compose/apparatusSequence';
+import { symbolIdForPrimaryDeviceKind, symboleRodzajuAparatu } from '../../compose/apparatusSequence';
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
 import type { BayPrimaryDeviceKind } from '../../../../../types/enm';
+import { MIN_TEXT_SCREEN_PX } from '../../core/text';
+import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../../canvas/camera';
+import type { CadPrimitive } from '../../cad/cadSymbolRegistry';
 
 const MOTYWY = [
   ['ciemny', DARK_SCADA_SLD_PALETTE.state],
@@ -74,19 +92,28 @@ function rysuj(id: SymbolId, state: SwitchState | undefined, kafle = DARK_SCADA_
 
 const RODZAJE_SYMBOLE: ReadonlyArray<readonly [BayPrimaryDeviceKind, string, SymbolId]> = [...RODZAJE_LACZNIKOW_POLA].flatMap(
   (kind) =>
-    (
-      [
-        ['kanoniczny', symbolIdForPrimaryDeviceKind(kind, null)],
-        ['QET', symbolIdForPrimaryDeviceKind(kind, WARIANT_RYSUNKU_QET)],
-      ] as const
-    )
-      .filter((para): para is readonly ['kanoniczny' | 'QET', SymbolId] => para[1] !== null)
-      .map(([wariant, id]) => [kind, wariant, id] as const),
+    symboleRodzajuAparatu(kind).map((id) => [kind, czySymbolQet(id) ? 'QET' : 'kanoniczny', id] as const),
 );
+
+/** Wyrocznia prostokąta kafla NIEZALEŻNA od `prostokatKaflaStanu`: QET — kwadrat z jednej
+ *  stałej w gabarycie; kanoniczny — obrys rysunku z marginesem. */
+function oczekiwanyProstokat(id: SymbolId): { x: number; y: number; width: number; height: number } {
+  if (czySymbolQet(id)) return { x: 0, y: 0, width: QET_BOK_KAFLA_STANU, height: QET_BOK_KAFLA_STANU };
+  const o = obrysSymbolu(id);
+  return {
+    x: o.x - KAFEL_STANU_MARGINES,
+    y: o.y - KAFEL_STANU_MARGINES,
+    width: o.width + 2 * KAFEL_STANU_MARGINES,
+    height: o.height + 2 * KAFEL_STANU_MARGINES,
+  };
+}
 
 describe('kafel stanu — parytet: każdy łącznik pola rysuje położenie', () => {
   it('symbol każdego rodzaju łącznika pola (oba warianty) należy do SYMBOLE_LACZNIKOW_Z_POLOZENIEM', () => {
     expect(RODZAJE_SYMBOLE.length).toBeGreaterThanOrEqual(2 * 5);
+    // Wariant z napędem silnikowym wyłącznika jest w iloczynie (nie tylko symbol podstawowy).
+    expect(RODZAJE_SYMBOLE.map(([, , id]) => id)).toContain('qetBreakerZNapedem');
+    expect(symbolIdForPrimaryDeviceKind('CB', null)).toBe('breaker');
     for (const [kind, wariant, id] of RODZAJE_SYMBOLE) {
       expect(czyLacznikZPolozeniem(id), `${kind} (${wariant}) → ${id}`).toBe(true);
     }
@@ -131,12 +158,22 @@ describe('kafel stanu — iloczyn rodzaj × wariant × stan × motyw', () => {
           // Kolor kafla z JEDNEJ tabeli — identyczny w każdym motywie i w eksporcie.
           expect(tlo.getAttribute('fill')).toBe(STATE_COLOR[oczekiwany!]);
           expect(tlo.getAttribute('fill')).toBe(kafle[oczekiwany!]);
-          // Kafel obejmuje cały rysunek (wszystkie położenia noża) + margines.
+          // Kafel: QET — kwadrat z jednej stałej; kanoniczny — obrys + margines. W obu
+          // konwencjach obejmuje cały rysunek (wszystkie położenia noża).
+          const r = oczekiwanyProstokat(id);
+          const tx = Number(tlo.getAttribute('x'));
+          const ty = Number(tlo.getAttribute('y'));
+          const tw = Number(tlo.getAttribute('width'));
+          const th = Number(tlo.getAttribute('height'));
+          expect(tx).toBeCloseTo(r.x, 6);
+          expect(ty).toBeCloseTo(r.y, 6);
+          expect(tw).toBeCloseTo(r.width, 6);
+          expect(th).toBeCloseTo(r.height, 6);
           const o = obrysSymbolu(id);
-          expect(Number(tlo.getAttribute('x'))).toBeCloseTo(o.x - KAFEL_STANU_MARGINES, 6);
-          expect(Number(tlo.getAttribute('y'))).toBeCloseTo(o.y - KAFEL_STANU_MARGINES, 6);
-          expect(Number(tlo.getAttribute('width'))).toBeCloseTo(o.width + 2 * KAFEL_STANU_MARGINES, 6);
-          expect(Number(tlo.getAttribute('height'))).toBeCloseTo(o.height + 2 * KAFEL_STANU_MARGINES, 6);
+          expect(o.x).toBeGreaterThanOrEqual(tx);
+          expect(o.y).toBeGreaterThanOrEqual(ty);
+          expect(o.x + o.width).toBeLessThanOrEqual(tx + tw);
+          expect(o.y + o.height).toBeLessThanOrEqual(ty + th);
           // Symbol na kaflu w kolorze glifu kafla (kontrast z kaflem, nie z tłem kanwy).
           const glif = grupa.querySelector(`[data-symbol-canon="${id}"]`)!;
           expect(glif).not.toBeNull();
@@ -212,4 +249,158 @@ describe('kafel stanu — geometria i sąsiedztwo', () => {
     expect(markup).not.toContain('data-kafel-stanu');
     expect(markup).toContain('data-symbol-canon="qetBreaker"');
   });
+});
+
+/**
+ * Litera na kaflu łącznika (kwalifikator „M" napędu silnikowego, EN 60617 02-13-26) jest częścią
+ * symbolu, ale musi być CZYTELNA tam, gdzie kafel jest rysowany: w całym zakresie skali kamery
+ * aktywnego LOD2 (od dolnego brzegu histerezy `l1Max·(1 − margines)` = 1,02) litera ma na
+ * ekranie co najmniej `MIN_TEXT_SCREEN_PX`. Pomiar przed naprawą (karta UX-04, oględziny zrzutów
+ * 2026-10-29): litera w skali źródła QET miała 2,4 jednostki świata — 2,4 px przy wejściu w LOD2
+ * i 3,6–6,6 px na zrzutach pola. Iloczyn: łącznik QET z kaflem × litera symbolu × skala LOD2
+ * {dolny brzeg, brzeg górnej strefy, wnętrze} × stan × motyw (litera rysowana w każdym stanie).
+ * Iniekcja: dawna skala znaku napędu (1, rozmiar 2,4) — czerwone komórki skali.
+ */
+describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () => {
+  const SKALA_MIN_L2 = DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN);
+  const SKALE_L2 = [SKALA_MIN_L2, DEFAULT_LOD_THRESHOLDS.l1Max * (1 + LOD_HYSTERESIS_MARGIN), 2];
+  const litery = (prims: readonly CadPrimitive[]) =>
+    prims.filter((p): p is Extract<CadPrimitive, { k: 'letter' }> => p.k === 'letter');
+  const LITERY_NA_KAFLACH = Object.values(QET_SYMBOLE_POLA_SN)
+    .filter((s) => s.kafel)
+    .flatMap((s) =>
+      [...litery(s.stale), ...litery(s.osprzet), ...litery(s.noz?.prymitywy ?? [])].map((l) => [s.id, l] as const),
+    );
+
+  it('warunek wstępny: litera „M" napędu silnikowego jest na kaflu wyłącznika z napędem', () => {
+    expect(LITERY_NA_KAFLACH.map(([id, l]) => `${id}:${l.t}`)).toContain('qetBreakerZNapedem:M');
+  });
+
+  for (const [id, litera] of LITERY_NA_KAFLACH) {
+    for (const skala of SKALE_L2) {
+      it(`${id} · „${litera.t}" · skala ${skala.toFixed(2)}: ≥ ${MIN_TEXT_SCREEN_PX} px ekranu`, () => {
+        expect(litera.size * skala).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);
+      });
+    }
+  }
+
+  it('napęd (osprzęt kafla): okrąg z literą w kaflu z marginesem, litera w okręgu, linia sprzężenia dochodzi do okręgu', () => {
+    const s = QET_SYMBOLE_POLA_SN.qetBreakerZNapedem;
+    const okregi = s.osprzet.filter((p): p is Extract<CadPrimitive, { k: 'circle' }> => p.k === 'circle');
+    expect(okregi).toHaveLength(1);
+    const [o] = okregi;
+    const [m] = litery(s.osprzet);
+    // Napęd po LEWEJ stronie osi (prawą zajmuje cewka wyłączająca — koniec linii wyłączania).
+    expect(o.cx - o.r).toBeGreaterThan(0);
+    expect(o.cx).toBeLessThan(s.noz!.cx);
+    expect(o.cy - o.r).toBeGreaterThan(0);
+    expect(o.cy + o.r).toBeLessThan(QET_BOK_KAFLA_STANU);
+    expect(Math.hypot(m.x - o.cx, m.y - o.cy)).toBeLessThan(o.r / 4);
+    // Połowa wysokości litery mieści się w okręgu (litera nie wychodzi na kafel).
+    expect(Math.hypot(m.x - o.cx, m.y - o.cy) + m.size / 2).toBeLessThan(o.r);
+    const sprzezenie = s.osprzet.filter((p): p is Extract<CadPrimitive, { k: 'line' }> => p.k === 'line' && Boolean(p.kreskowana));
+    expect(sprzezenie).toHaveLength(1);
+    const [l] = sprzezenie;
+    const noz = s.noz!;
+    // Linia sprzężenia mechanicznego zaczepiona w przegubie noża i kończy się na okręgu napędu.
+    expect([Math.max(l.x1, l.x2), l.y1, l.y2]).toEqual([noz.cx, noz.cy, noz.cy]);
+    expect(Math.min(l.x1, l.x2)).toBeCloseTo(o.cx + o.r, 6);
+  });
+
+  for (const [motyw, kafle] of MOTYWY) {
+    for (const state of STANY) {
+      it(`${motyw} · napęd M · ${state ?? 'brak stanu'}: litera rysowana na kaflu`, () => {
+        const doc = rysuj('qetBreakerZNapedem', state, kafle);
+        const m = [...doc.querySelectorAll('[data-kafel-stanu] text[data-cad="letter"]')].filter((t) => t.textContent === 'M');
+        expect(m).toHaveLength(1);
+        expect(Number(m[0].getAttribute('font-size')) * SKALA_MIN_L2).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);
+      });
+    }
+  }
+});
+
+/**
+ * Uwaga właściciela 2026-10-29 pkt 1 (glify miniaturowe): glif aparatu na kaflu zajmuje 55–70 %
+ * boku kafla w KAŻDYM położeniu noża, kreska glifu jest proporcjonalna do kafla (bok/24), a
+ * przewody toru mają kreskę przewodu. Wyrocznia NIEZALEŻNA od pola `glif` importera: obwiednia
+ * liczona tu z prymitywów (`stale` + nóż obrócony o kąt położenia wokół przegubu). Iloczyn:
+ * łącznik QET z kaflem × stan (położenie noża) × motyw (rysunek z kaflem). Pomiar przed
+ * naprawą: wyłącznik 0,20, odłącznik 0,19–0,20, uziemnik 0,23 boku kafla (rysunek w skali
+ * źródła), kreska glifu 1,2 = bok/40. Iniekcja w e2e: glif w skali źródła → czerwony pomiar
+ * `getBBox` glifu względem kafla (`ux04-pole-liniowe-zrzuty-screenshot.spec.ts`).
+ */
+describe('kafel stanu — stopień glifu i kreska proporcjonalna do kafla', () => {
+  const KAFLOWE = (Object.keys(QET_SYMBOLE_POLA_SN) as QetSymbolPolaSnId[]).filter((id) => QET_SYMBOLE_POLA_SN[id].kafel);
+
+  function obrot(x: number, y: number, kat: number, cx: number, cy: number): readonly [number, number] {
+    const r = (kat * Math.PI) / 180;
+    return [cx + (x - cx) * Math.cos(r) - (y - cy) * Math.sin(r), cy + (x - cx) * Math.sin(r) + (y - cy) * Math.cos(r)];
+  }
+  function obwiedniaY(prims: readonly CadPrimitive[], kat = 0, cx = 0, cy = 0): [number, number] {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const p of prims) {
+      const ys: number[] = [];
+      if (p.k === 'line') ys.push(obrot(p.x1, p.y1, kat, cx, cy)[1], obrot(p.x2, p.y2, kat, cx, cy)[1]);
+      else if (p.k === 'circle') ys.push(p.cy - p.r, p.cy + p.r);
+      else if (p.k === 'path' || p.k === 'arc') {
+        const liczby = p.d.match(/-?\d+(\.\d+)?/g)!.map(Number);
+        if (p.k === 'path') for (let i = 1; i < liczby.length; i += 2) ys.push(liczby[i]);
+        else ys.push(liczby[1], liczby[liczby.length - 1]);
+      } else if (p.k === 'letter') ys.push(p.y - p.size / 2, p.y + p.size / 2);
+      for (const y of ys) {
+        lo = Math.min(lo, y);
+        hi = Math.max(hi, y);
+      }
+    }
+    return [lo, hi];
+  }
+
+  it('warunek wstępny: siedem łączników z kaflem, kreska glifu = bok/24 i grubsza od kreski przewodu', () => {
+    expect(KAFLOWE).toHaveLength(7);
+    expect(QET_KRESKA_GLIFU).toBeCloseTo(QET_BOK_KAFLA_STANU / 24, 9);
+    expect(QET_KRESKA_GLIFU).toBeGreaterThan(V3_STROKE_APPARATUS);
+  });
+
+  for (const id of KAFLOWE) {
+    const s = QET_SYMBOLE_POLA_SN[id];
+    for (const [polozenie, kat] of Object.entries(s.noz!.katy)) {
+      it(`${id} · położenie ${polozenie}: wysokość glifu w [0,55; 0,70] boku kafla`, () => {
+        const [a, b] = obwiedniaY(s.stale);
+        const [c, d] = obwiedniaY(s.noz!.prymitywy, kat ?? 0, s.noz!.cx, s.noz!.cy);
+        const udzial = (Math.max(b, d) - Math.min(a, c)) / QET_BOK_KAFLA_STANU;
+        expect(udzial).toBeGreaterThanOrEqual(0.55);
+        expect(udzial).toBeLessThanOrEqual(0.7);
+      });
+    }
+    for (const [motyw, kafle] of MOTYWY) {
+      for (const state of STANY) {
+        it(`${motyw} · ${id} · ${state ?? 'brak stanu'}: glif i osprzęt kreską glifu, przewody kreską przewodu`, () => {
+          const doc = rysuj(id, state, kafle);
+          const glif = doc.querySelector('[data-kafel-stanu] [data-qet="glif"]')!;
+          const przewody = doc.querySelector('[data-kafel-stanu] [data-qet="przewody"]')!;
+          expect(glif).not.toBeNull();
+          expect(przewody).not.toBeNull();
+          const szer = (g: Element) => [...g.querySelectorAll('[stroke-width]')].map((n) => Number(n.getAttribute('stroke-width')));
+          const wGlifu = szer(glif);
+          expect(wGlifu.length).toBe(s.stale.length + s.noz!.prymitywy.length);
+          for (const w of wGlifu) expect(w).toBeCloseTo(QET_KRESKA_GLIFU, 9);
+          expect(szer(przewody).length).toBe(s.przewody.length);
+          for (const w of szer(przewody)) expect(w).toBeCloseTo(V3_STROKE_APPARATUS, 9);
+          const osprzet = doc.querySelector('[data-kafel-stanu] [data-qet="osprzet"]');
+          expect(osprzet === null).toBe(s.osprzet.length === 0);
+          if (osprzet) for (const w of szer(osprzet)) expect([QET_KRESKA_GLIFU, 0.5 * QET_KRESKA_GLIFU]).toContain(w);
+          // Kreska przerywana (nóż stanu nieznanego, sprzężenie napędu) z WIDOCZNĄ przerwą przy
+          // końcach zaokrąglonych: przerwa wzoru > grubość kreski (stały wzór 1,5 1 przy kresce
+          // 2 zlewał się w linię ciągłą — iniekcja tego wzoru daje czerwony test).
+          for (const n of doc.querySelectorAll('[data-kafel-stanu] [stroke-dasharray]')) {
+            const [kreska, przerwa] = n.getAttribute('stroke-dasharray')!.split(' ').map(Number);
+            const w = Number(n.getAttribute('stroke-width'));
+            expect(kreska).toBeGreaterThan(0);
+            expect(przerwa - w).toBeGreaterThan(0);
+          }
+        });
+      }
+    }
+  }
 });

@@ -620,6 +620,19 @@ describe('EdytorWyposazeniaPola — profil funkcjonalny EAZ wzorca', () => {
         na_rysunku: false,
         wymogi: [{ klasa: 'ODBIORCZE', wymog: 'OBOWIAZKOWA', wymog_pl: 'wymagana', podstawa: 'IRiESD II.4.5.4.2.1 pkt 5', weryfikacja: 'ODCZYT_TEKSTU' }],
       },
+      {
+        // Decyzja właściciela 2026-10-29 pkt 4: funkcja warunkowa — wariantowa, z warunkiem
+        // przypisania (tekst backendu `OPIS_WARUNKU_FUNKCJI_EAZ_PL`).
+        kod: '67N',
+        opis_pl: 'Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0)',
+        wymagalnosc: 'WARIANTOWA',
+        wymagalnosc_pl:
+          'zależna od klasy pola, od rodzaju linii (IRiESD II.4.5.4.2) albo od warunku przypisania (źródło wielkości wejściowej funkcji w modelu)',
+        na_rysunku: true,
+        wymogi: [{ klasa: 'ODBIORCZE', wymog: 'OBOWIAZKOWA', wymog_pl: 'wymagana', podstawa: 'IRiESD II.4.5.4.2.1 pkt 2', weryfikacja: 'ODCZYT_TEKSTU' }],
+        warunek_pl:
+          'przypisana wyłącznie przy źródle napięcia zerowego 3U₀ powiązanym w modelu — uzwojeniu otwartego trójkąta przekładnika napięciowego pola pomiaru napięcia szyn tej samej sekcji (ENEA Zeszyt 1, Z.17 s.97, obwód okrężny „Z, Zz”) albo tego pola — i kryterium prądowym z przekładnika Ferrantiego pola',
+      },
     ];
     katalogApi.fetchSzablonyPolaKanoniczne.mockResolvedValue([{ ...kanoniczny('z10-a', true), profil_eaz: profil }]);
     renderuj(
@@ -634,7 +647,10 @@ describe('EdytorWyposazeniaPola — profil funkcjonalny EAZ wzorca', () => {
     expect(pozycje.map((li) => [li.getAttribute('data-kod'), li.getAttribute('data-wymagalnosc')])).toEqual([
       ['51', 'OBOWIAZKOWA'],
       ['81U', 'OBOWIAZKOWA'],
+      ['67N', 'WARIANTOWA'],
     ]);
+    expect(screen.getByTestId('wyposazenie-pola-profil-warunek-67N').textContent).toContain('3U₀');
+    expect(screen.queryByTestId('wyposazenie-pola-profil-warunek-51')).toBeNull();
     expect(pozycje[0].textContent).not.toContain('poza rysunkiem');
     expect(pozycje[1].textContent).toContain('poza rysunkiem wzorca — wymóg klasy pola');
     expect(pozycje[1].getAttribute('title')).toContain('IRiESD II.4.5.4.2.1 pkt 5; odczyt tekstu');

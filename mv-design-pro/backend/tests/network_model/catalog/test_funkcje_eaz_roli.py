@@ -6,6 +6,12 @@ Predykaty parami: tablica szablonów kanonicznych ról i tablica ról bez szablo
 a ich suma to KAŻDA rola modelu — rola nie dostaje zestawu z dwóch miejsc i żadna nie zostaje
 bez źródła. Endpoint odczytu (`GET /api/catalog/bay-protection-codes`) zwraca ten sam zestaw
 dla każdej roli modelu, co operacja domenowa budująca pole bez szablonu.
+
+Decyzja właściciela 2026-10-29 pkt 4 (karta UX-04/POLE-LINIOWE-WZORZEC): funkcja warunkowa
+(`WARUNKI_FUNKCJI_EAZ` — 67N, warunek potwierdzonego źródła 3U₀) NIE wchodzi do zestawu roli bez
+spełnionego warunku. Rola nie wie, czy pole ma przekładnik Ferrantiego i powiązane źródło 3U₀,
+więc odczyt roli (endpoint, operacje budujące pole bez szablonu) nie niesie 67N; funkcję
+przypisuje operacja wyposażenia pola po potwierdzeniu warunku w modelu.
 """
 
 from __future__ import annotations
@@ -15,6 +21,8 @@ from enm.rola_pola_sn import ROLE_POLA_MODELU
 from network_model.catalog.bay_templates import (
     FUNKCJE_EAZ_ROLI_BEZ_SZABLONU,
     SZABLON_KANONICZNY_ROLI,
+    WARUNKI_FUNKCJI_EAZ,
+    bez_niespelnionych_warunkow,
     funkcje_eaz_roli,
 )
 from network_model.catalog.funkcje_eaz import kody_spoza_slownika
@@ -28,15 +36,33 @@ def test_tablice_rol_rozlaczne_i_pokrywaja_kazda_role_modelu() -> None:
 
 
 def test_zestaw_roli_z_jednego_miejsca_dla_kazdej_roli() -> None:
+    wszystkie_warunki = frozenset(WARUNKI_FUNKCJI_EAZ.values())
     for rola in ROLE_POLA_MODELU:
         szablon = SZABLON_KANONICZNY_ROLI.get(rola)
-        oczekiwany = (
+        pelny = (
             list(szablon.funkcje_eaz)
             if szablon is not None
             else list(FUNKCJE_EAZ_ROLI_BEZ_SZABLONU[rola])
         )
-        assert funkcje_eaz_roli(rola) == oczekiwany, rola
+        # Warunki spełnione — zestaw źródła bez zmian (funkcja warunkowa NIE znika z szablonu).
+        assert funkcje_eaz_roli(rola, wszystkie_warunki) == pelny, rola
+        # Warunki niespełnione — ten sam zestaw bez funkcji warunkowych (jeden filtr).
+        assert funkcje_eaz_roli(rola) == bez_niespelnionych_warunkow(pelny, frozenset()), rola
         assert kody_spoza_slownika(funkcje_eaz_roli(rola)) == [], rola
+
+
+def test_67n_nie_trafia_do_zestawu_roli_bez_potwierdzonego_zrodla_u0() -> None:
+    """Iniekcja „automatyczne 67N" (zdjęcie warunku z `WARUNKI_FUNKCJI_EAZ` albo pominięcie
+    filtra w `funkcje_eaz_roli`) zapala ten test: role OUT, FEEDER i OZE niosą 67N
+    w szablonie kanonicznym, a odczyt roli bez warunku nie może jej podać."""
+    z_67n_w_szablonie = [
+        rola for rola, szablon in SZABLON_KANONICZNY_ROLI.items() if "67N" in szablon.funkcje_eaz
+    ]
+    assert {"OUT", "FEEDER", "OZE"} <= set(z_67n_w_szablonie)
+    for rola in ROLE_POLA_MODELU:
+        assert "67N" not in funkcje_eaz_roli(rola), rola
+    for rola in z_67n_w_szablonie:
+        assert "67N" in funkcje_eaz_roli(rola, frozenset({WARUNKI_FUNKCJI_EAZ["67N"]})), rola
 
 
 def test_pole_baterii_kondensatorow_ma_zestaw_wg_iriesd() -> None:
@@ -53,3 +79,4 @@ def test_endpoint_odczytu_zwraca_kazda_role_modelu_z_tego_samego_zrodla() -> Non
     assert list(odczyt) == list(ROLE_POLA_MODELU)
     for rola, kody in odczyt.items():
         assert kody == funkcje_eaz_roli(rola), rola
+        assert "67N" not in kody, rola

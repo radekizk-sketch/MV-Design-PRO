@@ -143,6 +143,7 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
                 snapshot={snapshot}
                 stanDanych={item?.canonical_model.base_model.equipment_data_state ?? null}
                 danePrzyjete={item?.canonical_model.base_model.equipment_assumed_data ?? []}
+                zrodloU0={item?.zrodlo_u0 ?? null}
                 activeCaseId={activeCaseId}
                 executeDomainOperation={executeDomainOperation}
                 bladStore={() => useSnapshotStore.getState().error}

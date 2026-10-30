@@ -43,7 +43,8 @@
         "gpz_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -88,7 +89,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/sn_field_terminal/001",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -139,7 +141,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/sn_field_terminal/002",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -182,7 +185,8 @@
         "nn_main_breaker"
       ],
       "terminal_bus_ref": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -223,7 +227,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/3561b466ab84603ce01b8dbf582839ab/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -266,7 +271,8 @@
         "nn_source_field"
       ],
       "terminal_bus_ref": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     }
   ],
   "branch_points": [],

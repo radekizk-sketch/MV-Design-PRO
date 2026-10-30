@@ -45,7 +45,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -93,7 +94,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -127,8 +129,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field/001",
@@ -142,7 +143,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -195,7 +197,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/a656b1088178ad9de2f4d09adca4e15c/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -238,7 +241,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/04dab34c3ac8dc7c3d093d0d00d7d094/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -279,7 +283,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/3fa4134488b26e9ee5517936a2315653/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -325,7 +330,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -978,7 +984,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "538aa7c8b68bd82287dfb983299737dece9f2f8f042b16f56d545f135f48bf94",
+      "hash_sha256": "554afaab33f50a746b2e485d284d3e3c5e61cc3ecf34afb2a5ab36916dace4d1",
       "name": "Odgałęzienie z pola GPZ",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"

@@ -179,13 +179,16 @@ def test_rejestr_bez_powtorzen_i_posortowany() -> None:
 
 
 def test_operacje_lacznikow_emituja_typy_z_rejestru() -> None:
-    """Typy W5-C (otwarcie/zamknięcie łącznika, punkt podziału, wyposażenie pola)."""
+    """Typy W5-C (otwarcie/zamknięcie łącznika, punkt podziału, wyposażenie pola) oraz
+    położenie łącznika pola bez własnej gałęzi (`set_bay_apparatus_position`, karta pola BKR —
+    typ był emitowany spoza rejestru, bramka sesji głównej na dbe7c130b)."""
     assert {
         "SWITCH_OPENED",
         "SWITCH_CLOSED",
         "NOP_SET",
         "NOP_CLEARED",
         "BAY_EQUIPMENT_SET",
+        "BAY_APPARATUS_POSITION_SET",
     } <= set(DOMAIN_EVENT_TYPES)
 
 

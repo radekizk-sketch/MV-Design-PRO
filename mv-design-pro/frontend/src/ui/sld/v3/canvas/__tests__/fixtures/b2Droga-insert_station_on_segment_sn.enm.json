@@ -44,7 +44,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -92,7 +93,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -126,8 +128,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/001",
@@ -141,7 +142,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -175,8 +177,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002",
@@ -190,7 +191,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -247,7 +249,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/003",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -290,7 +293,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/5384c2268a0624ea78aca2870d7cc9c0/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -331,7 +335,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/bd9f8babd8cf5a5306832fb684a05d36/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -1133,7 +1138,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "64dfcd8afc43c838b1da16beedae98c598ffde734cbe85abfd1b269b240acfa4",
+      "hash_sha256": "0683d79705d6bb49695de5fd9526b0fb60ae85dda1c06aa5accdd8d13a21caa4",
       "name": "Drogi operacji budowy",
       "revision": 7,
       "updated_at": "2026-09-25T00:00:00Z"

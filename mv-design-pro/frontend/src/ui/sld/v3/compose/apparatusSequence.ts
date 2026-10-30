@@ -21,8 +21,10 @@
  *     — `elementyModeluPola`. Dawny stos konwencji (DS→CB→CT→DS→ES→głowica i jego warianty
  *     per rola) SKASOWANY: rysował aparaty, których model nie ma, i barwił je stanem
  *     zagregowanym z innych gałęzi.
- * Pole rezerwowe/wolne (`MiniBlockBayDescriptor.reserve`) traci głowicę kablową i kończy się
- * symbolem `bayReserve` (bez portu S — bez odejścia), §0 pkt 5.
+ * Pole rezerwowe/wolne (`MiniBlockBayDescriptor.reserve`) rysuje WSZYSTKIE aparaty swoich
+ * rekordów (także głowicę kablową i przekładnik Ferrantiego — zero fabrykacji w obie strony:
+ * aparat z modelu nie znika z rysunku) i kończy się symbolem `bayReserve` (EN 60617 03-01-14
+ * „koniec kabla niepodłączony", bez portu S — kabla odpływowego nie ma w modelu), §0 pkt 5.
  *
  * DECYZJA (mapowanie `LOAD_SWITCH`): biblioteka symboli v3 (`symbols/defs.ts`)
  * nie ma dziś dedykowanego glifu „rozłącznik" (odróżnialnego od odłącznika)
@@ -158,12 +160,60 @@ export const SYMBOL_QET_RODZAJU: Readonly<Partial<Record<BayPrimaryDeviceKind, S
 export function symbolIdForPrimaryDeviceKind(
   kind: BayPrimaryDeviceKind,
   renderVariant?: string | null,
+  cechy: CechyRysunkuAparatu = {},
 ): SymbolId | null {
   if (renderVariant === WARIANT_RYSUNKU_QET) {
+    if (kind === 'VT') return symbolQetPrzekladnikaNapieciowego(cechy.liczbaUzwojenWtornych);
+    // Karta UX-04/POLE-LINIOWE-WZORZEC (korekta P0 pkt 7): napęd silnikowy wyłącznika z modelu
+    // — rysunek wyłącznika ze znakiem napędu EN 60617 02-13-26 w kaflu (ENEA Z.11.1).
+    if (kind === 'CB' && cechy.naped === 'SILNIKOWY') return 'qetBreakerZNapedem';
     const qet = SYMBOL_QET_RODZAJU[kind];
     if (qet) return qet;
   }
   return symbolKanonicznyRodzaju(kind);
+}
+
+/** Cechy rekordu aparatu wybierające rysunek QET: liczba uzwojeń wtórnych przekładnika
+ *  napięciowego (liczba okręgów) i napęd wyłącznika (znak napędu silnikowego). Rysunek
+ *  kanoniczny ich nie rozróżnia (znak ogólny aparatu). */
+export interface CechyRysunkuAparatu {
+  readonly liczbaUzwojenWtornych?: number;
+  readonly naped?: 'SILNIKOWY';
+}
+
+/** WSZYSTKIE rysunki, którymi może się narysować aparat danego rodzaju — oba warianty
+ *  rysunku × wszystkie cechy rekordu wybierające rysunek (`CechyRysunkuAparatu`). Zbiory
+ *  symboli rodzajów (łączniki, sondy sceny) wyprowadza się Z TEJ funkcji, więc nowy wariant
+ *  rysunku nie wypada z sond (predykaty parami: wybór rysunku i zbiór rysunków z jednego
+ *  obchodu `symbolIdForPrimaryDeviceKind`). */
+export function symboleRodzajuAparatu(kind: BayPrimaryDeviceKind): readonly SymbolId[] {
+  const wynik: SymbolId[] = [];
+  const cechyRysunku: readonly CechyRysunkuAparatu[] = [
+    {},
+    { naped: 'SILNIKOWY' },
+    ...[1, 2, 3].map((liczbaUzwojenWtornych) => ({ liczbaUzwojenWtornych })),
+  ];
+  for (const wariant of [null, WARIANT_RYSUNKU_QET]) {
+    for (const cechy of cechyRysunku) {
+      const symbol = symbolIdForPrimaryDeviceKind(kind, wariant, cechy);
+      if (symbol && !wynik.includes(symbol)) wynik.push(symbol);
+    }
+  }
+  return wynik;
+}
+
+/**
+ * Karta UX-04/POLE-LINIOWE-WZORZEC (korekta P0 pkt 3): rysunek QET przekładnika napięciowego
+ * z LICZBĄ OKRĘGÓW z modelu (`BayPrimaryDevice.uzwojenia`; EN 60617 06-13-01 forma 1 — okrąg
+ * uzwojenia pierwotnego + jeden okrąg na każde uzwojenie wtórne): 2 uzwojenia → trzy okręgi,
+ * 3 uzwojenia → cztery okręgi w romb (ENEA Zeszyt 1, Z.11.1). Tabliczka niepodana, jedno
+ * uzwojenie i więcej niż trzy (rysunek źródła nie ma takiej formy) → znak ogólny przekładnika
+ * (dwa okręgi); liczbę i przekładnię uzwojeń niesie wtedy podpis aparatu.
+ */
+export function symbolQetPrzekladnikaNapieciowego(liczbaUzwojenWtornych: number | undefined): SymbolId {
+  if (liczbaUzwojenWtornych === 2) return 'qetVoltageTransformer2';
+  if (liczbaUzwojenWtornych === 3) return 'qetVoltageTransformer3';
+  return 'qetVoltageTransformer';
 }
 
 function symbolKanonicznyRodzaju(kind: BayPrimaryDeviceKind): SymbolId | null {
@@ -227,12 +277,21 @@ export interface AparatSekwencjiPola {
   readonly deviceRef?: string;
   readonly renderVariant?: string | null;
   readonly ports?: readonly PortAparatuPolaView[];
+  /** Liczba uzwojeń wtórnych przekładnika napięciowego z rekordu (wybór rysunku QET). */
+  readonly liczbaUzwojenWtornych?: number;
+  /** Napęd wyłącznika z rekordu (wybór rysunku QET ze znakiem napędu). */
+  readonly naped?: 'SILNIKOWY';
 }
 
-/** Symbol aparatu pola z jego rekordu (rodzaj + wariant rysunku) — JEDNO wywołanie dla
- *  measure, stacji, GPZ i sond sceny. */
-export function symbolAparatuPola(device: Pick<AparatSekwencjiPola, 'kind' | 'renderVariant'>): SymbolId | null {
-  return symbolIdForPrimaryDeviceKind(device.kind, device.renderVariant);
+/** Symbol aparatu pola z jego rekordu (rodzaj + wariant rysunku + cechy rysunku: liczba
+ *  uzwojeń wtórnych przekładnika napięciowego, napęd wyłącznika) — JEDNO wywołanie dla measure, stacji, GPZ i sond sceny. */
+export function symbolAparatuPola(
+  device: Pick<AparatSekwencjiPola, 'kind' | 'renderVariant' | 'liczbaUzwojenWtornych' | 'naped'>,
+): SymbolId | null {
+  return symbolIdForPrimaryDeviceKind(device.kind, device.renderVariant, {
+    liczbaUzwojenWtornych: device.liczbaUzwojenWtornych,
+    naped: device.naped,
+  });
 }
 
 /** Brak przyłączenia w polu SN rysunku (stacja i GPZ — `StationComposition.brakiPrzylaczy`,
@@ -335,6 +394,9 @@ export function torPolaZPortow<T extends AparatSekwencjiPola>(
     wyjsciaWezla.set(wejscie(index)!, lista);
   }
   // Tor główny przy rozgałęzieniu: jedyna droga od szyny do węzła końca toru (parytet backendu).
+  // Aparaty za węzłem końca toru (pole pomiaru napięcia Z.17: złącze i przekładnik za łącznikiem
+  // trójpołożeniowym) zaczynają odgałęzienie od tego węzła także bez rozwidlenia — obchód toru
+  // głównego kończy się na węźle końca (`WEZLY_KONCA_TORU`, ta sama reguła co backend).
   let torGlowny: ReadonlySet<number> | null = null;
   let liczbaDrog = 0;
   if ([...wyjsciaWezla.values()].some((lista) => lista.length > 1)) {
@@ -375,6 +437,10 @@ export function torPolaZPortow<T extends AparatSekwencjiPola>(
           : (wyjsciaWezla.get(wezel) ?? []).filter((index) => pozostale.has(index));
       wymuszony = null;
       if (nastepne.length === 0) break;
+      if (wTorzeGlownym && WEZLY_KONCA_TORU.has(wezel)) {
+        for (const index of nastepne) poczatkiGalezi.push({ wezel, index });
+        break;
+      }
       let biezacy: number;
       if (nastepne.length === 1) {
         [biezacy] = nastepne;
@@ -478,19 +544,16 @@ function dwuportowyRodzaj(device: Pick<AparatSekwencjiPola, 'kind'>): boolean {
 /**
  * Rekordy aparatów pola w kolejności rysunku z odgałęzieniami — JEDNO źródło dla stosu stacji
  * (`compose/station.ts`), pola GPZ (`compose/gpz.ts`) i rezerwacji (`layout/measure.ts`).
- * Pole rezerwowe/wolne traci zakończenie toru kablowego (`czyGlowicaRezerwy`) WYŁĄCZNIE
- * w torze głównym — głowica odgałęzienia przekładnika napięciowego nie jest zakończeniem
- * toru kablowego pola (predykaty parami: rekordy i odgałęzienia z jednego obchodu).
+ * Każdy rekord aparatu z symbolem pola jest rysowany — także w polu rezerwowym/wolnym
+ * (karta UX-04/POLE-LINIOWE-WZORZEC, korekta P0 pkt 1: dawne odcięcie głowicy kablowej
+ * i przekładnika Ferrantiego pola wolnego usuwało z rysunku aparaty, które model niesie).
+ * Rekordy i odgałęzienia z jednego obchodu (predykaty parami).
  */
 export function rekordyToruPola<T extends AparatSekwencjiPola>(
   devices: readonly T[] | undefined,
-  reserve: MiniBlockBayDescriptor['reserve'],
 ): { readonly rekordy: readonly T[]; readonly galezie: readonly GalazSekwencji[] } {
-  const pelne = orderedSymbolPrimaryDevices(devices);
-  const galezie = galezieSekwencji(pelne);
-  const wGalezi = new Set(galezie.flatMap((g) => g.pozycje));
-  const rekordy = pelne.filter((d, i) => wGalezi.has(i) || !czyGlowicaRezerwy(symbolAparatuPola(d)!, reserve));
-  return { rekordy, galezie: rekordy.length === pelne.length ? galezie : galezieSekwencji(rekordy, pelne) };
+  const rekordy = orderedSymbolPrimaryDevices(devices);
+  return { rekordy, galezie: galezieSekwencji(rekordy) };
 }
 
 /**
@@ -609,8 +672,8 @@ export function czyTorOdSzyny(pierwszy: Pick<AparatSekwencjiPola, 'kind' | 'port
  * (rezerwacja gabarytu) i `compose/station.ts` (rysunek + `data-apparatus-source`).
  * Ścieżka danych: aparaty mapowalne na symbol pola (po odfiltrowaniu kindów DER), w porządku
  * fizycznym `rekordyToruPola` (obchód portów z odgałęzieniami), + elementy modelu pola.
- * Brak danych: `symbolePolaBezDanych`. Pole rezerwowe/wolne: bez zakończenia toru kablowego
- * TORU GŁÓWNEGO, zakończone `bayReserve`. `galezie` — odgałęzienia toru (pozycje w `symbolIds`).
+ * Brak danych: `symbolePolaBezDanych`. Pole rezerwowe/wolne: zakończone `bayReserve`.
+ * `galezie` — odgałęzienia toru (pozycje w `symbolIds`).
  */
 export function resolveBayApparatusSymbolIds(
   bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices' | 'reserve' | 'transformerRef'>,
@@ -619,11 +682,9 @@ export function resolveBayApparatusSymbolIds(
   readonly source: BayApparatusSource;
   readonly galezie: readonly GalazSekwencji[];
 } {
-  // „Dane" i elementy modelu pola rozstrzyga PEŁNA sekwencja (z głowicą toru głównego pola
-  // rezerwowego) — jak przed odgałęzieniami; rekordy toru tracą wyłącznie zakończenie rezerwy.
   const pelne = orderedSymbolPrimaryDevices(bay.primaryDevices).map((d) => symbolAparatuPola(d)!);
   if (pelne.length > 0) {
-    const { rekordy, galezie } = rekordyToruPola(bay.primaryDevices, bay.reserve);
+    const { rekordy, galezie } = rekordyToruPola(bay.primaryDevices);
     return {
       symbolIds: [
         ...rekordy.map((d) => symbolAparatuPola(d)!),
@@ -637,17 +698,13 @@ export function resolveBayApparatusSymbolIds(
   return { symbolIds: zakonczenieRezerwy(symbolePolaBezDanych(bay), bay.reserve), source: 'brak', galezie: [] };
 }
 
-/** Pole rezerwowe/wolne: głowica kablowa i odejście nie istnieją — sekwencja traci
- *  zakończenie toru kablowego (głowicę i przekładnik Ferrantiego) i kończy się `bayReserve`
- *  (§0 pkt 5). Pozycje usuniętych głowic nie
- *  przesuwają pozostałych aparatów względem ich rekordów — wołający dopasowujący rekordy
- *  (`compose/station.ts stackItemsForBay`) filtruje TĄ SAMĄ funkcją `czyGlowicaRezerwy`. */
+/** Pole rezerwowe/wolne: sekwencja kończy się `bayReserve` — kabla odpływowego nie ma
+ *  w modelu (§0 pkt 5). Aparaty sekwencji zostają bez zmian (zero fabrykacji w obie strony). */
 export function zakonczenieRezerwy(
   symbolIds: readonly SymbolId[],
   reserve: MiniBlockBayDescriptor['reserve'],
 ): readonly SymbolId[] {
-  if (!reserve) return symbolIds;
-  return [...symbolIds.filter((id) => !czyGlowicaRezerwy(id, reserve)), 'bayReserve'];
+  return reserve ? [...symbolIds, 'bayReserve'] : symbolIds;
 }
 
 /** Koniec toru kablowego pola (zakończenie, przy którym trasa kabla dochodzi do pola): głowica
@@ -657,15 +714,6 @@ export function zakonczenieRezerwy(
 export function czyZakonczenieToruKablowego(symbolId: SymbolId): boolean {
   const rodzaj = rodzajSymbolu(symbolId);
   return rodzaj === 'cableHead' || rodzaj === 'qetCoreBalanceCt';
-}
-
-/** Predykat usunięcia z sekwencji pola rezerwowego — jedno źródło dla sekwencji symboli
- *  i dla dopasowania rekordów aparatów (predykaty parami). Pole wolne nie ma kabla, więc
- *  traci CAŁE zakończenie toru kablowego: głowicę ORAZ przekładnik Ferrantiego obejmujący
- *  kabel (UX-04/POLE-LINIOWE-WZORZEC) — ten sam predykat `czyZakonczenieToruKablowego`,
- *  co podpis zakończenia toru i wyrocznia dojścia trasy (bez drugiej listy rodzajów). */
-export function czyGlowicaRezerwy(symbolId: SymbolId, reserve: MiniBlockBayDescriptor['reserve']): boolean {
-  return Boolean(reserve) && czyZakonczenieToruKablowego(symbolId);
 }
 
 // ---------------------------------------------------------------------------
@@ -1070,7 +1118,7 @@ function wysokoscPasaBocznego(symbolId: SymbolId): number {
 
 /** Gabaryt pasa odgałęzienia: kolumna z jej aparatami bocznymi i pasem podpisów po prawej;
  *  wysokość od kotwicy: odstęp rastru + kolumna. */
-function pasOdgalezienia(galaz: GalazPlanu): { readonly szerokosc: number; readonly wysokosc: number } {
+export function pasOdgalezienia(galaz: GalazPlanu): { readonly szerokosc: number; readonly wysokosc: number } {
   const sub = bayApparatusPlanFootprint({ ...galaz.plan, galezie: [], rezerwaEtykietBocznych: 0 });
   return {
     szerokosc: sub.width + galaz.rezerwaEtykiet,
@@ -1118,16 +1166,50 @@ export interface BayApparatusPlanFootprint {
   readonly mainStack: { readonly width: number; readonly height: number };
 }
 
-/** Y kotwicy względem szczytu stosu = suma wysokości mainPath[0..i] + raster między nimi
- *  (port S aparatu `afterMainIndex`); dla -1 → 0 (port N). */
-function kotwicaWzglednaY(mainPath: readonly SymbolId[], afterMainIndex: number): number {
-  if (afterMainIndex < 0) return 0;
-  let y = 0;
-  for (let i = 0; i <= afterMainIndex; i++) {
+/**
+ * Położenia pionowe aparatów TORU GŁÓWNEGO względem szczytu stosu — JEDNA reguła planu
+ * (`bayApparatusPlanFootprint`), stosu stacji (`compose/station.ts::buildBayStack`) i pola GPZ
+ * (`compose/gpz.ts::buildFieldStack`). Kolejny aparat stoi raster (`APPARATUS_STACK_VERTICAL_GAP`)
+ * pod poprzednim; aparat toru głównego za KOTWICĄ odgałęzienia toru (port S aparatu
+ * `afterMainIndex ≥ 0`) stoi pod CAŁYM pasem odgałęzienia (`pasOdgalezienia`: kolumna z podpisami)
+ * + raster — jak na schemacie ENEA Zeszyt 1, Z.11.1 (przekładnik prądowy pola pod odgałęzieniem
+ * przekładnika napięciowego). Dzięki temu poziome linie obwodów wtórnych aparatów toru
+ * głównego (pomiar do przekaźnika pola) biegną pod odgałęzieniem, nie przez nie. Odgałęzienie
+ * od węzła szyny (`afterMainIndex = -1`) wisi równolegle do toru od szyny i nie przesuwa toru
+ * (przesunięcie odsunęłoby cały tor od szyny o wysokość odgałęzienia).
+ */
+export function polozeniaToruGlownego(
+  plan: Pick<BayApparatusPlan, 'mainPath'> & Partial<Pick<BayApparatusPlan, 'galezie'>>,
+): { readonly y: readonly number[]; readonly height: number } {
+  const galezie = plan.galezie ?? [];
+  const y: number[] = [];
+  let szczyt = 0;
+  plan.mainPath.forEach((symbolId, i) => {
+    y.push(szczyt);
+    const dol = szczyt + SYMBOL_DEFS[symbolId].height;
     // W1b (uwaga 12): odstęp aparat–aparat z rastru kontraktowego.
-    y += SYMBOL_DEFS[mainPath[i]].height + (i < afterMainIndex ? APPARATUS_STACK_VERTICAL_GAP : 0);
-  }
-  return y;
+    let nastepny = dol + APPARATUS_STACK_VERTICAL_GAP;
+    for (const galaz of galezie) {
+      // Pas odgałęzienia niesie wiersz podpisu (t4, wysokość spoza rastru) — położenie aparatu
+      // toru przyciągnięte w górę do siatki (aparaty i porty toru zawsze na rastrze).
+      if (galaz.afterMainIndex === i) {
+        nastepny = Math.max(nastepny, snapUp(dol + pasOdgalezienia(galaz).wysokosc + APPARATUS_STACK_VERTICAL_GAP));
+      }
+    }
+    szczyt = nastepny;
+  });
+  const n = plan.mainPath.length;
+  return { y, height: n > 0 ? y[n - 1] + SYMBOL_DEFS[plan.mainPath[n - 1]].height : 0 };
+}
+
+/** Y kotwicy względem szczytu stosu = dół aparatu `afterMainIndex` toru głównego
+ *  (`polozeniaToruGlownego`, port S); dla -1 → 0 (port N). */
+function kotwicaWzglednaY(
+  plan: Pick<BayApparatusPlan, 'mainPath'> & Partial<Pick<BayApparatusPlan, 'galezie'>>,
+  afterMainIndex: number,
+): number {
+  if (afterMainIndex < 0) return 0;
+  return polozeniaToruGlownego(plan).y[afterMainIndex] + SYMBOL_DEFS[plan.mainPath[afterMainIndex]].height;
 }
 
 /**
@@ -1139,12 +1221,12 @@ function kotwicaWzglednaY(mainPath: readonly SymbolId[], afterMainIndex: number)
 export function bayApparatusPlanFootprint(
   plan: Pick<BayApparatusPlan, 'mainPath' | 'laterals'> & Partial<Pick<BayApparatusPlan, 'galezie' | 'rezerwaEtykietBocznych'>>,
 ): BayApparatusPlanFootprint {
-  const mainStack = stackFootprint(plan.mainPath);
   const galezie = plan.galezie ?? [];
+  const mainStack = { width: stackFootprint(plan.mainPath).width, height: polozeniaToruGlownego(plan).height };
   if (plan.laterals.length === 0 && galezie.length === 0) {
     return { width: mainStack.width, height: mainStack.height, lateralExtension: 0, mainStack };
   }
-  const anchorRelY = (afterMainIndex: number): number => kotwicaWzglednaY(plan.mainPath, afterMainIndex);
+  const anchorRelY = (afterMainIndex: number): number => kotwicaWzglednaY(plan, afterMainIndex);
   const uklad = ukladBocznyPola(
     { laterals: plan.laterals, galezie, rezerwaEtykietBocznych: plan.rezerwaEtykietBocznych ?? 0 },
     anchorRelY,

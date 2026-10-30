@@ -26,6 +26,8 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.validator import ENMValidator
+from network_model.catalog.bay_templates import szablon_pola_liniowego_gpz
+from network_model.catalog.rodzaje_aparatury import RODZAJE_LACZNIKOW_POLA
 
 from tests.reference_networks.scena_geometrii_stacji import (
     zbuduj_gpz_pole_liniowe_z10,
@@ -314,3 +316,84 @@ def test_determinizm() -> None:
     a = _wywolaj(copy.deepcopy(enm), bay_ref, device_ref, "uziemiony")
     b = _wywolaj(copy.deepcopy(enm), bay_ref, device_ref, "uziemiony")
     assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
+
+
+# --- Położenie po ponownym zastosowaniu szablonu (`enm.pola.aparaty_po_wymianie`) ---------------
+#
+# Defekt wykryty przy regeneracji fikstur harnessu (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja
+# właściciela 2026-10-29 pkt 4): powiązanie źródła 3U₀ operacją `set_bay_equipment` w trybie
+# szablonu materializowało aparaty od nowa i gubiło położenie łączników bez gałęzi, choć aparat
+# był TEN SAM (ta sama tożsamość instancji co stan obiektu: `device_ref`, rodzaj, typ). Iloczyn:
+# zmiana {ten sam szablon, klasa pola, zdjęcie źródła 3U₀, wymiana wykonania pola} × łącznik
+# {w torze, w odgałęzieniu przekładnika} × położenie {otwarty, uziemiony}.
+
+
+def _wyposazenie(enm: dict[str, Any], bay_ref: str, **zmiany: Any) -> dict[str, Any]:
+    return _ok(
+        execute_domain_operation(
+            enm_dict=enm,
+            op_name="set_bay_equipment",
+            payload={"bay_ref": bay_ref, "mode": "szablon", **zmiany},
+        )
+    )
+
+
+def _tozsamosc(aparat: dict[str, Any]) -> tuple[Any, Any, Any]:
+    return aparat.get("device_ref"), aparat.get("kind"), aparat.get("catalog_ref")
+
+
+def _polozenia(enm: dict[str, Any], bay_ref: str) -> dict[tuple[Any, Any, Any], str | None]:
+    bay = next(b for b in enm["bays"] if b["ref_id"] == bay_ref)
+    return {
+        _tozsamosc(a): (a.get("switch_state") or {}).get("actual_state")
+        for a in bay["primary_devices"]
+        if a.get("kind") in RODZAJE_LACZNIKOW_POLA and not a.get("linked_ref")
+    }
+
+
+def _pole_z_polozeniami() -> tuple[dict[str, Any], str]:
+    """Pole Z.11.1 sekcji 1 (z potwierdzonym źródłem 3U₀): Q1 uziemiony, Q5 otwarty."""
+    enm = _z11()
+    bay_ref = _pole(enm, "/001/")["ref_id"]
+    enm = _do_stanu(enm, bay_ref, "Q1", "uziemiony")
+    enm = _do_stanu(enm, bay_ref, "Q5", "otwarty")
+    assert _stan(enm, bay_ref, "Q1") == "uziemiony"
+    assert _stan(enm, bay_ref, "Q5") == "otwarty"
+    return enm, bay_ref
+
+
+@pytest.mark.parametrize(
+    "zmiana",
+    [{}, {"klasa_pola": "DEDYKOWANE_WYTWORCY"}, {"zrodlo_u0_ref": None}],
+    ids=["ten_sam_szablon", "klasa_pola", "zdjecie_zrodla_u0"],
+)
+def test_ponowny_szablon_zachowuje_polozenie_tej_samej_instancji(zmiana: dict[str, Any]) -> None:
+    enm, bay_ref = _pole_z_polozeniami()
+    przed = _polozenia(enm, bay_ref)
+    po = _wyposazenie(enm, bay_ref, **zmiana)
+    assert _polozenia(po, bay_ref) == przed
+    assert _stan(po, bay_ref, "Q1") == "uziemiony"
+    assert _stan(po, bay_ref, "Q5") == "otwarty"
+    if "zrodlo_u0_ref" in zmiana:
+        # Operacja naprawdę przeliczyła pole (zdjęte źródło ⇒ bez 67N) — położenie przetrwało
+        # zmianę zestawu funkcji, nie jej brak.
+        bay_przed = next(b for b in enm["bays"] if b["ref_id"] == bay_ref)
+        bay_po = next(b for b in po["bays"] if b["ref_id"] == bay_ref)
+        assert "67N" in bay_przed["protection_codes"]
+        assert "67N" not in bay_po["protection_codes"]
+    assert ENMValidator().validate(EnergyNetworkModel.model_validate(po)).status != "FAIL"
+
+
+def test_wymiana_wykonania_pola_nowa_instancja_bez_polozenia() -> None:
+    """Aparat wymieniony (inna tożsamość instancji) nie dziedziczy położenia — nieustalone,
+    nigdy domysł; aparat o tej samej tożsamości w nowym wykonaniu zachowuje położenie."""
+    enm, bay_ref = _pole_z_polozeniami()
+    przed = _polozenia(enm, bay_ref)
+    szablon = szablon_pola_liniowego_gpz("Z11", "STALY_Z_ODLACZNIKIEM").template_id
+    po = _wyposazenie(enm, bay_ref, bay_template_ref=szablon, klasa_pola="MIESZANE")
+    wynik = _polozenia(po, bay_ref)
+    nowe = [t for t in wynik if t not in przed]
+    assert nowe, "wymiana wykonania musi dać nowe instancje łączników"
+    for tozsamosc, polozenie in wynik.items():
+        assert polozenie == przed.get(tozsamosc), tozsamosc
+    assert all(wynik[t] is None for t in nowe)

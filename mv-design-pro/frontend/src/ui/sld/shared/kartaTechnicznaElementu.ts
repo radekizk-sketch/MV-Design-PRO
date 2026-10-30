@@ -148,14 +148,31 @@ export interface KartaTechniczna {
   readonly sekcje: readonly SekcjaKarty[];
 }
 
-/** Pozycje katalogów potrzebne karcie (nazwa typu, zdolność wyłączalna aparatu). Brak katalogu
- *  (błąd pobrania) = puste mapy — karta pokazuje wtedy dane z modelu i „brak danych". */
+/** Pozycje katalogów potrzebne karcie (nazwa typu, zdolność wyłączalna aparatu, nazwa szablonu
+ *  pola i rodziny rozdzielnicy). Brak katalogu (błąd pobrania) = puste mapy — karta pokazuje
+ *  wtedy dane z modelu, „brak danych" albo „pozycja katalogu <ref>". */
 export interface KatalogiKarty {
   readonly aparatySn: ReadonlyMap<string, MVApparatusType>;
   readonly transformatory: ReadonlyMap<string, { readonly name: string }>;
+  /** Nazwa szablonu pola (kanonicznego i producenta) po `template_ref`. */
+  readonly szablonyPol: ReadonlyMap<string, string>;
+  /** Nazwa rodziny rozdzielnicy (rodzina · seria) po `switchgear_family_ref`. */
+  readonly rodzinyRozdzielnic: ReadonlyMap<string, string>;
 }
 
-export const KATALOGI_PUSTE: KatalogiKarty = { aparatySn: new Map(), transformatory: new Map() };
+export const KATALOGI_PUSTE: KatalogiKarty = {
+  aparatySn: new Map(),
+  transformatory: new Map(),
+  szablonyPol: new Map(),
+  rodzinyRozdzielnic: new Map(),
+};
+
+/** Nazwa pozycji katalogu po referencji z modelu. Katalog jej nie zna (albo jeszcze nie
+ *  odpowiedział) — „pozycja katalogu <ref>", ta sama konwencja co typ katalogowy
+ *  transformatora i aparatu: nigdy nazwa zgadnięta z identyfikatora. */
+function nazwaPozycjiKatalogu(nazwy: ReadonlyMap<string, string>, ref: string): string {
+  return nazwy.get(ref) ?? `pozycja katalogu ${ref}`;
+}
 
 /**
  * Pola WYMAGANE karty per rodzaj (klucze wierszy i tabel). Przypięte testem parytetu
@@ -809,7 +826,9 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
       },
     };
   });
-  const rodziny = [...new Set(polaSn.map((b) => napis(b.switchgear_family_ref)).filter((r): r is string => r !== null))];
+  const rodziny = [...new Set(polaSn.map((b) => napis(b.switchgear_family_ref)).filter((r): r is string => r !== null))].map(
+    (ref) => nazwaPozycjiKatalogu(katalogi.rodzinyRozdzielnic, ref),
+  );
   const generatorySn = (model.generators ?? []).filter(
     (g) => g.station_ref === stacja.ref_id && g.connection_variant === 'block_transformer',
   );
@@ -958,8 +977,15 @@ function kartaPola(ix: IndeksModelu, bay: Bay, katalogi: KatalogiKarty): KartaTe
       id: 'aparatura',
       tytul: 'Aparatura',
       wiersze: [
-        ...(napis(bay.switchgear_family_ref) ? [wiersz('rodzina', 'Rodzina rozdzielnicy', napis(bay.switchgear_family_ref))] : []),
-        ...(napis(bay.config_id) ? [wiersz('konfiguracja', 'Konfiguracja pola', napis(bay.config_id))] : []),
+        // Nazwy z katalogu, nie identyfikatory: `config_id` jest identyfikatorem nieprzezroczystym
+        // (ścieżka materializacji), więc w pierwszym planie karty stoi szablon pola, z którego
+        // pole złożono (`bay_template_ref`), i rodzina rozdzielnicy — po nazwie katalogowej.
+        ...(napis(bay.switchgear_family_ref)
+          ? [wiersz('rodzina', 'Rodzina rozdzielnicy', nazwaPozycjiKatalogu(katalogi.rodzinyRozdzielnic, napis(bay.switchgear_family_ref)!))]
+          : []),
+        ...(napis(bay.bay_template_ref)
+          ? [wiersz('szablon', 'Szablon pola', nazwaPozycjiKatalogu(katalogi.szablonyPol, napis(bay.bay_template_ref)!))]
+          : []),
       ],
       tabele: [
         {

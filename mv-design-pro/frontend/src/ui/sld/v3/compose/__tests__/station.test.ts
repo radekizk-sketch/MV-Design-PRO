@@ -1096,6 +1096,46 @@ describe('V3 compose/station — F9.9 §17: oznaczenie zabezpieczeń (protection
     expect(resolved.rect.x + resolved.rect.width).toBeLessThanOrEqual(bx + reservedWidth + GRID);
   });
 
+  // Karta UX-04/POLE-LINIOWE-WZORZEC (zrzut pola Z.10 2026-10-29): tekst wyśrodkowany
+  // w prostokącie SZACOWANEJ szerokości (`measureTextWidth`) rozjeżdżał wiersze kolumny.
+  // Iloczyn: rodzaj etykiety (wiersz listy × adnotacja CT × „52") × liczba wierszy (1, 2) —
+  // wiersze listy pod okręgiem kończą się przy prawej krawędzi rezerwacji (zaczep „koniec"),
+  // etykiety z prawej kotwicy zaczynają się w lewej krawędzi (zaczep „poczatek").
+  for (const kody of [['51', '50', '51N', '67N'], ['51', '50', '51N', '67N', 'ZS', '50BF', '79']] as const) {
+    it(`R-2 × zaczep tekstu: lista z ${kody.length} kodami — wiersze listy „koniec", adnotacja CT i „52" „poczatek"`, () => {
+      const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+        primaryDevices: makeLineBayPrimaryDevices(),
+        protectionMarking: { codes: [...kody], breakerRef: 'cb-1', ctRef: 'ct-1' },
+        ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5' }],
+      });
+      const station = makeStation(`zaczep-tekstu-${kody.length}`, [bay]);
+      const composition = composeStation(buildComposeInput(station));
+      const etykiety = composition.labels.protection;
+      const wiersze = etykiety.filter((l) => /#protection-codes-full(-\d+)?$/.test(l.ownerRef));
+      expect(wiersze).toHaveLength(kody.length > 5 ? 2 : 1);
+      for (const l of wiersze) {
+        expect(l.placement, l.ownerRef).toBe('below');
+        expect(l.wyrownanieTekstu, l.ownerRef).toBe('koniec');
+      }
+      const prawe = etykiety.filter((l) => l.ownerRef.includes('#ct-rating-') || l.ownerRef.endsWith('#device-number'));
+      expect(prawe.map((l) => l.ownerRef.split('#')[1].replace(/-.*$/, '')).sort()).toEqual(['ct', 'device']);
+      for (const l of prawe) {
+        expect(l.placement, l.ownerRef).toBe('right');
+        expect(l.wyrownanieTekstu, l.ownerRef).toBe('poczatek');
+      }
+      // Wyrównanie przechodzi przez resolver etykiet 1:1 (scena niesie je do renderu).
+      const resolved = resolveLabels({ simpleAnchored: etykiety });
+      for (const l of etykiety) {
+        expect(resolved.find((r) => r.ownerRef === l.ownerRef)?.wyrownanieTekstu, l.ownerRef).toBe(l.wyrownanieTekstu);
+      }
+      // Prawe krawędzie wierszy listy — w granicy kratki (prostokąty slotów leżą na siatce).
+      const praweKrawedzie = resolved
+        .filter((r) => wiersze.some((w) => w.ownerRef === r.ownerRef))
+        .map((r) => r.rect.x + r.rect.width);
+      expect(Math.max(...praweKrawedzie) - Math.min(...praweKrawedzie)).toBeLessThanOrEqual(GRID);
+    });
+  }
+
   it('R-2 (§17.3 zd. 2): 2 kody ⇒ ZERO etykiety pełnej listy (okrąg niesie kody w całości)', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: makeLineBayPrimaryDevices(),
@@ -1232,22 +1272,42 @@ describe('V3 compose/station — F10.5 §20.2: walidacja topologiczna funkcji za
     expect(composition.missingData).not.toContain('protection.topology.87t_missing_transformer');
   });
 
-  it('67N BEZ VT w polu ⇒ ostrzeżenie missing_vt; 67N Z VT ⇒ zero', () => {
-    const withoutVt = makeBay(FIELD_ROLE.LINE_IN, 0, {
-      primaryDevices: makeLineBayPrimaryDevices(),
-      protectionMarking: { codes: ['67N'], breakerRef: 'cb-1', ctRef: 'ct-1' },
-    });
-    const compositionWithout = composeStation(buildComposeInput(makeStation('topology-67n-missing-vt', [withoutVt])));
-    const relayWithout = compositionWithout.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
-    expect(relayWithout.protectionTopologyGaps).toEqual([{ code: '67N', reason: 'missing_vt' }]);
-
-    const withVt = makeBay(FIELD_ROLE.LINE_IN, 0, {
+  // Kanon 67N (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja właściciela 2026-10-29 pkt 4), intencja
+  // dawnego testu „67N bez prerekwizytu ⇒ ostrzeżenie, z prerekwizytem ⇒ zero" zachowana:
+  // prerekwizytem jest potwierdzone źródło 3U₀ (`zrodloU0`) i przekładnik Ferrantiego, nie VT
+  // w polu — VT pola bez potwierdzonego źródła ostrzeżenia nie gasi.
+  it('67N bez potwierdzonego źródła 3U₀ ⇒ ostrzeżenia (także z VT w polu); z potwierdzonym ⇒ zero', () => {
+    const withoutSource = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: [...makeLineBayPrimaryDevices(), { kind: 'VT', placement: 'MIDSTREAM', deviceRef: 'vt-1' }],
       protectionMarking: { codes: ['67N'], breakerRef: 'cb-1', ctRef: 'ct-1' },
     });
-    const compositionWith = composeStation(buildComposeInput(makeStation('topology-67n-with-vt', [withVt])));
+    const compositionWithout = composeStation(buildComposeInput(makeStation('topology-67n-missing-u0', [withoutSource])));
+    const relayWithout = compositionWithout.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
+    expect(relayWithout.protectionTopologyGaps).toEqual([
+      { code: '67N', reason: 'missing_core_balance_ct' },
+      { code: '67N', reason: 'missing_u0_source' },
+    ]);
+    expect(compositionWithout.missingData).toContain('protection.topology.67n_missing_u0_source');
+
+    const withSource = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: [
+        ...makeLineBayPrimaryDevices(),
+        { kind: 'CORE_BALANCE_CT', placement: 'DOWNSTREAM', deviceRef: 'cbct-1' },
+      ],
+      protectionMarking: { codes: ['67N'], breakerRef: 'cb-1', ctRef: 'ct-1' },
+      zrodloU0: {
+        potwierdzone: true,
+        vtRef: 'vt-z17',
+        vtOznaczenie: 'T1',
+        poleZrodlaRef: 'pole-z17',
+        poleZrodlaOznaczenie: '1.6',
+        kodyBrakow: [],
+      },
+    });
+    const compositionWith = composeStation(buildComposeInput(makeStation('topology-67n-with-u0', [withSource])));
     const relayWith = compositionWith.protectionSymbols.find((s) => s.symbolId === 'protectionRelay')!;
     expect(relayWith.protectionTopologyGaps).toBeUndefined();
+    expect(compositionWith.missingData.filter((k) => k.startsWith('protection.topology.67n'))).toEqual([]);
   });
 
   it('51N Z CT w polu (fixtura standardowa niesie CT) ⇒ zero ostrzeżeń missing_i0 (uproszczenie F10.5: obecność CT wystarcza, pełny I0-sumujący to F10.6)', () => {

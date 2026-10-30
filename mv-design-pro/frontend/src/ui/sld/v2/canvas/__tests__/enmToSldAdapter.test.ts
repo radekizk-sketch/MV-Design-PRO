@@ -2373,7 +2373,9 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     snap.bays = [
       pole({
         ref_id: 'bay-1', bay_role: 'TR', substation_ref: 'ST-1', bus_ref: 'bus-sn',
-        protection_codes: ['87T'], protection_ref: 'prot-1',
+        protection_codes: ['87T', '67N'], protection_ref: 'prot-1',
+        // Powiązanie źródła 3U₀ (karta UX-04/POLE-LINIOWE-WZORZEC) — adnotacja pola jak inne.
+        zrodlo_u0_ref: 'vt-z17',
       }),
     ];
     snap.protection_assignments = [
@@ -2393,13 +2395,16 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     const bay = buildSldDataFromSnapshot(snap, null).stations.find((s) => s.id === 'ST-1')?.snBays?.[0];
     expect(bay?.bayRef).toBe('bay-1');
     // Dane są (resolver je widzi)…
-    expect(resolveBayProtectionMarking(snap.bays[0], snap)?.codes).toEqual(['87T']);
+    expect(resolveBayProtectionMarking(snap.bays[0], snap)?.codes).toEqual(['87T', '67N']);
     expect(resolveBayCtRatingAnnotations(snap.bays[0], snap)).toHaveLength(1);
     // …a blok stacji ich nie rzutuje.
     expect(bay?.protectionMarking).toBeUndefined();
     expect(bay?.ctRatingAnnotations).toBeUndefined();
     expect(bay?.meteringMeasurementRef).toBeUndefined();
-    expect(bay?.vtArrangements).toBeUndefined();
+    // Źródło 3U₀ (odniesienie przy przekaźniku) to adnotacja pola — blok stacji jej nie rzutuje,
+    // tak jak oznaczenia zabezpieczeń (dawne `vtArrangements` usunięte: adapter nigdy go nie
+    // wypełniał, a reguła 67N czyta teraz źródło 3U₀).
+    expect(bay).not.toHaveProperty('zrodloU0');
     expect(bay?.vtMountingAnnotations).toBeUndefined();
   });
 });

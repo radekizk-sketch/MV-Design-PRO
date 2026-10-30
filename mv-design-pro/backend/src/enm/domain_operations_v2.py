@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import copy
 import math
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -200,6 +200,7 @@ from .tor_pola import szyny_stacji
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
+from .zrodlo_napiecia_zerowego import warunki_funkcji_eaz_pola
 
 
 def _opis_pola(enm: dict[str, Any], field_ref: object, rodzaj: str = "Pole") -> str:
@@ -2029,6 +2030,7 @@ def _resolve_bay_template_protection_codes(
     bay_template_ref: str | None,
     bay_role: str,
     klasa_pola: str | None = None,
+    warunki: Collection[str] = frozenset(),
 ) -> list[str]:
     """Wymagane funkcje EAZ pola (kody słownika `funkcje_eaz`) → Bay.protection_codes.
 
@@ -2043,8 +2045,17 @@ def _resolve_bay_template_protection_codes(
        bez SPZ w polu dedykowanym wytwórcy — `bay_templates.funkcje_eaz_pola_liniowego`);
     3. funkcje szablonu kanonicznego roli (`SZABLON_KANONICZNY_ROLI`) — pole bez szablonu;
        pole pomiarowe = puste (uczciwy brak, nie fabrykacja).
+
+    Na KAŻDEJ z trzech dróg funkcja warunkowa (`bay_templates.WARUNKI_FUNKCJI_EAZ` — 67N) trafia
+    do zestawu wyłącznie przy warunku spełnionym w modelu (``warunki`` z
+    `enm.zrodlo_napiecia_zerowego.warunki_funkcji_eaz_pola`; domyślnie żaden — pole budowane
+    nie ma jeszcze powiązanego źródła 3U₀). Decyzja właściciela 2026-10-29.
     """
-    from network_model.catalog.bay_templates import funkcje_eaz_roli, funkcje_eaz_szablonu
+    from network_model.catalog.bay_templates import (
+        bez_niespelnionych_warunkow,
+        funkcje_eaz_roli,
+        funkcje_eaz_szablonu,
+    )
 
     if bay_template_ref:
         from network_model.catalog.switchgear.canonical_fallback import (
@@ -2064,12 +2075,12 @@ def _resolve_bay_template_protection_codes(
                 None,
             )
         if template is not None and template.protection_requirements:
-            return list(template.protection_requirements)
-        z_szablonu = funkcje_eaz_szablonu(bay_template_ref, klasa_pola)
+            return bez_niespelnionych_warunkow(template.protection_requirements, warunki)
+        z_szablonu = funkcje_eaz_szablonu(bay_template_ref, klasa_pola, warunki)
         if z_szablonu is not None:
             return z_szablonu
 
-    return funkcje_eaz_roli(bay_role)
+    return funkcje_eaz_roli(bay_role, warunki)
 
 
 def _pole_rekonfigurowane_i_szyna(
@@ -2335,12 +2346,19 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
     # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
     # refy danych). Bez szablonu: brak kodów (wsteczna zgodność). Pole rekonfigurowane
-    # zachowuje zadeklarowaną klasę pola liniowego — zestaw funkcji wg klasy (IRiESD II.4.5.4.2).
+    # zachowuje zadeklarowaną klasę pola liniowego — zestaw funkcji wg klasy (IRiESD II.4.5.4.2)
+    # — i potwierdzone powiązanie źródła 3U₀ (funkcja warunkowa 67N, decyzja właściciela
+    # 2026-10-29: `enm.zrodlo_napiecia_zerowego`); pole nowe nie ma powiązania, więc bez 67N.
     protection_codes = _resolve_bay_template_protection_codes(
         manufacturer_ref,
         bay_template_ref,
         bay_role,
         existing_field.get("klasa_pola") if isinstance(existing_field, dict) else None,
+        (
+            warunki_funkcji_eaz_pola(enm, existing_field)
+            if isinstance(existing_field, dict)
+            else frozenset()
+        ),
     )
     if protection_codes:
         producer_refs["protection_codes"] = protection_codes

@@ -433,6 +433,8 @@ class ENMValidator:
         self._check_pole_liniowe_gpz(enm, issues)
         # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: oznaczenia aparatów pola (W063)
         self._check_oznaczenia_aparatow_pola(enm, issues)
+        # Decyzja właściciela 2026-10-29: 67N bez potwierdzonego źródła 3U₀ (W064)
+        self._check_zrodlo_u0_pol(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
         # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
@@ -2205,6 +2207,40 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    def _check_zrodlo_u0_pol(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W064: pole z funkcją 67N (zabezpieczenie ziemnozwarciowe kierunkowe) bez potwierdzonego
+        źródła napięcia zerowego 3U₀ (`enm.zrodlo_napiecia_zerowego` — decyzja właściciela
+        2026-10-29, ENEA Zeszyt 1 §26.9, Z.10/Z.11.1/Z.17). Operacje przypisują 67N wyłącznie przy
+        potwierdzonym źródle, więc W064 łapie powiązanie nieaktualne (pole pomiaru napięcia
+        usunięte, przekładnik zmieniony) i model sprzed reguły. Poziom IMPORTANT: obliczenia sieci
+        są poprawne, fikcyjna jest funkcja zabezpieczeniowa pola."""
+        if not any(pole.protection_codes for pole in enm.bays):
+            return
+        # Import LENIWY: reguła czyta szablony pól (cykl `bay_templates` ↔ pakiet `enm`).
+        from .zrodlo_napiecia_zerowego import (
+            AKCJA_NAPRAWCZA_ZRODLA_U0_PL,
+            KOD_WALIDATORA_ZRODLA_U0,
+            naruszenia_zrodla_u0,
+        )
+
+        for naruszenie in naruszenia_zrodla_u0(enm.model_dump(mode="json")):
+            issues.append(
+                ValidationIssue(
+                    code=KOD_WALIDATORA_ZRODLA_U0,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=naruszenie.komunikat_pl,
+                    element_refs=[naruszenie.bay_ref],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        f"{AKCJA_NAPRAWCZA_ZRODLA_U0_PL[0].upper()}"
+                        f"{AKCJA_NAPRAWCZA_ZRODLA_U0_PL[1:]}."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT", element_ref=naruszenie.bay_ref
+                    ),
+                )
+            )
 
     def _check_oznaczenia_aparatow_pola(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]

@@ -46,6 +46,7 @@ import { GRID, snapUp } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import type { CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../../v2/model/widokPolStacji';
+import { tekstOdniesieniaZrodlaU0 } from '../../v2/model/zrodloNapieciaZerowego';
 
 /** Średnica okręgu adnotacji (przekaźnik/miernik) — spec §17.3: 24px = 3×GRID. */
 export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
@@ -77,16 +78,100 @@ export function protectionAnnotationDetailForLod(lod: 0 | 1 | 2): ProtectionAnno
  * F9.5 (spójna typografia adnotacji).
  */
 export function fullCodesListText(codes: readonly string[]): string | null {
-  return codes.length > 2 ? codes.join(' · ') : null;
+  const wiersze = fullCodesListLines(codes);
+  return wiersze.length > 0 ? wiersze.join(' · ') : null;
 }
+
+/** Liczba kodów w jednym wierszu pełnej listy funkcji EAZ. */
+export const KODY_EAZ_W_WIERSZU = 5;
+
+/**
+ * Wiersze PEŁNEJ listy kodów funkcji (spec §17.3 zd. 2) — po `KODY_EAZ_W_WIERSZU` kodów
+ * w wierszu, w kolejności danych; puste, gdy kodów ≤2 (okrąg niesie je w całości). Karta
+ * UX-04/POLE-LINIOWE-WZORZEC (korekta P0 pkt 6): profil EAZ pola liniowego ENEA (15 funkcji
+ * Z.11.1) w JEDNYM wierszu odsuwał przekaźnik o szerokość listy od pola — lista w wierszach
+ * stoi zwarcie przy przekaźniku. JEDNA funkcja rezerwacji szerokości i rysunku (stacja, GPZ).
+ */
+export function fullCodesListLines(codes: readonly string[]): readonly string[] {
+  if (codes.length <= 2) return [];
+  const wiersze: string[] = [];
+  for (let i = 0; i < codes.length; i += KODY_EAZ_W_WIERSZU) {
+    wiersze.push(codes.slice(i, i + KODY_EAZ_W_WIERSZU).join(' · '));
+  }
+  return wiersze;
+}
+
+/** Odstęp kolejnych wierszy pełnej listy kodów [px świata] — dwa rastry: wiersze t4
+ *  przyciągane do siatki nie nachodzą na siebie. */
+export const ODSTEP_WIERSZY_KODOW_EAZ = 2 * GRID;
 
 /** Klasa typograficzna pełnej listy kodów — t4 (8px, „adnotacje",
  *  `core/text.ts`), ta sama co „52" (§17.3 „etykieta 8 px"). */
 export const PROTECTION_FULL_LIST_LABEL_CLASS = 't4' as const;
 
+/**
+ * Odniesienia obwodów spoza pola przy okręgu przekaźnika — dziś źródło napięcia zerowego 3U₀
+ * funkcji 67N: obwód okrężny „Z, Zz" z przekładnika pola pomiaru napięcia (ENEA Z.10 s.89,
+ * Z.11.1 s.91, Z.17 s.97), potwierdzony w modelu (`MiniBlockBayDescriptor.zrodloU0`). Na
+ * schemacie głównym odniesienie TEKSTOWE, nie przewód przez rozdzielnicę (decyzja właściciela
+ * 2026-10-29 pkt 4). JEDNA lista dla rezerwacji kolumny i rysunku (GPZ i stacje); puste, gdy
+ * pole nie rysuje przekaźnika (brak kodów funkcji).
+ */
+export function odniesieniaPrzekaznikaPola(
+  bay: Pick<MiniBlockBayDescriptor, 'zrodloU0'>,
+  codes: readonly string[],
+): readonly string[] {
+  if (codes.length === 0) return [];
+  const tekst = tekstOdniesieniaZrodlaU0(bay.zrodloU0);
+  return tekst ? [tekst] : [];
+}
+
+/**
+ * Wiersze kodów funkcji POZA okręgiem przekaźnika w układzie powiązań obwodów wtórnych pola
+ * GPZ: okrąg niesie dwa pierwsze kody (§17.3), wiersze — WYŁĄCZNIE pozostałe, po
+ * `KODY_EAZ_W_WIERSZU` w wierszu. Uwaga właściciela 2026-10-29 pkt 5: okrąg „51 50" powtarzał
+ * część pełnej listy stojącej obok — blok przekaźnika ma JEDNĄ reprezentację każdej funkcji
+ * (okrąg ∪ wiersze, w ramce bloku). Układ stacji (R-2 §17.3) zostaje przy pełnej liście
+ * (`fullCodesListLines`).
+ */
+export function wierszeKodowPozaOkregiem(codes: readonly string[]): readonly string[] {
+  const reszta = codes.slice(2);
+  const wiersze: string[] = [];
+  for (let i = 0; i < reszta.length; i += KODY_EAZ_W_WIERSZU) {
+    wiersze.push(reszta.slice(i, i + KODY_EAZ_W_WIERSZU).join(' · '));
+  }
+  return wiersze;
+}
+
+/** Wiersze tekstu w bloku przekaźnika układu powiązań: kody poza okręgiem i po nich
+ *  odniesienia obwodów spoza pola — kolejność rysunku, odstęp `ODSTEP_WIERSZY_KODOW_EAZ`.
+ *  JEDNA lista rezerwacji kolumny (`szerokoscListyPoPrawejPrzekaznika`) i rysunku
+ *  (`compose/gpz.ts`): blok z wierszami dostaje ramkę, bez wierszy — sam okrąg. */
+export function wierszeAdnotacjiPrzekaznika(
+  codes: readonly string[],
+  odniesienia: readonly string[],
+): readonly string[] {
+  return [...wierszeKodowPozaOkregiem(codes), ...odniesienia];
+}
+
+/** Margines ramki bloku przekaźnika wokół okręgu i wierszy [px świata] — pół rastru: ramka
+ *  nie dotyka tekstu, a wejście lewe i dolne okręgu leżą o pół rastru wewnątrz ramki. */
+export const RAMKA_BLOKU_PRZEKAZNIKA_MARGINES = GRID / 2;
+
+/** Szerokość wierszy bloku (najszerszy z `wierszeAdnotacjiPrzekaznika`); 0 = brak. */
+export function szerokoscWierszyAdnotacjiPrzekaznika(
+  codes: readonly string[],
+  odniesienia: readonly string[],
+): number {
+  const wiersze = wierszeAdnotacjiPrzekaznika(codes, odniesienia);
+  return wiersze.length > 0
+    ? Math.max(...wiersze.map((wiersz) => measureLabelWidth(wiersz, PROTECTION_FULL_LIST_LABEL_CLASS)))
+    : 0;
+}
+
 type ProtectionAwareBay = Pick<
   MiniBlockBayDescriptor,
-  'protectionMarking' | 'meteringMeasurementRef' | 'ctRatingAnnotations' | 'vtMountingAnnotations'
+  'protectionMarking' | 'meteringMeasurementRef' | 'ctRatingAnnotations' | 'vtMountingAnnotations' | 'zrodloU0'
 >;
 
 /**
@@ -225,10 +310,9 @@ export function vtMountingAnnotationsWidth(bay: ProtectionAwareBay): number {
  */
 export function protectionAnnotationColumnWidth(bay: ProtectionAwareBay): number {
   if (!bayHasProtectionAnnotation(bay)) return 0;
-  const fullList = fullCodesListText(bay.protectionMarking?.codes ?? []);
-  const fullListWidth = fullList
-    ? snapUp(measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS)) + GRID
-    : 0;
+  const codes = bay.protectionMarking?.codes ?? [];
+  const listWidth = szerokoscWierszyAdnotacjiPrzekaznika(codes, odniesieniaPrzekaznikaPola(bay, codes));
+  const fullListWidth = listWidth > 0 ? snapUp(listWidth) + GRID : 0;
   const hasRelayOrMeter = (bay.protectionMarking?.codes.length ?? 0) > 0 || bay.meteringMeasurementRef != null;
   const relayMeterWidth = hasRelayOrMeter ? GRID + Math.max(PROTECTION_ANNOTATION_DIAMETER, fullListWidth) : 0;
   // CTVT-RENDER (§20.2): adnotacja CT i VT leżą w TYM SAMYM lewym paśmie
@@ -237,6 +321,61 @@ export function protectionAnnotationColumnWidth(bay: ProtectionAwareBay): number
   // (zero regresji dla pól CT-only, baseline'y nietknięte).
   const leftBandWidth = Math.max(ctRatingAnnotationsWidth(bay), vtMountingAnnotationsWidth(bay));
   return relayMeterWidth + leftBandWidth;
+}
+
+/** Rekord aparatu pola niosący powiązania obwodów wtórnych (podzbiór `BayPrimaryDeviceView`). */
+interface AparatZPowiazaniamiObwodow {
+  readonly funkcjeEazZasilane?: readonly string[];
+  readonly funkcjeEazWylaczajace?: readonly string[];
+}
+
+/**
+ * Czy pole rysuje przekaźnik w układzie POWIĄZAŃ OBWODÓW WTÓRNYCH (karta UX-04/POLE-LINIOWE-
+ * WZORZEC, korekta P0 pkt 6): co najmniej jeden aparat pola niesie w modelu powiązanie
+ * (`funkcje_eaz_zasilane` albo `funkcje_eaz_wylaczajace`) z funkcją EAZ pola. JEDEN predykat
+ * rezerwacji szerokości kolumny (`szerokoscPrzekaznikaZPowiazaniami`) i rysunku (`compose/
+ * gpz.ts`) — oba czytają te same rekordy modelu, nie narysowany stos.
+ */
+export function czyPrzekaznikZPowiazaniamiObwodow(
+  codes: readonly string[],
+  aparaty: readonly AparatZPowiazaniamiObwodow[] | undefined,
+): boolean {
+  if (codes.length === 0) return false;
+  const funkcjePola = new Set(codes);
+  return (aparaty ?? []).some(
+    (a) => czyPowiazany(a.funkcjeEazZasilane, funkcjePola) || czyPowiazany(a.funkcjeEazWylaczajace, funkcjePola),
+  );
+}
+
+/**
+ * Wejścia pomiarowe przekaźnika w kolejności przydziału źródłom (od najwyższego zacisku
+ * wtórnego w dół): wejście lewe pod wejściem wyłączania, potem dwa dolne. Kolejność dobrana
+ * tak, że pion źródła wyższego kończy się nad poziomem źródła niższego — linie pomiarowe
+ * kolejnych źródeł nie krzyżują się (dowód w `compose/__tests__`).
+ */
+export const WEJSCIA_POMIAROWE_PRZEKAZNIKA = ['pomiar-lewy', 'pomiar', 'pomiar-prawy'] as const;
+
+/**
+ * Szerokość części przekaźnikowej kolumny pola w układzie powiązań obwodów wtórnych —
+ * prześwit od pasma adnotacji (GRID), tor pionu wejścia lewego (GRID), okrąg i (gdy kodów >2)
+ * pełna lista kodów PO PRAWEJ okręgu, wiersz pod wierszem (`fullCodesListLines`). Ta sama
+ * arytmetyka co rysunek (`compose/gpz.ts`).
+ */
+export function szerokoscPrzekaznikaZPowiazaniami(
+  codes: readonly string[],
+  odniesienia: readonly string[] = [],
+): number {
+  return 2 * GRID + PROTECTION_ANNOTATION_DIAMETER + szerokoscListyPoPrawejPrzekaznika(codes, odniesienia);
+}
+
+/** Pasmo wierszy bloku po prawej okręgu przekaźnika (prześwit + najszerszy wiersz + margines
+ *  ramki bloku, `RAMKA_BLOKU_PRZEKAZNIKA_MARGINES`) — 0, gdy blok nie ma wierszy (bez ramki). */
+export function szerokoscListyPoPrawejPrzekaznika(
+  codes: readonly string[],
+  odniesienia: readonly string[] = [],
+): number {
+  const szerokosc = szerokoscWierszyAdnotacjiPrzekaznika(codes, odniesienia);
+  return szerokosc > 0 ? GRID + snapUp(szerokosc + RAMKA_BLOKU_PRZEKAZNIKA_MARGINES) : 0;
 }
 
 /**
@@ -251,6 +390,12 @@ export interface PlacedStackDevice {
   readonly linkedRef?: string;
   readonly x: number;
   readonly y: number;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): kody funkcji EAZ zasilanych z aparatu
+   *  (`BayPrimaryDevice.funkcje_eaz_zasilane`) — źródło linii pomiarowej. */
+  readonly funkcjeEazZasilane?: readonly string[];
+  /** Kody funkcji EAZ wyłączających aparat (`BayPrimaryDevice.funkcje_eaz_wylaczajace`) —
+   *  cel linii wyłączania. */
+  readonly funkcjeEazWylaczajace?: readonly string[];
 }
 
 function centerOf(device: PlacedStackDevice): { readonly x: number; readonly y: number } {
@@ -279,6 +424,17 @@ export interface ResolvedProtectionMarking {
    *  pomiarowej i zgłasza `bay.protection.measurement_link_unresolved`
    *  (wzorzec `tripTarget`/`bay.protection.trip_link_unresolved` wyżej). */
   readonly ctAnchor: PlacedStackDevice | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): aparaty NARYSOWANEGO stosu, które
+   *  zasilają funkcje EAZ pola (`funkcjeEazZasilane` ∩ `codes` ≠ ∅ — rdzeń przekładnika
+   *  prądowego, uzwojenie przekładnika napięciowego, przekładnik Ferrantiego), w kolejności
+   *  stosu. Źródła linii pomiarowych do wejścia pomiarowego przekaźnika; puste = model nie
+   *  niesie powiązań (pole bez obwodów wtórnych szablonu). */
+  readonly zrodlaPomiaru: readonly PlacedStackDevice[];
+}
+
+/** Czy aparat niesie powiązanie z którąkolwiek funkcją pola. */
+function czyPowiazany(kody: readonly string[] | undefined, funkcjePola: ReadonlySet<string>): boolean {
+  return (kody ?? []).some((kod) => funkcjePola.has(kod));
 }
 
 /**
@@ -296,8 +452,16 @@ export function resolveStationProtectionMarking(
   const breakerRef = bay.protectionMarking?.breakerRef;
   const ctRef = bay.protectionMarking?.ctRef;
 
+  // Cel linii wyłączania: wyłącznik wskazany przez `ProtectionAssignment.breaker_ref`, a gdy
+  // pole go nie niesie — wyłącznik, który model wiąże z funkcjami EAZ pola
+  // (`funkcje_eaz_wylaczajace`, materializowane z obwodów wtórnych szablonu). Nigdy wyłącznik
+  // domyślny (§17.2): bez powiązania w modelu linia nie powstaje.
+  const funkcjePola = new Set(codes);
   const tripTarget =
-    (breakerRef && stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker' && d.deviceRef === breakerRef)) || null;
+    (breakerRef && stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker' && d.deviceRef === breakerRef))
+    || stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker' && czyPowiazany(d.funkcjeEazWylaczajace, funkcjePola))
+    || null;
+  const zrodlaPomiaru = stack.filter((d) => czyPowiazany(d.funkcjeEazZasilane, funkcjePola));
   const ctAnchor =
     (ctRef && stack.find((d) => rodzajSymbolu(d.symbolId) === 'currentTransformer' && d.deviceRef === ctRef)) || null;
 
@@ -312,7 +476,7 @@ export function resolveStationProtectionMarking(
   const fallbackAnchor = stack.find((d) => rodzajSymbolu(d.symbolId) === 'breaker') ?? stack[0];
   const anchor = ctAnchor ?? tripTarget ?? fallbackAnchor;
 
-  return { codes, anchor, tripTarget, ctAnchor };
+  return { codes, anchor, tripTarget, ctAnchor, zrodlaPomiaru };
 }
 
 /**

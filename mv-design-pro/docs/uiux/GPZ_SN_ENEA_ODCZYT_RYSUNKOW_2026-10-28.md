@@ -52,7 +52,7 @@ Szyna → zestyk+ziemia [INTERPR.] → napęd uziemienia [INTERPR.] → wyłącz
 ## Z.17 Pole pomiaru napięcia (s.97)
 Szyna → zestyk odłączający+ziemia [INTERPR.] → napęd uziemienia [INTERPR.] → wskaźnik napięcia → głowica/element czarny (NIECZYTELNE: bezpiecznik czy głowica) → PN 3-uzwojeniowy SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3 (I 0-10VA 0,2; II 15VA 0,5/3P; III 15VA 3P, otwarty trójkąt). Brak wyłącznika. Wtórnie wyłączniki nadmiarowe i bezpiecznik. Funkcje: U>, U<, Uo>, f<, df/dt, SCO1/2, SPZ po SCO, automatyka SZR, napięcie do pomiaru energii.
 
-## §13 Rozdzielnia SN (druk s.23–25/76; z1.txt l.974–1100)
+## §13 Rozdzielnia SN (druk s.23–26/76; z1.txt l.974–1100)
 Jednosystemowa, dwusekcyjna, izolacja SF6 lub inna o zbliżonych właściwościach (w tym powietrzna), wnętrzowa osłonięta; pola: 2 TR, ŁS z 1 lub 2 celek, 2 ZU, 2 BKR, 2 pomiaru napięcia (po jednym na sekcję), linie wg potrzeb. Izolacja powietrzna dopuszczona w uzasadnionych przypadkach (rozbudowa): stały wyłącznik + odłącznik szynowy LUB poziomo wysuwny wyłącznik z wózkiem. Pola łukoodporne, przedziałowe (kablowy, łączników, szyn, pomocniczy; w gazowych kanał wydmuchowy). Blokady mechaniczne i elektryczne między wyłącznikiem, odłącznikiem, członem wysuwnym, uziemnikami i łącznikami trójpołożeniowymi; przy trójpołożeniowych dopuszczone uziemienie pola przez zamknięty wyłącznik. Wyłączniki próżniowe. Uziemienie każdego pola, szyn sekcji i wyprowadzeń uziemnikami stałymi, wspólny napęd 3-fazowy. Stacjonarne wskaźniki napięcia. Rozdzielnica 24 kV dla Un ≤20 kV; miejsce na co najmniej 32 pola; szerokość pola 60–80 cm (TR/ŁS do 100 cm); PN nie poza obrysem celki; SZR z przekaźnikiem w polu ŁS.
 
 # UZUPEŁNIENIE (2026-10-28, render 300 dpi wycinków)

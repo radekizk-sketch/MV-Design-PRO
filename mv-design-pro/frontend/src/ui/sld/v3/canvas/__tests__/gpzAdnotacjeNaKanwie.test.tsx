@@ -243,13 +243,59 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
       expect(flagiPola(liniowe[0].ref_id)).toEqual(['SPZ', 'SCO', 'LRW']);
       // 81U (f<) nie jest SCO — plakietki SCO nie ma.
       expect(flagiPola(liniowe[1].ref_id)).toEqual(['SPZ', 'LRW', 'NZ', 'OWG']);
+      // Pole pomiaru napięcia szyn (ENEA Z.17, szablon `…_pomiar_napiecia_enea_z17`) niesie
+      // automatykę SCO sekcji z rysunku i §26.9.8 / §26.10.6 Zeszytu 1 („przekaźnik zabudowany
+      // w polu pomiaru napięcia") — plakietka SCO z JEGO kodów; poza tym polem i dwoma polami
+      // liniowymi żaden kod nie daje plakietki (intencja: plakietki wyłącznie z kodów pól).
+      const polaPomiaru = (zKodami.bays ?? []).filter((b) => b.bay_role === 'MEASUREMENT' && (b.protection_codes ?? []).length > 0);
+      expect(polaPomiaru).toHaveLength(1);
+      expect(polaPomiaru[0].protection_codes).toContain('SCO');
+      expect(flagiPola(polaPomiaru[0].ref_id)).toEqual(['SCO']);
       const plakietki = [...container.querySelectorAll('[data-gpz-plakietka]')];
-      expect(plakietki.length).toBe(7);
+      expect(plakietki.length).toBe(3 + 4 + 1);
       for (const p of plakietki) {
         expect(p.getAttribute('data-gpz-plakietka-stan')).toBe('nieustalony');
         expect(p.querySelector('rect')!.getAttribute('stroke-dasharray')).toBe('3 2');
         expect(p.querySelector('title')!.textContent).toContain('należy do nastaw zabezpieczeń pola');
       }
+    });
+  }
+
+  // Karta UX-04/POLE-LINIOWE-WZORZEC (zrzut pola Z.10 2026-10-29): wiersze bloku przekaźnika
+  // pola GPZ rozjeżdżały się, bo render wyśrodkowywał tekst w prostokącie SZACOWANEJ szerokości.
+  // Ścieżka natywna: migawka z generatora backendu (pola liniowe Z.11.1/Z.11 z powiązaniami
+  // obwodów), powiększenie kółkiem do czytelności pisma, asercje na realnym DOM kanwy × motyw.
+  for (const motyw of ['dark_scada', 'light_technical'] as const) {
+    it(`BLOK PRZEKAŹNIKA × motyw ${motyw}: wiersze tekstu zaczepione we wspólnej lewej krawędzi prostokątów sceny`, () => {
+      useThemeModeStore.getState().setMode(motyw as ThemeMode);
+      useSnapshotStore.setState({ snapshot: enmPolGpz });
+      const container = renderKanwe(2);
+      // Pismo adnotacji zabezpieczeń (klasa t4, rola „dane") przekracza próg czytelności przy
+      // większym powiększeniu niż teksty warstwy GPZ — kółko w środku kanwy aż do pierwszego
+      // narysowanego wiersza bloku.
+      const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+      for (let i = 0; i < 60 && !container.querySelector('g[data-owner-kind="protection"] text'); i += 1) {
+        fireEvent.wheel(svg, { clientX: CANVAS_W / 2, clientY: CANVAS_H / 2, deltaY: -140 });
+      }
+      const scena = buildSceneV3(enmPolGpz, 2);
+      const wierszeSceny = scena.labels.filter(
+        (l) => l.ownerKind === 'protection' && l.placement === 'right' && /#(protection-codes-full|zrodlo-u0)(-\d+)?$/.test(l.ownerRef ?? ''),
+      );
+      expect(wierszeSceny.length).toBeGreaterThan(2);
+      let narysowane = 0;
+      for (const l of wierszeSceny) {
+        const t = container.querySelector(`g[data-owner-ref="${l.ownerRef}"] text`);
+        if (!t) continue;
+        narysowane += 1;
+        expect(t.getAttribute('text-anchor'), l.ownerRef).toBe('start');
+        expect(Number(t.getAttribute('x')), l.ownerRef).toBe(l.rect.x);
+      }
+      expect(narysowane, 'wiersze bloku narysowane po powiększeniu do czytelności').toBeGreaterThan(1);
+      // Pozostałe etykiety bez wyrównania — wyśrodkowane jak dotąd (zmiana ogranicza się do
+      // warstwy adnotacji zabezpieczeń).
+      const inne = scena.labels.find((l) => l.ownerKind === 'apparatus');
+      const tInne = inne ? container.querySelector(`g[data-owner-ref="${inne.ownerRef}"] text`) : null;
+      if (tInne) expect(tInne.getAttribute('text-anchor')).toBe('middle');
     });
   }
 

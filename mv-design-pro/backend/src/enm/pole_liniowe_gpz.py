@@ -31,6 +31,11 @@ dowodu ``NIEPELNY`` — dowodem jest deklaracja funkcji pola, nie nastawy przeka
 przyłączenia, których model nie niesie), nieobecna → ``NIEJEDNOZNACZNY`` — nigdy ``SPELNIA``;
 funkcja dopuszczalna → ``NIE_DOTYCZY``; zakazana obecna → ``NIE_SPELNIA``, nieobecna →
 ``SPELNIA``; SPZ w linii kablowej → ``NIE_DOTYCZY`` (wymóg dotyczy linii napowietrznych).
+Funkcja WARUNKOWA (`bay_templates.WARUNKI_FUNKCJI_EAZ` — 67N: źródło napięcia zerowego 3U₀
+i kryterium prądowe I0, decyzja właściciela 2026-10-29) wymagana klasą przy warunku
+niespełnionym w modelu → ``NIE_OCENIONO`` z listą braków (`enm.zrodlo_napiecia_zerowego`) —
+obecna czy nie: bez źródła U0 funkcja niczego nie mierzy, a brak funkcji nie jest naruszeniem,
+dopóki model nie ma jej wejścia. Nigdy ``SPELNIA`` ani ``NIE_SPELNIA`` bez wejścia funkcji.
 
 NIEZGODNOŚCI WALIDATORA (W053–W057) — rekordy z kodem, zdaniem i akcją; walidator modelu
 (`enm.validator`) je raportuje, operacje ich nie blokują (zmiana sieci za polem, np. dołożenie
@@ -49,10 +54,16 @@ from network_model.catalog.bay_templates import (
     NAZWY_KLASY_POLA_PL,
     OPIS_WYMOGU_PL,
     PODSTAWA_KLASY_POLA,
+    WARUNEK_ZRODLA_U0,
+    WARUNKI_FUNKCJI_EAZ,
     WYMAGANIA_EAZ_KLASY_POLA,
 )
 from network_model.catalog.funkcje_eaz import opis_funkcji_eaz_pl
-from network_model.catalog.obwody_wtorne_pola import ObwodyWtornePola, WejscieFunkcjiEaz
+from network_model.catalog.obwody_wtorne_pola import (
+    RODZAJ_APARATU_WEJSCIA,
+    ObwodyWtornePola,
+    WejscieFunkcjiEaz,
+)
 from network_model.pochodne.jednostki import kw_na_mw, mw_na_kw
 from werdykt.etykiety import etykieta
 from werdykt.kontrakt import Etykieta, StatusWerdyktu, WyjasnienieWerdyktu
@@ -60,6 +71,12 @@ from werdykt.kontrakt import Etykieta, StatusWerdyktu, WyjasnienieWerdyktu
 from .slownik_komunikatow import opis_elementu
 from .topology import _graf_konfiguracji_normalnej, szyny_sekcji_gpz
 from .zgodnosc_szablonu_pola import czy_pole_gpz
+from .zrodlo_napiecia_zerowego import (
+    AKCJA_NAPRAWCZA_ZRODLA_U0_PL,
+    PODSTAWA_ZRODLA_U0,
+    ZrodloU0Pola,
+    zrodlo_u0_pola,
+)
 
 __all__ = [
     "AKCJA_NAPRAWCZA_POLA_LINIOWEGO_PL",
@@ -307,13 +324,36 @@ def klasa_z_sieci(moduly: Iterable[ModulZaPolem], odbiory: Iterable[tuple[str, f
 
 
 def _ocena_funkcji(
-    kod: str, wymog: str, podstawa: str, obecna: bool, linia_napowietrzna: bool, klasa: str
+    kod: str,
+    wymog: str,
+    podstawa: str,
+    obecna: bool,
+    linia_napowietrzna: bool,
+    klasa: str,
+    zrodlo_u0: ZrodloU0Pola,
 ) -> OcenaFunkcjiPola:
     funkcja = opis_funkcji_eaz_pl(kod)
     kryterium = f"funkcja {OPIS_WYMOGU_PL[wymog]} w klasie: {NAZWY_KLASY_POLA_PL[klasa]}"
     status: StatusWerdyktu
     czego_brakuje: tuple[str, ...] = ()
-    if wymog == "NAPOWIETRZNA" and not linia_napowietrzna:
+    dowod = _DOWOD_DEKLARACJI
+    warunek_niespelniony = (
+        WARUNKI_FUNKCJI_EAZ.get(kod) == WARUNEK_ZRODLA_U0 and not zrodlo_u0.potwierdzone
+    )
+    if wymog in ("OBOWIAZKOWA", "NAPOWIETRZNA", "NA_ZADANIE_OSD") and warunek_niespelniony:
+        # Decyzja właściciela 2026-10-29: funkcja bez wejścia w modelu nie jest oceniana —
+        # ani „spełnia” (deklaracja bez źródła U0 niczego nie mierzy), ani „naruszona” (brak
+        # funkcji wynika z braku jej źródła, nie z wyboru projektanta). Braki nazwane wprost.
+        status = "NIE_OCENIONO"
+        stan_funkcji = (
+            "funkcja zadeklarowana w polu bez wejścia napięcia zerowego"
+            if obecna
+            else "funkcja nieprzypisana — przypisanie wymaga źródła 3U₀"
+        )
+        przyczyna = f"{zrodlo_u0.przyczyna_pl}; {stan_funkcji} — {AKCJA_NAPRAWCZA_ZRODLA_U0_PL}"
+        czego_brakuje = zrodlo_u0.czego_brakuje
+        dowod = f"{_DOWOD_DEKLARACJI}; źródło 3U₀: {PODSTAWA_ZRODLA_U0}"
+    elif wymog == "NAPOWIETRZNA" and not linia_napowietrzna:
         status, przyczyna = (
             "NIE_DOTYCZY",
             "za polem nie ma linii napowietrznej — wymóg dotyczy linii napowietrznych "
@@ -357,7 +397,7 @@ def _ocena_funkcji(
         co_oceniono=f"obecność funkcji {funkcja} w polu",
         kryterium=kryterium,
         podstawa=podstawa,
-        dowod=_DOWOD_DEKLARACJI,
+        dowod=dowod,
         kompletnosc_dowodu="NIEPELNY",
         etykieta=etykieta_oceny,
         wyjasnienie=WyjasnienieWerdyktu(
@@ -407,8 +447,9 @@ def ocena_pola_liniowego(
     z_sieci = klasa_z_sieci(moduly, odbiory)
     klasa = str(zadeklarowana) if zadeklarowana is not None else z_sieci
     kody = [str(k) for k in pole.get("protection_codes") or []]
+    zrodlo_u0 = zrodlo_u0_pola(enm, pole)
     oceny = tuple(
-        _ocena_funkcji(kod, wymog, podstawa, kod in kody, linia_napowietrzna, klasa)
+        _ocena_funkcji(kod, wymog, podstawa, kod in kody, linia_napowietrzna, klasa, zrodlo_u0)
         for kod, wymog, podstawa in WYMAGANIA_EAZ_KLASY_POLA[klasa]
     )
 
@@ -532,7 +573,6 @@ _NAZWA_PRZEKLADNIKA_PL = {
     "UZWOJENIE_VT": "przekładnika napięciowego",
 }
 _RODZAJ_OBWODU_PL = {"RDZEN_CT": "rdzeń", "UZWOJENIE_VT": "uzwojenie"}
-_RODZAJ_APARATU_OBWODU = {"RDZEN_CT": "CT", "UZWOJENIE_VT": "VT"}
 
 
 def _opis_wejscia(wejscie: WejscieFunkcjiEaz, aparaty: Mapping[str, Mapping[str, Any]]) -> str:
@@ -542,7 +582,7 @@ def _opis_wejscia(wejscie: WejscieFunkcjiEaz, aparaty: Mapping[str, Mapping[str,
         return f"sygnał „{wejscie.sygnal}”"
     aparat = aparaty.get(str(wejscie.aparat))
     if wejscie.rodzaj == "PRZEKLADNIK_FERRANTIEGO":
-        if aparat is None or aparat.get("kind") != "CORE_BALANCE_CT":
+        if aparat is None or aparat.get("kind") != RODZAJ_APARATU_WEJSCIA[wejscie.rodzaj]:
             return f"przekładnik Ferrantiego {wejscie.aparat} — brak aparatu w polu"
         przekladnia = aparat.get("przekladnia")
         return f"przekładnik Ferrantiego {wejscie.aparat}" + (
@@ -555,7 +595,7 @@ def _opis_wejscia(wejscie: WejscieFunkcjiEaz, aparaty: Mapping[str, Mapping[str,
         "bez numeru" if wejscie.numer is None else _RZYMSKIE.get(wejscie.numer, str(wejscie.numer))
     )
     poczatek = f"{rodzaj_pl} {numer} {_NAZWA_PRZEKLADNIKA_PL[wejscie.rodzaj]} {wejscie.aparat}"
-    oczekiwany = _RODZAJ_APARATU_OBWODU[wejscie.rodzaj]
+    oczekiwany = RODZAJ_APARATU_WEJSCIA[wejscie.rodzaj]
     if aparat is None or aparat.get("kind") != oczekiwany:
         return f"{poczatek} — brak aparatu w polu"
     tabliczki = aparat.get("rdzenie" if oczekiwany == "CT" else "uzwojenia") or []

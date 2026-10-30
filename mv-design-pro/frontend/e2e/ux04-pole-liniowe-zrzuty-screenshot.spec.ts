@@ -26,7 +26,25 @@
  *    trójpołożeniowego w położeniu „uziemiony"), zielony `#2E7D32` = otwarty, szary `#6B7280`
  *    ze znakiem „?" = stan nieznany; kolory identyczne w obu motywach; aparat nie-łącznik bez
  *    kafla; oznaczenie aparatu przy symbolu (podpis stanu nie zastępuje koloru);
- *  - menu aparatu działa na TYM aparacie (odłącznik i uziemnik pola nie przełączają wyłącznika).
+ *  - menu aparatu działa na TYM aparacie (odłącznik i uziemnik pola nie przełączają wyłącznika);
+ *  - WYMIAR KAFLA (wymaganie właściciela 2026-10-29 pkt 1 i 7): w każdym kadrze pola (LOD2)
+ *    `getBBox()` kafla każdego łącznika = 48 × 48 w świecie (jedna stała), a `boundingBox()`
+ *    na ekranie: w = h i wszystkie kafle kadru równe w granicy 1 px — iloczyn rodzaj
+ *    {wyłącznik, łącznik trójpołożeniowy, odłącznik, uziemnik} × stan {zamknięty, otwarty,
+ *    uziemiony, nieznany} × motyw {ciemny, jasny}; pomiary do
+ *    `test-results/ux04-pole-liniowe-pomiary-kafli.json`;
+ *  - STOPIEŃ GLIFU (uwaga właściciela 2026-10-29 pkt 1): wysokość rysunku aparatu
+ *    (`[data-qet="glif"]`) wzdłuż osi toru w przedziale `stopienSymboli.kafel` manifestu importu
+ *    QET (0,55–0,70 boku kafla) — `getBBox()` w świecie i `boundingBox()` na ekranie, ten sam
+ *    iloczyn rodzaj × stan × motyw;
+ *  - symbol z rodzaju aparatu w modelu: Q0 z napędem silnikowym M (`naped`), T3 z trzema
+ *    uzwojeniami wtórnymi (`uzwojenia`), GK/GK1 i T2 jako elementy toru;
+ *  - BLOK PRZEKAŹNIKA (uwaga sesji głównej 2026-10-29 pkt 5): wiersze kodów i odniesienie
+ *    źródła 3U₀ zaczynają się we wspólnej lewej krawędzi, a tusz każdego wiersza (metryki
+ *    czcionki przeglądarki) leży wewnątrz ramki bloku — pomiary do
+ *    `test-results/ux04-pole-liniowe-pomiary-bloku.json`;
+ *  - karta pola: zrzut CAŁEJ oceny pola wg klasy (wszystkie sekcje, także obwody funkcji,
+ *    napięcie zwrotne, napęd, sygnały), żaden zrzut nie jest bajtowo identyczny z innym.
  *
  * Zrzuty (kadr pola, przycięty do obszaru aparatów pola):
  * `docs/uiux/zrzuty/ux04-pole-liniowe/<kadr>-<motyw>.png` (do drzewa repo wyłącznie
@@ -34,7 +52,7 @@
  */
 import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -54,6 +72,26 @@ const SZABLON_Z11_1 = 'bay_template_gpz_line_enea_z11_1_trojpolozeniowy';
 // kanwy, eksportu, legendy i inspektora; testy jednostkowe pilnują lustra w kodzie).
 const KAFEL = { zamkniety: '#C62828', otwarty: '#2E7D32', nieustalony: '#6B7280' } as const;
 type StanKafla = keyof typeof KAFEL;
+// Bok kafla stanu łącznika QET w jednostkach świata (skala LOD2) — lustro
+// `sld/v3/cad/qet/qetPoleSn.ts::QET_BOK_KAFLA_STANU` (wymaganie właściciela 2026-10-29: kafel
+// to kwadrat 48 × 48 z JEDNEJ stałej; stan zmienia kolor i styk, nigdy wymiar). Lustro w kodzie
+// pilnuje `symbols/__tests__/kafelStanu.test.tsx`.
+/** Kanwa schematu — aparat pola rysuje się też w karcie pola inspektora (`ui/field/SchematPolaSn.tsx`,
+ *  ten sam glif z `data-device-ref`), więc asercje rysunku kanwy są zawężone do kanwy. */
+const KANWA = 'svg[data-testid="sld-canvas-v3"]';
+const BOK_KAFLA_SWIATA = 48;
+// Tolerancja pomiaru na ekranie [px] — wymaganie: w = h i kafle równe w granicy 1 px.
+const TOLERANCJA_EKRANU_PX = 1;
+const POMIARY_KAFLI_PLIK = resolve(HERE, '..', 'test-results', 'ux04-pole-liniowe-pomiary-kafli.json');
+const POMIARY_BLOKU_PLIK = resolve(HERE, '..', 'test-results', 'ux04-pole-liniowe-pomiary-bloku.json');
+// Stopień glifu łącznika (uwaga właściciela 2026-10-29 pkt 1: znak rodzaju aparatu zajmuje
+// ok. 55–70 % boku kafla) — przedział z JEDNEGO źródła, manifestu importu symboli QET
+// (`stopienSymboli.kafel`), tego samego, którym importer odrzuca symbol poza przedziałem.
+const STOPIEN_GLIFU_KAFLA: readonly [number, number] = (
+  JSON.parse(readFileSync(resolve(HERE, '..', '..', 'docs', 'sld', 'vendor', 'qet', 'import_manifest.json'), 'utf8')) as {
+    stopienSymboli: { kafel: [number, number] };
+  }
+).stopienSymboli.kafel;
 
 type Aparat = {
   device_ref: string;
@@ -61,6 +99,8 @@ type Aparat = {
   designation?: string | null;
   stan_obiektu?: string | null;
   switch_state?: { actual_state: string } | null;
+  naped?: string | null;
+  uzwojenia?: unknown[] | null;
 };
 type Pole = {
   ref_id: string;
@@ -168,6 +208,27 @@ async function punktUchwytu(uchwyt: Locator): Promise<{ x: number; y: number }> 
     const r = el.getBoundingClientRect();
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
   });
+}
+
+/** Punkt NA trasie uchwytu trafienia odcinka, w którym uchwyt jest na wierzchu. Trasa kabla
+ *  z pola GPZ jest łamana — środek jej prostokąta leży poza kreską (pomiar 2026-10-29: obrys
+ *  813 × 44 px, klik w środek trafiał w tło kanwy). */
+async function punktNaTrasie(uchwyt: Locator): Promise<{ x: number; y: number }> {
+  await expect.poll(async () => ((await uchwyt.boundingBox().catch(() => null))?.width ?? 0), { timeout: 60000 }).toBeGreaterThan(0);
+  const punkt = await uchwyt.evaluate((el) => {
+    const sciezka = el as unknown as SVGGeometryElement;
+    const dl = sciezka.getTotalLength();
+    const m = sciezka.getScreenCTM()!;
+    for (const u of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
+      const p = sciezka.getPointAtLength(dl * u);
+      const x = p.x * m.a + p.y * m.c + m.e;
+      const y = p.x * m.b + p.y * m.d + m.f;
+      if (document.elementFromPoint(x, y) === el) return { x, y };
+    }
+    return null;
+  });
+  expect(punkt, 'punkt trasy odcinka dostępny dla kliku').not.toBeNull();
+  return punkt!;
 }
 
 /** Przybliżenie kółkiem, aż uchwyt trafienia aparatu pola ma ≥ 16 px i leży w kadrze kanwy
@@ -309,7 +370,7 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
 
 /** Kafel stanu symbolu aparatu na kanwie: stan i wypełnienie albo `null` (brak kafla). */
 async function kafel(page: Page, deviceRef: string): Promise<{ stan: string; fill: string; znak: string | null } | null> {
-  const g = page.locator(`g[data-device-ref="${deviceRef}"] [data-kafel-stanu]`);
+  const g = page.locator(`${KANWA} g[data-device-ref="${deviceRef}"] [data-kafel-stanu]`);
   if ((await g.count()) === 0) return null;
   const tlo = g.first().locator('[data-kafel="tlo"]');
   const znak = g.first().locator('[data-kafel="znak"]');
@@ -318,6 +379,152 @@ async function kafel(page: Page, deviceRef: string): Promise<{ stan: string; fil
     fill: ((await tlo.getAttribute('fill')) ?? '').toUpperCase(),
     znak: (await znak.count()) > 0 ? await znak.textContent() : null,
   };
+}
+
+/** Pomiar kafla stanu jednego łącznika na żywej kanwie. */
+type PomiarKafla = {
+  kadr: string;
+  motyw: string;
+  lod: string | null;
+  deviceRef: string;
+  oznaczenie: string;
+  symbol: string;
+  stan: string;
+  swiatW: number;
+  swiatH: number;
+  ekranW: number;
+  ekranH: number;
+  /** Wysokość rysunku aparatu (`[data-qet="glif"]`: styki i nóż, bez przewodów i osprzętu)
+   *  wzdłuż osi toru — `getBBox()` w układzie symbolu i `boundingBox()` na ekranie. */
+  glifSwiatH: number;
+  glifEkranH: number;
+};
+const POMIARY_KAFLI: PomiarKafla[] = [];
+
+/** Pomiar kafli WSZYSTKICH łączników pola w bieżącym kadrze: `getBBox()` prostokąta kafla
+ *  (jednostki świata SVG, przed transformacją kamery) i `boundingBox()` Playwrighta (piksele
+ *  ekranu po transformacji kamery). Asercje (wymaganie właściciela 2026-10-29 pkt 1 i 7): każdy
+ *  kafel łącznika pola GPZ jest kafelkiem symbolu QET o boku `BOK_KAFLA_SWIATA` w świecie;
+ *  na ekranie w = h i wszystkie kafle kadru równe w granicy 1 px — niezależnie od rodzaju
+ *  aparatu, stanu i motywu; rysunek aparatu w kaflu ma stopień `STOPIEN_GLIFU_KAFLA`. Iniekcje:
+ *  kafel wyłącznika innego rozmiaru czerwieni warunki wymiaru, glif pomniejszony do połowy —
+ *  warunek stopnia. */
+async function zmierzKafle(page: Page, kadr: string, pole: Pole): Promise<PomiarKafla[]> {
+  const svg = page.locator('svg[data-testid="sld-canvas-v3"]');
+  const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
+  const lod = await svg.getAttribute('data-scene-lod');
+  const pomiary: PomiarKafla[] = [];
+  for (const a of pole.primary_devices ?? []) {
+    const grupa = svg.locator(`g[data-device-ref="${a.device_ref}"] [data-kafel-stanu]`);
+    if ((await grupa.count()) === 0) continue;
+    await expect(grupa, `${kadr}: jeden kafel aparatu ${a.designation}`).toHaveCount(1);
+    const tlo = grupa.locator('[data-kafel="tlo"]');
+    const swiat = await tlo.evaluate((el) => {
+      const b = (el as SVGGraphicsElement).getBBox();
+      return { w: b.width, h: b.height };
+    });
+    const ekran = (await tlo.boundingBox())!;
+    const glif = svg.locator(`g[data-device-ref="${a.device_ref}"] [data-kafel-stanu] [data-qet="glif"]`);
+    await expect(glif, `${kadr}: jeden rysunek aparatu ${a.designation}`).toHaveCount(1);
+    const glifSwiatH = await glif.evaluate((el) => (el as SVGGraphicsElement).getBBox().height);
+    const glifEkranH = (await glif.boundingBox())!.height;
+    pomiary.push({
+      kadr,
+      motyw,
+      lod,
+      deviceRef: a.device_ref,
+      oznaczenie: a.designation ?? '',
+      symbol: (await grupa.getAttribute('data-kafel-symbol')) ?? '',
+      stan: (await grupa.getAttribute('data-kafel-stanu')) ?? '',
+      swiatW: swiat.w,
+      swiatH: swiat.h,
+      ekranW: ekran.width,
+      ekranH: ekran.height,
+      glifSwiatH,
+      glifEkranH,
+    });
+  }
+  expect(pomiary.length, `${kadr}: kafle łączników pola zmierzone`).toBeGreaterThan(0);
+  const [wzor] = pomiary;
+  for (const p of pomiary) {
+    const opis = `${kadr} · ${p.motyw} · ${p.oznaczenie} (${p.symbol}, ${p.stan})`;
+    expect(p.symbol.startsWith('qet'), `${opis}: łącznik pola GPZ rysowany symbolem QET`).toBe(true);
+    expect(Math.abs(p.swiatW - BOK_KAFLA_SWIATA), `${opis}: szerokość kafla w świecie ${p.swiatW}`).toBeLessThanOrEqual(0.001);
+    expect(Math.abs(p.swiatH - BOK_KAFLA_SWIATA), `${opis}: wysokość kafla w świecie ${p.swiatH}`).toBeLessThanOrEqual(0.001);
+    expect(Math.abs(p.ekranW - p.ekranH), `${opis}: kafel kwadratowy na ekranie ${p.ekranW} × ${p.ekranH}`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+    expect(Math.abs(p.ekranW - wzor.ekranW), `${opis}: szerokość jak kafel ${wzor.oznaczenie}`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+    expect(Math.abs(p.ekranH - wzor.ekranH), `${opis}: wysokość jak kafel ${wzor.oznaczenie}`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+    // Stopień glifu: dolny próg czytelności znaku rodzaju i górny — znak nie wypełnia kafla
+    // (kolor stanu widoczny wokół). Świat (`getBBox`) i ekran (`boundingBox`, ten sam stosunek
+    // po transformacji kamery, tolerancja 1 px na obu wymiarach).
+    const stopien = p.glifSwiatH / p.swiatH;
+    expect(stopien, `${opis}: stopień glifu ${stopien.toFixed(3)} boku kafla`).toBeGreaterThanOrEqual(STOPIEN_GLIFU_KAFLA[0]);
+    expect(stopien, `${opis}: stopień glifu ${stopien.toFixed(3)} boku kafla`).toBeLessThanOrEqual(STOPIEN_GLIFU_KAFLA[1]);
+    expect(p.glifEkranH, `${opis}: glif na ekranie ${p.glifEkranH} px`).toBeGreaterThanOrEqual(STOPIEN_GLIFU_KAFLA[0] * p.ekranH - TOLERANCJA_EKRANU_PX);
+  }
+  POMIARY_KAFLI.push(...pomiary);
+  mkdirSync(dirname(POMIARY_KAFLI_PLIK), { recursive: true });
+  writeFileSync(POMIARY_KAFLI_PLIK, `${JSON.stringify(POMIARY_KAFLI, null, 2)}\n`);
+  return pomiary;
+}
+
+type PomiarBloku = {
+  kadr: string;
+  motyw: string;
+  pole: string;
+  /** Lewe krawędzie tuszu wierszy bloku [px ekranu] i ich rozrzut. */
+  lewe: number[];
+  rozrzutLewych: number;
+  /** Ramka bloku [px ekranu] i zapas tuszu wierszy do jej krawędzi: lewy (od okręgu do
+   *  wiersza — mierzony od ramki), prawy (najszerszy wiersz → prawa krawędź ramki). */
+  ramka: { x: number; y: number; width: number; height: number };
+  zapasPrawy: number;
+  zapasDolny: number;
+  wiersze: string[];
+};
+const POMIARY_BLOKU: PomiarBloku[] = [];
+
+/** Pomiar bloku przekaźnika każdego pola w kadrze — metryki czcionki PRZEGLĄDARKI (szerokość
+ *  prostokątów sceny jest szacunkiem z długości tekstu, `core/text.ts::measureTextWidth`).
+ *  Asercje: wiersze kodów i odniesienia źródła 3U₀ zaczynają się w jednej lewej krawędzi
+ *  (rozrzut ≤ 1 px) i tusz każdego wiersza leży wewnątrz ramki bloku. Iniekcja: render
+ *  z tekstem wyśrodkowanym w prostokącie (stan przed naprawą) — rozrzut lewych krawędzi. */
+async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBloku[]> {
+  const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
+  const bloki = await page.evaluate((kanwa) => {
+    const svg = document.querySelector(kanwa)!;
+    const prost = (r: DOMRect) => ({ x: r.x, y: r.y, width: r.width, height: r.height });
+    return [...svg.querySelectorAll('[data-przekaznik="ramka-bloku"]')].map((rama) => {
+      const wlasciciel = rama.closest('[data-owner-ref]')?.getAttribute('data-owner-ref') ?? '';
+      const wiersze = [...svg.querySelectorAll('g[data-owner-ref] > text')]
+        .filter((t) => {
+          const ref = t.parentElement!.getAttribute('data-owner-ref') ?? '';
+          return ref.startsWith(`${wlasciciel}#`) && /#(protection-codes-full|zrodlo-u0)(-\d+)?$/.test(ref);
+        })
+        .map((t) => ({ tekst: t.textContent ?? '', r: prost(t.getBoundingClientRect()) }));
+      return { pole: wlasciciel, ramka: prost(rama.getBoundingClientRect()), wiersze };
+    });
+  }, KANWA);
+  const pomiary: PomiarBloku[] = [];
+  for (const b of bloki.filter((x) => x.wiersze.length > 0)) {
+    const lewe = b.wiersze.map((w) => w.r.x);
+    const rozrzutLewych = Math.max(...lewe) - Math.min(...lewe);
+    const zapasPrawy = b.ramka.x + b.ramka.width - Math.max(...b.wiersze.map((w) => w.r.x + w.r.width));
+    const zapasDolny = b.ramka.y + b.ramka.height - Math.max(...b.wiersze.map((w) => w.r.y + w.r.height));
+    const opis = `${kadr} · ${motyw} · blok ${b.pole}`;
+    expect(rozrzutLewych, `${opis}: wiersze od jednej lewej krawędzi (${lewe.map((x) => x.toFixed(1)).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+    for (const w of b.wiersze) {
+      expect(w.r.x, `${opis}: „${w.tekst}" wewnątrz ramki (lewa)`).toBeGreaterThanOrEqual(b.ramka.x);
+      expect(w.r.x + w.r.width, `${opis}: „${w.tekst}" wewnątrz ramki (prawa)`).toBeLessThanOrEqual(b.ramka.x + b.ramka.width);
+      expect(w.r.y, `${opis}: „${w.tekst}" wewnątrz ramki (góra)`).toBeGreaterThanOrEqual(b.ramka.y);
+      expect(w.r.y + w.r.height, `${opis}: „${w.tekst}" wewnątrz ramki (dół)`).toBeLessThanOrEqual(b.ramka.y + b.ramka.height);
+    }
+    pomiary.push({ kadr, motyw, pole: b.pole, lewe, rozrzutLewych, ramka: b.ramka, zapasPrawy, zapasDolny, wiersze: b.wiersze.map((w) => w.tekst) });
+  }
+  POMIARY_BLOKU.push(...pomiary);
+  mkdirSync(dirname(POMIARY_BLOKU_PLIK), { recursive: true });
+  writeFileSync(POMIARY_BLOKU_PLIK, `${JSON.stringify(POMIARY_BLOKU, null, 2)}\n`);
+  return pomiary;
 }
 
 async function oczekujKafla(page: Page, deviceRef: string, stan: StanKafla, opis: string): Promise<void> {
@@ -380,15 +587,169 @@ function polozenieAparatu(enm: Snapshot, deviceRef: string): string | null {
   return null;
 }
 
-/** Zrzut okna pola (schemat pola `SchematPolaSn` na powierzchni konfiguratora) w obu motywach. */
+/** Kontenery prawego inspektora, które się przewijają (`overflow-y` auto/scroll i treść wyższa
+ *  niż kadr kontenera), w kolejności dokumentu. */
+async function przewijaneKonteneryInspektora(page: Page): Promise<string[]> {
+  return page.getByTestId('mvd-inspector').evaluate((korzen) => {
+    const przewijane: string[] = [];
+    for (const el of [korzen, ...Array.from(korzen.querySelectorAll('*'))]) {
+      if (!(el instanceof HTMLElement) || el.closest('svg')) continue;
+      if (['INPUT', 'SELECT', 'TEXTAREA', 'OPTION'].includes(el.tagName)) continue;
+      if (!['auto', 'scroll'].includes(getComputedStyle(el).overflowY)) continue;
+      if (el.scrollHeight > el.clientHeight + 1) {
+        przewijane.push(el.dataset.testid ?? `${el.tagName.toLowerCase()}.${el.className}`);
+      }
+    }
+    return przewijane;
+  });
+}
+
+/** JEDNO przewijanie prawego inspektora przy oknie technicznym z selekcji pod panelem elementu
+ *  (`ui2/legacy/LegacyInspektor.tsx`): przewija się wyłącznie treść inspektora, nie kontener
+ *  ani ciało okna. Pomiar przed naprawą (2026-10-29, okno pola Z.10/Z.11.1): kontener
+ *  `h-full overflow-y-auto` nadawał oknu wysokość kadru — trzy zagnieżdżone przewijania
+ *  (kontener, ciało okna, sekcje karty pola), ostatni wiersz oceny pola ucięty pod ramką sekcji
+ *  przy każdej wysokości okna przeglądarki. Klasa: okna E-10…E-15 (kolumny `h-full` z ciałem
+ *  `flex-1 overflow-auto`) — e2e ćwiczy okno GPZ (E-10), odcinka (E-12) i pola (E-11).
+ *  `trescPrzewijana`: treść wyższa niż kadr (wtedy przewijanie treści jest wymagane, inaczej
+ *  sprawdzenie byłoby puste). */
+async function jednoPrzewijanieInspektora(page: Page, opis: string, trescPrzewijana: boolean): Promise<void> {
+  await expect(page.getByTestId('inspektor-panel-nad-oknem'), `${opis}: okno z selekcji pod panelem elementu`).toBeVisible();
+  await expect
+    .poll(async () => (await przewijaneKonteneryInspektora(page)).filter((id) => id !== 'mvd-inspector-tresc'), {
+      timeout: 10000,
+      message: `${opis}: przewija się wyłącznie treść inspektora`,
+    })
+    .toEqual([]);
+  if (trescPrzewijana) {
+    expect(await przewijaneKonteneryInspektora(page), `${opis}: treść inspektora przewijana`).toEqual(['mvd-inspector-tresc']);
+  }
+}
+
+/** Teksty inspektora, które wychodzą poza swoje pudełko (`scrollWidth` > `clientWidth` przy
+ *  `overflow-x: visible` — tekst przelany rysuje się na sąsiedniej treści). Pomiar przed naprawą
+ *  (2026-10-29, inspektor 360 px): tabele oceny pola czterech i pięciu kolumn ze zdaniami —
+ *  „Kryterium spełnione", „zabezpieczeniowych" wychodziły poza wąską kolumnę i nakładały się na
+ *  tekst kolumny obok. Klasa defektu to KAŻDY tekst inspektora przy zaznaczonym polu (panel
+ *  elementu i cała karta pola), nie tylko tabela oceny. Pomijane: elementy nierysowane, liniowe
+ *  (`display: inline` — przelew mierzy ich blok), przycinające (`overflow` ≠ `visible` — nie
+ *  nakładają się), pola formularza (przewijają tekst wewnątrz) i rysunek SVG. Meldowany jest
+ *  najgłębszy przelany element (rodzic przelewa się przez dziecko). */
+async function przelaneTeksty(kontener: Locator): Promise<string[]> {
+  return kontener.evaluate((korzen) => {
+    const przelane: HTMLElement[] = [];
+    for (const el of Array.from(korzen.querySelectorAll('*'))) {
+      if (!(el instanceof HTMLElement) || el.closest('svg')) continue;
+      if (['INPUT', 'SELECT', 'TEXTAREA', 'OPTION'].includes(el.tagName)) continue;
+      if (el.getClientRects().length === 0 || el.clientWidth === 0) continue;
+      const styl = getComputedStyle(el);
+      if (styl.display === 'inline' || styl.overflowX !== 'visible') continue;
+      if (el.scrollWidth > el.clientWidth + 1) przelane.push(el);
+    }
+    return przelane
+      .filter((el) => !przelane.some((inny) => inny !== el && el.contains(inny)))
+      .map((el) => {
+        const id = el.dataset.testid ? `[${el.dataset.testid}]` : '';
+        const kolumna = el.dataset.etykieta ? `{${el.dataset.etykieta}}` : '';
+        return `${el.tagName.toLowerCase()}${id}${kolumna} „${(el.textContent ?? '').trim().slice(0, 40)}": ${el.scrollWidth} > ${el.clientWidth} px`;
+      });
+  });
+}
+
+/** Odstęp oceny pola od krawędzi treści inspektora na czas zrzutu oceny (px). */
+const MARGINES_OCENY = 8;
+
+/** Zrzuty okna pola w obu motywach: schemat pola (`SchematPolaSn` — wycinek rysunku kanwy
+ *  z tej samej migawki ENM) i ocena pola wg klasy (`OcenaPolaLiniowegoGpz`). Karta pola leży
+ *  w inspektorze POD panelem elementu (jedno przewijanie, `LegacyInspektor`), więc zrzut
+ *  całej strony pokazywał kanwę i panel elementu, a karty pola nie było w kadrze (pomiar
+ *  2026-10-29: zrzuty `okno-pola-*` bez schematu pola i bez oceny). Zrzut elementu przewija
+ *  inspektor do elementu — to, co projektant widzi po przewinięciu karty.
+ *
+ *  Czytelność inspektora w wąskim gospodarzu (iloczyn: motyw × szerokość inspektora
+ *  {domyślna, tryb szeroki — natywny klik w przycisk nagłówka inspektora} × pole i szablon
+ *  {Z.10 trójpołożeniowy, Z.10 stały z odłącznikiem, Z.11.1}): żaden tekst panelu elementu ani
+ *  karty pola nie przelewa się poza swoje pudełko (`przelaneTeksty`).
+ *
+ *  Okno przeglądarki wysokie na czas zrzutów okna pola (monitor pionowy 1600 × 2400): zrzut
+ *  elementu w przewijanym panelu ucina to, czego panel nie pokazuje. Schemat pola mieści się
+ *  w kadrze inspektora i jest zrzutem elementu. Ocena pola jest wyższa niż kadr (pomiar
+ *  2026-10-29 w inspektorze domyślnym: 12 773 px Z.10, 15 241 px Z.11.1 przy szerokości 273 px),
+ *  więc na czas jej zrzutu okno rośnie, aż CAŁA ocena mieści się w treści inspektora (jedynym
+ *  przewijaniu, `jednoPrzewijanieInspektora`) — zrzut elementu oceny obejmuje wszystkie jej
+ *  sekcje. Po zrzutach okno wraca do 1600 × 1000. */
 async function zrzutyOknaPola(page: Page, nazwa: string): Promise<void> {
   const okno = page.getByTestId('bay-configurator-surface');
+  const szerokiInspektor = page.getByTestId('mvd-inspector-szeroki');
+  const trescInspektora = page.getByTestId('mvd-inspector-tresc');
   for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
+    await page.setViewportSize({ width: 1600, height: 2400 });
     await ustawMotyw(page, theme);
     await expect(okno).toBeVisible({ timeout: 30000 });
+    const schemat = okno.getByTestId('schemat-pola-sn');
+    await expect(schemat.getByTestId('bay-svg-renderer'), `${nazwa}: schemat pola narysowany`).toBeVisible({ timeout: 30000 });
+    const ocena = okno.getByTestId('ocena-pola-liniowego');
+    await expect(ocena, `${nazwa}: ocena pola wg klasy`).toBeVisible({ timeout: 30000 });
+    for (const szeroki of [true, false]) {
+      await szerokiInspektor.click();
+      await expect(szerokiInspektor, `${nazwa}: tryb szeroki inspektora ${szeroki}`).toHaveAttribute('aria-pressed', String(szeroki));
+      await expect
+        .poll(() => przelaneTeksty(trescInspektora), { timeout: 10000, message: `${nazwa} · ${klucz} · inspektor ${szeroki ? 'szeroki' : 'domyślny'}: tekst inspektora w granicach swoich pudełek` })
+        .toEqual([]);
+      await jednoPrzewijanieInspektora(page, `${nazwa} · ${klucz} · inspektor ${szeroki ? 'szeroki' : 'domyślny'}`, true);
+    }
     await page.waitForTimeout(400);
-    await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}-${klucz}.png`), fullPage: false });
+    await schemat.scrollIntoViewIfNeeded();
+    await expect(schemat, `${nazwa}: schemat pola w kadrze okna`).toBeInViewport({ ratio: 1 });
+    zapiszOdcisk(`${nazwa}-${klucz}`, await schemat.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}-${klucz}.png`) }));
+    // CAŁA ocena pola (pomiar 2026-10-29: zrzut treści inspektora od początku oceny ucinał ją
+    // na wysokości okna — obwody funkcji, napięcie zwrotne, napęd i sygnały, czyli sekcje
+    // różniące Z.10 od Z.11.1, były poza kadrem, a zrzuty oceny obu wykonań wychodziły bajt
+    // w bajt identyczne). Okno rośnie o niewidoczną część oceny, aż ocena mieści się w treści
+    // inspektora (JEDYNYM przewijaniu — `jednoPrzewijanieInspektora`) i w oknie w całości.
+    // Ocena stoi o `MARGINES_OCENY` px pod górną krawędzią treści i nad dolną: przewinięcie
+    // do początku oceny daje całkowity `scrollTop`, a granice oceny leżą na ułamkach piksela
+    // (pomiar 2026-10-29: ocena Z.10 stałego ucięta o 0,5 px u góry, ratio 0,99996).
+    const ustawOcene = () =>
+      page.evaluate(
+        ([o, t, margines]) => {
+          const eo = document.querySelector(`[data-testid="${o}"]`)!;
+          const et = document.querySelector(`[data-testid="${t}"]`)!;
+          eo.scrollIntoView({ block: 'start' });
+          et.scrollTop -= margines;
+          const ro = eo.getBoundingClientRect();
+          const rt = et.getBoundingClientRect();
+          return {
+            gora: ro.top - Math.max(rt.top, 0),
+            brak: Math.max(0, Math.ceil(ro.bottom + margines - Math.min(rt.bottom, window.innerHeight))),
+          };
+        },
+        ['ocena-pola-liniowego', 'mvd-inspector-tresc', MARGINES_OCENY] as const,
+      );
+    for (let i = 0; i < 6; i += 1) {
+      const { brak } = await ustawOcene();
+      if (brak === 0) break;
+      const vp = page.viewportSize()!;
+      expect(vp.height + brak, `${nazwa}: wysokość okna dla całej oceny`).toBeLessThan(16000);
+      await page.setViewportSize({ width: vp.width, height: vp.height + brak + 16 });
+    }
+    const polozenie = await ustawOcene();
+    expect(polozenie.brak, `${nazwa}: dół oceny w treści inspektora`).toBe(0);
+    expect(polozenie.gora, `${nazwa}: początek oceny w treści inspektora`).toBeGreaterThan(0);
+    await expect(ocena, `${nazwa}: cała ocena w kadrze inspektora`).toBeInViewport({ ratio: 1 });
+    await expect(ocena.getByTestId('ocena-pola-liniowego-obwody'), `${nazwa}: obwody funkcji w kadrze oceny`).toBeInViewport();
+    zapiszOdcisk(`${nazwa}-ocena-${klucz}`, await ocena.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}-ocena-${klucz}.png`) }));
   }
+  await page.setViewportSize({ width: 1600, height: 1000 });
+}
+
+/** Odcisk zrzutu w rejestrze biegu — żaden zrzut nie może być bajtowo identyczny z innym
+ *  (kanwa, schemat pola, ocena pola). */
+function zapiszOdcisk(nazwa: string, bufor: Buffer): void {
+  const odcisk = createHash('sha256').update(bufor).digest('hex');
+  const dubel = [...ODCISKI_ZRZUTOW].find(([, h]) => h === odcisk)?.[0];
+  expect(dubel, `${nazwa}: zrzut identyczny bajt w bajt z innym zrzutem`).toBeUndefined();
+  ODCISKI_ZRZUTOW.set(nazwa, odcisk);
 }
 
 /** Zrzut POLA aparatu: natywny klik w aparat (zaznacza pole), „Dopasuj do… → Pole" — kamera
@@ -399,9 +760,10 @@ async function zrzut(
   page: Page,
   nazwa: string,
   deviceRef: string,
-  aparatyPola: readonly string[],
+  pole: Pole,
   oznaczenia: readonly string[] = [],
 ): Promise<void> {
+  const aparatyPola = (pole.primary_devices ?? []).map((d) => d.device_ref);
   await klikAparatu(page, deviceRef);
   await page.getByTestId('sld-v3-dopasuj-do-toggle').click();
   await page.getByTestId('sld-v3-dopasuj-do-pole').click();
@@ -427,11 +789,12 @@ async function zrzut(
   for (const ozn of oznaczenia) {
     await expect(page.locator('svg[data-testid="sld-canvas-v3"] text', { hasText: new RegExp(`^${ozn}$`) }).first(), `${nazwa}: oznaczenie ${ozn}`).toBeVisible();
   }
-  const bufor = await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}.png`), clip: await kadrPola(page, aparatyPola) });
-  const odcisk = createHash('sha256').update(bufor).digest('hex');
-  const dubel = [...ODCISKI_ZRZUTOW].find(([, h]) => h === odcisk)?.[0];
-  expect(dubel, `${nazwa}: zrzut identyczny bajt w bajt z innym zrzutem pola`).toBeUndefined();
-  ODCISKI_ZRZUTOW.set(nazwa, odcisk);
+  // Kadr pola = poziom szczegółu pola (LOD2): tam obowiązuje bok kafla 48 × 48 w świecie.
+  await expect(page.locator('svg[data-testid="sld-canvas-v3"]'), `${nazwa}: kadr pola na LOD2`).toHaveAttribute('data-scene-lod', '2');
+  await zmierzKafle(page, nazwa, pole);
+  // Kadr pola niesie blok przekaźnika SWOJEGO pola (pole z funkcjami EAZ i powiązaniami).
+  expect((await zmierzBlokPrzekaznika(page, nazwa)).length, `${nazwa}: blok przekaźnika w kadrze`).toBeGreaterThan(0);
+  zapiszOdcisk(nazwa, await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}.png`), clip: await kadrPola(page, aparatyPola) }));
   await widokCalejSieci(page);
 }
 
@@ -607,6 +970,20 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
   await expect(magistrala).toBeHidden({ timeout: 60000 });
   await expect.poll(async () => ((await pobierzEnm(request, caseId)).branches ?? []).filter((b) => b.type === 'cable').length, { timeout: 60000 }).toBe(1);
 
+  // ---- 2a. Jedno przewijanie inspektora — okna z selekcji GPZ (E-10) i odcinka (E-12) --------
+  // Klasa okien pod panelem elementu (`LegacyInspektor`); okno pola (E-11) w `zrzutyOknaPola`.
+  await wrocNaSchemat(page);
+  await klikZWeryfikacja(page, 'klik GPZ', uchwytGpz, () => punktUchwytu(uchwytGpz), 'left', async () =>
+    page.getByTestId('gpz-configurator-surface').isVisible(),
+  );
+  await jednoPrzewijanieInspektora(page, 'okno GPZ z selekcji', false);
+  const odcinekRef = ((await pobierzEnm(request, caseId)).branches ?? []).find((b) => b.type === 'cable')!.ref_id;
+  const uchwytOdcinka = page.locator(`[data-hit-klasa="tor"][data-hit-role="obrys"][data-hit-owner-ref="${odcinekRef}"]`).first();
+  await klikZWeryfikacja(page, 'klik odcinka kablowego', uchwytOdcinka, () => punktNaTrasie(uchwytOdcinka), 'left', async () =>
+    page.getByTestId('sn-segment-surface').isVisible(),
+  );
+  await jednoPrzewijanieInspektora(page, 'okno odcinka z selekcji', false);
+
   // ---- 3. Z.10 z wyłącznikiem stałym (§13) w polu sekcji 2 — okno pola → „Zmień wyposażenie" → szablon -----
   enm = await pobierzEnm(request, caseId);
   const poleStale = polaLiniowe(enm).find((p) => p.gpz_section_id === sekcjaB)!;
@@ -650,7 +1027,6 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
   const q1 = aparat(poleZajete, 'Q1');
   const q0 = aparat(poleZajete, 'Q0');
   expect(q1.switch_state?.actual_state).toBe('zamkniety');
-  const aparatyZajetego = (poleZajete.primary_devices ?? []).map((d) => d.device_ref);
   const aparatyStalego = (poleStalePo.primary_devices ?? []).map((d) => d.device_ref);
 
   // ---- 4. Klik = zaznaczenie (natywny lewy klik w wyłącznik), bez operacji łączeniowej -----
@@ -675,19 +1051,25 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
     // Aparaty nie-łączniki bez kafla; symbol zawsze narysowany.
     for (const ozn of ['T1', 'PF1', 'GK', 'T2']) {
       const ref = aparat(poleZajete, ozn).device_ref;
-      await expect(page.locator(`g[data-device-ref="${ref}"]`)).toHaveCount(1);
+      await expect(page.locator(`${KANWA} g[data-device-ref="${ref}"]`)).toHaveCount(1);
       expect(await kafel(page, ref), ozn).toBeNull();
     }
+    // Rodzaj aparatu z modelu → symbol: Q0 z napędem silnikowym M (rekord `naped`), głowica
+    // kablowa i przekładnik Ferrantiego jako elementy toru (wymaganie właściciela pkt 3–4).
+    expect(q0.naped, 'Q0: napęd silnikowy w modelu').toBe('SILNIKOWY');
+    for (const [ozn, symbol] of [['Q0', 'qetBreakerZNapedem'], ['Q1', 'qetThreePositionSwitch'], ['GK', 'qetCableHead'], ['T2', 'qetCoreBalanceCt']] as const) {
+      await expect(page.locator(`${KANWA} g[data-device-ref="${aparat(poleZajete, ozn).device_ref}"] [data-symbol-canon="${symbol}"]`), `${klucz}: ${ozn} → ${symbol}`).toHaveCount(1);
+    }
     // Stan obiektu dyskretnie: atrybut symbolu (podpowiedź na kształcie trafienia).
-    await expect(page.locator(`g[data-device-ref="${q0.device_ref}"]`)).toHaveAttribute('data-stan-obiektu', 'PROJEKTOWANY');
-    await zrzut(page, `pole-z10-trojpolozeniowy-zamkniete-${klucz}`, q0.device_ref, aparatyZajetego, ['Q1', 'Q0', 'T1']);
+    await expect(page.locator(`${KANWA} g[data-device-ref="${q0.device_ref}"]`)).toHaveAttribute('data-stan-obiektu', 'PROJEKTOWANY');
+    await zrzut(page, `pole-z10-trojpolozeniowy-zamkniete-${klucz}`, q0.device_ref, poleZajete, ['Q1', 'Q0', 'T1']);
     // Wyłącznik stały: odłącznik i uziemnik bez rekordu położenia po zmianie szablonu — kafel
     // „stan nieznany" (szary ze znakiem „?"), nie brak kafla; oznaczenie przy symbolu.
     await przyblizDoAparatu(page, dsStaly.device_ref);
     await oczekujKafla(page, dsStaly.device_ref, 'nieustalony', `${klucz}: Q1 odłącznik bez rekordu położenia`);
     await oczekujKafla(page, esStaly.device_ref, 'nieustalony', `${klucz}: Q8 uziemnik bez rekordu położenia`);
     await oczekujKafla(page, q0Staly.device_ref, 'zamkniety', `${klucz}: Q0 pola stałego zamknięty`);
-    await zrzut(page, `pole-z10-staly-stan-nieznany-${klucz}`, dsStaly.device_ref, aparatyStalego, ['Q1', 'Q8']);
+    await zrzut(page, `pole-z10-staly-stan-nieznany-${klucz}`, dsStaly.device_ref, poleStalePo, ['Q1', 'Q8']);
   }
 
   // ---- 6. Położenia z menu aparatu: Q1 zamknięty, Q8 otwarty (operacje na TYM aparacie) ----
@@ -704,24 +1086,30 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
     await oczekujKafla(page, dsStaly.device_ref, 'zamkniety', `${klucz}: Q1 odłącznik zamknięty`);
     await oczekujKafla(page, q0Staly.device_ref, 'zamkniety', `${klucz}: Q0 zamknięty`);
     await oczekujKafla(page, esStaly.device_ref, 'otwarty', `${klucz}: Q8 uziemnik otwarty`);
-    await zrzut(page, `pole-z10-wylacznik-zamkniety-uziemnik-otwarty-${klucz}`, q0Staly.device_ref, aparatyStalego, ['Q1', 'Q0', 'Q8']);
+    await zrzut(page, `pole-z10-wylacznik-zamkniety-uziemnik-otwarty-${klucz}`, q0Staly.device_ref, poleStalePo, ['Q1', 'Q0', 'Q8']);
   }
 
   // ---- 7. Zbliżenie: kamera kółkiem na wyłącznik pola (LOD szczegółu z kamery) ------------
   await ustawMotyw(page, 'dark_scada');
   await widokCalejSieci(page);
   const uchwytQ0 = await przyblizDoAparatu(page, q0Staly.device_ref);
-  for (let i = 0; i < 6; i += 1) {
+  // Zbliżenie = poziom szczegółu pola (LOD2) i kafel wyraźnie większy niż w kadrze pola
+  // (pomiar 2026-10-29: próg 40 px kończył zbliżenie na LOD1 — kafel 48 j.św. osiągał go przy
+  // skali ok. 0,85, więc zrzut pokazywał okrąg przekaźnika bez kodów i bez linii powiązań).
+  const svgZblizenia = page.locator(KANWA);
+  for (let i = 0; i < 12; i += 1) {
     const box = (await uchwytQ0.boundingBox())!;
-    if (Math.min(box.width, box.height) >= 40) break;
+    if (Math.min(box.width, box.height) >= 3 * BOK_KAFLA_SWIATA && (await svgZblizenia.getAttribute('data-scene-lod')) === '2') break;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.wheel(0, -240);
     await page.waitForTimeout(200);
   }
   await czekajNaStabilnaGeometrie(uchwytQ0);
+  await expect(svgZblizenia, 'zbliżenie: poziom szczegółu pola').toHaveAttribute('data-scene-lod', '2');
+  const boxZblizenia = (await uchwytQ0.boundingBox())!;
+  expect(Math.min(boxZblizenia.width, boxZblizenia.height), 'zbliżenie: uchwyt Q0 ≥ 3 × 48 px').toBeGreaterThanOrEqual(3 * BOK_KAFLA_SWIATA - TOLERANCJA_EKRANU_PX);
   await oczekujKafla(page, q0Staly.device_ref, 'zamkniety', 'zbliżenie: Q0 zamknięty');
-  const bufor = await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, 'pole-z10-zblizenie-ciemny.png'), clip: await kadrPola(page, aparatyStalego) });
-  ODCISKI_ZRZUTOW.set('pole-z10-zblizenie-ciemny', createHash('sha256').update(bufor).digest('hex'));
+  zapiszOdcisk('pole-z10-zblizenie-ciemny', await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, 'pole-z10-zblizenie-ciemny.png'), clip: await kadrPola(page, aparatyStalego) }));
 
   // ---- 8. „Otwórz łącznik" z menu wyłącznika → kafel zielony (oba motywy) -----------------
   await widokCalejSieci(page);
@@ -739,7 +1127,48 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
     await przyblizDoAparatu(page, q0.device_ref);
     await oczekujKafla(page, q0.device_ref, 'otwarty', `${klucz}: Q0 otwarty`);
     await oczekujKafla(page, q1.device_ref, 'zamkniety', `${klucz}: Q1 zamknięty`);
-    await zrzut(page, `pole-z10-wylacznik-otwarty-${klucz}`, q0.device_ref, aparatyZajetego, ['Q1', 'Q0', 'T1']);
+    await zrzut(page, `pole-z10-wylacznik-otwarty-${klucz}`, q0.device_ref, poleZajete, ['Q1', 'Q0', 'T1']);
+  }
+
+  // ---- 9. Q1 trójpołożeniowy: zamknięty → otwarty → uziemiony (przy otwartym Q0) -----------
+  await polozenieZMenu(page, q1.device_ref, 'open-switch');
+  await expect.poll(async () => polozenieAparatu(await pobierzEnm(request, caseId), q1.device_ref), { timeout: 30000 }).toBe('otwarty');
+  for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
+    await ustawMotyw(page, theme);
+    await przyblizDoAparatu(page, q1.device_ref);
+    await oczekujKafla(page, q1.device_ref, 'otwarty', `${klucz}: Q1 otwarty`);
+    await oczekujKafla(page, q0.device_ref, 'otwarty', `${klucz}: Q0 otwarty`);
+    await zrzut(page, `pole-z10-rozlaczone-${klucz}`, q1.device_ref, poleZajete, ['Q1', 'Q0', 'T1']);
+  }
+  await polozenieZMenu(page, q1.device_ref, 'earth-switch');
+  await expect.poll(async () => polozenieAparatu(await pobierzEnm(request, caseId), q1.device_ref), { timeout: 30000 }).toBe('uziemiony');
+  for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
+    await ustawMotyw(page, theme);
+    await przyblizDoAparatu(page, q1.device_ref);
+    // Uziemiony: zestyk uziemiający zamknięty — kafel czerwony, nóż na zestyku uziemiającym.
+    await oczekujKafla(page, q1.device_ref, 'zamkniety', `${klucz}: Q1 uziemiony`);
+    await expect(page.locator(`${KANWA} g[data-device-ref="${q1.device_ref}"] [data-qet-polozenie]`).first()).toHaveAttribute('data-qet-polozenie', 'earthed');
+    await oczekujKafla(page, q0.device_ref, 'otwarty', `${klucz}: Q0 otwarty`);
+    await zrzut(page, `pole-z10-wylacznik-otwarty-uziemiony-${klucz}`, q1.device_ref, poleZajete, ['Q1', 'Q0', 'T1']);
+  }
+
+  // ---- 10. Pole stałe odłączone i uziemione: Q0 otwarty → Q1 otwarty → Q8 zamknięty ----------
+  // Iloczyn pomiaru kafli (§11.4): odłącznik OTWARTY i uziemnik ZAMKNIĘTY — glify innego kształtu
+  // niż w krokach 5–6 (pomiar 2026-10-29: bieg mierzył odłącznik wyłącznie zamknięty i nieustalony,
+  // uziemnik — otwarty i nieustalony). Kolejność z blokad (`enm/interlock_rules.py`): uziemnik
+  // wyprowadzenia zamyka się przy potwierdzonym otwarciu łączników jego drogi do szyny.
+  await polozenieZMenu(page, q0Staly.device_ref, 'open-switch');
+  await polozenieZMenu(page, dsStaly.device_ref, 'open-switch');
+  await expect.poll(async () => polozenieAparatu(await pobierzEnm(request, caseId), dsStaly.device_ref), { timeout: 30000 }).toBe('otwarty');
+  await polozenieZMenu(page, esStaly.device_ref, 'close-switch');
+  await expect.poll(async () => polozenieAparatu(await pobierzEnm(request, caseId), esStaly.device_ref), { timeout: 30000 }).toBe('zamkniety');
+  for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
+    await ustawMotyw(page, theme);
+    await przyblizDoAparatu(page, esStaly.device_ref);
+    await oczekujKafla(page, q0Staly.device_ref, 'otwarty', `${klucz}: Q0 pola stałego otwarty`);
+    await oczekujKafla(page, dsStaly.device_ref, 'otwarty', `${klucz}: Q1 odłącznik otwarty`);
+    await oczekujKafla(page, esStaly.device_ref, 'zamkniety', `${klucz}: Q8 uziemnik zamknięty`);
+    await zrzut(page, `pole-z10-staly-odlaczony-uziemiony-${klucz}`, esStaly.device_ref, poleStalePo, ['Q1', 'Q0', 'Q8']);
   }
 });
 
@@ -789,11 +1218,32 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
   ]);
 
 
-  // ---- 3. Położenia z menu aparatu: Q0 otwarty, Q1 uziemiony (przez otwarte), Q5 zamknięty ---
   const q0 = aparat(poleZ11Po, 'Q0');
   const q1 = aparat(poleZ11Po, 'Q1');
   const q5 = aparat(poleZ11Po, 'Q5');
+
+  // ---- 2a. Stan wyjściowy po zmianie szablonu: kafel z rekordu położenia albo „?" bez rekordu ---
   await wrocNaSchemat(page);
+  const stanKaflaZModelu = (polozenie: string | null): StanKafla =>
+    polozenie === 'zamkniety' || polozenie === 'uziemiony' ? 'zamkniety' : polozenie === 'otwarty' ? 'otwarty' : 'nieustalony';
+  for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
+    await ustawMotyw(page, theme);
+    await przyblizDoAparatu(page, q5.device_ref);
+    // Q0 z napędem silnikowym M; przekładnik napięciowy T3 z TRZEMA uzwojeniami wtórnymi
+    // z modelu (decyzja właściciela 2026-10-29 pkt 1); GK1, GK i T2 jako elementy toru.
+    for (const [ozn, symbol] of [['Q0', 'qetBreakerZNapedem'], ['T3', 'qetVoltageTransformer3'], ['GK1', 'qetCableHead'], ['GK', 'qetCableHead'], ['T2', 'qetCoreBalanceCt']] as const) {
+      await expect(page.locator(`${KANWA} g[data-device-ref="${aparat(poleZ11Po, ozn).device_ref}"] [data-symbol-canon="${symbol}"]`), `${klucz}: ${ozn} → ${symbol}`).toHaveCount(1);
+    }
+    expect(aparat(poleZ11Po, 'T3').uzwojenia?.length, 'T3: trzy uzwojenia wtórne w modelu').toBe(3);
+    expect(aparat(poleZ11Po, 'Q0').naped, 'Q0: napęd silnikowy w modelu').toBe('SILNIKOWY');
+    await oczekujKafla(page, q0.device_ref, 'zamkniety', `${klucz}: Q0 zamknięty (gałąź wyłącznika zamknięta)`);
+    for (const a of [q1, q5]) {
+      await oczekujKafla(page, a.device_ref, stanKaflaZModelu(polozenieAparatu(enm, a.device_ref)), `${klucz}: ${a.designation} wg rekordu położenia`);
+    }
+    await zrzut(page, `pole-z11-1-stan-wyjsciowy-${klucz}`, q0.device_ref, poleZ11Po, ['PF0', 'Q1', 'Q0', 'Q5', 'T3']);
+  }
+
+  // ---- 3. Położenia z menu aparatu: Q0 otwarty, Q1 uziemiony (przez otwarte), Q5 zamknięty ---
   await polozenieZMenu(page, q0.device_ref, 'open-switch');
   await expect
     .poll(async () => ((await pobierzEnm(request, caseId)).branches ?? []).find((b) => b.ref_id === poleZ11Po.equipment_refs?.[0])?.status, { timeout: 30000 })
@@ -808,20 +1258,19 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
   await polozenieZMenu(page, q5.device_ref, 'close-switch');
   await expect.poll(async () => polozenieAparatu(await pobierzEnm(request, caseId), q5.device_ref), { timeout: 30000 }).toBe('zamkniety');
   enm = await pobierzEnm(request, caseId);
-  const aparatyZ11 = (polaLiniowe(enm).find((p) => p.ref_id === poleZ11.ref_id)!.primary_devices ?? []).map((d) => d.device_ref);
 
   // ---- 4. Rysunek pola na kanwie: PF0 przy szynie, kolumna Q5 → GK1 → T3 za wyłącznikiem, kafle -----
   for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
     await ustawMotyw(page, theme);
     await przyblizDoAparatu(page, q5.device_ref);
     for (const ozn of ['Q5', 'GK1', 'T3', 'PF0']) {
-      await expect(page.locator(`g[data-device-ref="${aparat(poleZ11Po, ozn).device_ref}"]`), ozn).toHaveCount(1);
+      await expect(page.locator(`${KANWA} g[data-device-ref="${aparat(poleZ11Po, ozn).device_ref}"]`), ozn).toHaveCount(1);
     }
     await oczekujKafla(page, q0.device_ref, 'otwarty', `${klucz}: Q0 otwarty`);
     // Uziemiony: zestyk uziemiający zamknięty — kafel czerwony, nóż na zestyku uziemiającym.
     await oczekujKafla(page, q1.device_ref, 'zamkniety', `${klucz}: Q1 uziemiony`);
-    await expect(page.locator(`g[data-device-ref="${q1.device_ref}"] [data-qet-polozenie]`).first()).toHaveAttribute('data-qet-polozenie', 'earthed');
+    await expect(page.locator(`${KANWA} g[data-device-ref="${q1.device_ref}"] [data-qet-polozenie]`).first()).toHaveAttribute('data-qet-polozenie', 'earthed');
     await oczekujKafla(page, q5.device_ref, 'zamkniety', `${klucz}: Q5 zamknięty`);
-    await zrzut(page, `pole-z11-1-wylacznik-otwarty-uziemiony-${klucz}`, q5.device_ref, aparatyZ11, ['PF0', 'Q1', 'Q0', 'Q5', 'T3']);
+    await zrzut(page, `pole-z11-1-wylacznik-otwarty-uziemiony-${klucz}`, q5.device_ref, poleZ11Po, ['PF0', 'Q1', 'Q0', 'Q5', 'T3']);
   }
 });

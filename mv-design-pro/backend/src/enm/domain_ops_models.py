@@ -1369,6 +1369,7 @@ class AddNNLoadPayload(_FrozenBase):
 
 DOMAIN_EVENT_TYPES: tuple[str, ...] = (
     "AUX_LOAD_CREATED",
+    "BAY_APPARATUS_POSITION_SET",
     "BAY_EQUIPMENT_SET",
     "BESS_INVERTER_CREATED",
     "BESS_SOURCE_CREATED",

@@ -908,11 +908,14 @@ class TestNnFieldAdapters:
         TEGO szablonu — jedno rozstrzygnięcie (`_resolve_bay_template_protection_codes`:
         producent → szablon → rola). Do karty UX-04/POLE-LINIOWE-WZORZEC kody liczono z roli
         PRZED rozstrzygnięciem szablonu, więc pole GPZ niosło zestaw roli (51/50/51N/67N)
-        sprzeczny z własnym szablonem.
+        sprzeczny z własnym szablonem. Zestaw szablonu jest bez funkcji warunkowych o
+        niespełnionym warunku (decyzja właściciela 2026-10-29 pkt 4): nowe pole nie ma
+        powiązanego źródła 3U₀, więc 67N rysunku nie trafia do pola automatycznie.
         """
         from network_model.catalog.bay_templates import (
             BAY_TEMPLATE_GPZ_LINE_DOMYSLNY,
             funkcje_eaz_roli,
+            funkcje_eaz_szablonu,
         )
 
         gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
@@ -929,7 +932,12 @@ class TestNnFieldAdapters:
         )
         spec = _pola_sn_stacji(result["snapshot"], substation["ref_id"])[-1]
         assert spec["bay_template_ref"] == BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.template_id
-        assert spec["protection_codes"] == BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.funkcje_eaz
+        assert spec["protection_codes"] == funkcje_eaz_szablonu(
+            BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.template_id
+        )
+        assert "67N" in BAY_TEMPLATE_GPZ_LINE_DOMYSLNY.funkcje_eaz
+        assert "67N" not in spec["protection_codes"]
+        assert not spec.get("zrodlo_u0_ref")
         assert spec["protection_codes"] != funkcje_eaz_roli("OUT")
 
     def test_add_sn_bay_oze_role_materializes_nc_rfg_interface(self):

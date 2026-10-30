@@ -43,6 +43,7 @@ import { KOD_FUNKCJI_PLAKIETKI, PLAKIETKI_GPZ } from './canonicalGpzModel';
 import { stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
 import { jedynyTransformatorPola, rolaPolaZrodlowego, wytworcyWgPola } from '../model/polaZModelu';
 import { bateriaWidokuPola } from '../model/bateriaPola';
+import { zrodloU0Deskryptora } from '../model/zrodloNapieciaZerowego';
 import { wPasmieSn, wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
 // reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
@@ -557,6 +558,9 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     // CTVT-RENDER (spec §20.2, parytet ze stacjami): TA SAMA projekcja montażu
     // VT co `buildExplicitStationMiniBays` — reużyta wprost (zero duplikacji).
     vtMountingAnnotations: resolveBayVtMountings(bay, protectionCtx),
+    // UX-04/POLE-LINIOWE-WZORZEC (decyzja właściciela 2026-10-29 pkt 4): źródło 3U₀ funkcji 67N
+    // z powiązania modelu (`Bay.zrodlo_u0_ref`), ta sama funkcja co pola stacji.
+    ...zrodloU0Deskryptora(protectionCtx, bay),
   };
 }
 

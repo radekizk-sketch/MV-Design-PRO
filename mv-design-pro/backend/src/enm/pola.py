@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU, StanObiektu
+from network_model.catalog.obwody_wtorne_pola import powiazania_aparatow_pola
 from network_model.catalog.rodzaje_aparatury import porty_toru_pola
 from network_model.nazwy import nazwa_nadana
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
@@ -532,20 +533,28 @@ def aparaty_po_wymianie(
     w istniejącym polu jest nowym aparatem). Stan podany JAWNIE na aparacie (decyzja
     projektanta w ładunku `set_bay_equipment`: inwentaryzacja aparatu zastanego w polu
     istniejącym) zostaje — to ta sama jawna decyzja co „oznacz jako istniejący", wyrażona przy
-    wskazaniu pozycji. Zwraca nowe słowniki."""
-    stany = {
-        _tozsamosc_instancji_aparatu(a): a.get("stan_obiektu")
-        for a in stare
-        if isinstance(a, Mapping)
-    }
+    wskazaniu pozycji. Instancja niezmieniona zachowuje też POŁOŻENIE łącznika bez gałęzi
+    (`BayPrimaryDevice.switch_state`, jedyny nośnik położenia takiego łącznika — operacja
+    `set_bay_apparatus_position`), gdy ładunek go nie podaje: ponowne zastosowanie szablonu
+    przy zmianie klasy pola albo powiązania źródła 3U₀ nie przestawia łączników (aparat ten
+    sam, położenie to samo); aparat wymieniony jest nową instancją bez położenia (nieustalone,
+    nigdy domysł). Zwraca nowe słowniki."""
+    poprzednie = {_tozsamosc_instancji_aparatu(a): a for a in stare if isinstance(a, Mapping)}
     wynik: list[dict[str, Any]] = []
     for aparat in nowe:
         kopia = copy.deepcopy(dict(aparat))
+        tozsamosc = _tozsamosc_instancji_aparatu(kopia)
+        poprzedni = poprzednie.get(tozsamosc)
+        if poprzedni is not None and kopia.get("switch_state") is None:
+            polozenie = poprzedni.get("switch_state")
+            if polozenie is not None:
+                kopia["switch_state"] = copy.deepcopy(polozenie)
         if kopia.get("stan_obiektu") in STANY_OBIEKTU:
             wynik.append(kopia)
             continue
-        tozsamosc = _tozsamosc_instancji_aparatu(kopia)
-        kopia["stan_obiektu"] = stany[tozsamosc] if tozsamosc in stany else "PROJEKTOWANY"
+        kopia["stan_obiektu"] = (
+            poprzedni.get("stan_obiektu") if poprzedni is not None else "PROJEKTOWANY"
+        )
         wynik.append(kopia)
     return wynik
 
@@ -602,11 +611,34 @@ def _wszystkie_ref_id(enm: Mapping[str, Any]) -> set[str]:
     return refs
 
 
+def _aparaty_z_powiazaniami_obwodow(rekord: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Aparaty rekordu pola z powiązaniami obwodów wtórnych wzorca jego szablonu (napęd
+    wyłącznika, funkcje EAZ mierzące z przekładnika i działające na wyłącznik —
+    `obwody_wtorne_pola.powiazania_aparatow_pola`) — wyłącznie funkcji, które pole ma
+    (`protection_codes` tego samego rekordu). Wołają to OBA pisarze rekordu pola
+    (`dodaj_pole`, `zmien_pole`), więc każda droga budowy i zmiany wyposażenia (szablon, katalog,
+    kreator, import) dostaje tę samą regułę; pole bez szablonu z obwodami wzorca — bez powiązań
+    (także dawne są zdejmowane)."""
+    # Import w funkcji: `bay_templates` importuje `enm.rola_pola_sn`, a pakiet `enm` przy
+    # inicjalizacji ładuje ten moduł (walidator → `gaz_fluorowany_pola` → `pola`) — import na
+    # szczycie zamknąłby cykl dla wołającego, który zaczyna od katalogu szablonów.
+    from network_model.catalog.bay_templates import BAY_TEMPLATE_REGISTRY
+
+    szablon = BAY_TEMPLATE_REGISTRY.get(str(rekord.get("bay_template_ref") or ""))
+    return powiazania_aparatow_pola(
+        [a for a in rekord.get("primary_devices") or [] if isinstance(a, Mapping)],
+        szablon.obwody_wtorne if szablon is not None else None,
+        [str(k) for k in rekord.get("protection_codes") or []],
+    )
+
+
 def dodaj_pole(enm: dict[str, Any], rekord: Mapping[str, Any]) -> dict[str, Any]:
     """JEDYNY pisarz nowego pola do migawki: waliduje kontraktem, wymaga nadanego stanu obiektu
     pola i aparatów, odmawia dubla identyfikatora, dopisuje do `bays` (kolejność zapisu =
     kolejność listy). Zwraca zapisany rekord."""
-    zwalidowany = waliduj_rekord_pola(rekord)
+    zwalidowany = waliduj_rekord_pola(
+        {**rekord, "primary_devices": _aparaty_z_powiazaniami_obwodow(rekord)}
+    )
     _sprawdz_stany_nowego_pola(zwalidowany)
     if zwalidowany["ref_id"] in _wszystkie_ref_id(enm):
         raise BladPola(f"pole {zwalidowany['ref_id']!r}: identyfikator już zajęty w modelu")
@@ -635,6 +667,10 @@ def zmien_pole(enm: dict[str, Any], ref_id: str, **zmiany: Any) -> dict[str, Any
                     rekord.get("primary_devices") or [], zmiany["primary_devices"] or []
                 )
             )
+        # Powiązania obwodów wtórnych zależą od aparatów, szablonu ORAZ zestawu funkcji pola
+        # (`protection_codes`) — zmiana któregokolwiek przelicza je tą samą regułą.
+        if {"primary_devices", "bay_template_ref", "protection_codes"} & zmiany.keys():
+            kandydat["primary_devices"] = _aparaty_z_powiazaniami_obwodow(kandydat)
         zwalidowany = waliduj_rekord_pola(kandydat)
         enm["bays"][i] = zwalidowany
         return zwalidowany

@@ -164,8 +164,11 @@ def _profile_checks_for_bay(
             )
         )
 
+    lateral_wymagane = set(profile.lateral_only)
     for req in profile.required:
-        ok = req in present
+        # Aparat boczny (przekładnik napięciowy pola pomiarowego) z definicji nie leży w torze —
+        # wymóg spełnia jego obecność w polu, także w odgałęzieniu (Z.17: przekładnik za złączem).
+        ok = req in present or (req in lateral_wymagane and req in present_all)
         add(
             f"profile.required.{req}",
             ok,

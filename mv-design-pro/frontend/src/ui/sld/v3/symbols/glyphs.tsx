@@ -12,9 +12,9 @@
  * Origin glifu = lewy-górny róg bboxa z SYMBOL_DEFS (porty pasują 1:1).
  */
 
-import { SYMBOL_DEFS, czyLacznikZPolozeniem, obrysSymbolu, type SymbolId } from './defs';
+import { SYMBOL_DEFS, czyLacznikZPolozeniem, czySymbolQet, obrysSymbolu, type SymbolId } from './defs';
 import { CadPrimitiveLayer } from '../cad/CadSymbol';
-import { QET_SYMBOLE_POLA_SN, type QetPolozenieNoza, type QetSymbolPolaSnId } from '../cad/qet/qetPoleSn';
+import { QET_BOK_KAFLA_STANU, QET_KRESKA_GLIFU, QET_SYMBOLE_POLA_SN, type QetPolozenieNoza, type QetSymbolPolaSnId } from '../cad/qet/qetPoleSn';
 import { BASE_STROKE, type KafleStanuLacznika, type StanKafla } from '../theme/colorTokens';
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
@@ -27,6 +27,9 @@ import { OPIS_POLOZENIA_PL } from '../../v2/model/stanAparatowPola';
  *  zmiany zachowania. Re-eksport zachowuje istniejący import w `SldCanvasV3.tsx`. */
 export const V3_STROKE_BASE = BASE_STROKE;
 export const V3_STROKE_APPARATUS = 1.2;
+/** Kreska ramki bloku przekaźnika [px świata] — cieńsza od okręgu przekaźnika: ramka grupuje
+ *  okrąg i wiersze funkcji, nie jest aparatem. */
+export const V3_STROKE_RAMKI_BLOKU = 0.8;
 
 /** Położenie łącznika na rysunku. `'earthed'` (uziemiony) — WYŁĄCZNIE łącznik
  *  trójpołożeniowy (karta UX-04/POLE-LINIOWE-WZORZEC, ENEA Zeszyt 1 §13): nóż na zestyku
@@ -95,6 +98,11 @@ export interface GlyphProps {
    *  ostrzeżenia (np. „67N: brak VT") żyje w `missingData`/inspektorze, NIE
    *  na scenie jako tekst — glif niesie WYŁĄCZNIE sygnał obecności. */
   readonly hasTopologyWarning?: boolean;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (uwaga właściciela 2026-10-29 pkt 5): ramka BLOKU
+   *  przekaźnika (względem lewego górnego rogu okręgu) — WYŁĄCZNIE `ProtectionRelayGlyph`;
+   *  obejmuje okrąg i wiersze bloku (kody poza okręgiem, odniesienie 3U₀) — jedna
+   *  reprezentacja funkcji przy przekaźniku. Brak = sam okrąg. */
+  readonly ramkaBloku?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
   /** TR2W-BEZ-POLA (§0.C.5): `true` gdy transformator SN/nN wisi na szynie SN
    *  BEZ skonfigurowanego pola transformatorowego — WYŁĄCZNIE
    *  `Transformer2WGlyph` czyta to pole (jak `labelLines`/`hasTopologyWarning`
@@ -866,23 +874,6 @@ export function BayNoEquipmentGlyph(props: GlyphProps): JSX.Element {
 }
 
 /**
- * GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola rezerwowego/wolnego — krótki tor pola
- * zamknięty poprzeczką i drugą, przerywaną: pole przygotowane, bez głowicy i bez odejścia.
- */
-export function BayReserveGlyph(props: GlyphProps): JSX.Element {
-  return (
-    <g {...glyphGroupProps('bayReserve', props)}>
-      <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <line x1={2} y1={8} x2={14} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      <line
-        x1={4} y1={13} x2={12} y2={13}
-        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} strokeDasharray="2 2"
-      />
-    </g>
-  );
-}
-
-/**
  * F9.4 (spec §13.1/§13.2): sieć zewnętrzna (`Source` ENM, `kind=
  * 'external_grid'`) — strzałka zasilania W DÓŁ (konwencja: moc wchodzi Z
  * ZEWNĄTRZ do szyny), odrębna od wszystkich symboli DER (bez ramki
@@ -1135,6 +1126,18 @@ export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
   const ty = lines.length > 1 ? [9, 17] : [13.5];
   return (
     <g {...glyphGroupProps('protectionRelay', props)}>
+      {props.ramkaBloku && (
+        <rect
+          x={props.ramkaBloku.x}
+          y={props.ramkaBloku.y}
+          width={props.ramkaBloku.width}
+          height={props.ramkaBloku.height}
+          fill="none"
+          stroke={stroke(props)}
+          strokeWidth={grubosc(props, V3_STROKE_RAMKI_BLOKU)}
+          data-przekaznik="ramka-bloku"
+        />
+      )}
       <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       {lines.slice(0, 2).map((line, i) => (
         <text
@@ -1330,12 +1333,25 @@ export { OPIS_POLOZENIA_PL };
 /** Znak na kaflu stanów bez położenia pewnego (drugi nośnik obok koloru). */
 const ZNAK_KAFLA: Readonly<Partial<Record<StanKafla, string>>> = { nieustalony: '?', bledny: '!' };
 
-/** Prostokąt kafla stanu względem lewego górnego rogu gabarytu: obrys CAŁEGO rysunku
- *  (wszystkie położenia noża i porty, `obrysSymbolu`) + `KAFEL_STANU_MARGINES`. */
+/** Prostokąt kafla stanu względem lewego górnego rogu gabarytu. Łącznik QET: JEDNOLITY kafel
+ *  z importera (`kafel` — ten sam rozmiar dla każdego łącznika z nożem, gabaryt symbolu =
+ *  kafel), więc kafle aparatów jednego pola są równe. Symbol kanoniczny: obrys CAŁEGO
+ *  rysunku (`obrysSymbolu`) + `KAFEL_STANU_MARGINES`. */
 export function prostokatKaflaStanu(id: SymbolId): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } {
+  if (czySymbolQet(id) && QET_SYMBOLE_POLA_SN[id].kafel) {
+    // Kwadrat z JEDNEJ stałej (wymaganie właściciela 2026-10-29) — nie z wymiaru rysunku.
+    return { x: 0, y: 0, width: QET_BOK_KAFLA_STANU, height: QET_BOK_KAFLA_STANU };
+  }
   const o = obrysSymbolu(id);
   const m = KAFEL_STANU_MARGINES;
   return { x: o.x - m, y: o.y - m, width: o.width + 2 * m, height: o.height + 2 * m };
+}
+
+/** Wysokość znaku „?"/„!" kafla [px świata]: jedna czwarta krótszego boku kafla, nie mniej
+ *  niż 6 i nie więcej niż 12 — znak stanu niepewnego czytelny na kaflu każdego rozmiaru, bez
+ *  zasłaniania glifu (narożnik kafla). */
+export function rozmiarZnakuKafla(r: { readonly width: number; readonly height: number }): number {
+  return Math.min(12, Math.max(6, Math.floor(Math.min(r.width, r.height) / 4)));
 }
 
 /** Kafel stanu: wypełniony prostokąt pod symbolem, znak „?"/„!" w rogu, dymek z opisem
@@ -1364,10 +1380,10 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
         {znak && (
           <text
             x={props.x + r.x + 1}
-            y={props.y + r.y + 6}
+            y={props.y + r.y + rozmiarZnakuKafla(r)}
             fill={kafle.glif}
             fontFamily="sans-serif"
-            fontSize={6}
+            fontSize={rozmiarZnakuKafla(r)}
             fontWeight={700}
             data-kafel="znak"
           >
@@ -1380,28 +1396,47 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
   return GlifNaKaflu;
 }
 
+/**
+ * Symbol QET w rolach importera (`qetPoleSn.ts`): PRZEWODY (tor i obwód wtórny w gabarycie)
+ * kreską przewodu `V3_STROKE_APPARATUS`; GLIF — rysunek aparatu (`stale` + nóż) — i OSPRZĘT
+ * (napęd M, cewka wyłączająca) kreską glifu `QET_KRESKA_GLIFU`, proporcjonalną do kafla stanu
+ * (uwaga właściciela 2026-10-29: wyraźny znak rodzaju aparatu). Oba mnożniki przechodzą przez
+ * `grubosc` (kompensacja ekranowa jednorodna dla całego symbolu). Grupy `data-qet` są
+ * punktem pomiaru stopnia glifu w e2e (`getBBox` glifu względem kafla).
+ */
 function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
   const symbol = QET_SYMBOLE_POLA_SN[id];
   function QetGlyph(props: GlyphProps): JSX.Element {
     const state: SwitchState = props.state ?? 'unknown';
     const ink = stroke(props);
-    const w = grubosc(props, V3_STROKE_APPARATUS);
+    const wPrzewodu = grubosc(props, V3_STROKE_APPARATUS);
+    const wGlifu = grubosc(props, QET_KRESKA_GLIFU);
     const noz = symbol.noz;
     const polozenie = noz ? polozenieNozaQet(id, state) : undefined;
     const kat = noz && polozenie ? noz.katy[polozenie] ?? 0 : 0;
     return (
       <g {...glyphGroupProps(id, props)} data-symbol-family="qet" data-qet-polozenie={polozenie}>
-        <CadPrimitiveLayer prims={symbol.stale} ink={ink} paper="none" strokeWidth={w} nonScalingStroke={false} state="closed" />
-        {noz && (
-          <g transform={`rotate(${kat} ${noz.cx} ${noz.cy})`} data-qet="noz" data-qet-kat={kat}>
-            <CadPrimitiveLayer
-              prims={noz.prymitywy}
-              ink={ink}
-              paper="none"
-              strokeWidth={w}
-              nonScalingStroke={false}
-              state={polozenie === 'unknown' ? 'unknown' : 'closed'}
-            />
+        <g data-qet="przewody">
+          <CadPrimitiveLayer prims={symbol.przewody} ink={ink} paper="none" strokeWidth={wPrzewodu} nonScalingStroke={false} state="closed" />
+        </g>
+        <g data-qet="glif">
+          <CadPrimitiveLayer prims={symbol.stale} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+          {noz && (
+            <g transform={`rotate(${kat} ${noz.cx} ${noz.cy})`} data-qet="noz" data-qet-kat={kat}>
+              <CadPrimitiveLayer
+                prims={noz.prymitywy}
+                ink={ink}
+                paper="none"
+                strokeWidth={wGlifu}
+                nonScalingStroke={false}
+                state={polozenie === 'unknown' ? 'unknown' : 'closed'}
+              />
+            </g>
+          )}
+        </g>
+        {symbol.osprzet.length > 0 && (
+          <g data-qet="osprzet">
+            <CadPrimitiveLayer prims={symbol.osprzet} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
           </g>
         )}
       </g>
@@ -1537,7 +1572,6 @@ const GLIFY_SYMBOLI: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Elemen
   derWind: DerWindGlyph,
   derUnknown: DerUnknownGlyph,
   bayNoEquipment: BayNoEquipmentGlyph,
-  bayReserve: BayReserveGlyph,
   gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
   gpzCollapsed: GpzCollapsedGlyph,

@@ -38,6 +38,9 @@ WARTOSCI: dict[str, Any] = {
     "surge_arresters": [{"device_ref": "ogr"}],
     "stan_obiektu": "ISTNIEJACY",
     "klasa_pola": "MIESZANE",
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja właściciela 2026-10-29 pkt 4): powiązanie
+    # źródła napięcia zerowego 3U₀ — treść modelu (rozstrzyga przypisanie 67N).
+    "zrodlo_u0_ref": "vt",
 }
 
 

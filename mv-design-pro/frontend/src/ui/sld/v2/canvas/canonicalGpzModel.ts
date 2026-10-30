@@ -24,6 +24,7 @@ import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotation
 import type { OltcGlyphAnnotation } from '../model/gpzSwitchgearTypes';
 import type { RolaPolaZrodlowego } from '../model/polaZModelu';
 import type { BateriaPolaView } from '../model/bateriaPola';
+import type { ZrodloU0PolaView } from '../model/zrodloNapieciaZerowego';
 
 /**
  * Topologia szyny w sekcji GPZ — IEC 60617 + PLAN_SLD_REWORK F1 §3.3.
@@ -164,6 +165,12 @@ export interface CanonicalGpzBay {
   readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
   /** Adnotacje montażu VT pola (`Measurement.vt_mounting`). */
   readonly vtMountingAnnotations?: readonly VtMountingAnnotationView[];
+  /** Źródło napięcia zerowego 3U₀ funkcji 67N pola (`Bay.zrodlo_u0_ref` rozstrzygnięty regułą
+   *  `v2/model/zrodloNapieciaZerowego.ts`, ta sama funkcja co pola stacji) — kompozycja
+   *  dokłada przy przekaźniku dyskretne odniesienie do przekładnika pola pomiaru napięcia
+   *  (obwód okrężny „Z, Zz", ENEA Z.10/Z.11.1) i ostrzeżenie 67N bez potwierdzonego źródła.
+   *  `undefined` = pole bez powiązania i bez funkcji wymagającej źródła. */
+  readonly zrodloU0?: ZrodloU0PolaView;
 }
 
 export type BayFieldRole =

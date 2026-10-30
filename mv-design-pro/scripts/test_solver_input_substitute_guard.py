@@ -2066,7 +2066,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wyjscia, sygnaly, naped, przeznaczenie rdzeni), profil EAZ (`wymagalnosc`, `wymogi`,
     # `wymog_pl`, `na_rysunku`), ocena pola (obwody funkcji, napiecie zwrotne, stan pomiaru),
     # oznaczenia aparatow (`device_refs`). Zero nowych podstawien (PASS).
-    assert "Pol kontraktow wejsciowych: 4458." in wyjscie, wyjscie
+    # Decyzje wlasciciela 2026-10-29 karty UX-04/POLE-LINIOWE-WZORZEC (zrodlo 3U0 z pola Z.17,
+    # 67N warunkowa, powiazania funkcji z aparatami): 4458 -> 4469 — POMIAR `contract_fields()`
+    # na drzewie bazy `dbe7c130b` (`git archive`: 4458, pin zgodny) i na drzewie karty (4469).
+    # Roznica zbiorow +11, -0: aparat pola (`enm/models.py`: `naped`, `funkcje_eaz_zasilane`,
+    # `funkcje_eaz_wylaczajace`), pole (`zrodlo_u0_ref`) i ocena zrodla napiecia zerowego
+    # (`enm/zrodlo_napiecia_zerowego.py`: `potwierdzone`, `pole_zrodla_ref`, `uzwojenie_pl`,
+    # `ferranti`, `braki_zrodla`, `kody_brakow`, `funkcje`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4469." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2383,7 +2390,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC (2026-10-29): 606 -> 609 (+3 nowych
         # plikow: `enm/{oznaczenia_aparatow_pola,polozenie_aparatu_pola}.py`,
         # `network_model/catalog/obwody_wtorne_pola.py`). Dlug i wykluczenia BEZ ZMIAN. POMIAR.
-        "Przeskanowano 609 plikow w zakresie: network_model, solver_input, enm, "
+        # Decyzje wlasciciela 2026-10-29 karty UX-04/POLE-LINIOWE-WZORZEC: 609 -> 610 (+1
+        # `enm/zrodlo_napiecia_zerowego.py` — zrodlo 3U0 pola i warunek 67N). Dlug i wykluczenia
+        # BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "Przeskanowano 610 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2687,7 +2697,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie obu kart: 75 + 1 + 4 = 80. POMIAR guardem na drzewie scalonym.
         # Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC: enm 80 -> 82 (+2
         # `enm/{oznaczenia_aparatow_pola,polozenie_aparatu_pola}.py`); dlug 7/64 BEZ ZMIAN. POMIAR.
-        "  enm: pliki_skanowane=82, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
+        # Decyzje wlasciciela 2026-10-29 (zrodlo 3U0 z pola Z.17): enm 82 -> 83 (+1
+        # `enm/zrodlo_napiecia_zerowego.py`); dlug 7/64 BEZ ZMIAN. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=83, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

@@ -29,6 +29,7 @@ from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_REGISTRY,
     BAY_TEMPLATES_GPZ_LINE,
     KLASY_POLA_LINIOWEGO,
+    WARUNKI_FUNKCJI_EAZ,
     WYKONANIA_LACZNIKOW_POLA,
     WYKONANIA_POLA_KLASY,
     WYKONANIA_POLA_LINIOWEGO_GPZ,
@@ -59,6 +60,9 @@ RYSUNEK: dict[str, dict[str, tuple[tuple[object, ...], tuple[str, ...]]]] = {
     "Z10": {
         "51": ((_CT1,), ("OW1", "OW2")),
         "50": ((_CT1,), ("OW1", "OW2")),
+        # Kryterium prądowe bloku „Zab. ziemnozwarciowe": linia Io z zacisku 2 przekładnika
+        # Ferrantiego (czerwona na s.89 i s.91) — bez wejścia U0 (decyzja właściciela 2026-10-29).
+        "51N": ((_FERR,), ("OW1", "OW2")),
         "67N": ((_FERR, _ZZZ), ("OW1", "OW2", "Blok. ZW")),
         "ZS": ((_CT1,), ("Blokowanie ZS",)),
         "50BF": ((_CT1,), ("OW1", "OW2", "Pobudzenie LRW")),
@@ -72,6 +76,7 @@ for _wyk, _ct in (("Z11_1", _CT1), ("Z11", _CT3)):
         "51": ((_ct,), ("OW1",)),
         "50": ((_ct,), ("OW1",)),
         "67": ((_ct, _VT3), ("Blokowanie ZS",)),
+        "51N": ((_FERR,), ("OW1",)),
         "67N": ((_FERR, _ZZZ), ("OW1",)),
         "27": ((_VT3,), ("Blok. ZW",)),
         "59": ((_VT3,), ("Blok. ZW",)),
@@ -317,12 +322,19 @@ def test_przekladnia_wylacznie_dla_przekladnika_ferrantiego() -> None:
 
 #: Oczekiwany status (wyrocznia z reguł dokumentu karty: obowiązkowa — w każdej klasie wymagana
 #: listą albo rysunkiem; opcjonalna — w każdej klasie dopuszczalna / na żądanie OSD / nieobecna;
-#: wariantowa — pozostałe).
+#: wariantowa — pozostałe). Funkcja warunkowa (`WARUNKI_FUNKCJI_EAZ`) jest wariantowa ZAWSZE
+#: (decyzja właściciela 2026-10-29 pkt 4): 67N rysunku Z.10/Z.11.1/Z.11 trafia do pola dopiero
+#: przy przekładniku Ferrantiego i potwierdzonym źródle 3U₀ — dawniej „obowiązkowa", czyli
+#: automatyczna w każdym polu (fikcja funkcji bez wejścia U0).
 PROFIL: dict[str, dict[str, str]] = {
     "Z10": {
         "51": "OBOWIAZKOWA",
         "50": "OBOWIAZKOWA",
-        "67N": "OBOWIAZKOWA",
+        # Kryterium prądowe z przekładnika Ferrantiego — na rysunku, bez warunku: wymagane
+        # rysunkiem w każdej klasie (lista funkcji klasy wymienia je jako zabezpieczenie
+        # ziemnozwarciowe pkt 2, którego kierunek niesie 67N).
+        "51N": "OBOWIAZKOWA",
+        "67N": "WARIANTOWA",
         "ZS": "OBOWIAZKOWA",
         "50BF": "OBOWIAZKOWA",
         "79": "WARIANTOWA",
@@ -338,7 +350,8 @@ PROFIL["Z11_1"] = PROFIL["Z11"] = {
     "51": "OBOWIAZKOWA",
     "50": "OBOWIAZKOWA",
     "67": "WARIANTOWA",
-    "67N": "OBOWIAZKOWA",
+    "51N": "OBOWIAZKOWA",
+    "67N": "WARIANTOWA",
     "27": "WARIANTOWA",
     "59": "WARIANTOWA",
     "81U": "WARIANTOWA",
@@ -370,9 +383,21 @@ def test_profil_eaz_statusy_i_wymogi_w_kazdej_klasie(wykonanie: str, laczniki: s
         assert [w.klasa for w in pozycja.wymogi] == klasy
         assert pozycja.na_rysunku == (pozycja.kod in szablon.funkcje_eaz)
         assert pozycja.opis_pl and pozycja.wymagalnosc_pl
+        warunek = WARUNKI_FUNKCJI_EAZ.get(pozycja.kod)
+        # Funkcja warunkowa: wariantowa, z warunkiem opisanym zdaniem; bez warunków nie wchodzi
+        # do zestawu żadnej klasy (iniekcja „automatyczne 67N" zapala ten test).
+        assert (pozycja.warunek_pl is not None) is (warunek is not None)
+        if warunek is not None:
+            assert pozycja.wymagalnosc == "WARIANTOWA"
         for w in pozycja.wymogi:
             assert w.podstawa
-            w_zestawie = pozycja.kod in funkcje_eaz_pola_liniowego(wykonanie, w.klasa)
+            if warunek is not None:
+                assert pozycja.kod not in funkcje_eaz_pola_liniowego(wykonanie, w.klasa)
+            # Profil opisuje WZORZEC (warunki spełnione) — ten sam zestaw co operacja zapisu
+            # pola, w którym warunek jest potwierdzony w modelu.
+            w_zestawie = pozycja.kod in funkcje_eaz_pola_liniowego(
+                wykonanie, w.klasa, frozenset(WARUNKI_FUNKCJI_EAZ.values())
+            )
             # Predykat parami: „wg rysunku" wyłącznie dla funkcji zestawu klasy, „nie występuje"
             # wyłącznie poza nim — to samo źródło co operacja zapisu zestawu.
             if w.wymog == "WG_RYSUNKU":

@@ -1227,6 +1227,11 @@ export interface Bay extends ENMElement {
    *  odbiorcze, mieszane, dedykowane wytwórcy. `null` = nieustalona. Jedno źródło trybu
    *  „linia/generacja" pola: generacja ⇔ klasa mieszana albo dedykowana wytwórcy. */
   klasa_pola?: KlasaPolaLiniowego | null;
+  /** Źródło napięcia zerowego 3U₀ funkcji 67N (lustro `enm.models.Bay.zrodlo_u0_ref`, decyzja
+   *  właściciela 2026-10-29): `device_ref` przekładnika napięciowego z uzwojeniem otwartego
+   *  trójkąta w polu pomiaru napięcia szyn tej sekcji (ENEA Z.17) albo w tym polu — powiązanie
+   *  potwierdzone przez projektanta. `null`/brak — funkcja 67N nieprzypisana. */
+  zrodlo_u0_ref?: string | null;
   bay_role: BayModelRole;
   /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
   substation_ref?: string | null;
@@ -1442,6 +1447,16 @@ export interface BayPrimaryDevice {
   /** Odgałęzienie toru, w którym leży aparat (np. 'pn' — odgałęzienie przekładnika napięciowego
    *  Z.11.1/Z.11); lustro `BayPrimaryDevice.odgalezienie`. `null`/brak = aparat toru głównego. */
   odgalezienie?: string | null;
+  /** Napęd wyłącznika kind='CB' (lustro `BayPrimaryDevice.naped`): `'SILNIKOWY'` = napęd
+   *  silnikowy ze schematu obwodów wtórnych pola; `null`/brak = napęd niepodany. */
+  naped?: 'SILNIKOWY' | null;
+  /** Kody funkcji EAZ zasilanych z tego aparatu (rdzeń CT, uzwojenie VT, przekładnik
+   *  Ferrantiego) — lustro `BayPrimaryDevice.funkcje_eaz_zasilane`, materializowane przez
+   *  `dodaj_pole`/`zmien_pole` z obwodów wtórnych szablonu. */
+  funkcje_eaz_zasilane?: string[];
+  /** Kody funkcji EAZ wyłączających ten wyłącznik — lustro
+   *  `BayPrimaryDevice.funkcje_eaz_wylaczajace`. */
+  funkcje_eaz_wylaczajace?: string[];
 }
 
 export interface BayMeasurements {

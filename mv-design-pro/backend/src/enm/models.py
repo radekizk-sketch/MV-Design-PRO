@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 
 from dziedziny.karta_widmowa import KartaWidmowa, ModeleWidmoweElementu
 from network_model.catalog.gazy_fluorowane import StanObiektu
+from network_model.catalog.obwody_wtorne_pola import RODZAJ_APARATU_WEJSCIA, RodzajNapeduWylacznika
 from network_model.catalog.przekladniki import (
     RdzenPrzekladnikaPradowego,
     UzwojeniePrzekladnikaNapieciowego,
@@ -1478,6 +1479,14 @@ class Bay(ENMElement):
     # `enm.pole_liniowe_gpz`. `None` = klasa nieustalona (pole sprzed atrybutu albo bez
     # deklaracji) — poza odciskiem.
     klasa_pola: Literal["ODBIORCZE", "MIESZANE", "DEDYKOWANE_WYTWORCY"] | None = None
+    # Decyzja właściciela 2026-10-29 (karta UX-04/POLE-LINIOWE-WZORZEC): ŹRÓDŁO NAPIĘCIA ZEROWEGO
+    # 3U₀ zabezpieczenia ziemnozwarciowego pola — `device_ref` przekładnika napięciowego (aparat
+    # pola rodzaju VT) z uzwojeniem otwartego trójkąta w polu pomiaru napięcia szyn TEJ SAMEJ
+    # sekcji (ENEA Zeszyt 1, Z.17 s.97 — obwód okrężny „Z, Zz") albo w tym polu. Deklaracja
+    # (potwierdzenie) projektanta przez `set_bay_equipment`; jedyny nośnik warunku przypisania
+    # funkcji 67N (`enm.zrodlo_napiecia_zerowego`). `None` = źródło niepowiązane — 67N nie jest
+    # przypisywana; poza odciskiem.
+    zrodlo_u0_ref: str | None = None
 
     @model_validator(mode="after")
     def _wlasciciel_pola(self) -> Bay:
@@ -1634,6 +1643,45 @@ class BayPrimaryDevice(BaseModel):
     # porty_toru_pola`, klucz `KLUCZ_ODGALEZIENIA`) — zachowana w rekordzie, żeby ponowny zapis
     # wyposażenia (formularz pola) odtworzył TE SAME porty. `None` = aparat toru głównego.
     odgalezienie: str | None = Field(default=None, pattern=r"^[A-Za-z0-9]+$")
+    # Karta UX-04/POLE-LINIOWE-WZORZEC (poprawki P0 2026-10-29): powiązania obwodów wtórnych
+    # wzorca pola na aparatach — z `ObwodyWtornePola` szablonu pola po oznaczeniu i rodzaju
+    # aparatu (`obwody_wtorne_pola.powiazania_aparatow_pola`, ta sama reguła co odczyt pola
+    # `pole_liniowe_gpz._obwody_funkcji`). `naped` — napęd wyłącznika wykonawczego (WYŁĄCZNIE
+    # `kind == "CB"`; ENEA Z.10/Z.11/Z.11.1: silnik „M"); `funkcje_eaz_zasilane` — kody funkcji
+    # EAZ mierzących z przekładnika (WYŁĄCZNIE CT, VT, przekładnik Ferrantiego);
+    # `funkcje_eaz_wylaczajace` — kody funkcji działających na wyłącznik (WYŁĄCZNIE `CB`).
+    # Brak / pusta lista = pole bez obwodów wzorca albo aparat, którego wzorzec nie wiąże.
+    naped: RodzajNapeduWylacznika | None = None
+    funkcje_eaz_zasilane: list[str] = []
+    funkcje_eaz_wylaczajace: list[str] = []
+
+    @model_validator(mode="after")
+    def _powiazania_obwodow_wtornych(self) -> BayPrimaryDevice:
+        """Powiązania obwodów wtórnych tylko na aparatach, których dotyczą: napęd i funkcje
+        wyłączające na wyłączniku, funkcje mierzące na przekładniku; kody bez powtórzeń."""
+        zasilajace = set(RODZAJ_APARATU_WEJSCIA.values())
+        if self.naped is not None and self.kind != "CB":
+            raise ValueError(
+                f"aparat {self.device_ref!r} ({self.kind}): napęd wyłącznika ma wyłącznie "
+                "wyłącznik"
+            )
+        if self.funkcje_eaz_wylaczajace and self.kind != "CB":
+            raise ValueError(
+                f"aparat {self.device_ref!r} ({self.kind}): funkcje EAZ działające na "
+                "wyłącznik ma wyłącznie wyłącznik"
+            )
+        if self.funkcje_eaz_zasilane and self.kind not in zasilajace:
+            raise ValueError(
+                f"aparat {self.device_ref!r} ({self.kind}): funkcje EAZ mierzące z aparatu ma "
+                "wyłącznie przekładnik prądowy, napięciowy albo Ferrantiego"
+            )
+        for nazwa, kody in (
+            ("funkcje_eaz_zasilane", self.funkcje_eaz_zasilane),
+            ("funkcje_eaz_wylaczajace", self.funkcje_eaz_wylaczajace),
+        ):
+            if len(set(kody)) != len(kody):
+                raise ValueError(f"aparat {self.device_ref!r}: powtórzony kod funkcji w {nazwa}")
+        return self
 
     @model_validator(mode="after")
     def _porty_i_polozenie(self) -> BayPrimaryDevice:

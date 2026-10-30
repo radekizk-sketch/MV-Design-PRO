@@ -299,7 +299,7 @@ dokladnie jeden GPZ).
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `trunk_id` | `string` | NIE | Identyfikator magistrali = id ciagu liniowego `line_runs` (brak albo nieznana magistrala --- pierwsza magistrala modelu); odcinek dopisany na koniec ciagu (`ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4, „Ciagi liniowe”) |
+| `trunk_id` | `string` | NIE | Identyfikator ciagu = id ciagu liniowego `line_runs`. Odcinek trafia do ciagu, ktory start KONTYNUUJE (regula ciaglosci: ciag pusty, start na koncu ostatniego odcinka ciagu albo w tej samej stacji co ten koniec). Ciag wskazany, ktorego start nie kontynuuje --- odmowa `trunk.start_not_at_trunk_end`; brak albo nieznany ciag --- ciag konczacy sie na starcie, inaczej pusty, inaczej NOWY ciag z tego startu (`ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4, „Ciagi liniowe”) |
 | `from_terminal_id` | `string` | NIE | Identyfikator terminala, od ktorego kontynuowac (brak --- koniec magistrali) |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
@@ -309,7 +309,8 @@ dokladnie jeden GPZ).
 **Tworzy:**
 - Nowa szyne downstream (`bus`) z napieciem dziedziczonym topologicznie z szyny zrodlowej
 - Odcinek magistrali (`branch`) typu `cable` lub `line_overhead`
-- Aktualizuje magistrale (`corridor`) --- dodaje segment do `ordered_segment_refs`
+- Aktualizuje magistrale (`corridor`) --- dodaje segment do `ordered_segment_refs` ciagu, ktory start kontynuuje
+- Albo tworzy NOWY ciag, gdy start nie kontynuuje zadnego ciagu (drugie pole GPZ, wolne pole stacji w srodku ciagu): korytarz promieniowy z tym odcinkiem i ciag liniowy `branch` z portem startu; z pola GPZ --- przydzial pola zapisany dwustronnie (`corridor.meta.gpz_field_ref`, `bay.meta.assigned_corridor_ref`) i nazwa „Magistrala NN”
 
 **Warunek wstepny:** Szyna zrodlowa musi istniec i miec zdefiniowane napiecie.
 
@@ -491,6 +492,7 @@ kazdego aparatu wyprowadzany z `catalog_ref` (bez nowego pola): `MODEL` (pozycja
 | `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem SN: APARAT_SN / CT / VT / OGRANICZNIK_SN; zabroniony dla rodzajow bez katalogu), opcjonalnie `designation`, `earthing_role` (uziemnik, ogranicznik), `linked_ref` (lacznik TEGO pola), `odgalezienie` (krotki identyfikator odgalezienia toru, np. `pn` --- odgalezienie przekladnika napieciowego Z.11 / Z.11.1; odmowa `bay_equipment.branch_invalid`), `stan_obiektu` (`ISTNIEJACY` / `PROJEKTOWANY`; puste: aparat niezmieniony zachowuje stan, nowy jest projektowany; odmowa `bay_equipment.object_state_invalid`), `przekladnia` (wylacznie przekladnik Ferrantiego `CORE_BALANCE_CT`, zapis z rysunku standardu, np. `1/100`; odmowa `bay_equipment.ratio_not_applicable`) |
 | `bay_template_ref` | `string` | przy `szablon` (albo z rekordu pola) | Szablon kanoniczny albo katalogowe pole rodziny tej samej funkcji pola |
 | `klasa_pola` | `"ODBIORCZE" \| "MIESZANE" \| "DEDYKOWANE_WYTWORCY" \| null` | NIE | Klasa pola liniowego SN (IRiESD ENEA Operator II.4.5.4.2.1--2.3); `null` --- klasa nieustalona (ocena przyjmuje klase wynikajaca z sieci za polem); odmowa `bay_equipment.line_class_invalid`. Klasa koryguje funkcje EAZ szablonu i dopuszcza wykonanie pola (klasa z generacja --- wylacznie Z.11.1 / Z.11, odmowa `pole.klasa_pola_niezgodna_z_wykonaniem`) |
+| `zrodlo_u0_ref` | `string \| null` | NIE | Zrodlo napiecia zerowego 3U₀ funkcji 67N (decyzja wlasciciela 2026-10-29): `device_ref` przekladnika napieciowego z uzwojeniem otwartego trojkata w polu pomiaru napiecia szyn (`MEASUREMENT` + `NAPIECIA_SZYN`, ENEA Z.17 s.97) tej samej sekcji albo w tym polu; `null`/pusty --- powiazanie zdjete; klucz nieobecny --- powiazanie rekordu bez zmian. Odmowa `bay_equipment.zrodlo_u0_niepoprawne` (aparat nieobecny, nie jest przekladnikiem napieciowym, bez otwartego trojkata, pole nie mierzy napiecia szyn, inna sekcja). Funkcja 67N wchodzi do zestawu EAZ pola WYLACZNIE przy przekladniku Ferrantiego w wyposazeniu i potwierdzonym zrodle (`enm/zrodlo_napiecia_zerowego.py::zrodlo_u0_pola`); zmiana spelnienia warunku przelicza zestaw |
 
 Odmowy zgodnosci szablonu (straznik kazdej operacji, `enm/zgodnosc_szablonu_pola.py`, te same
 co walidator W050--W052 i filtr `GET /api/catalog/bay-templates`): wykonanie lacznikow
@@ -500,7 +502,10 @@ niedopuszczone w izolacji rodziny (`pole.wykonanie_lacznikow_niezgodne_z_izolacj
 Odpowiedz niesie dodatkowo `wyposazenie_pola` (`stan_danych`, stan kazdego aparatu,
 `dane_przyjete`). Zdarzenie: `BAY_EQUIPMENT_SET`. Operacja nie ocenia doboru aparatu (warstwa
 analizy) i nie ustawia polozenia lacznika (lacznik z galezia: `open_switch` / `close_switch`;
-lacznik pola bez galezi: `set_bay_apparatus_position`, 3.7d).
+lacznik pola bez galezi: `set_bay_apparatus_position`, 3.7d). Aparat niezmieniony (ta sama
+instancja: `device_ref`, rodzaj, typ katalogowy) zachowuje stan obiektu i polozenie
+(`switch_state`) --- ponowne zastosowanie szablonu przy zmianie klasy pola albo powiazania zrodla
+3U₀ nie przestawia lacznikow; aparat nowy albo wymieniony ma polozenie nieustalone (nigdy domysl).
 
 ---
 

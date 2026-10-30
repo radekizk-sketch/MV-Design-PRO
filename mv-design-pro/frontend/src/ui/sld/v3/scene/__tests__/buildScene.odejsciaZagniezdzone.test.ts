@@ -35,7 +35,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { buildSceneV3, layoutMetricsReport, type SceneV3 } from '../buildScene';
-import { crossingBusGaps, interiorCrossings } from '../crossings';
+import { bridgePointsForPolyline, crossingBusGaps, interiorCrossings } from '../crossings';
 import { computeBands, DESCENT_STRIP_HEIGHT, departureStripExtraHeight } from '../../layout/bands';
 import { GRID } from '../../core/grid';
 import { SYMBOL_DEFS } from '../../symbols/defs';
@@ -257,12 +257,42 @@ describe('ODEJŚCIA-ZAGNIEŻDŻONE — grupa nN za ostatnim transformatorem, prz
   }
 });
 
+/**
+ * Wachlarz pól GPZ (fikstura `gpzProtectionDataPath`): ciąg główny wychodzi z pola
+ * LEWEGO i kończy się stacją wiersza 0 (na wysokości GPZ), kabel odgałęzienia wychodzi
+ * z pola PRAWEGO i kończy się stacją wiersza niższego. Przy torach ortogonalnych
+ * wchodzących do stacji od lewej przecięcie tych dwóch kabli jest konieczne
+ * topologicznie: poziom kabla z pola lewego musi minąć pion zejścia pola prawego, a gdyby
+ * zszedł głębiej, jego pion powrotu do stacji wiersza 0 przeciąłby poziom kabla z pola
+ * prawego. Dawniej `resolveTeeJunctions` zamieniał to przecięcie w KROPKĘ węzła T — czyli
+ * w fikcyjne połączenie dwóch kabli dwóch różnych pól, którego w modelu ENM nie ma
+ * (karta UX-04, wymaganie 8: zero fikcyjnych połączeń). Test sprawdzał wtedy „zero
+ * skrzyżowań" tylko dlatego, że kropka rozcinała odcinki. Intencja testu po naprawie:
+ * zero węzłów T, zero przecięć z szyną, a jedyne skrzyżowanie to dwa kable z dwóch pól
+ * GPZ rysowane mostkiem (§22.1 `SLD_CAD_SPEC_V3.md`: skrzyżowanie ≠ połączenie).
+ */
 describe('ODEJŚCIA-ZAGNIEŻDŻONE — wachlarz pól GPZ na L0', () => {
+  const KABEL_CIAGU_GLOWNEGO = 'seg/88ced29037bd5e349790a5f668820445/segment_L';
+  const KABEL_ODGALEZIENIA = 'seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_L';
   for (const lod of LODS) {
-    it(`GPZ z kilkoma polami liniowymi × L${lod}: zejścia pól bez węzła T i bez skrzyżowań`, () => {
+    it(`GPZ z kilkoma polami liniowymi × L${lod}: zejścia pól bez węzła T; jedyne skrzyżowanie to dwa kable dwóch pól, rysowane mostkiem`, () => {
       const scena = buildSceneV3(gpzOchrony, lod);
-      expect(scena.segments.filter((s) => /#descent#tee-\d+$/.test(s.meta?.ownerRef ?? ''))).toEqual([]);
-      expect(interiorCrossings(scena.segments)).toEqual([]);
+      expect(scena.segments.filter((s) => /#tee-\d+$/.test(s.meta?.ownerRef ?? ''))).toEqual([]);
+      // Kropki węzła T z rozstrzygania przecięć (`sld-v3-wezel-t-…`) — zero. Kropki
+      // `sld-v3-wezel-lateral-…` to węzły odgałęzień stacji z modelu, nie przecięcia.
+      expect(
+        scena.symbols.filter((s) => s.symbolId === 'junction' && (s.meta?.testId ?? '').startsWith('sld-v3-wezel-t-')),
+      ).toEqual([]);
+      expect(crossingBusGaps(scena.segments)).toEqual([]);
+      const przeciecia = interiorCrossings(scena.segments);
+      expect(przeciecia.map((c) => [c.hOwnerRef, c.vOwnerRef, c.involvesBus])).toEqual([
+        [KABEL_CIAGU_GLOWNEGO, KABEL_ODGALEZIENIA, false],
+      ]);
+      // Mostek: pion kabla odgałęzienia przeskakuje poziom ciągu głównego dokładnie w
+      // punkcie przecięcia (ta sama funkcja, której używa kanwa przy rysowaniu ścieżki).
+      const pion = scena.segments.find((s) => s.meta?.ownerRef === KABEL_ODGALEZIENIA)!;
+      const mostki = [...bridgePointsForPolyline(pion.points, przeciecia).values()].flat();
+      expect(mostki).toEqual([przeciecia[0].y]);
     });
   }
 });

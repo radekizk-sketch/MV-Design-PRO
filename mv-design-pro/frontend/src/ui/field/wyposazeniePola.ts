@@ -220,6 +220,16 @@ export interface ZmianaKlasyPola {
 
 export const BEZ_ZMIANY_KLASY: ZmianaKlasyPola = { zmien: false, wartosc: null };
 
+/** Zmiana powiązania źródła napięcia zerowego 3U₀ (`Bay.zrodlo_u0_ref`, decyzja właściciela
+ *  2026-10-29): `zmien=false` — klucz pominięty (powiązanie bez zmian), `wartosc=null` —
+ *  powiązanie zdjęte. Poprawność źródła ocenia backend (ta sama reguła co przypisanie 67N). */
+export interface ZmianaZrodlaU0 {
+  readonly zmien: boolean;
+  readonly wartosc: string | null;
+}
+
+export const BEZ_ZMIANY_ZRODLA_U0: ZmianaZrodlaU0 = { zmien: false, wartosc: null };
+
 /** Klasy pola liniowego SN — lustro `bay_templates.KLASY_POLA_LINIOWEGO` / `NAZWY_KLASY_POLA_PL`
  *  (parytet przypina `tests/enm/test_wyposazenie_pola_lustro_frontu.py`). */
 export const KLASY_POLA_LINIOWEGO: readonly KlasaPolaLiniowego[] = ['ODBIORCZE', 'MIESZANE', 'DEDYKOWANE_WYTWORCY'];
@@ -237,10 +247,14 @@ export function zbudujPayloadWyposazenia(
   wiersze: readonly WierszAparatu[],
   szablonRef: string,
   klasa: ZmianaKlasyPola = BEZ_ZMIANY_KLASY,
+  zrodloU0: ZmianaZrodlaU0 = BEZ_ZMIANY_ZRODLA_U0,
 ): Record<string, unknown> {
-  // Klasa pola liniowego (`Bay.klasa_pola`): klucz obecny = ustaw (null = wyczyść), brak = bez
-  // zmiany — ten sam kontrakt co operacja `set_bay_equipment`.
-  const zKlasa = klasa.zmien ? { klasa_pola: klasa.wartosc } : {};
+  // Klasa pola liniowego (`Bay.klasa_pola`) i źródło 3U₀ (`Bay.zrodlo_u0_ref`): klucz obecny =
+  // ustaw (null = wyczyść), brak = bez zmiany — ten sam kontrakt co operacja `set_bay_equipment`.
+  const zKlasa = {
+    ...(klasa.zmien ? { klasa_pola: klasa.wartosc } : {}),
+    ...(zrodloU0.zmien ? { zrodlo_u0_ref: zrodloU0.wartosc } : {}),
+  };
   if (tryb === 'wyczysc') return { bay_ref: bayRef, mode: 'wyczysc', ...zKlasa };
   if (tryb === 'szablon') {
     const ref = szablonRef.trim();

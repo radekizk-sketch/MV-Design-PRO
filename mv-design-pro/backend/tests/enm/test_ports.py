@@ -434,15 +434,18 @@ def test_json_round_trip_with_ports() -> None:
 def test_bay_template_registry_has_base_and_gpz_line_templates() -> None:
     # UX-04/POLE-LINIOWE-WZORZEC: dziewięć szablonów pola liniowego GPZ wg ENEA Zeszyt 1
     # (Z.10, Z.11.1, Z.11 × wykonanie łączników: trójpołożeniowy, stały z odłącznikiem,
-    # wysuwny) dołączyło do dziesięciu szablonów bazowych.
+    # wysuwny) dołączyło do dziesięciu szablonów bazowych; pole pomiaru napięcia szyn GPZ
+    # wg ENEA Z.17 (s.97 — źródło napięcia zerowego 3U₀ obwodami „Z, Zz" dla 67N pól
+    # liniowych, decyzja właściciela 2026-10-29 pkt 3–4) jest dwudziestym.
     from network_model.catalog.bay_templates import (
+        BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
         BAY_TEMPLATE_REGISTRY,
         BAY_TEMPLATES_GPZ_LINE,
         list_bay_templates,
     )
 
     assert len(BAY_TEMPLATES_GPZ_LINE) == 9
-    assert len(BAY_TEMPLATE_REGISTRY) == 10 + 9
+    assert len(BAY_TEMPLATE_REGISTRY) == 10 + 9 + 1
     templates = list_bay_templates()
     assert {t.template_id for t in templates} == {
         "bay_template_line_in",
@@ -456,6 +459,7 @@ def test_bay_template_registry_has_base_and_gpz_line_templates() -> None:
         "bay_template_reserve",
         "bay_template_aux",
         *(t.template_id for t in BAY_TEMPLATES_GPZ_LINE),
+        BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.template_id,
     }
 
 

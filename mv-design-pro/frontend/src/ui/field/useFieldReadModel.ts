@@ -13,6 +13,7 @@ import type {
   StatusWerdyktu,
   WyjasnienieWerdyktu,
 } from '../../ui2/wyniki/wzorzec/werdykt';
+import type { KodBrakuZrodlaU0 } from '../sld/v2/model/zrodloNapieciaZerowego';
 
 export interface FieldReadModelStatus {
   data_source: 'ENM_FIELD_READ_MODEL';
@@ -116,6 +117,31 @@ export interface NapiecieZwrotnePola {
   stan_pomiaru_pl: string;
 }
 
+/** Przekładnik, który może być źródłem 3U₀ pola — lustro `enm.zrodlo_napiecia_zerowego.
+ *  KandydatZrodlaU0` (propozycja dla projektanta, nie powiązanie). */
+export interface KandydatZrodlaU0 {
+  vt_ref: string;
+  pole_ref: string;
+  opis_pl: string;
+}
+
+/** Rozstrzygnięcie źródła 3U₀ i kryterium I0 pola — lustro `enm.zrodlo_napiecia_zerowego.
+ *  ZrodloU0Pola` (ta sama reguła co przypisanie 67N, ocena pola i walidator W064). */
+export interface ZrodloU0Pola {
+  potwierdzone: boolean;
+  vt_ref: string | null;
+  pole_zrodla_ref: string | null;
+  uzwojenie_pl: string | null;
+  ferranti: boolean;
+  kandydaci: KandydatZrodlaU0[];
+  braki_zrodla: string[];
+  czego_brakuje: string[];
+  /** Te same braki kodem maszynowym (kolejność `czego_brakuje`) — słownik wspólny z lustrem
+   *  reguły na schemacie SLD (`ui/sld/v2/model/zrodloNapieciaZerowego.ts`). */
+  kody_brakow: KodBrakuZrodlaU0[];
+  przyczyna_pl: string;
+}
+
 export interface FieldReadModelItem {
   bay_id: string;
   bay_ref: string;
@@ -124,6 +150,9 @@ export interface FieldReadModelItem {
   project_results?: BayProjectResults | null;
   /** Ocena pola liniowego GPZ (`null` = pole nie jest polem liniowym GPZ). */
   ocena_pola_liniowego?: OcenaPolaLiniowego | null;
+  /** Źródło napięcia zerowego 3U₀ pola (`null` = szablon pola nie niesie funkcji warunkowej 67N,
+   *  pole nie ma powiązania ani zapisanej funkcji). */
+  zrodlo_u0?: ZrodloU0Pola | null;
 }
 
 export interface FieldReadModelResponse {

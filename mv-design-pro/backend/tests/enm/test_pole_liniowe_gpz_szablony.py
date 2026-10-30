@@ -38,6 +38,8 @@ from enm.validator import ENMValidator
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_REGISTRY,
     BAY_TEMPLATES_GPZ_LINE,
+    WARUNEK_ZRODLA_U0,
+    WARUNKI_FUNKCJI_EAZ,
     BayTemplate,
     funkcje_eaz_szablonu,
     szablon_domyslny_pola_liniowego_gpz,
@@ -328,20 +330,32 @@ def test_przekladniki_rdzenie_z_katalogu_i_uzwojenia_vt(pole: str, laczniki: str
     ),
 )
 def test_zestaw_eaz_szablonu_ze_slownika_i_wg_klasy(pole: str, laczniki: str, klasa: str | None):
+    # Iloczyn: wykonanie × łączniki × klasa × warunek źródła 3U₀ {niespełniony, spełniony}
+    # (decyzja właściciela 2026-10-29 pkt 4: 67N tylko przy potwierdzonym źródle 3U₀ i
+    # Ferrantim — bez spełnionego warunku szablon funkcji nie przypisuje).
     zestaw = funkcje_eaz_szablonu(_id(pole, laczniki), klasa)
-    assert len(zestaw) == len(set(zestaw))
-    for kod in zestaw:
-        assert opis_funkcji_eaz_pl(kod), kod  # każdy kod ma nazwę PL w słowniku
-    if klasa in {"MIESZANE", "DEDYKOWANE_WYTWORCY"}:
-        assert not {"SCO", "SPZ/SCO"} & set(zestaw)
-    if klasa == "DEDYKOWANE_WYTWORCY":
-        assert not {"79", "SPZE", "67"} & set(zestaw)
-    if klasa == "MIESZANE":
-        assert "67" in zestaw
-    if klasa == "ODBIORCZE":
-        assert "81U" in zestaw  # IRiESD II.4.5.4.2.1 pkt 5
+    zestaw_z_u0 = funkcje_eaz_szablonu(_id(pole, laczniki), klasa, {WARUNEK_ZRODLA_U0})
+    for wariant in (zestaw, zestaw_z_u0):
+        assert len(wariant) == len(set(wariant))
+        for kod in wariant:
+            assert opis_funkcji_eaz_pl(kod), kod  # każdy kod ma nazwę PL w słowniku
+        if klasa in {"MIESZANE", "DEDYKOWANE_WYTWORCY"}:
+            assert not {"SCO", "SPZ/SCO"} & set(wariant)
+        if klasa == "DEDYKOWANE_WYTWORCY":
+            assert not {"79", "SPZE", "67"} & set(wariant)
+        if klasa == "MIESZANE":
+            assert "67" in wariant
+        if klasa == "ODBIORCZE":
+            assert "81U" in wariant  # IRiESD II.4.5.4.2.1 pkt 5
+    assert "67N" not in zestaw
+    # Warunek spełniony dokłada WYŁĄCZNIE funkcje warunkowe (bez zmiany kolejności reszty).
+    assert [k for k in zestaw_z_u0 if k not in WARUNKI_FUNKCJI_EAZ] == zestaw
     if klasa is None:
-        assert zestaw == list(BAY_TEMPLATE_REGISTRY[_id(pole, laczniki)].funkcje_eaz)
+        rysunek = list(BAY_TEMPLATE_REGISTRY[_id(pole, laczniki)].funkcje_eaz)
+        assert zestaw_z_u0 == rysunek
+        assert zestaw == [k for k in rysunek if k not in WARUNKI_FUNKCJI_EAZ]
+        # Rysunki Z.10/Z.11.1/Z.11 niosą 67N (wariantowo) — warunek ma na czym działać.
+        assert "67N" in rysunek
 
 
 # ---------------------------------------------------------------------------
@@ -604,7 +618,24 @@ def test_set_bay_equipment_szablon_w_kazdej_sekcji(pole_rys: str, laczniki: str,
     nowy = ok(wynik)
     rekord = next(b for b in nowy["bays"] if b["ref_id"] == pole["ref_id"])
     _sprawdz_pole(nowy, rekord, szablon_id)
-    assert all(a.get("switch_state") is None for a in rekord["primary_devices"])
+
+    # Położenie łącznika bez gałęzi (`switch_state`): instancja niezmieniona (ten sam
+    # identyfikator, rodzaj i pozycja katalogu — `pola.aparaty_po_wymianie`) zachowuje położenie
+    # sprzed zapisu (ponowny szablon nie przestawia łączników: pole GPZ budowane z tym samym
+    # szablonem ma Q1 zamknięty), aparat wymieniony jest nowy bez położenia (nieustalone, nigdy
+    # domysł). Szablon sam położenia nie nadaje.
+    def _instancja(a: dict[str, Any]) -> tuple[str, str, str]:
+        return (a["device_ref"], a["kind"], a.get("catalog_ref") or "")
+
+    polozenia_przed = {_instancja(a): a.get("switch_state") for a in pole["primary_devices"]}
+    for aparat in rekord["primary_devices"]:
+        assert aparat.get("switch_state") == polozenia_przed.get(_instancja(aparat)), aparat[
+            "device_ref"
+        ]
+    if szablon_id == pole["bay_template_ref"]:
+        # Ten sam szablon: co najmniej jedno położenie przeniesione (inaczej asercja wyżej
+        # byłaby pusta dla iloczynu, w którym przeniesienie występuje).
+        assert any(a.get("switch_state") for a in rekord["primary_devices"])
     # Wartości robocze (bez danych producenta) jawnie w `dane_przyjete` (ZASADA NR 4).
     przyjete = wynik["wyposazenie_pola"]["dane_przyjete"]
     assert przyjete and {d["jakosc"] for d in przyjete} == {"ESTIMATED"}

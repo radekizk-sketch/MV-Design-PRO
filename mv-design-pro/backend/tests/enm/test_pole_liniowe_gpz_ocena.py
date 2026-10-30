@@ -42,9 +42,11 @@ from enm.pole_liniowe_gpz import (
     oceny_pol_liniowych,
 )
 from enm.validator import ENMValidator
-from network_model.catalog.bay_templates import WYMAGANIA_EAZ_KLASY_POLA
+from enm.zrodlo_napiecia_zerowego import ZrodloU0Pola, zrodlo_u0_pola
+from network_model.catalog.bay_templates import WARUNKI_FUNKCJI_EAZ, WYMAGANIA_EAZ_KLASY_POLA
 from werdykt.etykiety import etykieta
 
+from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_pola_liniowe
 from tests.reference_networks.sceny_zajetosci_pol import APARAT, KABEL, ZRODLO, ok, op
 
 SZABLON = {
@@ -227,9 +229,21 @@ def test_ocena_pola_w_iloczynie_cech(wykonanie, klasa, generacja_kw, odbior_kw, 
         assert funkcja.etykieta == etykieta(funkcja.status, "NIEPELNY", "K")
         assert funkcja.etykieta.etykieta_pl.lower() in funkcja.wyjasnienie.zdanie_pl
         assert any("niepełna" in z for z in funkcja.wyjasnienie.zastrzezenia)
-        # Braki są nazwane dokładnie tam, gdzie werdykt z nich wynika.
+        # Braki są nazwane dokładnie tam, gdzie werdykt z nich wynika. Decyzja właściciela
+        # 2026-10-29 pkt 4: funkcja warunkowa (67N) bez potwierdzonego źródła 3U₀ nie jest
+        # oceniana — `NIE_OCENIONO` z brakami źródła (scena bez pola pomiaru napięcia Z.17),
+        # nigdy „spełnia" ani „nie spełnia".
+        zrodlo = zrodlo_u0_pola(enm, pole)
+        bez_zrodla = WARUNKI_FUNKCJI_EAZ.get(funkcja.kod) is not None and not zrodlo.potwierdzone
+        assert (funkcja.status == "NIE_OCENIONO") is (
+            bez_zrodla and funkcja.wymog in {"OBOWIAZKOWA", "NAPOWIETRZNA", "NA_ZADANIE_OSD"}
+        ), funkcja.kod
+        if funkcja.status == "NIE_OCENIONO":
+            assert funkcja.wyjasnienie.czego_brakuje == zrodlo.czego_brakuje
+            assert not funkcja.obecna
         assert bool(funkcja.wyjasnienie.czego_brakuje) is (
             funkcja.wymog == "NA_ZADANIE_OSD"
+            or funkcja.status == "NIE_OCENIONO"
             or (funkcja.status == "NIE_SPELNIA" and funkcja.wymog != "ZAKAZANA")
         )
         assert funkcja.obecna is (funkcja.kod in kody)
@@ -263,7 +277,9 @@ def test_ocena_pola_w_iloczynie_cech(wykonanie, klasa, generacja_kw, odbior_kw, 
         ("SCO", "ZAKAZANA", False, False, "SPELNIA"),
     ],
 )
-def test_status_funkcji_wg_wymogu(kod, wymog, obecna, napowietrzna, status):
+@pytest.mark.parametrize("zrodlo_potwierdzone", [True, False])
+def test_status_funkcji_wg_wymogu(kod, wymog, obecna, napowietrzna, status, zrodlo_potwierdzone):
+    """Funkcja bez warunku przypisania — status nie zależy od źródła 3U₀ pola."""
     from enm.pole_liniowe_gpz import _ocena_funkcji
 
     ocena = _ocena_funkcji(
@@ -273,8 +289,61 @@ def test_status_funkcji_wg_wymogu(kod, wymog, obecna, napowietrzna, status):
         obecna,
         napowietrzna,
         "MIESZANE",
+        _zrodlo_u0(zrodlo_potwierdzone),
     )
     assert ocena.status == status
+
+
+@functools.cache
+def _scena_zrodla_u0() -> dict[str, Any]:
+    """GPZ: sekcja 1 z polem pomiaru napięcia Z.17 i powiązanymi polami Z.10, sekcja 2 bez."""
+    return zbuduj_gpz_pola_liniowe(
+        {1: ("Z10", "TROJPOLOZENIOWY", None), 2: ("Z10", "TROJPOLOZENIOWY", None)},
+        sekcje_pomiaru_napiecia=(1,),
+    )
+
+
+def _zrodlo_u0(potwierdzone: bool) -> ZrodloU0Pola:
+    enm = _scena_zrodla_u0()
+    for pole in sorted(enm["bays"], key=lambda b: b["ref_id"]):
+        if "gpz_line_field" not in (pole.get("tags") or []):
+            continue
+        wynik = zrodlo_u0_pola(enm, pole)
+        if wynik.potwierdzone is potwierdzone:
+            return wynik
+    raise AssertionError("scena bez pola o żądanym stanie źródła 3U₀")
+
+
+@pytest.mark.parametrize(
+    "wymog,obecna,napowietrzna,potwierdzone,status",
+    [
+        ("OBOWIAZKOWA", True, False, True, "SPELNIA"),
+        ("OBOWIAZKOWA", False, False, True, "NIE_SPELNIA"),
+        ("OBOWIAZKOWA", True, False, False, "NIE_OCENIONO"),
+        ("OBOWIAZKOWA", False, False, False, "NIE_OCENIONO"),
+        ("NAPOWIETRZNA", False, True, False, "NIE_OCENIONO"),
+        ("NA_ZADANIE_OSD", True, False, False, "NIE_OCENIONO"),
+        ("DOPUSZCZALNA", True, False, False, "NIE_DOTYCZY"),
+        ("ZAKAZANA", True, False, False, "NIE_SPELNIA"),
+    ],
+)
+def test_status_67n_wg_zrodla_u0(wymog, obecna, napowietrzna, potwierdzone, status):
+    """Decyzja właściciela 2026-10-29 pkt 4: 67N wymagana bez potwierdzonego źródła 3U₀ —
+    `NIE_OCENIONO` z brakami źródła i akcją naprawczą (kontrakt werdyktu wyjaśnialnego §3:
+    brak danych ≠ spełnia); z potwierdzonym źródłem — ocena jak każdej funkcji."""
+    from enm.pole_liniowe_gpz import _ocena_funkcji
+
+    zrodlo = _zrodlo_u0(potwierdzone)
+    ocena = _ocena_funkcji(
+        "67N", wymog, "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 2", obecna,
+        napowietrzna, "ODBIORCZE", zrodlo,
+    )  # fmt: skip
+    assert ocena.status == status
+    if status == "NIE_OCENIONO":
+        assert ocena.wyjasnienie.czego_brakuje == zrodlo.czego_brakuje
+        assert ocena.wyjasnienie.czego_brakuje
+        assert "3U₀" in ocena.wyjasnienie.przyczyna_pl
+        assert "Z.17" in ocena.dowod
 
 
 def test_linia_napowietrzna_za_polem_wymaga_spz():

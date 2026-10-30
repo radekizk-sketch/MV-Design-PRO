@@ -49,8 +49,13 @@ import {
   gpzInternalSegmentsEndAtPortsOrBus,
   noDirectTransformerBusTies,
   noGpzSymbolOverlaps,
+  podpisyWPasieBezNakladania,
+  polozenieOkreguPrzekaznika,
   type GpzComposition,
+  type PodpisAparatuWPasie,
 } from '../gpz';
+import { labelLineHeight } from '../../core/text';
+import { PROTECTION_ANNOTATION_DIAMETER, RAMKA_BLOKU_PRZEKAZNIKA_MARGINES } from '../protectionMarking';
 
 const ORIGIN = { x: 0, y: 0 };
 
@@ -804,6 +809,7 @@ describe('V3 compose/gpz — FIX-D: kontrprzykłady wyroczni noDirectTransformer
       zone: null,
       adnotacje: null,
       brakiPrzylaczy: [],
+      brakiTopologiiFunkcji: [],
     };
   }
 
@@ -1654,5 +1660,110 @@ describe('GPZ-PARYTET — determinizm adnotacji', () => {
       expect(p.rect.x - a.adnotacje!.panele[i].rect.x).toBe(dx);
       expect(p.rect.y - a.adnotacje!.panele[i].rect.y).toBe(dy);
     });
+  });
+});
+
+/**
+ * Karta UX-04/POLE-LINIOWE-WZORZEC — pas podpisów aparatów pola bez nakładania.
+ *
+ * Iloczyn: {podpisy rozłączne, zachodzące, równej wysokości} × {jeden pas, dwa pasy (inna
+ * kotwica X, inna strona)} × {kolejność wejścia wprost, odwrócona}. Defekt, który przypina:
+ * Z.11 wykonanie stałe — głowica GK1 odgałęzienia i uziemnik Q51 obok niej dawały ten sam
+ * prostokąt podpisu, rozwiązywacz zdejmował drugi (aparat bez oznaczenia na schemacie).
+ */
+describe('podpisyWPasieBezNakladania — pas podpisów aparatów pola', () => {
+  const H = labelLineHeight('t3');
+  const podpis = (ref: string, y: number, x = 100, placement: 'left' | 'right' = 'right', symbolX = 0): PodpisAparatuWPasie => ({
+    ownerRef: ref,
+    text: ref,
+    anchor: { x, y },
+    placement,
+    symbolX,
+  });
+  const gora = (p: PodpisAparatuWPasie): number => Math.round((p.anchor.y - H / 2) / GRID) * GRID;
+
+  it('podpisy rozłączne — kotwice nietknięte (geometria bez kolizji bez zmian)', () => {
+    const wejscie = [podpis('a', 100), podpis('b', 140), podpis('c', 200)];
+    expect(podpisyWPasieBezNakladania(wejscie)).toEqual(wejscie);
+  });
+
+  it.each([
+    ['wprost', false],
+    ['odwrócona', true],
+  ])('podpisy zachodzące w jednym pasie — rozłączne, kolejność wg wysokości symbolu (wejście %s)', (_n, odwroc) => {
+    // Pomiar sceny Z.11 stałego: GK1 środek 676, Q51 środek 680 (kafel 48 px), T3 środek 712.
+    const baza = [podpis('Q5', 632, 2128, 'right', 1976), podpis('Q51', 680, 2128, 'right', 2072), podpis('GK1', 676, 2128, 'right', 1992), podpis('T3', 712, 2128, 'right', 2032)];
+    const wejscie = odwroc ? [...baza].reverse() : baza;
+    const wynik = podpisyWPasieBezNakladania(wejscie);
+    expect(wynik.map((p) => p.ownerRef)).toEqual(wejscie.map((p) => p.ownerRef));
+    const wgRef = new Map(wynik.map((p) => [p.ownerRef, gora(p)]));
+    expect(Object.fromEntries(wgRef)).toEqual({ Q5: 624, GK1: 672, Q51: 688, T3: 704 });
+    const posortowane = [...wgRef.values()].sort((a, b) => a - b);
+    for (let i = 1; i < posortowane.length; i += 1) expect(posortowane[i]).toBeGreaterThanOrEqual(posortowane[i - 1] + H);
+    // Podpis przesunięty ma prostokąt na siatce — rozwiązywacz (`snapToGrid(kotwica − H/2)`)
+    // nie przesuwa go z powrotem na podpis poprzedni.
+    const przesuniete = wynik.filter((p, i) => p !== wejscie[i]);
+    expect(przesuniete.map((p) => p.ownerRef).sort()).toEqual(['Q51']);
+    for (const p of przesuniete) expect((p.anchor.y - H / 2) % GRID).toBe(0);
+  });
+
+  it('równa wysokość — kolejność wg położenia X symbolu (deterministyczna niezależnie od wejścia)', () => {
+    const a = podpis('lewy', 300, 100, 'right', 10);
+    const b = podpis('prawy', 300, 100, 'right', 50);
+    const wprost = podpisyWPasieBezNakladania([a, b]);
+    const odwrotnie = podpisyWPasieBezNakladania([b, a]);
+    expect(gora(wprost[0])).toBe(gora(odwrotnie[1]));
+    expect(gora(wprost[1])).toBe(gora(odwrotnie[0]));
+    expect(gora(wprost[0])).toBeLessThan(gora(wprost[1]));
+  });
+
+  it('dwa pasy (inna kotwica X albo inna strona) nie przesuwają się nawzajem', () => {
+    const wejscie = [podpis('a', 300, 100), podpis('b', 300, 200), podpis('c', 300, 100, 'left')];
+    expect(podpisyWPasieBezNakladania(wejscie)).toEqual(wejscie);
+  });
+});
+
+/**
+ * Karta UX-04/POLE-LINIOWE-WZORZEC (wymaganie właściciela 2026-10-29 pkt 6) — przekaźnik pola
+ * z powiązaniami obwodów wtórnych obok pola. Iloczyn: {z powiązaniami, bez} × {oznacznik nad
+ * blokiem przekaźnika, na jego wysokości, brak} × {lewe położenie mieści się w rezerwacji, nie}.
+ */
+describe('polozenieOkreguPrzekaznika — przekaźnik obok pola', () => {
+  const baza = {
+    powiazany: true,
+    rightX: 640,
+    textAnchorX: 200,
+    rezerwaPrawa: 24,
+    pasmoCtVt: 40,
+    listaPoPrawej: 136,
+    circleTopY: 560,
+    oznaczenieDolY: 495 as number | null,
+  };
+  const prawe = Math.round((baza.rightX - baza.listaPoPrawej - PROTECTION_ANNOTATION_DIAMETER) / GRID) * GRID;
+  const lewe = Math.ceil((baza.textAnchorX + baza.rezerwaPrawa + baza.pasmoCtVt + 2 * GRID) / GRID) * GRID;
+
+  it('z powiązaniami i oznacznikiem nad blokiem — tuż za planem pola (pasmo podpisów + CT/VT + 2·GRID)', () => {
+    expect(lewe).toBeLessThan(prawe);
+    expect(polozenieOkreguPrzekaznika(baza)).toBe(lewe);
+    expect(polozenieOkreguPrzekaznika({ ...baza, oznaczenieDolY: null })).toBe(lewe);
+  });
+
+  it('bez powiązań — prawo-wyrównany do rezerwacji kolumny (położenie dotychczasowe)', () => {
+    expect(polozenieOkreguPrzekaznika({ ...baza, powiazany: false })).toBe(prawe);
+  });
+
+  it('oznacznik na wysokości bloku przekaźnika (górna krawędź ramki bloku) — prawe położenie', () => {
+    // Ramka bloku zaczyna się pół rastru nad okręgiem (`RAMKA_BLOKU_PRZEKAZNIKA_MARGINES`);
+    // wymagany prześwit GRID pod oznacznikiem. Numer „52" nad linią wyłączania nie istnieje
+    // w układzie powiązań (linia kończy się na cewce Q0 — uwaga właściciela 2026-10-29 pkt 5).
+    const graniczne = baza.circleTopY - RAMKA_BLOKU_PRZEKAZNIKA_MARGINES - GRID;
+    expect(polozenieOkreguPrzekaznika({ ...baza, oznaczenieDolY: graniczne })).toBe(lewe);
+    expect(polozenieOkreguPrzekaznika({ ...baza, oznaczenieDolY: graniczne + 1 })).toBe(prawe);
+  });
+
+  it('lewe położenie poza rezerwacją kolumny — nigdy nie wychodzi poza prawe', () => {
+    const waska = { ...baza, rightX: lewe + baza.listaPoPrawej + PROTECTION_ANNOTATION_DIAMETER - GRID };
+    expect(polozenieOkreguPrzekaznika(waska)).toBeLessThanOrEqual(lewe);
+    expect(polozenieOkreguPrzekaznika(waska)).toBe(Math.round((waska.rightX - baza.listaPoPrawej - PROTECTION_ANNOTATION_DIAMETER) / GRID) * GRID);
   });
 });

@@ -113,7 +113,6 @@ import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 import type { StanObiektu } from '../../../../types/enm';
 import { fieldCaptionAt, isLineLikeRole } from './directions';
-import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import {
   apparatusIdentifiers,
   apparatusIdentifierSources,
@@ -128,6 +127,7 @@ import {
   resolveBayApparatusSymbolIds,
   stackFootprint,
   przewodyToruZPortow,
+  polozeniaToruGlownego,
   rekordyToruPola,
   symbolAparatuPola,
   ukladBocznyPola,
@@ -141,7 +141,9 @@ import {
   PROTECTION_ANNOTATION_DIAMETER,
   PROTECTION_FULL_LIST_LABEL_CLASS,
   bayHasProtectionAnnotation,
-  fullCodesListText,
+  fullCodesListLines,
+  odniesieniaPrzekaznikaPola,
+  ODSTEP_WIERSZY_KODOW_EAZ,
   protectionDeviceCenter,
   resolveCtRatingAnnotations,
   resolveMeterAnchor,
@@ -151,7 +153,7 @@ import {
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
 import {
-  protectionFunctionTopologyGaps,
+  brakiTopologiiFunkcjiPola,
   protectionTopologyGapCode,
   type ProtectionTopologyGap,
 } from './protectionTopologyValidation';
@@ -201,9 +203,9 @@ function stackItemsForBay(
 ): { readonly items: readonly StackItemSpec[]; readonly source: BayApparatusSource } {
   const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
   // TA SAMA sekwencja co `resolveBayApparatusSymbolIds` (`rekordyToruPola`: obchód portów
-  // z odgałęzieniami, głowica toru głównego pola rezerwowego usunięta) — rekordy dowiązują się
+  // z odgałęzieniami) — rekordy dowiązują się
   // 1:1 do początku sekwencji, za nimi stoją elementy modelu pola i zakończenie rezerwy.
-  const devices = source === 'dane' ? rekordyToruPola(bay.primaryDevices, bay.reserve).rekordy : [];
+  const devices = source === 'dane' ? rekordyToruPola(bay.primaryDevices).rekordy : [];
   const items: StackItemSpec[] = symbolIds.map((symbolId, index) => {
     const d = devices[index];
     return d
@@ -252,7 +254,7 @@ export interface ComposedSymbolInstance {
    *  nieznana (glif zostaje przy „M", rozstrzygnięcie w legendzie). */
   readonly meterQuantity?: 'A' | 'V';
   /** F10.5 (spec §20.2): braki topologiczne funkcji zabezpieczeń
-   *  (`protectionFunctionTopologyGaps`, `./protectionTopologyValidation`) —
+   *  (`brakiTopologiiFunkcjiPola`, `./protectionTopologyValidation`) —
    *  WYŁĄCZNIE dla instancji `symbolId==='protectionRelay'`. `undefined`/puste
    *  gdy brak ostrzeżeń (konfiguracja spójna LUB brak danych o aparatach —
    *  §20.2 „zero zgadywania"). Wołający (`scene/buildScene.ts`) projektuje na
@@ -625,13 +627,16 @@ function buildBayStack(
   const instances: ComposedSymbolInstance[] = [];
   const mainInstances: ComposedSymbolInstance[] = [];
   const identifierLabels: SimpleAnchoredOwnerInput[] = [];
-  let y = topY;
+  // Położenia pionowe toru głównego — `polozeniaToruGlownego` (ta sama reguła co plan
+  // `bayApparatusPlanFootprint` i pole GPZ; aparat za kotwicą odgałęzienia toru pod jego pasem).
+  const polozenia = polozeniaToruGlownego(plan);
   let topPort: RoutePort | null = null;
   let bottomPort: RoutePort | null = null;
 
   stackItems.forEach((item, index) => {
     const { symbolId } = item;
     const def = SYMBOL_DEFS[symbolId];
+    const y = topY + polozenia.y[index];
     const x = snapToGrid(centerX - def.width / 2);
     const ports = portsInWorld(def, x, y);
     const identifier = stackIdentifiers[index];
@@ -680,11 +685,6 @@ function buildBayStack(
     }
     const south = def.ports.find((p) => p.dir === 'S');
     bottomPort = south ? { x: x + south.x, y: y + south.y, dir: south.dir } : (topPort ?? Object.values(ports)[0] ?? null);
-
-    // W1b (uwaga 12): odstęp aparat–aparat z rastru kontraktowego
-    // (`layout/apparatusStack.ts`), nie literał — JEDNA prawda z
-    // `stackFootprint`/`bayApparatusPlanFootprint` (measure↔compose).
-    y += def.height + (index < stackItems.length - 1 ? APPARATUS_STACK_VERTICAL_GAP : 0);
   });
 
   if (!topPort || !bottomPort) {
@@ -1362,8 +1362,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       // ≤2 (okrąg niesie kody w całości). Liczone RAZ (miernik niżej używa
       // do odsunięcia).
       const marking = resolveStationProtectionMarking(bay, stackDevices);
-      const fullList =
-        annotationDetail === 'full' && marking ? fullCodesListText(marking.codes) : null;
+      const fullListLines =
+        annotationDetail === 'full' && marking ? fullCodesListLines(marking.codes) : [];
 
       if (marking) {
         const anchorCenter = protectionDeviceCenter(marking.anchor);
@@ -1371,31 +1371,13 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         relayCircleTopY = circleTopY;
         const linkPortDef = SYMBOL_DEFS.protectionRelay.ports[0]; // 'link' (W)
         const linkPortWorld = { x: circleLeftX + linkPortDef.x, y: circleTopY + linkPortDef.y };
-        // F10.5/F10.6 (spec §20.2): braki topologiczne (67N⇒VT[+open-delta],
-        // 87T⇒TR[+2×CT], 51N⇒I0) — na ISTNIEJĄCYCH danych pola
-        // (`bay.primaryDevices`, WHITE BOX „zero zgadywania" gdy dane
-        // nieobecne, patrz docstring funkcji). F10.6 (D4/D5): `domainContext`
-        // niesie `vtArrangements`/`ctZoneRefs` GDY dane obecne — brak =
-        // uproszczenie F10.5 (zero regresji). Liczone WYŁĄCZNIE na L2 (jak
-        // „52"/„M"/tor wyzwalania — §17.4 spójnie).
-        // `ctZoneRefs` WYŁĄCZNIE gdy `ctRefsSecondary` niesie realną daną
-        // strefy (`ct_ref` SAM, bez `ct_refs_secondary`, jest baseline F10.5
-        // istniejący na WIĘKSZOŚCI pól — traktowanie go jako „dana strefy
-        // obecna" fabrykowałoby `missing_second_ct` na KAŻDYM normalnym
-        // pojedynczym CT, fałszywy alarm zakazany §20.2(d)).
-        const ctZoneRefs = (bay.protectionMarking?.ctRefsSecondary?.length ?? 0) > 0
-          ? [...new Set([
-              ...(bay.protectionMarking?.ctRef != null ? [bay.protectionMarking.ctRef] : []),
-              ...(bay.protectionMarking?.ctRefsSecondary ?? []),
-            ])]
-          : undefined;
+        // F10.5/F10.6 (spec §20.2): braki topologiczne (67N ⇒ potwierdzone źródło 3U₀ +
+        // Ferranti, 87T ⇒ TR[+2×CT], 51N ⇒ I0) — na ISTNIEJĄCYCH danych pola, kontekst
+        // domenowy z deskryptora tą samą funkcją co GPZ i nota arkusza
+        // (`brakiTopologiiFunkcjiPola`). Liczone WYŁĄCZNIE na L2 (jak „52"/„M"/tor
+        // wyzwalania — §17.4 spójnie).
         const topologyGaps =
-          annotationDetail === 'full'
-            ? protectionFunctionTopologyGaps(marking.codes, bay.primaryDevices, {
-                vtArrangements: bay.vtArrangements,
-                ctZoneRefs,
-              })
-            : [];
+          annotationDetail === 'full' ? brakiTopologiiFunkcjiPola(bay, marking.codes) : [];
         topologyGaps.forEach((gap) => missingData.push(protectionTopologyGapCode(gap)));
         protectionSymbols.push({
           symbolId: 'protectionRelay',
@@ -1416,27 +1398,51 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           protectionTopologyGaps: topologyGaps.length > 0 ? topologyGaps : undefined,
         });
 
-        if (fullList) {
-          // R-2 (§17.3 zd. 2): pełna lista kodów w etykiecie slotu pola
-          // (model §4) — POD okręgiem przekaźnika, w kolumnie adnotacji
-          // (measure zarezerwował `snapUp(szerokość listy)+GRID`,
-          // `protectionAnnotationColumnWidth`). Kotwica przesunięta w LEWO
-          // od prawej krawędzi rezerwacji o połowę szerokości etykiety —
-          // `resolveSimpleAnchoredLabel` (placement 'below') centruje
-          // prostokąt na `anchor.x`, więc prawa krawędź etykiety kończy się
-          // przy prawej krawędzi rezerwacji (± snapToGrid ≤4px, pokryte
-          // zapasem GRID w measure).
-          const fullListWidth = measureLabelWidth(fullList, PROTECTION_FULL_LIST_LABEL_CLASS);
+        // R-2 (§17.3 zd. 2): pełna lista kodów w etykiecie slotu pola
+        // (model §4) — POD okręgiem przekaźnika, w kolumnie adnotacji
+        // (measure zarezerwował `snapUp(szerokość najszerszego wiersza)+GRID`,
+        // `protectionAnnotationColumnWidth`), wiersz pod wierszem
+        // (`fullCodesListLines`, odstęp `ODSTEP_WIERSZY_KODOW_EAZ`). Kotwica
+        // przesunięta w LEWO od prawej krawędzi rezerwacji o połowę szerokości
+        // wiersza — `resolveSimpleAnchoredLabel` (placement 'below') centruje
+        // prostokąt na `anchor.x`, więc prawa krawędź wiersza kończy się przy
+        // prawej krawędzi rezerwacji (± snapToGrid ≤4px, pokryte zapasem GRID).
+        fullListLines.forEach((wiersz, indeks) => {
+          const szerokoscWiersza = measureLabelWidth(wiersz, PROTECTION_FULL_LIST_LABEL_CLASS);
           protectionLabels.push({
-            ownerRef: `${bay.bayRef}#protection-codes-full`,
+            ownerRef: `${bay.bayRef}#protection-codes-full${indeks === 0 ? '' : `-${indeks + 1}`}`,
             ownerKind: 'protection',
-            text: fullList,
+            text: wiersz,
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
             anchor: {
-              x: bx + reservedWidth - Math.ceil(fullListWidth / 2),
-              y: circleTopY + PROTECTION_ANNOTATION_DIAMETER,
+              x: bx + reservedWidth - Math.ceil(szerokoscWiersza / 2),
+              y: circleTopY + PROTECTION_ANNOTATION_DIAMETER + indeks * ODSTEP_WIERSZY_KODOW_EAZ,
             },
             placement: 'below',
+            // Wiersze prawo-dosunięte do rezerwacji: tekst w prawej krawędzi prostokąta
+            // (`WyrownanieTekstu`), nie w środku prostokąta szacowanej szerokości.
+            wyrownanieTekstu: 'koniec',
+          });
+        });
+        // Odniesienie źródła napięcia zerowego 3U₀ (obwód okrężny „Z, Zz" z pola pomiaru napięcia,
+        // ENEA Z.10/Z.11.1) — wiersz pod pełną listą kodów, ta sama kolumna co rezerwacja
+        // (`protectionAnnotationColumnWidth` czyta tę samą listę `odniesieniaPrzekaznikaPola`).
+        if (annotationDetail === 'full') {
+          odniesieniaPrzekaznikaPola(bay, marking.codes).forEach((wiersz, indeksOdniesienia) => {
+            const indeks = fullListLines.length + indeksOdniesienia;
+            const szerokoscWiersza = measureLabelWidth(wiersz, PROTECTION_FULL_LIST_LABEL_CLASS);
+            protectionLabels.push({
+              ownerRef: `${bay.bayRef}#zrodlo-u0${indeksOdniesienia === 0 ? '' : `-${indeksOdniesienia + 1}`}`,
+              ownerKind: 'protection',
+              text: wiersz,
+              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+              anchor: {
+                x: bx + reservedWidth - Math.ceil(szerokoscWiersza / 2),
+                y: circleTopY + PROTECTION_ANNOTATION_DIAMETER + indeks * ODSTEP_WIERSZY_KODOW_EAZ,
+              },
+              placement: 'below',
+              wyrownanieTekstu: 'koniec',
+            });
           });
         }
 
@@ -1477,6 +1483,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
             labelClass: 't4',
             anchor: { x: marking.tripTarget.x + targetDef.width, y: targetPort.y },
             placement: 'right',
+            wyrownanieTekstu: 'poczatek',
           });
         } else if (annotationDetail === 'full') {
           // §17.2: brak rozwiązywalnego `breaker_ref` w stosie pola — okrąg
@@ -1541,7 +1548,10 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           const minGap =
             PROTECTION_ANNOTATION_DIAMETER +
             GRID +
-            (fullList ? labelLineHeight(PROTECTION_FULL_LIST_LABEL_CLASS) + GRID : 0);
+            (fullListLines.length > 0
+              ? (fullListLines.length - 1) * ODSTEP_WIERSZY_KODOW_EAZ
+                + labelLineHeight(PROTECTION_FULL_LIST_LABEL_CLASS) + GRID
+              : 0);
           if (relayCircleTopY != null && Math.abs(meterTopY - relayCircleTopY) < minGap) {
             meterTopY = snapUp(relayCircleTopY + minGap);
           }
@@ -1583,6 +1593,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
             anchor: { x: ctTextAnchorX, y: center.y },
             placement: 'right',
+            wyrownanieTekstu: 'poczatek',
             // W5 (§12–15/uwaga 7): wariant CT z danych — kanał geometrycznie
             // neutralny (`data-ct-purpose`), tekst adnotacji bez zmian.
             ctPurpose: ann.purpose,
@@ -1614,6 +1625,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
             anchor: { x: ctTextAnchorX, y: center.y },
             placement: 'right',
+            wyrownanieTekstu: 'poczatek',
           });
         });
         if ((bay.vtMountingAnnotations?.length ?? 0) > 0 && vtAnnotations.length === 0) {

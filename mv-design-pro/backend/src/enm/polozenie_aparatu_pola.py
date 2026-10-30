@@ -4,9 +4,10 @@ PO CO. Łącznik pola, który nie ma gałęzi łączeniowej w modelu fizyki (od�
 i liniowy, uziemnik, łącznik trójpołożeniowy, rozłącznik albo rozłącznik bezpiecznikowy
 poza torem gałęzi pola), niesie położenie w rekordzie aparatu
 (`BayPrimaryDevice.switch_state`). Do tej operacji jedynym pisarzem tego rekordu była budowa
-pola liniowego GPZ, więc po zmianie wyposażenia pola położenie wszystkich takich łączników
-było nieustalone, a położenia „uziemiony" łącznika trójpołożeniowego nie dało się nadać
-w ogóle. Referencja HMI właściciela (2026-10-29) wymaga stanu jednoznacznego na schemacie —
+pola liniowego GPZ, więc po wymianie wyposażenia pola położenie łączników nowych instancji
+było nieustalone bez sposobu nadania, a położenia „uziemiony" łącznika trójpołożeniowego nie
+dało się nadać w ogóle. Instancja niezmieniona zachowuje położenie przy ponownym zastosowaniu
+szablonu (`enm.pola.aparaty_po_wymianie`). Referencja HMI właściciela (2026-10-29) wymaga stanu jednoznacznego na schemacie —
 schemat nie może pokazywać stanu, którego model nie ma, ani go zgadywać.
 
 JEDNA PRAWDA. Aparat opisujący gałąź łączeniową modelu (`linked_ref` — wyłącznik pola) ma

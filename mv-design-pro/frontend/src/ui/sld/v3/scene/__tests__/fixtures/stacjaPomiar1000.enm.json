@@ -44,7 +44,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -81,7 +82,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -118,7 +120,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -155,7 +158,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -200,7 +204,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -243,7 +248,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -294,7 +300,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -327,8 +334,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "field/74b61dfe0dd2de5e5798a29c9465431a/4",
@@ -342,7 +348,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/004",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -385,7 +392,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/8e7d006e33fb32bdc5f82900a4e509f8/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -432,7 +440,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/be2b58cb141e7d48a6a6fe4aaf390fb6/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -479,7 +488,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/d8521246a5d9de7b3abde55816c00d62/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -526,7 +536,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/6f6c66842152fa831cf4339c02bfe61f/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -573,7 +584,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/d601ff7ef89ae42ad1b537f26e514aca/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [
@@ -1760,7 +1772,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "c4de652805d56d8743eb54c20c63caca81160ded88d73ac9dc3a37d323c0f669",
+      "hash_sha256": "ca469ee2c1ab83d7d10ca5d610d35fc13427d383cfb7a33d0cc3e10e709af492",
       "name": "Stacja z pomiarem za ZKSN",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"

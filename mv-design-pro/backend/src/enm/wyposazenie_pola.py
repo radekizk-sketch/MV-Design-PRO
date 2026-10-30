@@ -92,6 +92,12 @@ from .pola import pole as pole_modelu
 from .pole_katalogowe import aparaty_pola_z_referencji, pole_katalogowe
 from .slownik_komunikatow import lista_pl, opis_elementu, pole
 from .topology import TYPY_LACZNIKOW_ENM
+from .zrodlo_napiecia_zerowego import (
+    AKCJA_NAPRAWCZA_ZRODLA_U0_PL,
+    KOD_ZRODLA_U0_NIEPOPRAWNEGO,
+    warunki_funkcji_eaz_pola,
+    zrodlo_u0_pola,
+)
 
 StanDanychAparatu = Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"]
 TrybWyposazenia = Literal["katalog", "szablon", "wyczysc"]
@@ -558,6 +564,21 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                 "bay_equipment.line_class_invalid",
             )
         zmiany["klasa_pola"] = klasa
+    # Źródło napięcia zerowego 3U₀ (decyzja właściciela 2026-10-29): klucz obecny w ładunku
+    # ustawia powiązanie (`null`/pusty — powiązanie zdjęte), nieobecny zostawia powiązanie
+    # rekordu. Poprawność źródła sprawdza ta sama reguła co przypisanie 67N, ocena pola
+    # i walidator (`enm.zrodlo_napiecia_zerowego`) — niżej, na wyposażeniu PO zmianie.
+    if "zrodlo_u0_ref" in payload:
+        zrodlo = payload.get("zrodlo_u0_ref")
+        if zrodlo is not None and not isinstance(zrodlo, str):
+            return _error_response(
+                f"Pole {pole('zrodlo_u0_ref', 'set_bay_equipment')}: wskaż przekładnik "
+                "napięciowy pola pomiaru napięcia szyn (puste: powiązanie zdjęte).",
+                KOD_ZRODLA_U0_NIEPOPRAWNEGO,
+            )
+        zmiany["zrodlo_u0_ref"] = (
+            zrodlo.strip() if isinstance(zrodlo, str) and zrodlo.strip() else None
+        )
     if tryb == "wyczysc":
         aparaty: list[dict[str, Any]] = []
     elif tryb == "szablon":
@@ -602,18 +623,43 @@ def set_bay_equipment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     if odmowa_izolacji is not None:
         return odmowa_izolacji
 
-    # Funkcje EAZ pola z jego szablonu i klasy — TEN SAM resolver co każda operacja tworząca
-    # pole (`_resolve_bay_template_protection_codes`: producent → szablon → rola). Zmiana
-    # szablonu albo klasy przelicza zestaw; tryb bez zmiany żadnej z nich zestawu nie dotyka.
+    # Źródło 3U₀ — sprawdzane na rekordzie PO zmianie (aparaty i powiązanie z ładunku): aparat,
+    # który nie jest przekładnikiem z uzwojeniem otwartego trójkąta w polu pomiaru napięcia szyn
+    # tej sekcji (albo w tym polu), nie zostaje zapisany jako źródło.
+    rekord_po = {**rekord, **zmiany, "primary_devices": aparaty}
+    if zmiany.get("zrodlo_u0_ref") is not None:
+        zrodlo_po = zrodlo_u0_pola(nowy, rekord_po)
+        if zrodlo_po.braki_zrodla:
+            return _error_response(
+                f"Pole {pole('zrodlo_u0_ref', 'set_bay_equipment')}: wskazany aparat nie jest "
+                f"źródłem napięcia zerowego {opis_elementu(nowy, bay_ref, 'pola')} — brakuje: "
+                f"{lista_pl(zrodlo_po.braki_zrodla)}. {AKCJA_NAPRAWCZA_ZRODLA_U0_PL[0].upper()}"
+                f"{AKCJA_NAPRAWCZA_ZRODLA_U0_PL[1:]}.",
+                KOD_ZRODLA_U0_NIEPOPRAWNEGO,
+            )
+
+    # Funkcje EAZ pola z jego szablonu, klasy i warunków funkcji warunkowych (67N — źródło 3U₀)
+    # — TEN SAM resolver co każda operacja tworząca pole (`_resolve_bay_template_protection_codes`:
+    # producent → szablon → rola). Zmiana szablonu, klasy albo spełnienia warunku (powiązanie
+    # źródła, przekładnik Ferrantiego w wyposażeniu) przelicza zestaw; tryb bez zmiany żadnej
+    # z nich zestawu nie dotyka.
     szablon_po = zmiany.get("bay_template_ref", rekord.get("bay_template_ref"))
     klasa_po = zmiany.get("klasa_pola", rekord.get("klasa_pola"))
+    warunki_przed = warunki_funkcji_eaz_pola(enm, rekord)
+    warunki_po = warunki_funkcji_eaz_pola(nowy, rekord_po)
     if szablon_po and (
-        szablon_po != rekord.get("bay_template_ref") or klasa_po != rekord.get("klasa_pola")
+        szablon_po != rekord.get("bay_template_ref")
+        or klasa_po != rekord.get("klasa_pola")
+        or warunki_po != warunki_przed
     ):
         from .domain_operations_v2 import _resolve_bay_template_protection_codes
 
         zmiany["protection_codes"] = _resolve_bay_template_protection_codes(
-            rekord.get("manufacturer_ref"), szablon_po, str(rekord.get("bay_role")), klasa_po
+            rekord.get("manufacturer_ref"),
+            szablon_po,
+            str(rekord.get("bay_role")),
+            klasa_po,
+            warunki_po,
         )
     # Stan obiektu instancji (korekta właściciela 2026-10-28): aparat niezmieniony zachowuje
     # stan, aparat wymieniony albo dodany jest nową instancją — projektowaną.

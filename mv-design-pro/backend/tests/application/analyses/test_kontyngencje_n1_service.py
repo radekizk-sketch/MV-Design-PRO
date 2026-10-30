@@ -958,7 +958,14 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # „PROJEKTOWANY", a rozłącznik sekcyjny gn03 ma pozycję katalogu bez SF₆
     # (`sw-ls-ogolny-prozniowy-24kv-630a` zamiast RM6). Enumeracja kontyngencji, dotkliwości
     # i ranking identyczne.
-    "gn01_promieniowa": "6e9613adf1ed802212d7aefc408e36538398fac0a63c7210e044e81d99a21de2",
+    # 2026-10-29 (ta sama karta, decyzja właściciela pkt 4 — 67N tylko przy potwierdzonym
+    # źródle 3U₀): gn01 6e9613ad… → bebbfc4d…, gn03 bez zmiany. Pełne widoki z kodu bazy
+    # `dbe7c130b` (odtwarzają dokładnie poprzedni pin) i po karcie porównane liść po liściu:
+    # różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Jedyna różnica treści modelu
+    # wejściowego: pole „Pole liniowe wyjściowe 2" nie dostaje automatycznie funkcji 67N
+    # (`bez_niespelnionych_warunkow` — pole bez powiązanego źródła 3U₀); `Bay.zrodlo_u0_ref`
+    # nienadane jest poza odciskiem. Enumeracja kontyngencji, dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "bebbfc4d8c6cfcc0b906334d36694af3966d6ccbdc67a70baf36ed83fca61d92",
     "gn03_pierscien": "c1a30de457e5befd7dce52b9ccbc466ca9d101118e6a4a5202103a02d66b29e4",
 }
 

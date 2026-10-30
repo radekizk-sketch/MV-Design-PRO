@@ -16397,13 +16397,15 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": false,
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": false,
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": false,
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": false
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": false,
+            "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay": false
           },
           "stacja_pola": {
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+            "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
           },
           "stacje": {
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation": {
@@ -16412,7 +16414,8 @@
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
-                "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+                "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
+                "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay"
               ]
             }
           },
@@ -16423,7 +16426,8 @@
             ],
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": [
               "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
-              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
+              "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay"
             ]
           },
           "zksn": {}
@@ -16432,7 +16436,8 @@
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal"
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
+          "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal"
         },
         "szyny": {
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation": [
@@ -16442,7 +16447,8 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+            "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal"
           ]
         },
         "szyny_glowne": {
@@ -16453,7 +16459,8 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+            "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn"
           }
         },
         "transformatory": {
@@ -16466,7 +16473,8 @@
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal"
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
+          "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay_terminal"
         }
       }
     },
@@ -16477,13 +16485,15 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": false,
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": false,
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": false,
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": false
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": false,
+            "sn/b882f3847846b5aef46b00e43dda068b/bay": false
           },
           "stacja_pola": {
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+            "sn/b882f3847846b5aef46b00e43dda068b/bay": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
           },
           "stacje": {
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation": {
@@ -16492,14 +16502,16 @@
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
-                "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+                "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
+                "sn/b882f3847846b5aef46b00e43dda068b/bay"
               ]
             }
           },
           "wg_szyny": {
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn": [
               "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
-              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002"
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
+              "sn/b882f3847846b5aef46b00e43dda068b/bay"
             ],
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": [
               "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
@@ -16512,7 +16524,8 @@
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal"
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
+          "sn/b882f3847846b5aef46b00e43dda068b/bay": "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal"
         },
         "szyny": {
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation": [
@@ -16522,7 +16535,8 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+            "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal"
           ]
         },
         "szyny_glowne": {
@@ -16533,7 +16547,8 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+            "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn"
           }
         },
         "transformatory": {
@@ -16546,7 +16561,8 @@
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal"
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
+          "sn/b882f3847846b5aef46b00e43dda068b/bay": "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal"
         }
       }
     },
@@ -16557,13 +16573,15 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": false,
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": false,
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": false,
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": false
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": false,
+            "sn/b882f3847846b5aef46b00e43dda068b/bay": false
           },
           "stacja_pola": {
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation",
+            "sn/b882f3847846b5aef46b00e43dda068b/bay": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation"
           },
           "stacje": {
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation": {
@@ -16572,14 +16590,16 @@
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
                 "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
-                "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002"
+                "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
+                "sn/b882f3847846b5aef46b00e43dda068b/bay"
               ]
             }
           },
           "wg_szyny": {
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn": [
               "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
-              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002"
+              "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
+              "sn/b882f3847846b5aef46b00e43dda068b/bay"
             ],
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": [
               "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
@@ -16592,7 +16612,8 @@
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal"
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
+          "sn/b882f3847846b5aef46b00e43dda068b/bay": "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal"
         },
         "szyny": {
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/substation": [
@@ -16602,7 +16623,8 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+            "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal"
           ]
         },
         "szyny_glowne": {
@@ -16613,7 +16635,8 @@
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/hv_section/001/bus_wn",
             "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn",
-            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn"
+            "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/002/bus_sn",
+            "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/section/001/bus_sn"
           }
         },
         "transformatory": {
@@ -16626,7 +16649,8 @@
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002/terminal",
           "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001/terminal",
-          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal"
+          "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002/terminal",
+          "sn/b882f3847846b5aef46b00e43dda068b/bay": "sn/b882f3847846b5aef46b00e43dda068b/bay_terminal"
         }
       }
     },

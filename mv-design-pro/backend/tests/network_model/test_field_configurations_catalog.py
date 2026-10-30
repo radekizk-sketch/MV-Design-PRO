@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 from network_model.catalog.bay_templates import (
+    BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17,
     BAY_TEMPLATES_GPZ_LINE,
     config_ref_for_template,
     enumerate_canonical_configurations,
@@ -64,14 +65,17 @@ def test_canonical_enumeration_covers_registry() -> None:
     refs = {c["config_ref"] for c in configs}
     # 10 szablonów + 9 szablonów pola liniowego GPZ wg ENEA (Z.10, Z.11.1, Z.11 × łącznik
     # trójpołożeniowy, wyłącznik stały z odłącznikiem szynowym, wyłącznik wysuwny — karta
-    # UX-04/POLE-LINIOWE-WZORZEC) + 2 warianty pola źródłowego SN (W2b).
+    # UX-04/POLE-LINIOWE-WZORZEC) + 1 szablon pola pomiaru napięcia SN rozdzielni GPZ wg ENEA
+    # Z.17 (s.97 — źródło napięcia zerowego 3U₀ funkcji 67N pól liniowych, decyzja właściciela
+    # 2026-10-29) + 2 warianty pola źródłowego SN (W2b).
     assert config_ref_for_template("bay_template_line_in") in refs
     assert config_ref_for_template("bay_template_transformer") in refs
     for szablon in BAY_TEMPLATES_GPZ_LINE:
         assert config_ref_for_template(szablon.template_id) in refs
+    assert config_ref_for_template(BAY_TEMPLATE_GPZ_POMIAR_NAPIECIA_Z17.template_id) in refs
     assert "kanoniczny:mv_source_cb" in refs
     assert "kanoniczny:mv_source_lbs" in refs
-    assert len(configs) == 10 + len(BAY_TEMPLATES_GPZ_LINE) + 2 == 21
+    assert len(configs) == 10 + len(BAY_TEMPLATES_GPZ_LINE) + 1 + 2 == 22
 
 
 def test_enumeration_is_deterministic() -> None:

@@ -43,7 +43,8 @@
         "gpz_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     }
   ],
   "branch_points": [],

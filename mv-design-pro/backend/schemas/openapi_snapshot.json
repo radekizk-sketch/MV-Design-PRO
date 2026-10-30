@@ -21624,7 +21624,7 @@
   },
   "/api/catalog/bay-protection-codes": {
    "get": {
-    "description": "Funkcje EAZ pól SN tworzonych wg roli (readout).\n\nJedno źródło prawdy: funkcje szablonu kanonicznego roli (`SZABLON_KANONICZNY_ROLI` →\n`BayTemplate.funkcje_eaz`) — to samo, z którego korzystają operacje domenowe budujące pola\nbez wskazanego szablonu. Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ\nkopiowania tablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę\npustą — uczciwy brak funkcji wyzwalających, nie luka danych.",
+    "description": "Funkcje EAZ pól SN tworzonych wg roli (readout).\n\nJedno źródło prawdy: `funkcje_eaz_roli` — funkcje szablonu kanonicznego roli\n(`SZABLON_KANONICZNY_ROLI` → `BayTemplate.funkcje_eaz`), a dla roli bez szablonu\nkanonicznego (pole baterii kondensatorów) `FUNKCJE_EAZ_ROLI_BEZ_SZABLONU` — to samo,\nz którego korzystają operacje domenowe budujące pola bez wskazanego szablonu. Klucze to\nKAŻDA rola modelu (`enm.rola_pola_sn.ROLE_POLA_MODELU`). Endpoint istnieje po to, by\nkreator stacji pokazywał kody BEZ kopiowania tablicy do frontendu (zero równoległej\ndefinicji). Pole pomiarowe ma listę pustą — uczciwy brak funkcji wyzwalających, nie luka\ndanych. Funkcja warunkowa (`WARUNKI_FUNKCJI_EAZ`: 67N — przekładnik Ferrantiego i\npotwierdzone źródło 3U₀) nie wchodzi do zestawu roli: rola nie rozstrzyga warunku, funkcję\nprzypisuje operacja wyposażenia pola po jego potwierdzeniu w modelu.",
     "operationId": "list_bay_protection_codes_api_catalog_bay_protection_codes_get",
     "responses": {
      "200": {

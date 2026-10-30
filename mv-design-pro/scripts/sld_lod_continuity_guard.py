@@ -59,6 +59,8 @@ REQUIRED_CONTINUITY_APPARATUS = [
     "lineBreaker",
     # Rysunek QElectroTech EN 60617 łączników toru pola liniowego GPZ (karta UX-04).
     "qetBreaker",
+    # Ten sam wyłącznik toru ze znakiem napędu silnikowego M (rekord `naped`, karta UX-04).
+    "qetBreakerZNapedem",
     "qetDisconnector",
     "qetLoadBreakSwitch",
     "qetFuseSwitch",

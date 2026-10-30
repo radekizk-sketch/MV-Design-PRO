@@ -7,7 +7,8 @@
  *
  * ILOCZYN CECH: kompozytor {stacja, GPZ}
  *   × konfiguracja z KATALOGU (wszystkie renderowalne: kanoniczne + producenckie, z portami;
- *     w tym pola z ODGAŁĘZIENIEM toru — Z.11.1/Z.11 × trzy wykonania łączników, rozszerzenie 4)
+ *     w tym pola z ODGAŁĘZIENIEM toru — Z.11.1/Z.11 × trzy wykonania łączników, rozszerzenie 4 —
+ *     oraz pole pomiaru napięcia Z.17 z odgałęzieniem z węzła końca toru)
  *   × iniekcja {brak, usunięty port „wy" pierwszego aparatu dwuportowego toru,
  *               węzeł odgałęzienia spoza toru, wejście aparatu szynowego poza węzłem szyny}.
  * Stacja: macierz W1c (konfiguracje wstrzyknięte w pola stacji fikstury referencyjnej). GPZ:
@@ -138,14 +139,18 @@ function sprawdzPole(scena: SceneV3, bayRef: string, devices: readonly BayPrimar
 /** Aparaty ODGAŁĘZIEŃ toru wg reguły standardu (wyrocznia niezależna, rozszerzenie 4):
  *  tor główny = jedyna droga aparatów dwuportowych od węzła szyny do węzła końca toru
  *  (kabel/transformator/odpływ); odgałęzienie — aparaty dwuportowe spoza drogi osiągalne
- *  z węzłów toru głównego i jednoportowe na węzłach tych aparatów. Brak rozgałęzienia albo
- *  liczba dróg ≠ 1 → zbiór pusty. Aparat jednoportowy na węźle nieosiągalnym nie stoi
- *  w odgałęzieniu (rysunek: brak przyłącza), choć leży poza torem głównym. */
+ *  z węzłów toru głównego (także z WĘZŁA KOŃCA toru) i jednoportowe na węzłach tych aparatów.
+ *  Liczba dróg ≠ 1 → zbiór pusty. Aparat jednoportowy na węźle nieosiągalnym nie stoi
+ *  w odgałęzieniu (rysunek: brak przyłącza), choć leży poza torem głównym.
+ *  Kanon zmieniony kartą UX-04/POLE-LINIOWE-WZORZEC (2026-10-29, reguła backendu
+ *  `rodzaje_aparatury.aparaty_poza_torem_glownym`): odgałęzienie może wychodzić z węzła końca
+ *  toru BEZ rozwidlenia węzła — pole pomiaru napięcia ENEA Z.17 (s.97): łącznik trójpołożeniowy
+ *  kończy tor, złącze i przekładnik napięciowy leżą w odgałęzieniu za nim. Dawny warunek
+ *  „brak rozwidlenia → zbiór pusty" zdjęty; intencja bez zmian — zbiór wyłącznie z portów. */
 function apartyPozaTorem(devices: readonly BayPrimaryDevice[]): Set<string> {
   const dwu = devices.filter((d) => (d.ports ?? []).some((p) => p.port_id === 'we') && (d.ports ?? []).some((p) => p.port_id === 'wy'));
   const wyjscia = new Map<string, BayPrimaryDevice[]>();
   for (const d of dwu) wyjscia.set(wezel(d, 'we') ?? '', [...(wyjscia.get(wezel(d, 'we') ?? '') ?? []), d]);
-  if (![...wyjscia.values()].some((l) => l.length > 1)) return new Set();
   const drogi: BayPrimaryDevice[][] = [];
   const szukaj = (w: string, droga: BayPrimaryDevice[]) => {
     if (['kabel', 'transformator', 'odplyw'].includes(w)) return void drogi.push(droga);

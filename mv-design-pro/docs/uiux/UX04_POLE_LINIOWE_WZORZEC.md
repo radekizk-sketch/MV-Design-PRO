@@ -8,7 +8,7 @@ macierz śledzenia i zrzuty do oceny, NIE werdykt i NIE deklarację zgodności z
 Podstawa rysunku: ENEA Operator „Stacje elektroenergetyczne 110 kV", Zeszyt 1 (wersja
 02.2023-2), rysunki Z.10 (s.89) „Pole linii odpływowej SN", Z.11 (s.90) „Pole linii SN
 z pomiarem rozliczeniowym energii i napięcia zwrotnego", Z.11.1 (s.91) „Pole linii SN
-z pomiarem napięcia zwrotnego" i §13 „Rozdzielnia SN" (druk s.23–25). Klasa pola i funkcje EAZ:
+z pomiarem napięcia zwrotnego" i §13 „Rozdzielnia SN" (druk s.23–26). Klasa pola i funkcje EAZ:
 IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1–2.3 i II.4.5.4.7.1. Odczyt rysunków własnymi
 słowami, porównanie wykonań i tabela klas: `docs/uiux/GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md`.
 Symbole: biblioteka QElectroTech, katalog EN 60617, commit
@@ -97,14 +97,17 @@ w zatwierdzeniu źródła, bajtowa równość pilnowana importerem):
 
 | Symbol | Element QET (plik `.elmt`) | SHA bloba git |
 |---|---|---|
-| `qetThreePositionSwitch` | **złożenie** `91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt` + `91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt` | `cee8fc840450295927176ac3b938eeded5f2fcd5` + `4c1c408e1e15c304f08c67cb03a5456b941bc614` |
-| `qetBreaker` | `91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt` | `8df98b9b5c2783ea2413b406bef53ded66da628a` |
+| `qetThreePositionSwitch` | **złożenie** `91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt` + `91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt` (uziemienie obrócone o 180° nad zestykiem prawym — u góry pola, przy torze między szyną a stykiem odłączającym, jak na rysunku Z.10 s.89) | `cee8fc840450295927176ac3b938eeded5f2fcd5` + `4c1c408e1e15c304f08c67cb03a5456b941bc614` |
+| `qetBreaker` | **złożenie** `91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt` (wyłącznik) + `91_en_60617/en_60617_07/en_60617_07_15/en_60617_07_15_01.elmt` (napęd elektromechaniczny — cewka wyłączająca, osprzęt po prawej stronie toru; zacisk zewnętrzny = port wtórny `wylacz`, koniec linii wyłączania od przekaźnika) | `8df98b9b5c2783ea2413b406bef53ded66da628a` + `23118a6a8946dda5c1e996ee3ebaa58dac883b57` |
+| `qetBreakerZNapedem` | **złożenie** `91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt` (wyłącznik) + `91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_26.elmt` (napęd silnikowy M po lewej stronie toru, jak na rysunkach Z.10/Z.11.1, linia sprzężenia mechanicznego zaczepiona w przegubie styku) + `91_en_60617/en_60617_07/en_60617_07_15/en_60617_07_15_01.elmt` (cewka wyłączająca po prawej, port `wylacz`) — Q0 pól Z.10/Z.11.1/Z.11, dobór z rekordu `BayPrimaryDevice.naped` | `8df98b9b5c2783ea2413b406bef53ded66da628a` + `6af19ab8ebe7f4643033d6db0e9dfbbd8a11c2af` + `23118a6a8946dda5c1e996ee3ebaa58dac883b57` |
 | `qetDisconnector` | `91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_06.elmt` | `58a1758ff8fda670013b32a3a2068633223b4e9c` |
 | `qetEarthSwitch` | `10_allpole/450_high_voltage/interrupteur_sectionneur_de_terre.elmt` | `addcaa782655cfe3d85a8f285cb48ec02194fee5` |
 | `qetCurrentTransformer` | `91_en_60617/en_60617_06/en_60617_06_09/en_60617_06_09_10.elmt` | `37de2decfe2a496cd014a1dd411a5e8d52e990ca` |
 | `qetVoltageTransformer` | `91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt` (zacisk wtórny poza torem, z powodem w manifeście) | `a883a2e6daec80c241594505c96295c917884adc` |
+| `qetVoltageTransformer3` | **złożenie** dwóch kopii `91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_01A.elmt` (cztery okręgi w romb: pierwotne i trzy wtórne) — przekładnik T3 z trzema uzwojeniami wtórnymi w modelu (`uzwojenia`, decyzja właściciela 2026-10-29 pkt 1, §11.2) | `a883a2e6daec80c241594505c96295c917884adc` ×2 |
 | `qetVoltageIndicator` | `10_allpole/450_high_voltage/signal_capacitif.elmt` (przewód toru przechodzi przez symbol — uwaga manifestu) | `fa4f0d85eabef67c8dfcf4cd102fdba3bc7c91d4` |
-| `qetCableHead` | `91_en_60617/en_60617_03/en_60617_03_04/en_60617_03_04_01.elmt` | `1a6cf258181f1205b6d9cb95262b7335c829b7a7` |
+| `qetCableHead` | `91_en_60617/en_60617_03/en_60617_03_03/en_60617_03_03_05.elmt` (złącze wtykowe: wtyk od strony aparatu, gniazdo od strony kabla — znak rysunków Z.10/Z.11.1; dawny element zakończenia kabla `en_60617_03_04_01` usunięty z importu) | `93d917ff316a374b81696b92ddf91501d4da2b49` |
+| `bayReserve` | `91_en_60617/en_60617_03/en_60617_03_01/en_60617_03_01_14.elmt` (koniec kabla niepodłączony — koniec toru pola WOLNEGO, nigdy znak uziemienia) | `0b62c546b2fc8651ae8c8d75cab73e657e9effc6` |
 | `qetCoreBalanceCt` | `91_en_60617/en_60617_06/en_60617_06_13/en_60617_06_13_10.elmt` | `4742b0a5097196c28ac3c07e30ce427a95a36ad2` |
 | `qetLoadBreakSwitch` | `91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_08.elmt` (pola rodzin producentów) | `ca96486920218370b3afffb17a0ae8bfe3f6414c` |
 | `qetFuseSwitch` | `91_en_60617/en_60617_07/en_60617_07_21/en_60617_07_21_09.elmt` (pola rodzin producentów) | `8079d0cde1116a3efa45064a5211b3cbf92ba2e0` |
@@ -117,21 +120,23 @@ kanwie × LOD × warstwy w `frontend/src/ui/sld/v3/canvas/__tests__/kafleStanuNa
 
 Szablon `bay_template_gpz_line_enea_z10_trojpolozeniowy` (domyślny w izolacji gazowej bez
 gazów fluorowanych i stało-powietrznej). Zrzuty: `pole-z10-trojpolozeniowy-zamkniete-*`,
-`pole-z10-wylacznik-otwarty-*`, `okno-pola-z10-trojpolozeniowy-*`.
+`pole-z10-wylacznik-otwarty-*`, `pole-z10-rozlaczone-*`, `pole-z10-wylacznik-otwarty-uziemiony-*`,
+`okno-pola-z10-trojpolozeniowy-*` (schemat i ocena).
 
 | Z.10 poz. | Aparat (oznaczenie) | Rodzaj ENM, umiejscowienie | Porty ENM (port: węzeł) | Symbol |
 |---|---|---|---|---|
 | 1 | szyna sekcji SN | szyna `Bus` sekcji | — | szyna sceny |
 | 2–3 | łącznik trójpołożeniowy szynowy (Q1) | `THREE_POSITION_SWITCH`, `UPSTREAM` | `we: szyna`, `wy: w1` | `qetThreePositionSwitch` |
-| 4 | wyłącznik próżniowy z napędem (Q0) | `CB`, `MIDSTREAM`; `linked_ref` = gałąź wyłącznika | `we: w1`, `wy: w2` | `qetBreaker` |
+| 4 | wyłącznik próżniowy z napędem silnikowym M (Q0) | `CB`, `MIDSTREAM`; `linked_ref` = gałąź wyłącznika; `naped` = `SILNIKOWY` | `we: w1`, `wy: w2` | `qetBreakerZNapedem` |
 | 5 | przekładnik prądowy 1 rdzeń 200-400/5 A, 15 VA, 5P20 (T1; P1 od wyłącznika) | `CT`, `MIDSTREAM`, katalog `ct_typ_ogolny_osd_200_400_5_5p20_15va` | `we: w2`, `wy: w3` | `qetCurrentTransformer` |
 | 6 | pojemnościowy wskaźnik napięcia (PF1) | `VOLTAGE_INDICATOR`, `OFF_PATH` | `przylacze: w3` | `qetVoltageIndicator` |
 | 7 | głowica kablowa (GK) | `CABLE_HEAD`, `DOWNSTREAM` | `we: w3`, `wy: kabel` | `qetCableHead` |
 | 8 | przekładnik Ferrantiego 1/100 na kablu (T2) | `CORE_BALANCE_CT`, `DOWNSTREAM` | `obwod: kabel` (bez przerwy toru) | `qetCoreBalanceCt` |
-| — | odłącznik liniowy, uziemnik kabla | **nie występują** (Z.10 ich nie rysuje; kabel uziemia się przez zamknięty wyłącznik przy Q1 „uziemiony", §13 druk s.24) | — | — |
+| — | odłącznik liniowy, uziemnik kabla | **nie występują** (Z.10 ich nie rysuje; kabel uziemia się przez zamknięty wyłącznik przy Q1 „uziemiony", §13 druk s.25) | — | — |
 
 Wykonanie z wyłącznikiem stałym (`…_z10_staly_z_odlacznikiem`, §13 — domyślne w izolacji
-powietrznej; zrzuty `pole-z10-staly-stan-nieznany-*`, `okno-pola-z10-staly-z-odlacznikiem-*`):
+powietrznej; zrzuty `pole-z10-staly-stan-nieznany-*`, `pole-z10-wylacznik-zamkniety-uziemnik-otwarty-*`,
+`pole-z10-zblizenie-ciemny`, `okno-pola-z10-staly-z-odlacznikiem-*`):
 Q1 = odłącznik szynowy `DS` (`we: szyna`, `wy: w1`, `qetDisconnector`) oraz uziemnik stały
 wyprowadzenia Q8 (`ES`, `GROUND_BRANCH`, `przylacze: w3`, `qetEarthSwitch`); Q0, T1, PF1, GK, T2
 jak wyżej. Wykonanie wysuwne (`…_z10_wysuwny`): BEZ Q1 — odłączenie od szyny daje wysunięcie
@@ -155,17 +160,17 @@ a „P1" jest też wzorcem kryptonimu zakazanym w tekstach UI (`scripts/no_coden
 
 Z.11.1 = Z.10 + wskaźnik napięcia od strony szyny (PF0) + odgałęzienie przekładnika
 napięciowego ZA wyłącznikiem, przed przekładnikiem prądowym. Szablon
-`bay_template_gpz_line_enea_z11_1_trojpolozeniowy`; zrzuty `pole-z11-1-wylacznik-otwarty-uziemiony-*`,
-`okno-pola-z11-1-trojpolozeniowy-*`.
+`bay_template_gpz_line_enea_z11_1_trojpolozeniowy`; zrzuty `pole-z11-1-stan-wyjsciowy-*`,
+`pole-z11-1-wylacznik-otwarty-uziemiony-*`, `okno-pola-z11-1-trojpolozeniowy-*` (schemat i ocena).
 
 | Z.11.1 | Aparat | Rodzaj ENM, umiejscowienie, odgałęzienie | Porty ENM | Symbol |
 |---|---|---|---|---|
 | wskaźnik napięcia przy szynie | PF0 | `VOLTAGE_INDICATOR`, `OFF_PATH` | `przylacze: szyna` | `qetVoltageIndicator` |
 | łącznik trójpołożeniowy | Q1 | `THREE_POSITION_SWITCH`, `UPSTREAM` | `we: szyna`, `wy: w1` | `qetThreePositionSwitch` |
-| wyłącznik próżniowy | Q0 | `CB`, `MIDSTREAM` | `we: w1`, `wy: w2` | `qetBreaker` |
+| wyłącznik próżniowy z napędem silnikowym M | Q0 | `CB`, `MIDSTREAM`, `naped` = `SILNIKOWY` | `we: w1`, `wy: w2` | `qetBreakerZNapedem` |
 | odłącznik z uziemieniem odgałęzienia | Q5 | `THREE_POSITION_SWITCH`, `OFF_PATH`, odgałęzienie `pn` | `we: w2`, `wy: pn1` | `qetThreePositionSwitch` |
 | głowica (złącze) przekładnika | GK1 | `CABLE_HEAD`, `OFF_PATH`, `pn` | `we: pn1`, `wy: pn2` | `qetCableHead` |
-| przekładnik napięciowy SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3 (uzwojenia I 10 VA 0,2; II 7,5 VA 0,2; III 7,5 VA 0,5/3P — rysunek s.91 nie rysuje otwartego trójkąta; uzwojenia I i II niepodłączone, III mierzy napięcie linii dla U>/U< i f</f>/df/dt) | T3 | `VT`, `OFF_PATH`, `pn` | `przylacze: pn2` | `qetVoltageTransformer` |
+| przekładnik napięciowy SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/√3 — trzy uzwojenia wtórne w gwieździe, bez otwartego trójkąta (DECYZJA WŁAŚCICIELA 2026-10-29 pkt 1, §11.2; uzwojenia I 10 VA 0,2; II 7,5 VA 0,2; III 7,5 VA 0,5/3P; III mierzy napięcie linii dla U>/U< i f</f>/df/dt) | T3 | `VT`, `OFF_PATH`, `pn`, `uzwojenia` = 3 | `przylacze: pn2` | `qetVoltageTransformer3` |
 | przekładnik prądowy 1 rdzeń 200-400/5 A, 15 VA, 5P20 | T1 | `CT`, `MIDSTREAM` | `we: w2`, `wy: w3` | `qetCurrentTransformer` |
 | wskaźnik napięcia | PF1 | `VOLTAGE_INDICATOR`, `OFF_PATH` | `przylacze: w3` | `qetVoltageIndicator` |
 | głowica kablowa | GK | `CABLE_HEAD`, `DOWNSTREAM` | `we: w3`, `wy: kabel` | `qetCableHead` |
@@ -184,10 +189,14 @@ rozliczenie i analizator jakości energii; 10 VA 0,2 FS5 — układy regulacyjne
 zabezpieczenia) i uzwojenie I przekładnika napięciowego o przeznaczeniu `ROZLICZENIE`.
 Pomiar rozliczeniowy (AJEE) — progi i ocena w §4.
 
-### 2.4. Pole wolne
+### 2.4. Pole wolne i pole zajęte
 
-Pole wolne (bez kabla odejścia) kończy tor na ostatnim aparacie z węzłem wyjścia i znaczniku
-pola rezerwowego — zakończenie toru kablowego (GK i T2) nie jest rysowane, bo kabla nie ma.
+Pole wolne (bez kabla odejścia) rysuje KOMPLET aparatów rekordu: głowica GK i przekładnik
+Ferrantiego T2 są aparatami pola (rekordy modelu), więc stoją w każdym polu jak na rysunkach
+ENEA; koniec toru pola wolnego oznacza symbol „koniec kabla niepodłączony" (`bayReserve`) — nigdy
+znak uziemienia. Pole zajęte kończy się KABLEM ODEJŚCIA — gałęzią modelu typu kabel z zacisku
+pola — którego odcinek na schemacie zaczyna się w porcie S przekładnika T2 (test
+`poleLinioweGpz.test.tsx`, opis „kabel odejścia pola jako gałąź modelu", §11.5).
 
 ## 3. Zakaz gazów fluorowanych w polach projektowanych
 
@@ -342,13 +351,39 @@ ponowienia.
 
 | Plik (`-ciemny` / `-jasny`) | Co pokazuje |
 |---|---|
-| `pole-z10-trojpolozeniowy-zamkniete` | pole Z.10 zajęte kablem: Q1 trójpołożeniowy i Q0 zamknięte (kafle `#C62828`), T1, PF1, GK, T2 bez kafli |
+| `pole-z10-trojpolozeniowy-zamkniete` | pole Z.10 zajęte kablem: Q1 trójpołożeniowy i Q0 zamknięte (kafle `#C62828`); T1, PF1, GK, T2 bez kafli; przekaźnik pola z kodami funkcji obok pola |
 | `pole-z10-staly-stan-nieznany` | pole Z.10 z wyłącznikiem stałym po zmianie szablonu: odłącznik Q1 i uziemnik Q8 bez rekordu położenia — kafel szary `#6B7280` ze znakiem „?", Q0 zamknięty |
 | `pole-z10-wylacznik-zamkniety-uziemnik-otwarty` | to samo pole po ustawieniu położeń z menu aparatu: Q1 i Q0 zamknięte (czerwone), uziemnik Q8 otwarty (zielony `#2E7D32`) |
-| `pole-z10-zblizenie` (tylko ciemny) | zbliżenie kamery kółkiem na wyłącznik pola stałego (szczegół LOD z kamery) |
+| `pole-z10-zblizenie` (tylko ciemny) | zbliżenie kamery kółkiem na wyłącznik pola stałego: kółko działa, aż kanwa jest na poziomie szczegółu pola (LOD2), a uchwyt Q0 ma co najmniej 3 × 48 px na ekranie (asercje w specu). Pomiar przed korektą: próg 40 px kończył zbliżenie na LOD1, więc zrzut pokazywał okrąg przekaźnika bez kodów i bez linii powiązań |
 | `pole-z10-wylacznik-otwarty` | pole zajęte po „Otwórz łącznik" z menu wyłącznika: Q0 otwarty (zielony), Q1 zamknięty |
-| `pole-z11-1-wylacznik-otwarty-uziemiony` | pole Z.11.1: Q0 otwarty (zielony), Q1 trójpołożeniowy uziemiony (czerwony, nóż na zestyku uziemiającym), Q5 zamknięty; PF0 przy szynie, odgałęzienie Q5 → GK1 → T3 za wyłącznikiem |
-| `okno-pola-z10-trojpolozeniowy`, `okno-pola-z10-staly-z-odlacznikiem`, `okno-pola-z11-1-trojpolozeniowy` | okno pola (wycinek sceny kanwy) z oceną klasy i stanem obiektu |
+| `pole-z10-rozlaczone` | pole zajęte po otwarciu Q1 z menu aparatu: Q1 odłączony (nóż w osi, zielony), Q0 otwarty |
+| `pole-z10-wylacznik-otwarty-uziemiony` | pole zajęte po „Uziem" Q1: Q1 uziemiony (nóż na zestyku uziemiającym, kafel czerwony), Q0 otwarty |
+| `pole-z10-staly-odlaczony-uziemiony` | pole Z.10 z wyłącznikiem stałym odłączone i uziemione z menu aparatu w kolejności z blokad (`enm/interlock_rules.py`): Q0 „Otwórz", Q1 „Otwórz", Q8 „Zamknij" — Q0 i odłącznik Q1 otwarte (zielone), uziemnik Q8 zamknięty (czerwony) |
+| `pole-z11-1-stan-wyjsciowy` | pole Z.11.1 po zmianie szablonu: Q1 i Q5 bez rekordu położenia (kafel szary „?"), Q0 zamknięty; PF0 przy szynie, odgałęzienie Q5 → GK1 → T3 za wyłącznikiem, pole wolne zakończone symbolem „koniec kabla niepodłączony" |
+| `pole-z11-1-wylacznik-otwarty-uziemiony` | pole Z.11.1: Q0 otwarty (zielony), Q1 trójpołożeniowy uziemiony (czerwony, nóż na zestyku uziemiającym), Q5 zamknięty |
+| `okno-pola-z10-trojpolozeniowy`, `okno-pola-z10-staly-z-odlacznikiem`, `okno-pola-z11-1-trojpolozeniowy` | schemat pola w karcie pola (`SchematPolaSn` — wycinek rysunku kanwy z tej samej migawki ENM), zrzut elementu |
+| `okno-pola-z10-trojpolozeniowy-ocena`, `okno-pola-z10-staly-z-odlacznikiem-ocena`, `okno-pola-z11-1-trojpolozeniowy-ocena` | CAŁA ocena pola wg klasy w karcie pola (`OcenaPolaLiniowegoGpz`: klasa, tabela funkcji z podstawą, obwody funkcji, napięcie zwrotne, napęd i sygnały, niezgodności), zrzut elementu. Na czas zrzutu okno przeglądarki rośnie, aż ocena mieści się w treści inspektora z odstępem 8 px od obu krawędzi; wysokość zrzutu 12 137–12 138 px (Z.10) i 14 286 px (Z.11.1) przy szerokości 273 px (pomiar 2026-10-30, po usunięciu kolizji klasy tabeli, §11.10 pkt 4) |
+
+Każdy zrzut kanwy przechodzi przez `zmierzKafle` (§11.4): `getBBox()` i `boundingBox()` każdego
+kafla łącznika pola w kadrze, wynik w `test-results/ux04-pole-liniowe-pomiary-kafli.json`.
+Każdy kadr pola przechodzi też przez `zmierzBlokPrzekaznika` (§11.4): lewe krawędzie tuszu
+wierszy bloku przekaźnika i tusz wewnątrz ramki bloku, wynik
+w `test-results/ux04-pole-liniowe-pomiary-bloku.json`. Żaden zrzut biegu (kanwa, schemat pola,
+ocena, zbliżenie) nie może być bajtowo identyczny z innym (`zapiszOdcisk`) — pomiar przed
+korektą: zrzuty oceny Z.10 i Z.11.1 były identyczne bajt w bajt, bo oba ucinał kadr okna przed
+sekcjami, którymi wykonania się różnią.
+
+Inspektor przewija się jednym przewijaniem — treścią inspektora (`mvd-inspector-tresc`) — także
+wtedy, gdy okno techniczne otwarte z selekcji stoi pod panelem elementu
+(`ui2/legacy/LegacyInspektor.tsx`). Pomiar przed naprawą: kontener pod panelem miał
+`h-full overflow-y-auto`, więc okna E-10…E-15 (kolumny `h-full` z ciałem `flex-1 overflow-auto`)
+dostawały wysokość kadru. Przewijały się trzy pudełka naraz (kontener, ciało okna, sekcje karty
+pola), a ostatni wiersz oceny pola był ucięty pod ramką sekcji przy każdej wysokości okna. Spec
+sprawdza przewijanie (`jednoPrzewijanieInspektora`) w oknie GPZ (E-10), odcinka (E-12) i pola
+(E-11) × motyw × szerokość inspektora; iniekcja dawnego kontenera — czerwony bieg („okno GPZ
+z selekcji: przewija się wyłącznie treść inspektora", przewijany `inspektor-panel-nad-oknem`).
+Mechanizm przypina także `ui2/legacy/__tests__/legacyInspektorPanelNadOknem.test.tsx` (okno
+stacji E-13 i odcinka E-12 × status wyników; iniekcja — 6 z 6 czerwonych).
 
 ## 7a. Odejścia kilku odgałęzień z pól jednej stacji (routing pól na schemacie)
 
@@ -457,7 +492,7 @@ modelu odrzuca interpretację bez uwagi).
 | sekwencja aparatów toru głównego Z.10 (Q1/Q0/T1/PF1/GK/T2) i Z.11.1 (PF0, odgałęzienie Q5/GK1/T3 za wyłącznikiem przed T1) | zweryfikowane na rysunku | §2.1–§2.2, `bay_templates._sekwencja_pola_liniowego_gpz` |
 | wykonania łączników (trójpołożeniowy / stały z odłącznikiem / wysuwny) | odczyt tekstu (Zeszyt 1 §13) | §2, `WYKONANIA_LACZNIKOW_POLA` |
 | oznaczenia aparatów | interpretacja (wartość robocza DIN 40719-2, rysunki oznaczeń nie podają) | §2.1 |
-| uziemnik kabla przy łączniku trójpołożeniowym — brak | odczyt tekstu (§13 druk s.24) | §2.1 |
+| uziemnik kabla przy łączniku trójpołożeniowym — brak | odczyt tekstu (§13 druk s.25) | §2.1 |
 
 ### 9.2. Parametry aparatury pierwotnej
 
@@ -493,7 +528,8 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 |---|---|---|---|---|---|---|
 | 51 | I> (51) — nadprądowe zwłoczne | OBOWIAZKOWA | tak | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
 | 50 | I>> (50) — nadprądowe zwarciowe (bezzwłoczne) | OBOWIAZKOWA | tak | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
-| 67N | Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) | OBOWIAZKOWA | tak | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
+| 51N | Io> (51N) — ziemnozwarciowe zwłoczne (prąd zerowy) | OBOWIAZKOWA | tak | WG_RYSUNKU | niedopuszczone | niedopuszczone |
+| 67N | Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) | WARIANTOWA | tak | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
 | ZS | ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) | OBOWIAZKOWA | tak | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
 | 50BF | LRW (50BF) — lokalna rezerwa wyłącznikowa | OBOWIAZKOWA | tak | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
 | 79 | SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) | WARIANTOWA | tak | NAPOWIETRZNA | niedopuszczone | niedopuszczone |
@@ -511,7 +547,8 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 | 51 | I> (51) — nadprądowe zwłoczne | OBOWIAZKOWA | tak | OBOWIAZKOWA | OBOWIAZKOWA | OBOWIAZKOWA |
 | 50 | I>> (50) — nadprądowe zwarciowe (bezzwłoczne) | OBOWIAZKOWA | tak | OBOWIAZKOWA | OBOWIAZKOWA | OBOWIAZKOWA |
 | 67 | I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn) | WARIANTOWA | tak | WG_RYSUNKU | NA_ZADANIE_OSD | NIE_WYSTEPUJE |
-| 67N | Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) | OBOWIAZKOWA | tak | OBOWIAZKOWA | OBOWIAZKOWA | OBOWIAZKOWA |
+| 51N | Io> (51N) — ziemnozwarciowe zwłoczne (prąd zerowy) | OBOWIAZKOWA | tak | WG_RYSUNKU | WG_RYSUNKU | WG_RYSUNKU |
+| 67N | Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) | WARIANTOWA | tak | OBOWIAZKOWA | OBOWIAZKOWA | OBOWIAZKOWA |
 | 27 | U< (27) — podnapięciowe (przekładniki od strony linii) | WARIANTOWA | tak | WG_RYSUNKU | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
 | 59 | U> (59) — nadnapięciowe (przekładniki od strony linii) | WARIANTOWA | tak | WG_RYSUNKU | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
 | 81U | f< (81U) — podczęstotliwościowe | WARIANTOWA | tak | OBOWIAZKOWA | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
@@ -537,7 +574,8 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 | 51 | I> (51) — nadprądowe zwłoczne | OBOWIAZKOWA | tak | OBOWIAZKOWA | OBOWIAZKOWA | OBOWIAZKOWA |
 | 50 | I>> (50) — nadprądowe zwarciowe (bezzwłoczne) | OBOWIAZKOWA | tak | OBOWIAZKOWA | OBOWIAZKOWA | OBOWIAZKOWA |
 | 67 | I> kierunkowe (67) — nadprądowe kierunkowe (blokada kierunkowa — przepływ mocy w stronę szyn) | WARIANTOWA | tak | WG_RYSUNKU | NA_ZADANIE_OSD | NIE_WYSTEPUJE |
-| 67N | Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) | OBOWIAZKOWA | tak | OBOWIAZKOWA | OBOWIAZKOWA | OBOWIAZKOWA |
+| 51N | Io> (51N) — ziemnozwarciowe zwłoczne (prąd zerowy) | OBOWIAZKOWA | tak | WG_RYSUNKU | WG_RYSUNKU | WG_RYSUNKU |
+| 67N | Io> kierunkowe (67N) — ziemnozwarciowe kierunkowe (wejścia Io i U0) | WARIANTOWA | tak | OBOWIAZKOWA | OBOWIAZKOWA | OBOWIAZKOWA |
 | 27 | U< (27) — podnapięciowe (przekładniki od strony linii) | WARIANTOWA | tak | WG_RYSUNKU | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
 | 59 | U> (59) — nadnapięciowe (przekładniki od strony linii) | WARIANTOWA | tak | WG_RYSUNKU | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
 | 81U | f< (81U) — podczęstotliwościowe | WARIANTOWA | tak | OBOWIAZKOWA | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
@@ -562,6 +600,7 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 |---|---|---|---|---|---|---|
 | 51 | I> t1 | RDZEN_CT T1/1 | OW1, OW2 | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50 | I>> t2 | RDZEN_CT T1/1 | OW1, OW2 | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
+| 51N | Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io) | PRZEKLADNIK_FERRANTIEGO T2/None | OW1, OW2 | Q0 | INTERPRETACJA | linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo |
 | 67N | Zab. ziemnozwarciowe (kierunkowe) t1, t2 | PRZEKLADNIK_FERRANTIEGO T2/None, sygnał Z, Zz | OW1, OW2, Blok. ZW | Q0 | INTERPRETACJA | wyjścia OW1, OW2 z komórek t1, t2 — linie widoczne na rysunku; „Blok. ZW” wychodzi z nieopisanej komórki bloku zabezpieczenia ziemnozwarciowego — przypisanie tej funkcji jest interpretacją |
 | ZS | ZS | RDZEN_CT T1/1 (interpr.) | Blokowanie ZS | — | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50BF | LRW | RDZEN_CT T1/1 (interpr.) | OW1, OW2, Pobudzenie LRW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
@@ -569,7 +608,7 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 | SCO | Sterownik pola | sygnał SCO1, sygnał SCO2 | OW1, OW2 | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
 | SPZ/SCO | Sterownik pola | sygnał SCO/SPZ | ZW | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
 
-Sygnały: Blok. ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW1 (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW2 (WYJSCIE, WYLACZNIK, INTERPRETACJA); Odstawienie SPZ (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Topologia (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Zasilanie (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); SSiN (WYJSCIE, NADRZEDNY, INTERPRETACJA); Łącze inżynierskie (WYJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); +AwUp (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Up (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Aw (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Al (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); SCO1 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO2 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO/SPZ (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); UL1, UL2, UL3, N (WEJSCIE, OKREZNY, INTERPRETACJA); Pobudzenie LRW (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Blokowanie ZS (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Z, Zz (WEJSCIE, OKREZNY, INTERPRETACJA)
+Sygnały: Blok. ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW1 (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW2 (WYJSCIE, WYLACZNIK, INTERPRETACJA); Odstawienie SPZ (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Topologia (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Zasilanie (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); SSiN (WYJSCIE, NADRZEDNY, INTERPRETACJA); Łącze inżynierskie (WYJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); +AwUp (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Up (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Aw (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Al (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); SCO1 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO2 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO/SPZ (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); UL1, UL2, UL3, N (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Pobudzenie LRW (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Blokowanie ZS (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Z, Zz (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU)
 
 Obwody przekładników poza EAZ: 
 
@@ -579,6 +618,7 @@ Obwody przekładników poza EAZ:
 |---|---|---|---|---|---|---|
 | 51 | I> t1 | RDZEN_CT T1/1 | OW1 | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50 | I>> t2 | RDZEN_CT T1/1 | OW1 | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
+| 51N | Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io) | PRZEKLADNIK_FERRANTIEGO T2/None | OW1 | Q0 | INTERPRETACJA | linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo |
 | 67N | Zab. ziemnozwarciowe (kierunkowe) t1, t2 | PRZEKLADNIK_FERRANTIEGO T2/None, sygnał Z, Zz | OW1 | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | ZS | ZS (kierunkowe I>) | RDZEN_CT T1/1 (interpr.) | Blokowanie ZS | — | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50BF | LRW | RDZEN_CT T1/1 (interpr.) | OW1, Pobudzenie LRW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
@@ -595,7 +635,7 @@ Obwody przekładników poza EAZ:
 | SPZE | SPZE tE | sygnał Wył. od zab. TR | ZW | Q0 | INTERPRETACJA | rysunek doprowadza „Wył. od zab. TR” do bloku SPZE tE; ponowne załączenie po czasie tE — wniosek z nazwy bloku (rozwinięcia skrótu SPZE standard nie podaje) |
 | OWG | SPZE tE | sygnał Wył. od zab. TR | OW1 | Q0 | INTERPRETACJA | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.10.4 — wyłączenie pól z generacją od zabezpieczeń transformatora; rysunek prowadzi to wejście do bloku SPZE, a wyjście bloku do obwodu OW1 |
 
-Sygnały: Blok. ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW1 (WYJSCIE, WYLACZNIK, INTERPRETACJA); Odstawienie SPZ (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Topologia (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Zasilanie (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); SSiN (WYJSCIE, NADRZEDNY, INTERPRETACJA); Łącze inżynierskie (WYJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Wył. od zab. TR (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); +AwUp (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Up (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Aw (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Al (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); SCO1 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO2 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO/SPZ (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); UL1, UL2, UL3, N (WEJSCIE, OKREZNY, INTERPRETACJA); Pobudzenie LRW (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Blokowanie ZS (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Z, Zz (WEJSCIE, OKREZNY, INTERPRETACJA)
+Sygnały: Blok. ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW1 (WYJSCIE, WYLACZNIK, INTERPRETACJA); Odstawienie SPZ (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Topologia (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Zasilanie (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); SSiN (WYJSCIE, NADRZEDNY, INTERPRETACJA); Łącze inżynierskie (WYJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Wył. od zab. TR (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); +AwUp (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Up (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Aw (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Al (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); SCO1 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO2 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO/SPZ (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); UL1, UL2, UL3, N (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Pobudzenie LRW (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Blokowanie ZS (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Z, Zz (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU)
 
 Obwody przekładników poza EAZ: T3/1 → niepodłączone na rysunku (ZWERYFIKOWANE_NA_RYSUNKU); T3/2 → niepodłączone na rysunku (ZWERYFIKOWANE_NA_RYSUNKU)
 
@@ -605,6 +645,7 @@ Obwody przekładników poza EAZ: T3/1 → niepodłączone na rysunku (ZWERYFIKOW
 |---|---|---|---|---|---|---|
 | 51 | I> t1 | RDZEN_CT T1/3 | OW1 | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50 | I>> t2 | RDZEN_CT T1/3 | OW1 | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
+| 51N | Zab. ziemnozwarciowe t1, t2 (kryterium prądowe Io) | PRZEKLADNIK_FERRANTIEGO T2/None | OW1 | Q0 | INTERPRETACJA | linia Io z zacisku 2 przekładnika Ferrantiego 1/100 do bloku „Zab. ziemnozwarciowe” jest na rysunku; kryterium prądowe bez kierunku jako osobna funkcja (51N) to wniosek z decyzji właściciela 2026-10-29 — kierunek (67N) wymaga napięcia zerowego 3U₀ z obwodu okrężnego „Z, Zz” (pole pomiaru napięcia, Z.17), a prąd zerowy pole mierzy samo |
 | 67N | Zab. ziemnozwarciowe (kierunkowe) t1, t2 | PRZEKLADNIK_FERRANTIEGO T2/None, sygnał Z, Zz | OW1 | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | ZS | ZS (kierunkowe I>) | RDZEN_CT T1/3 (interpr.) | Blokowanie ZS | — | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50BF | LRW | RDZEN_CT T1/3 (interpr.) | OW1, Pobudzenie LRW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
@@ -621,14 +662,14 @@ Obwody przekładników poza EAZ: T3/1 → niepodłączone na rysunku (ZWERYFIKOW
 | SPZE | SPZE tE | sygnał Wył. od zab. TR | ZW | Q0 | INTERPRETACJA | rysunek doprowadza „Wył. od zab. TR” do bloku SPZE tE; ponowne załączenie po czasie tE — wniosek z nazwy bloku (rozwinięcia skrótu SPZE standard nie podaje) |
 | OWG | SPZE tE | sygnał Wył. od zab. TR | OW1 | Q0 | INTERPRETACJA | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 §26.10.4 — wyłączenie pól z generacją od zabezpieczeń transformatora; rysunek prowadzi to wejście do bloku SPZE, a wyjście bloku do obwodu OW1 |
 
-Sygnały: Blok. ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW1 (WYJSCIE, WYLACZNIK, INTERPRETACJA); Odstawienie SPZ (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Topologia (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Zasilanie (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); SSiN (WYJSCIE, NADRZEDNY, INTERPRETACJA); Łącze inżynierskie (WYJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Wył. od zab. TR (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); +AwUp (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Up (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Aw (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Al (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); SCO1 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO2 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO/SPZ (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); UL1, UL2, UL3, N (WEJSCIE, OKREZNY, INTERPRETACJA); Pobudzenie LRW (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Blokowanie ZS (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Z, Zz (WEJSCIE, OKREZNY, INTERPRETACJA)
+Sygnały: Blok. ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW1 (WYJSCIE, WYLACZNIK, INTERPRETACJA); Odstawienie SPZ (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Topologia (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Zasilanie (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); SSiN (WYJSCIE, NADRZEDNY, INTERPRETACJA); Łącze inżynierskie (WYJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Wył. od zab. TR (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); +AwUp (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Up (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Aw (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Al (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); SCO1 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO2 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO/SPZ (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); UL1, UL2, UL3, N (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Pobudzenie LRW (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Blokowanie ZS (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Z, Zz (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU)
 
 Obwody przekładników poza EAZ: T1/1 → układ pomiarowo-rozliczeniowy podstawowy, analizator jakości energii (ZWERYFIKOWANE_NA_RYSUNKU); T1/2 → układy regulacyjne (ZWERYFIKOWANE_NA_RYSUNKU); T3/1 → układ pomiarowo-rozliczeniowy podstawowy, analizator jakości energii (ZWERYFIKOWANE_NA_RYSUNKU); T3/2 → układy regulacyjne (ZWERYFIKOWANE_NA_RYSUNKU)
 
 Obwody wtórne (dane: `network_model/catalog/obwody_wtorne_pola.py::OBWODY_WTORNE_WYKONANIA_POLA`,
 `BayTemplate.obwody_wtorne`, w odpowiedzi szablonów pole `obwody_wtorne`): tabele „Obwody"
 powyżej podają dla każdej funkcji blok rysunku, wejścia (rdzeń CT / uzwojenie VT / przekładnik
-Ferrantiego / sygnał), wyjścia do wyłącznika i status. Wiersze funkcji prądowych (51, 50, 67,
+Ferrantiego / sygnał), wyjścia do wyłącznika i status. Wiersze funkcji prądowych (51, 50, 51N, 67,
 67N, ZS, 50BF) i napięciowych (27, 59, 81U, 81O, 81R) są w danych i w ocenie pola; wycinek
 wyżej pokazuje wiersze z sygnałami.
 
@@ -677,7 +718,7 @@ rysuje.
 | L1 | katalog wyłączników nie ma rodzaju napędu (silnikowy / ręczny) — napęd wzorca jest daną szablonu, nie pozycji katalogowej | `backend/src/network_model/catalog/types.py:1770` (`SwitchEquipmentType`), `mv_switch_catalog.py:141` (pozycje bez napędu) | UX-04/LOGIKA-LACZENIOWA (sterowanie zdalne ZW/OW) |
 | L2 | stan funkcji automatyki (SPZ załączone/odstawione, zablokowane) nie istnieje w modelu | `backend/src/application/field_read_model.py:813` (`spz=None`), ADR-022 | OCHRONA-ADR022-NASTAWY |
 | L3 | `ProtectionAssignment` nie wiąże funkcji z rdzeniem/uzwojeniem ani z kodem funkcji wzorca | `backend/src/enm/models.py:1086` | OCHRONA-ADR022-NASTAWY |
-| L4 | składowa zerowa U0 („Z, Zz" na rysunku) pochodzi z pola pomiaru napięcia szyn (Z.17), którego wzorzec nie modeluje — wejście 67N/59N przez sygnał okrężny (interpretacja) | `obwody_wtorne_pola.py` (sygnał „Z, Zz") | POLE-ZU-SKLADOWA-ZEROWA |
+| L4 | ZAMKNIĘTA (2026-10-29): składowa zerowa U0 („Z, Zz" na rysunku) pochodzi z uzwojenia otwartego trójkąta przekładnika pola pomiaru napięcia szyn Z.17 tej samej sekcji (potwierdzone cytatem, §11.2 pkt 3); pole Z.17 ma szablon `bay_template_gpz_pomiar_napiecia_enea_z17` z uzwojeniem III w otwartym trójkącie, pole liniowe wskazuje źródło polem `Bay.zrodlo_u0_ref`, a 67N wchodzi do zestawu funkcji wyłącznie przy spełnionym warunku (§11.2 pkt 4) | `backend/src/enm/zrodlo_napiecia_zerowego.py`, `network_model/catalog/bay_templates.py` (`WARUNKI_FUNKCJI_EAZ`) | — (ta karta) |
 | L5 | stan pomiaru napięcia zwrotnego tylko z telemetrii pola (`runtime_state`), bez niej nieustalony | `backend/src/enm/models.py:1455` | UX-04/LOGIKA-LACZENIOWA (telemechanika pola z generacją, §8) |
 | L6 | rysunek Z.10 nie rysuje f< (81U), którego wymaga klasa odbiorcza IRiESD | `docs/uiux/RAPORT_ROZBIEZNOSCI_GPT_GPZ_SN_2026-10-28.md` §13 | rozbieżność standardu — do OSD (wzorzec dopisuje 81U z klasy, §4) |
 
@@ -760,14 +801,535 @@ przypięte testami profilu (`test_obwody_wtorne_pola.py`) i zestawów klas
 **Do potwierdzenia przez właściciela:** znaczenia diod A_L, A_W, RNSN oraz treść trzeciej diody
 lewej kolumny pola P6.
 
-## 11. Dyrektywa „POPRAWA SLD SN" 2026-10-29 — stan wykonania
+## 11. Korekta właściciela 2026-10-29 (bramka B-02 odrzucona) — stan wykonania
 
-| Wymaganie | Wykonanie |
-|---|---|
-| Z.10 i Z.11.1 jako osobne warianty | osobne szablony i osobne projekty zrzutów („Pole liniowe Z.10 …", „Pole liniowe Z.11.1 …") |
-| spójność LOD, cztery warstwy, brak kolizji | kafel stanu na każdym LOD pola i w każdej warstwie (`kafleStanuNaKanwie.test.tsx`); odejścia kilku odgałęzień bez skrzyżowań (§7a) |
-| kadrowanie | zrzut przycięty do obrysu aparatów pola (§7) |
-| identyczna geometria w obu motywach | kolory konwencji i geometria niezależne od motywu (test palety i kafla); zmienia się tło |
-| oznaczenia wg DIN 40719-2 jako wartość robocza, bez twierdzenia zgodności z ENEA | §2.1, komentarz `bay_templates.py`, konflikt UX04-OZNACZENIA-APARATOW |
-| zrzuty Z.10/Z.11.1 × jasny/ciemny, zrzuty stanów | §7 |
-| werdykt wizualny | NIE wystawiony — bramka B-02 u właściciela |
+Właściciel odrzucił wizualizację pola z poprzedniego etapu (B-02 = ODRZUCONE). Ta sekcja niesie
+wykonanie dziesięciu wymagań korekty i czterech decyzji właściciela, z testem przy każdym
+zdaniu. NIE jest werdyktem wizualnym ani deklaracją zgodności z ENEA — tabela §11.3 to odczyt
+wykonawcy do porównania przez właściciela (B-02).
+
+### 11.1. Wymagania korekty → wykonanie → test
+
+| # | Wymaganie | Wykonanie | Test (iloczyn cech) |
+|---|---|---|---|
+| 1 | kafel łącznika = kwadrat 48 × 48 na LOD2 z jednej stałej; stan zmienia kolor i styk, nigdy wymiar; stan nieznany — ten sam wymiar, kolor neutralny | `cad/qet/qetPoleSn.ts::QET_BOK_KAFLA_STANU = 48`, `symbols/glyphs.tsx::prostokatKaflaStanu` (łącznik QET: kwadrat z tej stałej, nie z obrysu rysunku); kolory z `STATE_COLOR` (§10) | `symbols/__tests__/kafelStanu.test.tsx` (rodzaj × wariant rysunku × stan {zamknięty, otwarty, uziemiony, nieustalony, awaria, brak} × motyw {ciemny, jasny, eksport}); pomiar żywej kanwy §11.4 |
+| 2 | czytelny glif rodzaju | symbole QET EN 60617 (§2): × wyłącznik, ○ rozłącznik, belka odłącznika, znak ziemi uziemnika, łącznik trójpołożeniowy z zestykiem uziemiającym. Uwaga sesji głównej 2026-10-29 pkt 1 (glify miniaturowe, × ok. 10 % boku kafla): rysunek aparatu powiększony jednokładnością `skalaRysunku` manifestu (wyłącznik, wyłącznik z napędem, odłącznik, rozłącznik i rozłącznik z bezpiecznikami ×3; uziemnik ×2,5; łącznik trójpołożeniowy — złożenie w skali źródła), znak rodzaju dodatkowo skalą lokalną `skalaLokalna` z powodem (krzyżyk wyłącznika, poprzeczka odłącznika, okrąg rozłącznika, bezpiecznik, kreski uziemienia ×2; zestyki szynowy i uziemiający łącznika trójpołożeniowego ×3); stopień glifu łącznika w każdym położeniu 0,575–0,617 boku kafla (przed: 0,19–0,23, trójpołożeniowy 0,45), × wyłącznika 9,6 j.św. (przed: 3,2); kreska glifu 2 j.św. = bok/24 (`QET_KRESKA_GLIFU`, przewody 1,2 j.św.); importer odrzuca symbol o stopniu poza `stopienSymboli` [0,55; 0,70] | `kafelStanu.test.tsx` (opis „stopień glifu i kreska proporcjonalna do kafla”: 7 łączników × położenie, stopień liczony niezależnie z prymitywów, kreski ról, przerwa wzoru kreski przerywanej; „litera na kaflu czytelna w całym zakresie LOD2”), `backend/tests/ci/test_qet_pole_sn_import.py` (iniekcje stopnia: poniżej i powyżej przedziału), e2e `zmierzKafle` (stopień glifu `getBBox`/`boundingBox` × rodzaj × stan × motyw, §11.4) |
+| 3 | tor kablowy: głowica, Ferranti 1/100, kabel odejścia jako gałąź, koniec toru ≠ znak uziemienia | GK (`qetCableHead`, złącze wtykowe 03-03-05) i T2 (`qetCoreBalanceCt`) jako aparaty toru w każdym polu; pole zajęte kończy się gałęzią kabla modelu z portu S przekładnika T2, pole wolne — symbolem `bayReserve` (koniec kabla niepodłączony, §2.4) | `scene/__tests__/poleLinioweGpz.test.tsx` (opis „kabel odejścia pola jako gałąź modelu"; pole zajęte / wolne × stan łączników × LOD), §11.5 |
+| 4 | napęd silnikowy M przy Q0 | rekord `BayPrimaryDevice.naped = "SILNIKOWY"` z szablonu (Z.10/Z.11.1/Z.11: „M” przy wyłączniku); symbol `qetBreakerZNapedem` (wyłącznik 07-13-05 + napęd 02-13-26 + cewka wyłączająca 07-15-01) wybierany z rekordu (`compose/apparatusSequence.ts`), bez rekordu — `qetBreaker` (wyłącznik z cewką). Napęd stoi po LEWEJ stronie toru, jak na rysunkach Z.10/Z.11.1 (przed korektą: po prawej, w miejscu dzisiejszej cewki). Okrąg napędu z literą M jest powiększony 3,5× wokół punktu styku z linią sprzężenia (`skalaLokalna` manifestu z powodem; linia sprzężenia z przegubu noża zostaje w długości źródła, okrąg mieści się w kaflu z marginesem kafla): litera M ma 8,4 j.św., czyli co najmniej 8,6 px w całym LOD2 (pomiar przed naprawą: 2,4 j.św., na zrzutach pola 3,6–6,6 px). Środek litery liczony z posuwu znaku kroju źródła (Liberation Sans: M 1706/2048 em, „3” 1139/2048 em), znak spoza tabeli przerywa import | backend: `tests/enm/test_pole_liniowe_gpz_szablony.py`, `tests/ci/test_qet_pole_sn_import.py` (napęd i cewka jako osprzęt, metryka znaku fail-closed, iniekcje); front: `poleLinioweGpz.test.tsx` (iniekcja: `naped` zdjęty → symbol bez napędu), `kafelStanu.test.tsx` (napęd w osprzęcie po lewej stronie toru; iniekcja dawnej skali napędu); e2e: Q0 → `qetBreakerZNapedem` w obu polach i motywach |
+| 5 | CT/VT/Ferranti → przekaźnik → cewka CB jednoznacznie, bez schematu wtórnego | powiązania funkcji z aparatami jako DANE rekordów aparatów (`funkcje_eaz_zasilane` na przekładnikach, `funkcje_eaz_wylaczajace` na wyłączniku — z obwodów wzorca §9.4, `enm/wyposazenie_pola.py`). Przekładnik Ferrantiego T2 zasila funkcję 51N (kryterium prądowe Io bloku „Zab. ziemnozwarciowe t1, t2”, czerwona linia z zacisku 2 na rysunkach Z.10/Z.11.1) w KAŻDYM polu, a 67N wyłącznie przy potwierdzonym źródle 3U₀ (§11.2 pkt 4) — przed korektą T2 nie miał żadnej linii do przekaźnika (uwaga sesji głównej pkt 4). Na schemacie: blok przekaźnika w ramce (okrąg z dwoma pierwszymi kodami, pozostałe kody w wierszach po prawej — każdy kod raz; wiersz odniesienia źródła 3U₀), linie pomiarowe z portów wtórnych T1, T2 (i T3 w Z.11.1), linia wyłączania do zacisku cewki wyłączającej Q0 (port `wylacz`), bez numeru „52” i bez przewodów obwodów wtórnych (§11.9) | `tests/enm/test_powiazania_obwodow_aparatow_pola.py` (szablon × droga budowy, predykat parami z odczytem, tabela rysunku Z.11.1 × źródło U0), `tests/enm/test_zrodlo_napiecia_zerowego.py` (51N w każdej komórce {Z10, Z11_1} × {Z.17 obecne, brak} × {potwierdzone, nie}: zestaw, T2, Q0, obwód funkcji; iniekcja „T2 nie zasila 51N” — 6 z 6 czerwonych), `tests/network_model/catalog/test_obwody_wtorne_pola.py` (wyrocznia rysunku 51N), `compose/__tests__/protectionTopologyValidation.test.ts`, `scene/__tests__/poleLinioweGpz.test.tsx` (opis „blok przekaźnika”: fikstury × warunek bloku, 5 iniekcji) |
+| 6 | powiększenie, tor jako proporcjonalna część kadru, przekaźnik obok pola | kadr „Dopasuj do… → Pole” (LOD2) i zrzut przycięty do pola (§7); przekaźnik w odstępie GRID…6·GRID od prawej krawędzi aparatów i podpisów pola (§11.6). Spójny stopień symboli LOD2 (uwaga sesji głównej pkt 6): symbole toru powiększone jednokładnością `skalaRysunku` do stopnia 0,33–0,58 boku kafla — przekładnik prądowy T1 ×3 (okrąg 8 → 24 j.św.), przekładnik Ferrantiego T2 ×1,5 (okrąg 16 → 24 j.św., litera „3” 3,6 → 5,4 j.św.), głowica GK ×2 (10 → 20 j.św.), wskaźnik napięcia PF ×4 (wysokość okładzin 4 → 16 j.św.); importer odrzuca symbol toru poza `stopienSymboli.tor` [0,33; 0,70] | `poleLinioweGpz.test.tsx` („przekaźnik pola obok pola”); `test_qet_pole_sn_import.py` (stopień symboli toru); e2e — kadr na LOD2 |
+| 7 | test renderu mierzący bboxy; iniekcja kafla wyłącznika innego rozmiaru → czerwień | spec `e2e/ux04-pole-liniowe-zrzuty-screenshot.spec.ts::zmierzKafle` — `getBBox()` i `boundingBox()` każdego kafla i rysunku aparatu w kaflu (`[data-qet="glif"]`) w każdym kadrze zrzutu; przedział stopnia z manifestu importu (jedno źródło z importerem) | §11.4 (tabela pomiaru, iniekcje: kafel 52 × 52, glif pomniejszony do połowy) |
+| 8 | kanwa względem topologii ENM, zero fikcji | każdy aparat sceny ma rekord aparatu pola, każdy przewód toru łączy porty na wspólnym węźle modelu, kabel odejścia jest gałęzią modelu, VT T3 z liczbą uzwojeń z rekordu (`qetVoltageTransformer3` przy trzech uzwojeniach wtórnych) | `poleLinioweGpz.test.tsx` (wyrocznia aparatów i przewodów z modelu × fikstury Z.10/Z.11.1 × LOD; iniekcje: aparat bez rekordu, przewód bez wspólnego węzła, VT z dwoma uzwojeniami); rozłączność kabli różnych pól §11.5 |
+| 9 | zastąpione decyzjami właściciela | §11.2 | — |
+| 10 | tabela ENEA → zrzut; zrzuty Z.10/Z.11.1 × motyw × stan | §11.3, §7 | spec e2e zrzutów |
+
+### 11.2. Decyzje właściciela 2026-10-29
+
+**DECYZJA WŁAŚCICIELA (pkt 1): przekładnik napięciowy T3 pola Z.11.1 ma TRZY uzwojenia wtórne
+w gwieździe 0,1/√3, bez otwartego trójkąta.** Nośnik: `BayDeviceTemplate.uzwojenia` szablonu
+Z.11.1 (I 10 VA kl. 0,2; II 7,5 VA kl. 0,2; III 7,5 VA kl. 0,5/3P — tabliczka rysunku s.91);
+symbol z liczby uzwojeń rekordu. Uzwojenie III zasila bloki U>/U< i f</f>/df/dt sterownika pola,
+NIE blok zabezpieczenia ziemnozwarciowego (rysunek s.91: niebieska linia z uzwojenia III do
+wejść U>, U<, f<, f>, df/dt).
+
+**Pkt 2: nie dodajemy ani nie usuwamy aparatów względem rysunków.** Sekwencje aparatów Z.10
+i Z.11.1 są równe rysunkom (§2.1, §2.2; e2e porównuje listę `oznaczenie:rodzaj` z modelu); pole
+pomiaru napięcia Z.17 jest OSOBNYM polem sekcji (szablon `bay_template_gpz_pomiar_napiecia_enea_z17`),
+nie aparatem pola liniowego.
+
+**Pkt 3: czy 3U₀ pochodzi z pola Z.17 — POTWIERDZONE.** Dowody (ENEA Operator „Stacje
+elektroenergetyczne 110 kV", Zeszyt 1, wersja 02.2023-2; strony wg stopki „Strona I n/76",
+odczyt tekstu `pdftotext` strona po stronie; współrzędne rysunku w pikselach strony
+2480 × 3509):
+
+| Miejsce | Cytat / odczyt | Strona |
+|---|---|---|
+| §26.9 „Zabezpieczenia pól SN" | „zabezpieczenia od skutków zwarć doziemnych, uzależnione od sposobu uziemienia sieci, których wielkościami pomiarowymi są składowe zerowe prądu (I0) i napięcia (U0): w polach liniowych nadprądowe, kierunkowe i admitancyjne, w polu pomiaru napięcia – zerowonapięciowe" | I-52 |
+| §26.9.8 „Zabezpieczenia pól pomiaru napięcia" | „zabezpieczenie zerowonapięciowe 3Uo> … Schemat zasadniczy pola pomiaru napięcia pokazano w [Z.17]" | I-54 |
+| §25.2.8 „Parametry wejść analogowych …" | wejścia napięciowe urządzeń EAZ: „napięcie znamionowe fazowe Un=100/3 V AC", „napięcie znamionowe 3Uo Un=100 V AC" — wejście 3Uo jest osobnym wejściem 100 V, czyli napięciem otwartego trójkąta 3 × 100/3 V | I-43 |
+| §13 „Rozdzielnia SN" | „Rozdzielnica SN musi posiadać wydzielone pola pomiaru napięcia po jednym w każdej sekcji" (s.25); „Przekładników napięciowych nie należy wyposażać we wkładki bezpiecznikowe" (s.26) | I-25, I-26 |
+| §26.10.6 „Automatyka SCO i SPZ/SCO" | przekaźnik SCO „zabudowany w polu pomiaru napięcia, który za pośrednictwem szyn okrężnych, działa na wyłączenie odpowiednich (wybranych) pól liniowych" — pole pomiaru napięcia zasila pola liniowe sekcji szynami okrężnymi | I-56 |
+| rysunek Z.17 (s.97) „Pole pomiaru napięcia SN" | tabliczka przekładnika SN/√3 / 0,1/√3 / 0,1/√3 / 0,1/3 (x ≈ 614–860, y ≈ 2000–2185); uzwojenie III 15 VA kl. 3P narysowane jako trójkąt otwarty (≈ (1193, 2106)), linia do wejścia „Uo>" sterownika pola i do obwodu okrężnego „Z,Zz" | 97 |
+| rysunki Z.10 (s.89) i Z.11.1 (s.91) | blok „Zab. ziemnozwarciowe" ma dwa wejścia: przekładnik Ferrantiego 1/100 (I0) i obwód okrężny „Z, Zz" (U0, niebieska linia z listy „Obwody okrężne") | 89, 91 |
+
+Wniosek: pole liniowe Z.10/Z.11.1 nie mierzy napięcia zerowego samo; U0 funkcji 67N przychodzi
+obwodem okrężnym „Z, Zz" z uzwojenia otwartego trójkąta przekładnika pola pomiaru napięcia Z.17
+tej samej sekcji.
+
+**Pkt 4: 67N wyłącznie wariantowo, z jawnym warunkiem.** Reguła (jedno źródło
+`backend/src/enm/zrodlo_napiecia_zerowego.py`, warunek `bay_templates.WARUNEK_ZRODLA_U0`
+w `WARUNKI_FUNKCJI_EAZ`): 67N trafia do zestawu funkcji pola wyłącznie, gdy (1) pole ma
+przekładnik Ferrantiego i (2) `Bay.zrodlo_u0_ref` wskazuje przekładnik napięciowy z uzwojeniem
+otwartego trójkąta w polu pomiaru napięcia szyn (rola `MEASUREMENT`, funkcja `NAPIECIA_SZYN`) na
+tej samej szynie sekcji. Samo istnienie pola Z.17 w sekcji NIE jest potwierdzeniem — powiązanie
+deklaruje projektant (system podaje kandydatów; ZASADA NR 4: proponuje, nie zgaduje). Warunek
+niespełniony → funkcji nie ma w zestawie, ocena funkcji 67N ma status `NIE_OCENIONO`
+z wyjaśnieniem (co oceniono, czego brakuje: `BRAK_POLA_POMIARU_NAPIECIA` / `BRAK_POWIAZANIA` /
+`BRAK_FERRANTIEGO`, dowód z rysunków Z.10/Z.11.1/Z.17), nigdy „spełnia"; 67N zadeklarowana ręcznie
+bez potwierdzonego źródła → ostrzeżenie walidatora `W064` (`bay.earth_fault_u0_source_unconfirmed`)
+z akcją naprawczą. Na schemacie odniesienie źródła jest dyskretne: wiersz tekstu pod listą kodów
+przekaźnika pola (`ownerRef` `<pole>#zrodlo-u0`), wyłącznie przy potwierdzonym powiązaniu — bez
+przewodu przez rozdzielnicę.
+
+Inwentarz klasy „67N trafia do pola automatycznie" (wszystkie drogi przypisania zestawu funkcji):
+
+| Miejsce | Droga | Stan |
+|---|---|---|
+| `backend/src/network_model/catalog/bay_templates.py::funkcje_eaz_szablonu` | zestaw szablonu pola liniowego GPZ w klasie (9 szablonów Z.10/Z.11.1/Z.11) | 67N tylko przy warunku w `warunki` (domyślnie pusty) |
+| `bay_templates.py::funkcje_eaz_roli`, `bez_niespelnionych_warunkow` | pole bez szablonu (szablon kanoniczny roli) i wymagania z szablonów producentów | ten sam filtr warunku |
+| `backend/src/enm/domain_operations_v2.py::_resolve_bay_template_protection_codes` (≈ l. 2030–2085) | JEDNA funkcja dla trzech dróg (producent / szablon / rola) | `warunki` z modelu |
+| `backend/src/enm/domain_operations.py:1861`, `:5301`, `:7889`, `:8003`, `:12255` | pola tworzone z GPZ (`create_gpz`, `add_grid_source_sn`), przydział pola odejściu, `add_sn_bay` | bez `warunki` — pole nowe nie ma powiązania, więc bez 67N |
+| `domain_operations.py:12685` | pole transformatorowe (`funkcje_eaz_szablonu(BAY_TEMPLATE_TRANSFORMER)`) | szablon nie niesie 67N |
+| `domain_operations_v2.py:2358` | rekonfiguracja istniejącego pola | `warunki_funkcji_eaz_pola(enm, pole)` |
+| `backend/src/enm/wyposazenie_pola.py:646–655` | `set_bay_equipment` (zmiana szablonu, klasy, powiązania źródła) | warunki przed i po zmianie; odmowa `bay_equipment.zrodlo_u0_niepoprawne` |
+| `backend/src/api/catalog.py:802` | `GET /api/catalog/bay-templates` i `/bay-protection-codes` (zestaw szablonu w klasie) | bez warunków → bez 67N (snapshot OpenAPI zregenerowany) |
+| `bay_templates.py:1857` | lista szablonów kreatora (`protection_codes`) | bez warunków |
+| `backend/src/application/field_read_model.py:187–197` | model odczytu pola (kontrolka powiązania, kandydaci) | ta sama reguła |
+| `backend/src/enm/pole_liniowe_gpz.py:450` | ocena pola liniowego | `NIE_OCENIONO` bez źródła |
+| `backend/src/enm/validator.py:2212–2230` | walidator (`W064`) | 67N bez potwierdzonego źródła |
+| `frontend/src/ui/sld/v2/model/zrodloNapieciaZerowego.ts` | lustro frontu (adnotacja braku na schemacie) | parytet `tests/ci/test_parytet_zrodla_u0.py` |
+
+Świadomie poza naprawą (z uzasadnieniem merytorycznym): `frontend/src/ui/sld/v2/station-rozdzielnia/archetypes.ts:143`
+(zestaw demonstracyjny archetypów stacji SN dla harnessów galerii — dane wejściowe renderu, nie
+model ENM i nie ścieżka użytkownika; pole stacji SN z jawną flagą `directional`),
+`backend/tests/reference_networks/station_archetype_substrate.py:1036–1052` (wymagania funkcji
+pól wytwórczych wg rodzaju maszyny — lista WYMAGAŃ, a brak toru napięcia zerowego raportuje
+`backend/src/domain/der_protection_functions.py:273–286` jako kwestię otwartą) i
+`application/analyses/protection/catalog/data/devices_v0.json` (zdolności urządzeń katalogu, nie
+przypisanie do pola).
+
+Testy: `backend/tests/enm/test_zrodlo_napiecia_zerowego.py` — iloczyn {Z10, Z11_1} × {Z.17
+obecne, brak} × {powiązanie potwierdzone, brak} × konsumenci reguły (zestaw funkcji, powiązania
+aparatów, ocena, walidator, model odczytu, ścieżka zwarcia doziemnego), odmowa powiązania ze
+źródłem niepoprawnym, odmowa własnego VT w gwieździe Z.11.1, W064 po zdjęciu wyposażenia Z.17,
+deklaracja ręczna 67N, żaden szablon rejestru i producenta nie przypisuje 67N bez warunku,
+determinizm; iniekcja „67N zawsze spełniona" — czerwone komórki bez powiązania.
+
+### 11.3. Rysunki ENEA s.89 (Z.10) i s.91 (Z.11.1) → element na zrzucie → odczyt wykonawcy
+
+Tabela zestawia pozycje rysunków (odczyt `docs/uiux/GPZ_SN_ENEA_ODCZYT_RYSUNKOW_2026-10-28.md`)
+z tym, co pokazują zrzuty §7. Kolumna „odczyt wykonawcy" to opis różnic i dopasowań do
+porównania przez właściciela. To NIE jest deklaracja zgodności z ENEA ani werdykt wizualny
+(B-02).
+
+**Z.10 (s.89)** — zrzuty `pole-z10-trojpolozeniowy-zamkniete-*`, `pole-z10-wylacznik-otwarty-*`,
+`pole-z10-rozlaczone-*`, `pole-z10-wylacznik-otwarty-uziemiony-*`, `pole-z10-zblizenie-ciemny`,
+`okno-pola-z10-trojpolozeniowy-*`:
+
+| Poz. rysunku | Na zrzucie | Odczyt wykonawcy |
+|---|---|---|
+| 1 — szyna SN L1, L2, L3 | przewód od szyny sekcji wchodzi do Q1 u góry kadru; sama szyna leży poza kadrem pola (kadr = obrys aparatów pola z marginesem na oznaczenia i podpis) | różnica: przewód nie ma znacznika trzech faz „///" |
+| 2–3 — zestyk odłączający i zestyk uziemiający z napędem (łącznik trójpołożeniowy) | Q1 `qetThreePositionSwitch` w kaflu 48 × 48. Nóż w trzech położeniach: na zestyku liniowym (zamknięty, kafel czerwony), w osi (odłączony, kafel zielony), na zestyku uziemiającym (uziemiony, kafel czerwony, `data-qet-polozenie="earthed"`) | aparat i trzy położenia odpowiadają rysunkowi. Znak uziemienia stoi nad zestykiem prawym, u góry pola przy torze, jak na rysunku (§11.9 pkt 2). Różnica: rysunek pokazuje napęd łącznika (kwadrat z kreskowaną linią sprzężenia), na zrzucie go nie ma. Model nie ma rekordu napędu łącznika trójpołożeniowego — `naped` jest wyłącznie polem wyłącznika (§9.6 L1), a decyzja właściciela §11.2 pkt 2 zakazuje dodawania aparatów |
+| 4 — wyłącznik z napędem silnikowym M | Q0 `qetBreakerZNapedem`: × na styku stałym; po LEWEJ stronie toru okrąg z literą M i kreskowana linia sprzężenia z przegubu noża; po prawej cewka wyłączająca (EN 60617 07-15-01) z zaciskiem `wylacz`, w którym kończy się linia wyłączania z bloku przekaźnika | aparat i napęd po tej samej stronie toru co na rysunku; litera M 8,4 j.św. (§11.1 wiersz 4). Cewka wyłączająca jest dodatkiem wykonawcy: rysunek prowadzi wyłączanie obwodem wtórnym, którego kanwa nie rysuje (wymaganie 5) |
+| 5 — przekładnik prądowy, 1 rdzeń 200-400/5 A, 15 VA, kl. 5P20 | T1 `qetCurrentTransformer` w torze pod Q0, linia pomiarowa do przekaźnika pola | aparat jak na rysunku. Przekładnia i rdzeń są w rekordzie aparatu (`przekladnia`, `rdzenie`) i w karcie pola. Na kanwie nie ma opisu przekładni: adnotację przekładni CT kanwa rysuje wyłącznie z danych zabezpieczenia (`ctRatingAnnotations`, `compose/gpz.ts`), a pole z szablonu takich danych nie ma. Zacisków P1/P2 kanwa nie opisuje — strażnik kryptonimów traktuje te napisy jako kryptonimy (§11.7 pkt 6) |
+| 6 — wskaźnik napięcia (pojemnościowy) | PF1 `qetVoltageIndicator` na węźle za T1 (od strony kabla) | jak na rysunku |
+| 7 — głowica kablowa | GK `qetCableHead` (złącze wtykowe EN 60617 03-03-05) | jak na rysunku |
+| 8 — przekładnik Ferrantiego 1/100 na kablu | T2 `qetCoreBalanceCt` na kablu za GK. W polu zajętym kabel ciągnie się dalej jako gałąź modelu, w polu wolnym tor kończy się symbolem „koniec kabla niepodłączony" (`bayReserve`) | aparat jak na rysunku. Przekładni 1/100 kanwa nie opisuje. T2 ma linię pomiarową z portu wtórnego do bloku przekaźnika: zasila funkcję 51N, czyli kryterium prądowe Io bloku „Zab. ziemnozwarciowe t1, t2" (czerwona linia z zacisku 2 na rysunku, §11.9 pkt 4). Kierunkowe 67N z Ferrantiego wchodzi wyłącznie przy potwierdzonym źródle 3U₀ (§11.2 pkt 4). Litera „3" znaku EN 60617 06-13-10 ma 5,4 j.św. po jednokładności symbolu ×1,5, czyli 8,0–14,9 px na zrzutach pola (skala kadru 1,48–2,76, §11.4) i 5,5 px przy wejściu w LOD2 (§11.7 pkt 5) |
+| funkcje: I> (t1, t2), I>>, zab. ziemnozwarciowe (Io, U0 „Z, Zz"), ZS, LRW, SPZ, SCO1/SCO2/SCO-SPZ, sterownik pola | blok przekaźnika w ramce obok pola: okrąg „51 50", wiersze „51N · ZS · 50BF · 79 · SCO" i „SPZ/SCO" — każdy kod raz, tekst wierszy od wspólnej lewej krawędzi (rozrzut 0 px, §11.4); linia wyłączania do cewki Q0, linie pomiarowe z T1 i T2 | I> = 51, I>> = 50, Io = 51N (z T2), LRW = 50BF, SPZ = 79, SCO-SPZ = SPZ/SCO. Kierunkowe 67N nie wchodzi, bo warunek źródła 3U₀ nie jest spełniony (ocena funkcji `NIE_OCENIONO` z wyjaśnieniem). Różnica: rysunek rozpisuje SCO1/SCO2, zrzut pokazuje jedno „SCO". Obwodów okrężnych („Z, Zz", SCO, blokady ZS) zrzut nie rysuje — powiązania są danymi aparatów, bez schematu wtórnego (wymaganie 5) |
+| — (rysunek nie podaje) | podpis pola „Pole liniowe GPZ 1" nad blokiem przekaźnika; numeru „52" przy Q0 nie ma — linia wyłączania kończy się na cewce Q0 (§11.9 pkt 5) | dodatek wykonawcy: rysunek ENEA nie ma oznaczeń literowo-cyfrowych ani podpisu pola w polu rysunku (§2.1) |
+
+**Z.10, wykonanie z wyłącznikiem stałym** (§13 druk s.25, nie rysunek Z.10) — zrzuty
+`pole-z10-staly-stan-nieznany-*`, `pole-z10-wylacznik-zamkniety-uziemnik-otwarty-*`,
+`pole-z10-staly-odlaczony-uziemiony-*`, `okno-pola-z10-staly-z-odlacznikiem-*`. Q1 to odłącznik
+szynowy `qetDisconnector`, a Q8 to uziemnik stały na węźle wyprowadzenia (`qetEarthSwitch`) —
+za przekładnikiem prądowym, przed głowicą. Podstawą Q8 jest §13 s.I-25 („Wymagana jest
+możliwość uziemienia każdego z pól, szyn zbiorczych poszczególnych sekcji oraz wyprowadzeń
+liniowych za pośrednictwem uziemników stałych"), nie rysunek Z.10, który uziemnika stałego nie
+ma (§11.9 pkt 2). Pozostałe aparaty jak wyżej. Po zmianie szablonu odłącznik i uziemnik nie
+mają rekordu położenia, więc kafel jest szary (`#6B7280`) ze znakiem „?". Po ustawieniu położeń
+z menu aparatu: Q1 i Q0 czerwone (zamknięte), Q8 zielony (otwarty); po odłączeniu i uziemieniu
+(Q0 i Q1 otwarte, Q8 zamknięty — kolejność z blokad uziemnika): Q0 i Q1 zielone, Q8 czerwony.
+
+**Z.11.1 (s.91)** — zrzuty `pole-z11-1-stan-wyjsciowy-*`, `pole-z11-1-wylacznik-otwarty-uziemiony-*`,
+`okno-pola-z11-1-trojpolozeniowy-*`:
+
+| Poz. rysunku | Na zrzucie | Odczyt wykonawcy |
+|---|---|---|
+| 1 — wskaźnik napięcia przy szynie | PF0 `qetVoltageIndicator` na przewodzie od szyny, nad Q1 (węzeł `szyna` modelu) | jak na rysunku |
+| 2 — łącznik trójpołożeniowy z napędem | Q1 jak w Z.10 | jak w Z.10 (napęd łącznika nierysowany) |
+| 3 — wyłącznik z napędem M | Q0 `qetBreakerZNapedem` | jak na rysunku |
+| 4 — odgałęzienie: odłącznik z uziemieniem → głowica/złącze → przekładnik napięciowy SN/√3 / 0,1/√3 ×3 (I 10 VA 0,2; II 7,5 VA 0,2; III 7,5 VA 0,5/3P), za wyłącznikiem, przed CT | odgałęzienie z węzła między Q0 a T1. Q5 `qetThreePositionSwitch` w kaflu, GK1 `qetCableHead`, T3 `qetVoltageTransformer3` (cztery okręgi: pierwotne i trzy wtórne). Linia pomiarowa z T3 do przekaźnika | kolejność aparatów i miejsce odgałęzienia jak na rysunku. Tabliczki trzech uzwojeń są w rekordzie T3 (`uzwojenia`) i w karcie pola; na kanwie nie są opisane |
+| 5 — CT 200-400/5, 1 rdzeń 15 VA 5P20 | T1 pod odgałęzieniem | jak w Z.10 |
+| 6 — wskaźnik napięcia, głowica, Ferranti 1/100 | PF1, GK, T2 z linią pomiarową 51N do bloku przekaźnika. Pole wolne kończy się symbolem „koniec kabla niepodłączony" | jak w Z.10 |
+| funkcje: I>, I>>, ziemnozw., U>, U<, f<, f>, df/dt, ZS (kierunkowe I>), LRW, SPZ, SPZE, wył. od zab. TR, SCO | blok przekaźnika w ramce: okrąg „51 50", wiersze „67 · 51N · 27 · 59 · 81U", „81O · 81R · ZS · 50BF · 79" i „SPZE · OWG · NZ · SCO · SPZ/SCO" — każdy kod raz, tekst od wspólnej lewej krawędzi; linia wyłączania do cewki Q0, linie pomiarowe z T1, T2 i T3 | I> = 51, I>> = 50, ziemnozwarciowe Io = 51N (z T2), kierunkowe I> = 67 (z blokadą ZS), U> = 59, U< = 27, f< = 81U, f> = 81O, df/dt = 81R, LRW = 50BF, SPZ = 79, SPZE, wył. od zab. TR = OWG, SCO. Kierunkowe ziemnozwarciowe 67N nie wchodzi (warunek §11.2 pkt 4). T3 ma trzy uzwojenia wtórne w gwieździe 0,1/√3, bez otwartego trójkąta (§11.2 pkt 1). Różnica: NZ (blokada załączenia przy napięciu zwrotnym) i SPZ/SCO nie są na liście funkcji rysunku — wzorzec dodaje je z klasy pola (§4, IRiESD II.4.5.4.2). Wiersz „SPZE · OWG · NZ · SCO · SPZ/SCO" ma najmniejszy zapas tuszu do ramki (18,4 px, §11.7 pkt 7) |
+
+Zmiany kanwy wykryte przy tej tabeli (2026-10-29):
+
+- **Tło pola obejmuje podpis pola i opisy zabezpieczeń.** Po przysunięciu przekaźnika do pola
+  (§11.6) tło pola (`panelePolGpz`) kończyło się w połowie podpisu „Pole liniowe GPZ 1". Spec
+  zrzutów nie znajdował podpisu w panelu pola. Tło obejmuje teraz także etykiety pola:
+  podpis, kody funkcji, wiersz źródła 3U₀, numer urządzenia, przekładnie CT i mocowanie VT.
+  Ich prostokąty liczy ta sama funkcja co układ etykiet (`layout/labels.ts::prostokatEtykietyZakotwiczonej`,
+  wspólna z `resolveSimpleAnchoredLabel`). Test: `poleLinioweGpz.test.tsx`, opis „tło pola
+  obejmuje podpis pola i opisy jego zabezpieczeń" — fikstury × LOD, tła pól rozłączne parami;
+  iniekcja dawnego tła daje czerwone 3 z 3 fikstur.
+- **Selektory e2e ograniczone do kanwy.** Inspektor rysuje kartę pola z tym samym
+  `data-device-ref` (`SchematPolaSn.tsx`), więc lokator aparatu bez zawężenia łapał dwa
+  węzły (Q0 Z.11.1 policzony podwójnie). Stała `KANWA` w specu zrzutów.
+- **Zrzuty okna pola pokazują kartę pola.** Karta leży w inspektorze pod panelem elementu,
+  więc dawny zrzut całej strony pokazywał kanwę i panel elementu bez schematu pola i bez
+  oceny. Teraz każdy zrzut jest zrzutem elementu (`zrzutyOknaPola`): schemat pola
+  (`okno-pola-*-{motyw}`) i ocena pola wg klasy (`okno-pola-*-ocena-{motyw}`).
+- **Tekst wierszy bloku przekaźnika od wspólnej lewej krawędzi.** Wiersze bloku mają wspólną
+  lewą krawędź prostokątów, ale szerokość prostokąta to szacunek z długości tekstu (0,62 em na
+  znak), a tusz ma szerokość z metryk czcionki. Tekst wyśrodkowany w prostokącie zaczynał się
+  więc w każdym wierszu gdzie indziej (zrzut Z.10: wiersz 1 od x = 535 px, wiersz 2 od x = 499
+  px). Teraz każda etykieta warstwy adnotacji zabezpieczeń niesie `wyrownanieTekstu`
+  (`layout/labels.ts`): z prawej strony kotwicy — od lewej krawędzi (`text-anchor: start`),
+  wiersze R-2 stacji pod okręgiem — do prawej (`end`). Punkt zaczepu liczy jedna funkcja
+  (`zaczepTekstuEtykiety`) dla kanwy i podglądu kompozycji, plan czytelności liczy tusz z tej
+  samej krawędzi (`labelLegibility.ts::prostokatTuszu`), geometria sceny bez zmian (spec
+  `SLD_CAD_SPEC_V3.md` §17.6). Testy: `poleLinioweGpz.test.tsx` (opis „tekst etykiet warstwy
+  adnotacji zabezpieczeń zaczepiony w krawędzi prostokąta": 3 fikstury pól GPZ + stacje
+  zamknięte + GPZ 110 kV × LOD {1, 2} × rodzaj adnotacji × strona; warunki bloku: wspólna lewa
+  krawędź i zaczep w niej, iniekcje: zdjęte wyrównanie wiersza, wiersz przesunięty o GRID),
+  `station.test.ts` (R-2 × lista 4 i 7 kodów), `gpzAdnotacjeNaKanwie.test.tsx` (DOM kanwy
+  × motyw: `text-anchor` i `x` wierszy z prostokąta sceny), e2e `zmierzBlokPrzekaznika`.
+  Iniekcje: renderer bez wyrównania — 2 z 2 testów DOM czerwone; kompozytor GPZ bez
+  wyrównania — 9 czerwonych; stacja bez wyrównania — 2 czerwone.
+- **Cała ocena pola na zrzucie i jedno przewijanie inspektora** (§7). Zrzut oceny ucinał ją na
+  wysokości okna, a zrzuty Z.10 i Z.11.1 były bajtowo identyczne. Po powiększeniu okna ostatni
+  wiersz oceny był nadal ucięty — o ok. 25 px pod ramką sekcji karty pola (ratio widoczności
+  0,998), bo karta pola przewijała się w trzecim zagnieżdżonym pudełku. Naprawa u źródła
+  w `ui2/legacy/LegacyInspektor.tsx`, testy i iniekcje w §7.
+- **Zbliżenie na poziomie szczegółu pola** (§7, wiersz `pole-z10-zblizenie`): kółko do LOD2
+  i uchwytu Q0 ≥ 3 × 48 px, z asercjami zamiast milczącego progu.
+
+### 11.4. Pomiar kafli i bloku przekaźnika na żywej kanwie (wymaganie 7)
+
+Spec `frontend/e2e/ux04-pole-liniowe-zrzuty-screenshot.spec.ts::zmierzKafle` mierzy w każdym
+kadrze zrzutu pola (§7) każdy kafel łącznika pola dwiema drogami: `getBBox()` (wymiar
+w świecie) i `boundingBox()` Playwrighta (wymiar na ekranie, po transformacji kamery), oraz
+rysunek aparatu w kaflu (`[data-qet="glif"]`) tymi samymi drogami. Asercje: bok kafla 48 j.św.
+z jednej stałej (`QET_BOK_KAFLA_STANU`), w = h z tolerancją 1 px na ekranie, jeden rozmiar
+ekranowy wszystkich kafli kadru, stopień glifu w przedziale manifestu importu
+`stopienSymboli.kafel` [0,55; 0,70] (jedno źródło z importerem, także na ekranie z tolerancją
+1 px), kadr na LOD2. Wynik biegu: `test-results/ux04-pole-liniowe-pomiary-kafli.json`.
+
+Pomiar biegu zrzutów 2026-10-29 (bieg zielony, 2 z 2 testów): 46 pomiarów w 18 kadrach;
+największe |w − h| na ekranie 0,00006 px; największe |bok − 48| w świecie 0; rozrzut boku
+ekranowego w kadrze 0; stopień glifu 0,575–0,617 boku kafla; LOD 2 w każdym kadrze; skala
+kadru 1,48–2,76, czyli bok kafla na ekranie 71,0–132,5 px.
+
+Iloczyn rodzaj × stan kafla × motyw pokryty na żywej kanwie: wyłącznik z napędem
+{zamknięty, otwarty}, odłącznik {zamknięty, otwarty, nieustalony}, uziemnik {zamknięty,
+otwarty, nieustalony}, łącznik trójpołożeniowy {zamknięty, otwarty, nieustalony; uziemiony —
+kafel „zamknięty" z nożem na zestyku uziemiającym, `data-qet-polozenie="earthed"`} × motyw
+{ciemny, jasny} — 22 z 24 komórek. Odłącznik otwarty i uziemnik zamknięty dochodzą krokiem 10
+spec (pole stałe odłączone i uziemione); pomiar przed jego dodaniem: 18 z 24 komórek. Poza
+żywą kanwą zostaje wyłącznik w stanie nieustalonym (2 komórki): ścieżka użytkownika zawsze
+daje wyłącznikowi rekord położenia (szablon, operacja łączeniowa), więc tego stanu nie da się
+osiągnąć z interfejsu. Wymiar kafla nie zależy od stanu — `symbols/glyphs.tsx::prostokatKaflaStanu`
+przyjmuje wyłącznie identyfikator symbolu — a geometrię kafla wyłącznika w stanie
+nieustalonym przypina `symbols/__tests__/kafelStanu.test.tsx` (rodzaj × wariant × stan
+{zamknięty, otwarty, uziemiony, nieustalony, awaria, brak} × motyw {ciemny, jasny, eksport}).
+
+Spec mierzy też blok przekaźnika każdego pola w kadrze (`zmierzBlokPrzekaznika`): lewe
+krawędzie tuszu wierszy (`getBoundingClientRect` tekstów `#protection-codes-full` i
+`#zrodlo-u0`) i tusz wierszy wewnątrz ramki bloku (`[data-przekaznik="ramka-bloku"]`) z czterech
+stron. Wynik: `test-results/ux04-pole-liniowe-pomiary-bloku.json`. Pomiar: 72 bloki w 18
+kadrach, rozrzut lewych krawędzi tuszu 0 px (próg 1 px), najmniejszy zapas tuszu do prawej
+krawędzi ramki 18,4 px (pole Z.11.1, wiersz „SPZE · OWG · NZ · SCO · SPZ/SCO"; w polach
+Z.10 80,4–93,5 px), najmniejszy zapas dolny 9,8 px.
+
+Iniekcje (każda w osobnym biegu testu Z.10 bez zapisu zrzutów; plik przywrócony i porównany
+`cmp`):
+
+- kafel wyłącznika 52 × 52 j.św. (`prostokatKaflaStanu` dla `qetBreaker`
+  i `qetBreakerZNapedem`) — bieg czerwony: „pole-z10-trojpolozeniowy-zamkniete-ciemny ·
+  dark_scada · Q0 (qetBreakerZNapedem, zamkniety): szerokość kafla w świecie 52";
+- glif pomniejszony do połowy (`<g transform="scale(0.5)">` wewnątrz `[data-qet="glif"]`
+  w `qetGlyph`) — bieg czerwony: „… Q1 (qetThreePositionSwitch, zamkniety): stopień glifu
+  0.308 boku kafla", oczekiwane ≥ 0,55;
+- dawny kontener inspektora `h-full min-h-0 overflow-y-auto` (`LegacyInspektor.tsx`, §7) — bieg
+  czerwony: „okno GPZ z selekcji: przewija się wyłącznie treść inspektora", przewijany
+  `inspektor-panel-nad-oknem`.
+
+Iniekcje warunków bloku przekaźnika (wiersz z kodami okręgu, ramka węższa o kratkę, zdjęte
+wyrównanie wiersza, wiersz przesunięty o GRID) są w testach sceny (`poleLinioweGpz.test.tsx`,
+§11.3 i §11.9).
+
+| Kadr | Motyw | Aparat | Symbol | Stan kafla | Kafel w świecie (j.św.) | Kafel na ekranie (px) | \|w − h\| (px) | Glif w świecie (stopień) | Glif na ekranie (px) | Skala | LOD |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| pole-z10-trojpolozeniowy-zamkniete-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-trojpolozeniowy-zamkniete-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,22 (0,61) | 87,68 | 2,76 | 2 |
+| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q1 | `qetDisconnector` | nieznany | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,81 (0,60) | 73,63 | 2,37 | 2 |
+| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
+| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q8 | `qetEarthSwitch` | nieznany | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
+| pole-z10-trojpolozeniowy-zamkniete-jasny | jasny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-trojpolozeniowy-zamkniete-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,22 (0,61) | 87,68 | 2,76 | 2 |
+| pole-z10-staly-stan-nieznany-jasny | jasny | Q1 | `qetDisconnector` | nieznany | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,81 (0,60) | 73,63 | 2,37 | 2 |
+| pole-z10-staly-stan-nieznany-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
+| pole-z10-staly-stan-nieznany-jasny | jasny | Q8 | `qetEarthSwitch` | nieznany | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-ciemny | ciemny | Q1 | `qetDisconnector` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-ciemny | ciemny | Q8 | `qetEarthSwitch` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny | jasny | Q1 | `qetDisconnector` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny | jasny | Q8 | `qetEarthSwitch` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
+| pole-z10-wylacznik-otwarty-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-jasny | jasny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
+| pole-z10-rozlaczone-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-rozlaczone-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
+| pole-z10-rozlaczone-jasny | jasny | Q1 | `qetThreePositionSwitch` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-rozlaczone-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-uziemiony-jasny | jasny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-uziemiony-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-ciemny | ciemny | Q1 | `qetDisconnector` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 27,60 (0,58) | 70,04 | 2,37 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,80 (0,60) | 72,87 | 2,37 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-ciemny | ciemny | Q8 | `qetEarthSwitch` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-jasny | jasny | Q1 | `qetDisconnector` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 27,60 (0,58) | 70,04 | 2,37 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,80 (0,60) | 72,87 | 2,37 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-jasny | jasny | Q8 | `qetEarthSwitch` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
+| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | nieznany | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,22 (0,61) | 46,98 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q5 | `qetThreePositionSwitch` | nieznany | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q1 | `qetThreePositionSwitch` | nieznany | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,22 (0,61) | 46,98 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q5 | `qetThreePositionSwitch` | nieznany | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 28,80 (0,60) | 45,55 | 1,48 | 2 |
+| pole-z11-1-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q5 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-wylacznik-otwarty-uziemiony-jasny | jasny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-wylacznik-otwarty-uziemiony-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 28,80 (0,60) | 45,55 | 1,48 | 2 |
+| pole-z11-1-wylacznik-otwarty-uziemiony-jasny | jasny | Q5 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+
+### 11.5. Kabel odejścia jako gałąź i rozłączność kabli różnych pól
+
+Pomiar przed naprawą (fikstury `pole_liniowe_z10_gpz_staly_w_sekcji_1/2`, `pole_liniowe_z11_gpz_odgalezienie`):
+kable odejścia pól 1.1 i 2.1 leżały współliniowo (y = 808) i krzyżowały się z ciągiem głównym
+w fikcyjnym węźle T. Naprawa (`frontend/src/ui/sld/v3/scene/buildScene.ts`):
+
+- **plan zagnieżdżony biegów otwartych z pól GPZ** (`poziomyBiegowOtwartychZPolGpz`, stałe
+  `OPEN_RUN_BAND_BELOW`, `OPEN_RUN_LEVEL_STEP`): bieg z portu położonego dalej w prawo dostaje
+  niższy poziom, ciąg główny i feedery otwarte jednego wiersza planowane RAZEM, kursor pasa
+  ustawiany raz za najniższym poziomem — zero przecięć L z L;
+- **przecięcie z pionem kabla z pola GPZ jest skrzyżowaniem (mostek), nie węzłem T**
+  (`resolveTeeJunctions(…, kableZPolGpz)`): kabel z pola GPZ nie ma w modelu połączenia
+  z cudzym ciągiem.
+
+Model: odcinek kontynuujący ciąg SN obowiązuje JEDNA reguła ciągłości
+(`backend/src/enm/domain_operations.py::_ciag_kontynuowany_z`, `_ciag_dla_startu`,
+`_zapisz_ciag_z_portu`): ciąg wskazany jawnie musi kończyć się na zacisku startu (inaczej odmowa
+`trunk.start_not_at_trunk_end`), start bez ciągu kończącego się na nim zakłada NOWY ciąg
+(`corridor/<seed>/run`, `run_kind = branch`, port startu = zacisk startu) zamiast doklejać odcinek
+do cudzej magistrali; przydział pola GPZ startu dwustronny. Testy: `backend/tests/enm/test_ciaglosc_ciagu_sn.py`
+(7 startów × 3 wskazania ciągu; iniekcja „start doklejany do pierwszego ciągu" — czerwone)
+i `frontend/src/ui/sld/v3/scene/__tests__/poleLinioweGpz.test.tsx` (fikstury × L0/L1/L2: zero
+nakładań kabli różnych pól, zero przecięć, zero kropek T; iniekcje: dawna postać modelu,
+przesunięcie kabla o GRID, nakładka z kropką T).
+
+### 11.6. Przekaźnik obok pola, pas podpisów
+
+Okrąg przekaźnika pola stoi w odstępie GRID…6·GRID od prawej krawędzi obrysu aparatów pola
+i prawej krawędzi pasa podpisów aparatów (`<pole>#etykieta-aparatu-…`) — przypięte testem
+„przekaźnik pola obok pola" (`poleLinioweGpz.test.tsx`).
+
+### 11.7. Do decyzji architekta (zgłoszenia z pomiarem, bez zmiany w tej karcie)
+
+Zgłoszenia poniżej nie zostały zmienione w tej karcie. Rozstrzygnięcie zmienia akceptację
+cudzej warstwy albo decyzję zarządcy, dlatego decyzję podejmuje architekt (sesja główna).
+
+1. **Kropki T bez węzła w modelu (S7-P2, `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`).** Reguła
+   S7-P2 zamienia przecięcie kabli SN na węzeł T: rozcina kabel poziomy w punkcie styku i rysuje
+   kropkę `junction`, a wszystko po to, żeby `interiorCrossings` sn × sn = 0. Sonda tej karty
+   na fiksturach scen przeszła 58 plików i znalazła 92 kropki T. Żadna z nich (92 z 92) nie
+   odpowiada węzłowi modelu, bo kable się krzyżują, ale elektrycznie nie są połączone.
+   Rysunek pokazuje więc połączenie, którego w sieci nie ma (fikcja, wymaganie 8). Karta
+   naprawiła tylko podzbiór „kabel z pola GPZ" (`resolveTeeJunctions(…, kableZPolGpz)`: takie
+   przecięcie jest mostkiem §22.1). Odwrócenie reguły dla pozostałych kabli zmienia warunek
+   `crossingCount = 0` w odbiorze `accept:sld-v3` i rozstrzygnięcie zarządcy S7-P2.
+2. **L0 (KD-5): wspólny pion zejść kilku pól.** Na L0 GPZ jest zwinięty do jednego znaku.
+   Zejścia kabli czterech pól liniowych z dwóch sekcji biegną wtedy jednym pionem x = 128
+   (y od 536 do 552, 568 i 584), więc cztery różne kable nakładają się na jednym odcinku. Na
+   L1/L2 kable są rozłączne (§11.5). Zmiana wymaga decyzji o reprezentacji L0 (KD-5).
+3. **Trzy konwencje `starting_port_ref`.** Model zapisuje port startu ciągu SN na trzy sposoby:
+   `bay/…/001` (port pola GPZ), `…/terminal` (zacisk) i `….BRANCH` (tej postaci używa operacja
+   `start_branch`). Reguła ciągłości ciągu (§11.5) porównuje zacisk startu z końcem ciągu po
+   normalizacji. Trzy postaci tej samej informacji grożą rozjazdem przy następnym konsumencie,
+   a ujednolicenie zmienia kontrakt operacji domenowych i zapisane fikstury.
+4. **Fikstura `gpzProtectionDataPath` (wachlarz pól GPZ).** Ciąg główny wychodzi z pola
+   lewego i kończy się stacją wiersza 0, a kabel odgałęzienia wychodzi z pola prawego
+   i kończy się stacją wiersza niższego. Przy torach ortogonalnych wchodzących do stacji od
+   lewej jedno przecięcie tych dwóch kabli jest konieczne topologicznie. Gdyby poziom kabla
+   z pola lewego zszedł głębiej, jego pion powrotu do stacji wiersza 0 przeciąłby poziom kabla
+   z pola prawego. Dawniej to przecięcie było fikcyjną kropką T. Test
+   `buildScene.odejsciaZagniezdzone.test.ts` przypina teraz dokładnie to jedno przecięcie
+   (para kabli) i jego mostek, a nie „zero przecięć". Pozostaje decyzja, czy ten układ
+   wachlarza jest docelowy.
+5. **Litera „3" przekładnika Ferrantiego (EN 60617 06-13-10).** Po jednokładności symbolu
+   toru ×1,5 (§11.9 pkt 6) ma 5,4 j.św. (przed korektą 3,6), czyli 5,5 px przy wejściu w LOD2.
+   Kanon traktuje literę w symbolu jako część symbolu IEC, a nie napis (`cad/CadSymbol.tsx`),
+   więc podłoga 8 px napisów (S9-7, `MIN_TEXT_SCREEN_PX`) jej nie obejmuje. Ta sama klasa
+   dotyczy liter symboli kanonicznych spoza pola GPZ: „G" maszyny (7 j.św.,
+   `cad/cadSymbolRegistry.ts`), „3" przekładnika Ferrantiego w symbolu kanonicznym (3,6 j.św.,
+   tamże) oraz tekstów glifów 6–8 j.św. (`symbols/glyphs.tsx`: ostrzeżenia luki pola, oznaczenie
+   portalu nN). Literę na kaflu łącznika (M napędu, 8,4 j.św.) ta karta powiększyła i przypięła
+   testem. Litery „3" nie da się powiększyć do 8 px w pierścieniu o średnicy 24 j.św. bez
+   nałożenia na kreskę znaku trzech przewodów. O tym, czy podłoga S9-7 obejmuje litery symboli,
+   rozstrzyga architekt.
+6. **Oznaczenia zacisków P1/P2 przekładnika prądowego.** Rysunek Z.10 (s.89) opisuje zaciski
+   pierwotne T1 jako P1 (od szyny) i P2. Wzorzec `scripts/no_codenames_guard.py::CODENAME_PATTERN`
+   (`P` + cyfra, z wyjątkiem `P0`) traktuje te napisy jako kryptonimy projektu i zakazuje ich
+   w tekstach interfejsu, więc kanwa ich nie rysuje (biegunowość zacisków jest w rekordzie
+   portów aparatu: `we` od wyłącznika). Dopuszczenie oznaczeń zacisków IEC 61869-2 (P1/P2,
+   S1/S2) w napisach schematu wymaga zmiany strażnika (wyjątek dla etykiet zacisków
+   przekładnika) — decyzja architekta.
+7. **Szacunek szerokości tekstu `core/text.ts::measureTextWidth` (0,62 em na znak).** Geometria
+   sceny liczy szerokość każdej etykiety z liczby znaków, a przeglądarka rysuje tusz z metryk
+   czcionki. Ramka bloku przekaźnika jest liczona z szacunku, więc jej zapas do tuszu zależy
+   od treści wiersza: w polach Z.10 (wiersz „51N · ZS · 50BF · 79 · SCO", cyfry i separatory
+   węższe od szacunku) ramka ma 80,4–93,5 px pustego miejsca na prawo od tuszu, a w polu
+   Z.11.1 (wiersz „SPZE · OWG · NZ · SCO · SPZ/SCO", pogrubione wielkie litery szersze od
+   średniej) — 18,4 px (§11.4). Tekst z większą liczbą wielkich liter może wyjść poza ramkę;
+   dziś pilnuje tego tylko e2e zrzutów. Wyrównanie tekstu (§11.3, „Zmiany kanwy") usuwa skutek
+   rozjazdu wierszy, nie przyczynę. Zastąpienie szacunku tabelą posuwów znaków kroju (jak
+   metryka znaku w importerze symboli, `scripts/import_qet_pole_sn.py`) zmienia geometrię
+   każdej etykiety całego SLD (sceny, kolizje etykiet, fikstury i odbiór `accept:sld-v3`) —
+   decyzja architekta.
+8. **Prześwit między podpisem aparatu a symbolem.** Podpisy aparatów pola (Q1, Q0, T1, PF1, GK,
+   T2 — strona `left` planu etykiet) są wyśrodkowane w slocie o szerokości z szacunku, więc ich
+   prawa krawędź tuszu dryfuje: na zrzucie `pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny`
+   od x = 64 px (PF1) do x = 73 px (GK) przy wspólnej krawędzi slotów. Zaczep tekstu w krawędzi
+   (jak dla etykiet zabezpieczeń) wymaga, żeby etykieta znała stronę, po której stoi względem
+   kotwicy — dziś strona planu (`PlannedLabel`) nie trafia do węzła tekstu, a ta karta
+   zmieniła wyłącznie warstwę adnotacji zabezpieczeń. Rozszerzenie na wszystkie etykiety
+   `dane` i podpisy aparatów zmienia wygląd całego SLD — decyzja architekta.
+
+### 11.8. Bramka sesji głównej na `dbe7c130b` (4 czerwone) — naprawy u źródła
+
+Bramka uruchomiona na scaleniu `dbe7c130b` zwróciła 4 czerwone testy. Każdy naprawiłem
+u źródła i przypiąłem testem. Kody wyjścia przebiegu celowanego są w meldunku karty.
+
+1. **`tests/application/test_fikstury_enm_generowane.py::test_sieci_kontraktow_sld_sa_bajtowo_rowne_generatorowi`.**
+   Fikstury na `dbe7c130b` wygenerowano na gałęzi karty pola BKR (`687a2ef65`), czyli przed
+   scaleniem z gałęzią pola liniowego. Brakowało w nich więc zmian modelu pól z `e4b778d35`.
+   Po regeneracji generatorem (`tests/reference_networks/fikstury_enm_sld.py --write`)
+   różnica jest zamierzona:
+   - `gpz110kvBkr*.enm.json`: pola liniowe GPZ z szablonu Z.10 (`bay_template_ref`,
+     `config_id`, 24 aparaty z portami, `naped`, `przekladnia`, `rdzenie`, `uzwojenia`,
+     `odgalezienie`, `stan_obiektu`, `klasa_pola`); `protection_codes` z `[]` na
+     `["51","50","ZS","50BF","79","SCO","SPZ/SCO"]`;
+   - `b2Droga-add_sn_bay`: `naped`, `przekladnia` oraz 67N zdjęte z 3 pól (reguła §11.2 pkt 4);
+   - z tej karty: pola `funkcje_eaz_zasilane` i `funkcje_eaz_wylaczajace` każdego aparatu
+     pola i `Bay.zrodlo_u0_ref`. Pomiar w `gpz110kvBkr.enm.json`: w 4 polach Z.10 przekładnik
+     T1 ma niepustą listę funkcji zasilanych, wyłącznik Q0 — niepustą listę funkcji
+     wyłączających, pozostałe aparaty mają listy puste (wzorzec ich nie wiąże), a
+     `zrodlo_u0_ref` jest `null` we wszystkich polach (sieć bez pola Z.17).
+2. **`test_demo_oze_sc_jest_bajtowo_rowne_generatorowi`.** W `demoOzeSc.enm.json` zmiany
+   modelu są takie:
+   - pola źródła DER: Q2 → Q9 (odłącznik liniowy) i Q9 → Q8 (uziemnik), z `e4b778d35`;
+   - `naped` i `przekladnia` w 16 aparatach;
+   - 67N zdjęte z zestawu 26 pól `["67","67N","27","59","81U","81O","81R","anti-islanding"]`
+     przez regułę 67N (`funkcje_eaz_roli` — pole wytwórcze nie ma potwierdzonego źródła 3U₀).
+
+   W `demoOzeSc.sc.json` zmienia się WYŁĄCZNIE `builder_snapshot_hash` (`4e55c817…` →
+   `d76a3f23…`). Wszystkie liczby wyniku zwarciowego są bajtowo bez zmian. Wyjaśnienie: wynik
+   zwarciowy nie zależy od kodów funkcji zabezpieczeń, oznaczeń aparatów ani rekordów napędu
+   i przekładni, a hash migawki budowniczego obejmuje model w całości.
+3. **`tests/enm/test_rejestr_zdarzen_domenowych.py::test_rejestr_rowny_typom_emitowanym`.**
+   Operacja `set_bay_apparatus_position` (`enm/polozenie_aparatu_pola.py:200`) emitowała typ
+   `BAY_APPARATUS_POSITION_SET` spoza rejestru `DOMAIN_EVENT_TYPES`. Typ dopisałem do
+   rejestru (`enm/domain_ops_models.py`) w porządku alfabetycznym, a test operacji łączników
+   przypina go wprost. Test nie został wyłączony.
+4. **`tests/api/test_openapi_snapshot.py`.** Snapshot zregenerowałem
+   (`scripts/generuj_snapshot_openapi.py`) PO zmianie reguły 67N. Zmienia się wyłącznie opis
+   `GET /api/catalog/bay-protection-codes` (docstring `api/catalog.py::list_bay_protection_codes`).
+   Doszło zdanie karty pola BKR o roli bez szablonu kanonicznego i zdanie tej karty: funkcja
+   warunkowa 67N nie wchodzi do zestawu roli. Schemat odpowiedzi
+   (`dict[str, list[str]]`) i pozostałe ścieżki są bez zmian.
+
+### 11.9. Uwagi sesji głównej do zrzutów pola (2026-10-29) → wykonanie → test
+
+Sesja główna porównała zrzut `pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny` z rysunkiem
+Z.10 (s.89) i zgłosiła sześć uwag. Każda jest wykonana u źródła (dane manifestu importu
+symboli, model, kompozycja) i przypięta testem z iniekcją. To NIE jest werdykt wizualny —
+werdykt B-02 wydaje właściciel na zrzutach §7.
+
+| # | Uwaga | Wykonanie (pomiar przed → po) | Test (iloczyn cech, iniekcja) |
+|---|---|---|---|
+| 1 | glify w kaflach miniaturowe (× w Q0 i poprzeczka Q1 ok. 10 % boku kafla, uziemnik Q8 ledwo widoczny); glif 55–70 % boku, kreska proporcjonalna do kafla; pomiar bbox glifu względem kafla z dolnym progiem i iniekcją | importer QET: role prymitywów (przewód / glif / osprzęt), jednokładność `skalaRysunku`, skala lokalna znaku rodzaju `skalaLokalna`, przedział `stopienSymboli.kafel` [0,55; 0,70] sprawdzany przy imporcie; kreska glifu `QET_KRESKA_GLIFU` = 2 j.św. = bok/24 (przewody 1,2 j.św.). Stopień glifu (wysokość rysunku aparatu bez przewodów i osprzętu / bok kafla): wyłącznik 0,20 → 0,60–0,61, odłącznik 0,19–0,20 → 0,575–0,61, rozłącznik 0,20 → 0,60–0,61, rozłącznik z bezpiecznikami 0,19 → 0,575, uziemnik 0,23 → 0,58, łącznik trójpołożeniowy 0,45 → 0,62; × wyłącznika 3,2 → 9,6 j.św. Wzór kreski przerywanej sceny `w 2w` (`cad/CadSymbol.tsx::wzorKreskiPrzerywanejSceny`) — dawny wzór „1,5 1” przy okrągłych końcach linii zlewał się w linię ciągłą (nóż w położeniu nieustalonym, linia sprzężenia napędu) | `kafelStanu.test.tsx` („stopień glifu i kreska proporcjonalna do kafla”: 7 łączników × każde położenie noża, stopień z prymitywów niezależnie od pola `glif` pliku generowanego; kreska glifu, przewodów i osprzętu; przerwa wzoru > grubość kreski); `test_qet_pole_sn_import.py` (iniekcja skali rysunku 4 → „nie mieści się w kaflu”, przedział [0,55; 0,60] → „stopień glifu 0.609 … closed”); e2e `zmierzKafle` — `getBBox()` i `boundingBox()` `[data-qet="glif"]` względem kafla w każdym kadrze × motyw × stan (§11.4), iniekcja glifu pomniejszonego do połowy — czerwony bieg |
+| 2 | położenie uziemnika: w Z.10 uziemnik jest u GÓRY pola, przy torze między szyną a stykiem odłączającym; sprawdzić punkt przyłączenia na rysunku i odwzorować w topologii ENM i na kanwie | rysunek Z.10 (s.89): uziemienie jest zestykiem uziemiającym łącznika trójpołożeniowego Q1 — prawy zestyk stały u góry pola, obok zestyku szynowego; nóż obraca się w przegubie od strony pola, więc w położeniu „uziemiony” uziemia tor pola za Q1 (przez zamknięty wyłącznik — kabel; §13 s.I-25: „dopuszcza się uziemienie pola poprzez zamknięty wyłącznik”). Model szablonu Z.10 trójpołożeniowego (`we: szyna`, `wy: w1`, położenie `uziemiony` na rekordzie Q1) odpowiada temu punktowi — topologia bez zmian. Kanwa: znak uziemienia przeniesiony nad zestyk prawy (u góry, przy torze), przed korektą stał z prawej strony zestyku (poziomo). Wykonanie z wyłącznikiem stałym (Q1 odłącznik + uziemnik stały Q8 na węźle `w3` wyprowadzenia) NIE pochodzi z rysunku Z.10 — podstawą jest §13 s.I-25: „Wymagana jest możliwość uziemienia każdego z pól, szyn zbiorczych poszczególnych sekcji oraz wyprowadzeń liniowych za pośrednictwem uziemników stałych”. Rozbieżność: rysunek Z.10 nie ma uziemnika stałego; tekst §13 wymaga go dla wyprowadzenia liniowego — Q8 stoi więc na wyprowadzeniu (węzeł za przekładnikiem prądowym, przed głowicą), nie u góry pola. Kwadratu napędu łącznika z kreskowaną blokadą (rysunek: kwadrat przy nożu Q1) kanwa nie rysuje — model nie ma rekordu napędu łącznika trójpołożeniowego (§9.6 L1), a decyzja właściciela pkt 2 zakazuje dodawania aparatów | `test_qet_pole_sn_import.py` (złożenie łącznika trójpołożeniowego: uziemienie nad zestykiem prawym, zacisk szynowy wewnątrz gabarytu z deklaracją `portyWewnatrzGabarytu`); `kafelStanu.test.tsx`; `poleLinioweGpz.test.tsx` (tor z modelu: kolejność oznaczeń × wykonanie łączników, Q8 jako aparat boczny na węźle modelu) |
+| 3 | kolejność toru wg Z.10: szyna → uziemnik / styk ○ → wyłącznik × z M → CT 200-400/5 (P1/P2) → wskaźnik napięcia pojemnościowy → głowica GK → Ferranti 1/100 → kabel | kolejność toru sceny z modelu (porty aparatów): Q1 (łącznik trójpołożeniowy z zestykiem uziemiającym) → Q0 (× z napędem M) → T1 → PF1 (na węźle `w3`) → GK → T2 → kabel odejścia (gałąź modelu) albo koniec kabla niepodłączony — zgodna z rysunkiem pozycja po pozycji (§11.3). Różnice zapisane w §11.3: zaciski P1/P2 i przekładnia „200-400/5” nie są opisane na kanwie | `poleLinioweGpz.test.tsx` (tabela odczytu rysunku `torOczekiwany` × fikstury × LOD; iniekcja zamiany portów zmienia kolejność); e2e — lista `oznaczenie:rodzaj` z modelu |
+| 4 | przekładnik Ferrantiego T2 bez połączenia z przekaźnikiem; zabezpieczenie ziemnozwarciowe z Ferrantiego obowiązkowe, kierunkowość warunkowa (67N), funkcja prądowa ma być widoczna i powiązana z T2; 3U₀ z obwodów „Z, Zz” / „UL1, UL2, UL3, N” wskazuje pole pomiaru napięcia (Z.17) | rysunek Z.10/Z.11.1: czerwona linia z zacisku 2 przekładnika Ferrantiego do bloku „Zab. ziemnozwarciowe t1, t2” — kryterium prądowe Io, a strzałka kierunku nad t1/t2 i wejście „Z, Zz” (U0) — kierunkowość. Wzorzec: funkcja 51N (kryterium prądowe Io, bez warunku) w zestawie Z.10/Z.11.1/Z.11 (`bay_templates._FUNKCJE_EAZ_WYKONANIA_POLA`), powiązanie 51N z przekładnikiem Ferrantiego w obwodach wzorca (`obwody_wtorne_pola.py`, weryfikacja `INTERPRETACJA` z uwagą: kryterium bez kierunku jako osobna funkcja to wniosek z decyzji właściciela), 67N — wyłącznie przy potwierdzonym źródle 3U₀ (§11.2 pkt 4). Na kanwie T2 ma linię pomiarową z portu wtórnego do przekaźnika w każdym polu; 51N jest w bloku przekaźnika. Obwody „Z, Zz” i „UL1, UL2, UL3, N” rysunków Z.10/Z.11.1 są wejściami okrężnymi z pola pomiaru napięcia Z.17 (weryfikacja sygnałów `ZWERYFIKOWANE_NA_RYSUNKU`, dowód §11.2 pkt 3) | backend: `test_powiazania_obwodow_aparatow_pola.py` (tabela rysunku Z.11.1 × źródło 3U₀ {brak, Z.17}: T2 zasila 51N, z potwierdzonym źródłem także 67N; Q0 wyłączany przez 51N), `test_zrodlo_napiecia_zerowego.py` (51N w każdej komórce iloczynu {Z10, Z11_1} × {Z.17 obecne, brak} × {potwierdzone, nie}; iniekcja „T2 nie zasila 51N” — 6/6 czerwonych), `test_obwody_wtorne_pola.py` (wyrocznia rysunku 51N i profil `OBOWIAZKOWA`), fikstury z generatorów (51N w polach Z.10/Z.11.1 i w `funkcje_eaz_zasilane` T2); front: `poleLinioweGpz.test.tsx` („blok przekaźnika”: T2 z linią pomiarową z portu `wtorny` × fikstury; iniekcja zdjęcia linii T2) |
+| 5 | oderwane etykiety: „52” bez związku, lista funkcji poza okręgiem, okrąg „51 50” powtarza część listy; jedna reprezentacja przy przekaźniku; linia wyłączania do cewki Q0, nie do środka kafla | blok przekaźnika układu powiązań (`compose/gpz.ts`, `protectionMarking.ts`): okrąg z dwoma pierwszymi kodami, pozostałe kody w wierszach po prawej (`wierszeKodowPozaOkregiem`) — każdy kod raz; ramka bloku (`ramkaBlokuPrzekaznika`, rysuje ją glif przekaźnika z meta sceny, kreska 0,8 j.św. cieńsza od okręgu) obejmuje okrąg, wiersze i odniesienie źródła 3U₀; rezerwacja kolumny i tło pola liczone z ramki. Wyłącznik ma cewkę wyłączającą (EN 60617 07-15-01, osprzęt po prawej stronie toru) z portem wtórnym `wylacz` na krawędzi kafla — linia wyłączania kończy się w nim; numer „52” nie jest rysowany, gdy linia kończy się na cewce. Spec `docs/sld/SLD_CAD_SPEC_V3.md` §17.3–§17.6 doprecyzowana; układ stacji (R-2) bez zmian | `poleLinioweGpz.test.tsx` („blok przekaźnika”: fikstury Z.10 stały × Z.10 trójpołożeniowy × Z.11.1 × Z.11 × sekcja × pole zajęte/wolne; wyrocznia: kody bloku = `Bay.protection_codes` bez powtórzeń, ramka obejmuje elementy bloku i nie zachodzi na obce etykiety ani symbole, brak „52”, linia wyłączania w porcie `wylacz`; iniekcje: ramka węższa o kratkę, lista z kodami okręgu, „52” dodane, linia do środka kafla, linia T2 zdjęta — każda czerwona); test glifu ramki (ten sam prostokąt co meta sceny, kreska cieńsza od okręgu); `compose/__tests__/gpz.test.ts` (oznacznik pola na wysokości ramki bloku) |
+| 6 | proporcje: symbole toru (T1, GK, PF1) bardzo małe wobec kafli; spójny stopień symboli LOD2 | przedział `stopienSymboli.tor` [0,33; 0,70] sprawdzany przy imporcie; jednokładność symboli toru: T1 ×3 (stopień 0,17 → 0,50), T2 ×1,5 (0,33 → 0,50), GK ×2 (0,21 → 0,42), PF ×4 (0,08 → 0,33); przekładnik napięciowy 0,575 bez zmiany skali | `test_qet_pole_sn_import.py` (stopień symboli toru, iniekcje); zrzuty §7 |
+
+**Defekty z oględzin powtórzonego biegu zrzutów (po wykonaniu uwag 1–6).** Wszystkie zrzuty §7
+powstały ponownie w biegu zielonym (2 z 2 testów). Oględziny wykonawcy wykryły cztery defekty;
+każdy naprawiłem u źródła i przypiąłem testem z iniekcją. Werdyktu wizualnego nie wystawiam.
+
+1. **Wiersze bloku przekaźnika rozjechane w poziomie** (wiersz 1 od x = 535 px, wiersz 2 od
+   x = 499 px na zrzucie Z.10). Naprawa: zaczep tekstu w krawędzi prostokąta (§11.3, „Zmiany
+   kanwy"). Pomiar po naprawie: rozrzut lewych krawędzi tuszu 0 px w 72 blokach (§11.4).
+2. **Zrzut oceny pola ucięty na wysokości okna, Z.10 i Z.11.1 bajtowo identyczne.** Naprawa:
+   zrzut całej oceny i kontrola dubli wszystkich zrzutów biegu (§7).
+3. **Ostatni wiersz oceny ucięty pod ramką sekcji karty pola — trzy zagnieżdżone przewijania
+   inspektora.** Naprawa w `ui2/legacy/LegacyInspektor.tsx` dla całej klasy okien E-10…E-15
+   pod panelem elementu (§7). Test e2e: okno GPZ, odcinka i pola × motyw × szerokość
+   inspektora; vitest: okno stacji i odcinka × status wyników. Iniekcja dawnego kontenera: bieg
+   e2e czerwony, vitest 6 z 6 czerwonych.
+4. **Zbliżenie kończyło się na LOD1** (okrąg przekaźnika bez kodów i bez linii powiązań).
+   Naprawa: kółko działa aż do LOD2 i uchwytu Q0 ≥ 3 × 48 px, oba warunki z asercją (§7).
+
+### 11.10. Testy świeżości i strażniki spoza bramki — naprawy u źródła (2026-10-29)
+
+Po uwagach §11.9 uruchomiłem testy świeżości generatorów spoza listy bramki §11.8 oraz komplet
+strażników z CI (`scripts/guardy_z_ci.py`). Wykryte defekty naprawiłem u źródła i przypiąłem
+testami. Żaden test ani strażnik nie został wyłączony.
+
+1. **`tests/application/test_companions_generated.py`.** Artefakt `sldNetwork53.ts` odtworzyłem
+   generatorem `scripts/emit_sld_network_fixture.py`. Zmienia się wyłącznie `source_hash`,
+   bo ta karta zregenerowała fiksturę substratu `sldSubstrate52s`.
+2. **`tests/network_model/test_field_configurations_catalog.py`.** Artefakt
+   `fieldConfigurationsCatalog.json` odtworzyłem generatorem
+   `scripts/gen_field_configurations_catalog.py`. Doszła konfiguracja
+   `kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17`, więc katalog ma 22 konfiguracje
+   kanoniczne zamiast 21. Test przypina teraz ten szablon wprost. W 15 konfiguracjach
+   `protection_codes` traci 67N zgodnie z regułą §11.2 pkt 4. W 9 polach liniowych GPZ na jej
+   miejscu staje 51N. Innych różnic nie ma.
+3. **Wyrocznia odgałęzień `ui/sld/v3/scene/__tests__/torZPortowStacjaGpz.test.ts`.** Po
+   regeneracji katalogu wyrocznia dała 4 czerwone przypadki: pole Z.17 w kompozytorze stacji
+   i GPZ, iniekcje „brak” i „odgałęzienie poza torem”. Wyrocznia kodowała dawny warunek
+   „brak rozwidlenia węzła → zbiór pusty”. Kanon tej karty
+   (`rodzaje_aparatury.aparaty_poza_torem_glownym`) dopuszcza odgałęzienie z węzła końca toru:
+   łącznik trójpołożeniowy Z.17 kończy tor, a złącze i przekładnik leżą w odgałęzieniu za nim.
+   Wyrocznię przepisałem do tego kanonu. Intencja się nie zmienia: zbiór liczony wyłącznie
+   z portów. Po zmianie sprawdzenia odczepu, przewodów i pasa podpisów dla Z.17 biegną do końca
+   i są zielone.
+4. **`css_kolizje_klas_guard`.** Klasę `.mvd-ocena-tabela` definiowały dwa globalne arkusze:
+   ekran oceny wyników (`ui2/wyniki/ocena/ocena.css`) i karta pola
+   (`ui/field/ocenaPolaLiniowego.css`). Tabele karty pola dostawały przez to odstępy i nagłówki
+   bez zawijania z ekranu oceny. Tabela ekranu oceny dostawała z kolei regułę wąskiego
+   kontenera. Klasa karty pola nazywa się teraz `mvd-ocena-pola-tabela`. Zrzuty oceny §7
+   powstały ponownie po tej zmianie.
+5. **`nazwa_bez_identyfikatora_guard`.** Opis kandydata źródła 3U₀
+   (`enm/zrodlo_napiecia_zerowego.py::kandydaci_zrodla_u0`) brał `device_ref`, gdy przekładnik
+   nie miał oznaczenia. Teraz jedna reguła `_oznaczenie_aparatu` daje oznaczenie z modelu albo
+   słowa „przekładnik napięciowy”. To samo dotyczy opisu kandydata i przyczyny potwierdzonego
+   źródła. Ta sama klasa wystąpiła w lustrze schematu (`ui/sld/v2/model/zrodloNapieciaZerowego.ts`):
+   `vtOznaczenie` i `poleZrodlaOznaczenie` brały identyfikator aparatu i pola. Teraz biorą
+   oznaczenie z modelu albo „przekładnik napięciowy” i „bez numeru”. Testy:
+   - `test_zrodlo_napiecia_zerowego.py::test_teksty_zrodla_u0_bez_identyfikatora_aparatu` —
+     iloczyn {Z10, Z11_1} × oznaczenie przekładnika {jest, brak} × tekst {opis kandydata,
+     przyczyna}; iniekcja dawnego zapasu daje 2 z 4 przypadków czerwonych;
+   - `zrodloNapieciaZerowego.parytet.test.ts` — iloczyn oznaczenie przekładnika {jest, brak}
+     × oznaczenie pola {numer, nazwa, brak}; iniekcja daje 4 z 6 przypadków czerwonych.
+6. **Pin `solver_input_substitute_guard`.** Pomiar `contract_fields()` na drzewie bazy
+   `dbe7c130b` (`git archive`) daje 4458, zgodnie z pinem, a na drzewie karty 4469. Różnica
+   +11, −0 to nowe pola kontraktu tej karty, bez nowych podstawień. Liczba plików skanu rośnie
+   z 609 do 610, a w `enm` z 82 do 83, bo doszedł `enm/zrodlo_napiecia_zerowego.py`. Dług
+   i wykluczenia się nie zmieniają.
+7. **Nazwa pola kontraktu w tekście karty pola.** Oględziny ponownych zrzutów oceny wykazały,
+   że uwaga sygnału „Z, Zz” (`network_model/catalog/obwody_wtorne_pola.py`) kończyła się słowami
+   „powiązanie w modelu: `Bay.zrodlo_u0_ref`”. Projektant widział więc nazwę pola kontraktu.
+   Teraz tekst brzmi: „powiązanie wskazuje się w wyposażeniu pola: »Źródło napięcia zerowego
+   3U₀«”, czyli tak jak etykieta kontrolki w `EdytorWyposazeniaPola.tsx`. Przeszukałem teksty
+   dla projektanta we wszystkich modułach backendu zmienionych w tej karcie (stałe napisów poza
+   docstringami, wzorzec identyfikatora z podkreśleniem). Innego wystąpienia nie ma. Fikstura
+   `ocena_pola_liniowego.json` jest odtworzona generatorem
+   (`tests/ci/test_parytet_oceny_pola_liniowego.py`) i różni się wyłącznie tą uwagą (4 wystąpienia).

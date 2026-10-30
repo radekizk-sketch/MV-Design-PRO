@@ -98,7 +98,9 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
     // na torze nie przerywa toru energii. Karta UX-04/POLE-LINIOWE-WZORZEC: rysunek
     // QElectroTech EN 60617 tego samego łącznika toru (pole liniowe GPZ wg ENEA Z.10)
     // jest aparatem ciągłości jak jego kanoniczny odpowiednik; uziemnik (poza torem)
-    // ciągłości nie niesie.
+    // ciągłości nie niesie. Wyłącznik z napędem silnikowym M (`qetBreakerZNapedem`, rekord
+    // `naped`, korekta właściciela 2026-10-29 pkt 4) to TEN SAM wyłącznik toru ze znakiem
+    // napędu — aparat ciągłości jak `qetBreaker`.
     expect([...CONTINUITY_APPARATUS_SYMBOL_IDS].sort()).toEqual([
       'breaker',
       'disconnector',
@@ -108,6 +110,7 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
       'loadBreakSwitch',
       'noPoint',
       'qetBreaker',
+      'qetBreakerZNapedem',
       'qetDisconnector',
       'qetFuseSwitch',
       'qetLoadBreakSwitch',

@@ -30,6 +30,7 @@ from network_model.catalog.audit2_catalogs import (
 )
 from network_model.catalog.bay_templates import (
     BAY_TEMPLATE_TRANSFORMER,
+    funkcje_eaz_szablonu,
     szablon_domyslny_pola_liniowego_gpz,
 )
 from network_model.catalog.gazy_fluorowane import (
@@ -1652,21 +1653,37 @@ def _allocate_gpz_line_field_for_branch(
         ]
 
     # Samonaprawa zajętości dziedziczonej: pole 0 zasilające niepustą
-    # magistralę dostaje JAWNY przydział (dalej liczy się już relacją).
+    # magistralę dostaje JAWNY przydział (dalej liczy się już relacją). „Zasilające" — wg
+    # TEJ SAMEJ reguły co zajętość (`enm.zajetosc_pol`, predykaty parami): pierwszy odcinek
+    # magistrali GPZ jest przyłączony do pola fizycznie (R1/R2) albo pole zasila ją wg R4.
+    # Dawniej przydział dostawało pole 0 KAŻDEJ sekcji, gdy JAKAKOLWIEK magistrala GPZ miała
+    # odcinki — pole 2.1 przejmowało magistralę zasilaną z pola 1.1, przydział nowego ciągu z
+    # pola 2.1 szedł do pola 2.2 (kabel fizycznie na zacisku 2.1, przydział na 2.2), a pole
+    # 2.2 stawało się „zajęte" bez kabla.
+    zajetosc_przed = zajetosc_pol(enm)
     for rekord in _pola_liniowe_sekcji():
         rekord_meta = rekord.get("meta") or {}
         if rekord_meta.get("gpz_line_field_index") == 0 and not rekord_meta.get(
             "assigned_corridor_ref"
         ):
             field_ref = str(rekord.get("ref_id") or "")
+            stan_pola = zajetosc_przed.get(field_ref)
+            if stan_pola is None:
+                continue
             gpz_prefix = "/".join(field_ref.split("/")[:2])
             trunk = next(
                 (
                     c
-                    for c in enm.get("corridors", [])
-                    if isinstance(c, dict)
-                    and str(c.get("ref_id") or "").startswith(f"{gpz_prefix}/corridor_")
+                    for c in sorted(
+                        (c for c in enm.get("corridors", []) if isinstance(c, dict)),
+                        key=lambda c: str(c.get("ref_id") or ""),
+                    )
+                    if str(c.get("ref_id") or "").startswith(f"{gpz_prefix}/corridor_")
                     and c.get("ordered_segment_refs")
+                    and (
+                        c["ordered_segment_refs"][0] in stan_pola.odcinki_fizyczne
+                        or c.get("ref_id") in stan_pola.korytarze
+                    )
                 ),
                 None,
             )
@@ -1916,6 +1933,109 @@ def _find_corridor_by_ref(enm: dict[str, Any], corridor_ref: str | None) -> dict
         if isinstance(corridor, dict) and corridor.get("ref_id") == corridor_ref:
             return corridor
     return None
+
+
+def _stacja_szyny(enm: dict[str, Any], bus_ref: str | None) -> str | None:
+    """Stacja (GPZ albo SN/nN), do której należy szyna: przez pole, którego własnym zaciskiem
+    jest szyna (`pole_dla_zacisku` → `stacja_pola`), albo przez szyny zbiorcze stacji
+    (`Substation.bus_refs`). `None` — szyna poza stacją (zacisk końcowy odcinka, punkt
+    techniczny)."""
+    if not isinstance(bus_ref, str) or not bus_ref:
+        return None
+    pole_zacisku = pole_dla_zacisku(enm, bus_ref)
+    if pole_zacisku is not None:
+        stacja = stacja_pola(enm, pole_zacisku)
+        ref = stacja.get("ref_id") if isinstance(stacja, dict) else None
+        if isinstance(ref, str) and ref:
+            return ref
+    for stacja in enm.get("substations", []):
+        if isinstance(stacja, dict) and bus_ref in (stacja.get("bus_refs") or []):
+            ref = stacja.get("ref_id")
+            return ref if isinstance(ref, str) and ref else None
+    return None
+
+
+def _ciag_kontynuowany_z(enm: dict[str, Any], corridor: dict[str, Any], start_bus: str) -> bool:
+    """JEDYNA reguła ciągłości magistrali (karta UX-04/POLE-LINIOWE-WZORZEC): odcinek
+    zaczynający się na szynie `start_bus` KONTYNUUJE ciąg, gdy ciąg jest pusty (pierwszy odcinek
+    magistrali GPZ), gdy szyna jest końcem ostatniego odcinka ciągu, albo gdy leży w tej samej
+    stacji co ten koniec (stacja na końcu ciągu: kabel wchodzi polem wejściowym, wychodzi polem
+    wyjściowym). Każdy inny start — drugie pole GPZ, wolne pole stacji w środku ciągu, szyna
+    w środku ciągu — zaczyna NOWY ciąg: doklejenie do cudzej magistrali dawało ciąg z odcinków
+    rozłącznych fizycznie (widok logiczny gubił koniec pierwszego kabla, schemat rysował kabel
+    drugiego pola jako przedłużenie pierwszego, a drugie pole — bez kabla)."""
+    odcinki = [ref for ref in corridor.get("ordered_segment_refs") or [] if isinstance(ref, str)]
+    if not odcinki:
+        return True
+    ostatni = _find_branch(enm, odcinki[-1])
+    koniec = ostatni.get("to_bus_ref") if isinstance(ostatni, dict) else None
+    if not isinstance(koniec, str) or not koniec:
+        return False
+    if start_bus == koniec:
+        return True
+    stacja_startu = _stacja_szyny(enm, start_bus)
+    return stacja_startu is not None and stacja_startu == _stacja_szyny(enm, koniec)
+
+
+def _ciag_dla_startu(enm: dict[str, Any], start_bus: str) -> str | None:
+    """Ciąg, który kontynuuje odcinek ze startu `start_bus` bez wskazanego ciągu: pierwszy
+    (w kolejności modelu) NIEPUSTY ciąg kończący się na tym starcie (`_ciag_kontynuowany_z`),
+    inaczej pierwszy ciąg pusty, inaczej `None` (odcinek zaczyna nowy ciąg). Deterministycznie."""
+    korytarze = [c for c in enm.get("corridors", []) if isinstance(c, dict)]
+    for korytarz in korytarze:
+        if korytarz.get("ordered_segment_refs") and _ciag_kontynuowany_z(enm, korytarz, start_bus):
+            return str(korytarz.get("ref_id"))
+    pusty = next((c for c in korytarze if not c.get("ordered_segment_refs")), None)
+    return str(pusty.get("ref_id")) if pusty is not None else None
+
+
+def _zapisz_ciag_z_portu(
+    enm: dict[str, Any],
+    *,
+    corridor_ref: str,
+    nazwa: str,
+    from_ref: str,
+    origin_element_ref: str,
+    segment_ref: str,
+    parent_run_ref: str | None,
+    gpz_field_ref: str | None,
+) -> bool:
+    """JEDEN zapis nowego ciągu wychodzącego z portu (pola GPZ, pola stacji, punktu
+    odgałęźnego): korytarz promieniowy z pierwszym odcinkiem, przydziałem pola GPZ
+    (`meta.gpz_field_ref` — schemat rysuje ciąg z JEGO pola) i ciąg liniowy rodzaju `branch` z
+    pochodzeniem. Wołają go `start_branch_segment_sn` i `continue_trunk_segment_sn` (start, który
+    nie kontynuuje żadnego ciągu) — ta sama postać ciągu niezależnie od operacji. Zwraca `True`,
+    gdy korytarz powstał (identyfikator nowy)."""
+    korytarze = enm.setdefault("corridors", [])
+    nowy = not any(c.get("ref_id") == corridor_ref for c in korytarze if isinstance(c, dict))
+    if nowy:
+        korytarz: dict[str, Any] = {
+            "ref_id": corridor_ref,
+            "name": nazwa,
+            "corridor_type": "radial",
+            "ordered_segment_refs": [segment_ref],
+            "parent_run_ref": parent_run_ref,
+            "branch_origin_station_ref": origin_element_ref,
+            "branch_origin_port_ref": from_ref,
+            "starting_port_ref": from_ref,
+            "meta": {},
+        }
+        if gpz_field_ref:
+            korytarz["meta"]["gpz_field_ref"] = gpz_field_ref
+        korytarze.append(korytarz)
+    ciag = _ensure_line_run_for_corridor(
+        enm,
+        corridor_ref,
+        starting_bay_ref=origin_element_ref,
+        starting_port_ref=from_ref,
+        run_kind="branch",
+    )
+    if ciag is not None:
+        ciag["parent_run_ref"] = parent_run_ref
+        ciag["branch_origin_station_ref"] = origin_element_ref
+        ciag["starting_port_ref"] = from_ref
+        _append_line_run_segment(ciag, segment_ref)
+    return nowy
 
 
 def _first_gpz_line_field_for_run(enm: dict[str, Any]) -> tuple[str | None, str | None]:
@@ -5370,6 +5490,25 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "Wybierz wolne pole liniowe albo port ZK SN.",
             "trunk.source_requires_line_bay",
         )
+    # Ciąg odcinka — JEDNA reguła ciągłości (`_ciag_kontynuowany_z`). Ciąg wskazany jawnie,
+    # którego start nie kontynuuje, to sprzeczny kontekst wołającego (nazwana odmowa, nie
+    # doklejenie). Bez wskazania: ciąg kończący się na starcie, inaczej pusty, inaczej NOWY
+    # ciąg z tego startu (`_zapisz_ciag_z_portu` niżej). Wskazanie ciągu nieistniejącego —
+    # jak brak wskazania (nieaktualny kontekst nie przekierowuje odcinka do cudzego ciągu).
+    jawny_ciag = _find_corridor_by_ref(enm, trunk_id) if isinstance(trunk_id, str) else None
+    if jawny_ciag is not None and not _ciag_kontynuowany_z(enm, jawny_ciag, from_terminal_id):
+        return _error_response(
+            "Odcinek nie może kontynuować ciągu "
+            f"{opis_nazwy(jawny_ciag.get('name'), 'wskazanego na schemacie')} — start odcinka "
+            "nie jest końcem tego ciągu. Wybierz koniec ciągu na schemacie albo wyprowadź nowy "
+            "ciąg z wolnego pola liniowego bez wskazania ciągu.",
+            "trunk.start_not_at_trunk_end",
+        )
+    ciag_odcinka = (
+        str(jawny_ciag.get("ref_id"))
+        if jawny_ciag is not None
+        else _ciag_dla_startu(enm, from_terminal_id)
+    )
 
     rodzaj = segment.get("rodzaj", "KABEL")
     dlugosc_m = segment.get("dlugosc_m") or payload.get("dlugosc_m") or 0
@@ -5560,15 +5699,50 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         {"step": ev_seq, "action": "Utworzono odcinek magistrali", "element_id": branch_ref}
     )
 
-    # Update corridor (auto-detect if not specified)
-    effective_trunk_id = trunk_id
-    corridors = new_enm.get("corridors", [])
-    if effective_trunk_id and not any(c.get("ref_id") == effective_trunk_id for c in corridors):
-        effective_trunk_id = None
-    if not effective_trunk_id and corridors:
-        effective_trunk_id = corridors[0].get("ref_id")
-
-    if effective_trunk_id:
+    # Ciąg odcinka (rozstrzygnięty wyżej): kontynuowany albo NOWY. Model bez ciągów (migawka
+    # sprzed magistral) — odcinek poza ciągiem, jak dotąd.
+    effective_trunk_id: str | None = ciag_odcinka
+    if effective_trunk_id is None and new_enm.get("corridors"):
+        # Start, który nie kontynuuje żadnego ciągu (drugie pole GPZ, wolne pole stacji
+        # w środku ciągu) — nowy ciąg z TEGO portu, ta sama postać co odgałęzienie
+        # (`_zapisz_ciag_z_portu`); pole GPZ dostaje przydział ciągu (`gpz_field_ref`).
+        effective_trunk_id = _make_id(
+            "corridor",
+            _compute_seed({"op": "continue_trunk_new_run", "segment_ref": branch_ref}),
+            "run",
+        )
+        pochodzenie = field_ref or from_terminal_id
+        # Pole GPZ startu jest wolne (sprawdzone wyżej) i odcinek wychodzi z jego punktu
+        # przyłączenia — przydział ciągu temu polu zapisany DWUSTRONNIE jak w kanonie pól GPZ
+        # (`_allocate_gpz_line_field_for_branch`: `meta.assigned_corridor_ref` pola i
+        # `corridor.meta.gpz_field_ref`), bez szukania innego pola (odcinek już stoi na tym).
+        gpz_field_ref = field_ref if field_ref and _czy_pole_gpz(enm, field_ref) else None
+        if gpz_field_ref:
+            _zmien_meta_pola(new_enm, gpz_field_ref, assigned_corridor_ref=effective_trunk_id)
+        nazwa_ciagu = (
+            f"Magistrala {len(new_enm.get('corridors') or []) + 1:02d}"
+            if gpz_field_ref
+            else (
+                "Odgałęzienie SN kablowe"
+                if branch_type == "cable"
+                else "Odgałęzienie SN napowietrzne"
+            )
+        )
+        _zapisz_ciag_z_portu(
+            new_enm,
+            corridor_ref=effective_trunk_id,
+            nazwa=nazwa_ciagu,
+            # Port startu w konwencji tej operacji (zacisk, z którego wychodzi odcinek) — ta
+            # sama, co ciąg magistrali z pierwszego pola (`starting_port_ref=from_terminal_id`).
+            from_ref=from_terminal_id,
+            origin_element_ref=pochodzenie,
+            segment_ref=branch_ref,
+            parent_run_ref=None,
+            gpz_field_ref=gpz_field_ref,
+        )
+        created.append(effective_trunk_id)
+        line_run = _ensure_line_run_for_corridor(new_enm, effective_trunk_id)
+    elif effective_trunk_id:
         for c in new_enm.get("corridors", []):
             if c.get("ref_id") == effective_trunk_id:
                 c.setdefault("ordered_segment_refs", []).append(branch_ref)
@@ -5580,6 +5754,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             starting_port_ref=from_terminal_id,
         )
         _append_line_run_segment(line_run, branch_ref)
+    if effective_trunk_id:
         if nazwa_odcinka is None:
             nowy_odcinek = _find_branch(new_enm, branch_ref)
             if nowy_odcinek is not None:
@@ -9014,20 +9189,8 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     branch_type_label = "kablowe" if branch_type == "cable" else "napowietrzne"
     if not any(c.get("ref_id") == branch_corridor_ref for c in new_enm.setdefault("corridors", [])):
-        new_corridor: dict[str, Any] = {
-            "ref_id": branch_corridor_ref,
-            "name": f"Odgałęzienie SN {branch_type_label}",
-            "corridor_type": "radial",
-            "ordered_segment_refs": [branch_ref],
-            "parent_run_ref": parent_run_ref,
-            "branch_origin_station_ref": origin_element_ref,
-            "branch_origin_port_ref": from_ref,
-            "starting_port_ref": from_ref,
-            "meta": {},
-        }
         # Przydział pola GPZ policzony wyżej (przed utworzeniem odcinka).
         if gpz_field_ref:
-            new_corridor["meta"]["gpz_field_ref"] = gpz_field_ref
             if created_gpz_field is not None:
                 created.append(str(created_gpz_field.get("ref_id")))
                 meta_nowego_pola = created_gpz_field.get("meta") or {}
@@ -9045,20 +9208,17 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
                         "element_id": str(created_gpz_field.get("ref_id")),
                     }
                 )
-        new_enm["corridors"].append(new_corridor)
-        created.append(branch_corridor_ref)
-    branch_line_run = _ensure_line_run_for_corridor(
+    if _zapisz_ciag_z_portu(
         new_enm,
-        branch_corridor_ref,
-        starting_bay_ref=origin_element_ref,
-        starting_port_ref=from_ref,
-        run_kind="branch",
-    )
-    if branch_line_run is not None:
-        branch_line_run["parent_run_ref"] = parent_run_ref
-        branch_line_run["branch_origin_station_ref"] = origin_element_ref
-        branch_line_run["starting_port_ref"] = from_ref
-        _append_line_run_segment(branch_line_run, branch_ref)
+        corridor_ref=branch_corridor_ref,
+        nazwa=f"Odgałęzienie SN {branch_type_label}",
+        from_ref=from_ref,
+        origin_element_ref=origin_element_ref,
+        segment_ref=branch_ref,
+        parent_run_ref=parent_run_ref,
+        gpz_field_ref=gpz_field_ref,
+    ):
+        created.append(branch_corridor_ref)
 
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "BRANCH_CREATED", "element_id": branch_ref})
@@ -12509,7 +12669,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
         # Pole TR: transformator należy do pola, na którego zacisku leży. Wymagane funkcje
         # zabezpieczeniowe pola: z szablonu pola producenta, a bez szablonu — zestaw szablonu
-        # pola transformatorowego (`BAY_TEMPLATE_TRANSFORMER.funkcje_eaz`).
+        # pola transformatorowego przez TEN SAM odczyt co resolver operacji
+        # (`funkcje_eaz_szablonu` — bez funkcji warunkowych o niespełnionym warunku, decyzja
+        # właściciela 2026-10-29: 67N tylko z potwierdzonym źródłem 3U₀).
         rekord_tr = pole_modelu(new_enm, ref_pola_tr) or {}
         meta_tr = dict(rekord_tr.get("meta") or {})
         meta_tr.setdefault("created_by", "append_station_on_endpoint")
@@ -12519,7 +12681,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             ref_pola_tr,
             equipment_refs=[*(rekord_tr.get("equipment_refs") or []), transformer_ref],
             protection_codes=list(rekord_tr.get("protection_codes") or [])
-            or list(BAY_TEMPLATE_TRANSFORMER.funkcje_eaz),
+            or list(funkcje_eaz_szablonu(BAY_TEMPLATE_TRANSFORMER.template_id) or []),
             meta=meta_tr,
         )
         created.append(ref_pola_tr)

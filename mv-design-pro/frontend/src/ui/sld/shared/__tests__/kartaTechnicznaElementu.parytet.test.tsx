@@ -52,6 +52,8 @@ const KATALOGI: KatalogiKarty = {
     ],
   ]),
   transformatory: new Map([['tr-630-15-04', { name: 'TNOSCT 630 kVA 15/0,4 kV' }]]),
+  szablonyPol: new Map(),
+  rodzinyRozdzielnic: new Map(),
 };
 
 /** Ta sama topologia w obu wariantach; `pelne` dokłada parametry, katalogi i oznaczenia. */

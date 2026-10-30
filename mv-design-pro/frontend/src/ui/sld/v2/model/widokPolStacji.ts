@@ -12,6 +12,7 @@
 import type { BayPrimaryDeviceKind, BayPrimaryPlacement, StanObiektu } from '../../../../types/enm';
 import type { FieldRole } from '../domain/apparatusContracts';
 import type { BateriaPolaView } from './bateriaPola';
+import type { ZrodloU0PolaView } from './zrodloNapieciaZerowego';
 
 
 /**
@@ -63,6 +64,19 @@ export interface BayPrimaryDeviceView {
    *  nieustalony; `undefined` = projekcja bez stanu (sylwetka konwencji). Rysunek pokazuje go
    *  dyskretnie (podpowiedź na symbolu, atrybut `data-stan-obiektu`). */
   readonly stanObiektu?: StanObiektu | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): napęd wyłącznika z rekordu
+   *  (`BayPrimaryDevice.naped`) — `'SILNIKOWY'` rysuje znak napędu przy wyłączniku. Brak =
+   *  napęd niepodany (bez znaku). */
+  readonly naped?: 'SILNIKOWY';
+  /** Kody funkcji EAZ zasilanych z aparatu (`BayPrimaryDevice.funkcje_eaz_zasilane`) — źródła
+   *  linii pomiarowych do przekaźnika pola. Brak = aparat nie zasila żadnej funkcji. */
+  readonly funkcjeEazZasilane?: readonly string[];
+  /** Kody funkcji EAZ wyłączających wyłącznik (`BayPrimaryDevice.funkcje_eaz_wylaczajace`) —
+   *  cel linii wyłączania przekaźnika. Brak = żadna funkcja nie wyłącza aparatu. */
+  readonly funkcjeEazWylaczajace?: readonly string[];
+  /** Liczba uzwojeń wtórnych przekładnika napięciowego (`BayPrimaryDevice.uzwojenia`) —
+   *  wybiera rysunek z właściwą liczbą okręgów. Brak = tabliczka niepodana. */
+  readonly liczbaUzwojenWtornych?: number;
 }
 
 /** Port aparatu pola z modelu: nazwa portu (`we`/`wy`/`przylacze`/`obwod`) i węzeł pola
@@ -142,8 +156,8 @@ export interface CtRatingAnnotationView {
  * obecne (adapter `resolveBayVtMountings` pomija VT bez tej danej, §20.2 „zero
  * zgadywania"). Dopasowanie na aparat VT NARYSOWANEGO stosu przez
  * `measurementRef === BayPrimaryDevice.linked_ref` (TA SAMA reguła co
- * `resolveMeterAnchor`/`resolveCtRatingAnnotations`). Oś odrębna od
- * `vtArrangements` (open_delta/star = oś 3U0, `protectionTopologyValidation`).
+ * `resolveMeterAnchor`/`resolveCtRatingAnnotations`). Oś odrębna od źródła napięcia
+ * zerowego 3U₀ (`MiniBlockBayDescriptor.zrodloU0`, `protectionTopologyValidation`).
  */
 export interface VtMountingAnnotationView {
   readonly measurementRef: string;
@@ -228,12 +242,11 @@ export interface MiniBlockBayDescriptor {
    *  gdy pole nie niesie żadnego CT z ratingiem (brak danych = brak
    *  oznaczenia, §18.3 dosłownie — zero „z domysłu"). */
   readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
-  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D4, V12K-036): `Measurement.
-   *  vt_arrangement` WSZYSTKICH VT tego pola (wartości niepuste, deduplikowane).
-   *  `undefined`/puste = dana układu VT niedostarczona dla ŻADNEGO VT pola —
-   *  `protectionFunctionTopologyGaps` (`compose/protectionTopologyValidation.ts`)
-   *  degraduje 67N do dotychczasowego uproszczenia (sama obecność VT). */
-  readonly vtArrangements?: readonly ('open_delta' | 'star')[];
+  /** Źródło napięcia zerowego 3U₀ funkcji 67N pola (`Bay.zrodlo_u0_ref` rozstrzygnięty regułą
+   *  `v2/model/zrodloNapieciaZerowego.ts`, lustro backendu) — `undefined`, gdy pole nie ma
+   *  powiązania ani funkcji wymagającej źródła. Czyta je walidacja topologiczna 67N
+   *  (`compose/protectionTopologyValidation.ts`). */
+  readonly zrodloU0?: ZrodloU0PolaView;
   /** CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2, CTVT-MODEL/V12K-176): adnotacje montażu
    *  VT tego pola — JEDNA pozycja per aparat VT z `Measurement.vt_mounting`
    *  obecnym. `undefined` gdy pole nie niesie żadnego VT z montażem (brak danych

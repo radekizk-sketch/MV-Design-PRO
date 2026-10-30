@@ -301,7 +301,6 @@
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
@@ -453,7 +452,6 @@
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
@@ -605,7 +603,6 @@
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
@@ -767,7 +764,7 @@
       "protection_codes": [
         "51",
         "50",
-        "67N",
+        "51N",
         "ZS",
         "50BF",
         "79",
@@ -912,7 +909,7 @@
       "protection_codes": [
         "51",
         "50",
-        "67N",
+        "51N",
         "ZS",
         "50BF",
         "79",
@@ -1054,7 +1051,7 @@
       "protection_codes": [
         "51",
         "50",
-        "67N",
+        "51N",
         "ZS",
         "50BF",
         "79",
@@ -1334,7 +1331,7 @@
         "51",
         "50",
         "67",
-        "67N",
+        "51N",
         "27",
         "59",
         "81U",
@@ -1589,7 +1586,7 @@
         "51",
         "50",
         "67",
-        "67N",
+        "51N",
         "27",
         "59",
         "81U",
@@ -1858,7 +1855,7 @@
         "51",
         "50",
         "67",
-        "67N",
+        "51N",
         "27",
         "59",
         "81U",
@@ -2165,7 +2162,7 @@
         "51",
         "50",
         "67",
-        "67N",
+        "51N",
         "27",
         "59",
         "81U",
@@ -2439,7 +2436,7 @@
         "51",
         "50",
         "67",
-        "67N",
+        "51N",
         "27",
         "59",
         "81U",
@@ -2727,7 +2724,7 @@
         "51",
         "50",
         "67",
-        "67N",
+        "51N",
         "27",
         "59",
         "81U",
@@ -2748,6 +2745,131 @@
       "tylko_gpz": true,
       "wykonanie_lacznikow": "WYSUWNY",
       "wykonanie_pola": "Z11"
+    },
+    {
+      "bay_role": "MEASUREMENT",
+      "config_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17",
+      "field_role": "POMIAROWE",
+      "group": "pomiarowe",
+      "main_path": true,
+      "name": "Pole pomiarowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17::dev::0",
+          "is_controllable": true,
+          "kind": "THREE_POSITION_SWITCH",
+          "placement": "UPSTREAM",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "szyna"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:three_position_switch"
+        },
+        {
+          "designation": "PF1",
+          "device_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17::dev::1",
+          "is_controllable": false,
+          "kind": "VOLTAGE_INDICATOR",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "odplyw"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:voltage_indicator"
+        },
+        {
+          "designation": "GK1",
+          "device_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "we",
+              "wezel": "odplyw"
+            },
+            {
+              "port_id": "wy",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_gpz_pomiar_napiecia_enea_z17::dev::3",
+          "is_controllable": false,
+          "kind": "VT",
+          "odgalezienie": "pn",
+          "placement": "OFF_PATH",
+          "ports": [
+            {
+              "port_id": "przylacze",
+              "wezel": "pn1"
+            }
+          ],
+          "render_variant": "qet_en60617",
+          "symbol_ref": "symbol:vt",
+          "uzwojenia": [
+            {
+              "klasa": "0,2",
+              "moc_va": 10.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR"
+              ]
+            },
+            {
+              "klasa": "0,5/3P",
+              "moc_va": 15.0,
+              "otwarty_trojkat": false,
+              "przekladnia": "SN/√3 / 0,1/√3",
+              "przeznaczenie": [
+                "POMIAR",
+                "ZABEZPIECZENIA"
+              ]
+            },
+            {
+              "klasa": "3P",
+              "moc_va": 15.0,
+              "otwarty_trojkat": true,
+              "przekladnia": "SN/√3 / 0,1/3",
+              "przeznaczenie": [
+                "ZABEZPIECZENIA"
+              ]
+            }
+          ]
+        }
+      ],
+      "protection_codes": [
+        "59",
+        "27",
+        "59N",
+        "81U",
+        "SCO",
+        "SPZ/SCO",
+        "81R"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_gpz_pomiar_napiecia_enea_z17",
+      "tylko_gpz": true,
+      "wykonanie_lacznikow": "TROJPOLOZENIOWY",
+      "wykonanie_pola": null
     },
     {
       "bay_role": "IN",
@@ -3004,8 +3126,7 @@
       "protection_codes": [
         "51",
         "50",
-        "51N",
-        "67N"
+        "51N"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -3407,7 +3528,6 @@
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",
@@ -3575,7 +3695,6 @@
       ],
       "protection_codes": [
         "67",
-        "67N",
         "27",
         "59",
         "81U",

@@ -40,6 +40,7 @@ import type { CatalogType, MVApparatusType } from '../catalog/types';
 import { czyLacznik } from '../shared/stanLacznika';
 import {
   BEZ_ZMIANY_KLASY,
+  BEZ_ZMIANY_ZRODLA_U0,
   czyWierszKompletny,
   KLASY_POLA_LINIOWEGO,
   NAZWA_KLASY_POLA_PL,
@@ -62,7 +63,9 @@ import {
   type TrybWyposazenia,
   type WierszAparatu,
   type ZmianaKlasyPola,
+  type ZmianaZrodlaU0,
 } from './wyposazeniePola';
+import type { ZrodloU0Pola } from './useFieldReadModel';
 import type { DomainOpResponseV1, KlasaPolaLiniowego } from '../../types/enm';
 
 interface PozycjeKatalogu {
@@ -92,6 +95,10 @@ export interface EdytorWyposazeniaPolaProps {
     payload: Record<string, unknown>,
   ) => Promise<DomainOpResponseV1 | null>;
   readonly bladStore?: () => string | null;
+  /** Źródło napięcia zerowego 3U₀ pola z modelu odczytu (`field-view` → `zrodlo_u0`): kandydaci
+   *  i rozstrzygnięcie powiązania liczone w backendzie. `null` — szablon pola nie niesie funkcji
+   *  warunkowej 67N (kontrolka powiązania niewidoczna). */
+  readonly zrodloU0?: ZrodloU0Pola | null;
 }
 
 /**
@@ -172,6 +179,7 @@ export function EdytorWyposazeniaPola({
   activeCaseId,
   executeDomainOperation,
   bladStore,
+  zrodloU0 = null,
 }: EdytorWyposazeniaPolaProps): JSX.Element {
   const [tryb, setTryb] = useState<TrybWyposazenia>('katalog');
   const [wiersze, setWiersze] = useState<WierszAparatu[]>(() => wierszeStartowe(bay));
@@ -180,6 +188,7 @@ export function EdytorWyposazeniaPola({
   const [szablony, setSzablony] = useState<readonly CompleteMvBayTemplateSummary[]>([]);
   const [kanoniczne, setKanoniczne] = useState<readonly SzablonPolaKanoniczny[]>([]);
   const [klasa, setKlasa] = useState<ZmianaKlasyPola>(BEZ_ZMIANY_KLASY);
+  const [zmianaZrodlaU0, setZmianaZrodlaU0] = useState<ZmianaZrodlaU0>(BEZ_ZMIANY_ZRODLA_U0);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
   const [wynik, setWynik] = useState<WyposazeniePolaOdpowiedz | null>(null);
@@ -188,6 +197,8 @@ export function EdytorWyposazeniaPola({
 
   // Klasa pola po zapisie (zmiana z formularza albo klasa rekordu) — wejście oceny szablonów.
   const klasaPo = klasa.zmien ? klasa.wartosc : (bay.klasa_pola ?? null);
+  // Powiązanie źródła 3U₀ po zapisie (zmiana z formularza albo powiązanie rekordu).
+  const zrodloU0Po = zmianaZrodlaU0.zmien ? zmianaZrodlaU0.wartosc : (bay.zrodlo_u0_ref ?? null);
 
   // Szablony kanoniczne z oceną dopuszczalności W TYM POLU (rola, pole GPZ, rodzina rozdzielnicy,
   // klasa) — filtr i powody odmowy liczy backend tą samą regułą co strażnik operacji.
@@ -282,7 +293,7 @@ export function EdytorWyposazeniaPola({
       const odpowiedz = await executeDomainOperation(
         activeCaseId,
         'set_bay_equipment',
-        zbudujPayloadWyposazenia(bay.ref_id, tryb, wiersze, szablonRef, klasa),
+        zbudujPayloadWyposazenia(bay.ref_id, tryb, wiersze, szablonRef, klasa, zmianaZrodlaU0),
       );
       if (!odpowiedz) {
         setBlad(bladStore?.() ?? 'Nie udało się zapisać wyposażenia pola.');
@@ -297,7 +308,7 @@ export function EdytorWyposazeniaPola({
     } finally {
       setZapis(false);
     }
-  }, [activeCaseId, bay.ref_id, bladStore, executeDomainOperation, klasa, szablonRef, tryb, wiersze]);
+  }, [activeCaseId, bay.ref_id, bladStore, executeDomainOperation, klasa, szablonRef, tryb, wiersze, zmianaZrodlaU0]);
 
   const pole = 'rounded border border-scada-border bg-white px-1.5 py-1 text-xs';
 
@@ -332,6 +343,7 @@ export function EdytorWyposazeniaPola({
             setTryb('katalog');
             setSzablonRef('');
             setKlasa(BEZ_ZMIANY_KLASY);
+            setZmianaZrodlaU0(BEZ_ZMIANY_ZRODLA_U0);
             setBlad(null);
             setOtwarty(true);
           }}
@@ -571,6 +583,11 @@ export function EdytorWyposazeniaPola({
                   >
                     {p.opis_pl} — {p.wymagalnosc_pl}
                     {p.na_rysunku ? '' : ' (poza rysunkiem wzorca — wymóg klasy pola)'}
+                    {p.warunek_pl ? (
+                      <span data-testid={`wyposazenie-pola-profil-warunek-${p.kod}`}>
+                        {` — warunek przypisania: ${p.warunek_pl}`}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -608,6 +625,45 @@ export function EdytorWyposazeniaPola({
                 ))}
               </select>
             </label>
+          ) : null}
+
+          {zrodloU0 ? (
+            // Decyzja właściciela 2026-10-29: 67N wyłącznie przy potwierdzonym źródle 3U₀ —
+            // projektant wskazuje przekładnik z otwartym trójkątem pola pomiaru napięcia szyn
+            // tej sekcji (ENEA Z.17); kandydatów i ocenę powiązania liczy backend. Kandydat NIE
+            // jest wybierany za projektanta — zapis bez wskazania nie przypisuje 67N.
+            <div data-testid="wyposazenie-pola-zrodlo-u0" className="mt-2">
+              <label className="flex flex-wrap items-center gap-2">
+                <span>Źródło napięcia zerowego 3U₀ (zabezpieczenie 67N)</span>
+                <select
+                  data-testid="wyposazenie-pola-zrodlo-u0-wybor"
+                  className={pole}
+                  value={zrodloU0Po ?? ''}
+                  onChange={(e) =>
+                    setZmianaZrodlaU0({ zmien: true, wartosc: e.target.value === '' ? null : e.target.value })
+                  }
+                >
+                  <option value="">— bez powiązania (funkcja 67N nieprzypisana) —</option>
+                  {zrodloU0.kandydaci.map((k) => (
+                    <option key={k.vt_ref} value={k.vt_ref}>
+                      {k.opis_pl}
+                    </option>
+                  ))}
+                  {zrodloU0Po && !zrodloU0.kandydaci.some((k) => k.vt_ref === zrodloU0Po) ? (
+                    <option value={zrodloU0Po}>powiązanie nieaktualne — przekładnik spoza kandydatów</option>
+                  ) : null}
+                </select>
+              </label>
+              <p
+                data-testid="wyposazenie-pola-zrodlo-u0-stan"
+                data-potwierdzone={String(zrodloU0.potwierdzone)}
+                className="mt-1 text-[11px] text-scada-muted"
+              >
+                {zrodloU0.potwierdzone
+                  ? `${zrodloU0.przyczyna_pl[0]?.toUpperCase() ?? ''}${zrodloU0.przyczyna_pl.slice(1)}.`
+                  : `Brakuje: ${zrodloU0.czego_brakuje.join('; ')}.`}
+              </p>
+            </div>
           ) : null}
 
           {tryb === 'wyczysc' ? (

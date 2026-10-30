@@ -262,13 +262,20 @@
   margin: 0;
 }
 /* Wiersz etykieta–wartość; wartość dłuższa niż reszta wiersza (np. podstawa rodzaju stacji)
-   przechodzi pod etykietę na całą szerokość zamiast zawijać się w wąskiej kolumnie. */
+   przechodzi pod etykietę na całą szerokość zamiast zawijać się w wąskiej kolumnie. Słowo
+   dłuższe niż wiersz (referencja „pozycja katalogu <ref>", nazwa bez spacji) zawija się
+   w granicach wiersza (`overflow-wrap: anywhere`, wartość może się zwęzić — `min-width: 0`),
+   nigdy nie wychodzi na sąsiednią treść. Pomiar przed naprawą (2026-10-29, inspektor 360 px):
+   wartość „Konfiguracja pola" 380 px tekstu w wierszu 299 px. Tabele karty NIE dziedziczą tej
+   reguły — mają przewijanie w poziomie (`.mvd-kt-tabela-przewijanie`). Test: e2e
+   `ux04-pole-liniowe-zrzuty-screenshot.spec.ts::przelaneTeksty`. */
 .mvd-kt-wiersz {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 0 8px;
+  overflow-wrap: anywhere;
 }
 .mvd-kt-etykieta {
   flex: 0 0 auto;
@@ -278,6 +285,7 @@
 .mvd-kt-wartosc {
   display: flex;
   flex: 1 1 auto;
+  min-width: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: baseline;

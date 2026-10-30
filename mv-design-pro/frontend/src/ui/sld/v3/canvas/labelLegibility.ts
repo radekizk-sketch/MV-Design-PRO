@@ -116,7 +116,7 @@ import {
   shortenPreservingIdentity,
 } from '../core/text';
 import { labelPriority, labelResolutionOrder } from '../layout/declutter';
-import { lodClassOf, type OwnedLabel, type SimpleAnchorPlacement } from '../layout/labels';
+import { lodClassOf, type OwnedLabel, type SimpleAnchorPlacement, type WyrownanieTekstu } from '../layout/labels';
 import { rectWithinSheet, type SheetOutline } from '../sheet/outline';
 
 /** Etykieta zaplanowana do narysowania — geometria EFEKTYWNA (po ewentualnym
@@ -249,8 +249,10 @@ function rozciagloscWzdluzTekstu(rect: V3Rect, rotated: boolean): number {
  * `placement === undefined` ⇒ tusz WYŚRODKOWANY w slocie (tak rysuje
  * `SceneLabelNode`: `x`/`y` = środek prostokąta, `textAnchor=middle`,
  * `dominantBaseline=middle`) — to postać dla pisma NATURALNEGO, które nie
- * rośnie, więc nie ma od czego rosnąć. Pismo POWIĘKSZONE kotwiczy się stroną
- * (patrz `anchoredRect`).
+ * rośnie, więc nie ma od czego rosnąć. Wyjątek: wiersz bloku z
+ * `OwnedLabel.wyrownanieTekstu` — tusz przy krawędzi slotu, w której render
+ * kotwiczy tekst (`layout/labels.ts::zaczepTekstuEtykiety`). Pismo POWIĘKSZONE
+ * kotwiczy się stroną (patrz `anchoredRect`).
  */
 function prostokatTuszu(
   slot: V3Rect,
@@ -258,10 +260,16 @@ function prostokatTuszu(
   fontSize: number,
   rotated: boolean,
   placement: OwnedLabel['placement'],
+  wyrownanie?: WyrownanieTekstu,
 ): V3Rect {
   const wzdluz = measureTextWidth(text, fontSize);
   const wpoprzek = wysokoscWiersza(fontSize);
-  return anchoredRect(slot, rotated ? wpoprzek : wzdluz, rotated ? wzdluz : wpoprzek, placement);
+  const rect = anchoredRect(slot, rotated ? wpoprzek : wzdluz, rotated ? wzdluz : wpoprzek, placement);
+  // Wiersz bloku w piśmie naturalnym (`placement === undefined`): tusz skróconego tekstu
+  // przy tej krawędzi slotu, w której render kotwiczy tekst (`zaczepTekstuEtykiety`) —
+  // wiersze kolumny zachowują wspólną krawędź także po skróceniu.
+  if (placement !== undefined || rotated || wyrownanie === undefined) return rect;
+  return { ...rect, x: wyrownanie === 'poczatek' ? slot.x : slot.x + slot.width - rect.width };
 }
 
 /**
@@ -501,7 +509,7 @@ function najlepszeDopasowanie(
     // jednak TUSZ (wyśrodkowany w slocie, tak jak go rysuje `SceneLabelNode`),
     // a nie sam slot: tekst został już skrócony do rozciągłości slotu
     // (`tekstBazowy`), więc tusz ⊆ slot ⊆ rezerwacja ⊆ arkusz.
-    const tusz = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, undefined);
+    const tusz = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, undefined, label.wyrownanieTekstu);
     return tekstBazowy.length > 0 && wolne(tusz)
       ? { text: tekstBazowy, rect: tusz, fontSize, enlarged: false }
       : null;
@@ -734,7 +742,7 @@ export function planSceneLabels(
           index,
           text,
           fontSize,
-          rect: prostokatTuszu(label.rect, text, fontSize, rotated, undefined),
+          rect: prostokatTuszu(label.rect, text, fontSize, rotated, undefined, label.wyrownanieTekstu),
           enlarged: false,
         };
       }),
@@ -862,7 +870,7 @@ export function planSceneLabels(
         // granica pisma naturalnego (i tędy uciekał opis zbiorczy GPZ).
         text: k.tekstBazowy,
         fontSize: k.fontSize,
-        rect: prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, k.label.rotated === true, undefined),
+        rect: prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, k.label.rotated === true, undefined, k.label.wyrownanieTekstu),
         enlarged: false,
       })),
       hiddenDetail,

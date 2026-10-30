@@ -120,9 +120,10 @@ _RODZAJ_LACZNIKA_Z_RODZAJU_APARATU_SN: dict[str, str] = {
 # ``tests/ci/test_parytet_rodzajow_aparatu_pola.py``).
 # Karta UX-04/POLE-LINIOWE-WZORZEC (ENEA Operator, Stacje 110 kV, Zeszyt 1, Z.10 s.89 i §13).
 
-#: Łącznik trójpołożeniowy (rozdzielnica w izolacji SF6, ENEA Zeszyt 1 §13, druk s.24 i
-#: Z.10 s.89): jeden nóż, trzy położenia — ZAMKNIĘTY (nóż na zestyku szyny), OTWARTY
-#: (położenie środkowe, przerwa izolacyjna) i UZIEMIONY (nóż na zestyku uziemiającym).
+#: Łącznik trójpołożeniowy (rozdzielnica w izolacji SF6 — ENEA Zeszyt 1 §13, druk s.23; łączniki
+#: trójpołożeniowe — druk s.25; Z.10 s.89): jeden nóż, trzy położenia — ZAMKNIĘTY (nóż na
+#: zestyku szyny), OTWARTY (położenie środkowe, przerwa izolacyjna) i UZIEMIONY (nóż na zestyku
+#: uziemiającym).
 RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO = "THREE_POSITION_SWITCH"
 #: Przekładnik Ferrantiego (przekładnik prądowy pierścieniowy na kablu, Z.10 s.89: „1/100",
 #: zasila zabezpieczenie ziemnozwarciowe) — obejmuje kabel, NIE przerywa toru.
@@ -196,7 +197,7 @@ RODZAJE_APARATOW_POLA_BKR: frozenset[str] = frozenset(
 LICZBA_PRZEKLADNIKOW_ROZLADOWCZYCH_BATERII = 2
 
 #: Port, który łącznik trójpołożeniowy uziemia w położeniu UZIEMIONY: strona odpływowa
-#: (tor w kierunku wyłącznika). Kabel uziemia się przez zamknięty wyłącznik (§13, druk s.24) —
+#: (tor w kierunku wyłącznika). Kabel uziemia się przez zamknięty wyłącznik (§13, druk s.25) —
 #: dlatego reguła blokad pola NIE traktuje zamkniętego wyłącznika przy uziemionym łączniku
 #: trójpołożeniowym jako naruszenia (``enm.interlock_rules``).
 PORT_UZIEMIANY_LACZNIKA_TROJPOLOZENIOWEGO = PORT_WYJSCIA
@@ -330,10 +331,15 @@ def aparaty_poza_torem_glownym(
     odgałęzienia przekładnika napięciowego nie jest łącznikiem toru głównego — jego otwarcie
     nie przerywa toru pola) i lustro obchodu toru frontu (``torPolaZPortow``).
 
+    Odgałęzienie może wychodzić także z WĘZŁA KOŃCA toru (pole pomiaru napięcia ENEA Z.17:
+    łącznik trójpołożeniowy kończy tor, a złącze i przekładnik napięciowy leżą w odgałęzieniu
+    za nim) — tor główny kończy się na węźle końca, więc aparaty za nim leżą poza torem także
+    bez rozwidlenia węzła.
+
     Brak wniosku = pusty zbiór (każdy aparat traktowany wg rodzaju, jak przed kontraktem
-    portów): pole bez portów, tor bez rozgałęzienia, oraz rozgałęzienie, w którym do końca toru
-    nie prowadzi żadna albo prowadzi więcej niż jedna droga (zero domysłu, który tor jest
-    główny — obchód frontu zgłasza to jako brak przyłączenia).
+    portów): pole bez portów, tor bez odgałęzienia, oraz tor, w którym do końca toru nie
+    prowadzi żadna albo prowadzi więcej niż jedna droga (zero domysłu, który tor jest główny —
+    obchód frontu zgłasza to jako brak przyłączenia).
     """
     dwuportowe: list[tuple[str, str, str]] = []
     jednoportowe: list[tuple[str, str]] = []
@@ -350,8 +356,6 @@ def aparaty_poza_torem_glownym(
     wyjscia: dict[str, list[tuple[str, str]]] = {}
     for ref, we, wy in dwuportowe:
         wyjscia.setdefault(we, []).append((ref, wy))
-    if all(len(lista) <= 1 for lista in wyjscia.values()):
-        return frozenset()
     drogi: list[list[str]] = []
 
     def szukaj(wezel: str, droga: list[str], odwiedzone: frozenset[str]) -> None:

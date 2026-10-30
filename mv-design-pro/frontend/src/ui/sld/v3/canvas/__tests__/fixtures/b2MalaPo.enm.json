@@ -44,7 +44,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -92,7 +93,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/15ec590199593aedd97bb7794dd02000/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -126,8 +128,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/15ec590199593aedd97bb7794dd02000/sn_field/001",
@@ -141,7 +142,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/15ec590199593aedd97bb7794dd02000/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -175,8 +177,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/15ec590199593aedd97bb7794dd02000/sn_field/002",
@@ -190,7 +191,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/15ec590199593aedd97bb7794dd02000/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -247,7 +249,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/15ec590199593aedd97bb7794dd02000/sn_field_terminal/003",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -290,7 +293,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/b9b2e5f3ad557332f148d4f8a49ec1e4/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -331,7 +335,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/a512f9d01d5d60c4ef23b32d841135b5/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -379,7 +384,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/5a5162352a7a96891da4bfaa813076c8/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -413,8 +419,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/5a5162352a7a96891da4bfaa813076c8/sn_field/001",
@@ -428,7 +433,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/5a5162352a7a96891da4bfaa813076c8/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -462,8 +468,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/5a5162352a7a96891da4bfaa813076c8/sn_field/002",
@@ -477,7 +482,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/5a5162352a7a96891da4bfaa813076c8/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -534,7 +540,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/5a5162352a7a96891da4bfaa813076c8/sn_field_terminal/003",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -577,7 +584,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/4ffa3227b5c49c84290cb5bb08c1379e/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -618,7 +626,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/5d1593bba60e1912ef8cbd0b3a512d4a/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -666,7 +675,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -700,8 +710,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/04651959d6bce6c332642e4f5048d0b0/sn_field/001",
@@ -715,7 +724,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -749,8 +759,7 @@
         "protection_codes": [
           "51",
           "50",
-          "51N",
-          "67N"
+          "51N"
         ],
         "protection_ref": null,
         "ref_id": "stn/04651959d6bce6c332642e4f5048d0b0/sn_field/002",
@@ -764,7 +773,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -821,7 +831,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_terminal/003",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -864,7 +875,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/dcc5b3b535d5e3765643646618ede327/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -905,7 +917,8 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/3305db28de4854c2d30d8b94e159b8ff/feeder_bus",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zrodlo_u0_ref": null
       }
     ],
     "branch_points": [],
@@ -2653,7 +2666,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "7261fde5003b62b4c0553ffd234074d852bb6526e14bafa58cf368f717119dbd",
+      "hash_sha256": "8a8f48ba99c1f27e05e6f7440ac728e9efffc9ed52b838acd37e4de54901d0e4",
       "name": "Sieć Mala — po",
       "revision": 12,
       "updated_at": "2026-09-25T00:00:00Z"

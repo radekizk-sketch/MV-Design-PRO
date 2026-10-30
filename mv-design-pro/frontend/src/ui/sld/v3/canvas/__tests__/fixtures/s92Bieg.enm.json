@@ -43,7 +43,8 @@
         "gpz_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -91,7 +92,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/000",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -125,8 +127,7 @@
       "protection_codes": [
         "51",
         "50",
-        "51N",
-        "67N"
+        "51N"
       ],
       "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/001",
@@ -140,7 +141,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/001",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -193,7 +195,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/002",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -227,8 +230,7 @@
       "protection_codes": [
         "51",
         "50",
-        "51N",
-        "67N"
+        "51N"
       ],
       "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/003",
@@ -242,7 +244,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/003",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -276,8 +279,7 @@
       "protection_codes": [
         "51",
         "50",
-        "51N",
-        "67N"
+        "51N"
       ],
       "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/004",
@@ -291,7 +293,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/e175ec51477c27677da547384cfababc/sn_field_terminal/004",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -334,7 +337,8 @@
         "nn_main_breaker"
       ],
       "terminal_bus_ref": "nn/9fc9f6014a8a7ba52fed1dd39c0047d0/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -381,7 +385,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/a03a840e51b5edc9d95f0674af4888eb/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -428,7 +433,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/c42dce2f7b789d928f488b7a04ac9e93/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -475,7 +481,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/b77a43fc591a4236c555a4eb9bb30a6a/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -522,7 +529,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/6d47ebc785a3a9444cb0d9a08e095579/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -569,7 +577,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/7aa7cd3255ad853dbd72730a9fffb8c4/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zrodlo_u0_ref": null
     }
   ],
   "branch_points": [],
@@ -1625,7 +1634,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "52fa75c7cf9750267fce926fa696aea11d373ea2bbfa000ff3179e130360ae9a",
+    "hash_sha256": "33665ab849cf7f5fc32498e6bae0ba4d32d5f38d85aae6bef2c327b246749153",
     "name": "Bieg na schemacie",
     "revision": 6,
     "updated_at": "2026-09-25T00:00:00Z"

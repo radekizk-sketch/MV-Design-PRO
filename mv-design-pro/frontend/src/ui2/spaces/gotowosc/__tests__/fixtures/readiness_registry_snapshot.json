@@ -43,6 +43,14 @@
     },
     {
       "area": "STATIONS",
+      "code": "bay.earth_fault_u0_source_unconfirmed",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
       "code": "bay.fluorinated_gas_not_existing",
       "fix_navigation": {
         "panel": "inspector",
@@ -1581,7 +1589,7 @@
       }
     }
   ],
-  "count": 186,
+  "count": 187,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1740,6 +1748,7 @@
     "W056": "bay.reclosing_in_dedicated_generation_bay",
     "W057": "bay.settlement_core_missing",
     "W063": "bay.apparatus_designation_duplicate",
+    "W064": "bay.earth_fault_u0_source_unconfirmed",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

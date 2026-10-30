@@ -856,9 +856,12 @@ def list_bay_protection_codes() -> dict[str, list[str]]:
     (`SZABLON_KANONICZNY_ROLI` → `BayTemplate.funkcje_eaz`), a dla roli bez szablonu
     kanonicznego (pole baterii kondensatorów) `FUNKCJE_EAZ_ROLI_BEZ_SZABLONU` — to samo,
     z którego korzystają operacje domenowe budujące pola bez wskazanego szablonu. Klucze to
-    KAŻDA rola modelu (`enm.rola_pola_sn.ROLE_POLA_MODELU`). Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ
-    kopiowania tablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę
-    pustą — uczciwy brak funkcji wyzwalających, nie luka danych.
+    KAŻDA rola modelu (`enm.rola_pola_sn.ROLE_POLA_MODELU`). Endpoint istnieje po to, by
+    kreator stacji pokazywał kody BEZ kopiowania tablicy do frontendu (zero równoległej
+    definicji). Pole pomiarowe ma listę pustą — uczciwy brak funkcji wyzwalających, nie luka
+    danych. Funkcja warunkowa (`WARUNKI_FUNKCJI_EAZ`: 67N — przekładnik Ferrantiego i
+    potwierdzone źródło 3U₀) nie wchodzi do zestawu roli: rola nie rozstrzyga warunku, funkcję
+    przypisuje operacja wyposażenia pola po jego potwierdzeniu w modelu.
     """
     from enm.rola_pola_sn import ROLE_POLA_MODELU
     from network_model.catalog.bay_templates import funkcje_eaz_roli

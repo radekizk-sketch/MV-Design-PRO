@@ -649,10 +649,13 @@ jako WARSTWA ADNOTACJI schematu.
   w okręgu dwie najważniejsze wg kolejności listy `protection_codes`, pełna lista w etykiecie
   slotu pola (model slotów §4). Kolejność listy z danych — bez sortowania własnego.
 - „52" przy wyłączniku: etykieta 8 px w slocie adnotacji symbolu (bez kolizji — wyrocznie §11).
+  Wyjątek — układ powiązań obwodów wtórnych pola GPZ (§17.6, UX-04): linia wyzwalania kończy się
+  na cewce wyłączającej wyłącznika, a numeru „52" się nie rysuje.
 
 ### 17.4 LOD (spójnie z §15.2)
 
-- L2: pełne oznaczenie (okrąg + kody + linia wyzwalania + „52" + „M").
+- L2: pełne oznaczenie (okrąg + kody + linia wyzwalania + „52" + „M"; w układzie powiązań
+  obwodów wtórnych §17.6 — blok przekaźnika w ramce, linia wyzwalania do cewki, bez „52").
 - L1: okrąg przekaźnika bez kodów i bez „52"/„M"; linia wyzwalania ukryta.
 - L0: warstwa adnotacji nieobecna (plan sieci).
 
@@ -662,7 +665,13 @@ jako WARSTWA ADNOTACJI schematu.
   z niepustym `protection_codes` (zero okręgów bez danych — negatyw obowiązkowy);
   (b) każda linia wyzwalania łączy okrąg z portem symbolu wyłącznika wskazanego przez
   `ProtectionAssignment.breaker_ref`; (c) kody w okręgu = prefiks listy `protection_codes`
-  (bez fabrykacji/sortowania); (d) determinizm; (e) L0 bez warstwy adnotacji.
+  (bez fabrykacji/sortowania); (d) determinizm; (e) L0 bez warstwy adnotacji; (f) w układzie
+  powiązań obwodów wtórnych (§17.6): każdy kod `protection_codes` w bloku przekaźnika dokładnie
+  raz (okrąg ∪ wiersze), ramka bloku obejmuje okrąg, wiersze i odniesienie źródła 3U₀ i nie
+  zachodzi na obce etykiety ani symbole, linia wyzwalania kończy się w porcie `wylacz` symbolu
+  wyłącznika, brak etykiety „52", przekładnik Ferrantiego zasilający funkcję pola ma linię
+  pomiarową z portu wtórnego (`scene/__tests__/poleLinioweGpz.test.tsx`, opis „blok
+  przekaźnika", z iniekcją każdego warunku).
 - Istniejące wyrocznie §11 (kolizje, siatka, sloty etykiet) obejmują nowe elementy bez wyjątków.
 
 ### 17.6 Zakres globalny i koordynacja międzywątkowa
@@ -688,6 +697,36 @@ jako WARSTWA ADNOTACJI schematu.
   GPZ. Na fixturze referencyjnej `sldSubstrate52s` (0 `Bay`/`primary_devices`/`protection_assignments`/
   `measurements` dla GPZ) rejestr pozostaje pusty z konstrukcji — dowód pozytywny/negatywny na
   danych syntetycznych (`compose/__tests__/gpz.test.ts`).
+- **UX-04/POLE-LINIOWE-WZORZEC (2026-10-29, uwagi właściciela do zrzutów pola Z.10/Z.11.1
+  pkt 4 i 5 — „oderwane etykiety").** Gdy aparaty pola GPZ niosą w modelu powiązania z funkcjami
+  pola (`funkcje_eaz_zasilane` przekładników, `funkcje_eaz_wylaczajace` wyłącznika — predykat
+  `compose/protectionMarking.ts::czyPrzekaznikZPowiazaniamiObwodow`), przekaźnik rysuje się
+  jako JEDEN BLOK: okrąg z dwoma pierwszymi kodami (§17.3), pozostałe kody w wierszach po prawej
+  od okręgu (`wierszeKodowPozaOkregiem`, po `KODY_EAZ_W_WIERSZU` w wierszu) — każdy kod dokładnie
+  raz, bez powtórzenia kodów okręgu w liście — oraz wiersz odniesienia źródła napięcia zerowego
+  3U₀ (§11.2 karty UX-04). Ramka bloku (`ramkaBlokuPrzekaznika`, margines
+  `RAMKA_BLOKU_PRZEKAZNIKA_MARGINES` = GRID/2, kreska `V3_STROKE_RAMKI_BLOKU` cieńsza od okręgu)
+  obejmuje okrąg i wszystkie wiersze — rezerwacja szerokości kolumny i tło pola liczą się z tej
+  samej ramki. Linia wyzwalania kończy się na zacisku cewki wyłączającej wyłącznika (port wtórny
+  `wylacz` symbolu QET, EN 60617 07-15-01), więc numer „52" (§17.1) się nie rysuje: powiązanie
+  przekaźnik → wyłącznik niesie linia do cewki, a numer bez związku z linią był oderwaną
+  etykietą. Pole bez powiązań z rekordów (układ stacji, R-2, i GPZ bez szablonu pola liniowego)
+  zachowuje §17.1–§17.4 bez zmian.
+- **Zaczep tekstu etykiet warstwy adnotacji zabezpieczeń (UX-04/POLE-LINIOWE-WZORZEC,
+  2026-10-29).** Szerokość prostokąta etykiety jest szacunkiem z długości tekstu
+  (`core/text.ts::measureTextWidth`, 0,62 em na znak), a tusz ma szerokość z metryk czcionki —
+  tekst wyśrodkowany w prostokącie rozjeżdżał wiersze kolumny (zrzut pola Z.10: wiersze bloku
+  przekaźnika od x = 535 px i x = 499 px). Każda etykieta `ownerKind: 'protection'` niesie
+  `wyrownanieTekstu` (`layout/labels.ts::WyrownanieTekstu`): z prawej kotwicy (wiersze bloku,
+  pasmo adnotacji CT/VT za torem, „52") — `'poczatek'`, tekst od lewej krawędzi prostokąta;
+  wiersze listy R-2 prawo-dosunięte do rezerwacji kolumny (pod okręgiem) — `'koniec'`. Render
+  kanwy i podglądu kompozycji liczy punkt zaczepu jedną funkcją (`zaczepTekstuEtykiety`),
+  eksport DXF/PDF czyta `text-anchor` z markupu; geometria sceny (prostokąty) bez zmian.
+  Wiersze bloku mają wspólną lewą krawędź prostokątów (jedna kotwica), a tusz każdego wiersza
+  leży w ramce bloku — sprawdza to e2e zrzutów metrykami czcionki przeglądarki
+  (`ux04-pole-liniowe-zrzuty-screenshot.spec.ts::zmierzBlokPrzekaznika`; pomiar 2026-10-29:
+  72 bloki w 18 kadrach, rozrzut lewych krawędzi tuszu wierszy 0 px przy progu 1 px, najmniejszy
+  zapas tuszu do prawej krawędzi ramki 18,4 px).
 - Wątek przebudowy interfejsu (`claude/power-network-design-ui-ir91mv`): słownik nowej IA
   przyjmuje terminy „przekaźnik zabezpieczeniowy", numery urządzeń C37.2 („52", „50/51"…);
   inspektor nowej powłoki prezentuje `ProtectionAssignment` + `settings`; stylowanie warstwy
