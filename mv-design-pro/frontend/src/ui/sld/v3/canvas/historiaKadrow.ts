@@ -32,6 +32,10 @@ export const LIMIT_HISTORII_KADROW = 20;
 export interface WpisHistoriiKadru {
   readonly transform: ViewportTransform;
   readonly lod: SceneLod;
+  /** Viewport kanwy, w którym `transform` obowiązywał — powrót przenosi kadr do
+   *  bieżącego rozmiaru kanwy (akcja kamery 'przywroc'), zamiast kłaść stary
+   *  transform na kanwę innej szerokości (dryf o pół inspektora, FIX-E2E-PELNE). */
+  readonly viewportSize: { readonly width: number; readonly height: number };
   /** Ścieżka kontekstu, która opisywała ten kadr (`[]` = brak kontekstu). */
   readonly sciezka: readonly PoziomSciezki[];
   /** Zaznaczenie w chwili zapisu wpisu (refy modelu + kontekst kliknięcia). */
@@ -64,6 +68,8 @@ function tenSamWidok(a: WpisHistoriiKadru, b: WpisHistoriiKadru): boolean {
     a.transform.scale === b.transform.scale &&
     a.transform.translateX === b.transform.translateX &&
     a.transform.translateY === b.transform.translateY &&
+    a.viewportSize.width === b.viewportSize.width &&
+    a.viewportSize.height === b.viewportSize.height &&
     a.sciezka.length === b.sciezka.length &&
     a.sciezka.every((p, i) => p.cel === b.sciezka[i]!.cel && p.kontekst.join('|') === b.sciezka[i]!.kontekst.join('|')) &&
     toSamoZaznaczenie(a.zaznaczenie, b.zaznaczenie) &&

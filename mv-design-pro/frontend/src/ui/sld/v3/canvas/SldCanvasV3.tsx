@@ -377,8 +377,16 @@ export interface SldCanvasV3Props {
    *  (`v2/canvas/SldCanvasV2.tsx`: `useEffect` wołający callback przy zmianie
    *  `transform`) — TA SAMA kategoria „przelotowego propu" co
    *  `onElementClick`/`onElementDoubleClick`, zero zmiany geometrii/logiki
-   *  kamery. Brak propa = brak nasłuchu (kanwa działa jak dziś). */
-  readonly onCameraChange?: (transform: ViewportTransform, lod: SceneLod) => void;
+   *  kamery. Brak propa = brak nasłuchu (kanwa działa jak dziś).
+   *  `viewportSize` to viewport, w którym ten transform obowiązuje (para z tego
+   *  samego stanu kamery) — historia kadrów zapisuje oba, bo transform bez
+   *  viewportu nie odtwarza kadru po zmianie szerokości kanwy (karta
+   *  FIX-E2E-PELNE). */
+  readonly onCameraChange?: (
+    transform: ViewportTransform,
+    lod: SceneLod,
+    viewportSize: { readonly width: number; readonly height: number },
+  ) => void;
   /** K11-A (dyrektywa SLD-first 2026-07-30): sygnał JAWNEGO dopasowania widoku
    *  — inkrementacja wartości wywołuje pełny refit kamery do bieżącego celu
    *  fitu (ta sama akcja 'refit' co przy zmianie sieci, k3). Kamera pozostaje
@@ -442,6 +450,8 @@ export interface SldCanvasV3Props {
   readonly przywrocenieKamery?: {
     readonly transform: ViewportTransform;
     readonly lod: SceneLod;
+    /** Viewport, w którym zapamiętany transform obowiązywał. */
+    readonly viewportSize: { readonly width: number; readonly height: number };
     readonly seq: number;
   } | null;
   /** K2 („Poprzedni widok"): wołane TUŻ PRZED poleceniem widoku, które kanwa
@@ -2692,7 +2702,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   useEffect(() => {
     const wpis = props.przywrocenieKamery;
     if (!wpis) return;
-    dispatch({ type: 'przywroc', transform: wpis.transform, lod: wpis.lod });
+    dispatch({ type: 'przywroc', transform: wpis.transform, lod: wpis.lod, viewportSize: wpis.viewportSize });
   }, [props.przywrocenieKamery?.seq]);
 
   // K11-B: przeniesienie kadru z minimapy — CZYSTA translacja kamery (skala i
@@ -3138,8 +3148,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // `SldCanvasV2`'s `onViewportTransformChange` (`useEffect` na zmianę
   // `transform`, patrz docstring propa wyżej).
   useEffect(() => {
-    onCameraChange?.(camera.transform, effectiveLod);
-  }, [onCameraChange, camera.transform, effectiveLod]);
+    onCameraChange?.(camera.transform, effectiveLod, camera.viewportSize);
+  }, [onCameraChange, camera.transform, effectiveLod, camera.viewportSize]);
 
   // Pointer tracking (pan 1 dotyk/mysz, pinch 2 dotyki) — Pointer Events
   // unifikują mysz/dotyk/pen, jeden kod ścieżki (patrz `canvas/camera.ts`

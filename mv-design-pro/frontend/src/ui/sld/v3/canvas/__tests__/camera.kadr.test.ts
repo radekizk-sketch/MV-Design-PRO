@@ -432,11 +432,99 @@ describe("akcja 'kadruj' — cykl życia kadru", () => {
   it("'przywroc' (Poprzedni widok) ustawia transform i poziom z historii i zdejmuje kadr", () => {
     const przed = stan(0.3, 0);
     const po = cameraReducer(przed, kadr(cel(1200)));
-    const wrocone = cameraReducer(po, { type: 'przywroc', transform: przed.transform, lod: przed.lod });
+    const wrocone = cameraReducer(po, {
+      type: 'przywroc',
+      transform: przed.transform,
+      lod: przed.lod,
+      viewportSize: przed.viewportSize,
+    });
     expect(wrocone.transform).toEqual(przed.transform);
     expect(wrocone.lod).toBe(0);
     expect(wrocone.kadr).toBeUndefined();
     expect(wrocone.viewportSize).toEqual(po.viewportSize);
+  });
+
+  /**
+   * FIX-E2E-PELNE — powrót z historii przy INNEJ szerokości kanwy niż w chwili zapisu.
+   * Pomiar w żywej aplikacji (okno 1600 px): zaznaczenie stacji otwiera inspektor, kanwa
+   * zwęża się z 1322 do 956 px; dawne 'przywroc' kładło stary transform na kanwę innej
+   * szerokości, a późniejsze 'resize' (inspektor zamknięty) dokładało pół różnicy — każdy
+   * cykl „dwuklik stacji → Sieć" przesuwał rysunek o 183 px. Iloczyn cech: viewport zapisu
+   * (szeroki / wąski) × viewport powrotu (szeroki / wąski) × liczba cykli (1 / 5).
+   */
+  describe("'przywroc' przenosi zapamiętany kadr do bieżącego viewportu", () => {
+    const SZEROKI = { width: 1322, height: 856 } as const;
+    const WASKI = { width: 956, height: 856 } as const;
+    const bazowy: CameraState = {
+      transform: { scale: 0.324, translateX: 302.3, translateY: 67.1 },
+      lod: 0,
+      viewportSize: SZEROKI,
+      lodBboxes: swiat,
+    };
+    const resize = (s: CameraState, v: { width: number; height: number }) =>
+      cameraReducer(s, { type: 'resize', viewportSize: v });
+    const srodekSwiata = (s: CameraState) => ({
+      x: (s.viewportSize.width / 2 - s.transform.translateX) / s.transform.scale,
+      y: (s.viewportSize.height / 2 - s.transform.translateY) / s.transform.scale,
+    });
+    const blisko = (a: CameraState, b: CameraState) => {
+      expect(a.transform.scale).toBeCloseTo(b.transform.scale, 9);
+      expect(a.transform.translateX).toBeCloseTo(b.transform.translateX, 6);
+      expect(a.transform.translateY).toBeCloseTo(b.transform.translateY, 6);
+      expect(a.viewportSize).toEqual(b.viewportSize);
+    };
+
+    for (const zapis of [
+      { nazwa: 'zapis w szerokim', viewport: SZEROKI },
+      { nazwa: 'zapis w wąskim', viewport: WASKI },
+    ]) {
+      for (const powrot of [
+        { nazwa: 'powrót w szerokim', viewport: SZEROKI },
+        { nazwa: 'powrót w wąskim', viewport: WASKI },
+      ]) {
+        it(`${zapis.nazwa} × ${powrot.nazwa}: środek świata zachowany, skala i poziom z wpisu`, () => {
+          const wpis = zapis.viewport === SZEROKI ? bazowy : resize(bazowy, zapis.viewport);
+          // Po wejściu w stację kamera jest gdzie indziej i w viewporcie powrotu.
+          const poKadrze = cameraReducer(resize(bazowy, powrot.viewport), kadr(cel(1200), { viewportSize: powrot.viewport }));
+          const wrocone = cameraReducer(poKadrze, {
+            type: 'przywroc',
+            transform: wpis.transform,
+            lod: wpis.lod,
+            viewportSize: wpis.viewportSize,
+          });
+          expect(wrocone.viewportSize).toEqual(powrot.viewport);
+          expect(wrocone.transform.scale).toBe(wpis.transform.scale);
+          expect(wrocone.lod).toBe(wpis.lod);
+          expect(wrocone.kadr).toBeUndefined();
+          const a = srodekSwiata(wrocone);
+          const b = srodekSwiata(wpis);
+          expect(a.x).toBeCloseTo(b.x, 6);
+          expect(a.y).toBeCloseTo(b.y, 6);
+          // Po powrocie kanwy do szerokości startowej obraz jest DOKŁADNIE kadrem startowym.
+          blisko(resize(wrocone, SZEROKI), bazowy);
+        });
+      }
+    }
+
+    it('pięć cykli „wejście (inspektor otwarty) → Sieć (inspektor zamknięty)" bez dryfu', () => {
+      let s = bazowy;
+      for (let i = 0; i < 5; i += 1) {
+        // Pierwszy klik dwukliku zaznacza stację: inspektor otwarty, kanwa wąska. Wpis
+        // historii bywa sprzed tego 'resize' (zgłoszenie kamery spóźnia się o render).
+        const wpis = s;
+        s = resize(s, WASKI);
+        s = cameraReducer(s, kadr(cel(1200), { viewportSize: WASKI }));
+        s = cameraReducer(s, {
+          type: 'przywroc',
+          transform: wpis.transform,
+          lod: wpis.lod,
+          viewportSize: wpis.viewportSize,
+        });
+        // Zaznaczenie sprzed wejścia (puste) zamyka inspektor: kanwa znów szeroka.
+        s = resize(s, SZEROKI);
+      }
+      blisko(s, bazowy);
+    });
   });
 
   it('determinizm: dwa niezależne przebiegi dają identyczny stan', () => {

@@ -656,6 +656,39 @@ describe('K2b: historia kadrów niesie zaznaczenie; przegląd stacji to jeden wp
     }
   }
 
+  /**
+   * FIX-E2E-PELNE — w żywej aplikacji pierwszy klik dwukliku zaznacza stację, inspektor
+   * powłoki otwiera się i kanwa ZWĘŻA się (okno 1600 px: 1322 → 956 px); „Sieć" zdejmuje
+   * zaznaczenie, inspektor znika i kanwa wraca do pełnej szerokości. Wpis historii bez
+   * viewportu kładł stary transform na kanwę innej szerokości i każdy cykl przesuwał rysunek
+   * o pół szerokości inspektora (spec `pola-w-torze-zrzuty-screenshot`: uchwyt czwartej
+   * stacji poza kanwą). Iloczyn: chwila zwężenia {między kliknięciami gestu · po dwukliku}
+   * × liczba cykli {1 · 3}. Szerokość kanwy zmieniana tak jak robi to powłoka — rozmiarem
+   * kontenera (`width`), nie stanem kamery.
+   */
+  for (const zwezenie of ['miedzy-kliknieciami', 'po-dwukliku'] as const) {
+    for (const cykle of [1, 3]) {
+      it(`zwężenie kanwy ${zwezenie} × ${cykle} cykl(e) „dwuklik stacji → Sieć": kadr sieci bez dryfu`, () => {
+        const SZEROKA = 1322;
+        const WASKA = 956;
+        const { container, rerender } = render(<SldCanvasV3Workspace width={SZEROKA} height={856} />);
+        const kadrSieci = viewBox(container);
+        for (let n = 0; n < cykle; n += 1) {
+          const el = uchwyt(container, sceny[poziom(container)], (sc) => sc.meta?.elementKind === 'station' && sc.meta?.ownerRef === STACJA);
+          fireEvent.click(el, { detail: 1 });
+          if (zwezenie === 'miedzy-kliknieciami') rerender(<SldCanvasV3Workspace width={WASKA} height={856} />);
+          fireEvent.click(el, { detail: 2 });
+          fireEvent.doubleClick(el, { detail: 2 });
+          if (zwezenie === 'po-dwukliku') rerender(<SldCanvasV3Workspace width={WASKA} height={856} />);
+          expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+          fireEvent.click(screen.getByTestId('sld-v3-sciezka-0'));
+          rerender(<SldCanvasV3Workspace width={SZEROKA} height={856} />);
+          expect(viewBox(container), `cykl ${n + 1}`).toBe(kadrSieci);
+        }
+      });
+    }
+  }
+
   it('bez zaznaczenia przed wejściem: „Sieć" wraca do kadru sieci i zdejmuje zaznaczenie stacji z gestu', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
     const kadrSieci = viewBox(container);

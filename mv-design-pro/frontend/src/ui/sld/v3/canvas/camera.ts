@@ -394,11 +394,19 @@ export type CameraAction =
   | AkcjaKadru
   /** K2 (historia kadrów, „Poprzedni widok"): przywrócenie zapamiętanego stanu
    *  kamery — transformu i poziomu szczegółu sprzed polecenia kadrowania.
-   *  Viewport i światy LOD zostają bieżące. */
+   *  Transform ma sens TYLKO razem z viewportem, w którym obowiązywał
+   *  (`viewportSize`, para z tego samego stanu kamery): gdy kanwa ma dziś inny
+   *  rozmiar (inspektor otwarty przy zapisie, zamknięty przy powrocie albo
+   *  odwrotnie), punkt świata spod ówczesnego środka ląduje pod bieżącym
+   *  środkiem — ta sama reguła co 'resize'. Bez tego każdy cykl „wejście w stację
+   *  → Sieć" przesuwał rysunek o połowę szerokości inspektora (183 px przy oknie
+   *  1600 px) i widok dryfował z każdym powrotem (karta FIX-E2E-PELNE).
+   *  Światy LOD zostają bieżące. */
   | {
       readonly type: 'przywroc';
       readonly transform: ViewportTransform;
       readonly lod: SceneLod;
+      readonly viewportSize: { readonly width: number; readonly height: number };
     };
 
 /** K2: akcja kadru (osobny typ, bo `CameraState.kadr` ją pamięta). */
@@ -953,7 +961,20 @@ export function cameraReducer(state: CameraState, action: CameraAction): CameraS
     return applyKadr(state, action);
   }
   if (action.type === 'przywroc') {
-    return { transform: action.transform, lod: action.lod, viewportSize: state.viewportSize, lodBboxes: state.lodBboxes };
+    // Zapamiętany stan w JEGO viewporcie, przeniesiony do bieżącego jak przy 'resize'.
+    // Ten sam rozmiar kanwy ⇒ transform wpisu bit w bit (bez arytmetyki zmiennoprzecinkowej).
+    const zapamietany: CameraState = {
+      transform: action.transform,
+      lod: action.lod,
+      viewportSize: action.viewportSize,
+      lodBboxes: state.lodBboxes,
+    };
+    const tenSamViewport =
+      action.viewportSize.width === state.viewportSize.width &&
+      action.viewportSize.height === state.viewportSize.height;
+    return tenSamViewport
+      ? { ...zapamietany, viewportSize: state.viewportSize }
+      : applyResize(zapamietany, state.viewportSize);
   }
   if (action.type === 'center') {
     return withoutKadr(applyCenter(state, action.worldPoint));

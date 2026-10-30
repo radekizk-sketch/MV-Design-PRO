@@ -191,7 +191,7 @@ import {
   type CanvasToolbarGroupId,
 } from './toolbarLayout';
 // K2 (UI-04): kadrowanie zakresu pracy, historia kadrów, mini-ścieżka kontekstu.
-import { useKadrowanieWidoku } from './useKadrowanieWidoku';
+import { useKadrowanieWidoku, type StanKameryWorkspace } from './useKadrowanieWidoku';
 import type { ZaznaczenieWidoku } from './historiaKadrow';
 import { KLASA_PRZYCISKU_DOKU, MenuDopasujDo, PanelKomunikatuKadru, PasekKontekstuKadru } from './KontekstKadru';
 import { zakresCelu } from './zakresKadru';
@@ -1798,10 +1798,17 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // ten workspace może poznać AKTUALNY `ViewportTransform` (kamera jest
   // stanem WEWNĘTRZNYM kanwy od F6b), potrzebny do `worldToScreen` w
   // `symbolsInLassoRect` (hit-test wyżej).
-  const [cameraState, setCameraState] = useState<{ readonly transform: ViewportTransform; readonly lod: SceneLod } | null>(null);
-  const handleCameraChange = useCallback((transform: ViewportTransform, lod: SceneLod) => {
-    setCameraState((prev) => (prev && prev.transform === transform && prev.lod === lod ? prev : { transform, lod }));
-  }, []);
+  const [cameraState, setCameraState] = useState<StanKameryWorkspace | null>(null);
+  const handleCameraChange = useCallback(
+    (transform: ViewportTransform, lod: SceneLod, viewportSize: StanKameryWorkspace['viewportSize']) => {
+      setCameraState((prev) =>
+        prev && prev.transform === transform && prev.lod === lod && prev.viewportSize === viewportSize
+          ? prev
+          : { transform, lod, viewportSize },
+      );
+    },
+    [],
+  );
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie".
   // Scena WŁASNA tej funkcji (WZORZEC 1:1 z `handleExportSvg` niżej — TA SAMA
