@@ -616,7 +616,7 @@ function TypeDetailsPanel({
         </div>
       </div>
 
-      {category === 'CT' || category === 'VT' ? (
+      {category === 'CT' || category === 'VT' || category === 'MEASUREMENT_TRANSFORMER' ? (
         <InstrumentTransformerWindings type={type} />
       ) : null}
 
