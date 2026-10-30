@@ -506,7 +506,10 @@ def export_power_flow_comparison_docx(
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="DOCX export requires python-docx. Install with: pip install python-docx",
+            detail=(
+                "Eksport porównania do DOCX jest niedostępny — na serwerze obliczeń nie "
+                "zainstalowano biblioteki python-docx."
+            ),
         )
 
     service = _build_service(uow_factory)
@@ -646,7 +649,10 @@ def export_power_flow_comparison_pdf(
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="PDF export requires reportlab. Install with: pip install reportlab",
+            detail=(
+                "Eksport porównania do PDF jest niedostępny — na serwerze obliczeń nie "
+                "zainstalowano biblioteki reportlab."
+            ),
         )
 
     service = _build_service(uow_factory)

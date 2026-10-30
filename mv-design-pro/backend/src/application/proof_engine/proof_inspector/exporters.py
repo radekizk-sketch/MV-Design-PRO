@@ -383,7 +383,7 @@ class InspectorExporter:
                 if result.returncode != 0:
                     # Sprobuj wydobyc blad z logu
                     log_file = tmpdir_path / "proof.log"
-                    error_msg = "Unknown LaTeX error"
+                    error_msg = "Kompilacja LaTeX nie powiodła się, a dziennik kompilatora nie wskazuje błędu."
                     if log_file.exists():
                         log_content = log_file.read_text(encoding="utf-8", errors="ignore")
                         # Znajdz linie z bledem

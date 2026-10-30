@@ -86,7 +86,20 @@ describe('TypeLibraryBrowser — zakładki i karta szczegółów z jednego źró
     await waitFor(() => expect(fetchTypesByCategoryMock).toHaveBeenCalled());
   });
 
-  it.each(['BRANCH_POLE', 'ZKSN', 'SURGE_ARRESTER', 'SHUNT_CAPACITOR', 'LOAD'] as const)(
+  // Kategorie z dedykowaną kartą (linia, kabel, transformator, łącznik) na danych minimalnych
+  // (sam identyfikator i nazwa) — wcześniej kabel wywracał kartę `.toFixed` na braku pola
+  // i test obchodził to kategorią LOAD; pełny iloczyn braków: `kartaSzczegolowKatalogu.test`.
+  it.each([
+    'BRANCH_POLE',
+    'ZKSN',
+    'SURGE_ARRESTER',
+    'SHUNT_CAPACITOR',
+    'LOAD',
+    'CABLE',
+    'LINE',
+    'TRANSFORMER',
+    'SWITCH_EQUIPMENT',
+  ] as const)(
     'karta szczegółów kategorii %s (także bez zakładki) pokazuje etykietę, nie pustkę',
     async (kategoria) => {
       const user = userEvent.setup();

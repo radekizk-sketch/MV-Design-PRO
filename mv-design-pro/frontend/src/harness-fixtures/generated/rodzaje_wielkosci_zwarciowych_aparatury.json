@@ -69,5 +69,13 @@
       "i_th_ka": true,
       "i_dyn_ka": true
     }
+  },
+  "nazwy_lacznika": {
+    "CIRCUIT_BREAKER": "wyłącznik",
+    "DISCONNECTOR": "odłącznik",
+    "EARTH_SWITCH": "uziemnik",
+    "FUSE": "bezpiecznik",
+    "LOAD_SWITCH": "rozłącznik",
+    "RECLOSER": "reklozer"
   }
 }

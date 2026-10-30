@@ -2629,7 +2629,7 @@ class ProofGenerator:
             artifact_id = uuid4()
 
         if not data.segments:
-            raise ValueError("VDROP proof requires at least one segment.")
+            raise ValueError("Dowód spadku napięcia wymaga co najmniej jednego odcinka toru.")
 
         steps: list[ProofStep] = []
         step_number = 0

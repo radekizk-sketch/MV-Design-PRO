@@ -22,9 +22,9 @@ class BaseQuantities:
 
     def __post_init__(self) -> None:
         if self.u_base_kv <= 0:
-            raise ValueError("Ubase must be positive (kV).")
+            raise ValueError("Napięcie bazowe musi być dodatnie (kV).")
         if self.s_base_mva <= 0:
-            raise ValueError("Sbase must be positive (MVA).")
+            raise ValueError("Moc bazowa musi być dodatnia (MVA).")
 
     @property
     def z_base_ohm(self) -> float:

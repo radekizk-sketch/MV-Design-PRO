@@ -231,7 +231,7 @@ function buildTransformerCatalogSummary(
   return [
     `${formatMva(type.rated_power_mva)} MVA`,
     `${type.voltage_hv_kv}/${type.voltage_lv_kv} kV`,
-    type.vector_group,
+    type.vector_group ?? 'grupa połączeń: brak danych',
     `uk ${type.uk_percent}%`,
     `Pk ${type.pk_kw} kW`,
     powerStatus,
@@ -253,8 +253,9 @@ function compareTransformerCatalogTypes(
       if (leftGap !== rightGap) return leftGap - rightGap;
     }
 
-    const leftVectorMatch = expectedVector && left.vector_group.toUpperCase() === expectedVector;
-    const rightVectorMatch = expectedVector && right.vector_group.toUpperCase() === expectedVector;
+    // Grupa połączeń bywa nieznana (`null` z katalogu) — taki typ po prostu nie pasuje.
+    const leftVectorMatch = expectedVector && left.vector_group?.toUpperCase() === expectedVector;
+    const rightVectorMatch = expectedVector && right.vector_group?.toUpperCase() === expectedVector;
     if (leftVectorMatch !== rightVectorMatch) return leftVectorMatch ? -1 : 1;
 
     const leftLosses = (left.pk_kw ?? 0) + (left.p0_kw ?? 0);

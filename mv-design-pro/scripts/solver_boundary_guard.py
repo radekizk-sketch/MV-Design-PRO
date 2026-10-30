@@ -470,6 +470,12 @@ SANCTIONED_CHANGES = {
         "katalogu IED = adapter iec_curves); etykieta DT z polskimi znakami; cytat stalych "
         "poprawiony na IEC 60255-151:2009 zal. A tab. A.1. Liczby bit w bit (ta sama migawka). "
         "Wpis do usuniecia po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 5 karty komunikatow, regula jezyka "
+        "rozszerzona o komunikaty krotkie i jednowyrazowe, zapadka na pustym zbiorze): "
+        "zmienione WYLACZNIE argumenty wywolan wyjatkow (angielskie odmowy pradu rozruchowego, mnoznika TMS i ujemnego pradu zwarciowego zastapione polskimi, te same wstawki); porownanie "
+        "drzew skladniowych wobec 98c6f8d20 (wymazane argumenty wyjatkow, stale str) — "
+        "poza argumentami wyjatkow IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c5.log), "
+        "golden, determinizm i parytet liczb bez zmian."
     ),
     "backend/src/catalog/profiles/nc_rfg/": (
         "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
@@ -528,6 +534,12 @@ SANCTIONED_CHANGES = {
         "goldeny, hashe i testy determinizmu bez zmian; straznik "
         "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 5 karty komunikatow, regula jezyka "
+        "rozszerzona o komunikaty krotkie i jednowyrazowe, zapadka na pustym zbiorze): "
+        "zmienione WYLACZNIE argumenty wywolan wyjatkow (angielskie zdanie o braku wyspy wezla bilansujacego zastapione polskim); porownanie "
+        "drzew skladniowych wobec 98c6f8d20 (wymazane argumenty wyjatkow, stale str) — "
+        "poza argumentami wyjatkow IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c5.log), "
+        "golden, determinizm i parytet liczb bez zmian."
     ),
     "backend/src/network_model/solvers/power_flow_fast_decoupled.py": (
         "Decyzja B-01 architekta z 2026-10-29 (klasa „wewnetrzny identyfikator kodu w zdaniu "
@@ -538,6 +550,21 @@ SANCTIONED_CHANGES = {
         "goldeny, hashe i testy determinizmu bez zmian; straznik "
         "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-30 (commit 5 karty komunikatow, regula jezyka "
+        "rozszerzona o komunikaty krotkie i jednowyrazowe, zapadka na pustym zbiorze): "
+        "zmienione WYLACZNIE argumenty wywolan wyjatkow (angielskie zdanie o braku wyspy wezla bilansujacego zastapione polskim); porownanie "
+        "drzew skladniowych wobec 98c6f8d20 (wymazane argumenty wyjatkow, stale str) — "
+        "poza argumentami wyjatkow IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c5.log), "
+        "golden, determinizm i parytet liczb bez zmian."
+    ),
+    "backend/src/network_model/solvers/power_flow_newton.py": (
+        "Decyzja B-01 architekta z 2026-10-30 (commit 5 karty komunikatow, regula jezyka "
+        "rozszerzona o komunikaty krotkie i jednowyrazowe, zapadka na pustym zbiorze): "
+        "zmienione WYLACZNIE argumenty wywolan wyjatkow (angielskie zdanie o braku wyspy wezla bilansujacego zastapione polskim); porownanie "
+        "drzew skladniowych wobec 98c6f8d20 (wymazane argumenty wyjatkow, stale str) — "
+        "poza argumentami wyjatkow IDENTYCZNE (log /tmp/claude-0/logs/ast_b01_c5.log), "
+        "golden, determinizm i parytet liczb bez zmian."
+        " Wpis do usuniecia po scaleniu do main."
     ),
 }
 

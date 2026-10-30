@@ -1126,6 +1126,77 @@ uruchamiaj `npm ci`. Commit: `git -c user.name="radekizk-sketch" -c user.email="
 commit --cleanup=verbatim`, stopka:
 (stopka commita: dwie linie z bieżących wytycznych sesji — współautor i łącze sesji)
 
+#### Przekazanie (stan na przerwaniu, 2026-10-30, commit 5 karty, drzewo `wt-bkr`)
+
+Prace przerwano na polecenie koordynatora (kończy się tygodniowy limit). Commit WIP zawiera cały
+stan drzewa. Merytorycznie zmiana jest kompletna, ale jedna seria iniekcji nie została dokończona,
+więc stan jest NIEZWERYFIKOWANY.
+
+**Zrobione (z dowodem):**
+- A, reguła języka strażnika:
+  - `backend/tests/enm/test_klucze_pol_w_komunikatach_src.py` (`po_angielsku`, iniekcje: jedno
+    słowo, jedno słowo z kropką, słowo spoza listy funkcyjnej, tekst krótki z wstawką);
+  - `backend/tests/enm/test_komunikaty_operacji_bez_kodow.py` (`teksty_komunikatow(...,
+    jednowyrazowe=True)`).
+  - Pomiar: 18 miejsc w `src`, w tym 8 w rdzeniach B-01 — `power_flow_newton.py`,
+    `power_flow_gauss_seidel.py`, `power_flow_fast_decoupled.py`, `protection_iec60255.py`.
+  - Wszystkie 18 przetłumaczono. Dodatkowo przetłumaczono dwa bliźniacze ImportError
+    w `network_model/reporting/protection_report_{pdf,docx}.py`.
+  - Porównanie AST rdzeni wobec 98c6f8d20: IDENTYCZNE, RC=0 dla 4 plików.
+  - Sankcje w `scripts/solver_boundary_guard.py`, odciski w
+    `scripts/guard_references/solver_hashes.json` (zmienione tylko te 4).
+  - Parytet liczb assemblera bitowo identyczny wobec 98c6f8d20 i wobec 1e535d489: 366 wpisów,
+    18 odmów, 187 083 liczby; sha pliku f8248c56…, sha kanoniczny 58396066… — ten sam co
+    w commicie 4.
+  - Zapadka `ODMOWY_B01_OCZEKUJACE` pusta.
+- B, karta szczegółów katalogu:
+  - `frontend/src/ui/catalog/wierszeKartyKatalogu.ts` zastępuje `render*Params` z
+    `TypeLibraryBrowser.tsx`;
+  - typy `ui/catalog/types.ts` niosą `| null` zgodnie z serwerem;
+  - poprawiono `StationConfiguratorSurface.tsx`, `StationConfigTransformerCard.tsx`
+    i `SwitchReview.tsx` (słownik `RODZAJ_GALEZI_PL`);
+  - dodano `NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL` z parytetem do wyroczni harnessu
+    `nazwy_lacznika` (`backend/scripts/eksport_fixtur_harnessu.py`, fikstura przegenerowana).
+  - Nowe testy: `kartaSzczegolowKatalogu.test.tsx` (60), `katalogTransformatorowKonfiguratora.test.tsx`,
+    `massReview.test.tsx` (zamiast `.ts`) oraz rozszerzone `etykietyKategoriiTypow.test.tsx`
+    i `pradZwarciowyKatalogu.test.ts`.
+- Biegi (kody wyjścia):
+
+  | Bieg | Wynik |
+  |---|---|
+  | celowany backend (31 plików, `-m "not pandapower and not andes"`) | RC=0, 1168 passed |
+  | `guardy_z_ci.py --rownoleglosc 3` | RC=0, 107/107 strażników, samotesty 4119 passed, „KOMPLET ZIELONY” |
+  | vitest related | RC=0 (62 pliki, 837 testów) |
+  | tsc | RC=0 |
+  | eslint | RC=0 |
+
+  Iniekcje I1, I2, I4 i I5 były czerwone (RC=1), pliki przywrócono.
+
+**W trakcie (przerwane):** iniekcja I3 na komparatorze sortowania konfiguratora
+(`left.vector_group!.toUpperCase()`) była ZIELONA, czyli test jej nie łapał. Przyczyna: przy dwóch
+typach katalogu typ bez grupy trafiał tylko na prawą stronę komparatora. Test
+`frontend/src/ui/workspace/surfaces/__tests__/katalogTransformatorowKonfiguratora.test.tsx` dostał
+trzecią cechę iloczynu: kolejność odpowiedzi katalogu {typ bez grupy pierwszy, typ pełny pierwszy}.
+Eslint tego pliku przeszedł z RC=0. Biegu vitest i iniekcji I3a (strona lewa), I3b (strona prawa)
+i I3c (etykieta `String(null)`) NIE wykonano: skrypt `/tmp/claude-0/logs/c5_iniekcje2.sh` czekał
+w kolejce zamka i został przerwany przed startem.
+
+**Zostało:**
+- uruchomić `npx vitest run` na tym pliku testów (spodziewane 4 przypadki zielone);
+- wykonać iniekcje I3a, I3b i I3c — każda musi być czerwona;
+- poprawić treść commitu (WIP → właściwy), bez amend — nowym commitem albo przy
+  cherry-picku w sesji głównej;
+- przekazać do pełnej bramki sesji głównej.
+
+**Znane czerwone:** brak znanych czerwonych testów i strażników. Jedyna luka to niepotwierdzona
+siła testu konfiguratora wobec I3. Środowisko nie ma pandapower, więc 33 testy z tym znacznikiem
+padają lokalnie z powodu środowiska, nie zmiany.
+
+**Pierwszy krok dla następcy:** pod zamkiem `/tmp/claude-0/bieg_ciezki.lock` uruchom
+`bash /tmp/claude-0/logs/c5_iniekcje2.sh` z drzewa `wt-bkr`. Status trafi do
+`/tmp/claude-0/logs/c5_iniekcje2_status.log`. Oczekiwane: `I3_czysty RC=0` oraz
+`I3a/I3b/I3c RC≠0` z „przywrocono”.
+
 ---
 
 ## LICZBY-PL

@@ -189,7 +189,10 @@ class PowerFlowFastDecoupledSolver:
         slack_island_nodes, not_solved_nodes = build_slack_island(graph, pf_input.slack.node_id)
 
         if not slack_island_nodes:
-            raise ValueError("Slack island could not be determined.")
+            raise ValueError(
+                "Węzła bilansującego nie ma w sieci obliczeniowej — nie można wyznaczyć wyspy "
+                "zasilanej z sieci zasilającej."
+            )
 
         # Build tap ratios map
         tap_ratios = {spec.branch_id: spec.tap_ratio for spec in pf_input.taps}

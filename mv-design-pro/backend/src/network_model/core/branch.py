@@ -637,7 +637,10 @@ class TapChanger:
         """Off-nominal ratio referred to the HV/from side (Y-bus convention)."""
         tau = self.tau(position)
         if tau == 0:
-            raise OdmowaDanychError("Tap factor tau must be non-zero")
+            raise OdmowaDanychError(
+                "Przekładnia zaczepu transformatora nie może być zerowa — sprawdź pozycję "
+                "zaczepu i krok regulacji."
+            )
         return tau if self.regulated_winding == "HV" else 1.0 / tau
 
     def clamp_position(self, position: int) -> int:

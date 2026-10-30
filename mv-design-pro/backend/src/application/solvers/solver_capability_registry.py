@@ -460,7 +460,7 @@ def list_solver_capabilities() -> list[SolverCapability]:
 def get_solver_capability(capability: AnalysisCapability | str) -> SolverCapability:
     key = str(capability)
     if key not in SOLVER_CAPABILITY_REGISTRY:
-        raise BrakZasobuError(f"Unknown solver capability: {key}")
+        raise BrakZasobuError(f"Rejestr solverów nie zna zdolności obliczeniowej „{key}”.")
     return SOLVER_CAPABILITY_REGISTRY[key]  # type: ignore[index]
 
 

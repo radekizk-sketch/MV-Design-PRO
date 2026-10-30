@@ -21,8 +21,8 @@ def test_unit_system_round_trip() -> None:
 
 
 def test_base_quantities_validation() -> None:
-    with pytest.raises(ValueError, match="Ubase must be positive"):
+    with pytest.raises(ValueError, match="Napięcie bazowe musi być dodatnie"):
         BaseQuantities(u_base_kv=0.0, s_base_mva=10.0)
 
-    with pytest.raises(ValueError, match="Sbase must be positive"):
+    with pytest.raises(ValueError, match="Moc bazowa musi być dodatnia"):
         BaseQuantities(u_base_kv=10.0, s_base_mva=-5.0)

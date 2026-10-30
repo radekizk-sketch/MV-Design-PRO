@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import wyrocznia from '../../../harness-fixtures/generated/rodzaje_wielkosci_zwarciowych_aparatury.json';
 import {
   BRAK_DANYCH_PL,
+  NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL,
   NIE_DOTYCZY_PL,
   RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA,
   pradAparatuSnKatalogu,
@@ -52,6 +53,16 @@ describe('odbicie predykatów „nie dotyczy” backendu (parytet z wyrocznią)'
         ]);
       }
     }
+  });
+});
+
+describe('nazwa rodzaju łącznika — parytet z backendem', () => {
+  it('ten sam zbiór rodzajów co odwzorowanie aparatu SN i te same nazwy co backend', () => {
+    const nazwy = wyrocznia.nazwy_lacznika as Record<string, string>;
+    expect(Object.keys(NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL).sort()).toEqual(
+      Object.keys(RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA).sort(),
+    );
+    expect({ ...NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL }).toEqual(nazwy);
   });
 });
 

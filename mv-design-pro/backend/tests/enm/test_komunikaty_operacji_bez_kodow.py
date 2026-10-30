@@ -994,10 +994,14 @@ class TekstKomunikatu:
 
 
 def teksty_komunikatow(
-    zakres: ZakresModulu, drzewo: ast.Module
+    zakres: ZakresModulu, drzewo: ast.Module, *, jednowyrazowe: bool = False
 ) -> Iterator[tuple[TekstKomunikatu, dict[int, ast.AST]]]:
     """Teksty dla projektanta w module (zdanie: fragment ze spacją i słowem po polsku,
-    w zakresie kanału, poza docstringiem, asercją i dziennikiem)."""
+    w zakresie kanału, poza docstringiem, asercją i dziennikiem).
+
+    ``jednowyrazowe=True`` zdejmuje wymóg spacji — dla reguły języka, w której jednowyrazowa
+    treść kanału (``ValueError("Unsupported")``) jest komunikatem po angielsku, a nie kodem
+    (kod bez słowa łapie reguła treści bez zdania)."""
     docstringi = _docstringi(drzewo)
     rodzice = _rodzice(drzewo)
     przeplyw = _PrzeplywModulu(drzewo, rodzice, zakres)
@@ -1023,7 +1027,9 @@ def teksty_komunikatow(
         else:
             continue
         stale = tekst.replace(" ⟨⟩ ", "\x00")
-        if not (any(" " in fragment.strip() for fragment in stale.split("\x00"))):
+        if not jednowyrazowe and not (
+            any(" " in fragment.strip() for fragment in stale.split("\x00"))
+        ):
             continue
         if not _LUDZKI.search(stale):
             continue

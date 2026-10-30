@@ -293,7 +293,8 @@ const WYKONANIE_STACJI_PL: Readonly<Record<string, string>> = {
   inna: 'inna',
 };
 
-const RODZAJ_GALEZI_PL: Readonly<Record<Branch['type'], string>> = {
+/** Nazwa rodzaju gałęzi modelu dla projektanta — jedno źródło (karta techniczna, przegląd łączników). */
+export const RODZAJ_GALEZI_PL: Readonly<Record<Branch['type'], string>> = {
   line_overhead: 'Linia napowietrzna',
   cable: 'Kabel',
   switch: 'Łącznik',

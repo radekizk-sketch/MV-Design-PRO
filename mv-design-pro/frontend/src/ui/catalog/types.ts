@@ -27,11 +27,11 @@ export interface LineType extends CatalogType {
   x_ohm_per_km: number;
   b_us_per_km: number;
   rated_current_a: number;
-  standard?: string;
+  standard?: string | null;
   /** null = dana tabliczkowa nieznana z definicji źródła (typ z literatury benchmarkowej). */
   max_temperature_c: number | null;
   voltage_rating_kv: number;
-  conductor_material?: string;
+  conductor_material?: string | null;
   cross_section_mm2: number | null;
 }
 
@@ -144,9 +144,9 @@ export interface CableType extends CatalogType {
   c_nf_per_km: number;
   rated_current_a: number;
   voltage_rating_kv: number;
-  insulation_type?: string;
-  standard?: string;
-  conductor_material?: string;
+  insulation_type?: string | null;
+  standard?: string | null;
+  conductor_material?: string | null;
   cross_section_mm2: number;
   return_conductor_cross_section_mm2?: number | null;
   return_conductor_material?: string | null;
@@ -169,10 +169,13 @@ export interface TransformerType extends CatalogType {
   voltage_lv_kv: number;
   uk_percent: number;
   pk_kw: number;
-  i0_percent: number;
-  p0_kw: number;
-  vector_group: string;
-  cooling_class?: string;
+  /** `null` = dana nieznana (backend `TransformerType.i0_percent: float | None`; 25 typów katalogu). */
+  i0_percent: number | null;
+  /** `null` = dana nieznana (backend `TransformerType.p0_kw: float | None`). */
+  p0_kw: number | null;
+  /** `null` = dana nieznana (backend `TransformerType.vector_group: str | None`). */
+  vector_group: string | null;
+  cooling_class?: string | null;
   tap_min: number;
   tap_max: number;
   tap_step_percent: number;
@@ -214,7 +217,7 @@ export interface SwitchEquipmentType extends CatalogType {
   ik_ka: number | null;
   /** Prąd krótkotrwały wytrzymywany I_cw [kA], 1 s; `null` = brak danej z karty. */
   icw_ka: number | null;
-  medium?: string;
+  medium?: string | null;
   /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
   card_field_status?: StatusPolKarty;
 }

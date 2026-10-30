@@ -8,11 +8,19 @@ import {
 import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
 import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
 import {
-  BRAK_DANYCH_PL,
   pradAparatuSnKatalogu,
   pradKaLubBrakDanych,
   pradLacznikaKatalogu,
 } from './pradZwarciowyKatalogu';
+import {
+  formatNumber,
+  wierszeKabla,
+  wierszeLacznika,
+  wierszeLinii,
+  wierszeTransformatora,
+  wierszeZrodlaSystemowegoMin,
+  type WierszKatalogu,
+} from './wierszeKartyKatalogu';
 import type {
   CableType,
   LineType,
@@ -176,13 +184,6 @@ function getCatalogManufacturer(type: CatalogListItem): string | null {
   return null;
 }
 
-function formatNumber(value: number): string {
-  if (Number.isInteger(value)) {
-    return String(value);
-  }
-  return value.toFixed(3).replace(/\.?0+$/, '');
-}
-
 function formatDetailValue(value: unknown): string {
   if (Array.isArray(value)) {
     return value.map((entry) => formatDetailValue(entry)).join(', ');
@@ -277,7 +278,7 @@ function getGenericDetailEntries(
   );
   // CV-4.3 K7: sk3_min_mva/ik3_min_ka/rx_ratio_min ukryte tu — panel generyczny
   // UKRYWA pola null zamiast "brak danych" (K1), więc renderują się WYŁĄCZNIE
-  // przez bespoke `renderSystemSourceMinParams` (etykiety PL + jawny brak danych,
+  // przez bespoke `wierszeZrodlaSystemowegoMin` (etykiety PL + jawny brak danych,
   // zero duplikatu wartości pod dwiema różnymi etykietami).
   const hiddenKeys = new Set([
     'id',
@@ -604,18 +605,24 @@ function TypeDetailsPanel({
           Dane katalogowe
         </h3>
         <div className="grid grid-cols-2 gap-4" data-testid="type-library-details-grid">
-          {category === 'LINE' ? renderLineParams(type as LineType) : null}
-          {category === 'CABLE' ? renderCableParams(type as CableType) : null}
-          {category === 'TRANSFORMER' ? renderTransformerParams(type as TransformerType) : null}
-          {category === 'SWITCH_EQUIPMENT' ? renderSwitchParams(type as SwitchEquipmentType) : null}
+          {category === 'LINE' ? <WierszeKatalogu wiersze={wierszeLinii(type as LineType)} /> : null}
+          {category === 'CABLE' ? <WierszeKatalogu wiersze={wierszeKabla(type as CableType)} /> : null}
+          {category === 'TRANSFORMER' ? (
+            <WierszeKatalogu wiersze={wierszeTransformatora(type as TransformerType)} />
+          ) : null}
+          {category === 'SWITCH_EQUIPMENT' ? (
+            <WierszeKatalogu wiersze={wierszeLacznika(type as SwitchEquipmentType)} />
+          ) : null}
           {!['LINE', 'CABLE', 'TRANSFORMER', 'SWITCH_EQUIPMENT'].includes(category) ? (
             <GenericTypeDetailsPanel entries={genericEntries} />
           ) : null}
           {/* CV-4.3 K7: dane scenariusza MIN ZRODLO_SN — bespoke (nie generyczny
               panel powyżej), bo panel generyczny UKRYWA pola `null` zamiast
-              pokazać "brak danych" (wzór K1: `renderLineParams` / `max_temperature_c`).
+              pokazać "brak danych" (wzór K1: `wierszeLinii` / `max_temperature_c`).
               Dokłada się DO generycznych wpisów (Sk3/Ik3/R-X maks. już tam są). */}
-          {category === 'SYSTEM_SOURCE' ? renderSystemSourceMinParams(type as SourceSystemCatalogType) : null}
+          {category === 'SYSTEM_SOURCE' ? (
+            <WierszeKatalogu wiersze={wierszeZrodlaSystemowegoMin(type as SourceSystemCatalogType)} />
+          ) : null}
         </div>
       </div>
 
@@ -724,106 +731,13 @@ function DetailField({
   );
 }
 
-function renderLineParams(type: LineType) {
+function WierszeKatalogu({ wiersze }: { wiersze: readonly WierszKatalogu[] }) {
   return (
     <>
-      <DetailField label="Rezystancja R" value={type.r_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Reaktancja X" value={type.x_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Susceptancja B" value={type.b_us_per_km.toFixed(3)} unit="uS/km" />
-      <DetailField label="Prąd znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
-      <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField
-        label="Przekrój"
-        value={type.cross_section_mm2 == null ? BRAK_DANYCH_PL : type.cross_section_mm2.toFixed(0)}
-        unit="mm2"
-      />
-      <DetailField
-        label="Maks. temperatura"
-        value={type.max_temperature_c == null ? BRAK_DANYCH_PL : type.max_temperature_c.toFixed(0)}
-        unit="C"
-      />
+      {wiersze.map((w) => (
+        <DetailField key={w.label} label={w.label} value={w.value} unit={w.unit} />
+      ))}
     </>
   );
 }
 
-/**
- * CV-4.3 K7: trzy pola scenariusza MIN (warunki przyłączenia OSD) dla ZRODLO_SN —
- * „brak danych" gdy null (wzór K1, `max_temperature_c` w `renderLineParams`).
- * Dokładany OBOK generycznego panelu (Sk3/Ik3/R-X MAKS. już renderują tamtędy).
- */
-function renderSystemSourceMinParams(type: SourceSystemCatalogType) {
-  return (
-    <>
-      <DetailField
-        label="Moc zwarciowa Sk3 min"
-        value={type.sk3_min_mva == null ? BRAK_DANYCH_PL : formatNumber(type.sk3_min_mva)}
-        unit="MVA"
-      />
-      <DetailField
-        label="Prąd zwarciowy Ik3 min"
-        value={type.ik3_min_ka == null ? BRAK_DANYCH_PL : formatNumber(type.ik3_min_ka)}
-        unit="kA"
-      />
-      <DetailField
-        label="Stosunek R/X min"
-        value={type.rx_ratio_min == null ? BRAK_DANYCH_PL : formatNumber(type.rx_ratio_min)}
-      />
-    </>
-  );
-}
-
-function renderCableParams(type: CableType) {
-  return (
-    <>
-      <DetailField label="Rezystancja R" value={type.r_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Reaktancja X" value={type.x_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Pojemność C" value={type.c_nf_per_km.toFixed(0)} unit="nF/km" />
-      <DetailField label="Prąd znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
-      <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Izolacja" value={type.insulation_type ?? '—'} />
-      <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField label="Przekrój" value={type.cross_section_mm2.toFixed(0)} unit="mm2" />
-    </>
-  );
-}
-
-function renderTransformerParams(type: TransformerType) {
-  return (
-    <>
-      <DetailField label="Moc znamionowa" value={type.rated_power_mva.toFixed(1)} unit="MVA" />
-      <DetailField label="Napięcie HV" value={type.voltage_hv_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Napięcie LV" value={type.voltage_lv_kv.toFixed(1)} unit="kV" />
-      <DetailField label="uk" value={type.uk_percent.toFixed(2)} unit="%" />
-      <DetailField label="Straty zwarcia Pk" value={type.pk_kw.toFixed(1)} unit="kW" />
-      <DetailField label="Prąd jałowy i0" value={type.i0_percent.toFixed(2)} unit="%" />
-      <DetailField label="Straty jałowe P0" value={type.p0_kw.toFixed(1)} unit="kW" />
-      <DetailField label="Grupa połączeń" value={type.vector_group} />
-      <DetailField label="Chłodzenie" value={type.cooling_class ?? '—'} />
-      <DetailField label="Zakres zaczepów" value={`${type.tap_min} ... ${type.tap_max}`} />
-    </>
-  );
-}
-
-function renderSwitchParams(type: SwitchEquipmentType) {
-  return (
-    <>
-      <DetailField label="Rodzaj aparatu" value={type.equipment_kind} />
-      <DetailField label="Napięcie znamionowe" value={type.un_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Prąd znamionowy" value={type.in_a.toFixed(0)} unit="A" />
-      {/* Brak liczby: „nie dotyczy” (rodzaj aparatu tej wielkości nie ma) albo „brak danych”
-          (wielkość właściwa rodzajowi, karta jej nie podaje) — rozstrzyga rodzaj. */}
-      <DetailField
-        label="Prąd wyłączalny Ik"
-        value={type.ik_ka == null ? pradLacznikaKatalogu(type as unknown as Record<string, unknown>, 'ik_ka') : type.ik_ka.toFixed(1)}
-        unit={type.ik_ka == null ? undefined : 'kA'}
-      />
-      <DetailField
-        label="Prąd wytrzymałości Icw"
-        value={type.icw_ka == null ? pradLacznikaKatalogu(type as unknown as Record<string, unknown>, 'icw_ka') : type.icw_ka.toFixed(1)}
-        unit={type.icw_ka == null ? undefined : 'kA'}
-      />
-      <DetailField label="Ośrodek gaszący" value={type.medium ?? '—'} />
-    </>
-  );
-}

@@ -2812,28 +2812,63 @@ def _linie_nazw_typow_tlumaczonych(sciezka: str, plik: Path | None = None) -> se
     return wiersze
 
 
-#: Słowa funkcyjne zdania po angielsku i znaczniki zdania po polsku — reguła języka: tekst
-#: dla projektanta z co najmniej dwoma słowami angielskimi i bez żadnego znacznika polskiego
-#: jest komunikatem po angielsku (pomiar 2026-10-29: 14 trafień w ``src``, wszystkie realne).
+#: Słowa zdania po angielsku i znaczniki zdania po polsku — reguła języka. Tekst kanału bez
+#: znacznika polskiego jest komunikatem po angielsku, gdy niesie co najmniej dwa słowa
+#: angielskie, gdy jest krótki (do trzech słów) i niesie choć jedno, albo gdy jest jednym
+#: słowem angielskim pisanym jak zdanie (``"Unsupported"``, ``"Invalid."``). Rozszerzenie
+#: commitu 5 karty komunikatów (2026-10-30): poprzednia reguła (dwa słowa z wąskiej listy
+#: funkcyjnej) przepuszczała „Slack island could not be determined.” i „Pickup current must
+#: be positive” (jedno słowo z listy) oraz każdy komunikat jednowyrazowy (kanał zdaniowy
+#: pomijał tekst bez spacji). Pomiar po rozszerzeniu: 18 trafień w ``src`` (8 w rdzeniach
+#: B-01), wszystkie realne, zero fałszywych. Rodzajnik „a” i „to” są poza listą słów
+#: angielskich — w tekstach polskich są spójnikiem i oznaczeniem sekcji („sekcja A”);
+#: znaczniki polskie bez rozróżniania wielkości liter („NIE CHRONI”, „Brak”), poza „i”
+#: (symbol prądu „I” nie jest spójnikiem).
 _SLOWA_ANGIELSKIE = re.compile(
-    r"\b(?:the|is|are|must|not|for|of|failed|missing|required|unsupported|invalid|cannot"
-    r"|should|with|no|has|have|found|unknown)\b",
+    r"\b(?:the|an|is|are|was|were|be|been|being|must|not|could|can|cannot|would|will|should"
+    r"|for|of|in|on|at|by|from|with|without|and|or|no|has|have|had|does|did|than|only"
+    r"|found|unknown|failed|missing|required|unsupported|invalid|expected|got|positive"
+    r"|negative|greater|less|empty|exist|exists|defined|determined|provided|specified"
+    r"|supported|allowed|already|yet|zero|non|value|values|error|out|range|this|that|these"
+    r"|those|it|its|when|which|if|then|use|using|need|needs|requires)\b",
     re.IGNORECASE,
 )
 _ZNACZNIKI_POLSKIE = re.compile(
-    r"[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(?:nie|jest|brak|dla|lub|oraz|się|musi|wymaga|bez|albo|na|w|z|do)\b"
+    r"[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(?:nie|jest|brak|dla|lub|oraz|się|musi|wymaga|bez|albo|na|w|z"
+    r"|do|po|od|przy|przez|jako|czy|ani|tylko)\b|(?-i:\bi\b)",
+    re.IGNORECASE,
 )
+_SLOWO = re.compile(r"[^\W\d_]+")
+_SLOWO_JAK_ZDANIE = re.compile(r"[A-Z][a-z]+[.!]?")
+
+
+def po_angielsku(tekst: str) -> bool:
+    """Predykat reguły języka na treści kanału (wstawki jako `` ⟨⟩ ``)."""
+    zapis = tekst.replace(" ⟨⟩ ", "⟨⟩").strip()
+    stale = " ".join(f.strip() for f in zapis.split("⟨⟩") if f.strip())
+    if _ZNACZNIKI_POLSKIE.search(stale):
+        return False
+    if not any(znak.isspace() for znak in zapis):
+        # Jeden token (spacji nie ma ani w stałych, ani wokół wstawek — ``f"field/{x}/in"``):
+        # kod, ścieżka albo klucz — chyba że to jedno słowo angielskie pisane jak zdanie.
+        return bool(_SLOWO_JAK_ZDANIE.fullmatch(stale)) and bool(
+            _SLOWA_ANGIELSKIE.fullmatch(stale.rstrip(".!"))
+        )
+    angielskie = len(_SLOWA_ANGIELSKIE.findall(stale))
+    return angielskie >= 2 or (angielskie >= 1 and len(_SLOWO.findall(stale)) <= 3)
 
 
 def naruszenia_jezyka(sciezka: str, plik: Path | None = None) -> list[Naruszenie]:
     """Komunikat dla projektanta po angielsku — produkt mówi do projektanta po polsku
-    (kontrakt prezentacji inżynierskiej); błąd programu idzie ``AssertionError``."""
+    (kontrakt prezentacji inżynierskiej); błąd programu idzie ``AssertionError``. Zakres to
+    kanał zdaniowy łącznie z tekstami jednowyrazowymi."""
     drzewo = _drzewo(plik or SRC / sciezka)
     return [
         Naruszenie(sciezka, komunikat.wezel.lineno, "komunikat po angielsku", komunikat.tekst)
-        for komunikat, _rodzice_tekstu in teksty_komunikatow(zakres_src(sciezka), drzewo)
-        if len(_SLOWA_ANGIELSKIE.findall(komunikat.tekst)) >= 2
-        and not _ZNACZNIKI_POLSKIE.search(komunikat.tekst)
+        for komunikat, _rodzice_tekstu in teksty_komunikatow(
+            zakres_src(sciezka), drzewo, jednowyrazowe=True
+        )
+        if po_angielsku(komunikat.tekst)
     ]
 
 
@@ -4185,6 +4220,31 @@ _INIEKCJE_SRC = (
     "def _ok_jezyk_polski():\n"
     '    raise ValueError("Napięcie węzła jest wymagane do obliczenia prądu zwarciowego.")\n'
     "\n"
+    "\n"
+    "def _i_jezyk_jedno_slowo():\n"
+    '    raise ValueError("Unsupported")\n'
+    "\n"
+    "\n"
+    "def _i_jezyk_jedno_slowo_z_kropka():\n"
+    '    raise ValueError("Invalid.")\n'
+    "\n"
+    "\n"
+    "def _i_jezyk_slowo_spoza_funkcyjnych():\n"
+    '    raise ValueError("Slack island could not be determined.")\n'
+    "\n"
+    "\n"
+    "def _i_jezyk_krotki(nazwa):\n"
+    '    raise ValueError(f"Bus {nazwa} missing")\n'
+    "\n"
+    "\n"
+    "def _ok_jezyk_sekcja(nazwa):\n"
+    '    raise ValueError(f"Pole {nazwa} (sekcja A)")\n'
+    "\n"
+    "\n"
+    "def _ok_jezyk_jedno_slowo_polskie():\n"
+    '    raise ValueError("Sekcja")\n'
+    "\n"
+    "\n"
     "def _i_przeplyw_zmiennej():\n"
     '    tresc = "Pole u_n_kv musi być dodatnie."\n'
     "    raise ValueError(tresc)\n"
@@ -4366,6 +4426,10 @@ _OCZEKIWANE_INIEKCJE: dict[str, list[str]] = {
     "_i_wartosc_wyliczenia": ["wartość wyliczenia x.kind.value"],
     "_i_zmienna_wyliczenia": ["wartość wyliczenia status"],
     "_i_jezyk": ["komunikat po angielsku"],
+    "_i_jezyk_jedno_slowo": ["komunikat po angielsku"],
+    "_i_jezyk_jedno_slowo_z_kropka": ["komunikat po angielsku"],
+    "_i_jezyk_slowo_spoza_funkcyjnych": ["komunikat po angielsku"],
+    "_i_jezyk_krotki": ["komunikat po angielsku"],
     "_i_stan_bez_adresu": ["wartość wyliczenia stan"],
     "_i_przeplyw_zmiennej": ["kod u_n_kv"],
     "_i_przeplyw_parametru_nazwanego": ["kod u_n_kv"],
@@ -4433,7 +4497,8 @@ def test_iniekcje_regul_strazenika_sa_czerwone(tmp_path: Path) -> None:
     zdania” wyłącznie w kanale ZDANIE, sklejenie kodów / kolekcji nierozstrzygniętej / celu
     pętli / parametru rozstrzygniętego z wywołań, wartość wyliczenia (``.value`` i zmienna
     o nazwie wyliczenia; cytat odrzuconego wejścia ``not in`` / ``else`` łańcucha / ``except``
-    i etykieta — nie), komunikat po angielsku oraz adres stanu urządzenia w module odmów
+    i etykieta — nie), komunikat po angielsku (dwa słowa angielskie, tekst krótki z jednym,
+    jedno słowo angielskie pisane jak zdanie; sekcja „A” i jedno słowo polskie — nie) oraz adres stanu urządzenia w module odmów
     tłumaczonych (``{x.ident}.{stan}`` — nie, sam ``{stan}`` — tak). Reguły commitu kodów
     w komunikatach: typ ``Literal``/``Enum`` o wartościach-kodach (słowne — nie), kanał
     formatujący ``naruszenie``, konstruktor bazy wyjątku ``super().__init__``, kod z kropką,

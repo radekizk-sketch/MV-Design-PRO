@@ -193,7 +193,7 @@ def calculate_iec_tripping_time(
     """
     # Calculate current multiple
     if pickup_current_a <= 0:
-        raise OdmowaDanychError("Pickup current must be positive")
+        raise OdmowaDanychError("Prąd rozruchowy zabezpieczenia musi być dodatni.")
 
     current_multiple = fault_current_a / pickup_current_a
 

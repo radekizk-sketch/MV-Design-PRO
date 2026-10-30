@@ -223,6 +223,7 @@ from infrastructure.persistence.db import (  # noqa: E402
 from infrastructure.persistence.unit_of_work import build_uow_factory  # noqa: E402
 from network_model.catalog.repository import get_default_mv_catalog  # noqa: E402
 from network_model.catalog.rodzaje_aparatury import (  # noqa: E402
+    NAZWY_RODZAJOW_APARATU_PL,
     RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA,
     RODZAJE_APARATURY_LACZENIOWEJ,
     WIELKOSCI_ZWARCIOWE_APARATU_SN,
@@ -1119,6 +1120,12 @@ def rodzaje_wielkosci_zwarciowych_aparatury() -> dict[str, Any]:
                 for pole in WIELKOSCI_ZWARCIOWE_APARATU_SN
             }
             for rodzaj in sorted(RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.values())
+        },
+        # Nazwa rodzaju łącznika dla projektanta — wyrocznia słownika frontu
+        # `NAZWA_RODZAJU_LACZNIKA_KATALOGU_PL` (karta szczegółów przeglądarki typów).
+        "nazwy_lacznika": {
+            rodzaj: NAZWY_RODZAJOW_APARATU_PL[rodzaj]
+            for rodzaj in sorted(RODZAJE_APARATURY_LACZENIOWEJ)
         },
     }
 
