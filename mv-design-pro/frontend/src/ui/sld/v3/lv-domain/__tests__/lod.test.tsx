@@ -139,7 +139,7 @@ describe('LOD — tabela warstw: co znika, co zostaje', () => {
 
   it('[18] nakładka SWZ: plakietka liczbowa na poziomach sieci/pełnym, kropka werdyktu na przeglądzie — werdykt NIGDY nie znika', () => {
     renderNaPoziomie('18_swz_overlay', 0, 'swz');
-    expect(screen.getByTestId('lv-domain-verdict-swz-QF-02')).toHaveAttribute('data-swz-status', 'nie spełnia');
+    expect(screen.getByTestId('lv-domain-verdict-swz-QF-02')).toHaveAttribute('data-swz-status', 'NIE_SPELNIA');
     expect(screen.queryByTestId('lv-domain-badge-swz-QF-02')).toBeNull();
     cleanup();
     for (const lod of [1, 2] as const) {

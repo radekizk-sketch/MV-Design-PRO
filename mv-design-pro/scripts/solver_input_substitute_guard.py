@@ -1455,10 +1455,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # `float("inf")` udajacy nieskonczony zapas; rozstrzygniecie niesie rekord K (`_ocena_pradu`),
     # nie margines. Budzety `B:ifexp:bramka_konwencjonalna.inf_a` i `H:local:aparat.ii_a`
     # spadly do 0 (pomiar tym guardem).
-    "application/proof_engine/packs/lv_circuit_verification.py": {
-        "B:ifexp:th.i2t_a2s": 1,
-        "B:ifexp:th.i2t_admissible_a2s": 1,
-    },
+    # Ta sama karta, domena 7: wpis `application/proof_engine/packs/lv_circuit_verification.py`
+    # ZDJETY — krok 7 dowodu obwodu nN nie podstawia `0.0` za brak I²t (`th.i2t_a2s`,
+    # `th.i2t_admissible_a2s`): przy braku wartosci podstawienie liczbowe znika, a krok niesie
+    # zdanie i etykiete rekordu wytrzymalosci cieplnej solvera (`th.ocena`). Budzety
+    # `B:ifexp:th.i2t_a2s` i `B:ifexp:th.i2t_admissible_a2s` spadly do 0 (pomiar tym guardem).
     "application/proof_engine/packs/p16_losses.py": {
         "B:ifexp:data.p_gen_total_mw": 2,
     },

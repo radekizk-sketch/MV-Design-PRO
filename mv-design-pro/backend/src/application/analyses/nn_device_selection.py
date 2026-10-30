@@ -673,29 +673,30 @@ _OPIS_POLA_ZDOLNOSCI_PL: dict[str, str] = {
 }
 
 
-def _kryterium_zdolnosc_wylaczania(
+def ocena_zdolnosci_wylaczania(
     *,
     kandydat: KandydatAparatuNn,
     ik_max_ka: float | None,
     dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
-) -> KryteriumWynik:
-    """(iii) Ik″max <= Icu/Icn/Ic-warunkowy w punkcie zabudowy (rekord K).
+    kryterium_id: str = "dobor_nn.zdolnosc_wylaczania",
+    opis_pl: str = (
+        "Spodziewany prąd zwarciowy w miejscu zainstalowania nie większy od zdolności "
+        "wyłączania aparatu"
+    ),
+) -> OcenaKryterium:
+    """Rekord K zdolności wyłączania aparatu wobec I″k,max w punkcie zabudowy — JEDNA reguła
+    dla doboru (kryterium iii) i pakietu dowodowego weryfikacji obwodu nN (krok 6).
 
-    ``dane_przyjete`` — dane, na których stoi Ik″max (punkt w sieci nN liczonej z wartością
-    roboczą tolerancji, karta TOLERANCJA-NN-WARTOSC-ROBOCZA): dowód rekordu, lista i zdanie
-    uzasadnienia. Brak Ik″max (bieg zwarciowy niedostarczony) — rekord bez wyniku
-    (``NIE_OCENIONO``); brak zdolności wyłączania w katalogu — rekord bez limitu
-    (``BRAK_PODSTAWY``); nigdy spełnienie bez liczb.
+    Limit to pole katalogu właściwe dla rodzaju aparatu (``_POLE_ZDOLNOSCI``). Brak Ik″max —
+    rekord bez wyniku (``NIE_OCENIONO``); brak pola katalogu — rekord bez limitu
+    (``BRAK_PODSTAWY``); ``dane_przyjete`` wchodzą do rekordu tylko przy znanym Ik″max.
     """
     pole = _POLE_ZDOLNOSCI[kandydat.kind]
     dane = dane_przyjete if ik_max_ka is not None else ()
-    ocena = _rekord(
+    return _rekord(
         Porownanie(
-            kryterium_id="dobor_nn.zdolnosc_wylaczania",
-            opis_pl=(
-                "Spodziewany prąd zwarciowy w miejscu zainstalowania nie większy od zdolności "
-                "wyłączania aparatu"
-            ),
+            kryterium_id=kryterium_id,
+            opis_pl=opis_pl,
             relacja="NIE_WIECEJ",
             wielkosc_pl="prąd zwarciowy początkowy maksymalny w punkcie zabudowy",
             warunek_latex=r"I''_{k,max} \le I_{cu}",
@@ -729,6 +730,51 @@ def _kryterium_zdolnosc_wylaczania(
                 opis_pl="Prąd zwarciowy początkowy w punkcie zabudowy z biegu zwarciowego IEC 60909",
             ),
         ),
+    )
+
+
+def ocena_zdolnosci_nie_dotyczy(
+    *, kandydat: KandydatAparatuNn, kryterium_id: str, opis_pl: str, powod_pl: str
+) -> OcenaKryterium:
+    """Rekord K ``NIE_DOTYCZY`` zdania zdolności wyłączania, które nie ma sensu dla rodzaju
+    aparatu (np. własna zdolność gołego rozłącznika bezpiecznikowego) — pytanie bez sensu,
+    nie brak danych; agregat pomija go (``rozstrzygniecie``)."""
+    return _rekord(
+        Porownanie(
+            kryterium_id=kryterium_id,
+            opis_pl=opis_pl,
+            relacja="NIE_WIECEJ",
+            wielkosc_pl="prąd zwarciowy początkowy maksymalny w punkcie zabudowy",
+            warunek_latex=r"I''_{k,max} \le I_{cu}",
+            symbol_latex="I''_{k,max}",
+            jednostka="kA",
+            dotyczy=False,
+            powod_stosowalnosci_pl=powod_pl,
+        ),
+        kandydat,
+        podstawa=_PODSTAWA_ZWARCIOWA,
+        zakres=_ZAKRES_DOBORU_ZWARCIOWY,
+    )
+
+
+def _kryterium_zdolnosc_wylaczania(
+    *,
+    kandydat: KandydatAparatuNn,
+    ik_max_ka: float | None,
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
+) -> KryteriumWynik:
+    """(iii) Ik″max <= Icu/Icn/Ic-warunkowy w punkcie zabudowy (rekord K).
+
+    ``dane_przyjete`` — dane, na których stoi Ik″max (punkt w sieci nN liczonej z wartością
+    roboczą tolerancji, karta TOLERANCJA-NN-WARTOSC-ROBOCZA): dowód rekordu, lista i zdanie
+    uzasadnienia. Brak Ik″max (bieg zwarciowy niedostarczony) — rekord bez wyniku
+    (``NIE_OCENIONO``); brak zdolności wyłączania w katalogu — rekord bez limitu
+    (``BRAK_PODSTAWY``); nigdy spełnienie bez liczb.
+    """
+    pole = _POLE_ZDOLNOSCI[kandydat.kind]
+    dane = dane_przyjete if ik_max_ka is not None else ()
+    ocena = ocena_zdolnosci_wylaczania(
+        kandydat=kandydat, ik_max_ka=ik_max_ka, dane_przyjete=dane_przyjete
     )
     if ik_max_ka is None:
         return _z_oceny(

@@ -26,13 +26,15 @@ KONSUMUJE wyniki istniejących solverów/analiz, tylko nazywa/porównuje):
   3. Iz′ = Iz · f_θ · f_ρ · f_N              NEW EQ_LVCV_001 — iloczyn REUSE
      `network_model.solvers.cable_ampacity_derating.obciazalnosc_skorygowana`
      (G-D1: `wspolczynniki_nn`)
-  4. Dobór: Ib ≤ In ≤ Iz′                    NEW EQ_LVCV_002 (IEC 60364-4-43 §433.1)
-  5. I2 ≤ 1,45·Iz′                           NEW EQ_LVCV_003 — I2 z REUSE
-     `network_model.catalog.lv_mcb_bands_iec60898.PROG_CIEPLNY_WYZWALA_X_IN`
-     (MCB) albo `network_model.solvers.protection_lv_curves.FUSE_GG_IF_MULTIPLIER`
-     (wkładka gG)
-  6. Zdolność wyłączania wobec Ik″max        NEW EQ_LVCV_004 — DWA ZDANIA
-     (kombinacja aparat+wkładka / goły aparat, runda 5b)
+  4. Dobór: Ib ≤ In ≤ Iz′                    NEW EQ_LVCV_002 (IEC 60364-4-43 §433.1) —
+     rekord W z REUSE `application.analyses.nn_device_selection.
+     oceniaj_przeciazenie_kandydata` (ta sama reguła co dobór i arkusz obwodów)
+  5. I2 ≤ 1,45·Iz′                           NEW EQ_LVCV_003 — rekord K z tego samego
+     wywołania: I2 = 1,45·In (MCB, IEC 60898-1), If = 1,6·In wkładki gG (IEC 60269-1),
+     1,3·Ir wyzwalacza elektronicznego MCCB (IEC 60947-2, gdy nastawa Ir/tr rozwiązana)
+  6. Zdolność wyłączania wobec Ik″max        NEW EQ_LVCV_004 — DWA ZDANIA jako dwa rekordy
+     K (kombinacja aparat+wkładka / goły aparat, runda 5b), reguła liczbowa REUSE
+     `nn_device_selection.ocena_zdolnosci_wylaczania`
   7. I²t ≤ k²S²                              NEW EQ_LVCV_005 — REUSE
      `network_model.solvers.conductor_thermal_withstand.
      check_conductor_thermal_withstand` (k z `derive_k_iec60949` gdy katalog milczy)
@@ -68,6 +70,12 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from application.analyses.nn_device_selection import (
+    KandydatAparatuNn,
+    ocena_zdolnosci_nie_dotyczy,
+    ocena_zdolnosci_wylaczania,
+    oceniaj_przeciazenie_kandydata,
+)
 from application.proof_engine.proof_pack import (
     ProofPackBuilder,
     ProofPackContext,
@@ -86,7 +94,6 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from enm.dane_przyjete_galezi import dane_przyjete_z_zapisu
-from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
 from network_model.catalog.wartosci_robocze import (
     dana_przyjeta_tolerancji_nn,
     dane_przyjete_maszyn,
@@ -99,7 +106,8 @@ from network_model.solvers.cable_ampacity_derating import (
 )
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 from network_model.solvers.fault_loop_iec60364 import FaultLoopResult
-from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER
+from werdykt import DanaPrzyjeta, OcenaKryterium, WynikWymagania
+from werdykt.porownanie import projekcja_statusu, relacja_latex
 
 # =============================================================================
 # Rodzaje urządzenia chroniącego obwód — namespace'y katalogu nN (P0.2/P0.7)
@@ -253,7 +261,9 @@ class LVCircuitVerificationInput:
 
     # Krok 9-10: pętla zwarcia minimalnego + SWZ (REUSE fault_loop_iec60364/swz.werdykt)
     fault_loop: FaultLoopResult
-    swz_status: str
+    #: Rekord W samoczynnego wyłączenia zasilania (TN: ``SwzResult.wymaganie``, TT/IT:
+    #: ``SwzTtItWynik.wymaganie``) — jedno źródło rozstrzygnięcia kroku 10 i agregatu.
+    swz_wymaganie: WynikWymagania
     swz_przyczyna_pl: str
     swz_ia_wymagane_a: float | None
     swz_t_wymagany_s: float | None
@@ -311,137 +321,141 @@ def _uc(expected: str, computed: str, derivation: str = "", passed: bool = True)
 # =============================================================================
 
 
-#: Statusy jednego zdania zdolności wyłączania — CZTERY stany, jawnie
-#: rozróżnione (NIE_DOTYCZY ≠ nierozstrzygalne — pierwsze znaczy „to pytanie
-#: nie ma sensu dla tego rodzaju aparatu", drugie „pytanie ma sens, ale brak
-#: danych do odpowiedzi"; zlanie ich w jedno `None` byłoby DOKŁADNIE defektem
-#: klasy, przed którym ostrzega reguła KLASA NIE INSTANCJA — agregat
-#: werdyktu obwodu MUSI je odróżniać, inaczej NIE_DOTYCZY blokowałby PASS).
-STATUS_SPELNIA = "spełnia"
-STATUS_NIE_SPELNIA = "nie spełnia"
-STATUS_NIE_DOTYCZY = "NIE_DOTYCZY"
-STATUS_NIEROZSTRZYGALNE = "nierozstrzygalne"
+#: Kody statusu wejścia SWZ i zdań kroku 6 USUNIĘTE (karta WERDYKT-MIGRACJA-190): oba
+#: zdania zdolności wyłączania i SWZ niosą rekordy werdyktu wyjaśnialnego (``OcenaKryterium``
+#: / ``WynikWymagania``), agregat pakietu jest projekcją rekordów (``rozstrzygniecie``).
+#: NIE_DOTYCZY (pytanie bez sensu dla rodzaju aparatu) jest stanem rekordu K, odrębnym od braku
+#: danych (``NIE_OCENIONO``) i braku podstawy (``BRAK_PODSTAWY``) — agregat pomija wyłącznie
+#: NIE_DOTYCZY.
+
+#: Identyfikatory kryteriów dwóch zdań kroku 6 (runda 5b — NIGDY jedno pole).
+KRYTERIUM_ZDOLNOSCI_KOMBINACJI = "lvcv.zdolnosc_wylaczania.kombinacja"
+KRYTERIUM_ZDOLNOSCI_GOLEGO_APARATU = "lvcv.zdolnosc_wylaczania.goly_aparat"
+_OPIS_KOMBINACJI_PL = (
+    "Prąd zwarciowy warunkowy kombinacji rozłącznik + wkładka nie mniejszy od spodziewanego "
+    "prądu zwarciowego w punkcie zabudowy"
+)
+_OPIS_GOLEGO_APARATU_PL = (
+    "Własna zdolność wyłączania gołego aparatu nie mniejsza od spodziewanego prądu "
+    "zwarciowego w punkcie zabudowy"
+)
+
+
+def kandydat_z_urzadzenia(
+    urzadzenie: UrzadzenieOchronneNn, *, zdolnosc_wylaczania_ka: float | None
+) -> KandydatAparatuNn:
+    """Aparat zainstalowany jako kandydat reguł doboru (``nn_device_selection``) — te same
+    rekordy K przeciążeniowe i zwarciowe dla doboru i weryfikacji (jedno źródło reguły)."""
+    return KandydatAparatuNn(
+        id=urzadzenie.id,
+        nazwa=urzadzenie.nazwa,
+        kind=urzadzenie.kind,
+        in_a=urzadzenie.in_a,
+        zdolnosc_wylaczania_ka=zdolnosc_wylaczania_ka,
+        klasa_mcb=urzadzenie.klasa_mcb,
+        fuse_breaking_capacity_ka=urzadzenie.fuse_breaking_capacity_ka,
+        ir_a=urzadzenie.ir_a,
+        isd_a=urzadzenie.isd_a,
+        ii_a=urzadzenie.ii_a,
+        tr_s=urzadzenie.tr_s,
+        tsd_s=urzadzenie.tsd_s,
+    )
 
 
 @dataclass(frozen=True)
 class ZdolnoscWylaczaniaDwaZdania:
-    """Dwa RÓŻNE zdania inżynierskie — NIGDY jedno pole (runda 5b).
+    """Dwa RÓŻNE zdania inżynierskie — NIGDY jedno pole (runda 5b) — każde jako rekord K.
 
-    ``*_status`` ∈ {spełnia, nie spełnia, NIE_DOTYCZY, nierozstrzygalne} —
-    ŹRÓDŁO PRAWDY dla agregacji werdyktu obwodu. ``*_spelnia`` (bool | None)
-    jest WYPROWADZONE z ``*_status`` (True/False tylko dla spełnia/nie
-    spełnia, None dla obu pozostałych stanów) — pozostawione dla wygody
-    prezentacji kroku, NIE do agregacji (tam liczy się WYŁĄCZNIE status).
+    ``kombinacja`` — prąd warunkowy kombinacji rozłącznik + wkładka (WYŁĄCZNIE
+    ``KIND_FUSE_SWITCH``; dla innych aparatów rekord ``NIE_DOTYCZY``). ``goly_aparat`` — własna
+    zdolność wyłączania MCB/MCCB (dla ``KIND_FUSE_SWITCH`` rekord ``NIE_DOTYCZY``: rozłącznik
+    bezpiecznikowy sam w sobie nie ma tej zdolności). Rozstrzygnięcie i zdanie niesie rekord;
+    ``*_wartosc_ka`` to wartość katalogowa cytowana w kroku dowodu.
     """
 
-    zdanie_kombinacja_pl: str
-    kombinacja_status: str
+    kombinacja: OcenaKryterium
     kombinacja_wartosc_ka: float | None
-    zdanie_goly_aparat_pl: str
-    goly_aparat_status: str
+    goly_aparat: OcenaKryterium
     goly_aparat_wartosc_ka: float | None
 
     @property
-    def kombinacja_spelnia(self) -> bool | None:
-        return {STATUS_SPELNIA: True, STATUS_NIE_SPELNIA: False}.get(self.kombinacja_status)
+    def zdanie_kombinacja_pl(self) -> str:
+        return self.kombinacja.wyjasnienie.zdanie_pl
 
     @property
-    def goly_aparat_spelnia(self) -> bool | None:
-        return {STATUS_SPELNIA: True, STATUS_NIE_SPELNIA: False}.get(self.goly_aparat_status)
+    def zdanie_goly_aparat_pl(self) -> str:
+        return self.goly_aparat.wyjasnienie.zdanie_pl
+
+    @property
+    def oceny(self) -> tuple[OcenaKryterium, OcenaKryterium]:
+        return (self.kombinacja, self.goly_aparat)
 
 
 def ocen_zdolnosc_wylaczania_dwa_zdania(
-    *, urzadzenie: UrzadzenieOchronneNn, ik_max_ka: float | None
+    *,
+    urzadzenie: UrzadzenieOchronneNn,
+    ik_max_ka: float | None,
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
 ) -> ZdolnoscWylaczaniaDwaZdania:
-    """Zbuduj DWA zdania (kombinacja aparat+wkładka / goły aparat) — runda 5b.
+    """Zbuduj DWA rekordy K (kombinacja aparat+wkładka / goły aparat) — runda 5b.
 
-    Kombinacja aparat+wkładka: WYŁĄCZNIE dla ``KIND_FUSE_SWITCH``, czyta
-    ``conditional_sc_current_ka``. Goły aparat: czyta ``wlasna_zdolnosc_ka`` —
-    dla ``KIND_FUSE_SWITCH`` ZAWSZE NIE_DOTYCZY (rozłącznik bezpiecznikowy sam
-    w sobie nie ma tej zdolności, niezależnie od tego, czy wkładka jest
-    zainstalowana), dla MCB/MCCB czyta rzeczywistą wartość katalogową.
+    Kombinacja: WYŁĄCZNIE dla ``KIND_FUSE_SWITCH``, limit ``conditional_sc_current_ka``.
+    Goły aparat: limit ``wlasna_zdolnosc_ka`` dla MCB/MCCB; dla ``KIND_FUSE_SWITCH`` ZAWSZE
+    ``NIE_DOTYCZY`` (niezależnie od tego, czy wkładka jest zainstalowana). Reguła liczbowa jest
+    JEDNA z doborem (``nn_device_selection.ocena_zdolnosci_wylaczania``): brak I″k,max →
+    ``NIE_OCENIONO``, brak pola katalogu → ``BRAK_PODSTAWY``, nigdy spełnienie bez liczb.
     """
-    # --- zdanie kombinacji ---
-    if urzadzenie.kind != KIND_FUSE_SWITCH:
-        zdanie_kombinacja = (
-            f"NIE_DOTYCZY — urządzenie {urzadzenie.kind} nie jest kombinacją "
-            "rozłącznik+wkładka, nie ma prądu warunkowego kombinacji do oceny."
-        )
-        kombinacja_status = STATUS_NIE_DOTYCZY
-        kombinacja_wartosc: float | None = None
-    elif urzadzenie.conditional_sc_current_ka is None:
-        zdanie_kombinacja = (
-            "NIEROZSTRZYGALNE — obwód bez wkładki zainstalowanej (albo katalog nie "
-            "niesie prądu warunkowego kombinacji conditional_sc_current_ka) — brak "
-            "podstawy do oceny zdolności wyłączania kombinacji (zero fabrykacji)."
-        )
-        kombinacja_status = STATUS_NIEROZSTRZYGALNE
-        kombinacja_wartosc = None
-    elif ik_max_ka is None:
-        zdanie_kombinacja = (
-            f"NIEROZSTRZYGALNE — prąd warunkowy kombinacji Icond="
-            f"{urzadzenie.conditional_sc_current_ka:g} kA jest znany, ale brak Ik″max "
-            "w punkcie zabudowy (bieg zwarciowy nie dostarczony)."
-        )
-        kombinacja_status = STATUS_NIEROZSTRZYGALNE
-        kombinacja_wartosc = urzadzenie.conditional_sc_current_ka
-    else:
-        kombinacja_spelnia_bool = urzadzenie.conditional_sc_current_ka >= ik_max_ka
-        kombinacja_status = STATUS_SPELNIA if kombinacja_spelnia_bool else STATUS_NIE_SPELNIA
-        kombinacja_wartosc = urzadzenie.conditional_sc_current_ka
-        zdanie_kombinacja = (
-            f"Kombinacja rozłącznik+wkładka: prąd warunkowy Icond="
-            f"{urzadzenie.conditional_sc_current_ka:g} kA "
-            f"{'>=' if kombinacja_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
-            f"zabudowy — {kombinacja_status} (IEC 60947, prąd warunkowy kombinacji)."
-        )
-
-    # --- zdanie gołego aparatu ---
     if urzadzenie.kind == KIND_FUSE_SWITCH:
-        zdanie_goly = (
-            "NIE_DOTYCZY — rozłącznik bezpiecznikowy sam w sobie NIE MA własnej "
-            "zdolności wyłączania zwarć (zapadka strukturalna katalogu, wzorzec "
-            "UM-ICU-KATALOG); jedyna wielkość dla tego aparatu to prąd warunkowy "
-            "KOMBINACJI powyżej."
+        kandydat = kandydat_z_urzadzenia(
+            urzadzenie, zdolnosc_wylaczania_ka=urzadzenie.conditional_sc_current_ka
         )
-        goly_status = STATUS_NIE_DOTYCZY
-        goly_wartosc: float | None = None
-    elif urzadzenie.wlasna_zdolnosc_ka is None:
-        zdanie_goly = (
-            f"NIEROZSTRZYGALNE — katalog nie niesie własnej zdolności wyłączania "
-            f"({'Icn' if urzadzenie.kind == KIND_MCB else 'Icu'}) dla tego aparatu "
-            f"{urzadzenie.kind} (zero fabrykacji)."
+        kombinacja = ocena_zdolnosci_wylaczania(
+            kandydat=kandydat,
+            ik_max_ka=ik_max_ka,
+            dane_przyjete=dane_przyjete,
+            kryterium_id=KRYTERIUM_ZDOLNOSCI_KOMBINACJI,
+            opis_pl=_OPIS_KOMBINACJI_PL,
         )
-        goly_status = STATUS_NIEROZSTRZYGALNE
-        goly_wartosc = None
-    elif ik_max_ka is None:
-        etykieta = "Icn (IEC 60898-1)" if urzadzenie.kind == KIND_MCB else "Icu (IEC 60947)"
-        zdanie_goly = (
-            f"NIEROZSTRZYGALNE — własna zdolność {etykieta}="
-            f"{urzadzenie.wlasna_zdolnosc_ka:g} kA jest znana, ale brak Ik″max w "
-            "punkcie zabudowy (bieg zwarciowy nie dostarczony)."
+        goly = ocena_zdolnosci_nie_dotyczy(
+            kandydat=kandydat,
+            kryterium_id=KRYTERIUM_ZDOLNOSCI_GOLEGO_APARATU,
+            opis_pl=_OPIS_GOLEGO_APARATU_PL,
+            powod_pl=(
+                "rozłącznik bezpiecznikowy sam w sobie nie ma własnej zdolności wyłączania "
+                "zwarć (zapadka strukturalna katalogu) — jedyną wielkością tego aparatu jest "
+                "prąd warunkowy kombinacji z wkładką"
+            ),
         )
-        goly_status = STATUS_NIEROZSTRZYGALNE
-        goly_wartosc = urzadzenie.wlasna_zdolnosc_ka
-    else:
-        etykieta = "Icn (IEC 60898-1)" if urzadzenie.kind == KIND_MCB else "Icu (IEC 60947)"
-        goly_spelnia_bool = urzadzenie.wlasna_zdolnosc_ka >= ik_max_ka
-        goly_status = STATUS_SPELNIA if goly_spelnia_bool else STATUS_NIE_SPELNIA
-        goly_wartosc = urzadzenie.wlasna_zdolnosc_ka
-        zdanie_goly = (
-            f"Goły aparat ({urzadzenie.kind}): własna zdolność {etykieta}="
-            f"{urzadzenie.wlasna_zdolnosc_ka:g} kA "
-            f"{'>=' if goly_spelnia_bool else '<'} Ik″max={ik_max_ka:g} kA w punkcie "
-            f"zabudowy — {goly_status}."
+        return ZdolnoscWylaczaniaDwaZdania(
+            kombinacja=kombinacja,
+            kombinacja_wartosc_ka=urzadzenie.conditional_sc_current_ka,
+            goly_aparat=goly,
+            goly_aparat_wartosc_ka=None,
         )
-
+    kandydat = kandydat_z_urzadzenia(
+        urzadzenie, zdolnosc_wylaczania_ka=urzadzenie.wlasna_zdolnosc_ka
+    )
+    kombinacja = ocena_zdolnosci_nie_dotyczy(
+        kandydat=kandydat,
+        kryterium_id=KRYTERIUM_ZDOLNOSCI_KOMBINACJI,
+        opis_pl=_OPIS_KOMBINACJI_PL,
+        powod_pl=(
+            f"aparat rodzaju {urzadzenie.kind} nie jest kombinacją rozłącznik + wkładka — nie ma "
+            "prądu warunkowego kombinacji"
+        ),
+    )
+    goly = ocena_zdolnosci_wylaczania(
+        kandydat=kandydat,
+        ik_max_ka=ik_max_ka,
+        dane_przyjete=dane_przyjete,
+        kryterium_id=KRYTERIUM_ZDOLNOSCI_GOLEGO_APARATU,
+        opis_pl=_OPIS_GOLEGO_APARATU_PL,
+    )
     return ZdolnoscWylaczaniaDwaZdania(
-        zdanie_kombinacja_pl=zdanie_kombinacja,
-        kombinacja_status=kombinacja_status,
-        kombinacja_wartosc_ka=kombinacja_wartosc,
-        zdanie_goly_aparat_pl=zdanie_goly,
-        goly_aparat_status=goly_status,
-        goly_aparat_wartosc_ka=goly_wartosc,
+        kombinacja=kombinacja,
+        kombinacja_wartosc_ka=None,
+        goly_aparat=goly,
+        goly_aparat_wartosc_ka=urzadzenie.wlasna_zdolnosc_ka,
     )
 
 
@@ -535,10 +549,11 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
                     "t_wymagany_s",
                 ),
             ),
-            substitution_latex=rf"$$\text{{{data.swz_przyczyna_pl}}}$$",
-            result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
+            substitution_latex=_zdanie_latex(data.swz_przyczyna_pl),
+            result=_pv("\\text{SWZ}", data.swz_wymaganie.etykieta.etykieta_pl, "—", "swz_ocena"),
             unit_check=_uc("A", "A", "A ≥ A (przy dowiedzionym t ≤ t_wym)"),
             source_keys={
+                **_klucze_rekordu(data.swz_wymaganie),
                 "zrodlo_czasu": "Tab. 41.1 IEC 60364-4-41 (G-D3)",
                 "pasmo_u0": data.swz_pasmo_u0,
                 "rodzaj_obwodu": data.swz_rodzaj_obwodu,
@@ -551,6 +566,43 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
 
 def _wartosc_lub_brak(value: float | None) -> float | str:
     return value if value is not None else "NIEDOSTĘPNE"
+
+
+def _liczba_lub_brak(value: Any) -> float | None:
+    return float(value) if value is not None else None
+
+
+def _wartosc_albo_stan(value: float | None, ocena: OcenaKryterium) -> float | str:
+    """Wartość katalogowa zdania albo etykieta rekordu (np. „Nie dotyczy”), gdy jej brak."""
+    return value if value is not None else ocena.etykieta.etykieta_pl
+
+
+_ODWROTNA_RELACJA_LATEX = {r"\ge": r"\le", r"\le": r"\ge", "<": ">", ">": "<"}
+
+
+def _relacja_odwrotna(ocena: OcenaKryterium) -> str:
+    """Znak relacji rekordu zapisany od strony limitu (``I_b \\le I_n`` dla ``I_n \\ge I_b``)."""
+    znak = relacja_latex(ocena)
+    return _ODWROTNA_RELACJA_LATEX.get(znak, znak)
+
+
+def _zdanie_latex(tekst: str) -> str:
+    """Zdanie rekordu werdyktu jako blok ``\\text{}`` (bez znaków sterujących LaTeX)."""
+    bezpieczny = tekst.replace("\\", "/").replace("{", "(").replace("}", ")")
+    return "$$\\text{" + bezpieczny + "}$$"
+
+
+def _klucze_rekordu(rekord: OcenaKryterium | WynikWymagania) -> dict[str, str]:
+    """Odniesienie kroku dowodu do rekordu werdyktu (identyfikator, status maszynowy, etykieta)
+    — rozstrzygnięcie kroku cytowane z rekordu, nie z drugiej kopii warunku."""
+    identyfikator = (
+        rekord.kryterium_id if isinstance(rekord, OcenaKryterium) else rekord.wymaganie_id
+    )
+    return {
+        "rekord_id": identyfikator,
+        "status_rekordu": rekord.status_maszynowy,
+        "etykieta_rekordu": rekord.etykieta.etykieta_pl,
+    }
 
 
 def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[ProofStep]:
@@ -742,7 +794,7 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
                 "$$\\text{" + linia.replace("\\", "/").replace("{", "(").replace("}", ")") + "}$$"
                 for linia in linie
             ),
-            result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
+            result=_pv("\\text{SWZ}", data.swz_wymaganie.etykieta.etykieta_pl, "—", "swz_ocena"),
             unit_check=_uc("V", "V", "Ω · A = V"),
             source_keys={
                 "kontrakt": str(data.swz_tt_it.get("kontrakt", "")),
@@ -892,9 +944,25 @@ class LVCircuitVerificationProofPack:
 
         # ---------------------------------------------------------------
         # Krok 4: Dobór Ib <= In <= Iz'                          NEW EQ_LVCV_002
+        # Krok 5: I2 <= 1,45*Iz'                                  NEW EQ_LVCV_003
+        # Reguły i rekordy z doboru aparatu nN (`nn_device_selection`) — JEDNO źródło
+        # kryteriów przeciążeniowych dla doboru, arkusza obwodów i tego dowodu.
         # ---------------------------------------------------------------
         in_a = data.urzadzenie.in_a
-        dobor_spelnia = ib_a <= in_a <= iz_prime_a
+        kandydat = kandydat_z_urzadzenia(
+            data.urzadzenie,
+            zdolnosc_wylaczania_ka=(
+                data.urzadzenie.conditional_sc_current_ka
+                if data.urzadzenie.kind == KIND_FUSE_SWITCH
+                else data.urzadzenie.wlasna_zdolnosc_ka
+            ),
+        )
+        kryterium_i, kryterium_ii = oceniaj_przeciazenie_kandydata(
+            kandydat=kandydat, ib_a=ib_a, iz_prime_a=iz_prime_a
+        )
+        wymaganie_doboru = kryterium_i.ocena
+        assert isinstance(wymaganie_doboru, WynikWymagania)
+        ocena_in_ib, ocena_in_iz = wymaganie_doboru.oceny_skladowe
         eq4 = _eq(
             "EQ_LVCV_002",
             r"I_b \le I_n \le I_z'",
@@ -918,34 +986,26 @@ class LVCircuitVerificationProofPack:
                     _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
                 ),
                 substitution_latex=(
-                    f"$${ib_a:.2f} \\le {in_a:g} \\le {iz_prime_a:.2f}\\;\\mathrm{{A}} "
-                    f"\\Rightarrow \\text{{{'spełnia' if dobor_spelnia else 'nie spełnia'}}}$$"
+                    f"$${ib_a:.2f} {_relacja_odwrotna(ocena_in_ib)} {in_a:g} "
+                    f"{relacja_latex(ocena_in_iz)} {iz_prime_a:.2f}\\;\\mathrm{{A}}$$"
+                    f"{_zdanie_latex(wymaganie_doboru.wyjasnienie.zdanie_pl)}"
                 ),
                 result=_pv("I_n", in_a, "A", "in_a"),
                 unit_check=_uc("A", "A", "A ≤ A ≤ A"),
-                source_keys={"werdykt": "spełnia" if dobor_spelnia else "nie spełnia"},
+                source_keys=_klucze_rekordu(wymaganie_doboru),
             )
         )
 
-        # ---------------------------------------------------------------
-        # Krok 5: I2 <= 1,45*Iz' (MCB) / 1,6*In wkładki (FUSE_SWITCH)  NEW EQ_LVCV_003
-        # ---------------------------------------------------------------
-        limit_a = 1.45 * iz_prime_a
-        i2_a: float | None
-        i2_zrodlo: str
-        if data.urzadzenie.kind == KIND_MCB:
-            i2_a = PROG_CIEPLNY_WYZWALA_X_IN * in_a
-            i2_zrodlo = f"{PROG_CIEPLNY_WYZWALA_X_IN:g}×In (MCB, IEC 60898-1)"
-        elif data.urzadzenie.kind == KIND_FUSE_SWITCH:
-            i2_a = FUSE_GG_IF_MULTIPLIER * in_a
-            i2_zrodlo = f"If={FUSE_GG_IF_MULTIPLIER:g}×In wkładki (IEC 60269-1)"
-        else:
-            i2_a = None
-            i2_zrodlo = (
-                "MCCB z wyzwalaczem elektronicznym — brak normatywnego pojedynczego "
-                "mnożnika I2 niezależnego od nastaw producenta (zero fabrykacji)"
+        i2_a = _liczba_lub_brak(kryterium_ii.wartosci.get("i2_a"))
+        limit_a = float(kryterium_ii.wartosci["limit_a"])
+        ocena_i2 = kryterium_ii.ocena
+        assert isinstance(ocena_i2, OcenaKryterium)
+        i2_zrodlo = str(
+            kryterium_ii.wartosci.get(
+                "zrodlo",
+                "wyłącznik z wyzwalaczem elektronicznym bez rozwiązanej nastawy Ir/tr w katalogu",
             )
-        i2_spelnia = None if i2_a is None else i2_a <= limit_a
+        )
         eq5 = _eq(
             "EQ_LVCV_003",
             r"I_2 \le 1{,}45 \cdot I_z'",
@@ -964,34 +1024,26 @@ class LVCircuitVerificationProofPack:
                 title_pl=f"Warunek zadziałania I2 ({i2_zrodlo})",
                 equation=eq5,
                 input_values=(
-                    _pv("I_2", i2_a if i2_a is not None else "NIEROZSTRZYGALNE", "A", "i2_a"),
+                    _pv("I_2", _wartosc_lub_brak(i2_a), "A", "i2_a"),
                     _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
                 ),
                 substitution_latex=(
-                    f"$$I_2 = {i2_a:.2f}\\;\\mathrm{{A}} \\le 1{{,}}45 \\cdot {iz_prime_a:.2f} "
-                    f"= {limit_a:.2f}\\;\\mathrm{{A}}$$"
-                    if i2_a is not None
-                    else r"$$I_2 \text{ — NIEROZSTRZYGALNE (brak normatywnego mnożnika MCCB)}$$"
-                ),
-                result=_pv(
-                    "I_2",
-                    i2_a if i2_a is not None else "NIEROZSTRZYGALNE",
-                    "A",
-                    "i2_a",
-                ),
-                unit_check=_uc("A", "A", "A ≤ A"),
-                source_keys={
-                    "werdykt": (
-                        "nierozstrzygalne"
-                        if i2_spelnia is None
-                        else ("spełnia" if i2_spelnia else "nie spełnia")
+                    (
+                        f"$$I_2 = {i2_a:.2f}\\;\\mathrm{{A}} {relacja_latex(ocena_i2)} "
+                        f"1{{,}}45 \\cdot {iz_prime_a:.2f} = {limit_a:.2f}\\;\\mathrm{{A}}$$"
+                        if i2_a is not None
+                        else ""
                     )
-                },
+                    + _zdanie_latex(ocena_i2.wyjasnienie.zdanie_pl)
+                ),
+                result=_pv("I_2", _wartosc_lub_brak(i2_a), "A", "i2_a"),
+                unit_check=_uc("A", "A", "A ≤ A"),
+                source_keys=_klucze_rekordu(ocena_i2),
             )
         )
 
         # ---------------------------------------------------------------
-        # Krok 6: Zdolność wyłączania — DWA ZDANIA                NEW EQ_LVCV_004
+        # Krok 6: Zdolność wyłączania — DWA ZDANIA (dwa rekordy K)  NEW EQ_LVCV_004
         # ---------------------------------------------------------------
         zdolnosc = ocen_zdolnosc_wylaczania_dwa_zdania(
             urzadzenie=data.urzadzenie, ik_max_ka=data.ik_max_ka
@@ -1021,51 +1073,47 @@ class LVCircuitVerificationProofPack:
                 input_values=(
                     _pv(
                         "I_{cond}",
-                        (
-                            zdolnosc.kombinacja_wartosc_ka
-                            if zdolnosc.kombinacja_wartosc_ka is not None
-                            else "NIE_DOTYCZY"
-                        ),
+                        _wartosc_albo_stan(zdolnosc.kombinacja_wartosc_ka, zdolnosc.kombinacja),
                         "kA",
                         "conditional_sc_current_ka",
                     ),
                     _pv(
                         "I_{cu/cn}",
-                        (
-                            zdolnosc.goly_aparat_wartosc_ka
-                            if zdolnosc.goly_aparat_wartosc_ka is not None
-                            else "NIE_DOTYCZY"
-                        ),
+                        _wartosc_albo_stan(zdolnosc.goly_aparat_wartosc_ka, zdolnosc.goly_aparat),
                         "kA",
                         "icu_or_icn_ka",
                     ),
-                    _pv(
-                        "I_k''_{max}",
-                        data.ik_max_ka if data.ik_max_ka is not None else "NIEDOSTĘPNE",
-                        "kA",
-                        "ik_max_ka",
-                    ),
+                    _pv("I_k''_{max}", _wartosc_lub_brak(data.ik_max_ka), "kA", "ik_max_ka"),
                 ),
                 substitution_latex=(
-                    f"$$\\text{{kombinacja: }} {zdolnosc.zdanie_kombinacja_pl}$$\n"
-                    f"$$\\text{{goły aparat: }} {zdolnosc.zdanie_goly_aparat_pl}$$"
+                    _zdanie_latex(f"kombinacja: {zdolnosc.zdanie_kombinacja_pl}")
+                    + "\n"
+                    + _zdanie_latex(f"goły aparat: {zdolnosc.zdanie_goly_aparat_pl}")
                 ),
                 result=_pv(
-                    "\\text{werdykt}",
-                    f"kombinacja={zdolnosc.kombinacja_status}; goły_aparat={zdolnosc.goly_aparat_status}",
+                    "\\text{zdolność wyłączania}",
+                    (
+                        f"kombinacja: {zdolnosc.kombinacja.etykieta.etykieta_pl}; "
+                        f"goły aparat: {zdolnosc.goly_aparat.etykieta.etykieta_pl}"
+                    ),
                     "—",
-                    "zdolnosc_wylaczania_werdykt",
+                    "zdolnosc_wylaczania_rekordy",
                 ),
                 unit_check=_uc("kA", "kA", "kA ≥ kA"),
                 source_keys={
                     "zdanie_kombinacja_pl": zdolnosc.zdanie_kombinacja_pl,
                     "zdanie_goly_aparat_pl": zdolnosc.zdanie_goly_aparat_pl,
+                    "kryterium_kombinacji": zdolnosc.kombinacja.kryterium_id,
+                    "status_kombinacji": zdolnosc.kombinacja.status_maszynowy,
+                    "kryterium_golego_aparatu": zdolnosc.goly_aparat.kryterium_id,
+                    "status_golego_aparatu": zdolnosc.goly_aparat.status_maszynowy,
                 },
             )
         )
 
         # ---------------------------------------------------------------
         # Krok 7: I^2*t <= k^2*S^2                                NEW EQ_LVCV_005
+        # Rozstrzygnięcie niesie rekord W wytrzymałości cieplnej solvera (`th.ocena`).
         # ---------------------------------------------------------------
         th = data.thermal
         eq7 = _eq(
@@ -1078,9 +1126,6 @@ class LVCircuitVerificationProofPack:
                 _sym("k^{2} S^{2}", "A²s", "Energia dopuszczalna", "i2t_admissible_a2s"),
             ],
         )
-        thermal_ok = th.status == "PASS"
-        i2t = th.i2t_a2s if th.i2t_a2s is not None else 0.0
-        i2t_dop = th.i2t_admissible_a2s if th.i2t_admissible_a2s is not None else 0.0
         steps.append(
             ProofStep(
                 step_id=ProofStep.generate_step_id("LVCV", 7),
@@ -1088,28 +1133,27 @@ class LVCircuitVerificationProofPack:
                 title_pl="Wytrzymałość cieplna przewodu I²t ≤ k²S²",
                 equation=eq7,
                 input_values=(
-                    _pv(
-                        "\\int i^{2}\\,dt",
-                        i2t if th.i2t_a2s is not None else "NIEDOSTĘPNE",
-                        "A²s",
-                        "i2t_a2s",
-                    ),
+                    _pv("\\int i^{2}\\,dt", _wartosc_lub_brak(th.i2t_a2s), "A²s", "i2t_a2s"),
                     _pv(
                         "k^{2} S^{2}",
-                        i2t_dop if th.i2t_admissible_a2s is not None else "NIEDOSTĘPNE",
+                        _wartosc_lub_brak(th.i2t_admissible_a2s),
                         "A²s",
                         "i2t_admissible_a2s",
                     ),
                 ),
                 substitution_latex=(
-                    f"$${i2t:.1f}\\;\\mathrm{{A^2s}} \\le {i2t_dop:.1f}\\;\\mathrm{{A^2s}} "
-                    f"\\Rightarrow \\text{{{th.status}}}$$"
-                    if th.i2t_a2s is not None and th.i2t_admissible_a2s is not None
-                    else rf"$$\text{{{th.status}}}$$"
+                    (
+                        f"$${th.i2t_a2s:.1f}\\;\\mathrm{{A^2s}} \\;\\text{{wobec}}\\; "
+                        f"{th.i2t_admissible_a2s:.1f}\\;\\mathrm{{A^2s}}$$"
+                        if th.i2t_a2s is not None and th.i2t_admissible_a2s is not None
+                        else ""
+                    )
+                    + _zdanie_latex(th.wyjasnienie.zdanie_pl)
                 ),
-                result=_pv("\\text{status}", th.status, "—", "thermal_status"),
+                result=_pv("\\text{I²t}", th.ocena.etykieta.etykieta_pl, "—", "thermal_ocena"),
                 unit_check=_uc("A²s", "A²s", "A²·s ≤ (A·√s/mm²)² · mm² = A²·s"),
                 source_keys={
+                    **_klucze_rekordu(th.ocena),
                     "decision_reason_pl": th.decision_reason_pl or "",
                     "readiness_codes": ",".join(th.readiness_codes),
                 },
@@ -1188,48 +1232,43 @@ class LVCircuitVerificationProofPack:
         # Podsumowanie
         # ---------------------------------------------------------------
         unit_checks_passed = all(step.unit_check.passed for step in steps)
-        # Agregacja werdyktu obwodu — NIE_DOTYCZY NIGDY nie blokuje PASS ani nie
-        # ściąga werdykt do NIEROZSTRZYGALNE (to inny stan: „pytanie nie ma sensu
-        # dla tego aparatu", nie „brak danych"); tylko realny brak danych
-        # (nierozstrzygalne) i realna niezgodność (nie spełnia/FAIL) wpływają na
-        # agregat. Źródło prawdy = statusy z `ZdolnoscWylaczaniaDwaZdania`, NIE
-        # `*_spelnia` (które celowo zlewa NIE_DOTYCZY i nierozstrzygalne w None).
-        czesciowe_statusy = [
-            STATUS_SPELNIA if dobor_spelnia else STATUS_NIE_SPELNIA,
-            (
-                STATUS_NIEROZSTRZYGALNE
-                if i2_spelnia is None
-                else (STATUS_SPELNIA if i2_spelnia else STATUS_NIE_SPELNIA)
-            ),
-            zdolnosc.kombinacja_status,
-            zdolnosc.goly_aparat_status,
-            STATUS_SPELNIA if thermal_ok else STATUS_NIE_SPELNIA,
-            data.swz_status,
-        ]
-        rozstrzygalne = [s for s in czesciowe_statusy if s not in (STATUS_NIE_DOTYCZY,)]
-        if any(s in (STATUS_NIE_SPELNIA, "nie spełnia") for s in rozstrzygalne):
-            overall_status = "FAIL"
-        elif any(s in (STATUS_NIEROZSTRZYGALNE, "nierozstrzygalne") for s in rozstrzygalne):
-            overall_status = "NIEROZSTRZYGALNE"
-        else:
-            overall_status = "PASS"
+        # Agregat obwodu — PROJEKCJA rekordów K wszystkich kryteriów (`rozstrzygniecie`):
+        # naruszenie którejkolwiek oceny stosowalnej → FAIL; każda stosowalna spełniona na
+        # liczbach → PASS; inaczej (brak wyniku, brak podstawy, niejednoznaczność) →
+        # NIEROZSTRZYGALNE. NIE_DOTYCZY (zdanie zdolności bez sensu dla rodzaju aparatu) jest
+        # pomijane — nie blokuje PASS i nie ściąga agregatu do NIEROZSTRZYGALNE. Kompletność
+        # dowodu (np. model niezwalidowany) niosą rekordy, nie ten kod agregatu.
+        oceny_obwodu: tuple[OcenaKryterium, ...] = (
+            *wymaganie_doboru.oceny_skladowe,
+            ocena_i2,
+            *zdolnosc.oceny,
+            *th.ocena.oceny_skladowe,
+            *data.swz_wymaganie.oceny_skladowe,
+        )
+        overall_status = projekcja_statusu(
+            oceny_obwodu, spelnia="PASS", nie_spelnia="FAIL", nierozstrzygniete="NIEROZSTRZYGALNE"
+        )
 
         key_results: dict[str, ProofValue] = {
             "s_mva": _pv("S", s_mva, "MVA", "s_mva"),
             "ib_a": _pv("I_b", ib_a, "A", "ib_a"),
             "iz_prime_a": _pv("I_z'", iz_prime_a, "A", "iz_prime_a"),
             "in_a": _pv("I_n", in_a, "A", "in_a"),
-            "i2_a": _pv("I_2", i2_a if i2_a is not None else "NIEROZSTRZYGALNE", "A", "i2_a"),
+            "i2_a": _pv("I_2", _wartosc_lub_brak(i2_a), "A", "i2_a"),
             "zdanie_kombinacja_pl": _pv(
                 "\\text{kombinacja}", zdolnosc.zdanie_kombinacja_pl, "—", "zdanie_kombinacja_pl"
             ),
             "zdanie_goly_aparat_pl": _pv(
                 "\\text{goły aparat}", zdolnosc.zdanie_goly_aparat_pl, "—", "zdanie_goly_aparat_pl"
             ),
-            "thermal_status": _pv("\\text{I2t}", th.status, "—", "thermal_status"),
+            "thermal_ocena": _pv(
+                "\\text{I2t}", th.ocena.etykieta.etykieta_pl, "—", "thermal_ocena"
+            ),
             "u_target_kv": _pv("U", u_target_kv, "kV", "u_kv"),
             "ik1_min_a": _pv("I_{k1,min}", fl.ik_min_a, "A", "ik1_min_a"),
-            "swz_status": _pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
+            "swz_ocena": _pv(
+                "\\text{SWZ}", data.swz_wymaganie.etykieta.etykieta_pl, "—", "swz_ocena"
+            ),
         }
         if data.ik_max_ka is not None:
             key_results["ik_max_ka"] = _pv("I_k''_{max}", data.ik_max_ka, "kA", "ik_max_ka")

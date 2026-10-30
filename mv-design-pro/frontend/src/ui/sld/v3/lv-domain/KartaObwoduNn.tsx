@@ -10,8 +10,8 @@
  * dostępny JEDNYM kliknięciem („Pełny rekord dowodu"), nie wylany na pierwszy plan.
  *
  * Zero fizyki: wszystkie liczby, limity, podstawy i oceny pochodzą z odpowiedzi
- * backendu (rekordy K/W pakietu `werdykt`, werdykt TN `swz.werdykt`). Warunki
- * matematyczne TT/IT renderuje `MathInline` z pól `warunek_latex` rekordów K.
+ * backendu (rekordy K/W pakietu `werdykt` — SWZ TN, TT i IT). Warunki
+ * matematyczne SWZ renderuje `MathInline` z pól `warunek_latex` rekordów K.
  * Identyfikatory modelu (ref) nie są pokazywane — nazwy z grafu projekcji.
  */
 
@@ -20,12 +20,12 @@ import type { CSSProperties, ReactNode } from 'react';
 import { MathInline } from '../../../proof/MathRenderer';
 import { EtykietaWerdyktu, KartaWerdyktu, NAZWA_STANU_ZRODLA_PL, wielkoscPl } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import { InformacjeAudytowe } from '../../../../ui2/wyniki/wzorzec/InformacjeAudytowe';
-import type { OcenaKryterium, PodstawaWymagania } from '../../../../ui2/wyniki/wzorzec/werdykt';
+import type { OcenaKryterium, PodstawaWymagania, WynikWymagania } from '../../../../ui2/wyniki/wzorzec/werdykt';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { jestWerdyktemTtIt, type SwzTnVerdict, type SwzTtItVerdict } from '../canvas/overlay';
 import { kodyAnsiPelne, nazwyFunkcjiPl, stanSlowny, wpisAparatu, znakiIecPelne } from './symbolRegistry';
 import type { LvDomainProjectionV1, LvDomainSwzFeederV1, LvEnergizationState } from './types';
-import { plFixed, type PaletaNn } from './visualGrammar';
+import type { PaletaNn } from './visualGrammar';
 
 export interface MetrykaKarty {
   readonly kod: string;
@@ -58,15 +58,6 @@ const SLOWO_STANU_ZASILANIA: Readonly<Record<LvEnergizationState, string>> = {
 
 function slowoStanu(state: LvEnergizationState | undefined): string {
   return state ? SLOWO_STANU_ZASILANIA[state] ?? state : 'brak danych';
-}
-
-/** Ton werdyktu TN (3-stanowy werdykt backendu, `SwzTnVerdict.status`) — dług migracji E77
- *  przeniesiony z dawnego panelu odpływu (`LvFeederPanel.statusTone`) do karty obwodu;
- *  tekst oceny TN to wprost słowo backendu, mapa daje wyłącznie kolor. */
-function tonStatusuTn(status: SwzTnVerdict['status'], paleta: PaletaNn): string {
-  if (status === 'spełnia') return paleta.tonOk;
-  if (status === 'nie spełnia') return paleta.tonBledu;
-  return paleta.tonOstrzegawczy;
 }
 
 /** Klucz przypisu podstawy: dokument + jednostka redakcyjna + stan (ta sama podstawa = ten sam numer). */
@@ -170,11 +161,33 @@ function Przypisy({ paleta, pozycje }: { readonly paleta: PaletaNn; readonly poz
 }
 
 // ---------------------------------------------------------------------------
-// SWZ — układ TT/IT (rekord W werdyktu wyjaśnialnego) i TN (werdykt 3-stanowy)
+// SWZ — rekord W werdyktu wyjaśnialnego (układ TN, TT i IT)
 // ---------------------------------------------------------------------------
 
-function SekcjaSwzTtIt({ swz, paleta }: { readonly swz: SwzTtItVerdict; readonly paleta: PaletaNn }): JSX.Element {
-  const w = swz.wymaganie;
+/** Wynik kryterium w tabeli: wielkość z jednostką, a dla kryterium logicznego (np. brak
+ *  stopienia wkładki gG przy prądzie umownym) — opis stanu z rekordu zamiast wartości 0/1. */
+function wynikKryterium(k: OcenaKryterium): string {
+  if (!k.wynik) return '—';
+  if (k.kryterium.relacja === 'LOGICZNE') return k.wynik.punkt_krytyczny_pl ?? '—';
+  return wielkoscPl(k.wynik.wartosc);
+}
+
+/**
+ * Sekcja SWZ z rekordu W (TN: `swz.tn`, TT/IT: `swz.tt`/`swz.it`) — JEDNA tabela warunków
+ * dla wszystkich układów: warunek (LaTeX rekordu K), wynik, limit z przypisem podstawy,
+ * plakietka etykiety rekordu K; pod tabelą etykieta wymagania i pełny rekord dowodu.
+ * `przypisBrakuLimitu` daje tekst przypisu dla kryterium bez limitu (TN: czego brakuje wg
+ * rekordu; TT/IT: brak tekstu normy w repozytorium, kod odmowy).
+ */
+function SekcjaSwzRekord({ wymaganie: w, uklad, paleta, testid, przypisBrakuLimitu, testidBrakuLimitu, dopisek }: {
+  readonly wymaganie: WynikWymagania;
+  readonly uklad: string;
+  readonly paleta: PaletaNn;
+  readonly testid: string;
+  readonly przypisBrakuLimitu: (k: OcenaKryterium) => string;
+  readonly testidBrakuLimitu: string;
+  readonly dopisek?: string;
+}): JSX.Element {
   const numery = new Map<string, number>();
   const przypisy: { n: number; tekst: ReactNode; testid?: string }[] = [];
   const numerPodstawy = (p: PodstawaWymagania): number => {
@@ -186,24 +199,28 @@ function SekcjaSwzTtIt({ swz, paleta }: { readonly swz: SwzTtItVerdict; readonly
     przypisy.push({ n, tekst: tekstPodstawy(p) });
     return n;
   };
-  let numerBrakuLimitu: number | null = null;
-  const wierszBrakuLimitu = (): number => {
-    if (numerBrakuLimitu != null) return numerBrakuLimitu;
-    numerBrakuLimitu = przypisy.length + 1;
-    przypisy.push({
-      n: numerBrakuLimitu,
-      testid: 'lv-domain-feeder-werdykt-tt-it-limit',
-      tekst: `Limit bez podstawy: dopuszczalne napięcie dotykowe i warunki drugiego zwarcia (IEC 60364-4-41 §411.5/§411.6) — tekstu normy brak w repozytorium (kod ${swz.kod_odmowy_limitu ?? 'swz.limit_tt_it_brak_tekstu_normy'}).`,
-    });
-    return numerBrakuLimitu;
+  const numeryBrakow = new Map<string, number>();
+  const numerBrakuLimitu = (k: OcenaKryterium): number => {
+    const tekst = przypisBrakuLimitu(k);
+    const istniejacy = numeryBrakow.get(tekst);
+    if (istniejacy != null) return istniejacy;
+    const n = przypisy.length + 1;
+    numeryBrakow.set(tekst, n);
+    przypisy.push({ n, testid: testidBrakuLimitu, tekst });
+    return n;
   };
   const wiersze = w.oceny_skladowe.map((k: OcenaKryterium) => {
     const limit = k.limit?.wartosc ?? null;
-    const przypis = limit != null && k.limit ? numerPodstawy(k.limit.podstawa) : wierszBrakuLimitu();
+    const logiczne = k.kryterium.relacja === 'LOGICZNE';
+    const przypis = limit != null && k.limit
+      ? numerPodstawy(k.limit.podstawa)
+      : logiczne
+        ? numerPodstawy(k.podstawa)
+        : numerBrakuLimitu(k);
     return {
       klucz: k.kryterium_id,
       warunek: <MathInline latex={k.kryterium.warunek_latex} />,
-      wynik: k.wynik ? wielkoscPl(k.wynik.wartosc) : '—',
+      wynik: wynikKryterium(k),
       limit: limit != null ? wielkoscPl(limit) : '—',
       przypis,
       ocena: (
@@ -217,54 +234,50 @@ function SekcjaSwzTtIt({ swz, paleta }: { readonly swz: SwzTtItVerdict; readonly
     };
   });
   return (
-    <div
-      data-testid="lv-domain-feeder-werdykt-tt-it"
-      data-uklad={swz.uklad}
-      data-status-wymagania={w.status_maszynowy}
-    >
+    <div data-testid={testid} data-uklad={uklad} data-status-wymagania={w.status_maszynowy}>
       <TabelaWarunkow paleta={paleta} wiersze={wiersze} />
       <div data-testid="karta-obwodu-ocena-wymagania" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 6, fontSize: 11 }}>
-        <span style={{ color: paleta.kreskaWygaszona }}>{`Wymaganie (układ ${swz.uklad})`}</span>
+        <span style={{ color: paleta.kreskaWygaszona }}>{`Wymaganie (układ ${uklad})`}</span>
         <EtykietaWerdyktu etykieta={w.etykieta} status={w.status_maszynowy} zwarta />
       </div>
       <Przypisy paleta={paleta} pozycje={przypisy} />
+      {dopisek ? <div style={{ marginTop: 4, fontSize: 10, color: paleta.kreskaWygaszona }}>{dopisek}</div> : null}
       <details data-testid="karta-obwodu-rekord-dowodu" style={{ marginTop: 8, fontSize: 11 }}>
         <summary style={{ cursor: 'pointer', color: paleta.tonInfo }}>Pełny rekord dowodu</summary>
         <div style={{ marginTop: 6 }}>
-          <KartaWerdyktu rekord={w} naglowek={`Werdykt wyjaśnialny — układ ${swz.uklad}`} />
+          <KartaWerdyktu rekord={w} naglowek={`Werdykt wyjaśnialny — układ ${uklad}`} />
         </div>
       </details>
     </div>
   );
 }
 
+function SekcjaSwzTtIt({ swz, paleta }: { readonly swz: SwzTtItVerdict; readonly paleta: PaletaNn }): JSX.Element {
+  return (
+    <SekcjaSwzRekord
+      wymaganie={swz.wymaganie}
+      uklad={swz.uklad}
+      paleta={paleta}
+      testid="lv-domain-feeder-werdykt-tt-it"
+      testidBrakuLimitu="lv-domain-feeder-werdykt-tt-it-limit"
+      przypisBrakuLimitu={() =>
+        `Limit bez podstawy: dopuszczalne napięcie dotykowe i warunki drugiego zwarcia (IEC 60364-4-41 §411.5/§411.6) — tekstu normy brak w repozytorium (kod ${swz.kod_odmowy_limitu ?? 'swz.limit_tt_it_brak_tekstu_normy'}).`}
+    />
+  );
+}
+
 function SekcjaSwzTn({ swz, paleta }: { readonly swz: SwzTnVerdict; readonly paleta: PaletaNn }): JSX.Element {
   return (
-    <div data-testid="lv-domain-feeder-swz-tn" data-swz-status={swz.status}>
-      <TabelaWarunkow
-        paleta={paleta}
-        wiersze={[
-          {
-            klucz: 'swz.tn',
-            warunek: 'Ik₁min ≥ Ia (t ≤ twym)',
-            wynik: `${plFixed(swz.ik1_min_a, 0)} A`,
-            limit: swz.ia_wymagane_a != null ? `${plFixed(swz.ia_wymagane_a, 0)} A` : '—',
-            przypis: 1,
-            ocena: <span style={{ color: tonStatusuTn(swz.status, paleta), fontWeight: 700 }}>{swz.status}</span>,
-          },
-        ]}
-      />
-      <Przypisy
-        paleta={paleta}
-        pozycje={[
-          {
-            n: 1,
-            tekst: `IEC 60364-4-41 · Tab. 41.1${swz.t_wymagany_s != null ? ` — t wym = ${plFixed(swz.t_wymagany_s, 2)} s` : ''}`,
-          },
-        ]}
-      />
-      <div style={{ marginTop: 4, fontSize: 10, color: paleta.kreskaWygaszona }}>{swz.przyczyna_pl}</div>
-    </div>
+    <SekcjaSwzRekord
+      wymaganie={swz.wymaganie}
+      uklad="TN"
+      paleta={paleta}
+      testid="lv-domain-feeder-swz-tn"
+      testidBrakuLimitu="lv-domain-feeder-swz-tn-limit"
+      przypisBrakuLimitu={(k) =>
+        `Limit bez podstawy: ${k.wyjasnienie.czego_brakuje.join('; ') || k.wyjasnienie.zdanie_pl}`}
+      dopisek={swz.przyczyna_pl}
+    />
   );
 }
 

@@ -4,8 +4,12 @@ Pokrywa: 10 kroków obecnych w kolejności (§ mapowanie krok→dostawca),
 spójność wartości kroków z wejściami dostawców (nie przybliżenie — anty-
 cyrkularność, wzorzec PODSTAWA-VDROP), dwa zdania zdolności wyłączania jako
 ILOCZYN CECH (MCB/FUSE_SWITCH-z-wkładką/FUSE_SWITCH-bez-wkładki/MCCB ×
-Ik″max obecny/nieobecny), SWZ trzeci stan (nierozstrzygalne ≠ FAIL),
+Ik″max obecny/nieobecny/równy limitowi), SWZ trzeci stan (nierozstrzygalne ≠ FAIL),
 determinizm (dwa bygi → identyczne bajty ZIP), kompletność ZIP.
+
+Karta WERDYKT-MIGRACJA-190: każde kryterium kroku 4–7 i 10 cytuje rekord werdyktu
+wyjaśnialnego (K/W), agregat jest projekcją rekordów — testy porównują statusy maszynowe
+rekordów i pilnują, że krok nie niesie słowa werdyktu bez rekordu.
 """
 
 from __future__ import annotations
@@ -16,18 +20,17 @@ from uuid import UUID
 from zipfile import ZipFile
 
 import pytest
+from application.analyses.nn_device_selection import oceniaj_przeciazenie_kandydata
+from application.analyses.swz.werdykt import AparatZabezpieczajacy, SwzResult, ocen_swz
 from application.proof_engine.equation_registry import EquationRegistry
 from application.proof_engine.packs.lv_circuit_verification import (
     KIND_FUSE_SWITCH,
     KIND_MCB,
     KIND_MCCB,
-    STATUS_NIE_DOTYCZY,
-    STATUS_NIE_SPELNIA,
-    STATUS_NIEROZSTRZYGALNE,
-    STATUS_SPELNIA,
     LVCircuitVerificationInput,
     LVCircuitVerificationProofPack,
     UrzadzenieOchronneNn,
+    kandydat_z_urzadzenia,
     ocen_zdolnosc_wylaczania_dwa_zdania,
 )
 from application.proof_engine.proof_pack import ProofPackContext
@@ -82,11 +85,26 @@ def _fault_loop():
     )
 
 
+def _swz(stan: str) -> SwzResult:
+    """Rekord SWZ TN z realnego oceniającego (`ocen_swz`) — MCB B16 (Ia = 80 A):
+    ``spelnia`` przy Ik1,min 700 A, ``nie_spelnia`` przy 50 A, ``nierozstrzygalne`` — MCCB bez
+    nastawy Ii (brak limitu, BRAK_PODSTAWY)."""
+    if stan == "nierozstrzygalne":
+        return ocen_swz(
+            ik1_min_a=700.0, u0_v=230.0, aparat=AparatZabezpieczajacy(typ="MCCB", in_a=16.0)
+        )
+    return ocen_swz(
+        ik1_min_a=700.0 if stan == "spelnia" else 50.0,
+        u0_v=230.0,
+        aparat=AparatZabezpieczajacy(typ="MCB", in_a=16.0, klasa_mcb="B"),
+    )
+
+
 def _input(
     *,
     urzadzenie: UrzadzenieOchronneNn | None = None,
     ik_max_ka: float | None = 5.0,
-    swz_status: str = "spełnia",
+    swz: str = "spelnia",
     p_mw: float = 0.005,
     q_mvar: float = 0.002,
 ) -> LVCircuitVerificationInput:
@@ -99,6 +117,7 @@ def _input(
             klasa_mcb="B",
             wlasna_zdolnosc_ka=6.0,
         )
+    wynik_swz = _swz(swz)
     return LVCircuitVerificationInput(
         project_name="Projekt testowy",
         case_name="Przypadek testowy",
@@ -121,13 +140,13 @@ def _input(
         vdrop_delta_u_total_kv=0.005,
         vdrop_delta_u_total_percent=1.25,
         fault_loop=_fault_loop(),
-        swz_status=swz_status,
-        swz_przyczyna_pl="Ik1_min>=Ia (test)",
-        swz_ia_wymagane_a=145.0 if swz_status != "nierozstrzygalne" else None,
-        swz_t_wymagany_s=0.4,
-        swz_pasmo_u0="120<U0<=230",
-        swz_rodzaj_obwodu="odbiorczy",
-        swz_margines=3.0 if swz_status != "nierozstrzygalne" else None,
+        swz_wymaganie=wynik_swz.wymaganie,
+        swz_przyczyna_pl=wynik_swz.przyczyna_pl,
+        swz_ia_wymagane_a=wynik_swz.ia_wymagane_a,
+        swz_t_wymagany_s=wynik_swz.t_wymagany_s,
+        swz_pasmo_u0=wynik_swz.pasmo_u0,
+        swz_rodzaj_obwodu=wynik_swz.rodzaj_obwodu,
+        swz_margines=wynik_swz.margines,
     )
 
 
@@ -188,7 +207,9 @@ def test_krok7_i2t_zgodny_z_niezaleznym_check_conductor_thermal_withstand() -> N
     th_niezalezny = _thermal()
     doc = LVCircuitVerificationProofPack.generate(_input())
     krok7 = next(s for s in doc.steps if s.step_number == 7)
-    assert krok7.result.value == th_niezalezny.status
+    # Krok cytuje etykietę rekordu W solvera (rozstrzygnięcie z rekordu, nie kod PASS/FAIL).
+    assert krok7.result.value == th_niezalezny.ocena.etykieta.etykieta_pl
+    assert krok7.source_keys["status_rekordu"] == th_niezalezny.ocena.status_maszynowy
 
 
 def test_krok1_2_arytmetyka_z_wejsc_nie_z_dowodu() -> None:
@@ -208,57 +229,41 @@ def test_krok1_2_arytmetyka_z_wejsc_nie_z_dowodu() -> None:
 # =============================================================================
 
 
+_MCB_6KA = UrzadzenieOchronneNn(
+    KIND_MCB, "m1", "MCB B16", 16.0, klasa_mcb="B", wlasna_zdolnosc_ka=6.0
+)
+_MCB_BEZ_ICN = UrzadzenieOchronneNn(
+    KIND_MCB, "m1", "MCB B16", 16.0, klasa_mcb="B", wlasna_zdolnosc_ka=None
+)
+_FUSE_50KA = UrzadzenieOchronneNn(
+    KIND_FUSE_SWITCH, "f1", "Rozłącznik+gG63", 63.0, conditional_sc_current_ka=50.0
+)
+_FUSE_GOLY = UrzadzenieOchronneNn(
+    KIND_FUSE_SWITCH, "f2", "Rozłącznik goły", 63.0, conditional_sc_current_ka=None
+)
+_MCCB_50KA = UrzadzenieOchronneNn(KIND_MCCB, "c1", "MCCB 400A", 400.0, wlasna_zdolnosc_ka=50.0)
+
+
 @pytest.mark.parametrize(
     ("urzadzenie", "ik_max_ka", "oczek_kombinacja", "oczek_goly"),
     [
-        # MCB × Ik_max obecny/nieobecny — kombinacja ZAWSZE NIE_DOTYCZY (nie jest wkładką)
-        (
-            UrzadzenieOchronneNn(
-                KIND_MCB, "m1", "MCB B16", 16.0, klasa_mcb="B", wlasna_zdolnosc_ka=6.0
-            ),
-            5.0,
-            STATUS_NIE_DOTYCZY,
-            STATUS_SPELNIA,
-        ),
-        (
-            UrzadzenieOchronneNn(
-                KIND_MCB, "m1", "MCB B16", 16.0, klasa_mcb="B", wlasna_zdolnosc_ka=None
-            ),
-            5.0,
-            STATUS_NIE_DOTYCZY,
-            STATUS_NIEROZSTRZYGALNE,
-        ),
-        # FUSE_SWITCH z wkładką (conditional obecny) × Ik_max obecny — goły aparat ZAWSZE NIE_DOTYCZY
-        (
-            UrzadzenieOchronneNn(
-                KIND_FUSE_SWITCH, "f1", "Rozłącznik+gG63", 63.0, conditional_sc_current_ka=50.0
-            ),
-            5.0,
-            STATUS_SPELNIA,
-            STATUS_NIE_DOTYCZY,
-        ),
-        # FUSE_SWITCH bez wkładki (conditional=None) — kombinacja NIEROZSTRZYGALNA
-        (
-            UrzadzenieOchronneNn(
-                KIND_FUSE_SWITCH, "f2", "Rozłącznik goły", 63.0, conditional_sc_current_ka=None
-            ),
-            5.0,
-            STATUS_NIEROZSTRZYGALNE,
-            STATUS_NIE_DOTYCZY,
-        ),
-        # MCCB × Ik_max obecny/nieobecny — kombinacja ZAWSZE NIE_DOTYCZY
-        (
-            UrzadzenieOchronneNn(KIND_MCCB, "c1", "MCCB 400A", 400.0, wlasna_zdolnosc_ka=50.0),
-            80.0,
-            STATUS_NIE_DOTYCZY,
-            STATUS_NIE_SPELNIA,
-        ),
-        (
-            UrzadzenieOchronneNn(KIND_MCCB, "c1", "MCCB 400A", 400.0, wlasna_zdolnosc_ka=50.0),
-            None,
-            STATUS_NIE_DOTYCZY,
-            STATUS_NIEROZSTRZYGALNE,
-        ),
+        # Iloczyn: rodzaj aparatu {MCB, FUSE_SWITCH z wkładką, FUSE_SWITCH goły, MCCB}
+        # × Ik″max {poniżej limitu, równy limitowi, powyżej, brak} × pole katalogu {jest, brak}.
+        # Zdanie nie stosujące się do rodzaju aparatu jest rekordem NIE_DOTYCZY; brak Ik″max —
+        # NIE_OCENIONO; brak pola katalogu — BRAK_PODSTAWY (brak danych ≠ spełnia).
+        (_MCB_6KA, 5.0, "NIE_DOTYCZY", "SPELNIA"),
+        (_MCB_6KA, 6.0, "NIE_DOTYCZY", "SPELNIA"),
+        (_MCB_6KA, 6.5, "NIE_DOTYCZY", "NIE_SPELNIA"),
+        (_MCB_6KA, None, "NIE_DOTYCZY", "NIE_OCENIONO"),
+        (_MCB_BEZ_ICN, 5.0, "NIE_DOTYCZY", "BRAK_PODSTAWY"),
+        (_FUSE_50KA, 5.0, "SPELNIA", "NIE_DOTYCZY"),
+        (_FUSE_50KA, 50.0, "SPELNIA", "NIE_DOTYCZY"),
+        (_FUSE_50KA, 60.0, "NIE_SPELNIA", "NIE_DOTYCZY"),
+        (_FUSE_50KA, None, "NIE_OCENIONO", "NIE_DOTYCZY"),
+        (_FUSE_GOLY, 5.0, "BRAK_PODSTAWY", "NIE_DOTYCZY"),
+        (_MCCB_50KA, 80.0, "NIE_DOTYCZY", "NIE_SPELNIA"),
+        (_MCCB_50KA, 50.0, "NIE_DOTYCZY", "SPELNIA"),
+        (_MCCB_50KA, None, "NIE_DOTYCZY", "NIE_OCENIONO"),
     ],
 )
 def test_dwa_zdania_zdolnosci_wylaczania_iloczyn_cech(
@@ -268,21 +273,25 @@ def test_dwa_zdania_zdolnosci_wylaczania_iloczyn_cech(
     oczek_goly: str,
 ) -> None:
     wynik = ocen_zdolnosc_wylaczania_dwa_zdania(urzadzenie=urzadzenie, ik_max_ka=ik_max_ka)
-    assert wynik.kombinacja_status == oczek_kombinacja
-    assert wynik.goly_aparat_status == oczek_goly
-    # Dwa RÓŻNE zdania — nigdy identyczny tekst (byłoby to jedno pole pod dwiema nazwami)
+    assert wynik.kombinacja.status_maszynowy == oczek_kombinacja
+    assert wynik.goly_aparat.status_maszynowy == oczek_goly
+    # Dwa RÓŻNE kryteria i zdania — nigdy jedno pole pod dwiema nazwami.
+    assert wynik.kombinacja.kryterium_id != wynik.goly_aparat.kryterium_id
     assert wynik.zdanie_kombinacja_pl != wynik.zdanie_goly_aparat_pl
+    # Zdanie to wyjaśnienie rekordu (jedno źródło tekstu i rozstrzygnięcia).
+    assert wynik.zdanie_kombinacja_pl == wynik.kombinacja.wyjasnienie.zdanie_pl
+    assert wynik.zdanie_goly_aparat_pl == wynik.goly_aparat.wyjasnienie.zdanie_pl
 
 
 def test_pack_krok6_niesie_oba_zdania_w_key_results() -> None:
-    fs = UrzadzenieOchronneNn(
-        KIND_FUSE_SWITCH, "f1", "Rozłącznik+gG63", 63.0, conditional_sc_current_ka=50.0
-    )
-    doc = LVCircuitVerificationProofPack.generate(_input(urzadzenie=fs, ik_max_ka=5.0))
+    doc = LVCircuitVerificationProofPack.generate(_input(urzadzenie=_FUSE_50KA, ik_max_ka=5.0))
     kombinacja = doc.summary.key_results["zdanie_kombinacja_pl"].value
     goly = doc.summary.key_results["zdanie_goly_aparat_pl"].value
-    assert "kombinacja" in kombinacja.lower() or "Icond" in kombinacja
-    assert "NIE_DOTYCZY" in goly
+    assert "kombinacji" in kombinacja
+    assert "nie dotyczy" in goly.lower()
+    krok6 = next(s for s in doc.steps if s.step_number == 6)
+    assert krok6.source_keys["status_kombinacji"] == "SPELNIA"
+    assert krok6.source_keys["status_golego_aparatu"] == "NIE_DOTYCZY"
 
 
 def test_mcb_bez_wkladki_nigdy_nie_dostaje_zdania_kombinacji_pozytywnego() -> None:
@@ -290,8 +299,90 @@ def test_mcb_bez_wkladki_nigdy_nie_dostaje_zdania_kombinacji_pozytywnego() -> No
         KIND_MCB, "m1", "MCB C25", 25.0, klasa_mcb="C", wlasna_zdolnosc_ka=6.0
     )
     wynik = ocen_zdolnosc_wylaczania_dwa_zdania(urzadzenie=mcb, ik_max_ka=3.0)
-    assert wynik.kombinacja_status == STATUS_NIE_DOTYCZY
+    assert wynik.kombinacja.status_maszynowy == "NIE_DOTYCZY"
     assert wynik.kombinacja_wartosc_ka is None
+
+
+def test_dane_przyjete_ik_max_wchodza_do_rekordu_zdania() -> None:
+    """Ik″max liczony z wartością roboczą (dana przyjęta) — rekord niesie daną przyjętą
+    i kompletność NIEPELNY; przy braku Ik″max dana nie wchodzi (nic nie stoi na niej)."""
+    from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+
+    dana = dana_przyjeta_tolerancji_nn(miejsce_pl="obwód testowy")
+    z_ik = ocen_zdolnosc_wylaczania_dwa_zdania(
+        urzadzenie=_MCB_6KA, ik_max_ka=5.0, dane_przyjete=(dana,)
+    )
+    assert z_ik.goly_aparat.dowod.status_danych.dane_przyjete == (dana,)
+    assert z_ik.goly_aparat.kompletnosc_dowodu == "NIEPELNY"
+    bez_ik = ocen_zdolnosc_wylaczania_dwa_zdania(
+        urzadzenie=_MCB_6KA, ik_max_ka=None, dane_przyjete=(dana,)
+    )
+    assert bez_ik.goly_aparat.dowod.status_danych.dane_przyjete == ()
+
+
+# =============================================================================
+# Kroki 4–5: te same rekordy co dobór aparatu (jedno źródło reguły)
+# =============================================================================
+
+
+@pytest.mark.parametrize(
+    "urzadzenie",
+    [
+        _MCB_6KA,
+        _FUSE_50KA,
+        _MCCB_50KA,
+        UrzadzenieOchronneNn(
+            KIND_MCCB, "c2", "MCCB 100A", 100.0, wlasna_zdolnosc_ka=36.0, ir_a=63.0, tr_s=10.0
+        ),
+    ],
+)
+@pytest.mark.parametrize("p_mw", [0.005, 0.03, 0.06])
+def test_kroki_4_5_cytuja_rekordy_doboru(urzadzenie: UrzadzenieOchronneNn, p_mw: float) -> None:
+    """Iloczyn: rodzaj aparatu × obciążenie (Ib poniżej / powyżej In / powyżej Iz′). Krok 4
+    cytuje rekord W `dobor_nn.ib_in_iz`, krok 5 rekord K `dobor_nn.i2_wobec_iz` — te same
+    co `oceniaj_przeciazenie_kandydata` (dobór i arkusz obwodów), łącznie z I2 = 1,3·Ir dla
+    MCCB z rozwiązaną nastawą."""
+    dane = _input(urzadzenie=urzadzenie, p_mw=p_mw, q_mvar=0.0)
+    doc = LVCircuitVerificationProofPack.generate(dane)
+    krok2 = next(s for s in doc.steps if s.step_number == 2)
+    krok3 = next(s for s in doc.steps if s.step_number == 3)
+    kryterium_i, kryterium_ii = oceniaj_przeciazenie_kandydata(
+        kandydat=kandydat_z_urzadzenia(urzadzenie, zdolnosc_wylaczania_ka=None),
+        ib_a=float(krok2.result.value),
+        iz_prime_a=float(krok3.result.value),
+    )
+    krok4 = next(s for s in doc.steps if s.step_number == 4)
+    krok5 = next(s for s in doc.steps if s.step_number == 5)
+    assert krok4.source_keys["rekord_id"] == "dobor_nn.ib_in_iz"
+    assert krok4.source_keys["status_rekordu"] == kryterium_i.ocena.status_maszynowy
+    assert krok5.source_keys["rekord_id"] == "dobor_nn.i2_wobec_iz"
+    assert krok5.source_keys["status_rekordu"] == kryterium_ii.ocena.status_maszynowy
+    i2 = kryterium_ii.wartosci.get("i2_a")
+    if i2 is None:
+        assert krok5.result.value == "NIEDOSTĘPNE"
+    else:
+        assert krok5.result.value == pytest.approx(i2)
+
+
+def test_krok4_naruszenie_ib_daje_fail_obwodu() -> None:
+    """Ib > In (MCB B16 przy 30 kW) — rekord W doboru NIE_SPELNIA, agregat FAIL."""
+    doc = LVCircuitVerificationProofPack.generate(_input(p_mw=0.03, q_mvar=0.0))
+    krok4 = next(s for s in doc.steps if s.step_number == 4)
+    assert krok4.source_keys["status_rekordu"] == "NIE_SPELNIA"
+    assert doc.summary.overall_status == "FAIL"
+
+
+def test_kroki_nie_niosa_slowa_werdyktu_bez_rekordu() -> None:
+    """Kontrakt werdyktu wyjaśnialnego: żaden krok nie podstawia kodu werdyktu jako tekstu —
+    rozstrzygnięcie cytuje rekord (identyfikator, status maszynowy, etykieta) w kluczach."""
+    for stan in ("spelnia", "nie_spelnia", "nierozstrzygalne"):
+        for urzadzenie in (_MCB_6KA, _FUSE_50KA, _FUSE_GOLY, _MCCB_50KA):
+            doc = LVCircuitVerificationProofPack.generate(_input(urzadzenie=urzadzenie, swz=stan))
+            for krok in doc.steps:
+                tekst = krok.substitution_latex + str(krok.result.value)
+                for kod in ("SPEŁNIA", "SPELNIA", "PASS", "FAIL", "spełnia}", "nie spełnia"):
+                    assert kod not in tekst, (krok.step_number, kod, tekst)
+                assert "werdykt" not in krok.source_keys
 
 
 # =============================================================================
@@ -300,26 +391,56 @@ def test_mcb_bez_wkladki_nigdy_nie_dostaje_zdania_kombinacji_pozytywnego() -> No
 
 
 def test_swz_nierozstrzygalne_nie_jest_fail() -> None:
-    doc = LVCircuitVerificationProofPack.generate(_input(swz_status="nierozstrzygalne"))
+    doc = LVCircuitVerificationProofPack.generate(_input(swz="nierozstrzygalne"))
     assert doc.summary.overall_status == "NIEROZSTRZYGALNE"
     assert doc.summary.overall_status != "FAIL"
 
 
 def test_swz_nie_spelnia_daje_fail() -> None:
-    doc = LVCircuitVerificationProofPack.generate(_input(swz_status="nie spełnia"))
+    doc = LVCircuitVerificationProofPack.generate(_input(swz="nie_spelnia"))
     assert doc.summary.overall_status == "FAIL"
 
 
 def test_swz_spelnia_z_reszta_ok_daje_pass() -> None:
-    doc = LVCircuitVerificationProofPack.generate(_input(swz_status="spełnia"))
+    doc = LVCircuitVerificationProofPack.generate(_input(swz="spelnia"))
     assert doc.summary.overall_status == "PASS"
 
 
 def test_nie_dotyczy_nie_blokuje_pass_ani_nie_daje_nierozstrzygalne() -> None:
     """MCB: kombinacja=NIE_DOTYCZY. To NIE MOŻE ściągnąć werdyktu obwodu do
     NIEROZSTRZYGALNE (reguła KLASA NIE INSTANCJA — NIE_DOTYCZY ≠ brak danych)."""
-    doc = LVCircuitVerificationProofPack.generate(_input(swz_status="spełnia", ik_max_ka=5.0))
+    doc = LVCircuitVerificationProofPack.generate(_input(swz="spelnia", ik_max_ka=5.0))
     assert doc.summary.overall_status == "PASS"
+    # Ten sam obwód z rozłącznikiem bezpiecznikowym: NIE_DOTYCZY gołego aparatu nie blokuje PASS.
+    doc_fs = LVCircuitVerificationProofPack.generate(
+        _input(urzadzenie=_FUSE_50KA, swz="spelnia", ik_max_ka=5.0, p_mw=0.03, q_mvar=0.0)
+    )
+    assert doc_fs.summary.overall_status == "PASS"
+
+
+@pytest.mark.parametrize(
+    ("urzadzenie", "ik_max_ka", "swz", "oczekiwany"),
+    [
+        # Iloczyn: zdolność wyłączania {spełnia, naruszona, brak Ik, brak pola katalogu}
+        # × SWZ {spełnia, nie spełnia, nierozstrzygnięty} — naruszenie wygrywa z brakiem,
+        # brak (nie NIE_DOTYCZY) daje NIEROZSTRZYGALNE.
+        (_MCB_6KA, 5.0, "spelnia", "PASS"),
+        (_MCB_6KA, 5.0, "nie_spelnia", "FAIL"),
+        (_MCB_6KA, 5.0, "nierozstrzygalne", "NIEROZSTRZYGALNE"),
+        (_MCB_6KA, 7.0, "spelnia", "FAIL"),
+        (_MCB_6KA, 7.0, "nierozstrzygalne", "FAIL"),
+        (_MCB_6KA, None, "spelnia", "NIEROZSTRZYGALNE"),
+        (_MCB_6KA, None, "nie_spelnia", "FAIL"),
+        (_MCB_BEZ_ICN, 5.0, "spelnia", "NIEROZSTRZYGALNE"),
+    ],
+)
+def test_agregat_obwodu_projekcja_rekordow_iloczyn(
+    urzadzenie: UrzadzenieOchronneNn, ik_max_ka: float | None, swz: str, oczekiwany: str
+) -> None:
+    doc = LVCircuitVerificationProofPack.generate(
+        _input(urzadzenie=urzadzenie, ik_max_ka=ik_max_ka, swz=swz)
+    )
+    assert doc.summary.overall_status == oczekiwany
 
 
 # =============================================================================

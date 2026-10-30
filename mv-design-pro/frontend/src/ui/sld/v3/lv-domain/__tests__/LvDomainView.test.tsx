@@ -56,20 +56,26 @@ describe('Nagłówek i chrom (§19 dane źródłowe vs wynik)', () => {
 });
 
 describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)', () => {
-  it('[18] plakietki SWZ: trzy werdykty (spełnia/nie spełnia/nierozstrzygalne) z Ik₁min, Ia wymaganym i t — bez przeliczeń w UI', () => {
+  it('[18] plakietki SWZ: trzy rekordy W (kryteria spełnione z dowodem niepełnym / naruszone / bez podstawy) z Ik₁min, Ia wymaganym i t — bez przeliczeń w UI', () => {
     renderuj('18_swz_overlay', { initialOverlay: 'swz' });
+    // Kryterium prądu spełnione na liczbach, ale model niezwalidowany — rekord W „brak
+    // wystarczającego dowodu” (semantyka ostrzegawcza), nigdy zielone „spełnia” bez dowodu.
     const ok = screen.getByTestId('lv-domain-badge-swz-QF-01');
-    expect(ok).toHaveAttribute('data-swz-status', 'spełnia');
-    expect(ok.textContent).toContain('SWZ ✓');
+    expect(ok).toHaveAttribute('data-swz-status', 'BRAK_DOWODU');
+    expect(ok).toHaveAttribute('data-semantyka', 'ostrzegawcza');
+    expect(ok.textContent).toContain('SWZ ?');
     expect(ok.textContent).toContain('Ik₁min 2496 A');
     expect(ok.textContent).toContain('t ≤ 0,40 s');
+    expect(ok.textContent).not.toContain('Ia wym.');
+    expect(ok.textContent).toContain('Brak wystarczającego dowodu');
     const zle = screen.getByTestId('lv-domain-badge-swz-QF-02');
-    expect(zle).toHaveAttribute('data-swz-status', 'nie spełnia');
+    expect(zle).toHaveAttribute('data-swz-status', 'NIE_SPELNIA');
+    expect(zle).toHaveAttribute('data-semantyka', 'negatywna');
     expect(zle.textContent).toContain('SWZ ✗');
     expect(zle.textContent).toContain('Ik₁min 61 A');
     expect(zle.textContent).toContain('Ia wym. 630 A');
     const nie = screen.getByTestId('lv-domain-badge-swz-FU-03');
-    expect(nie).toHaveAttribute('data-swz-status', 'nierozstrzygalne');
+    expect(nie).toHaveAttribute('data-swz-status', 'BRAK_PODSTAWY');
     expect(nie.textContent).toContain('SWZ ?');
     expect(nie.textContent).toContain('291 A');
   });
@@ -85,11 +91,13 @@ describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)'
     expect(screen.getByTestId('lv-domain-feeder-transformer')).toHaveAttribute('data-transformer-ref', 'T1');
     // Tabelka SWZ (warunek · wynik · limit · ocena) z wartościami backendu, bez przeliczeń.
     const swzTn = screen.getByTestId('lv-domain-feeder-swz-tn');
-    expect(swzTn).toHaveAttribute('data-swz-status', 'nie spełnia');
-    const wiersz = within(swzTn).getByTestId('karta-obwodu-warunek-swz.tn');
-    expect(wiersz.textContent).toContain('61 A');
+    expect(swzTn).toHaveAttribute('data-status-wymagania', 'NIE_SPELNIA');
+    const wiersz = within(swzTn).getByTestId('karta-obwodu-warunek-swz.tn.prad_zadzialania');
+    expect(wiersz.textContent).toContain('61,26 A');
     expect(wiersz.textContent).toContain('630 A');
-    expect(wiersz.textContent).toContain('nie spełnia');
+    // Ocena wiersza = etykieta rekordu K z backendu (plakietka), nie słowo z mapy statusu.
+    expect(within(wiersz).getByTestId('karta-obwodu-ocena-swz.tn.prad_zadzialania').textContent).toContain('Kryterium naruszone');
+    expect(swzTn.textContent).toContain('IEC 60898-1');
     expect(swzTn.textContent).toContain('Tab. 41.1');
     expect(panel.textContent).toContain('Model nie przypisuje zabezpieczenia');
     fireEvent.click(within(panel).getByText('Zamknij'));

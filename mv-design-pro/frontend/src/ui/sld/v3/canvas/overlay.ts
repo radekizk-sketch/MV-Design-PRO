@@ -123,7 +123,7 @@
  * wewnętrzne szyny/sekcje bez nakładki, znana luka adaptera (f6-1/f6-3,
  * rozszerzenie sectionId→busRef to zmiana adaptera poza zakresem F8b-1).
  */
-import type { StatusWerdyktu, WynikWymagania } from '../../../../ui2/wyniki/wzorzec/werdykt';
+import type { Etykieta, StatusWerdyktu, WynikWymagania } from '../../../../ui2/wyniki/wzorzec/werdykt';
 import type { RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import {
@@ -305,22 +305,25 @@ export interface SldV3Overlay {
 // P0.8 nN (H_PLAN_IMPLEMENTACJI_NN §P0.8 pkt 5) — nakładka SWZ: budowniczy
 // CZYSTY (§14.2, wzorzec `buildFlowOverlayFromScene`) z odpowiedzi endpointu
 // SWZ per obwód (karta P0.6/G-22, `application/analyses/swz/service.py`
-// `build_swz_view`) → prezentacja werdyktu 3-stanowego. ZERO fizyki w UI:
-// wartości przepisane 1:1 z odpowiedzi backendu, żadna nie jest przeliczana.
+// `build_swz_view`) → prezentacja rekordu W werdyktu wyjaśnialnego (TN: `swz.tn`,
+// TT/IT: `swz.tt`/`swz.it`). ZERO fizyki w UI: wartości, status maszynowy, etykieta
+// i zdanie przepisane 1:1 z rekordu backendu, żadne nie jest przeliczane ani mapowane.
 // ---------------------------------------------------------------------------
-
-/** Werdykt 3-stanowy SWZ (`network_model/solvers` przez `analyses/swz/
- *  werdykt.py::SwzStatus`, mirror łańcuchów wartości) — trzeci stan
- *  (`'nierozstrzygalne'`) jest OBOWIĄZKOWY (karta P0.6 §0.3): fail-closed,
- *  nigdy „spełnia" bez dowodu liczbowego. */
-export type SwzVerdictStatus = 'spełnia' | 'nie spełnia' | 'nierozstrzygalne';
 
 /** Wpis nakładki SWZ jednego aparatu odpływu — WYŁĄCZNIE odczyt z
  *  odpowiedzi endpointu (`SwzApiResponse.swz`), formatowanie dozwolone
  *  (§10), fizyka nie. */
 export interface SwzOverlayEntry {
   readonly ownerRef: string;
-  readonly status: SwzVerdictStatus;
+  /** Status maszynowy rekordu W (atrybut danych, filtr) — prezentacja WYŁĄCZNIE z `etykieta`. */
+  readonly status: StatusWerdyktu;
+  /** Etykieta rekordu W (tekst i semantyka koloru z backendu). */
+  readonly etykieta: Etykieta;
+  /** Identyfikatory kryteriów naruszonych wg rekordu W (`kryteria_naruszone`, przepisane) —
+   *  plakietka pokazuje prąd wymagany, gdy naruszone jest kryterium prądu zadziałania
+   *  (`KRYTERIUM_SWZ_PRADU_TN`); rozstrzygnięcie z rekordu, nie z drugiej kopii warunku. */
+  readonly kryteriaNaruszone: readonly string[];
+  /** Zdanie wyjaśnienia rekordu W (`wyjasnienie.zdanie_pl`). */
   readonly przyczynaPl: string;
   /** Oznaczenie prądu na plakietce: „Ik₁min" (TN, pętla L-PE/L-PEN), „Id min" (TT, pętla
    *  przez uziomy), „Id2 min" (IT, drugie zwarcie L-PE-L) — karta W5-E-TTIT. */
@@ -339,7 +342,8 @@ export interface SwzOverlayEntry {
  * potrzebuje wyłącznie gotowego werdyktu, nie śladu solvera pętli zwarcia).
  */
 export interface SwzTnVerdict {
-  readonly status: SwzVerdictStatus;
+  /** Rekord W `swz.tn` (kryterium prądu zadziałania; dla wkładki gG także niestopienia). */
+  readonly wymaganie: WynikWymagania;
   readonly przyczyna_pl: string;
   readonly ik1_min_a: number;
   readonly ia_wymagane_a: number | null;
@@ -378,15 +382,18 @@ export function jestWerdyktemTtIt(swz: SwzTnVerdict | SwzTtItVerdict): swz is Sw
   return 'kontrakt' in swz && swz.kontrakt === KONTRAKT_WERDYKTU_TT_IT;
 }
 
-/**
- * Status nakładki ze statusu maszynowego rekordu W (`werdykt.StatusWerdyktu`): SPELNIA /
- * NIE_SPELNIA wprost; każdy inny (BRAK_PODSTAWY, NIE_OCENIONO, NIEJEDNOZNACZNY, BRAK_DOWODU,
- * NIE_DOTYCZY) = nierozstrzygalne — nigdy „spełnia" bez podstawy i dowodu.
- */
-export function statusNakladkiZRekordu(status: StatusWerdyktu): SwzVerdictStatus {
-  if (status === 'SPELNIA') return 'spełnia';
-  if (status === 'NIE_SPELNIA') return 'nie spełnia';
-  return 'nierozstrzygalne';
+/** Wpis nakładki z rekordu W — status, etykieta, naruszenie i zdanie wprost z rekordu. */
+/** Identyfikator kryterium prądu zadziałania SWZ TN — ten sam co w backendzie
+ *  (`application/analyses/swz/werdykt.py:KRYTERIUM_PRADU_TN`). */
+export const KRYTERIUM_SWZ_PRADU_TN = 'swz.tn.prad_zadzialania';
+
+function wpisZRekordu(wymaganie: WynikWymagania): Pick<SwzOverlayEntry, 'status' | 'etykieta' | 'kryteriaNaruszone' | 'przyczynaPl'> {
+  return {
+    status: wymaganie.status_maszynowy,
+    etykieta: wymaganie.etykieta,
+    kryteriaNaruszone: wymaganie.kryteria_naruszone,
+    przyczynaPl: wymaganie.wyjasnienie.zdanie_pl,
+  };
 }
 
 /**
@@ -408,8 +415,7 @@ export function buildSwzOverlayFromResponses(
       // zapewniający zadziałanie (I_Δn) i margines niosą rekordy K — nakładka ich nie dolicza.
       out[r.breaker_ref] = {
         ownerRef: r.breaker_ref,
-        status: statusNakladkiZRekordu(r.swz.wymaganie.status_maszynowy),
-        przyczynaPl: r.swz.wymaganie.wyjasnienie.zdanie_pl,
+        ...wpisZRekordu(r.swz.wymaganie),
         oznaczeniePradu: r.swz.uklad === 'IT' ? 'Id2 min' : 'Id min',
         ik1MinA: r.swz.ik1_min_a,
         iaWymaganeA: null,
@@ -420,8 +426,7 @@ export function buildSwzOverlayFromResponses(
     }
     out[r.breaker_ref] = {
       ownerRef: r.breaker_ref,
-      status: r.swz.status,
-      przyczynaPl: r.swz.przyczyna_pl,
+      ...wpisZRekordu(r.swz.wymaganie),
       oznaczeniePradu: 'Ik₁min',
       ik1MinA: r.swz.ik1_min_a,
       iaWymaganeA: r.swz.ia_wymagane_a,

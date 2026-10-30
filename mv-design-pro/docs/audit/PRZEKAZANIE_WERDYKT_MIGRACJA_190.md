@@ -3,7 +3,7 @@
 Gałąź `claude/mv-design-pro-twin-audit-u4lhy0-werdykt-migracja`, drzewo `/home/user/wt-werdykt`.
 Cel karty: lista `scripts/werdykt_wyjasnialny_allowlist.json` bez wpisów MIGRACJA (strażnik
 `scripts/werdykt_wyjasnialny_guard.py`). Stan bazowy karty (`b1e677ced`): MIGRACJA 190,
-ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 90, ENUM_WEWNETRZNY 51** (strażnik RC=0).
+ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 72, ENUM_WEWNETRZNY 58** (strażnik RC=0).
 
 ## Domeny
 
@@ -15,7 +15,7 @@ ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 90, ENUM_WEWNETRZNY 51** (strażnik R
 | 4. Ocena normatywna, wrażliwość, profil napięć | 7 | 0 | zmigrowane — w commicie WIP (zweryfikowane celowo: pytest 5834 zielone przed naprawami strażników; po naprawach bieg zbiorczy przerwany) |
 | 5. Wzorce odniesienia A i C (+ API, PDF/DOCX) | 18 | 0 | zmigrowane — w commicie WIP (testy wzorców i API 56+175 zielone, 4 iniekcje czerwone bez naprawy) |
 | 6. Modele analiz: siła sieci B11, adekwatność Q B10, SSCI B12, wgląd zabezpieczeń B7 | 8 | 1 | siła sieci B11 zmigrowana (rekord K SCR na węzeł i WSCR, `verdict`/`is_weak` projekcją, front pulpitu OZE i kontekst sekwencji FRT z etykietą i kartą rekordu); adekwatność Q B10 zmigrowana (rekord W: rezerwy w górę/w dół każdego źródła wobec ε i pasmo napięcia węzłów; nasycenie i naruszenie projekcją rekordów; brak danych źródła ≠ wystarczająca); SSCI B12 zmigrowana (wyjaśnienie rekordu `NIE_OCENIONO` przy polu werdyktu, model i ładunek HTTP); B7 `ProtectionInsightItem.selectivity_status` ZATRZYMANE do decyzji architekta — klasa bez producenta w produkcji (wejście zawsze `None` w `pokrycie_analiz`/`wrazliwosc_rozplywu`), a ocena pokrycia odejmuje 5 pkt za „Brak analizy zabezpieczeń”, której nic nie dostarcza |
-| 7. nN / SWZ (C25, C27, C29, C30, arkusz obwodów, E75, E77, fieldLabels) | 22 | 17 | w toku (commit WIP): SWZ TN z rekordu W (`swz.tn`, K prądu zadziałania i K niestopienia gG), dobór aparatu nN z rekordów K (Ib≤In≤Iz′, I2≤1,45·Iz′, zdolność wyłączania, SWZ), arkusz obwodów niesie rekordy w komórkach; zostaje pakiet dowodowy C30, koperty dostępności (ENUM), front nakładki SWZ i karty obwodu |
+| 7. nN / SWZ (C25, C27, C29, C30, arkusz obwodów, E75, E77, fieldLabels) | 22 | 0 | zmigrowane: SWZ TN z rekordu W (`swz.tn`), dobór aparatu nN z rekordów K, arkusz obwodów z rekordami w komórkach; pakiet dowodowy obwodu nN (C30) — kroki 4–5 z rekordów doboru (jedna reguła), krok 6 jako dwa rekordy K zdolności wyłączania (kombinacja / goły aparat, `NIE_DOTYCZY` z powodem) ze wspólnej reguły `ocena_zdolnosci_wylaczania`, krok 7 z rekordu `th.ocena`, krok 10 z rekordu W SWZ (`swz_wymaganie`), agregat obwodu projekcją rekordów; nakładka SWZ i karta obwodu nN z etykiety rekordu (`tonRysunkuEtykiety`/`znakEtykiety` w `KartaWerdyktu.tsx`, jedna tabela warunków TN i TT/IT). ENUM_WEWNETRZNY: 4 koperty arkusza obwodów, koperta sekcji raportu nN, `communicationStatusLabel`, `BayRuntimeState.secondary_communication_status`, `BaySwitchState.communication_ok` (stan telemetrii / dostępność danych, nie ocena) |
 | 8. Proof Engine / audyt (C41, C44, C48, A36, sc_symmetrical/asymmetrical) | 19 | 19 | nietknięte |
 | 9. Frontend pozostały (D18…D72, E20…E62, SLD v2 G1–G9, NnSwitchgearCard) | 38 | 32 | nietknięte poza wpisami usuniętymi razem z grupami 2–4 |
 | 10. Pozostałe (archiwum, importy, preflight B20, kreator C54, katalogi audit2, reference_engine) | 24 | 14 | w części przeklasyfikowane na ENUM_WEWNETRZNY z uzasadnieniem; reszta nietknięta |
@@ -50,6 +50,19 @@ WIP domeny 7: pin mapy pól i zapadki `solver_input_substitute_guard` (4510 pól
 kontyngencji i złoty hash `kontyngencje_n1/pierscien/pelny` (zmiana wyłącznie tekstu powodu
 przeciążenia: „wobec limitu … (próg ostrzeżenia …)” zamiast „przekracza limit” — rozstrzygnięcie
 niesie rekord K walidacji energetycznej; porównanie widoku przed/po: 2 linie tekstu, zero liczb).
+
+## Domena 7 — zmiany semantyczne do oceny właściciela (B-02)
+
+- Plakietka SWZ na rysunku nN dla kryterium spełnionego przy modelu niezwalidowanym pokazuje
+  „SWZ ?” w tonie ostrzegawczym (rekord `BRAK_DOWODU`, „Brak wystarczającego dowodu”), a nie
+  zielone „✓”; podpowiedź plakietki i kropki przeglądu niesie etykietę i zdanie rekordu. Zrzuty
+  do wykonania przez `e2e/lv-domain-screenshot.spec.ts` (kadr `18_swz_overlay`) — bez werdyktu
+  wizualnego agenta.
+- Dowód obwodu nN: I2 wyłącznika MCCB z wyzwalaczem elektronicznym liczony z Ir (1,3·Ir) tak jak
+  w doborze aparatu (wcześniej dowód i dobór miały dwie reguły); krok 7 bez podstawienia `0.0`
+  za brak I²t (zapadka `solver_input_substitute_guard` 45/208 → 44/206).
+- Iniekcje domeny 7: kombinacja MCB bez `NIE_DOTYCZY` → 10 testów pakietu czerwonych; status
+  nakładki SWZ wymuszony na `SPELNIA` → 4 testy frontu czerwone.
 
 ## Pierwszy krok następcy
 

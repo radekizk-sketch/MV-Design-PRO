@@ -2112,7 +2112,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # werdyktu tekstowego zastapione rekordem (`werdykt`, `wniosek_pl`). PASS niezmieniony;
     # zapadka dlugu 46/210 -> 45/208 (wpis `swz/werdykt.py` zdjety, margines `None`
     # zamiast `float("inf")`).
-    assert "Pol kontraktow wejsciowych: 4510." in wyjscie, wyjscie
+    # Ta sama karta, domena 7: 4510 -> 4508 — POMIAR `contract_fields()` na `30284f249`
+    # (4510) i na drzewie karty (4508). +3: `kombinacja`, `goly_aparat` (rekordy K dwoch
+    # zdan zdolnosci wylaczania) i `swz_wymaganie` (rekord W SWZ w wejsciu dowodu obwodu nN);
+    # -5: `kombinacja_status`, `goly_aparat_status`, `zdanie_kombinacja_pl`,
+    # `zdanie_goly_aparat_pl` (zdania i statusy czytane z rekordow) oraz `swz_status`.
+    assert "Pol kontraktow wejsciowych: 4508." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2536,7 +2541,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `float | None` z brakiem w rekordzie K, −6) i `B:ifexp:setting_window.i_min_a` w
     # `reference_patterns/pattern_line_i_doubleprime_thermal_spz.py` (−2).
     # POMIAR guardem na `b1e677ced` i na drzewie karty.
-    assert "Zapadka dlugu (fizyczne): 45 plikow, suma 208." in wyjscie, wyjscie
+    # Ta sama karta, domena 7: 45/208 -> 44/206 — application −1 plik/−2: wpis
+    # `proof_engine/packs/lv_circuit_verification.py` zdjety (krok 7 bez `0.0` za brak I²t).
+    assert "Zapadka dlugu (fizyczne): 44 plikow, suma 206." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2874,7 +2881,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (-2 pakiet mostu doziemienia, +1 `v126_oceny.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR.
         # Karta WERDYKT-MIGRACJA-190 (2026-10-30): application 254 -> 255 (+1
         # `reference_patterns/oceny.py`), dlug 27/81 -> 25/71 (wpisy wyzej). POMIAR guardem.
-        "  application: pliki_skanowane=255, dlug=25 plikow/suma 71, "
+        # Ta sama karta, domena 7: dlug 25/71 -> 24/69 (`lv_circuit_verification.py`). POMIAR.
+        "  application: pliki_skanowane=255, dlug=24 plikow/suma 69, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

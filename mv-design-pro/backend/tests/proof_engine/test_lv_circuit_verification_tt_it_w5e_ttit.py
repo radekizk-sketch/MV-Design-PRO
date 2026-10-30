@@ -25,7 +25,6 @@ from application.proof_engine.lv_circuit_verification_binding import (
     zbuduj_wejscie_dowodu_obwodu_nn,
 )
 from application.proof_engine.packs.lv_circuit_verification import (
-    STATUS_NIEROZSTRZYGALNE,
     LVCircuitVerificationProofPack,
 )
 from application.proof_engine.proof_pack import ProofPackContext
@@ -111,8 +110,9 @@ class TestDowodTt:
         assert wejscie.fault_loop.tt_it.r_b_ohm == 2.0
         assert wejscie.swz_tt_it["kontrakt"] == KONTRAKT_WERDYKTU_TT_IT
         assert wejscie.swz_tt_it["kod_odmowy_limitu"] == KOD_LIMIT_BRAK_TEKSTU_NORMY
-        # Limit napięcia dotykowego spoza repozytorium → agregat nierozstrzygalny, nigdy PASS.
-        assert wejscie.swz_status == STATUS_NIEROZSTRZYGALNE
+        # Limit napięcia dotykowego spoza repozytorium → rekord W bez rozstrzygnięcia, nigdy PASS.
+        assert wejscie.swz_wymaganie.status_maszynowy == "BRAK_PODSTAWY"
+        assert wejscie.swz_wymaganie.wymaganie_id == wejscie.swz_tt_it["wymaganie"]["wymaganie_id"]
         assert wejscie.swz_ia_wymagane_a == pytest.approx(0.03)
         assert wejscie.swz_t_wymagany_s is not None
         assert wejscie.swz_rodzaj_obwodu == "odbiorczy"
@@ -168,7 +168,7 @@ class TestDowodIt:
         assert tt.u_dotyk_pierwsze_zwarcie_v is not None and tt.u_dotyk_pierwsze_zwarcie_v >= 0
         assert tt.i_d2_min_a == pytest.approx(wynik["wejscie"].fault_loop.ik_min_a)
         assert wynik["wejscie"].swz_ia_wymagane_a is None
-        assert wynik["wejscie"].swz_status == STATUS_NIEROZSTRZYGALNE
+        assert wynik["wejscie"].swz_wymaganie.status_maszynowy == "BRAK_PODSTAWY"
 
     def test_pakiet_it_ma_10_krokow_z_rownaniami_pojemnosci(self) -> None:
         wynik = _wywolaj(_enm_it(), bus_ref="a2")

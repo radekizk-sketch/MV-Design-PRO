@@ -25,8 +25,9 @@
  */
 import { useMemo, useState, type CSSProperties } from 'react';
 
-import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
+import { buildSwzOverlayFromResponses, KRYTERIUM_SWZ_PRADU_TN, type SwzOverlayEntry } from '../canvas/overlay';
 import { KartaObwoduNn } from './KartaObwoduNn';
+import { tonRysunkuEtykiety, znakEtykiety } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import { CadSymbol } from '../cad/CadSymbol';
@@ -1424,9 +1425,16 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
 // Wyniki (§18/§19): plakietki z pochodzeniem; kropka werdyktu na przeglądzie.
 // ---------------------------------------------------------------------------
 
-function VerdictDot({ node, ctx, tone, overlay, status }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku; readonly tone: string; readonly overlay: LvDomainOverlayId; readonly status?: string }): JSX.Element {
+/** Kropka werdyktu na przeglądzie. Dla nakładki SWZ niesie status rekordu (atrybut) i —
+ *  w podpowiedzi — etykietę z backendu wraz ze zdaniem wyjaśnienia: kolor nigdy nie jest
+ *  jedynym nośnikiem oceny. */
+function VerdictDot({ node, ctx, tone, overlay, status, opis }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku; readonly tone: string; readonly overlay: LvDomainOverlayId; readonly status?: string; readonly opis?: string }): JSX.Element {
   const glyph = glyphScreenSize(node, ctx.fit);
-  return <circle data-testid={`lv-domain-verdict-${overlay}-${node.ref}`} data-swz-status={status} cx={node.x} cy={node.y + ctx.sp(glyph.h / 2 + 12)} r={ctx.sp(4.5)} fill={tone} stroke={ctx.paleta.tlo} strokeWidth={ctx.sp(1.2)} />;
+  return (
+    <circle data-testid={`lv-domain-verdict-${overlay}-${node.ref}`} data-swz-status={status} cx={node.x} cy={node.y + ctx.sp(glyph.h / 2 + 12)} r={ctx.sp(4.5)} fill={tone} stroke={ctx.paleta.tlo} strokeWidth={ctx.sp(1.2)}>
+      {opis ? <title>{opis}</title> : null}
+    </circle>
+  );
 }
 
 const SC_METRICS: readonly { readonly code: string; readonly label: string }[] = [
@@ -1491,17 +1499,24 @@ function ApparatusResultBadge({ node, ctx, payload, outdated }: { readonly node:
 function SwzBadge({ node, ctx, entry }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku; readonly entry: SwzOverlayEntry | undefined }): JSX.Element | null {
   if (!entry) return null;
   const glyph = glyphScreenSize(node, ctx.fit);
-  const tone = entry.status === 'spełnia' ? ctx.paleta.tonOk : entry.status === 'nie spełnia' ? ctx.paleta.tonBledu : ctx.paleta.tonOstrzegawczy;
-  if (ctx.widoczne('kropkaWerdyktu')) return <VerdictDot node={node} ctx={ctx} tone={tone} overlay="swz" status={entry.status} />;
+  // Ton i znak z ETYKIETY rekordu W (semantyka backendu) — mapa semantyki jest wyłącznie
+  // w module karty werdyktu; status maszynowy zostaje atrybutem danych (testy, filtr).
+  const tone = tonRysunkuEtykiety(entry.etykieta, {
+    tonOk: ctx.paleta.tonOk,
+    tonBledu: ctx.paleta.tonBledu,
+    tonOstrzegawczy: ctx.paleta.tonOstrzegawczy,
+    tonNeutralny: ctx.paleta.kreskaWygaszona,
+  });
+  if (ctx.widoczne('kropkaWerdyktu')) return <VerdictDot node={node} ctx={ctx} tone={tone} overlay="swz" status={entry.status} opis={`${entry.etykieta.etykieta_pl}. ${entry.przyczynaPl}`} />;
   if (!ctx.widoczne('plakietkaWyniku')) return null;
-  const symbol = entry.status === 'spełnia' ? '✓' : entry.status === 'nie spełnia' ? '✗' : '?';
+  const symbol = znakEtykiety(entry.etykieta);
   // Plakietka w KOLUMNIE pola (≤ 12 znaków monospace w wierszu — mieści się
   // w slocie `feederGap`), pod wierszem nazwy i stanu aparatu; jeden długi
   // wiersz wchodził w glif sąsiedniego odpływu (zrzut 18_swz_overlay).
   const linie = [
     `SWZ ${symbol}`,
     `${entry.oznaczeniePradu} ${plFixed(entry.ik1MinA, entry.ik1MinA < 10 ? 2 : 0)} A`,
-    ...(entry.status === 'nie spełnia' && entry.iaWymaganeA != null ? [`Ia wym. ${plFixed(entry.iaWymaganeA, 0)} A`] : []),
+    ...(entry.kryteriaNaruszone.includes(KRYTERIUM_SWZ_PRADU_TN) && entry.iaWymaganeA != null ? [`Ia wym. ${plFixed(entry.iaWymaganeA, 0)} A`] : []),
     ...(entry.tWymaganyS != null ? [`t ≤ ${plFixed(entry.tWymaganyS, 2)} s`] : []),
   ];
   const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
@@ -1509,7 +1524,8 @@ function SwzBadge({ node, ctx, entry }: { readonly node: LvDomainSceneNode; read
   // Pod wierszami nazwy i stanu aparatu (jedna orientacja etykiet — pozioma).
   const y0 = node.y + ctx.sp(4 + 2 * SLD_LABEL.STATUS * LINE_HEIGHT);
   return (
-    <g {...textHalo(ctx)} data-testid={`lv-domain-badge-swz-${node.ref}`} data-swz-status={entry.status}>
+    <g {...textHalo(ctx)} data-testid={`lv-domain-badge-swz-${node.ref}`} data-swz-status={entry.status} data-semantyka={entry.etykieta.semantyka}>
+      <title>{`${entry.etykieta.etykieta_pl}. ${entry.przyczynaPl}`}</title>
       <text x={xText} y={y0} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={tone} fontFamily="monospace">
         {linie.map((linia, i) => (
           <tspan key={i} x={xText} dy={i === 0 ? 0 : step} fontWeight={i === 0 ? 700 : 400}>{linia}</tspan>

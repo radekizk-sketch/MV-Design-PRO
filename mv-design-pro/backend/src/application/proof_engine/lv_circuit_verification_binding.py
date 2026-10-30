@@ -76,10 +76,6 @@ from application.proof_engine.packs.lv_circuit_verification import (
     KIND_FUSE_SWITCH,
     KIND_MCB,
     KIND_MCCB,
-    STATUS_NIE_DOTYCZY,
-    STATUS_NIE_SPELNIA,
-    STATUS_NIEROZSTRZYGALNE,
-    STATUS_SPELNIA,
     LVCircuitVerificationInput,
     UrzadzenieOchronneNn,
 )
@@ -334,16 +330,6 @@ def _petla_zwarcia_min(
     )
 
 
-#: Status rekordu W (`werdykt.StatusWerdyktu`) → słownik statusów agregatu pakietu dowodowego
-#: obwodu nN. BRAK_PODSTAWY / NIE_OCENIONO / NIEJEDNOZNACZNY / BRAK_DOWODU są
-#: NIEROZSTRZYGALNE (pytanie ma sens, brak podstawy lub danych) — nigdy ciche PASS.
-_STATUS_PAKIETU_Z_WERDYKTU = {
-    "SPELNIA": STATUS_SPELNIA,
-    "NIE_SPELNIA": STATUS_NIE_SPELNIA,
-    "NIE_DOTYCZY": STATUS_NIE_DOTYCZY,
-}
-
-
 def pola_swz_z_werdyktu_tt_it(werdykt: SwzTtItWynik) -> dict[str, Any]:
     """Pola ``swz_*`` wejścia pakietu z rekordu werdyktu wyjaśnialnego TT/IT.
 
@@ -352,14 +338,13 @@ def pola_swz_z_werdyktu_tt_it(werdykt: SwzTtItWynik) -> dict[str, Any]:
     brak (marginesy niosą rekordy K w ``swz_tt_it``).
     """
     wymaganie = werdykt.wymaganie
-    status = str(wymaganie.status_maszynowy)
     wyjasnienie = wymaganie.wyjasnienie
     przyczyna = wyjasnienie.zdanie_pl
     if wyjasnienie.przyczyna_pl:
         przyczyna = f"{przyczyna} {wyjasnienie.przyczyna_pl}"
     rcd = werdykt_rcd(werdykt)
     return {
-        "swz_status": _STATUS_PAKIETU_Z_WERDYKTU.get(status, STATUS_NIEROZSTRZYGALNE),
+        "swz_wymaganie": wymaganie,
         "swz_przyczyna_pl": przyczyna,
         "swz_ia_wymagane_a": rcd,
         "swz_t_wymagany_s": werdykt.t_wymagany_s,
@@ -481,9 +466,11 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
             dane_przyjete=dane_przyjete_petli(
                 petla.fault_loop, nazwa_po_identyfikatorze(bus_ref, enm)
             ),
+            # Ten sam przedmiot rekordu co widok SWZ (`swz.service.build_swz_view`).
+            przedmiot=przedmiot_obwodu_nn(enm, station_ref, bus_ref, breaker_ref),
         )
         pola_swz = {
-            "swz_status": swz.status.value,
+            "swz_wymaganie": swz.wymaganie,
             "swz_przyczyna_pl": swz.przyczyna_pl,
             "swz_ia_wymagane_a": swz.ia_wymagane_a,
             "swz_t_wymagany_s": swz.t_wymagany_s,

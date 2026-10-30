@@ -38,6 +38,7 @@ from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
     check_conductor_thermal_withstand,
 )
+from werdykt.porownanie import rozstrzygniecie
 
 
 def _enm(
@@ -382,7 +383,13 @@ def test_orkiestracja_ok_daje_pelne_wejscie_pakietu() -> None:
     assert isinstance(wynik["wejscie"], LVCircuitVerificationInput)
     assert wynik["wejscie"].urzadzenie.kind == KIND_MCB
     assert wynik["wejscie"].fault_loop.ik_min_a > 0
-    assert wynik["wejscie"].swz_status in ("spełnia", "nie spełnia", "nierozstrzygalne")
+    # Krok 10 cytuje rekord W SWZ TN (z przedmiotem obwodu jak widok SWZ).
+    swz = wynik["wejscie"].swz_wymaganie
+    assert swz.wymaganie_id == "swz.tn"
+    # Przedmiot jak w widoku SWZ: punkt obwodu (szyna) i nazwa od aparatu do punktu.
+    przedmiot = swz.oceny_skladowe[0].przedmiot
+    assert przedmiot.element_ref == "b1"
+    assert przedmiot.nazwa_pl.startswith("Obwód nN: ")
 
 
 def _mccb_branch() -> SwitchBranch:
@@ -414,9 +421,10 @@ def test_orkiestracja_mccb_zainstalowany_daje_swz_decyzyjny_karta_d2() -> None:
     assert wynik["status"] == "OK"
     assert wynik["wejscie"].urzadzenie.kind == KIND_MCCB
     assert wynik["wejscie"].urzadzenie.ii_a == 75.0  # 3,0×25 A (górny kraniec ii_range)
-    assert wynik["wejscie"].swz_status in ("spełnia", "nie spełnia"), (
+    rozstrzygniecie_swz = rozstrzygniecie(wynik["wejscie"].swz_wymaganie.oceny_skladowe)
+    assert rozstrzygniecie_swz in ("SPELNIA", "NIE_SPELNIA"), (
         "Ii resolwowany z ii_range MUSI dać werdykt SWZ decyzyjny na krótkim "
-        f"obwodzie (50 m) — otrzymano: {wynik['wejscie'].swz_status}"
+        f"obwodzie (50 m) — otrzymano: {wynik['wejscie'].swz_wymaganie.status_maszynowy}"
     )
     assert wynik["wejscie"].swz_ia_wymagane_a == pytest.approx(75.0)
 
@@ -466,5 +474,5 @@ def test_orkiestracja_determinizm_dwa_wywolania_identyczne() -> None:
     d1 = w1["wejscie"]
     d2 = w2["wejscie"]
     assert d1.fault_loop.ik_min_a == d2.fault_loop.ik_min_a
-    assert d1.swz_status == d2.swz_status
+    assert d1.swz_wymaganie.odcisk() == d2.swz_wymaganie.odcisk()
     assert d1.swz_ia_wymagane_a == d2.swz_ia_wymagane_a

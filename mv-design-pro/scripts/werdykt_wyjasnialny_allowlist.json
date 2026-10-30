@@ -214,15 +214,15 @@
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "enm.models:BayRuntimeState.secondary_communication_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 7): stan łączności wtórnej pola (`ok`/`degraded`/`offline`) to dana ruchowa (telemetria) zapisana w modelu, nie ocena wobec kryterium normowego — bez limitu, marginesu i podstawy. Prezentacja: `communicationStatusLabel` (opis stanu, „brak telemetrii” przy braku źródła).",
    "wiersz_inwentarza": null
   },
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "enm.models:BaySwitchState.communication_ok",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 7): flaga łączności aparatu (`True`/`False`/`None` = brak telemetrii) to dana ruchowa źródła stanu, nie ocena wobec kryterium — bez limitu i podstawy; `None` jest jawnym brakiem danych, nigdy stanem poprawnym.",
    "wiersz_inwentarza": null
   },
   {
@@ -564,8 +564,8 @@
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "api.analysis_run_exports:build_nn_circuit_report_section.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C29 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 7): koperta sekcji raportu obwodów nN (`OK`/`brak danych` z `missing_data`) — flaga dostępności danych stacji i transformatora, jak C26; nie ocena wobec kryterium. Treść oceny sekcji pochodzi z rekordów werdyktu wyjaśnialnego arkusza obwodów.",
    "wiersz_inwentarza": "C29"
   },
   {
@@ -648,29 +648,29 @@
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "application.analyses.nn_circuit_sheet:_iz_prime_dla_kabla.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "plik karty w toku (odbior-141/142/144) — tu tylko rejestracja, bez zmiany pliku (`nn_circuit_sheet.py`, karta 144). Merytorycznie ta sama flaga dostępności danych co inwentarz C26 (ENUM_WEWNETRZNY) — klasę potwierdza integrator po scaleniu karty 144; plan AB §8 F21.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 7): `status` rozkładu obciążalności kabla (`OK`/`nierozstrzygalne`) mówi wyłącznie, czy warunki ułożenia pozwoliły wyznaczyć I_z' (odmowa danych `OdmowaDanychError` z `reason_pl`) — flaga dostępności wielkości jak C26, nie werdykt. Kryteria Ib ≤ In ≤ I_z' i I2 ≤ 1,45·I_z' oceniają rekordy K doboru aparatu (`nn_device_selection`).",
    "wiersz_inwentarza": "C26"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "application.analyses.nn_circuit_sheet:_wartosc.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "plik karty w toku (odbior-141/142/144) — tu tylko rejestracja, bez zmiany pliku (`nn_circuit_sheet.py`, karta 144). Merytorycznie ta sama flaga dostępności danych co inwentarz C26 (ENUM_WEWNETRZNY) — klasę potwierdza integrator po scaleniu karty 144; plan AB §8 F21.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 7): `status` komórki arkusza obwodów nN (`OK`/`brak danych`/`nie dotyczy`) to flaga dostępności danych komórki — jak koperta inwentarza C26 — nie ocena wobec kryterium. Ocenę niesie wyłącznie rekord werdyktu wyjaśnialnego w `wartosc.ocena` (OcenaKryterium/WynikWymagania z etykietą i wyjaśnieniem); komórka `brak danych` niesie `reason_pl` i nigdy nie jest odczytywana jako „spełnia”.",
    "wiersz_inwentarza": "C26"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "application.analyses.nn_circuit_sheet:build_nn_circuit_sheet.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "plik karty w toku (odbior-141/142/144) — tu tylko rejestracja, bez zmiany pliku (`nn_circuit_sheet.py`, karta 144). Merytorycznie ta sama flaga dostępności danych co inwentarz C26 (ENUM_WEWNETRZNY) — klasę potwierdza integrator po scaleniu karty 144; plan AB §8 F21.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 7): koperta arkusza obwodów nN (`OK`/`brak danych`/`nie dotyczy`) — flaga dostępności danych stacji/transformatora z `missing_data` i `reason_pl`, jak C26; nie ocena wobec kryterium. Oceny wierszy niosą rekordy werdyktu wyjaśnialnego w komórkach.",
    "wiersz_inwentarza": "C26"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "application.analyses.nn_circuit_sheet:build_nn_circuit_sheet_row_for_breaker.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "plik karty w toku (odbior-141/142/144) — tu tylko rejestracja, bez zmiany pliku (`nn_circuit_sheet.py`, karta 144). Merytorycznie ta sama flaga dostępności danych co inwentarz C26 (ENUM_WEWNETRZNY) — klasę potwierdza integrator po scaleniu karty 144; plan AB §8 F21.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 7): koperta wiersza arkusza dla jednego aparatu (`OK`/`brak danych`/`nie dotyczy`) — flaga dostępności danych odpływu z `reason_pl`, jak C26; oceny wiersza niosą rekordy werdyktu wyjaśnialnego w komórkach (dobór, SWZ, wytrzymałość cieplna).",
    "wiersz_inwentarza": "C26"
   },
   {
@@ -707,13 +707,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz C26 (ENUM_WEWNETRZNY): koperta widoku łańcucha nN `status: \"OK\" / \"brak danych\" / \"nie dotyczy\"` to flaga dostępności danych (widok policzony albo czego brakuje — `missing_data`), nie ocena wobec kryterium; plan AB §8 F21.",
    "wiersz_inwentarza": "C26"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:LVCircuitVerificationProofPack.generate.source_keys.werdykt",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
@@ -815,48 +808,6 @@
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:LVCircuitVerificationProofPack.generate.substitution_latex:NIE_SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:LVCircuitVerificationProofPack.generate.substitution_latex:SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:ocen_zdolnosc_wylaczania_dwa_zdania.zdanie_goly:NIE_SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:ocen_zdolnosc_wylaczania_dwa_zdania.zdanie_goly:SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:ocen_zdolnosc_wylaczania_dwa_zdania.zdanie_kombinacja:NIE_SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:ocen_zdolnosc_wylaczania_dwa_zdania.zdanie_kombinacja:SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
    "tozsamosc": "network_model.catalog.audit2_catalogs:ocen_wytrzymalosc_aparatu.message:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A37 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
@@ -907,37 +858,9 @@
   {
    "sprawdzenie": "6c_mapa_statusu",
    "tozsamosc": "frontend/src/ui/field/fieldLabels.ts:communicationStatusLabel",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "plik karty w toku (odbior-141/142/144) — tu tylko rejestracja, bez zmiany pliku (`ui/field/fieldLabels.ts`, karta 141). Mapa stanu łączności wtórnej pola (`ok`/`degraded`/`offline`) → etykieta; `ok` nie ma producenta (stan wyprowadzany z modelu — plan AB §8 F17).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/sld/v3/canvas/overlay.ts:statusNakladkiZRekordu",
    "klasa": "ENUM_WEWNETRZNY",
-   "uzasadnienie_pl": "Karta W5-E-TTIT (2026-10-15): status maszynowy rekordu W werdyktu TT/IT → wewnętrzny 3-stanowy styl plakietki nakładki SWZ na rysunku nN (`SwzVerdictStatus`: kolor i glif, wspólny z plakietkami TN). Żaden tekst dla człowieka nie pochodzi z tej mapy: przyczyna plakietki to `wyjasnienie.zdanie_pl` rekordu, a ocenę z etykietą backendu pokazuje karta obwodu (`EtykietaWerdyktu`). Każdy status poza SPELNIA/NIE_SPELNIA daje styl nierozstrzygalny — nigdy „spełnia” bez podstawy.",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 7): mapa stanu łączności wtórnej pola (`ok`/`degraded`/`offline`) → opis stanu urządzenia; to stan ruchowy (telemetria), nie ocena wobec kryterium normowego — żadnego limitu, marginesu ani podstawy. Brak rekordu źródła daje jawne „brak telemetrii” (karta #135), nigdy stan domyślny.",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/sld/v3/lv-domain/KartaObwoduNn.tsx:tonStatusuTn",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E77 (MIGRACJA): migracja (plan §8). Ta sama mapa tonu werdyktu TN (3-stanowy `SwzTnVerdict.status` backendu → kolor) przeniesiona kartą W5-E-TTIT (2026-10-15) z dawnego panelu odpływu `LvFeederPanel.statusTone` do karty obwodu nN; tekst oceny TN to słowo backendu, mapa daje wyłącznie kolor.",
-   "wiersz_inwentarza": "E77"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/sld/v3/lv-domain/LvDomainView.tsx:SwzBadge.symbol",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E75 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E75"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/sld/v3/lv-domain/LvDomainView.tsx:SwzBadge.tone",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E75 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E75"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

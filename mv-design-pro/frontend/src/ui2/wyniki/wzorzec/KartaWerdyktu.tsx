@@ -93,6 +93,46 @@ export const SEMANTYKA_KOLOR: Readonly<Record<SemantykaEtykiety, string>> = {
   neutralna: 'var(--mvd-muted)',
 };
 
+/**
+ * Tony rysunku (paleta kanwy SLD — kolory wprost, nie zmienne CSS) dla semantyki etykiety.
+ * Rysunek SVG dostaje paletę kanwy zamiast tokenów motywu karty; mapowanie semantyka → ton
+ * jest tutaj, obok `SEMANTYKA_KOLOR` (jedno miejsce map semantyki), a nie w module rysunku.
+ */
+export interface TonyRysunku {
+  readonly tonOk: string;
+  readonly tonBledu: string;
+  readonly tonOstrzegawczy: string;
+  readonly tonNeutralny: string;
+}
+
+/** Ton rysunku dla etykiety rekordu werdyktu (semantyka niesiona przez backend). */
+export function tonRysunkuEtykiety(etykieta: Etykieta, tony: TonyRysunku): string {
+  switch (etykieta.semantyka) {
+    case 'pozytywna':
+      return tony.tonOk;
+    case 'negatywna':
+      return tony.tonBledu;
+    case 'ostrzegawcza':
+      return tony.tonOstrzegawczy;
+    case 'neutralna':
+      return tony.tonNeutralny;
+  }
+}
+
+/** Znak plakietki rysunku dla etykiety rekordu (✓ / ✗ / ? / –) — z semantyki, nie ze statusu. */
+export function znakEtykiety(etykieta: Etykieta): string {
+  switch (etykieta.semantyka) {
+    case 'pozytywna':
+      return '✓';
+    case 'negatywna':
+      return '✗';
+    case 'ostrzegawcza':
+      return '?';
+    case 'neutralna':
+      return '–';
+  }
+}
+
 /** Styl karty z własnością niestandardową koloru semantyki (typ bez rzutowania). */
 type StylKarty = CSSProperties & Record<'--mvd-werdykt-kolor', string>;
 

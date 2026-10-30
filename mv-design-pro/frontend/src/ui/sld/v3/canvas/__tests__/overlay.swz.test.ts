@@ -8,62 +8,62 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { scenariusz } from '../../lv-domain/fixtures/scenariusze';
 import {
   buildSwzOverlayFromResponses,
+  KRYTERIUM_SWZ_PRADU_TN,
   type SwzApiResponse,
 } from '../overlay';
 
-function okResponse(overrides: Partial<SwzApiResponse['swz']> & { breaker_ref: string }): SwzApiResponse {
-  const { breaker_ref, ...swz } = overrides;
-  return {
-    status: 'OK',
-    breaker_ref,
-    swz: {
-      status: 'spełnia',
-      przyczyna_pl: 'Ik1_min ≥ Ia wymagane',
-      ik1_min_a: 250,
-      ia_wymagane_a: 160,
-      t_wymagany_s: 0.4,
-      margines: 1.5625,
-      ...swz,
-    },
-  };
+/** Odpowiedzi SWZ z backendu (fikstura `18_swz_overlay` z generatora projekcji nN): QF-01
+ *  kryterium spełnione przy modelu niezwalidowanym, QF-02 naruszone, FU-03 bez podstawy
+ *  (wkładka gG bez bramki I-t przy t_wym). Rekordy W są prawdziwe — test nie fabrykuje statusu. */
+function odpowiedzi(): readonly SwzApiResponse[] {
+  return scenariusz('18_swz_overlay').swz_snapshot.transformers.flatMap((t) => t.feeders.map((f) => f.swz));
 }
 
-describe('P0.8 nN — buildSwzOverlayFromResponses (przepisanie werdyktu 3-stanowego)', () => {
-  it('status=OK: wpis w nakładce, wartości przepisane 1:1 (zero przeliczeń)', () => {
-    const overlay = buildSwzOverlayFromResponses([
-      okResponse({ breaker_ref: 'brc/mcb1', status: 'spełnia', ik1_min_a: 250, ia_wymagane_a: 160, margines: 1.5625 }),
-    ]);
-    expect(overlay['brc/mcb1']).toEqual({
-      ownerRef: 'brc/mcb1',
-      status: 'spełnia',
-      przyczynaPl: 'Ik1_min ≥ Ia wymagane',
+function odpowiedz(ref: string): SwzApiResponse {
+  const r = odpowiedzi().find((o) => o.breaker_ref === ref);
+  if (!r) throw new Error(`brak odpowiedzi ${ref} w fiksturze`);
+  return r;
+}
+
+describe('P0.8 nN — buildSwzOverlayFromResponses (przepisanie rekordu W SWZ)', () => {
+  it('status=OK: wpis w nakładce — status, etykieta, zdanie i liczby przepisane 1:1 z rekordu (zero przeliczeń)', () => {
+    const r = odpowiedz('QF-01');
+    const swz = r.swz;
+    if (!swz || 'uklad' in swz) throw new Error('fikstura QF-01 musi nieść werdykt TN');
+    const overlay = buildSwzOverlayFromResponses([r]);
+    expect(overlay['QF-01']).toEqual({
+      ownerRef: 'QF-01',
+      status: swz.wymaganie.status_maszynowy,
+      etykieta: swz.wymaganie.etykieta,
+      kryteriaNaruszone: [],
+      przyczynaPl: swz.wymaganie.wyjasnienie.zdanie_pl,
       oznaczeniePradu: 'Ik₁min',
-      ik1MinA: 250,
-      iaWymaganeA: 160,
-      tWymaganyS: 0.4,
-      margines: 1.5625,
+      ik1MinA: swz.ik1_min_a,
+      iaWymaganeA: swz.ia_wymagane_a,
+      tWymaganyS: swz.t_wymagany_s,
+      margines: swz.margines,
     });
+    // Kryterium spełnione na liczbach przy modelu niezwalidowanym ≠ „spełnia”.
+    expect(overlay['QF-01'].status).toBe('BRAK_DOWODU');
+    expect(overlay['QF-01'].etykieta.semantyka).toBe('ostrzegawcza');
   });
 
-  it('status=OK, werdykt "nie spełnia": przepisany bez zmian (nie fabrykuje "spełnia")', () => {
-    const overlay = buildSwzOverlayFromResponses([
-      okResponse({ breaker_ref: 'brc/mcb2', status: 'nie spełnia', ik1_min_a: 90, ia_wymagane_a: 160, margines: 0.5625 }),
-    ]);
-    expect(overlay['brc/mcb2'].status).toBe('nie spełnia');
-    expect(overlay['brc/mcb2'].margines).toBe(0.5625);
+  it('rekord naruszony: status i naruszenie z rekordu (nie fabrykuje spełnienia)', () => {
+    const overlay = buildSwzOverlayFromResponses([odpowiedz('QF-02')]);
+    expect(overlay['QF-02'].status).toBe('NIE_SPELNIA');
+    expect(overlay['QF-02'].kryteriaNaruszone).toContain(KRYTERIUM_SWZ_PRADU_TN);
+    expect(overlay['QF-02'].etykieta.semantyka).toBe('negatywna');
   });
 
-  it('status=OK, werdykt "nierozstrzygalne" (np. wkładka gG bez bramek I-t): przepisany, ia/t mogą być null', () => {
-    const overlay = buildSwzOverlayFromResponses([
-      okResponse({
-        breaker_ref: 'brc/fuse1', status: 'nierozstrzygalne', ia_wymagane_a: null, t_wymagany_s: null, margines: null,
-      }),
-    ]);
-    expect(overlay['brc/fuse1'].status).toBe('nierozstrzygalne');
-    expect(overlay['brc/fuse1'].iaWymaganeA).toBeNull();
-    expect(overlay['brc/fuse1'].margines).toBeNull();
+  it('rekord bez podstawy (wkładka gG bez bramki I-t): przepisany, ia/margines null, bez naruszenia', () => {
+    const overlay = buildSwzOverlayFromResponses([odpowiedz('FU-03')]);
+    expect(overlay['FU-03'].status).toBe('BRAK_PODSTAWY');
+    expect(overlay['FU-03'].kryteriaNaruszone).toEqual([]);
+    expect(overlay['FU-03'].iaWymaganeA).toBeNull();
+    expect(overlay['FU-03'].margines).toBeNull();
   });
 
   it('status="brak danych" (envelope): WPIS POMINIĘTY — uczciwy brak, zero fabrykacji werdyktu bez dowodu', () => {
@@ -83,16 +83,16 @@ describe('P0.8 nN — buildSwzOverlayFromResponses (przepisanie werdyktu 3-stano
 
   it('mieszanka: tylko odpowiedzi status=OK trafiają do nakładki, pozostałe pominięte', () => {
     const overlay = buildSwzOverlayFromResponses([
-      okResponse({ breaker_ref: 'brc/ok1' }),
+      odpowiedz('QF-01'),
       { status: 'brak danych', breaker_ref: 'brc/missing' },
-      okResponse({ breaker_ref: 'brc/ok2', status: 'nie spełnia' }),
+      odpowiedz('QF-02'),
       { status: 'nie dotyczy', breaker_ref: 'brc/nontn' },
     ]);
-    expect(Object.keys(overlay).sort()).toEqual(['brc/ok1', 'brc/ok2']);
+    expect(Object.keys(overlay).sort()).toEqual(['QF-01', 'QF-02']);
   });
 
   it('deterministyczna: to samo wejście ⇒ identyczny wynik', () => {
-    const responses = [okResponse({ breaker_ref: 'brc/a' }), okResponse({ breaker_ref: 'brc/b', status: 'nierozstrzygalne' })];
+    const responses = odpowiedzi();
     const a = buildSwzOverlayFromResponses(responses);
     const b = buildSwzOverlayFromResponses(responses);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
