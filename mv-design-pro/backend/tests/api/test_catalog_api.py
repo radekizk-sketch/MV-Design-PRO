@@ -337,3 +337,29 @@ def test_new_etango_250_450_are_selectable_as_real_catalog_types(
         assert entry["analytical_library_ref"] is None
         assert entry["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
         assert entry["source_reference"].startswith("Elektrometal Energetyka")
+
+
+def test_etango_full_family_reference_api_is_distinct_from_sn_picker(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/catalog/elektrometal-etango-family")
+    assert response.status_code == 200
+    family = response.json()
+    assert len(family) == 17
+    assert [row["id"] for row in family] == sorted(row["id"] for row in family)
+    by_id = {row["id"]: row for row in family}
+    assert by_id["EM_E2TANGO_50"]["kategoria"] == "DETEKTOR_ZWARC_SN"
+    assert by_id["EM_E2TANGO_2000_TRR"]["kategoria"] == "SPECJALIZOWANY_ZESPOL_WN"
+    assert by_id["EM_E2TANGO_SZR_PPZ"]["kategoria"] == "PROFIL_AUTOMATYKI"
+    assert "87T" in by_id["EM_E2TANGO_2000_TRR"]["funkcje_publikowane"]
+    assert all(row["aktywnie_wlaczone_funkcje"] is None for row in family)
+    assert all(row["nastawy"] is None for row in family)
+    assert all(row["zrodlo"]["url"].startswith("https://elektrometal-energetyka.pl/") for row in family)
+
+    sn = client.get("/api/catalog/mv-protection-device-types")
+    assert sn.status_code == 200
+    sn_ids = {row["id"] for row in sn.json()}
+    for model in ("100", "150", "200", "250", "400", "450", "600", "800", "1000", "1200"):
+        assert "EM_E2TANGO_" + model in sn_ids
+    for identyfikator in ("EM_E2TANGO_50", "EM_E2TANGO_2000_TRR", "EM_E2TANGO_SZR_PPZ"):
+        assert identyfikator not in sn_ids
