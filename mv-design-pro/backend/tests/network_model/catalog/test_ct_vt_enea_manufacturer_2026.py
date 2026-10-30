@@ -132,10 +132,10 @@ def test_ferranti_ma_odrebne_api_bez_pozornej_przekladni_pradowej() -> None:
 def test_przekladniki_osobne_licznosci_bez_duplikatow() -> None:
     repo = get_default_mv_catalog()
     # 14 CT z PR #508 +36 ENEA +1 ABB tabliczka +17 ABB standard.
-    assert len(repo.ct_types) == 103
+    assert len(repo.ct_types) == 107
     # 13 VT dotychczasowych + 6 ENEA + 9 ABB + 3 ESITAS.
-    assert len(repo.vt_types) == 37
-    assert len(set(repo.ct_types)) == 103
+    assert len(repo.vt_types) == 38
+    assert len(set(repo.ct_types)) == 107
     assert len(set(repo.vt_types)) == 37
 
 
