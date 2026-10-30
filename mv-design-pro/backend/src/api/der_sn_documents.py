@@ -1,7 +1,8 @@
 """D4 (RECENZJA_DER_SN_DOBORY_2026-07): API dokumentów toru DER-SN.
 
-- ``GET /api/der-sn/{case_id}/compliance-report`` — raport zgodności ✓/⚠/❌
-  (wymaganie 13) ze zmaterializowanego toru DER-SN,
+- ``GET /api/der-sn/{case_id}/compliance-report`` — raport zgodności (wymaganie 13) ze
+  zmaterializowanego toru DER-SN: rekord wymagania doborów toru i rekord kryterium każdej
+  pozycji ocenionej (kontrakt werdyktu wyjaśnialnego),
 - ``GET /api/der-sn/{case_id}/bom`` — lista materiałowa (BOM) toru DER-SN.
 
 Warstwa PREZENTACJI/API: ładuje dokument ENM przypadku (404 gdy brak), deleguje

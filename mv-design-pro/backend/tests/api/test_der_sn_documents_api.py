@@ -318,7 +318,10 @@ def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa(app_client) ->
     assert pozycja is not None, "sekcja odstępstw D2 musi zawierać przekrój kabla"
     assert pozycja["zastosowano"] == pytest.approx(70.0)
     assert pozycja["propozycja"] == pytest.approx(70.0)
-    assert pozycja["status"] == "PASS"
+    # Zgodność z propozycją D2 jest pozycją INFORMACYJNĄ (bez werdyktu) — karta
+    # WERDYKT-MIGRACJA-190: odstępstwo od propozycji nie jest oceną kryterium.
+    assert pozycja["status"] == "INFORMACJA"
+    assert pozycja["odstepstwo"] is False
     assert pozycja["code"] == "der_sn.d2.zgodne"
 
 
@@ -342,7 +345,8 @@ def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane(app_client) -> None:
     assert pozycja is not None
     assert pozycja["zastosowano"] == pytest.approx(50.0)
     assert pozycja["propozycja"] == pytest.approx(70.0)
-    assert pozycja["status"] == "WARN"
+    assert pozycja["status"] == "INFORMACJA"
+    assert pozycja["odstepstwo"] is True
     assert pozycja["code"] == "der_sn.d2.odstepstwo"
 
 
@@ -380,7 +384,8 @@ def test_brak_przekroju_kabla_pomija_sekcje_d2_nie_fabrykuje_zera(app_client) ->
     # dawne `except Exception` → `None` chowało tu także błąd programu.
     nieocenione = [p for p in resp.json()["pozycje"] if p.get("check_id") == "d2.nieoceniono"]
     assert len(nieocenione) == 1
-    assert nieocenione[0]["status"] == "WARN"
+    assert nieocenione[0]["status"] == "INFORMACJA"
+    assert nieocenione[0]["nieoceniono"] is True
     assert nieocenione[0]["code"] == "der_sn.d2.nieoceniono"
     assert "cross_section_mm2" in nieocenione[0]["message_pl"]
 
@@ -425,8 +430,9 @@ def test_odmowa_solvera_doboru_to_sekcja_d2_nieoceniona_z_powodem(app_client, mo
     assert resp.status_code == 200, resp.text
     nieocenione = [p for p in resp.json()["pozycje"] if p.get("check_id") == "d2.nieoceniono"]
     assert [p["message_pl"] for p in nieocenione] == [
-        "⚠️ Zgodności z propozycją D2 nie oceniono: ΣS falowników musi być dodatnie."
+        "Zgodności z propozycją D2 nie oceniono: ΣS falowników musi być dodatnie."
     ]
+    # Sekcja D2 nieoceniona to uwaga — raport nie jest „zgodny" bez uwag.
     assert resp.json()["werdykt"] != "ZGODNY"
 
 
@@ -444,7 +450,8 @@ def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad(app_client) -> None:
     pozycja = _odstepstwo_przekroju(resp.json())
     assert pozycja is not None
     assert pozycja["propozycja"] == pytest.approx(50.0)
-    assert pozycja["status"] == "PASS"
+    assert pozycja["status"] == "INFORMACJA"
+    assert pozycja["odstepstwo"] is False
 
 
 def test_zapis_warunkow_ulozenia_uszkodzony_to_d2_nieoceniona_nie_warunki_katalogowe(

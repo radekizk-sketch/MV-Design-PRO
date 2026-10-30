@@ -21,10 +21,15 @@ from uuid import uuid4
 
 import pymupdf
 import pytest
+from analysis.energy_validation.builder import _pozycja as _pozycja_walidacji
+from analysis.energy_validation.models import EnergyCheckType
+from analysis.energy_validation.serializer import item_to_dict
 from application.analyses.wniosek_osd import (
     WniosekOsdBrakiError,
     WniosekOsdIdentyfikacja,
     _bilans_mocy_sekcja,
+    _ocena_pl,
+    _ocena_pozycji_bilansu,
     build_wniosek_osd_view,
     render_wniosek_osd_docx,
     render_wniosek_pdf,
@@ -229,6 +234,89 @@ def test_moc_w_punkcie_nieznana_nie_fabrykuje_zera() -> None:
     # jedyne źródło IBG w całej sieci jest nieznane, więc suma jest 0.0 (pusta
     # po odrzuceniu nieznanych, E3 klasa (b) — nie fabrykacja z fragmentu).
     assert bilans["moc_zainstalowana_zrodel_mva"] == 0.0
+
+
+# Bilans w dokumencie wniosku: stan pozycji walidacji energetycznej (współczynnik mocy
+# w punkcie bilansowym, straty) jest rekordem K, nie słownikiem kodu statusu. Iloczyn cech:
+# kontrola {bilans Q, straty} × pozycja {spełniona, blisko progu, naruszona, niewyznaczona,
+# nieobecna w walidacji} — etykieta i zdanie dokumentu zawsze z rekordu, brak ≠ spełnia.
+# Zastępuje test słownika „kod → etykieta polska" (karta #145): intencja „dokument nigdy nie
+# pokazuje kodu" zostaje (asercja na tekście), słownika kodów już nie ma — tekst niesie rekord.
+_WARTOSCI_BILANSU = {
+    # check_type: (próg ostrzeżenia, próg przekroczenia, {stan: wartość})
+    EnergyCheckType.REACTIVE_BALANCE: (
+        0.9,
+        0.8,
+        {"PASS": 0.95, "WARNING": 0.85, "FAIL": 0.7, "NOT_COMPUTED": None},
+    ),
+    EnergyCheckType.LOSS_BUDGET: (
+        3.0,
+        5.0,
+        {"PASS": 1.0, "WARNING": 4.0, "FAIL": 6.0, "NOT_COMPUTED": None},
+    ),
+}
+_WYNIK_REKORDU = {
+    "PASS": "SPELNIA",
+    "WARNING": "SPELNIA",
+    "FAIL": "NIE_SPELNIA",
+    "NOT_COMPUTED": "NIE_OCENIONO",
+}
+
+
+@pytest.mark.parametrize("check_type", list(_WARTOSCI_BILANSU))
+@pytest.mark.parametrize("stan", ["PASS", "WARNING", "FAIL", "NOT_COMPUTED", None])
+def test_bilans_rekord_pozycji_iloczyn(check_type: EnergyCheckType, stan: str | None) -> None:
+    prog_ostrz, prog_przekr, wartosci = _WARTOSCI_BILANSU[check_type]
+    if stan is None:
+        item = None
+    else:
+        item = item_to_dict(
+            _pozycja_walidacji(
+                check_type=check_type,
+                target_id="slack",
+                target_name="Węzeł bilansujący",
+                observed_value=wartosci[stan],
+                unit="%",
+                limit_warn=prog_ostrz,
+                limit_fail=prog_przekr,
+                margin_pct=None,
+                why_pl="brak wyniku rozpływu dla tej kontroli",
+            )
+        )
+        assert item["status"] == stan
+    ocena = _ocena_pozycji_bilansu(item, check_type, "węzeł bilansujący")
+
+    oczekiwany = _WYNIK_REKORDU[stan] if stan is not None else "NIE_OCENIONO"
+    assert ocena["status_maszynowy"] == oczekiwany
+    if item is not None:
+        assert ocena == item["ocena"]
+    else:
+        assert "pozycja tej kontroli w wyniku walidacji energetycznej biegu rozpływu" in (
+            ocena["wyjasnienie"]["czego_brakuje"]
+        )
+    tekst = _ocena_pl(ocena)
+    assert tekst.startswith(ocena["etykieta"]["etykieta_pl"])
+    assert ocena["wyjasnienie"]["zdanie_pl"] in tekst
+    # Kod maszynowy nie jest tekstem dokumentu.
+    assert re.search(r"\b(PASS|WARNING|FAIL|NOT_COMPUTED)\b", tekst) is None
+
+
+def test_bilans_rekordy_w_json_docx_i_pdf() -> None:
+    view = _view()
+    bilans = view["bilans_mocy"]
+    docx = re.sub(r"\s+", " ", _docx_text(render_wniosek_osd_docx(view)))
+    pdf = re.sub(r"\s+", " ", _pdf_text(render_wniosek_pdf(view)))
+    for klucz, kod, kryterium in (
+        ("bilans_q_ocena", "bilans_q_status", "walidacja_energetyczna.bilans_mocy_biernej"),
+        ("straty_ocena", "straty_status", "walidacja_energetyczna.budzet_strat"),
+    ):
+        ocena = bilans[klucz]
+        assert ocena["kryterium_id"] == kryterium
+        # Kod zastany jest projekcją rekordu (jedno źródło rozstrzygnięcia).
+        assert _WYNIK_REKORDU[bilans[kod]] == ocena["status_maszynowy"]
+        zdanie = re.sub(r"\s+", " ", ocena["wyjasnienie"]["zdanie_pl"])
+        assert f"{ocena['etykieta']['etykieta_pl']}. {zdanie}" in docx
+        assert zdanie in pdf
 
 
 def test_zwarcia_sekcja_ma_ik_i_sk() -> None:
@@ -572,14 +660,3 @@ def test_zalozenia_bez_identyfikatorow_zrodla_w_stopce_docx_i_pdf() -> None:
         assert (
             f"Odcisk wejścia oceny zgodności NC RfG: {view['zrodla']['nc_rfg_input_hash']}" in tekst
         )
-
-
-def test_status_walidacji_po_polsku_dla_kazdego_kodu_i_bez_kodu_spoza_slownika() -> None:
-    """Karta #145: każdy stan walidacji energetycznej ma polską etykietę w dokumencie
-    wniosku, a stan spoza słownika daje zdanie, nigdy kod."""
-    from analysis.energy_validation.models import EnergyValidationStatus
-    from application.analyses.wniosek_osd import _status_pl
-
-    for stan in EnergyValidationStatus:
-        assert _status_pl(stan.value) != stan.value
-    assert _status_pl("NOWY_STAN") == "stan spoza słownika aplikacji"

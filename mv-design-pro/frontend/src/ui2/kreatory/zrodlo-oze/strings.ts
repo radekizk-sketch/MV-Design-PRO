@@ -489,11 +489,9 @@ export const PODSUMOWANIE_STRINGS = {
 
   // Raport zgodności
   raportTytul: 'Raport zgodności toru DER-SN',
-  raportZgodny: 'Projekt zgodny',
-  raportZUwagami: 'Projekt zgodny z uwagami',
-  raportNiezgodny: 'Projekt niezgodny',
-  raportPodsumowanie: (pass: number, warn: number, fail: number) =>
-    `Spełnione: ${pass} · Uwagi: ${warn} · Błędy: ${fail}`,
+  raportInformacje: (n: number) => `Pozycje informacyjne: ${n}`,
+  raportPozycjaInformacyjna: 'Informacja',
+  raportUzasadnienie: 'Uzasadnienie oceny doborów toru',
   raportBrak: 'Raport zgodności dotyczy toru DER przyłączonego po stronie SN (transformator blokowy).',
 
   // Lista materiałowa

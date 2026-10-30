@@ -524,9 +524,15 @@ export interface SekcjaBilansuWniosku {
   readonly obciazenie_najwyzsze_pct: number | null;
   readonly obciazenie_element: string | null;
   readonly wspolczynnik_mocy_slack: number | null;
+  /** Kod — projekcja rekordu `bilans_q_ocena` (agregacja, nie tekst ekranu). */
   readonly bilans_q_status: string;
+  /** Rekord K współczynnika mocy w punkcie bilansowym (zawsze obecny; brak pozycji → ocena niewykonana). */
+  readonly bilans_q_ocena: OcenaKryterium;
   readonly straty_pct: number | null;
+  /** Kod — projekcja rekordu `straty_ocena` (agregacja, nie tekst ekranu). */
   readonly straty_status: string;
+  /** Rekord K budżetu strat sieci (zawsze obecny; brak pozycji → ocena niewykonana). */
+  readonly straty_ocena: OcenaKryterium;
   readonly podsumowanie_walidacji: PodsumowanieWalidacjiWniosku;
 }
 

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Final, Protocol
+from typing import Final, Literal, Protocol
 
 from werdykt.decyzja import jednostka_marginesu, ocen_kryterium, zagreguj_wymaganie
 from werdykt.kontrakt import (
@@ -66,7 +66,7 @@ NIEPEWNOSC_ANALITYCZNA: Final = Niepewnosc(
     nie_dotyczy=True,
     powod_pl=(
         "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie "
-        "dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        "dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
     ),
 )
 
@@ -301,6 +301,19 @@ def ocena_porownania(
     )
 
 
+#: Sposoby wykazania wymagania złożonego z ocen składowych bez programu badań.
+SposobWykazaniaZOcen = Literal["OBLICZENIE", "DEKLARACJA"]
+
+#: Opis pokrycia programem badań dla wymagań wykazywanych bez programu badań (jedno źródło).
+_POKRYCIE_PROGRAMU_PL: Final[dict[SposobWykazaniaZOcen, str]] = {
+    "OBLICZENIE": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "DEKLARACJA": (
+        "wymaganie wykazywane porównaniem danych znamionowych zapisanych w modelu — program "
+        "badań nie dotyczy"
+    ),
+}
+
+
 def wymaganie_z_ocen(
     *,
     wymaganie_id: str,
@@ -312,9 +325,14 @@ def wymaganie_z_ocen(
     odniesienie: str | None = None,
     powod_stosowalnosci_pl: str = DOTYCZY_OBIEKTU,
     braki: Sequence[str] = (),
+    sposob_wykazania: SposobWykazaniaZOcen = "OBLICZENIE",
 ) -> WynikWymagania:
-    """Rekord W wykazywany obliczeniem jednego biegu: agregacja §2.3 nad ocenami składowymi,
-    dowód z danymi przyjętymi wszystkich STOSOWALNYCH składowych."""
+    """Rekord W: agregacja §2.3 nad ocenami składowymi, dowód z danymi przyjętymi wszystkich
+    STOSOWALNYCH składowych.
+
+    ``sposob_wykazania`` — metoda wykazania wymagania: ``OBLICZENIE`` (jeden bieg obliczeń,
+    domyślnie) albo ``DEKLARACJA`` (porównanie danych znamionowych zapisanych w modelu).
+    """
     dane = [
         dana
         for ocena in oceny
@@ -326,13 +344,11 @@ def wymaganie_z_ocen(
         nazwa_pl=nazwa_pl,
         podstawa=podstawa,
         stosowalnosc=Stosowalnosc(dotyczy=True, powod_pl=powod_stosowalnosci_pl),
-        sposob_wykazania="OBLICZENIE",
+        sposob_wykazania=sposob_wykazania,
         oceny_skladowe=oceny,
         pokrycie_programu="NIE_DOTYCZY",
-        pokrycie_programu_pl=(
-            "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy"
-        ),
-        dowod=dowod_obliczenia(zdolnosc, dane, odniesienie=odniesienie),
+        pokrycie_programu_pl=_POKRYCIE_PROGRAMU_PL[sposob_wykazania],
+        dowod=dowod_obliczenia(zdolnosc, dane, odniesienie=odniesienie, metoda=sposob_wykazania),
         zakres_waznosci=zakres,
         slad=[odnosnik for ocena in oceny for odnosnik in ocena.slad],
         braki_dodatkowe=braki,

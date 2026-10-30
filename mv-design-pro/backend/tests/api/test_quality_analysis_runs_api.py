@@ -689,6 +689,10 @@ _KLUCZE_OCENY_ELEMENTU = {
     "dowod",
     # Karta V12.7 §0.1/§0.8: wzór LaTeX marginesu (addytywne).
     "margines_wzor_latex",
+    # Karta WERDYKT-MIGRACJA-190: rekord werdyktu dostawcy i jego wyjaśnienie (addytywne);
+    # `wynik` i `wniosek_pl` są ich projekcją.
+    "ocena",
+    "wyjasnienie",
 }
 
 
@@ -741,6 +745,8 @@ def test_design_verdict_endpoint_niesie_ocene_grupy_i_elementy_per_pozycja(app_c
             )
             assert set(element.keys()) == oczekiwane, pozycja["kryterium_id"]
             assert element["wynik"] in ("SPELNIA", "NIE_SPELNIA", "BRAK_PODSTAW")
+            assert element["wyjasnienie"] == element["ocena"]["wyjasnienie"]
+            assert element["wniosek_pl"] == element["wyjasnienie"]["zdanie_pl"]
             if dane:
                 assert element["kompletnosc_dowodu"] == "NIEPELNY", pozycja["kryterium_id"]
                 assert all(d["jakosc"] == "ESTIMATED" for d in dane), pozycja["kryterium_id"]

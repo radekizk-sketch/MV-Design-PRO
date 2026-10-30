@@ -187,7 +187,7 @@ describe('generacja — żądanie V2 i widok', () => {
     expect(zadanie.cialo).toEqual(zadanieMagazynu());
   });
 
-  it('widok: bilans (wartości bez kodów statusu i liczników), zwarcia, sekcje modułów z rekordami W', async () => {
+  it('widok: bilans (rekordy K oceny zamiast kodów statusu i liczników), zwarcia, sekcje modułów z rekordami W', async () => {
     trasy('widok');
     zasiej(deryMagazynu(), przebiegiMagazynu());
     const uzytkownik = userEvent.setup();
@@ -196,7 +196,19 @@ describe('generacja — żądanie V2 i widok', () => {
     const widok = widokWnioskuFixture();
     const bilans = await screen.findByTestId('mvd-wniosek-bilans');
     expect(bilans).not.toHaveTextContent(widok.bilans_mocy.bilans_q_status);
-    expect(bilans).not.toHaveTextContent(/spełnione|niespełnione|ostrzeżenia/);
+    expect(bilans).not.toHaveTextContent(/spełnione:|niespełnione:|ostrzeżenia:/);
+    // Ocena współczynnika mocy i strat — etykieta i karta z rekordu backendu.
+    for (const [testid, ocena] of [
+      ['mvd-wniosek-bilans-q-etykieta', widok.bilans_mocy.bilans_q_ocena],
+      ['mvd-wniosek-bilans-straty-etykieta', widok.bilans_mocy.straty_ocena],
+    ] as const) {
+      const etykieta = within(bilans).getByTestId(testid);
+      expect(etykieta).toHaveTextContent(ocena.etykieta.etykieta_pl);
+      expect(etykieta).toHaveAttribute('data-semantyka', ocena.etykieta.semantyka);
+      expect(within(bilans).getByTestId(`mvd-werdykt-${ocena.kryterium_id}`)).toHaveTextContent(
+        ocena.wyjasnienie.zdanie_pl,
+      );
+    }
     expect(screen.getByTestId('mvd-wniosek-zwarcia')).toHaveTextContent(widok.zwarcia_punkt_przylaczenia.nazwa_wezla);
     expect(screen.getByTestId('mvd-wniosek-zgodnosc-procedura')).toHaveTextContent(widok.zgodnosc_nc_rfg.procedura.tytul);
     for (const sekcja of widok.zgodnosc_nc_rfg.moduly) {

@@ -29,17 +29,16 @@ import {
   fmtOdniesienie,
   fmtWartoscZJednostka,
   grupyZWynikami,
-  klasaWyniku,
   nazwaPrzedmiotu,
   ocenaCalosciowaPL,
   pakietWynikowPL,
   podstawaOcenyPL,
+  pozycjaRozstrzygajaca,
   pozycjeBezPodstaw,
   rodzajPrzekroczeniaKryterium,
   stanPrzebieguPL,
   typElementu,
   typElementuKryterium,
-  wynikPL,
   zrodloPL,
 } from '../model';
 import { OCENA_STRINGS as T } from '../strings';
@@ -124,6 +123,9 @@ function odpowiedz(over: Partial<OdpowiedzOceny> = {}): OdpowiedzOceny {
     podsumowanie: { spelnione: 1, naruszone: 0, niejednoznaczne: 0, niesprawdzone: 0, nie_dotyczy: 0, razem: 1 },
     zakres_poza_automatem: [],
     ocena: { oceniono: 1, spelnia: 1, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 0 },
+    liczniki_etykiet: [],
+    kryterium_rozstrzygajace: null,
+    wyjasnienie: null,
     grupy: [
       { kod: 'napiecia', nazwa_pl: 'Napięcia' },
       { kod: 'obciazalnosc', nazwa_pl: 'Obciążalność' },
@@ -132,21 +134,18 @@ function odpowiedz(over: Partial<OdpowiedzOceny> = {}): OdpowiedzOceny {
   };
 }
 
-// Zmiana kanonu (rozstrzygnięcie zarządcy 2026-09-23, kontrakt werdyktu §2.1): czwarty wynik
-// NIEJEDNOZNACZNY — ostrzeżenie dostawcy bez wniosku binarnego. Intencja zachowana: każdy
-// wynik rozróżnialny, żaden poza SPEŁNIA nie brzmi jak spełnienie.
-describe('wyniki oceny elementu — cztery stany, nigdy dwa', () => {
-  it('każdy wynik ma własną etykietę i klasę; BRAK PODSTAW i WYNIK NIEJEDNOZNACZNY nie brzmią jak spełnienie', () => {
-    const wyniki = ['SPELNIA', 'NIE_SPELNIA', 'NIEJEDNOZNACZNY', 'BRAK_PODSTAW'] as const;
-    const etykiety = wyniki.map((wynik) => wynikPL(wynik));
-    expect(new Set(etykiety).size).toBe(4);
-    expect(new Set(wyniki.map((wynik) => klasaWyniku(wynik))).size).toBe(4);
-    expect(wynikPL('BRAK_PODSTAW')).toBe(T.wynikBrakPodstaw);
-    expect(wynikPL('BRAK_PODSTAW').startsWith('SPEŁNIA')).toBe(false);
-    expect(wynikPL('NIEJEDNOZNACZNY')).toBe(T.wynikNiejednoznaczny);
-    expect(wynikPL('NIEJEDNOZNACZNY').startsWith('SPEŁNIA')).toBe(false);
-    // Zakaz skrótów PASS/WARN/FAIL (prompt właściciela §6): etykiety są zdaniami PL.
-    for (const etykieta of etykiety) expect(etykieta).not.toMatch(/\b(PASS|WARN|FAIL)\b/);
+// Karta WERDYKT-MIGRACJA-190: etykieta i kolor wyniku pochodzą z REKORDU (EtykietaWerdyktu);
+// model nie tłumaczy kodów wyniku. Werdykt całościowy wyjaśnia rekord pozycji rozstrzygającej.
+describe('pozycja rozstrzygająca werdykt — z odpowiedzi backendu, bez własnej reguły', () => {
+  it('wskazuje pozycję po kryterium rozstrzygającym; brak kryterium albo pozycji ⇒ null', () => {
+    const naruszona = pozycja({ kryterium_id: 'napiecie.odchylenie', stan: 'NARUSZONE' });
+    const dane = odpowiedz({
+      pozycje: [pozycja({ kryterium_id: 'straty.budzet' }), naruszona],
+      kryterium_rozstrzygajace: 'napiecie.odchylenie',
+    });
+    expect(pozycjaRozstrzygajaca(dane)).toBe(naruszona);
+    expect(pozycjaRozstrzygajaca(odpowiedz({ kryterium_rozstrzygajace: null }))).toBeNull();
+    expect(pozycjaRozstrzygajaca(odpowiedz({ kryterium_rozstrzygajace: 'nieistniejace' }))).toBeNull();
   });
 });
 

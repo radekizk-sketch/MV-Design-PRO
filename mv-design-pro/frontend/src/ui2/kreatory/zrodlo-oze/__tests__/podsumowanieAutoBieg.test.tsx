@@ -1,6 +1,6 @@
 /**
  * D4: testy pomocnika łączenia statusu auto-biegu + panelu podsumowania
- * (raport zgodności ✓/⚠/❌ + BOM). Prezentacja danych backendu 1:1, ZERO fizyki.
+ * (raport zgodności z rekordów werdyktu + BOM). Prezentacja danych backendu 1:1, ZERO fizyki.
  */
 
 import { cleanup, render, screen } from '@testing-library/react';
@@ -8,7 +8,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PodsumowanieAutoBieg } from '../PodsumowanieAutoBieg';
-import { polaczStatusBiegu, type ListaMaterialowa, type RaportZgodnosci } from '../podsumowanieApi';
+import {
+  polaczStatusBiegu,
+  pozycjaOceniona,
+  type ListaMaterialowa,
+  type RaportZgodnosci,
+} from '../podsumowanieApi';
+import raportyZgodnosci from './raportyZgodnosci.json';
 
 afterEach(() => cleanup());
 
@@ -27,23 +33,16 @@ describe('polaczStatusBiegu', () => {
   });
 });
 
-const RAPORT: RaportZgodnosci = {
-  wersja: '1.0',
-  source_ref: 'gen-1',
-  source_name: 'Blok PV SN',
-  werdykt: 'NIEZGODNY',
-  komunikat_krytyczny: 'Nie można wygenerować projektu.',
-  pozycje: [
-    {
-      check_id: 'moc_transformatora',
-      kategoria: 'walidacja_D1',
-      status: 'FAIL',
-      code: 'converter.der_sn.moc_transformatora_niewystarczajaca',
-      message_pl: '❌ Moc transformatora jest niewystarczająca (ΣS=1 MVA > dopuszczalne 0.1 MVA).',
-    },
-  ],
-  podsumowanie: { pass: 0, warn: 0, fail: 1, razem: 1 },
-};
+/**
+ * Raporty z backendu (fixtura generatora `generuj_fixtury_ocen_fe.py` — funkcja końcówki
+ * `build_compliance_report_from_track` na torze zmaterializowanym operacją zapisu kreatora).
+ * Ręcznie złożony raport mógłby mieć etykietę niezgodną z rekordem — tu jest to niemożliwe.
+ */
+const RAPORTY = raportyZgodnosci as unknown as Record<
+  'zgodny' | 'z_uwagami' | 'niezgodny' | 'bez_danych',
+  RaportZgodnosci
+>;
+const RAPORT = RAPORTY.niezgodny;
 
 const BOM: ListaMaterialowa = {
   wersja: '1.0',
@@ -80,7 +79,7 @@ const BOM: ListaMaterialowa = {
 };
 
 describe('PodsumowanieAutoBieg', () => {
-  it('błąd krytyczny D1: werdykt niezgodny + komunikat kanonu + komunikat 1:1', () => {
+  it('błąd krytyczny D1: etykieta raportu z rekordu wymagania + komunikat kanonu + komunikat 1:1', () => {
     render(
       <PodsumowanieAutoBieg
         runStatus="FAILED"
@@ -91,15 +90,120 @@ describe('PodsumowanieAutoBieg', () => {
         onZakoncz={() => {}}
       />,
     );
-    expect(screen.getByTestId('mvd-kreator-oze-werdykt')).toHaveTextContent('Projekt niezgodny');
+    expect(RAPORT.werdykt).toBe('NIEZGODNY');
+    const etykieta = screen.getByTestId('mvd-kreator-oze-werdykt-etykieta');
+    expect(etykieta).toHaveTextContent(RAPORT.ocena_wymagania.etykieta.etykieta_pl);
+    expect(etykieta).toHaveAttribute('data-semantyka', 'negatywna');
+    expect(screen.getByTestId('mvd-kreator-oze-werdykt-zdanie')).toHaveTextContent(
+      RAPORT.wyjasnienie.zdanie_pl,
+    );
     expect(screen.getByTestId('mvd-kreator-oze-krytyczny')).toHaveTextContent(
       'Nie można wygenerować projektu.',
     );
     expect(screen.getByTestId('mvd-kreator-oze-check-moc_transformatora')).toHaveTextContent(
-      '❌ Moc transformatora jest niewystarczająca',
+      'przekracza dopuszczalną moc transformatora (100 kVA',
     );
     expect(screen.getByTestId('mvd-kreator-oze-bom-tabela')).toHaveTextContent('Kabel SN przyłączeniowy');
     expect(screen.getByTestId('mvd-kreator-oze-status-tekst')).toHaveTextContent('nieudany');
+  });
+
+  // Iloczyn cech: stan raportu (zgodny / z uwagami / niezgodny / bez danych) × rodzaj pozycji
+  // (z rekordem / informacyjna) × miejsce etykiety (raport / pozycja / licznik). Etykieta
+  // i semantyka zawsze z rekordu; kod `werdykt`/`status` nie jest tekstem ekranu.
+  describe.each(Object.entries(RAPORTY))('raport „%s”', (_nazwa, raport) => {
+    it('etykieta raportu, pozycji i liczników pochodzi z rekordów, informacja bez etykiety', () => {
+      render(
+        <PodsumowanieAutoBieg
+          runStatus="DONE"
+          autoBieg
+          raport={raport}
+          bom={null}
+          onOtworzDokumentacje={() => {}}
+          onZakoncz={() => {}}
+        />,
+      );
+      const naglowek = screen.getByTestId('mvd-kreator-oze-werdykt');
+      expect(screen.getByTestId('mvd-kreator-oze-werdykt-etykieta')).toHaveTextContent(
+        raport.ocena_wymagania.etykieta.etykieta_pl,
+      );
+      expect(naglowek).not.toHaveTextContent(raport.werdykt);
+      expect(screen.queryByTestId('mvd-kreator-oze-krytyczny') !== null).toBe(
+        raport.komunikat_krytyczny !== null,
+      );
+
+      for (const pozycja of raport.pozycje) {
+        const wiersz = screen.getByTestId(`mvd-kreator-oze-check-${pozycja.check_id}`);
+        expect(wiersz).toHaveTextContent(pozycja.message_pl);
+        expect(wiersz).not.toHaveTextContent(new RegExp(`\\b${pozycja.status}\\b`));
+        if (pozycjaOceniona(pozycja)) {
+          expect(wiersz).toHaveAttribute('data-semantyka', pozycja.ocena.etykieta.semantyka);
+          expect(wiersz).toHaveTextContent(pozycja.ocena.etykieta.etykieta_pl);
+        } else {
+          expect(wiersz).toHaveAttribute('data-semantyka', 'informacja');
+          expect(wiersz.querySelector('.mvd-werdykt-plakietka')).toBeNull();
+        }
+      }
+
+      // Liczniki: suma = liczba pozycji z rekordem; każdy licznik niesie etykietę rekordu.
+      const liczniki = screen.queryAllByTestId('mvd-kreator-oze-raport-licznik');
+      const zRekordem = raport.pozycje.filter(pozycjaOceniona);
+      const suma = liczniki.reduce((acc, el) => acc + Number(el.querySelector('.mvd-num')?.textContent), 0);
+      expect(suma).toBe(zRekordem.length);
+      for (const licznik of liczniki) {
+        const etykietaPl = licznik.querySelector('.mvd-werdykt-plakietka')?.textContent;
+        expect(Number(licznik.querySelector('.mvd-num')?.textContent)).toBe(
+          zRekordem.filter((p) => p.ocena.etykieta.etykieta_pl === etykietaPl).length,
+        );
+      }
+      expect(screen.queryByTestId('mvd-kreator-oze-raport-informacje') !== null).toBe(
+        raport.podsumowanie.informacja > 0,
+      );
+    });
+  });
+
+  it('brak danych kaskady ≠ spełnia: raport nierozstrzygnięty, etykieta neutralna, nie pozytywna', () => {
+    const raport = RAPORTY.bez_danych;
+    render(
+      <PodsumowanieAutoBieg
+        runStatus="DONE"
+        autoBieg
+        raport={raport}
+        bom={null}
+        onOtworzDokumentacje={() => {}}
+        onZakoncz={() => {}}
+      />,
+    );
+    expect(raport.werdykt).toBe('NIEROZSTRZYGNIETY');
+    expect(screen.getByTestId('mvd-kreator-oze-werdykt-etykieta')).toHaveAttribute(
+      'data-semantyka',
+      'neutralna',
+    );
+    const kaskada = raport.pozycje.find((p) => p.kategoria === 'kaskada_pradowa');
+    expect(kaskada && pozycjaOceniona(kaskada) && kaskada.ocena.status_maszynowy).toBe('NIE_OCENIONO');
+  });
+
+  it('uzasadnienie raportu: natywny klik rozwija kartę rekordu wymagania', async () => {
+    render(
+      <PodsumowanieAutoBieg
+        runStatus="DONE"
+        autoBieg
+        raport={RAPORTY.zgodny}
+        bom={null}
+        onOtworzDokumentacje={() => {}}
+        onZakoncz={() => {}}
+      />,
+    );
+    const raport = RAPORTY.zgodny;
+    const karta = screen.getByTestId(`mvd-werdykt-${raport.ocena_wymagania.wymaganie_id}`);
+    expect(karta).toHaveAttribute('data-poziom', 'W');
+    expect(karta).toHaveTextContent('Uzasadnienie oceny doborów toru');
+    const przelacz = screen.getByTestId(`mvd-werdykt-${raport.ocena_wymagania.wymaganie_id}-zakres-przelacz`);
+    expect(przelacz).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(przelacz);
+    expect(przelacz).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId(`mvd-werdykt-${raport.ocena_wymagania.wymaganie_id}-zakres`)).toHaveTextContent(
+      raport.ocena_wymagania.zakres_waznosci.opis_pl,
+    );
   });
 
   it('brak toru DER-SN: uczciwe stany zerowe raportu i BOM', () => {

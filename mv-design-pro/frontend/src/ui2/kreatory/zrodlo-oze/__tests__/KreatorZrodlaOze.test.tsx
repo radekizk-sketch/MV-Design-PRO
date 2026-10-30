@@ -7,6 +7,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorZrodlaOze } from '../KreatorZrodlaOze';
+import type { RaportZgodnosci } from '../podsumowanieApi';
+import raportyZgodnosci from './raportyZgodnosci.json';
+
+const RAPORTY = raportyZgodnosci as unknown as Record<
+  'zgodny' | 'z_uwagami' | 'niezgodny' | 'bez_danych',
+  RaportZgodnosci
+>;
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -17,7 +24,8 @@ const navigateToSldMock = vi.fn();
 const uruchomAutoBiegMock = vi.fn();
 const fetchRaportMock = vi.fn();
 const fetchBomMock = vi.fn();
-vi.mock('../podsumowanieApi', () => ({
+vi.mock('../podsumowanieApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../podsumowanieApi')>()),
   uruchomAutoBieg: (...args: unknown[]) => uruchomAutoBiegMock(...args),
   fetchRaportZgodnosci: (...args: unknown[]) => fetchRaportMock(...args),
   fetchListaMaterialowa: (...args: unknown[]) => fetchBomMock(...args),
@@ -51,10 +59,13 @@ vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
 }));
 
-vi.mock('../../../../ui/topology/snapshotStore', () => {
+vi.mock('../../../../ui/topology/snapshotStore', async (importOriginal) => {
+  // Selektory (np. `selectElementName` mostu nazw karty werdyktu raportu) — prawdziwe;
+  // podmieniony jest tylko stan magazynu migawki.
+  const prawdziwy = await importOriginal<typeof import('../../../../ui/topology/snapshotStore')>();
   const useSnapshotStore = (selector: (s: typeof snapshotState) => unknown) => selector(snapshotState);
   useSnapshotStore.getState = () => snapshotState;
-  return { useSnapshotStore };
+  return { ...prawdziwy, useSnapshotStore };
 });
 
 // K6: kontekst wywołania kreatora (preselekcja technologii, wariantu i mocy) — zmienny per test.
@@ -427,30 +438,9 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
   it('po zapisie renderuje raport zgodności i BOM z backendu 1:1 (D4 wymaganie 13+BOM)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     uruchomAutoBiegMock.mockResolvedValue('DONE');
-    fetchRaportMock.mockResolvedValue({
-      wersja: '1.0',
-      source_ref: 'gen-1',
-      source_name: 'Blok PV SN',
-      werdykt: 'ZGODNY_Z_UWAGAMI',
-      komunikat_krytyczny: null,
-      pozycje: [
-        {
-          check_id: 'napiecie_sn',
-          kategoria: 'walidacja_D1',
-          status: 'PASS',
-          code: 'der_sn.ok.napiecie_sn',
-          message_pl: '✓ Strona SN TR blokowego zgodna z napięciem szyny SN.',
-        },
-        {
-          check_id: 'converter.der_sn.kaskada_prad_pole_brak',
-          kategoria: 'kaskada_pradowa',
-          status: 'WARN',
-          code: 'converter.der_sn.kaskada_prad_pole_brak',
-          message_pl: '⚠️ Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN.',
-        },
-      ],
-      podsumowanie: { pass: 1, warn: 1, fail: 0, razem: 2 },
-    });
+    // Raport z backendu (fixtura generatora `generuj_fixtury_ocen_fe.py` — ta sama funkcja
+    // co końcówka), nie składany ręcznie: etykiety i wyjaśnienia pochodzą z rekordów.
+    fetchRaportMock.mockResolvedValue(RAPORTY.z_uwagami);
     fetchBomMock.mockResolvedValue({
       wersja: '1.0',
       source_ref: 'gen-1',
@@ -496,8 +486,12 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('mvd-kreator-oze-werdykt')).toHaveTextContent('Projekt zgodny z uwagami');
+      expect(screen.getByTestId('mvd-kreator-oze-werdykt-etykieta')).toHaveTextContent(
+        RAPORTY.z_uwagami.ocena_wymagania.etykieta.etykieta_pl,
+      );
     });
+    // Odstępstwo D2 jest pozycją informacyjną — bez etykiety werdyktu.
+    expect(screen.getByTestId('mvd-kreator-oze-check-d2.cosphi')).toHaveTextContent('Informacja');
     // Komunikaty walidacji 1:1 z backendu (bez parafraz w UI).
     expect(screen.getByTestId('mvd-kreator-oze-check-napiecie_sn')).toHaveTextContent(
       '✓ Strona SN TR blokowego zgodna z napięciem szyny SN.',

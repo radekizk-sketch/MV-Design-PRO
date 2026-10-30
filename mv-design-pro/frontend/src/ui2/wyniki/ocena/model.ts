@@ -4,7 +4,8 @@
  * ZERO fizyki i ZERO ocen własnych: wyniki oceny elementów, liczniki, marginesy
  * i wnioski przychodzą gotowe z backendu (`application/analyses/werdykt_projektowy.py`).
  * Ten moduł tylko: grupuje pozycje według znaczenia technicznego (grupy z
- * odpowiedzi, wyłącznie z wynikami), formatuje liczby po polsku i mapuje
+ * odpowiedzi, wyłącznie z wynikami), formatuje liczby po polsku (etykiety i kolory
+ * wyników pochodzą z rekordów werdyktu — `EtykietaWerdyktu`/`KartaWerdyktu`) i mapuje
  * semantykę elementu (domena) na typ elementu interfejsu + rodzaj przekroczenia
  * pętli decyzji (`wyniki/wzorzec/akcjeNaprawcze.ts`).
  */
@@ -16,7 +17,6 @@ import type {
   OdpowiedzOceny,
   PozycjaOceny,
   RodzajElementuOceny,
-  WynikOceny,
   ZrodloKryterium,
   ZrodloOceny,
 } from './api';
@@ -64,32 +64,13 @@ export function czyBrakWynikow(odpowiedz: OdpowiedzOceny): boolean {
     .every((zrodlo) => !zrodlo.dostepny || !zrodlo.aktualny);
 }
 
-/** Etykieta PL wyniku oceny elementu. */
-export function wynikPL(wynik: WynikOceny): string {
-  switch (wynik) {
-    case 'SPELNIA':
-      return T.wynikSpelnia;
-    case 'NIE_SPELNIA':
-      return T.wynikNieSpelnia;
-    case 'NIEJEDNOZNACZNY':
-      return T.wynikNiejednoznaczny;
-    case 'BRAK_PODSTAW':
-      return T.wynikBrakPodstaw;
-  }
-}
-
-/** Klasa CSS wyniku (kolory tylko przez tokeny w arkuszu). */
-export function klasaWyniku(wynik: WynikOceny): string {
-  switch (wynik) {
-    case 'SPELNIA':
-      return 'mvd-ocena-wynik--spelnia';
-    case 'NIE_SPELNIA':
-      return 'mvd-ocena-wynik--nie-spelnia';
-    case 'NIEJEDNOZNACZNY':
-      return 'mvd-ocena-wynik--niejednoznaczny';
-    case 'BRAK_PODSTAW':
-      return 'mvd-ocena-wynik--brak-podstaw';
-  }
+/**
+ * Pozycja rozstrzygająca werdykt (backend: pierwsza pozycja rejestru o stanie werdyktu) —
+ * jej rekord i wyjaśnienie tłumaczą ocenę całościową. `null` — rejestr pusty.
+ */
+export function pozycjaRozstrzygajaca(odpowiedz: OdpowiedzOceny): PozycjaOceny | null {
+  if (odpowiedz.kryterium_rozstrzygajace === null) return null;
+  return odpowiedz.pozycje.find((p) => p.kryterium_id === odpowiedz.kryterium_rozstrzygajace) ?? null;
 }
 
 /**

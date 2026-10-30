@@ -13,11 +13,13 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+import pytest
 from application.analyses.der_sn_track import extract_der_sn_track
 from application.analyses.lista_materialowa import build_bom_from_track, build_bom_view
 from application.analyses.raport_zgodnosci import (
     KOMUNIKAT_KRYTYCZNY,
     build_compliance_report,
+    build_compliance_report_from_track,
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -282,11 +284,13 @@ def test_compliance_report_marks_d2_deviation_as_warning_not_error() -> None:
         ],
     )
     assert report is not None
-    d2_warn = [
-        i for i in report["pozycje"] if i["kategoria"] == "zgodnosc_D2" and i["status"] == "WARN"
-    ]
-    assert len(d2_warn) == 1
+    d2 = [i for i in report["pozycje"] if i["kategoria"] == "zgodnosc_D2"]
+    # Pozycje D2 są INFORMACYJNE (bez werdyktu i bez rekordu) — odstępstwo to uwaga.
+    assert {i["status"] for i in d2} == {"INFORMACJA"}
+    assert [i["odstepstwo"] for i in d2] == [True, False]
+    assert all("ocena" not in i for i in d2)
     assert report["podsumowanie"]["fail"] == 0  # odstępstwo NIE jest błędem
+    assert report["podsumowanie"]["informacja"] == 3  # D2 ×2 + układ połączeń z typu
     assert report["werdykt"] == "ZGODNY_Z_UWAGAMI"
 
 
@@ -303,3 +307,70 @@ def test_compliance_report_deterministic() -> None:
     a = build_compliance_report(snap, run_status="DONE")
     b = build_compliance_report(snap, run_status="DONE")
     assert a == b
+
+
+# Iloczyn cech raportu: bieg {ukończony, nieudany, brak} × kabel SN {z obciążalnością, bez}
+# × moc grupy transformatorów {wystarczająca, za mała}. Kod raportu, kod pozycji i komunikat
+# krytyczny są PROJEKCJAMI rekordów (jedno źródło): komunikat ⇔ naruszone kryterium rekordu
+# wymagania ⇔ kod NIEZGODNY; brak danych (kabel bez obciążalności) nigdy nie daje ZGODNY.
+_KOD_POZYCJI_Z_REKORDU = {
+    "SPELNIA": "PASS",
+    "NIE_SPELNIA": "FAIL",
+    "NIE_OCENIONO": "WARN",
+    "BRAK_PODSTAWY": "WARN",
+    "NIEJEDNOZNACZNY": "WARN",
+}
+
+
+@pytest.mark.parametrize("run_status", ["DONE", "FAILED", None])
+@pytest.mark.parametrize("kabel_z_obciazalnoscia", [True, False])
+@pytest.mark.parametrize("moc_wystarczajaca", [True, False])
+def test_compliance_report_projekcje_rekordow_iloczyn(
+    run_status: str | None, kabel_z_obciazalnoscia: bool, moc_wystarczajaca: bool
+) -> None:
+    tor = extract_der_sn_track(_materialized_snapshot())
+    assert tor is not None and tor.mv_cable is not None
+    if not kabel_z_obciazalnoscia:
+        tor = replace(tor, mv_cable={**tor.mv_cable, "rating": {}})
+    if not moc_wystarczajaca:
+        tor = replace(
+            tor,
+            transformatory_grupy=tuple(
+                {
+                    **t,
+                    "sn_mva": 0.1,
+                    "materialized_params": {**t["materialized_params"], "rated_power_mva": 0.1},
+                }
+                for t in tor.transformatory_grupy
+            ),
+        )
+    report = build_compliance_report_from_track(tor, run_status=run_status)
+
+    statusy = []
+    for pozycja in report["pozycje"]:
+        if pozycja["status"] == "INFORMACJA":
+            assert "ocena" not in pozycja
+            continue
+        status = pozycja["ocena"]["status_maszynowy"]
+        statusy.append(status)
+        assert pozycja["status"] == _KOD_POZYCJI_Z_REKORDU[status]
+        assert pozycja["wyjasnienie"] == pozycja["ocena"]["wyjasnienie"]
+
+    naruszone = bool(report["ocena_wymagania"]["kryteria_naruszone"])
+    assert naruszone == ("NIE_SPELNIA" in statusy)
+    assert naruszone == (not moc_wystarczajaca or run_status == "FAILED")
+    assert (report["werdykt"] == "NIEZGODNY") == naruszone
+    assert (report["komunikat_krytyczny"] == KOMUNIKAT_KRYTYCZNY) == naruszone
+    assert report["komunikat_krytyczny"] in (None, KOMUNIKAT_KRYTYCZNY)
+    # Bieg pominięty (``run_status is None``) nie jest pozycją raportu doborów — raport ocenia
+    # dobory toru; bieg ocenia tylko, gdy kreator go uruchomił.
+    assert any(p["check_id"] == "bieg_analiz" for p in report["pozycje"]) == (
+        run_status is not None
+    )
+    if not naruszone and not kabel_z_obciazalnoscia:
+        # Brak danych kaskady ≠ spełnia.
+        assert report["werdykt"] == "NIEROZSTRZYGNIETY"
+        assert report["ocena_wymagania"]["etykieta"]["semantyka"] != "pozytywna"
+    if report["werdykt"] == "ZGODNY":
+        assert set(statusy) == {"SPELNIA"}
+    assert report["wyjasnienie"] == report["ocena_wymagania"]["wyjasnienie"]

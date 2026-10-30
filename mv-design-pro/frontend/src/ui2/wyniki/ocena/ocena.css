@@ -135,14 +135,14 @@
   font-size: 18px;
   font-weight: 700;
 }
-.mvd-ocena-licznik--spelnia .mvd-ocena-licznik-liczba {
+/* Kolor liczby z SEMANTYKI etykiety rekordu (backend), nie z kodu statusu. */
+.mvd-ocena-licznik[data-semantyka='pozytywna'] .mvd-ocena-licznik-liczba {
   color: var(--mvd-ok);
 }
-.mvd-ocena-licznik--nie-spelnia .mvd-ocena-licznik-liczba {
+.mvd-ocena-licznik[data-semantyka='negatywna'] .mvd-ocena-licznik-liczba {
   color: var(--mvd-err);
 }
-.mvd-ocena-licznik--niejednoznaczny .mvd-ocena-licznik-liczba,
-.mvd-ocena-licznik--brak .mvd-ocena-licznik-liczba {
+.mvd-ocena-licznik[data-semantyka='ostrzegawcza'] .mvd-ocena-licznik-liczba {
   color: var(--mvd-warn);
 }
 .mvd-ocena-calosciowa {
@@ -260,20 +260,21 @@
   font-weight: 600;
   white-space: nowrap;
 }
-.mvd-ocena-wynik--spelnia td.mvd-ocena-wynik {
-  color: var(--mvd-ok);
-}
-.mvd-ocena-wynik--nie-spelnia td.mvd-ocena-wynik {
-  color: var(--mvd-err);
-}
-.mvd-ocena-wynik--brak-podstaw td.mvd-ocena-wynik,
-.mvd-ocena-wynik--niejednoznaczny td.mvd-ocena-wynik {
-  color: var(--mvd-warn);
+/* Plakietka etykiety rekordu (`EtykietaWerdyktu`) niesie kolor semantyki; wiersz z rekordem
+   o semantyce negatywnej (kryterium naruszone) dostaje tło ostrzegawcze. */
+td.mvd-ocena-wynik {
   white-space: normal;
   min-width: 160px;
 }
-.mvd-ocena-wiersz.mvd-ocena-wynik--nie-spelnia {
+.mvd-ocena-wiersz[data-semantyka='negatywna'] {
   background: var(--mvd-err-bg);
+}
+.mvd-ocena-szczegoly {
+  margin-top: 4px;
+}
+.mvd-ocena-szczegoly > summary {
+  cursor: pointer;
+  color: var(--mvd-muted);
 }
 .mvd-ocena-wniosek {
   min-width: 220px;

@@ -12,23 +12,49 @@ import {
   executeRunAndWait,
 } from '../../../ui/study-cases/api';
 import type { ExecutionAnalysisType, RunStatus } from '../../../ui/study-cases/types';
+import type {
+  OcenaKryterium,
+  WyjasnienieWerdyktu,
+  WynikWymagania,
+} from '../../wyniki/wzorzec/werdykt';
 
 // ---------------------------------------------------------------------------
 // Kontrakt raportu zgodności (1:1 z application/analyses/raport_zgodnosci.py).
 // ---------------------------------------------------------------------------
-export type StatusPozycji = 'PASS' | 'WARN' | 'FAIL';
-export type WerdyktRaportu = 'ZGODNY' | 'ZGODNY_Z_UWAGAMI' | 'NIEZGODNY';
+/**
+ * Kod pozycji — PROJEKCJA rekordu `ocena` (agregacja i filtry). Ekran nie tłumaczy kodu na
+ * tekst: etykieta i wyjaśnienie pochodzą z rekordu. `INFORMACJA` — pozycja informacyjna bez
+ * oceny (układ połączeń z typu, odstępstwo D2), nie niesie rekordu.
+ */
+export type StatusPozycji = 'PASS' | 'WARN' | 'FAIL' | 'INFORMACJA';
+/** Kod raportu — projekcja rekordu wymagania `ocena_wymagania` (agregacja, nie tekst). */
+export type WerdyktRaportu = 'ZGODNY' | 'ZGODNY_Z_UWAGAMI' | 'NIEZGODNY' | 'NIEROZSTRZYGNIETY';
 
-export interface PozycjaRaportu {
+interface PozycjaRaportuWspolna {
   readonly check_id: string;
   readonly kategoria: string;
-  readonly status: StatusPozycji;
   readonly code: string;
   readonly message_pl: string;
   readonly parametr?: string;
   readonly zastosowano?: unknown;
   readonly propozycja?: unknown;
 }
+
+/** Pozycja oceniona: rekord kryterium K + jego wyjaśnienie (kontrakt werdyktu §2). */
+export interface PozycjaOceniona extends PozycjaRaportuWspolna {
+  readonly status: Exclude<StatusPozycji, 'INFORMACJA'>;
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
+}
+
+/** Pozycja informacyjna: bez oceny, bez rekordu (nie jest werdyktem). */
+export interface PozycjaInformacyjna extends PozycjaRaportuWspolna {
+  readonly status: 'INFORMACJA';
+  readonly odstepstwo?: boolean;
+  readonly nieoceniono?: boolean;
+}
+
+export type PozycjaRaportu = PozycjaOceniona | PozycjaInformacyjna;
 
 export interface RaportZgodnosci {
   readonly wersja: string;
@@ -41,8 +67,17 @@ export interface RaportZgodnosci {
     readonly pass: number;
     readonly warn: number;
     readonly fail: number;
+    readonly informacja: number;
     readonly razem: number;
   };
+  /** Rekord wymagania W doborów toru — jedyne źródło etykiety i wyjaśnienia raportu. */
+  readonly ocena_wymagania: WynikWymagania;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
+}
+
+/** Pozycja z rekordem oceny (zawężenie typu bez rzutowania). */
+export function pozycjaOceniona(pozycja: PozycjaRaportu): pozycja is PozycjaOceniona {
+  return pozycja.status !== 'INFORMACJA';
 }
 
 // ---------------------------------------------------------------------------

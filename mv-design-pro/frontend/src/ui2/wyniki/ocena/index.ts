@@ -22,12 +22,10 @@ export {
   fmtMargines,
   fmtOdniesienie,
   grupyZWynikami,
-  klasaWyniku,
   pozycjeBezPodstaw,
   rodzajPrzekroczeniaKryterium,
   stanPrzebieguPL,
   typElementuKryterium,
-  wynikPL,
   zrodloPL,
 } from './model';
 export { OCENA_STRINGS } from './strings';

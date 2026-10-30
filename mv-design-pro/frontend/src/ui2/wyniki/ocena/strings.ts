@@ -34,14 +34,11 @@ export const OCENA_STRINGS = {
   // Podsumowanie liczbowe
   podsumowanieTytul: 'Podsumowanie oceny',
   oceniono: 'OCENIONO',
-  spelnia: 'SPEŁNIA WYMAGANIA',
-  nieSpelnia: 'NIE SPEŁNIA WYMAGAŃ',
-  niejednoznaczny: 'WYNIK NIEJEDNOZNACZNY',
-  brakPodstaw: 'BRAK PODSTAW DO OCENY',
+  uzasadnienieCalosciowej: 'Rozstrzygające kryterium oceny całościowej',
   ocenaCalosciowaSpelnia:
     'Wszystkie ocenione elementy spełniają wymagania w kryteriach objętych oceną automatyczną.',
   ocenaCalosciowaNieSpelnia:
-    'Część elementów nie spełnia wymagań — pozycje z wynikiem „NIE SPEŁNIA WYMAGAŃ" wymagają decyzji projektowej.',
+    'Część elementów nie spełnia wymagań — pozycje z kryterium naruszonym wymagają decyzji projektowej.',
   ocenaCalosciowaNiejednoznaczny:
     'Brak elementów nie spełniających wymagań, ale część wyników jest niejednoznaczna — wymagają weryfikacji; to nie jest równoznaczne ze spełnieniem.',
   ocenaCalosciowaBrakPodstaw:
@@ -57,10 +54,7 @@ export const OCENA_STRINGS = {
   kolWynik: 'Wynik oceny',
   kolWniosek: 'Wniosek',
   kolDzialania: 'Powiązania',
-  wynikSpelnia: 'SPEŁNIA WYMAGANIA',
-  wynikNieSpelnia: 'NIE SPEŁNIA WYMAGAŃ',
-  wynikNiejednoznaczny: 'WYNIK NIEJEDNOZNACZNY — WYMAGA WERYFIKACJI',
-  wynikBrakPodstaw: 'BRAK PODSTAW DO OCENY SPEŁNIENIA WYMAGANIA',
+  szczegolyOceny: 'Szczegóły oceny (kryterium, limit, podstawa, dowód)',
   odniesienieBrak: 'brak wartości granicznej — ocena zgodności z warunkami',
   progUwagi: 'próg uwagi',
   marginesBrak: '—',

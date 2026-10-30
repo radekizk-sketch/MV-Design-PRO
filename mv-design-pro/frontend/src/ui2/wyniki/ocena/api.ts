@@ -12,9 +12,12 @@
  *
  * Parametrem jest PRZYPADEK, nie przebieg — ocena zestawia kryteria z wielu
  * biegów (rozpływ + zwarcia) i danych modelu. Warstwa PREZENTACJI: wyłącznie
- * odczyt (GET), zero fizyki, zero ocen własnych — WYNIK OCENY każdego elementu
- * (SPEŁNIA / NIE SPEŁNIA / WYNIK NIEJEDNOZNACZNY / BRAK PODSTAW) przychodzi z backendu.
+ * odczyt (GET), zero fizyki, zero ocen własnych — każdy element, pozycja i werdykt
+ * całościowy niosą REKORD werdyktu wyjaśnialnego (`ocena`: K albo W pakietu `werdykt`) i jego
+ * wyjaśnienie; etykiety i kolory pochodzą z rekordu (`EtykietaWerdyktu`, `KartaWerdyktu`).
  */
+
+import type { Etykieta, RekordWerdyktu, WyjasnienieWerdyktu } from '../wzorzec/werdykt';
 
 /**
  * Stan kryterium (agregat pozycji = stan najgorszego elementu wg §2.3 kontraktu werdyktu:
@@ -32,8 +35,8 @@ export type StanKryterium =
 export type ZrodloKryterium = 'PF' | 'short_circuit_sn' | 'model';
 
 /**
- * Wynik oceny JEDNEGO elementu (`WYNIK_*` backendu). `NIEJEDNOZNACZNY` — ostrzeżenie
- * dostawcy bez wniosku binarnego (kontrakt werdyktu §2.1), nigdy spełnienie.
+ * Wynik oceny JEDNEGO elementu (`WYNIK_*` backendu) — projekcja rekordu `ocena` (filtry,
+ * akcje, atrybuty `data-*`); tekstu i koloru NIE wyprowadza się z tego kodu.
  */
 export type WynikOceny = 'SPELNIA' | 'NIE_SPELNIA' | 'NIEJEDNOZNACZNY' | 'BRAK_PODSTAW';
 
@@ -70,6 +73,9 @@ export interface OcenaElementu {
   readonly wniosek_pl: string;
   /** Odwołanie do dowodu obliczeniowego: bieg + element (`null` = brak biegu). */
   readonly dowod: { readonly run_id: string; readonly element_id: string } | null;
+  /** Rekord werdyktu dostawcy (K albo W) — jedyne źródło wyniku, etykiety i wniosku. */
+  readonly ocena: RekordWerdyktu;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
 }
 
 /** Jedna pozycja rejestru kryteriów projektu (`PozycjaWerdyktu.to_dict`). */
@@ -114,6 +120,10 @@ export interface PozycjaOceny {
   readonly zakres_oceny: 'kryterium' | 'uklad';
   /** Oceny per element — pozycja bez elementów = brak podstawy do oceny (patrz `powod_pl`). */
   readonly elementy: readonly OcenaElementu[];
+  /** Rekord rozstrzygający pozycji: rekord elementu o wyniku pozycji albo rekord pozycji bez
+   *  elementów (ocena niewykonana, nie dotyczy). */
+  readonly ocena: RekordWerdyktu;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
 }
 
 /** Metadane biegu/modelu, z którego pochodzą kryteria danego rodzaju. */
@@ -150,6 +160,12 @@ export interface LicznikiOceny {
   readonly brak_podstaw: number;
 }
 
+/** Liczba elementów pod jedną etykietą ich rekordów (kolejność słownika etykiet backendu). */
+export interface LicznikEtykiety {
+  readonly etykieta: Etykieta;
+  readonly liczba: number;
+}
+
 /** Kryterium BEZ automatycznego dostawcy — jawny zakres weryfikacji. */
 export interface WpisZakresu {
   readonly kryterium_pl: string;
@@ -167,7 +183,13 @@ export interface OdpowiedzOceny {
   readonly podsumowanie: PodsumowanieKryteriow;
   readonly zakres_poza_automatem: readonly WpisZakresu[];
   readonly ocena: LicznikiOceny;
+  /** Liczniki elementów podpisane etykietami ich rekordów (obok listy rekordów). */
+  readonly liczniki_etykiet: readonly LicznikEtykiety[];
   readonly grupy: readonly { readonly kod: string; readonly nazwa_pl: string }[];
+  /** Kryterium pozycji rozstrzygającej (pierwszej o stanie werdyktu); `null` — rejestr pusty. */
+  readonly kryterium_rozstrzygajace: string | null;
+  /** Wyjaśnienie werdyktu = wyjaśnienie rekordu pozycji rozstrzygającej. */
+  readonly wyjasnienie: WyjasnienieWerdyktu | null;
 }
 
 /** Pobiera ocenę techniczną wyników przypadku obliczeniowego (agregat kryteriów). */

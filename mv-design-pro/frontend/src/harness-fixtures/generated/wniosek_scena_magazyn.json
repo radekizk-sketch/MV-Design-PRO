@@ -16,8 +16,284 @@
     "obciazenie_element": "Transformator blokowy Magazyn energii 1,5 MW",
     "wspolczynnik_mocy_slack": 0.9991,
     "bilans_q_status": "PASS",
+    "bilans_q_ocena": {
+      "kryterium_id": "walidacja_energetyczna.bilans_mocy_biernej",
+      "przedmiot": {
+        "element_ref": null,
+        "nazwa_pl": "Węzeł bilansujący",
+        "opis_pl": "Wymiana mocy z siecią zasilającą w węźle bilansującym"
+      },
+      "kryterium": {
+        "opis_pl": "Współczynnik mocy węzła bilansującego nie mniejszy od progu",
+        "warunek_latex": "\\cos\\varphi \\ge \\cos\\varphi_{\\text{limit}}",
+        "relacja": "NIE_MNIEJ",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "podstawa": {
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+        "wydanie": "bieżący stan programu",
+        "jednostka_redakcyjna": "bilans mocy biernej — próg współczynnika mocy węzła bilansującego",
+        "status": "WSKAZANE",
+        "uwagi_pl": "próg projektowy programu (przekroczenie cosφ < 0,8, ostrzeżenie cosφ < 0,9), nie wartość z taryfy operatora"
+      },
+      "stosowalnosc": {
+        "typ_modulu": null,
+        "technologia": null,
+        "modul_istniejacy": null,
+        "dotyczy": true,
+        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+        "podstawa": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wynik": {
+        "wielkosc_pl": "współczynnik mocy cosφ w węźle bilansującym",
+        "symbol_latex": "\\cos\\varphi",
+        "wartosc": {
+          "wartosc": 0.999070308,
+          "jednostka": "1"
+        },
+        "punkt_krytyczny_pl": "Węzeł bilansujący",
+        "chwila_s": null,
+        "metoda": "OBLICZENIE"
+      },
+      "limit": {
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "pasmo": null,
+        "obwiednia": null,
+        "jednostka_obwiedni": null,
+        "podstawa": {
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+          "wydanie": "bieżący stan programu",
+          "jednostka_redakcyjna": "bilans mocy biernej — próg współczynnika mocy węzła bilansującego",
+          "status": "WSKAZANE",
+          "uwagi_pl": "próg projektowy programu (przekroczenie cosφ < 0,8, ostrzeżenie cosφ < 0,9), nie wartość z taryfy operatora"
+        },
+        "zakres_stosowalnosci_pl": "próg przekroczenia bilansu mocy biernej",
+        "wersja_profilu": null
+      },
+      "margines": {
+        "wartosc": {
+          "wartosc": 0.199070308,
+          "jednostka": "1"
+        },
+        "definicja_latex": "m = x - x_{\\lim}",
+        "punkt_pl": "Węzeł bilansujący",
+        "skala": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "skala_rodzaj": "LIMIT",
+        "wzgledny": 0.248837884,
+        "niedefiniowalny": false,
+        "powod_pl": null
+      },
+      "niepewnosc": {
+        "wartosc": null,
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
+      },
+      "status_maszynowy": "SPELNIA",
+      "kompletnosc_dowodu": "NIEPELNY",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "etykieta": {
+        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+        "semantyka": "ostrzegawcza"
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Współczynnik mocy węzła bilansującego nie mniejszy od progu (Węzeł bilansujący) — kryterium spełnione. Współczynnik mocy cosφ w węźle bilansującym: 0,9991 wobec wymaganych ≥ 0,8 wg bilans mocy biernej — próg współczynnika mocy węzła bilansującego „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +0,1991, punkt: Węzeł bilansujący, względnie +24,88 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, bilans mocy biernej — próg współczynnika mocy węzła bilansującego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "dowod": {
+        "metoda": "OBLICZENIE",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_modelu": "NIE_DOTYCZY",
+        "status_danych": {
+          "stan": "ZWALIDOWANE",
+          "dane_przyjete": []
+        },
+        "odniesienie": "analysis/energy_validation/builder.py",
+        "w_domenie_walidacji": null,
+        "domena_pl": null
+      },
+      "zakres_waznosci": {
+        "rodzaj_analizy": "POWER_FLOW",
+        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+        "technologia": null,
+        "model_urzadzenia": null,
+        "symetria_zaklocenia": null,
+        "parametry_sieci": [],
+        "regulator": null,
+        "ograniczniki": [],
+        "wykluczenia": [
+          "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      },
+      "slad": [
+        {
+          "run_id": null,
+          "wersja_silnika": null,
+          "krok": "energy_validation.reactive_balance",
+          "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+        }
+      ]
+    },
     "straty_pct": 0.7912,
     "straty_status": "PASS",
+    "straty_ocena": {
+      "kryterium_id": "walidacja_energetyczna.budzet_strat",
+      "przedmiot": {
+        "element_ref": null,
+        "nazwa_pl": "Sieć",
+        "opis_pl": "Cała sieć modelu w stanie ustalonym biegu rozpływu"
+      },
+      "kryterium": {
+        "opis_pl": "Straty mocy czynnej sieci nie większe od progu budżetu strat",
+        "warunek_latex": "\\Delta P\\% \\le \\Delta P\\%_{\\text{limit}}",
+        "relacja": "NIE_WIECEJ",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "podstawa": {
+        "rodzaj": "ZALOZENIE_PROJEKTOWE",
+        "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+        "wydanie": "bieżący stan programu",
+        "jednostka_redakcyjna": "budżet strat mocy czynnej sieci",
+        "status": "WSKAZANE",
+        "uwagi_pl": "próg projektowy programu, nie wartość normowa"
+      },
+      "stosowalnosc": {
+        "typ_modulu": null,
+        "technologia": null,
+        "modul_istniejacy": null,
+        "dotyczy": true,
+        "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+        "podstawa": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wynik": {
+        "wielkosc_pl": "straty mocy czynnej odniesione do mocy węzła bilansującego",
+        "symbol_latex": "\\Delta P\\%",
+        "wartosc": {
+          "wartosc": 0.79121849,
+          "jednostka": "%"
+        },
+        "punkt_krytyczny_pl": "Sieć",
+        "chwila_s": null,
+        "metoda": "OBLICZENIE"
+      },
+      "limit": {
+        "wartosc": {
+          "wartosc": 10.0,
+          "jednostka": "%"
+        },
+        "pasmo": null,
+        "obwiednia": null,
+        "jednostka_obwiedni": null,
+        "podstawa": {
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "dokument": "Progi walidacji energetycznej programu (konfiguracja walidacji)",
+          "wydanie": "bieżący stan programu",
+          "jednostka_redakcyjna": "budżet strat mocy czynnej sieci",
+          "status": "WSKAZANE",
+          "uwagi_pl": "próg projektowy programu, nie wartość normowa"
+        },
+        "zakres_stosowalnosci_pl": "próg przekroczenia budżetu strat",
+        "wersja_profilu": null
+      },
+      "margines": {
+        "wartosc": {
+          "wartosc": 9.20878151,
+          "jednostka": "pp"
+        },
+        "definicja_latex": "m = x_{\\lim} - x",
+        "punkt_pl": "Sieć",
+        "skala": {
+          "wartosc": 10.0,
+          "jednostka": "pp"
+        },
+        "skala_rodzaj": "LIMIT",
+        "wzgledny": 0.920878151,
+        "niedefiniowalny": false,
+        "powod_pl": null
+      },
+      "niepewnosc": {
+        "wartosc": null,
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
+      },
+      "status_maszynowy": "SPELNIA",
+      "kompletnosc_dowodu": "NIEPELNY",
+      "powody_niepelnosci": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "etykieta": {
+        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+        "semantyka": "ostrzegawcza"
+      },
+      "wyjasnienie": {
+        "zdanie_pl": "Straty mocy czynnej sieci nie większe od progu budżetu strat (Sieć) — kryterium spełnione. Straty mocy czynnej odniesione do mocy węzła bilansującego: 0,7912 % wobec wymaganych ≤ 10 % wg budżet strat mocy czynnej sieci „Progi walidacji energetycznej programu (konfiguracja walidacji)” (margines +9,209 pp, punkt: Sieć, względnie +92,09 % wartości granicznej).",
+        "przyczyna_pl": null,
+        "czego_brakuje": [],
+        "zastrzezenia": [
+          "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, budżet strat mocy czynnej sieci (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ]
+      },
+      "dowod": {
+        "metoda": "OBLICZENIE",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "STATIC_CALCULATION",
+        "status_modelu": "NIE_DOTYCZY",
+        "status_danych": {
+          "stan": "ZWALIDOWANE",
+          "dane_przyjete": []
+        },
+        "odniesienie": "analysis/energy_validation/builder.py",
+        "w_domenie_walidacji": null,
+        "domena_pl": null
+      },
+      "zakres_waznosci": {
+        "rodzaj_analizy": "POWER_FLOW",
+        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+        "technologia": null,
+        "model_urzadzenia": null,
+        "symetria_zaklocenia": null,
+        "parametry_sieci": [],
+        "regulator": null,
+        "ograniczniki": [],
+        "wykluczenia": [
+          "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+          "przeciążalność krótkotrwała i cykliczna urządzeń"
+        ]
+      },
+      "slad": [
+        {
+          "run_id": null,
+          "wersja_silnika": null,
+          "krok": "energy_validation.loss_budget",
+          "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+        }
+      ]
+    },
     "podsumowanie_walidacji": {
       "spelnione": 8,
       "ostrzezenia": 0,
@@ -2322,7 +2598,7 @@
     "Zestawienia materiałowe nie są jeszcze generowane przez narzędzie — sekcja pominięta (bez danych zastępczych)."
   ],
   "odciski_sekcji_sha256": {
-    "bilans_mocy": "f7ec96e2b82e156fc2c940b98f8da48ea438cbe22f827821f1e04833531777b6",
+    "bilans_mocy": "3feef3f4c68d77d7085eb84baec21ad3f5caeb9aebb511d28151ccbd20ae4426",
     "zwarcia_punkt_przylaczenia": "cf76634652e2c609833d413b2e7e333d4a13e1c92a2f61bf9475c77ffd43d50e",
     "zgodnosc_nc_rfg": "7f700f5b2c8ddc6e39890240648f1efeea0f6c23261c01325ecc6d47c18ecf12"
   },

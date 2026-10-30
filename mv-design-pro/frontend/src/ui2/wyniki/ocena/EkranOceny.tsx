@@ -9,8 +9,9 @@
  *      modelu, przebiegi (stan ZAKOŃCZONY, czas, aktualność; identyfikatory przebiegów
  *      i odcisk modelu wyłącznie w „Informacjach audytowych"),
  *      pakiet wyników;
- *   2. PODSUMOWANIE — OCENIONO n · SPEŁNIA WYMAGANIA n · NIE SPEŁNIA WYMAGAŃ n ·
- *      WYNIK NIEJEDNOZNACZNY n · BRAK PODSTAW DO OCENY n (liczniki per element z backendu);
+ *   2. PODSUMOWANIE — OCENIONO n i liczniki elementów podpisane ETYKIETAMI ICH REKORDÓW
+ *      (`liczniki_etykiet` z backendu), zdanie oceny całościowej i karta rekordu pozycji
+ *      rozstrzygającej (dlaczego taki werdykt);
  *   3. POZYCJE OCENY w grupach znaczeniowych (wyłącznie grupy z wynikami):
  *      PRZEDMIOT · WIELKOŚĆ · WARTOŚĆ OBLICZONA · WARTOŚĆ ODNIESIENIA · MARGINES ·
  *      PODSTAWA OCENY · WYNIK OCENY · WNIOSEK — z powiązaniami: schemat (SLD),
@@ -21,10 +22,12 @@
  *      przebiegu — z przejściem do obliczeń.
  *
  * ZERO fizyki i zero ocen własnych: wszystkie wyniki, liczniki, marginesy i wnioski
- * pochodzą z backendu (`/api/quality/design-verdict`). Kolory tylko tokenami `--mvd-*`.
+ * pochodzą z backendu (`/api/quality/design-verdict`). Wynik elementu to rekord werdyktu
+ * wyjaśnialnego: etykieta `EtykietaWerdyktu`, szczegół `KartaWerdyktu` (kontrakt werdyktu §9 —
+ * etykieta prowadzi do karty). Kolory tylko tokenami `--mvd-*` i semantyką rekordu.
  */
 
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import { fetchOcenaTechniczna, type OcenaElementu, type OdpowiedzOceny, type PozycjaOceny } from './api';
 import {
@@ -35,16 +38,15 @@ import {
   fmtOdniesienie,
   fmtWartoscZJednostka,
   grupyZWynikami,
-  klasaWyniku,
   nazwaPrzedmiotu,
   ocenaCalosciowaPL,
   pakietWynikowPL,
   podstawaOcenyPL,
+  pozycjaRozstrzygajaca,
   pozycjeBezPodstaw,
   rodzajPrzekroczeniaKryterium,
   stanPrzebieguPL,
   typElementu,
-  wynikPL,
   zrodloPL,
 } from './model';
 import { OCENA_STRINGS as T } from './strings';
@@ -56,6 +58,8 @@ import {
   useNazwaObiektu,
   usePoprawWModelu,
 } from '../wzorzec';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../wzorzec/KartaWerdyktu';
+import type { RekordWerdyktu } from '../wzorzec/werdykt';
 import { MathInline } from '../../../ui/proof';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -134,8 +138,35 @@ function PodstawaOceny({ dane, szczegolyAudytowe }: { dane: OdpowiedzOceny; szcz
   );
 }
 
+/**
+ * Rozwijane szczegóły rekordu werdyktu (natywne `<details>`): karta rekordu renderuje się
+ * dopiero po rozwinięciu — tabela z setkami elementów nie buduje setek kart naraz.
+ */
+function SzczegolyRekordu({
+  rekord,
+  testid,
+  children,
+}: {
+  rekord: RekordWerdyktu;
+  testid: string;
+  children: ReactNode;
+}) {
+  const [otwarte, setOtwarte] = useState(false);
+  return (
+    <details
+      className="mvd-ocena-szczegoly"
+      data-testid={testid}
+      onToggle={(zdarzenie) => setOtwarte(zdarzenie.currentTarget.open)}
+    >
+      <summary>{children}</summary>
+      {otwarte && <KartaWerdyktu rekord={rekord} />}
+    </details>
+  );
+}
+
 function Podsumowanie({ dane }: { dane: OdpowiedzOceny }) {
   const liczniki = dane.ocena;
+  const rozstrzygajaca = pozycjaRozstrzygajaca(dane);
   return (
     <section className="mvd-ocena-podsumowanie" data-testid="mvd-ocena-podsumowanie" aria-label={T.podsumowanieTytul}>
       <div className="mvd-ocena-liczniki">
@@ -143,29 +174,26 @@ function Podsumowanie({ dane }: { dane: OdpowiedzOceny }) {
           <span className="mvd-ocena-licznik-etyk">{T.oceniono}</span>
           <span className="mvd-ocena-licznik-liczba mvd-num">{liczniki.oceniono}</span>
         </span>
-        <span className="mvd-ocena-licznik mvd-ocena-licznik--spelnia" data-testid="mvd-ocena-licznik-spelnia">
-          <span className="mvd-ocena-licznik-etyk">{T.spelnia}</span>
-          <span className="mvd-ocena-licznik-liczba mvd-num">{liczniki.spelnia}</span>
-        </span>
-        <span className="mvd-ocena-licznik mvd-ocena-licznik--nie-spelnia" data-testid="mvd-ocena-licznik-nie-spelnia">
-          <span className="mvd-ocena-licznik-etyk">{T.nieSpelnia}</span>
-          <span className="mvd-ocena-licznik-liczba mvd-num">{liczniki.nie_spelnia}</span>
-        </span>
-        <span
-          className="mvd-ocena-licznik mvd-ocena-licznik--niejednoznaczny"
-          data-testid="mvd-ocena-licznik-niejednoznaczny"
-        >
-          <span className="mvd-ocena-licznik-etyk">{T.niejednoznaczny}</span>
-          <span className="mvd-ocena-licznik-liczba mvd-num">{liczniki.niejednoznaczny}</span>
-        </span>
-        <span className="mvd-ocena-licznik mvd-ocena-licznik--brak" data-testid="mvd-ocena-licznik-brak-podstaw">
-          <span className="mvd-ocena-licznik-etyk">{T.brakPodstaw}</span>
-          <span className="mvd-ocena-licznik-liczba mvd-num">{liczniki.brak_podstaw}</span>
-        </span>
+        {dane.liczniki_etykiet.map((licznik) => (
+          <span
+            key={licznik.etykieta.etykieta_pl}
+            className="mvd-ocena-licznik"
+            data-testid="mvd-ocena-licznik-etykiety"
+            data-semantyka={licznik.etykieta.semantyka}
+          >
+            <EtykietaWerdyktu etykieta={licznik.etykieta} zwarta />
+            <span className="mvd-ocena-licznik-liczba mvd-num">{licznik.liczba}</span>
+          </span>
+        ))}
       </div>
       <p className="mvd-ocena-calosciowa" data-testid="mvd-ocena-calosciowa">
         {ocenaCalosciowaPL(dane)}
       </p>
+      {rozstrzygajaca !== null && (
+        <SzczegolyRekordu rekord={rozstrzygajaca.ocena} testid="mvd-ocena-rozstrzygajace">
+          {T.uzasadnienieCalosciowej}: {rozstrzygajaca.nazwa_pl}
+        </SzczegolyRekordu>
+      )}
     </section>
   );
 }
@@ -191,9 +219,10 @@ function WierszElementu({
   const nazwa = nazwaPrzedmiotu(element, nazwaObiektu);
   return (
     <tr
-      className={`mvd-ocena-wiersz ${klasaWyniku(element.wynik)}`}
+      className="mvd-ocena-wiersz"
       data-testid={`mvd-ocena-element-${pozycja.kryterium_id}-${element.element_id ?? 'agregat'}`}
       data-wynik={element.wynik}
+      data-semantyka={element.ocena.etykieta.semantyka}
     >
       <td className="mvd-ocena-przedmiot">
         <span className="mvd-ocena-przedmiot-nazwa">{nazwa}</span>
@@ -232,10 +261,13 @@ function WierszElementu({
         )}
       </td>
       <td className="mvd-ocena-wynik" data-testid="mvd-ocena-wynik">
-        {wynikPL(element.wynik)}
+        <EtykietaWerdyktu etykieta={element.ocena.etykieta} status={element.ocena.status_maszynowy} zwarta />
       </td>
       <td className="mvd-ocena-wniosek">
         <span>{element.wniosek_pl}</span>
+        <SzczegolyRekordu rekord={element.ocena} testid="mvd-ocena-szczegoly-elementu">
+          {T.szczegolyOceny}
+        </SzczegolyRekordu>
         {element.uwaga_pl && <span className="mvd-ocena-uwaga">{element.uwaga_pl}</span>}
         {(element.wynik === 'BRAK_PODSTAW' || element.wynik === 'NIEJEDNOZNACZNY') && element.uzasadnienie_pl && (
           <span className="mvd-ocena-uwaga">{element.uzasadnienie_pl}</span>
@@ -463,7 +495,7 @@ export function EkranOceny({ szczegolyAudytowe = false, onOtworzDowod }: EkranOc
                       </span>
                     )}
                     <span className="mvd-ocena-zakres-powod">
-                      {pozycja.powod_pl ?? pozycja.wiodacy_opis_pl ?? T.wynikBrakPodstaw}
+                      {pozycja.powod_pl ?? pozycja.wiodacy_opis_pl ?? pozycja.wyjasnienie.zdanie_pl}
                     </span>
                   </li>
                 ))}

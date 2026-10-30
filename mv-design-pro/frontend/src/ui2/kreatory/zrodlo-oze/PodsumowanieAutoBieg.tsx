@@ -1,7 +1,12 @@
 /**
  * D4 (RECENZJA_DER_SN_DOBORY_2026-07, 12+13+BOM): panel wyników po zapisie kreatora
- * OZE — status auto-biegu (rozpływ + zwarcia), raport zgodności ✓/⚠/❌ (wymaganie 13)
- * i lista materiałowa toru (BOM).
+ * OZE — status auto-biegu (rozpływ + zwarcia), raport zgodności (wymaganie 13) i lista
+ * materiałowa toru (BOM).
+ *
+ * Raport zgodności (kontrakt werdyktu wyjaśnialnego): etykieta raportu i każdej pozycji
+ * pochodzi z REKORDU backendu (`ocena_wymagania`, `pozycja.ocena`) — ekran nie tłumaczy kodów
+ * `werdykt`/`status` na tekst ani kolor. Pozycja informacyjna (bez rekordu) nie dostaje
+ * etykiety werdyktu.
  *
  * Komponent PREZENTACYJNY: wszystkie liczby, werdykty i komunikaty pochodzą 1:1 z
  * backendu (ZERO fizyki w UI). Stany braków są uczciwe (raport/BOM dotyczą toru DER-SN).
@@ -9,20 +14,16 @@
 
 import type { RunStatus } from '../../../ui/study-cases/types';
 import { KreatorInfo, KreatorSekcja } from '../rama';
-import type {
-  KosztListyMaterialowej,
-  ListaMaterialowa,
-  OpisParametru,
-  RaportZgodnosci,
-  StatusPozycji,
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
+import type { Etykieta } from '../../wyniki/wzorzec/werdykt';
+import {
+  pozycjaOceniona,
+  type KosztListyMaterialowej,
+  type ListaMaterialowa,
+  type OpisParametru,
+  type RaportZgodnosci,
 } from './podsumowanieApi';
 import { PODSUMOWANIE_STRINGS as T } from './strings';
-
-const IKONA_STATUSU: Record<StatusPozycji, string> = {
-  PASS: '✓',
-  WARN: '⚠️',
-  FAIL: '❌',
-};
 
 function statusBiegu(status: RunStatus | null): { tekst: string; ton: 'ok' | 'warn' | 'blad' } {
   if (status === 'DONE') return { tekst: T.statusDone, ton: 'ok' };
@@ -31,10 +32,21 @@ function statusBiegu(status: RunStatus | null): { tekst: string; ton: 'ok' | 'wa
   return { tekst: T.statusPominiety, ton: 'warn' };
 }
 
-function werdyktEtykieta(werdykt: RaportZgodnosci['werdykt']): { tekst: string; ton: string } {
-  if (werdykt === 'ZGODNY') return { tekst: T.raportZgodny, ton: 'ok' };
-  if (werdykt === 'ZGODNY_Z_UWAGAMI') return { tekst: T.raportZUwagami, ton: 'warn' };
-  return { tekst: T.raportNiezgodny, ton: 'blad' };
+/**
+ * Liczniki pozycji po etykiecie REKORDU (kolejność pierwszego wystąpienia w raporcie —
+ * deterministyczna, bo backend porządkuje pozycje). Zliczanie, nie ocena: etykieta i
+ * semantyka pochodzą z rekordu, nie z kodu pozycji.
+ */
+function licznikiEtykiet(raport: RaportZgodnosci): { etykieta: Etykieta; liczba: number }[] {
+  const liczniki = new Map<string, { etykieta: Etykieta; liczba: number }>();
+  for (const pozycja of raport.pozycje) {
+    if (!pozycjaOceniona(pozycja)) continue;
+    const etykieta = pozycja.ocena.etykieta;
+    const wpis = liczniki.get(etykieta.etykieta_pl);
+    if (wpis) wpis.liczba += 1;
+    else liczniki.set(etykieta.etykieta_pl, { etykieta, liczba: 1 });
+  }
+  return [...liczniki.values()];
 }
 
 /** Parametry pozycji 1:1 z opisu backendu (etykieta, wartość, jednostka — bez kluczy). */
@@ -104,38 +116,56 @@ export function PodsumowanieAutoBieg({
       <KreatorSekcja tytul={T.raportTytul} testid="mvd-kreator-oze-raport">
         {raport ? (
           <>
-            <p
-              className="mvd-oze-werdykt"
-              data-ton={werdyktEtykieta(raport.werdykt).ton}
-              data-testid="mvd-kreator-oze-werdykt"
-            >
-              {werdyktEtykieta(raport.werdykt).tekst}
-            </p>
+            <div className="mvd-oze-werdykt" data-testid="mvd-kreator-oze-werdykt">
+              <EtykietaWerdyktu
+                etykieta={raport.ocena_wymagania.etykieta}
+                testid="mvd-kreator-oze-werdykt-etykieta"
+              />
+              <p className="mvd-oze-werdykt-zdanie" data-testid="mvd-kreator-oze-werdykt-zdanie">
+                {raport.wyjasnienie.zdanie_pl}
+              </p>
+            </div>
             {raport.komunikat_krytyczny ? (
               <p className="mvd-oze-krytyczny" data-testid="mvd-kreator-oze-krytyczny">
                 {raport.komunikat_krytyczny}
               </p>
             ) : null}
             <p className="mvd-oze-raport-podsum" data-testid="mvd-kreator-oze-raport-podsum">
-              {T.raportPodsumowanie(
-                raport.podsumowanie.pass,
-                raport.podsumowanie.warn,
-                raport.podsumowanie.fail,
-              )}
+              {licznikiEtykiet(raport).map(({ etykieta, liczba }) => (
+                <span
+                  key={etykieta.etykieta_pl}
+                  className="mvd-oze-raport-licznik"
+                  data-testid="mvd-kreator-oze-raport-licznik"
+                  data-semantyka={etykieta.semantyka}
+                >
+                  <EtykietaWerdyktu etykieta={etykieta} zwarta />
+                  <span className="mvd-num">{liczba}</span>
+                </span>
+              ))}
+              {raport.podsumowanie.informacja > 0 ? (
+                <span className="mvd-oze-raport-licznik" data-testid="mvd-kreator-oze-raport-informacje">
+                  {T.raportInformacje(raport.podsumowanie.informacja)}
+                </span>
+              ) : null}
             </p>
             <ul className="mvd-oze-checklista" data-testid="mvd-kreator-oze-checklista">
               {raport.pozycje.map((pozycja) => (
                 <li
                   key={pozycja.check_id}
                   className="mvd-oze-check"
-                  data-status={pozycja.status}
+                  data-semantyka={pozycjaOceniona(pozycja) ? pozycja.ocena.etykieta.semantyka : 'informacja'}
                   data-testid={`mvd-kreator-oze-check-${pozycja.check_id}`}
                 >
-                  <span className="mvd-oze-check-ikona">{IKONA_STATUSU[pozycja.status]}</span>
+                  {pozycjaOceniona(pozycja) ? (
+                    <EtykietaWerdyktu etykieta={pozycja.ocena.etykieta} zwarta />
+                  ) : (
+                    <span className="mvd-oze-check-informacja">{T.raportPozycjaInformacyjna}</span>
+                  )}
                   <span className="mvd-oze-check-tekst">{pozycja.message_pl}</span>
                 </li>
               ))}
             </ul>
+            <KartaWerdyktu rekord={raport.ocena_wymagania} naglowek={T.raportUzasadnienie} />
           </>
         ) : (
           <KreatorInfo>{T.raportBrak}</KreatorInfo>

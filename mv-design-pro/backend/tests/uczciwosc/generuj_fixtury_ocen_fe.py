@@ -17,11 +17,15 @@ Uruchomienie (z katalogu ``backend/``):
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from analysis.energy_validation.builder import _pozycja as _pozycja_walidacji
+from analysis.energy_validation.models import EnergyCheckType
+from analysis.energy_validation.serializer import item_to_dict
 from analysis.ssci_stability.models import ocena_ssci_niewykonana
-from application.analyses.der_sn_track import DerSnTrack
+from application.analyses.der_sn_track import DerSnTrack, extract_der_sn_track
 from application.analyses.frt_sekwencja import build_frt_sekwencja_view
 from application.analyses.frt_trajektorie import build_frt_trajectories_view
 from application.analyses.ochrona_lom import (
@@ -38,7 +42,6 @@ from application.analyses.werdykt_projektowy import (
     ZrodloWerdyktu,
     _pozycja_der_sn,
     _pozycje_walidacji_energetycznej,
-    _werdykt_calosciowy,
 )
 from application.dynamika.opis_wyniku import oceny_biegu_dynamiki
 from application.ocena_niewykonana import rekord_json
@@ -251,19 +254,20 @@ def _widoki_lom() -> dict[str, Any]:
     return {"trzy_pola": trzy_pola, "pusty": pusty, "pole_bez_sprawdzen": pole_bez_sprawdzen}
 
 
-def _werdykt_niejednoznaczny() -> dict[str, Any]:
+def _werdykt_dobory_bez_danych() -> dict[str, Any]:
     """Odpowiedź `GET /api/quality/design-verdict` (`WerdyktProjektowy.to_dict`) z pozycją
-    doborów toru DER-SN, w której raport zgodności ostrzega o brakach kaskady prądowej
-    (kabel SN bez obciążalności, pole SN bez aparatu z katalogiem) — wynik elementów
-    NIEJEDNOZNACZNY (rozstrzygnięcie zarządcy 2026-09-23, kontrakt werdyktu §2.1/§2.3).
+    doborów toru DER-SN, w której raport zgodności nie ma danych kaskady prądowej (kabel SN
+    bez obciążalności, pole SN bez aparatu z katalogiem) — rekordy tych kontroli to „ocena
+    niewykonana" (brak danych ≠ spełnia, kontrakt werdyktu §2.1), wynik elementów
+    BRAK_PODSTAW, werdykt całościowy NIESPRAWDZONE.
 
     Złożona TYMI SAMYMI funkcjami co końcówka: raport doborów `build_compliance_report_from_
-    track` na torze DER-SN, pozycje `_pozycje_walidacji_energetycznej` (bieg rozpływu z jedną
-    szyną w granicy) i `_pozycja_der_sn`, agregacja `_werdykt_calosciowy` i kontrakt
+    track` na torze DER-SN, wiersz walidacji energetycznej z buildera i serializera dostawcy,
+    pozycje `_pozycje_walidacji_energetycznej` i `_pozycja_der_sn` oraz kontrakt
     `WerdyktProjektowy.to_dict`. Rejestr ograniczony do tych dwóch dostawców — ekran oceny
     renderuje pozycje z odpowiedzi, więc kryteria zwarciowe i warunki przyłączenia nie
-    wnoszą nic do sprawdzanej ścieżki (wynik niejednoznaczny w wierszu, liczniku i ocenie
-    całościowej)."""
+    wnoszą nic do sprawdzanej ścieżki (rekord w wierszu, liczniki etykiet i ocena
+    całościowa)."""
     tor = DerSnTrack(
         generator={
             "ref_id": "gen-pv-1",
@@ -289,35 +293,35 @@ def _werdykt_niejednoznaczny() -> dict[str, Any]:
     )
     rozplyw = {
         "items": [
-            {
-                "check_type": "VOLTAGE_DEVIATION",
-                "target_id": "bus-sn-1",
-                "target_name": "Szyna SN 1",
-                "status": "PASS",
-                "observed_value": 1.2,
-                "limit_warn": 5.0,
-                "limit_fail": 10.0,
-                "margin_pct": 8.8,
-                "unit": "%",
-                "why_pl": "Odchylenie napiecia 1.20 % ponizej limitu 5.0 %.",
-            }
+            item_to_dict(
+                _pozycja_walidacji(
+                    check_type=EnergyCheckType.VOLTAGE_DEVIATION,
+                    target_id="bus-sn-1",
+                    target_name="Szyna SN 1",
+                    observed_value=1.2,
+                    unit="%",
+                    limit_warn=5.0,
+                    limit_fail=10.0,
+                    margin_pct=8.8,
+                    why_pl="Odchylenie napiecia 1.20 % ponizej limitu 5.0 %.",
+                )
+            )
         ]
     }
     pozycje = (
-        *_pozycje_walidacji_energetycznej(rozplyw, run_id="run-pf-niejednoznaczny"),
+        *_pozycje_walidacji_energetycznej(rozplyw, run_id="run-pf-bez-danych"),
         _pozycja_der_sn(build_compliance_report_from_track(tor)),
     )
     return WerdyktProjektowy(
-        werdykt=_werdykt_calosciowy(pozycje),
-        case_id="case-niejednoznaczny",
-        model_hash="enm-hash-niejednoznaczny",
+        case_id="case-bez-danych",
+        model_hash="enm-hash-bez-danych",
         pozycje=pozycje,
         zrodla=(
             ZrodloWerdyktu(
                 rodzaj=ZRODLO_PF,
-                run_id="run-pf-niejednoznaczny",
+                run_id="run-pf-bez-danych",
                 wykonano="2026-09-23T10:00:00+00:00",
-                snapshot_hash="enm-hash-niejednoznaczny",
+                snapshot_hash="enm-hash-bez-danych",
                 aktualny=True,
                 dostepny=True,
             ),
@@ -325,12 +329,65 @@ def _werdykt_niejednoznaczny() -> dict[str, Any]:
                 rodzaj=ZRODLO_MODEL,
                 run_id=None,
                 wykonano=None,
-                snapshot_hash="enm-hash-niejednoznaczny",
+                snapshot_hash="enm-hash-bez-danych",
                 aktualny=True,
                 dostepny=True,
             ),
         ),
     ).to_dict()
+
+
+def _raporty_zgodnosci_der_sn() -> dict[str, Any]:
+    """Odpowiedzi `GET /api/der-sn/{case_id}/compliance-report` dla panelu podsumowania
+    kreatora OZE — cztery stany raportu na TYM SAMYM torze zmaterializowanym operacją
+    `add_converter_source` (ta sama ścieżka co zapis kreatora):
+
+    * ``zgodny`` — komplet kontroli D1, kaskady i biegu spełniony;
+    * ``z_uwagami`` — jak wyżej plus odstępstwo D2 (pozycja informacyjna bez rekordu);
+    * ``niezgodny`` — grupa transformatorów o mocy 0,1 MVA i bieg nieudany (dwa rekordy
+      naruszone, komunikat krytyczny kanonu);
+    * ``bez_danych`` — kabel SN bez obciążalności: ogniwo kaskady to „ocena niewykonana"
+      (brak danych ≠ spełnia), raport nierozstrzygnięty.
+
+    Złożone funkcją końcówki `build_compliance_report_from_track`; zmiana kontraktu raportu
+    bez regeneracji fixtury czerwieni `test_fixtury_ocen_fe.py`."""
+    from tests.application.analyses.test_der_sn_documents import _materialized_snapshot
+
+    tor = extract_der_sn_track(_materialized_snapshot())
+    assert tor is not None and tor.mv_cable is not None
+    mala_grupa = tuple(
+        {
+            **transformator,
+            "sn_mva": 0.1,
+            "materialized_params": {
+                **transformator.get("materialized_params", {}),
+                "rated_power_mva": 0.1,
+            },
+        }
+        for transformator in tor.transformatory_grupy
+    )
+    bieg_ok: dict[str, Any] = {"run_status": "DONE", "readiness_codes": ["READY"]}
+    return {
+        "zgodny": build_compliance_report_from_track(tor, **bieg_ok),
+        "z_uwagami": build_compliance_report_from_track(
+            tor,
+            **bieg_ok,
+            d2_deviations=[
+                {
+                    "parametr": "cosphi",
+                    "zastosowano": 0.9,
+                    "propozycja": 0.95,
+                    "odstepstwo": True,
+                }
+            ],
+        ),
+        "niezgodny": build_compliance_report_from_track(
+            replace(tor, transformatory_grupy=mala_grupa), run_status="FAILED"
+        ),
+        "bez_danych": build_compliance_report_from_track(
+            replace(tor, mv_cable={**tor.mv_cable, "rating": {}})
+        ),
+    }
 
 
 def _akademickie() -> dict[str, Any]:
@@ -359,7 +416,13 @@ FIXTURY: dict[Path, Any] = {
     / "wyniki"
     / "ocena"
     / "__tests__"
-    / "werdyktNiejednoznaczny.json": _werdykt_niejednoznaczny,
+    / "werdyktDoborowBezDanych.json": _werdykt_dobory_bez_danych,
+    _FRONTEND_SRC
+    / "ui2"
+    / "kreatory"
+    / "zrodlo-oze"
+    / "__tests__"
+    / "raportyZgodnosci.json": _raporty_zgodnosci_der_sn,
 }
 
 

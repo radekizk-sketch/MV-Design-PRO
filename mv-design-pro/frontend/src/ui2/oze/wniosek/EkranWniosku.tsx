@@ -29,6 +29,7 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { etykietaPrzebieguWyniku } from '../../wyniki/wzorzec/strings';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import {
   BrakiWnioskuError,
@@ -464,10 +465,10 @@ function WynikWniosku({
         </div>
       </div>
 
-      {/* Sekcja 1 — bilans mocy: wartości z rozpływu. Kody statusu walidacji energetycznej
-          (`bilans_q_status`, `straty_status`) i liczności `podsumowanie_walidacji` backend
-          podaje bez rekordu wyjaśnienia — pierwszy plan ich nie pokazuje (werdykt bez
-          wyjaśnienia jest zakazany); luka backendu zgłoszona w meldunku karty D2. */}
+      {/* Sekcja 1 — bilans mocy: wartości z rozpływu. Ocena współczynnika mocy i strat to
+          rekordy K backendu (`bilans_q_ocena`, `straty_ocena`): etykieta i karta rekordu, nigdy
+          kod `*_status`. Liczności `podsumowanie_walidacji` (kody bez rekordu) pierwszy plan
+          pomija — szczegół pozycji walidacji jest na ekranie walidacji energetycznej. */}
       <div className="mvd-wniosek-sek" data-testid="mvd-wniosek-bilans">
         <h5 className="mvd-wniosek-sek-tytul">{T.bilansTytul}</h5>
         <dl className="mvd-wniosek-dl">
@@ -496,13 +497,29 @@ function WynikWniosku({
           </div>
           <div>
             <dt>{T.bilansWspMocy}</dt>
-            <dd className="mvd-num">{fmtLiczbaWniosku(bilans.wspolczynnik_mocy_slack, 3)}</dd>
+            <dd className="mvd-num">
+              {fmtLiczbaWniosku(bilans.wspolczynnik_mocy_slack, 3)}{' '}
+              <EtykietaWerdyktu
+                etykieta={bilans.bilans_q_ocena.etykieta}
+                zwarta
+                testid="mvd-wniosek-bilans-q-etykieta"
+              />
+            </dd>
           </div>
           <div>
             <dt>{T.bilansStraty}</dt>
-            <dd className="mvd-num">{fmtZJednostkaWniosku(bilans.straty_pct, T.jednProcent)}</dd>
+            <dd className="mvd-num">
+              {fmtZJednostkaWniosku(bilans.straty_pct, T.jednProcent)}{' '}
+              <EtykietaWerdyktu
+                etykieta={bilans.straty_ocena.etykieta}
+                zwarta
+                testid="mvd-wniosek-bilans-straty-etykieta"
+              />
+            </dd>
           </div>
         </dl>
+        <KartaWerdyktu rekord={bilans.bilans_q_ocena} naglowek={T.bilansWspMocy} />
+        <KartaWerdyktu rekord={bilans.straty_ocena} naglowek={T.bilansStraty} />
       </div>
 
       {/* Sekcja 2 — zwarcia w punkcie przyłączenia */}

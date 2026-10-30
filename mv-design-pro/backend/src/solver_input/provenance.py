@@ -400,6 +400,33 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta F-K2; karta WERDYKT-MIGRACJA-190",
         ),
         CapabilityEvidence(
+            capability_id="der_sn.dobory_toru",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Dobory toru przyłączenia źródła DER-SN: napięcie AC falownika wobec strony nN "
+                "transformatora blokowego, strona SN transformatora wobec szyny SN, moc "
+                "transformatora blokowego wobec mocy źródeł (decyzja O-53) i kaskada prądu "
+                "znamionowego transformator → kabel SN → pole SN — porównanie danych "
+                "znamionowych zapisanych w modelu (application/analyses/raport_zgodnosci.py, "
+                "enm/der_sn_validation.py). Fakt konfiguracyjny modelu, bez symulacji."
+            ),
+            audit_ref="RECENZJA_DER_SN_DOBORY_2026-07 wymaganie 13; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="werdykt.projektowy",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Werdykt projektowy przypadku: agregacja ocen kryteriów projektu (warunki "
+                "przyłączenia, walidacja energetyczna rozpływu, wytrzymałość cieplna przewodów, "
+                "wiarygodność Ik'', dobory toru DER-SN) z gotowych widoków analiz "
+                "(application/analyses/werdykt_projektowy.py). Agregat niczego nie liczy — "
+                "przydatność dowodowa wynika z ocen składowych."
+            ),
+            audit_ref="karta F-K3; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
             capability_id="rozplyw.walidacja_energetyczna",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

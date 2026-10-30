@@ -206,13 +206,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "application.analyses.werdykt_projektowy:WerdyktProjektowy.werdykt",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C2 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C2"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "application.equipment_proof.types:EquipmentProofCheckResult.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C33 (MIGRACJA): migracja (plan §8).",
@@ -507,20 +500,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/kreatory/zrodlo-oze/PodsumowanieAutoBieg.tsx:IKONA_STATUSU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D64 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D64"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/ocena/strings.ts:OCENA_STRINGS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
-   "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui2/wyniki/wrazliwosc/strings.ts:DECYZJE_PL",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D57 (MIGRACJA): migracja (plan §8).",
@@ -723,13 +702,6 @@
    "wiersz_inwentarza": "D57 (dopasowanie po pliku)"
   },
   {
-   "sprawdzenie": "4_dokumenty",
-   "tozsamosc": "application.analyses.wniosek_osd:_status_pl",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C6 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C6"
-  },
-  {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "api.analysis_run_exports:build_nn_circuit_report_section.status",
    "klasa": "MIGRACJA",
@@ -753,15 +725,15 @@
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "application.analyses.dokument_studium:_wariant_sekcja.obszar.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C7 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Stan WYKONANIA fazy obliczenia obszaru P–Q wariantu (ok = obszar policzony, blad = odmowa obliczenia biegu z `komunikat_bledu` po polsku), nie werdykt oceny: faza nie porównuje wielkości z limitem. Ekran i DOCX/PDF studium nie pokazują kodu — przy odmowie zdanie `komunikat_bledu`, przy wyniku pasmo Q i liczba wierzchołków; ocenę wariantu niesie rekord `pokrycie_pq.ocena` (OcenaKryterium). Zbieżność leksykalna `ok` ze słownikiem werdyktów.",
    "wiersz_inwentarza": "C7"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "application.analyses.dokument_studium:_wariant_sekcja.zdolnosc.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C7 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Stan WYKONANIA fazy obliczenia wariantu (ok = zdolność przyłączeniowa policzona, blad = odmowa obliczenia biegu z `komunikat_bledu` po polsku), nie werdykt oceny: faza nie porównuje wielkości z limitem. Ekran i DOCX/PDF studium nie pokazują kodu — przy odmowie zdanie `komunikat_bledu`, przy wyniku liczbę z jednostką; ocenę wariantu (pokrycie wymagania operatora) niesie rekord `pokrycie_pq.ocena` (OcenaKryterium). Zbieżność leksykalna `ok` ze słownikiem werdyktów.",
    "wiersz_inwentarza": "C7 (dopasowanie po pliku)"
   },
   {
@@ -847,41 +819,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz C26 (ENUM_WEWNETRZNY): koperta widoku łańcucha nN `status: \"OK\" / \"brak danych\" / \"nie dotyczy\"` to flaga dostępności danych (widok policzony albo czego brakuje — `missing_data`), nie ocena wobec kryterium; plan AB §8 F21.",
    "wiersz_inwentarza": "C26"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.analyses.raport_zgodnosci:_d2_items.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C52 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C52 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.analyses.raport_zgodnosci:_fail.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C52 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C52"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.analyses.raport_zgodnosci:_pass.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C52 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C52"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.analyses.raport_zgodnosci:_run_item.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C52 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C52"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.analyses.raport_zgodnosci:build_compliance_report_from_track.werdykt",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C52 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C52"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
@@ -1172,13 +1109,6 @@
   },
   {
    "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "application.analyses.werdykt_projektowy:_wniosek",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Inwentarz C1 (MIGRACJA): zdanie wniosku oceny elementu składane w module werdyktu projektowego z mapy wynik → tekst, poza generatorem `werdykt.wyjasnienie` — fala WW-0 (werdykt projektowy jako struktura odniesienia), plan AB §8.",
-   "wiersz_inwentarza": "C1"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
    "tozsamosc": "application.reference_patterns.base:CHECK_STATUS_PL",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C50 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
@@ -1291,13 +1221,6 @@
   },
   {
    "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/kreatory/zrodlo-oze/PodsumowanieAutoBieg.tsx:werdyktEtykieta",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D64 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D64"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
    "tozsamosc": "frontend/src/ui2/oze/lom/strings.ts:istotnoscLom",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D19 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
@@ -1330,20 +1253,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D72 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "D72"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/wyniki/ocena/model.ts:klasaWyniku",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Mapa wynik → etykieta PL / klasa CSS w interfejsie ekranu oceny; etykiety to `OCENA_STRINGS` (plan AB §8 F6, MIGRACJA fala WW-0). Kontrakt §9: etykietę niesie rekord (`werdykt.etykiety`), interfejs mapuje wyłącznie semantykę → kolor. Inwentarz D36 oceniał ekran jako implementację referencyjną KOMPLETU wyjaśnienia, nie źródło etykiety — migracja razem z F6.",
-   "wiersz_inwentarza": "D36"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/wyniki/ocena/model.ts:wynikPL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Mapa wynik → etykieta PL / klasa CSS w interfejsie ekranu oceny; etykiety to `OCENA_STRINGS` (plan AB §8 F6, MIGRACJA fala WW-0). Kontrakt §9: etykietę niesie rekord (`werdykt.etykiety`), interfejs mapuje wyłącznie semantykę → kolor. Inwentarz D36 oceniał ekran jako implementację referencyjną KOMPLETU wyjaśnienia, nie źródło etykiety — migracja razem z F6.",
-   "wiersz_inwentarza": "D36"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

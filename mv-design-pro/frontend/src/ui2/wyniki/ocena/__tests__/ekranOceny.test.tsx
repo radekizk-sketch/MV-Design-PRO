@@ -23,7 +23,7 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import ocenaScena from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena.json';
 import przekroczeniaScena from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena_przekroczenia.json';
-import niejednoznacznyWerdykt from './werdyktNiejednoznaczny.json';
+import doboryBezDanych from './werdyktDoborowBezDanych.json';
 import { EkranOceny } from '../EkranOceny';
 import type { OcenaElementu, OdpowiedzOceny, PozycjaOceny, ZrodloOceny } from '../api';
 import { grupyZWynikami, pozycjeBezPodstaw } from '../model';
@@ -31,10 +31,15 @@ import { OCENA_STRINGS as T } from '../strings';
 
 const FIXTURA_OCENA = ocenaScena as unknown as OdpowiedzOceny;
 const FIXTURA_PRZEKROCZENIA = przekroczeniaScena as unknown as OdpowiedzOceny;
-/** Odpowiedź z ostrzeżeniem doborów toru źródła — złożona backendem
- *  (`backend/tests/uczciwosc/generuj_fixtury_ocen_fe.py::_werdykt_niejednoznaczny`, parytet
+/** Odpowiedź z doborami toru źródła bez danych kaskady prądowej — złożona backendem
+ *  (`backend/tests/uczciwosc/generuj_fixtury_ocen_fe.py::_werdykt_dobory_bez_danych`, parytet
  *  `test_fixtury_ocen_fe.py`), nie ręcznie. */
-const FIXTURA_NIEJEDNOZNACZNA = niejednoznacznyWerdykt as unknown as OdpowiedzOceny;
+const FIXTURA_DOBORY_BEZ_DANYCH = doboryBezDanych as unknown as OdpowiedzOceny;
+
+/** Etykieta rekordu elementu z odpowiedzi — JEDYNE źródło tekstu wyniku na ekranie. */
+function etykietaRekordu(element: OcenaElementu): string {
+  return element.ocena.etykieta.etykieta_pl;
+}
 
 const fetchMock = vi.fn();
 const poprawWModeluMock = vi.fn();
@@ -169,21 +174,33 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
     expect(within(podstawa).queryByTestId('mvd-ocena-przebieg-model')).toBeNull();
   });
 
-  it('PODSUMOWANIE z liczników backendu: OCENIONO · SPEŁNIA · NIE SPEŁNIA · WYNIK NIEJEDNOZNACZNY · BRAK PODSTAW (per element)', async () => {
+  it('PODSUMOWANIE: OCENIONO i liczniki podpisane etykietami rekordów z backendu (per element)', async () => {
     fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_OCENA));
     render(<EkranOceny />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
     const liczniki = FIXTURA_OCENA.ocena;
     expect(liczniki.oceniono).toBeGreaterThan(0);
     expect(screen.getByTestId('mvd-ocena-licznik-oceniono')).toHaveTextContent(`${T.oceniono}${liczniki.oceniono}`);
-    expect(screen.getByTestId('mvd-ocena-licznik-spelnia')).toHaveTextContent(`${T.spelnia}${liczniki.spelnia}`);
-    expect(screen.getByTestId('mvd-ocena-licznik-nie-spelnia')).toHaveTextContent(`${T.nieSpelnia}${liczniki.nie_spelnia}`);
-    expect(screen.getByTestId('mvd-ocena-licznik-niejednoznaczny')).toHaveTextContent(
-      `${T.niejednoznaczny}${liczniki.niejednoznaczny}`,
-    );
-    expect(screen.getByTestId('mvd-ocena-licznik-brak-podstaw')).toHaveTextContent(`${T.brakPodstaw}${liczniki.brak_podstaw}`);
+    const naEkranie = screen.getAllByTestId('mvd-ocena-licznik-etykiety');
+    // Kolejność i treść 1:1 z `liczniki_etykiet` (słownik etykiet backendu), suma = wszystkie elementy.
+    expect(naEkranie).toHaveLength(FIXTURA_OCENA.liczniki_etykiet.length);
+    FIXTURA_OCENA.liczniki_etykiet.forEach((licznik, indeks) => {
+      expect(naEkranie[indeks]).toHaveTextContent(`${licznik.etykieta.etykieta_pl}${licznik.liczba}`);
+      expect(naEkranie[indeks]).toHaveAttribute('data-semantyka', licznik.etykieta.semantyka);
+    });
+    const wszystkie = FIXTURA_OCENA.pozycje.flatMap((p) => p.elementy).length;
+    expect(FIXTURA_OCENA.liczniki_etykiet.reduce((suma, l) => suma + l.liczba, 0)).toBe(wszystkie);
     // Sieć złota bez przekroczeń, ale z kryteriami bez podstawy: nie równa się spełnieniu.
     expect(screen.getByTestId('mvd-ocena-calosciowa')).toHaveTextContent(T.ocenaCalosciowaBrakPodstaw);
+    // Ocenę całościową wyjaśnia rekord pozycji rozstrzygającej (karta werdyktu, nie kod).
+    const rozstrzygajaca = FIXTURA_OCENA.pozycje.find((p) => p.kryterium_id === FIXTURA_OCENA.kryterium_rozstrzygajace)!;
+    expect(rozstrzygajaca.stan).toBe(FIXTURA_OCENA.werdykt);
+    const uzasadnienie = screen.getByTestId('mvd-ocena-rozstrzygajace');
+    expect(uzasadnienie).toHaveTextContent(rozstrzygajaca.nazwa_pl);
+    // Karta rekordu powstaje dopiero po rozwinięciu (natywny klik w podsumowanie szczegółów).
+    expect(uzasadnienie).not.toHaveTextContent(rozstrzygajaca.wyjasnienie.zdanie_pl);
+    await userEvent.click(within(uzasadnienie).getByText(new RegExp(T.uzasadnienieCalosciowej)));
+    await waitFor(() => expect(uzasadnienie).toHaveTextContent(rozstrzygajaca.wyjasnienie.zdanie_pl));
   });
 
   it('GRUPY wyłącznie z wynikami: grupa bez ocen elementów nie renderuje się', async () => {
@@ -222,7 +239,7 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
     expect(komorki[2].textContent).toMatch(/\d,\d+/);
     expect(komorki[3].textContent).toMatch(/\d/);
     expect(komorki[5]).toHaveTextContent(napiecie.norma_pl.slice(0, 12));
-    expect([T.wynikSpelnia, T.wynikNieSpelnia, T.wynikBrakPodstaw]).toContain(komorki[6].textContent);
+    expect(komorki[6].textContent).toBe(etykietaRekordu(pierwszy));
     expect((komorki[7].textContent ?? '').trim().length).toBeGreaterThan(10);
     expect(pierwszy.wniosek_pl.length).toBeGreaterThan(10);
   });
@@ -236,38 +253,64 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
     for (const { p, e } of bezPodstawy) {
       const wiersz = screen.getByTestId(`mvd-ocena-element-${p.kryterium_id}-${e.element_id ?? 'agregat'}`);
       expect(wiersz).toHaveAttribute('data-wynik', 'BRAK_PODSTAW');
-      expect(within(wiersz).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikBrakPodstaw);
+      expect(within(wiersz).getByTestId('mvd-ocena-wynik')).toHaveTextContent(etykietaRekordu(e));
+      expect(etykietaRekordu(e).startsWith('Kryterium spełnione')).toBe(false);
       expect(wiersz).toHaveTextContent(e.wniosek_pl);
     }
   });
 
-  // Rozstrzygnięcie zarządcy 2026-09-23 (kontrakt werdyktu §2.1/§2.3): ostrzeżenie dostawcy
-  // doborów toru DER-SN to WYNIK NIEJEDNOZNACZNY — ekran pokazuje wynik z odpowiedzi, nie
-  // własną interpretację ostrzeżenia, a zdanie całościowe nie jest lepsze niż najgorsza składowa.
-  it('WYNIK NIEJEDNOZNACZNY: wiersz, uzasadnienie dostawcy, licznik i ocena całościowa z odpowiedzi backendu', async () => {
-    fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_NIEJEDNOZNACZNA));
+  // Kontrakt werdyktu §2.1 (brak danych ≠ spełnia): dobory toru DER-SN bez danych kaskady
+  // prądowej to rekordy „ocena niewykonana" — ekran pokazuje etykietę i wniosek rekordu, a
+  // zdanie całościowe nie jest lepsze niż najgorsza składowa.
+  it('DOBORY BEZ DANYCH: wiersz z etykietą rekordu, uzasadnienie dostawcy, licznik etykiety i ocena całościowa', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_DOBORY_BEZ_DANYCH));
     render(<EkranOceny />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
-    const niejednoznaczne = FIXTURA_NIEJEDNOZNACZNA.pozycje.flatMap((p) => p.elementy).filter((e) => e.wynik === 'NIEJEDNOZNACZNY');
+    const dobory = FIXTURA_DOBORY_BEZ_DANYCH.pozycje.find((p) => p.kryterium_id === 'dobor.tor_der_sn')!;
+    const bezDanych = dobory.elementy.filter((e) => e.ocena.status_maszynowy === 'NIE_OCENIONO');
     // Kontrola dodatnia: backend zbudował co najmniej jeden taki element.
-    expect(niejednoznaczne.length).toBeGreaterThan(0);
-    expect(FIXTURA_NIEJEDNOZNACZNA.werdykt).toBe('NIEJEDNOZNACZNE');
-    const wiersze = Array.from(document.querySelectorAll('tr[data-wynik="NIEJEDNOZNACZNY"]'));
-    expect(wiersze).toHaveLength(niejednoznaczne.length);
+    expect(bezDanych.length).toBeGreaterThan(0);
+    expect(FIXTURA_DOBORY_BEZ_DANYCH.werdykt).toBe('NIESPRAWDZONE');
+    const wiersze = Array.from(
+      document.querySelectorAll('[data-testid="mvd-ocena-pozycja-dobor.tor_der_sn"] tr[data-wynik="BRAK_PODSTAW"]'),
+    );
+    expect(wiersze).toHaveLength(bezDanych.length);
     wiersze.forEach((wiersz, indeks) => {
-      const zBackendu = niejednoznaczne[indeks];
-      expect(wiersz.classList.contains('mvd-ocena-wynik--niejednoznaczny')).toBe(true);
-      expect(within(wiersz as HTMLElement).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikNiejednoznaczny);
+      const zBackendu = bezDanych[indeks];
+      expect(wiersz).toHaveAttribute('data-semantyka', zBackendu.ocena.etykieta.semantyka);
+      expect(within(wiersz as HTMLElement).getByTestId('mvd-ocena-wynik')).toHaveTextContent(etykietaRekordu(zBackendu));
       expect(wiersz).toHaveTextContent(zBackendu.wniosek_pl);
       expect(wiersz).toHaveTextContent(zBackendu.uzasadnienie_pl ?? '');
     });
-    expect(screen.getByTestId('mvd-ocena-licznik-niejednoznaczny')).toHaveTextContent(
-      `${T.niejednoznaczny}${FIXTURA_NIEJEDNOZNACZNA.ocena.niejednoznaczny}`,
-    );
-    expect(screen.getByTestId('mvd-ocena-calosciowa')).toHaveTextContent(T.ocenaCalosciowaNiejednoznaczny);
+    const etykietaBraku = bezDanych[0].ocena.etykieta.etykieta_pl;
+    const licznik = FIXTURA_DOBORY_BEZ_DANYCH.liczniki_etykiet.find((l) => l.etykieta.etykieta_pl === etykietaBraku)!;
+    expect(licznik.liczba).toBe(FIXTURA_DOBORY_BEZ_DANYCH.ocena.brak_podstaw);
+    expect(
+      screen.getAllByTestId('mvd-ocena-licznik-etykiety').some((el) => el.textContent === `${etykietaBraku}${licznik.liczba}`),
+    ).toBe(true);
+    expect(screen.getByTestId('mvd-ocena-calosciowa')).toHaveTextContent(T.ocenaCalosciowaBrakPodstaw);
     // Pozycja doborów jest widoczna w swojej grupie — nie ląduje w „bez podstawy".
     expect(screen.getByTestId('mvd-ocena-pozycja-dobor.tor_der_sn')).toBeTruthy();
     expect(screen.queryByTestId('mvd-ocena-bez-podstaw-dobor.tor_der_sn')).toBeNull();
+  });
+
+  it('szczegóły oceny elementu: natywny klik rozwija kartę rekordu (kryterium, limit, podstawa, dowód)', async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_PRZEKROCZENIA));
+    render(<EkranOceny />);
+    await screen.findByTestId('mvd-ocena-podsumowanie');
+    const pozycja = FIXTURA_PRZEKROCZENIA.pozycje.find((p) => p.elementy.some((e) => e.wynik === 'NIE_SPELNIA'))!;
+    const element = pozycja.elementy.find((e) => e.wynik === 'NIE_SPELNIA')!;
+    const wiersz = screen.getByTestId(`mvd-ocena-element-${pozycja.kryterium_id}-${element.element_id}`);
+    const szczegoly = within(wiersz).getByTestId('mvd-ocena-szczegoly-elementu') as HTMLDetailsElement;
+    expect(szczegoly.open).toBe(false);
+    await user.click(within(szczegoly).getByText(T.szczegolyOceny));
+    expect(szczegoly.open).toBe(true);
+    await waitFor(() => expect(within(szczegoly).queryAllByRole('article')).toHaveLength(1));
+    const identyfikator = 'wymaganie_id' in element.ocena ? element.ocena.wymaganie_id : element.ocena.kryterium_id;
+    expect(within(szczegoly).getByTestId(`mvd-werdykt-${identyfikator}-etykieta`)).toHaveTextContent(
+      etykietaRekordu(element),
+    );
   });
 
   it('PRZEKROCZENIA: wiersze NIE SPEŁNIA WYMAGAŃ z ujemnym marginesem; ocena całościowa wymaga decyzji projektowej', async () => {
@@ -279,11 +322,13 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
     expect(wiersze).toHaveLength(FIXTURA_PRZEKROCZENIA.ocena.nie_spelnia);
     for (const wiersz of wiersze) {
       const komorki = Array.from(wiersz.querySelectorAll('td'));
-      expect(komorki[6].textContent).toBe(T.wynikNieSpelnia);
+      expect(wiersz).toHaveAttribute('data-semantyka', 'negatywna');
+      expect(komorki[6].textContent).toMatch(/naruszone$/);
       expect(komorki[4].textContent?.startsWith('−')).toBe(true);
     }
     expect(screen.getByTestId('mvd-ocena-calosciowa')).toHaveTextContent(T.ocenaCalosciowaNieSpelnia);
-    expect(screen.getByTestId('mvd-ocena-licznik-nie-spelnia')).toHaveTextContent(String(FIXTURA_PRZEKROCZENIA.ocena.nie_spelnia));
+    const naruszone = FIXTURA_PRZEKROCZENIA.liczniki_etykiet.filter((l) => l.etykieta.semantyka === 'negatywna');
+    expect(naruszone.reduce((suma, l) => suma + l.liczba, 0)).toBe(FIXTURA_PRZEKROCZENIA.ocena.nie_spelnia);
   });
 
   it('wiarygodność wyniku zwarciowego ≠ spełnienie wymagań (karta V12.7 §0.9): dwie NIEZALEŻNE osie w tym samym biegu', async () => {
@@ -304,17 +349,17 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
     const wierszWiarygodnosci = screen.getByTestId(
       `mvd-ocena-element-${wiarygodnosc.kryterium_id}-${elementWiarygodnosci.element_id}`,
     );
-    expect(within(wierszWiarygodnosci).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikSpelnia);
+    expect(within(wierszWiarygodnosci).getByTestId('mvd-ocena-wynik')).toHaveTextContent(etykietaRekordu(elementWiarygodnosci));
     const elementNieSpelnia = nieSpelnia.elementy.find((e) => e.wynik === 'NIE_SPELNIA')!;
     const wierszNieSpelnia = screen.getByTestId(
       `mvd-ocena-element-${nieSpelnia.kryterium_id}-${elementNieSpelnia.element_id}`,
     );
-    expect(within(wierszNieSpelnia).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikNieSpelnia);
+    expect(within(wierszNieSpelnia).getByTestId('mvd-ocena-wynik')).toHaveTextContent(etykietaRekordu(elementNieSpelnia));
     const elementBrakPodstaw = brakPodstaw.elementy.find((e) => e.wynik === 'BRAK_PODSTAW')!;
     const wierszBrakPodstaw = screen.getByTestId(
       `mvd-ocena-element-${brakPodstaw.kryterium_id}-${elementBrakPodstaw.element_id ?? 'agregat'}`,
     );
-    expect(within(wierszBrakPodstaw).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikBrakPodstaw);
+    expect(within(wierszBrakPodstaw).getByTestId('mvd-ocena-wynik')).toHaveTextContent(etykietaRekordu(elementBrakPodstaw));
   });
 
   it('język formalny (prompt §6): żadnego PASS/WARN/FAIL ani żargonu interfejsu w widocznym tekście', async () => {
@@ -491,7 +536,9 @@ describe('EkranOceny — powiązania (schemat, identyfikator w modelu, dowód ob
     const wiersz = screen.getByTestId(`mvd-ocena-element-straty.budzet-${agregat.element_id ?? 'agregat'}`);
     expect(within(wiersz).queryByTestId('mvd-ocena-pokaz')).toBeNull();
     // Nazwa agregatu pochodzi z backendu („Sieć"); bez nazwy ekran mówi „cała sieć (agregat)".
-    expect(within(wiersz).getByText(agregat.element_nazwa ?? T.elementAgregat)).toBeTruthy();
+    // Komórka przedmiotu (karta rekordu w szczegółach wiersza też nazywa przedmiot oceny).
+    const przedmiot = wiersz.querySelector('td.mvd-ocena-przedmiot') as HTMLElement;
+    expect(within(przedmiot).getByText(agregat.element_nazwa ?? T.elementAgregat)).toBeTruthy();
   });
 
   it('„Dowód obliczeń" przekazuje element i KONKRETNY przebieg pozycji (rozpływ vs zwarcia), nie aktywny', async () => {

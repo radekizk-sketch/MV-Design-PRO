@@ -15,6 +15,9 @@ from __future__ import annotations
 import dataclasses
 
 import pytest
+from analysis.energy_validation.builder import _pozycja as _pozycja_walidacji
+from analysis.energy_validation.models import EnergyCheckType
+from analysis.energy_validation.serializer import item_to_dict
 from application.analyses.werdykt_projektowy import (
     GRUPY_KRYTERIOW,
     KRYTERIUM_BILANS_Q,
@@ -234,20 +237,55 @@ def test_realny_bieg_zwarciowy_ocenia_kryterium_cieplne_i_wiarygodnosc() -> None
 # ---------------------------------------------------------------------------
 
 
+def _wiersz_dostawcy(
+    *,
+    check_type: EnergyCheckType,
+    target_id: str,
+    target_name: str,
+    observed_value: float | None,
+    unit: str,
+    limit_warn: float | None,
+    limit_fail: float | None,
+    margin_pct: float | None,
+    why_pl: str,
+    status: str,
+) -> dict:
+    """Wiersz widoku walidacji energetycznej zbudowany REALNĄ ścieżką dostawcy (builder +
+    serializer): rekord K i kod ``status`` jako jego projekcja — test nie podrabia rekordu."""
+    wiersz = item_to_dict(
+        _pozycja_walidacji(
+            check_type=check_type,
+            target_id=target_id,
+            target_name=target_name,
+            observed_value=observed_value,
+            unit=unit,
+            limit_warn=limit_warn,
+            limit_fail=limit_fail,
+            margin_pct=margin_pct,
+            why_pl=why_pl,
+        )
+    )
+    assert wiersz["status"] == status, (wiersz["status"], status)
+    return wiersz
+
+
+#: Obciążenie gałęzi [%] dające żądany kod dostawcy przy progach 80 % / 100 %.
+_OBCIAZENIE_DLA_STATUSU = {"PASS": 70.0, "WARNING": 90.0, "FAIL": 112.0, "NOT_COMPUTED": None}
+
+
 def _wiersz_energii(target_id: str, status: str, margin_pct: float | None = 10.0) -> dict:
-    return {
-        "check_type": "BRANCH_LOADING",
-        "target_id": target_id,
-        "target_name": target_id,
-        "observed_value": 100.0,
-        "unit": "%",
-        "limit_warn": 80.0,
-        "limit_fail": 100.0,
-        "margin_pct": margin_pct,
-        "status": status,
-        "why_pl": f"Pozycja {target_id}: {status}.",
-        "white_box": [],
-    }
+    return _wiersz_dostawcy(
+        check_type=EnergyCheckType.BRANCH_LOADING,
+        target_id=target_id,
+        target_name=target_id,
+        observed_value=_OBCIAZENIE_DLA_STATUSU[status],
+        unit="%",
+        limit_warn=80.0,
+        limit_fail=100.0,
+        margin_pct=margin_pct,
+        why_pl=f"Pozycja {target_id}: {status}.",
+        status=status,
+    )
 
 
 def test_niesprawdzona_pozycja_nie_znika_pod_spelnieniem_pozostalych() -> None:
@@ -629,8 +667,8 @@ def test_sc_elementy_cieplny_i_wiarygodnosc_maja_dowod_i_pasmo() -> None:
 def test_sc_element_cieplny_spelnia_trywialnie_moze_byc_bez_liczb() -> None:
     """Kontrola dwustronna do testu powyżej: SPELNIA bez `wartosc`/`odniesienie`
     JEST legalne dla dostawcy cieplnego (gałąź poza drogą zwarcia — kryterium
-    spełnione trywialnie, bez liczenia I²t) — `_wniosek` buduje wtedy zdanie z
-    `uzasadnienie_pl`, nie z liczb. Ta asercja jest scoped: NIE jest to
+    spełnione trywialnie, bez liczenia I²t) — wniosek jest wtedy zdaniem rekordu
+    dostawcy (generator pakietu `werdykt`), nie liczbą wymyśloną przez agregat. Ta asercja jest scoped: NIE jest to
     twierdzenie uniwersalne o WSZYSTKICH pozycjach werdyktu (patrz test
     napięciowy powyżej, gdzie SPELNIA ⇒ liczby, bo dostawca ZAWSZE liczy
     obserwowaną wartość)."""
@@ -652,7 +690,9 @@ def test_sc_element_cieplny_spelnia_trywialnie_moze_byc_bez_liczb() -> None:
     for element in trywialne:
         assert element.wartosc is None
         assert element.odniesienie is None
-        assert element.wniosek_pl.startswith("Wymaganie spełnione:")
+        assert element.ocena.status_maszynowy in ("SPELNIA", "BRAK_DOWODU")
+        assert element.wniosek_pl == element.ocena.wyjasnienie.zdanie_pl
+        assert element.wniosek_pl.strip()
 
 
 def test_liczniki_ocena_sa_suma_wynikow_po_wszystkich_elementach() -> None:
@@ -771,38 +811,36 @@ def _wiersz_bilans_q_realny(status: str, cos_phi: float | None) -> dict:
     `NOT_COMPUTED` niesie `unit="p.u."` i `observed_value=None` (dostawca NIE
     zmyśla cos φ, gdy moc bilansowa slacka jest nieznana)."""
     if status == "NOT_COMPUTED":
-        return {
-            "check_type": "REACTIVE_BALANCE",
-            "target_id": "SLACK",
-            "target_name": "Węzeł bilansujący",
-            "observed_value": None,
-            "unit": "p.u.",
-            "limit_warn": None,
-            "limit_fail": None,
-            "margin_pct": None,
-            "status": status,
-            "why_pl": "Brak mocy bilansowej slack.",
-            "white_box": [],
-        }
+        return _wiersz_dostawcy(
+            check_type=EnergyCheckType.REACTIVE_BALANCE,
+            target_id="SLACK",
+            target_name="Węzeł bilansujący",
+            observed_value=None,
+            unit="p.u.",
+            limit_warn=None,
+            limit_fail=None,
+            margin_pct=None,
+            why_pl="Brak mocy bilansowej slack.",
+            status=status,
+        )
     assert cos_phi is not None
     opisy = {
         "PASS": f"cos(phi) = {cos_phi:.3f} >= 0.9 — bilans mocy biernej prawidlowy.",
         "WARNING": f"cos(phi) = {cos_phi:.3f} — bilans mocy biernej na granicy akceptowalnosci.",
         "FAIL": f"cos(phi) = {cos_phi:.3f} < 0.8 — nadmierny pobor mocy biernej z sieci.",
     }
-    return {
-        "check_type": "REACTIVE_BALANCE",
-        "target_id": "SLACK",
-        "target_name": "Węzeł bilansujący",
-        "observed_value": cos_phi,
-        "unit": "cos(phi)",
-        "limit_warn": 0.9,
-        "limit_fail": 0.8,
-        "margin_pct": None,
-        "status": status,
-        "why_pl": opisy[status],
-        "white_box": [],
-    }
+    return _wiersz_dostawcy(
+        check_type=EnergyCheckType.REACTIVE_BALANCE,
+        target_id="SLACK",
+        target_name="Węzeł bilansujący",
+        observed_value=cos_phi,
+        unit="cos(phi)",
+        limit_warn=0.9,
+        limit_fail=0.8,
+        margin_pct=None,
+        why_pl=opisy[status],
+        status=status,
+    )
 
 
 def test_synteczne_warning_daje_spelnia_z_uwaga() -> None:

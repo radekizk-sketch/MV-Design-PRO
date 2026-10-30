@@ -107,7 +107,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -258,7 +258,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -772,7 +772,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "NIE_SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -923,7 +923,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "NIE_SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -1440,7 +1440,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -1558,7 +1558,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -2012,7 +2012,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -2122,7 +2122,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "NIE_OCENIONO",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -2390,7 +2390,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -2528,7 +2528,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -3044,7 +3044,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -3182,7 +3182,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "NIE_SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -3700,7 +3700,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "SPELNIA",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -3805,7 +3805,7 @@
             "wartosc": null,
             "metoda_pl": null,
             "nie_dotyczy": true,
-            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
           },
           "status_maszynowy": "BRAK_PODSTAWY",
           "kompletnosc_dowodu": "NIEPELNY",
@@ -4225,7 +4225,7 @@
         "wartosc": null,
         "metoda_pl": null,
         "nie_dotyczy": true,
-        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
       },
       "status_maszynowy": "SPELNIA",
       "kompletnosc_dowodu": "NIEPELNY",
@@ -4503,7 +4503,7 @@
         "wartosc": null,
         "metoda_pl": null,
         "nie_dotyczy": true,
-        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
       },
       "status_maszynowy": "NIE_SPELNIA",
       "kompletnosc_dowodu": "NIEPELNY",
@@ -4756,7 +4756,7 @@
         "wartosc": null,
         "metoda_pl": null,
         "nie_dotyczy": true,
-        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+        "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu"
       },
       "status_maszynowy": "NIE_OCENIONO",
       "kompletnosc_dowodu": "NIEPELNY",

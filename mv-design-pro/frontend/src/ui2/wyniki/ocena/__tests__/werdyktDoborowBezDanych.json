@@ -1,0 +1,1786 @@
+{
+  "case_id": "case-bez-danych",
+  "grupy": [
+    {
+      "kod": "napiecia",
+      "nazwa_pl": "Napięcia"
+    },
+    {
+      "kod": "obciazalnosc",
+      "nazwa_pl": "Obciążalność"
+    },
+    {
+      "kod": "bilans_mocy_i_straty",
+      "nazwa_pl": "Bilans mocy i straty"
+    },
+    {
+      "kod": "zwarcia",
+      "nazwa_pl": "Zwarcia"
+    },
+    {
+      "kod": "wytrzymalosc_toru",
+      "nazwa_pl": "Wytrzymałość toru"
+    },
+    {
+      "kod": "warunki_przylaczenia",
+      "nazwa_pl": "Warunki przyłączenia"
+    },
+    {
+      "kod": "dobory_toru_zrodla",
+      "nazwa_pl": "Dobory toru źródła"
+    }
+  ],
+  "kryterium_rozstrzygajace": "galaz.obciazenie_dlugotrwale",
+  "liczniki_etykiet": [
+    {
+      "etykieta": {
+        "etykieta_pl": "Kryterium spełnione",
+        "semantyka": "pozytywna"
+      },
+      "liczba": 3
+    },
+    {
+      "etykieta": {
+        "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+        "semantyka": "ostrzegawcza"
+      },
+      "liczba": 1
+    },
+    {
+      "etykieta": {
+        "etykieta_pl": "Ocena niewykonana",
+        "semantyka": "neutralna"
+      },
+      "liczba": 2
+    }
+  ],
+  "model_hash": "enm-hash-bez-danych",
+  "ocena": {
+    "brak_podstaw": 2,
+    "nie_spelnia": 0,
+    "niejednoznaczny": 0,
+    "oceniono": 4,
+    "spelnia": 4
+  },
+  "podsumowanie": {
+    "naruszone": 0,
+    "nie_dotyczy": 0,
+    "niejednoznaczne": 0,
+    "niesprawdzone": 5,
+    "razem": 6,
+    "spelnione": 1
+  },
+  "pozycje": [
+    {
+      "element_rodzaj": "szyna",
+      "elementy": [
+        {
+          "dowod": {
+            "element_id": "bus-sn-1",
+            "run_id": "run-pf-bez-danych"
+          },
+          "element_id": "bus-sn-1",
+          "element_nazwa": "Szyna SN 1",
+          "element_rodzaj": "szyna",
+          "jednostka": "%",
+          "margines": -8.8,
+          "margines_jednostka": "pkt proc.",
+          "margines_wzor_latex": "",
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/energy_validation/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Szyna SN 1",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 8.8
+              },
+              "wzgledny": 0.88
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "Szyna SN 1",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "energy_validation.voltage_deviation",
+                "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Szyna SN 1",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 1.2
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
+          "odniesienie": 10.0,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": 5.0,
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Odchylenie napiecia 1.20 % ponizej limitu 5.0 %.",
+          "wartosc": 1.2,
+          "wniosek_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej).",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej)."
+          },
+          "wynik": "SPELNIA"
+        }
+      ],
+      "etap": "E5",
+      "grupa": "napiecia",
+      "jednostka": "%",
+      "kryterium_id": "napiecie.odchylenie",
+      "liczba_naruszen": 0,
+      "liczba_niejednoznacznych": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ocenionych": 1,
+      "liczba_ostrzezen": 0,
+      "nazwa_pl": "Odchylenia napięć w węzłach",
+      "norma_pl": "Kryterium jakości napięcia (progi z konfiguracji walidacji energetycznej)",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/energy_validation/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+            "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2010"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 10.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+        },
+        "margines": {
+          "definicja_latex": "m = x_{\\lim} - x",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna SN 1",
+          "skala": {
+            "jednostka": "pp",
+            "wartosc": 10.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "pp",
+            "wartosc": 8.8
+          },
+          "wzgledny": 0.88
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+          "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": null,
+          "wydanie": "2010"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "Szyna SN 1",
+          "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+        },
+        "slad": [
+          {
+            "krok": "energy_validation.voltage_deviation",
+            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          ],
+          "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna SN 1",
+          "symbol_latex": "\\delta U",
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 1.2
+          },
+          "wielkosc_pl": "odchylenie napięcia od znamionowego"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+            "przeciążalność krótkotrwała i cykliczna urządzeń"
+          ]
+        }
+      },
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": "run-pf-bez-danych",
+      "stan": "SPELNIONE",
+      "symbol": "|ΔU|",
+      "symbol_latex": "|\\Delta U|",
+      "warunek": "nie_wiecej_niz",
+      "warunek_latex": "|\\Delta U| \\leq \\Delta U_{\\mathrm{dop}}",
+      "warunek_pl": "$|\\Delta U| \\le \\Delta U_{\\text{dop}}$ (dopuszczalne odchylenie napięcia)",
+      "wielkosc_pl": "Odchylenie napięcia od znamionowego",
+      "wiodacy_element_id": null,
+      "wiodacy_opis_pl": null,
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": null,
+        "zastrzezenia": [
+          "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        ],
+        "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej)."
+      },
+      "zakres_oceny": "kryterium",
+      "zrodlo": "PF"
+    },
+    {
+      "element_rodzaj": "galaz_liniowa",
+      "elementy": [],
+      "etap": "E5",
+      "grupa": "obciazalnosc",
+      "jednostka": "%",
+      "kryterium_id": "galaz.obciazenie_dlugotrwale",
+      "liczba_naruszen": 0,
+      "liczba_niejednoznacznych": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ocenionych": 0,
+      "liczba_ostrzezen": 0,
+      "nazwa_pl": "Obciążenie długotrwałe gałęzi",
+      "norma_pl": "Obciążalność katalogowa przewodu (warunki odniesienia)",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": null,
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Obciążenie długotrwałe gałęzi",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "I_{\\mathrm{rob}} \\leq I_z",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "galaz.obciazenie_dlugotrwale",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "podstawa każdego kryterium (norma, warunki OSD, katalog, założenie) jest w rekordzie oceny dostawcy",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "model sieci przypadku obliczeniowego",
+          "opis_pl": "Kryterium projektu (Obciążalność katalogowa przewodu (warunki odniesienia))"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu.",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+            "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+          "zastrzezenia": [
+            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+          ],
+          "zdanie_pl": "Obciążenie długotrwałe gałęzi (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": null,
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe)",
+            "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+            "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
+            "Ekonomiczna gęstość prądu przekroju"
+          ]
+        }
+      },
+      "powod_kod": "verdict.input_data_missing",
+      "powod_pl": "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu.",
+      "run_id": "run-pf-bez-danych",
+      "stan": "NIESPRAWDZONE",
+      "symbol": "I/I_z",
+      "symbol_latex": "I/I_z",
+      "warunek": "nie_wiecej_niz",
+      "warunek_latex": "I_{\\mathrm{rob}} \\leq I_z",
+      "warunek_pl": "$I_{\\text{rob}} \\le I_{z}$ (obciążalność długotrwała przewodu)",
+      "wielkosc_pl": "Obciążenie gałęzi względem obciążalności długotrwałej",
+      "wiodacy_element_id": null,
+      "wiodacy_opis_pl": null,
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+          "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+        ],
+        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+        "zastrzezenia": [
+          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+        ],
+        "zdanie_pl": "Obciążenie długotrwałe gałęzi (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+      },
+      "zakres_oceny": "kryterium",
+      "zrodlo": "PF"
+    },
+    {
+      "element_rodzaj": "transformator",
+      "elementy": [],
+      "etap": "E5",
+      "grupa": "obciazalnosc",
+      "jednostka": "%",
+      "kryterium_id": "transformator.obciazenie",
+      "liczba_naruszen": 0,
+      "liczba_niejednoznacznych": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ocenionych": 0,
+      "liczba_ostrzezen": 0,
+      "nazwa_pl": "Obciążenie transformatorów",
+      "norma_pl": "Moc znamionowa z typu katalogowego",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": null,
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Obciążenie transformatorów",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "S_{\\mathrm{rob}} \\leq S_n",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "transformator.obciazenie",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "podstawa każdego kryterium (norma, warunki OSD, katalog, założenie) jest w rekordzie oceny dostawcy",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "model sieci przypadku obliczeniowego",
+          "opis_pl": "Kryterium projektu (Moc znamionowa z typu katalogowego)"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu.",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+            "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+          "zastrzezenia": [
+            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+          ],
+          "zdanie_pl": "Obciążenie transformatorów (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": null,
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe)",
+            "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+            "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
+            "Ekonomiczna gęstość prądu przekroju"
+          ]
+        }
+      },
+      "powod_kod": "verdict.input_data_missing",
+      "powod_pl": "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu.",
+      "run_id": "run-pf-bez-danych",
+      "stan": "NIESPRAWDZONE",
+      "symbol": "S/S_n",
+      "symbol_latex": "S/S_n",
+      "warunek": "nie_wiecej_niz",
+      "warunek_latex": "S_{\\mathrm{rob}} \\leq S_n",
+      "warunek_pl": "$S_{\\text{rob}} \\le S_{n}$ (moc znamionowa transformatora)",
+      "wielkosc_pl": "Obciążenie transformatora względem mocy znamionowej",
+      "wiodacy_element_id": null,
+      "wiodacy_opis_pl": null,
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+          "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+        ],
+        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+        "zastrzezenia": [
+          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+        ],
+        "zdanie_pl": "Obciążenie transformatorów (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+      },
+      "zakres_oceny": "kryterium",
+      "zrodlo": "PF"
+    },
+    {
+      "element_rodzaj": null,
+      "elementy": [],
+      "etap": "E5",
+      "grupa": "bilans_mocy_i_straty",
+      "jednostka": "%",
+      "kryterium_id": "straty.budzet",
+      "liczba_naruszen": 0,
+      "liczba_niejednoznacznych": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ocenionych": 0,
+      "liczba_ostrzezen": 0,
+      "nazwa_pl": "Budżet strat mocy",
+      "norma_pl": "Założenie projektowe (progi z konfiguracji walidacji energetycznej)",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": null,
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Budżet strat mocy",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "\\Delta P \\leq \\Delta P_{\\text{budżet}}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "straty.budzet",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "podstawa każdego kryterium (norma, warunki OSD, katalog, założenie) jest w rekordzie oceny dostawcy",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "model sieci przypadku obliczeniowego",
+          "opis_pl": "Kryterium projektu (Założenie projektowe (progi z konfiguracji walidacji energetycznej))"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu.",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+            "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+          "zastrzezenia": [
+            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+          ],
+          "zdanie_pl": "Budżet strat mocy (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": null,
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe)",
+            "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+            "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
+            "Ekonomiczna gęstość prądu przekroju"
+          ]
+        }
+      },
+      "powod_kod": "verdict.input_data_missing",
+      "powod_pl": "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu.",
+      "run_id": "run-pf-bez-danych",
+      "stan": "NIESPRAWDZONE",
+      "symbol": "ΔP/P",
+      "symbol_latex": "\\Delta P/P",
+      "warunek": "nie_wiecej_niz",
+      "warunek_latex": "\\Delta P \\leq \\Delta P_{\\text{budżet}}",
+      "warunek_pl": "$\\Delta P \\le \\Delta P_{\\text{budżet}}$ (założony budżet strat)",
+      "wielkosc_pl": "Straty mocy czynnej względem mocy przesyłanej",
+      "wiodacy_element_id": null,
+      "wiodacy_opis_pl": null,
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+          "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+        ],
+        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+        "zastrzezenia": [
+          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+        ],
+        "zdanie_pl": "Budżet strat mocy (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+      },
+      "zakres_oceny": "kryterium",
+      "zrodlo": "PF"
+    },
+    {
+      "element_rodzaj": null,
+      "elementy": [],
+      "etap": "E5",
+      "grupa": "bilans_mocy_i_straty",
+      "jednostka": "-",
+      "kryterium_id": "moc_bierna.bilans",
+      "liczba_naruszen": 0,
+      "liczba_niejednoznacznych": 0,
+      "liczba_niesprawdzonych": 0,
+      "liczba_ocenionych": 0,
+      "liczba_ostrzezen": 0,
+      "nazwa_pl": "Bilans mocy biernej",
+      "norma_pl": "Założenie projektowe (progi z konfiguracji walidacji energetycznej)",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": null,
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Bilans mocy biernej",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\cos\\varphi \\geq \\cos\\varphi_{\\mathrm{min}}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "moc_bierna.bilans",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "podstawa każdego kryterium (norma, warunki OSD, katalog, założenie) jest w rekordzie oceny dostawcy",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "model sieci przypadku obliczeniowego",
+          "opis_pl": "Kryterium projektu (Założenie projektowe (progi z konfiguracji walidacji energetycznej))"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu.",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+            "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+          "zastrzezenia": [
+            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+          ],
+          "zdanie_pl": "Bilans mocy biernej (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": null,
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe)",
+            "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+            "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
+            "Ekonomiczna gęstość prądu przekroju"
+          ]
+        }
+      },
+      "powod_kod": "verdict.input_data_missing",
+      "powod_pl": "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu.",
+      "run_id": "run-pf-bez-danych",
+      "stan": "NIESPRAWDZONE",
+      "symbol": "cos φ",
+      "symbol_latex": "\\cos\\varphi",
+      "warunek": "nie_mniej_niz",
+      "warunek_latex": "\\cos\\varphi \\geq \\cos\\varphi_{\\mathrm{min}}",
+      "warunek_pl": "bilans Q w założonym paśmie",
+      "wielkosc_pl": "Współczynnik mocy w węźle bilansującym",
+      "wiodacy_element_id": null,
+      "wiodacy_opis_pl": null,
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+          "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+        ],
+        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+        "zastrzezenia": [
+          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+        ],
+        "zdanie_pl": "Bilans mocy biernej (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+      },
+      "zakres_oceny": "kryterium",
+      "zrodlo": "PF"
+    },
+    {
+      "element_rodzaj": "zrodlo",
+      "elementy": [
+        {
+          "dowod": null,
+          "element_id": "gen-pv-1",
+          "element_nazwa": "Instalacja PV 1 — napięcie falownika a strona nN transformatora blokowego",
+          "element_rodzaj": "zrodlo",
+          "jednostka": "-",
+          "margines": null,
+          "margines_jednostka": "",
+          "margines_wzor_latex": "",
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "DEKLARACJA",
+              "odniesienie": "application/analyses/raport_zgodnosci.py",
+              "poziom": "DECLARATION",
+              "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione",
+              "semantyka": "pozytywna"
+            },
+            "kompletnosc_dowodu": "PELNY",
+            "kryterium": {
+              "opis_pl": "Napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego",
+              "relacja": "LOGICZNE",
+              "warunek_latex": "",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "der_sn.napiecie_falownika",
+            "limit": null,
+            "margines": {
+              "definicja_latex": null,
+              "niedefiniowalny": true,
+              "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny.",
+              "punkt_pl": "Napięcie falownika zgodne ze stroną nN TR blokowego. (U_AC falownika 0,8 kV, strona nN TR blokowego 0,8 kV)",
+              "skala": null,
+              "skala_rodzaj": null,
+              "wartosc": null,
+              "wzgledny": null
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)",
+              "jednostka_redakcyjna": "wymaganie 2 — napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "bieżący stan programu"
+            },
+            "powody_niepelnosci": [],
+            "przedmiot": {
+              "element_ref": "gen-pv-1",
+              "nazwa_pl": "Instalacja PV 1",
+              "opis_pl": "Tor przyłączenia źródła wytwórczego do sieci SN (dane znamionowe modelu)"
+            },
+            "slad": [],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 2 — napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+              ],
+              "zdanie_pl": "Napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego (Instalacja PV 1) — kryterium spełnione. Zgodność napięcia falownika ze stroną nN transformatora blokowego: Napięcie falownika zgodne ze stroną nN TR blokowego. (U_AC falownika 0,8 kV, strona nN TR blokowego 0,8 kV) (stan wymagany wg wymaganie 2 — napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "DEKLARACJA",
+              "punkt_krytyczny_pl": "Napięcie falownika zgodne ze stroną nN TR blokowego. (U_AC falownika 0,8 kV, strona nN TR blokowego 0,8 kV)",
+              "symbol_latex": "",
+              "wartosc": {
+                "jednostka": "1",
+                "wartosc": 1.0
+              },
+              "wielkosc_pl": "zgodność napięcia falownika ze stroną nN transformatora blokowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": null,
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu)",
+                "wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)"
+              ]
+            }
+          },
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Napięcie falownika zgodne ze stroną nN TR blokowego.",
+          "wartosc": null,
+          "wniosek_pl": "Napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego (Instalacja PV 1) — kryterium spełnione. Zgodność napięcia falownika ze stroną nN transformatora blokowego: Napięcie falownika zgodne ze stroną nN TR blokowego. (U_AC falownika 0,8 kV, strona nN TR blokowego 0,8 kV) (stan wymagany wg wymaganie 2 — napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”).",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 2 — napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+            ],
+            "zdanie_pl": "Napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego (Instalacja PV 1) — kryterium spełnione. Zgodność napięcia falownika ze stroną nN transformatora blokowego: Napięcie falownika zgodne ze stroną nN TR blokowego. (U_AC falownika 0,8 kV, strona nN TR blokowego 0,8 kV) (stan wymagany wg wymaganie 2 — napięcie AC falownika zgodne z napięciem strony nN transformatora blokowego „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”)."
+          },
+          "wynik": "SPELNIA"
+        },
+        {
+          "dowod": null,
+          "element_id": "gen-pv-1",
+          "element_nazwa": "Instalacja PV 1 — strona SN transformatora blokowego a szyna SN",
+          "element_rodzaj": "zrodlo",
+          "jednostka": "-",
+          "margines": null,
+          "margines_jednostka": "",
+          "margines_wzor_latex": "",
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "DEKLARACJA",
+              "odniesienie": "application/analyses/raport_zgodnosci.py",
+              "poziom": "DECLARATION",
+              "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione",
+              "semantyka": "pozytywna"
+            },
+            "kompletnosc_dowodu": "PELNY",
+            "kryterium": {
+              "opis_pl": "Napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN",
+              "relacja": "LOGICZNE",
+              "warunek_latex": "",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "der_sn.napiecie_sn",
+            "limit": null,
+            "margines": {
+              "definicja_latex": null,
+              "niedefiniowalny": true,
+              "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny.",
+              "punkt_pl": "Strona SN TR blokowego zgodna z napięciem szyny SN. (strona SN TR blokowego 15 kV, szyna SN 15 kV)",
+              "skala": null,
+              "skala_rodzaj": null,
+              "wartosc": null,
+              "wzgledny": null
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)",
+              "jednostka_redakcyjna": "wymaganie 6 — napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "bieżący stan programu"
+            },
+            "powody_niepelnosci": [],
+            "przedmiot": {
+              "element_ref": "gen-pv-1",
+              "nazwa_pl": "Instalacja PV 1",
+              "opis_pl": "Tor przyłączenia źródła wytwórczego do sieci SN (dane znamionowe modelu)"
+            },
+            "slad": [],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 6 — napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+              ],
+              "zdanie_pl": "Napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN (Instalacja PV 1) — kryterium spełnione. Zgodność strony SN transformatora blokowego z szyną SN: Strona SN TR blokowego zgodna z napięciem szyny SN. (strona SN TR blokowego 15 kV, szyna SN 15 kV) (stan wymagany wg wymaganie 6 — napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "DEKLARACJA",
+              "punkt_krytyczny_pl": "Strona SN TR blokowego zgodna z napięciem szyny SN. (strona SN TR blokowego 15 kV, szyna SN 15 kV)",
+              "symbol_latex": "",
+              "wartosc": {
+                "jednostka": "1",
+                "wartosc": 1.0
+              },
+              "wielkosc_pl": "zgodność strony SN transformatora blokowego z szyną SN"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": null,
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu)",
+                "wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)"
+              ]
+            }
+          },
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Strona SN TR blokowego zgodna z napięciem szyny SN.",
+          "wartosc": null,
+          "wniosek_pl": "Napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN (Instalacja PV 1) — kryterium spełnione. Zgodność strony SN transformatora blokowego z szyną SN: Strona SN TR blokowego zgodna z napięciem szyny SN. (strona SN TR blokowego 15 kV, szyna SN 15 kV) (stan wymagany wg wymaganie 6 — napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”).",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 6 — napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+            ],
+            "zdanie_pl": "Napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN (Instalacja PV 1) — kryterium spełnione. Zgodność strony SN transformatora blokowego z szyną SN: Strona SN TR blokowego zgodna z napięciem szyny SN. (strona SN TR blokowego 15 kV, szyna SN 15 kV) (stan wymagany wg wymaganie 6 — napięcie strony SN transformatora blokowego zgodne z napięciem szyny SN „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”)."
+          },
+          "wynik": "SPELNIA"
+        },
+        {
+          "dowod": null,
+          "element_id": "gen-pv-1",
+          "element_nazwa": "Instalacja PV 1 — moc transformatora blokowego a suma mocy falowników",
+          "element_rodzaj": "zrodlo",
+          "jednostka": "-",
+          "margines": null,
+          "margines_jednostka": "",
+          "margines_wzor_latex": "",
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "DEKLARACJA",
+              "odniesienie": "application/analyses/raport_zgodnosci.py",
+              "poziom": "DECLARATION",
+              "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione",
+              "semantyka": "pozytywna"
+            },
+            "kompletnosc_dowodu": "PELNY",
+            "kryterium": {
+              "opis_pl": "Moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł",
+              "relacja": "LOGICZNE",
+              "warunek_latex": "",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "der_sn.moc_transformatora",
+            "limit": null,
+            "margines": {
+              "definicja_latex": null,
+              "niedefiniowalny": true,
+              "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny.",
+              "punkt_pl": "Moc transformatora blokowego wystarczająca.",
+              "skala": null,
+              "skala_rodzaj": null,
+              "wartosc": null,
+              "wzgledny": null
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)",
+              "jednostka_redakcyjna": "wymaganie 5 (decyzja O-53) — moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "bieżący stan programu"
+            },
+            "powody_niepelnosci": [],
+            "przedmiot": {
+              "element_ref": "gen-pv-1",
+              "nazwa_pl": "Instalacja PV 1",
+              "opis_pl": "Tor przyłączenia źródła wytwórczego do sieci SN (dane znamionowe modelu)"
+            },
+            "slad": [],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 5 (decyzja O-53) — moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+              ],
+              "zdanie_pl": "Moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł (Instalacja PV 1) — kryterium spełnione. Wystarczalność mocy transformatora blokowego: Moc transformatora blokowego wystarczająca. (stan wymagany wg wymaganie 5 (decyzja O-53) — moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "DEKLARACJA",
+              "punkt_krytyczny_pl": "Moc transformatora blokowego wystarczająca.",
+              "symbol_latex": "",
+              "wartosc": {
+                "jednostka": "1",
+                "wartosc": 1.0
+              },
+              "wielkosc_pl": "wystarczalność mocy transformatora blokowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": null,
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu)",
+                "wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)"
+              ]
+            }
+          },
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Moc transformatora blokowego wystarczająca.",
+          "wartosc": null,
+          "wniosek_pl": "Moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł (Instalacja PV 1) — kryterium spełnione. Wystarczalność mocy transformatora blokowego: Moc transformatora blokowego wystarczająca. (stan wymagany wg wymaganie 5 (decyzja O-53) — moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”).",
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 5 (decyzja O-53) — moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+            ],
+            "zdanie_pl": "Moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł (Instalacja PV 1) — kryterium spełnione. Wystarczalność mocy transformatora blokowego: Moc transformatora blokowego wystarczająca. (stan wymagany wg wymaganie 5 (decyzja O-53) — moc transformatorów grupy nie mniejsza od mocy wymaganej źródeł „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”)."
+          },
+          "wynik": "SPELNIA"
+        },
+        {
+          "dowod": null,
+          "element_id": "gen-pv-1",
+          "element_nazwa": "Instalacja PV 1 — kaskada prądowa toru — ogniwo kabla SN",
+          "element_rodzaj": "zrodlo",
+          "jednostka": "-",
+          "margines": null,
+          "margines_jednostka": "",
+          "margines_wzor_latex": "",
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "DEKLARACJA",
+              "odniesienie": "application/analyses/raport_zgodnosci.py",
+              "poziom": "DECLARATION",
+              "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Ocena niewykonana",
+              "semantyka": "neutralna"
+            },
+            "kompletnosc_dowodu": "PELNY",
+            "kryterium": {
+              "opis_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: obciążalność długotrwała kabla SN",
+              "relacja": "LOGICZNE",
+              "warunek_latex": "",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "der_sn.kaskada_prad_kabel_brak",
+            "limit": null,
+            "margines": null,
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)",
+              "jednostka_redakcyjna": "wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "bieżący stan programu"
+            },
+            "powody_niepelnosci": [],
+            "przedmiot": {
+              "element_ref": "gen-pv-1",
+              "nazwa_pl": "Instalacja PV 1",
+              "opis_pl": "Tor przyłączenia źródła wytwórczego do sieci SN (dane znamionowe modelu)"
+            },
+            "slad": [],
+            "status_maszynowy": "NIE_OCENIONO",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [
+                "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                "Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)."
+              ],
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej))",
+              "zastrzezenia": [
+                "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+              ],
+              "zdanie_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: obciążalność długotrwała kabla SN (Instalacja PV 1) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+            },
+            "wynik": null,
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": null,
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu)",
+                "wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)"
+              ]
+            }
+          },
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej).",
+          "wartosc": null,
+          "wniosek_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: obciążalność długotrwała kabla SN (Instalacja PV 1) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)."
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej))",
+            "zastrzezenia": [
+              "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+            ],
+            "zdanie_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: obciążalność długotrwała kabla SN (Instalacja PV 1) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+          },
+          "wynik": "BRAK_PODSTAW"
+        },
+        {
+          "dowod": null,
+          "element_id": "gen-pv-1",
+          "element_nazwa": "Instalacja PV 1 — kaskada prądowa toru — ogniwo pola SN",
+          "element_rodzaj": "zrodlo",
+          "jednostka": "-",
+          "margines": null,
+          "margines_jednostka": "",
+          "margines_wzor_latex": "",
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "DEKLARACJA",
+              "odniesienie": "application/analyses/raport_zgodnosci.py",
+              "poziom": "DECLARATION",
+              "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Ocena niewykonana",
+              "semantyka": "neutralna"
+            },
+            "kompletnosc_dowodu": "PELNY",
+            "kryterium": {
+              "opis_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: prąd znamionowy pola SN",
+              "relacja": "LOGICZNE",
+              "warunek_latex": "",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "der_sn.kaskada_prad_pole_brak",
+            "limit": null,
+            "margines": null,
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)",
+              "jednostka_redakcyjna": "wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "bieżący stan programu"
+            },
+            "powody_niepelnosci": [],
+            "przedmiot": {
+              "element_ref": "gen-pv-1",
+              "nazwa_pl": "Instalacja PV 1",
+              "opis_pl": "Tor przyłączenia źródła wytwórczego do sieci SN (dane znamionowe modelu)"
+            },
+            "slad": [],
+            "status_maszynowy": "NIE_OCENIONO",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [
+                "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                "Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN (katalog aparatu głównego nie niesie prądu znamionowego)."
+              ],
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN (katalog aparatu głównego nie niesie prądu znamionowego))",
+              "zastrzezenia": [
+                "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+              ],
+              "zdanie_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: prąd znamionowy pola SN (Instalacja PV 1) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN (katalog aparatu głównego nie niesie prądu znamionowego)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+            },
+            "wynik": null,
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": null,
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu)",
+                "wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)"
+              ]
+            }
+          },
+          "odniesienie": null,
+          "odniesienie_dolne": null,
+          "odniesienie_ostrzegawcze": null,
+          "uwaga_pl": null,
+          "uzasadnienie_pl": "Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN (katalog aparatu głównego nie niesie prądu znamionowego).",
+          "wartosc": null,
+          "wniosek_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: prąd znamionowy pola SN (Instalacja PV 1) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN (katalog aparatu głównego nie niesie prądu znamionowego)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN (katalog aparatu głównego nie niesie prądu znamionowego)."
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN (katalog aparatu głównego nie niesie prądu znamionowego))",
+            "zastrzezenia": [
+              "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+            ],
+            "zdanie_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: prąd znamionowy pola SN (Instalacja PV 1) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN (katalog aparatu głównego nie niesie prądu znamionowego)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+          },
+          "wynik": "BRAK_PODSTAW"
+        }
+      ],
+      "etap": "E3",
+      "grupa": "dobory_toru_zrodla",
+      "jednostka": "-",
+      "kryterium_id": "dobor.tor_der_sn",
+      "liczba_naruszen": 0,
+      "liczba_niejednoznacznych": 0,
+      "liczba_niesprawdzonych": 2,
+      "liczba_ocenionych": 3,
+      "liczba_ostrzezen": 0,
+      "nazwa_pl": "Dobory toru przyłączenia źródła (DER-SN)",
+      "norma_pl": "Walidacje doborowe toru DER-SN (dane z tabliczek)",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "DEKLARACJA",
+          "odniesienie": "application/analyses/raport_zgodnosci.py",
+          "poziom": "DECLARATION",
+          "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "PELNY",
+        "kryterium": {
+          "opis_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: obciążalność długotrwała kabla SN",
+          "relacja": "LOGICZNE",
+          "warunek_latex": "",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "der_sn.kaskada_prad_kabel_brak",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)",
+          "jednostka_redakcyjna": "wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": null,
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [],
+        "przedmiot": {
+          "element_ref": "gen-pv-1",
+          "nazwa_pl": "Instalacja PV 1",
+          "opis_pl": "Tor przyłączenia źródła wytwórczego do sieci SN (dane znamionowe modelu)"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)."
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej))",
+          "zastrzezenia": [
+            "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+          ],
+          "zdanie_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: obciążalność długotrwała kabla SN (Instalacja PV 1) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola).",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": null,
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu)",
+            "wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)"
+          ]
+        }
+      },
+      "powod_kod": null,
+      "powod_pl": null,
+      "run_id": null,
+      "stan": "NIESPRAWDZONE",
+      "symbol": "-",
+      "symbol_latex": "",
+      "warunek": "zgodnosc",
+      "warunek_latex": "",
+      "warunek_pl": "zgodność napięć, mocy TR blokowego i kaskady prądowej",
+      "wielkosc_pl": "Zgodność doboru toru źródła z tabliczkami",
+      "wiodacy_element_id": "gen-pv-1",
+      "wiodacy_opis_pl": "Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej).",
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)."
+        ],
+        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej))",
+        "zastrzezenia": [
+          "Podstawa „Walidacje doborowe toru DER-SN (RECENZJA_DER_SN_DOBORY_2026-07)”, wydanie bieżący stan programu, wymaganie 5b — kaskada prądu znamionowego I_TR ≤ I_z kabla SN ≤ I_n pola SN (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Zakres ważności: Dane znamionowe toru przyłączenia źródła zapisane w modelu w chwili budowy raportu (napięcia szyn, transformator blokowy, kabel SN, aparat pola) — wynik nie obejmuje: obciążalność i spadki napięć w stanie pracy (osobne kryteria analiz rozpływu); wytrzymałość zwarciowa aparatury toru (osobne kryteria analiz zwarciowych)."
+        ],
+        "zdanie_pl": "Kaskada prądu znamionowego toru (I_TR ≤ I_z kabla SN ≤ I_n pola SN) — ogniwo: obciążalność długotrwała kabla SN (Instalacja PV 1) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Kaskada prądowa: pominięto ogniwo obciążalności kabla SN (katalog kabla nie niesie obciążalności długotrwałej)). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+      },
+      "zakres_oceny": "uklad",
+      "zrodlo": "model"
+    }
+  ],
+  "werdykt": "NIESPRAWDZONE",
+  "wyjasnienie": {
+    "czego_brakuje": [
+      "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+      "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+      "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu."
+    ],
+    "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
+    "zastrzezenia": [
+      "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+      "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
+    ],
+    "zdanie_pl": "Obciążenie długotrwałe gałęzi (model sieci przypadku obliczeniowego) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+  },
+  "zakres_poza_automatem": [
+    {
+      "etap": "E6",
+      "kryterium_pl": "Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe)",
+      "powod_pl": "Analiza koordynacji liczy charakterystyki i czasy, ale nie wystawia werdyktu selektywności na poziomie całego modelu — ocena należy do projektanta na ekranie koordynacji."
+    },
+    {
+      "etap": "E4",
+      "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+      "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
+    },
+    {
+      "etap": "E3",
+      "kryterium_pl": "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
+      "powod_pl": "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność wszystkich przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
+    },
+    {
+      "etap": "E3",
+      "kryterium_pl": "Ekonomiczna gęstość prądu przekroju",
+      "powod_pl": "Kryterium niewiążące (optymalizacja kosztowa); brak danych ekonomicznych w modelu, więc ocena byłaby zgadywaniem."
+    }
+  ],
+  "zrodla": [
+    {
+      "aktualny": true,
+      "dostepny": true,
+      "powod_pl": null,
+      "rodzaj": "PF",
+      "run_id": "run-pf-bez-danych",
+      "snapshot_hash": "enm-hash-bez-danych",
+      "wykonano": "2026-09-23T10:00:00+00:00"
+    },
+    {
+      "aktualny": true,
+      "dostepny": true,
+      "powod_pl": null,
+      "rodzaj": "model",
+      "run_id": null,
+      "snapshot_hash": "enm-hash-bez-danych",
+      "wykonano": null
+    }
+  ]
+}

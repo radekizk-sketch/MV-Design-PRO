@@ -43,6 +43,8 @@ import json
 from io import BytesIO
 from typing import Any
 
+from analysis.energy_validation.models import EnergyCheckType
+from analysis.energy_validation.oceny import ocena_pozycji
 from application.analyses.certyfikat_zgodnosci import KOMUNIKAT_BEZ_MODULOW, zbierz_braki
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.grid_strength import _installed_mva_by_bus
@@ -232,6 +234,25 @@ def zbierz_braki_wniosku(
     return braki
 
 
+def _ocena_pozycji_bilansu(
+    item: dict[str, Any] | None, check_type: EnergyCheckType, nazwa_pl: str
+) -> dict[str, Any]:
+    """Rekord K pozycji bilansu (kontrakt werdyktu wyjaśnialnego) — jedno źródło etykiety
+    i wyjaśnienia dokumentu wniosku. Pozycja obecna w walidacji energetycznej niesie rekord
+    buildera; pozycji brak — rekord „ocena niewykonana" tą samą funkcją (brak danych ≠
+    spełnia), a nie słownik kodu statusu."""
+    if item is not None:
+        ocena: dict[str, Any] = item["ocena"]
+        return ocena
+    return ocena_pozycji(
+        check_type=check_type,
+        nazwa_pl=nazwa_pl,
+        wynik=None,
+        limit=None,
+        braki=("pozycja tej kontroli w wyniku walidacji energetycznej biegu rozpływu",),
+    ).model_dump(mode="json")
+
+
 def _bilans_mocy_sekcja(pf_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
     """Zbuduj sekcję bilansu mocy z widoku walidacji energetycznej + snapshotu."""
     view = build_energy_validation_view(pf_run)
@@ -270,12 +291,16 @@ def _bilans_mocy_sekcja(pf_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
             else None
         ),
         "bilans_q_status": reactive.get("status") if reactive else "NOT_COMPUTED",
+        "bilans_q_ocena": _ocena_pozycji_bilansu(
+            reactive, EnergyCheckType.REACTIVE_BALANCE, "węzeł bilansujący"
+        ),
         "straty_pct": (
             round(straty["observed_value"], 4)
             if straty and straty.get("observed_value") is not None
             else None
         ),
         "straty_status": straty.get("status") if straty else "NOT_COMPUTED",
+        "straty_ocena": _ocena_pozycji_bilansu(straty, EnergyCheckType.LOSS_BUDGET, "sieć modelu"),
         "podsumowanie_walidacji": {
             "spelnione": summary.get("pass_count", 0),
             "ostrzezenia": summary.get("warning_count", 0),
@@ -452,14 +477,9 @@ def _linie_zrodel(view: dict[str, Any]) -> list[str]:
     ]
 
 
-def _status_pl(status: str) -> str:
-    """Etykieta polska statusu walidacji energetycznej."""
-    return {
-        "PASS": "spełnia",
-        "WARNING": "ostrzeżenie",
-        "FAIL": "nie spełnia",
-        "NOT_COMPUTED": "brak danych",
-    }.get(status, "stan spoza słownika aplikacji")
+def _ocena_pl(ocena: dict[str, Any]) -> str:
+    """Etykieta i zdanie wyjaśnienia rekordu oceny (z rekordu, bez słownika kodów)."""
+    return f"{ocena['etykieta']['etykieta_pl']}. {ocena['wyjasnienie']['zdanie_pl']}"
 
 
 def _fmt(value: Any, unit: str = "") -> str:
@@ -519,11 +539,11 @@ def render_wniosek_osd_docx(view: dict[str, Any]) -> bytes:
     doc.add_paragraph(
         "Współczynnik mocy w punkcie bilansowym: "
         f"{_fmt(bilans['wspolczynnik_mocy_slack'])}"
-        f" — {_status_pl(bilans['bilans_q_status'])}"
+        f" — {_ocena_pl(bilans['bilans_q_ocena'])}"
     )
     doc.add_paragraph(
         f"Straty sieciowe: {_fmt(bilans['straty_pct'], '%')}"
-        f" — {_status_pl(bilans['straty_status'])}"
+        f" — {_ocena_pl(bilans['straty_ocena'])}"
     )
 
     # Sekcja 2 — zwarcia w punkcie przyłączenia.
@@ -650,11 +670,11 @@ def render_wniosek_pdf(view: dict[str, Any]) -> bytes:
     para(
         "Współczynnik mocy w punkcie bilansowym: "
         f"{_fmt(bilans['wspolczynnik_mocy_slack'])}"
-        f" — {_status_pl(bilans['bilans_q_status'])}"
+        f" — {_ocena_pl(bilans['bilans_q_ocena'])}"
     )
     para(
         f"Straty sieciowe: {_fmt(bilans['straty_pct'], '%')}"
-        f" — {_status_pl(bilans['straty_status'])}"
+        f" — {_ocena_pl(bilans['straty_ocena'])}"
     )
     y -= line_height
 
