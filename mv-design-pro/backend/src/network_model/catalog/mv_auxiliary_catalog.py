@@ -1990,6 +1990,68 @@ def get_all_protection_device_types() -> list[dict]:
                 ),
             },
         },
+        # e²TANGO nowej generacji: pozycje katalogowe WYROBU, bez imputowania
+        # funkcji/nastaw konkretnej konfiguracji. Karta producenta podaje
+        # konfigurowalne wejscie pradowe 1 A / 5 A, a NIE "250 A"/"450 A".
+        # Nie laczyc z analityczna biblioteka dopoki jej profil funkcji i
+        # jednostki zakresow nastaw nie sa potwierdzone dla wariantu.
+        {
+            "id": "EM_E2TANGO_250",
+            "name_pl": "Sterownik polowy Elektrometal e²TANGO-250",
+            "params": {
+                "vendor": "ELEKTROMETAL",
+                "series": "e²TANGO-250",
+                "revision": None,
+                "analytical_library_ref": None,
+                "notes_pl": (
+                    "Rodzina producenta. Wejscia pradowe 1 A lub 5 A (konfigurowalne); "
+                    "wariant S/U, karty rozszerzen, funkcje EAZ i nastawy wymagaja "
+                    "konfiguracji instancji i potwierdzenia DTR. Nie dodawac automatycznie."
+                ),
+                **_device_meta(
+                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
+                    source_reference=(
+                        "Elektrometal Energetyka, e²TANGO-250, K-42.1.8, 10/2025: "
+                        "https://elektrometal-energetyka.pl/wp-content/uploads/2025/10/"
+                        "Karta-katalogowa-e2TANGO-250-K-42.1.8.pdf"
+                    ),
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=(
+                        "Potwierdzono model i wejscie 1/5 A na podstawie karty producenta. "
+                        "Funkcje, nastawy i konfiguracja karty konkretnej sztuki niezweryfikowane."
+                    ),
+                ),
+            },
+        },
+        {
+            "id": "EM_E2TANGO_450",
+            "name_pl": "Sterownik polowy Elektrometal e²TANGO-450",
+            "params": {
+                "vendor": "ELEKTROMETAL",
+                "series": "e²TANGO-450",
+                "revision": None,
+                "analytical_library_ref": None,
+                "notes_pl": (
+                    "Rodzina producenta. Wejscia pradowe 1 A lub 5 A (konfigurowalne); "
+                    "zestaw kart, funkcje EAZ i nastawy wymagaja konfiguracji instancji. "
+                    "Profil analityczny EM_E2TANGO_450 istnieje, ale zakresy nastaw "
+                    "nie maja potwierdzonej jednostki i nie sa tu automatycznie laczone."
+                ),
+                **_device_meta(
+                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
+                    source_reference=(
+                        "Elektrometal Energetyka, e²TANGO-450, K-43.1.7, 07/2025: "
+                        "https://elektrometal-energetyka.pl/wp-content/uploads/2025/07/"
+                        "Karta-katalogowa-e2TANGO-450-K-43.1.7.pdf"
+                    ),
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=(
+                        "Potwierdzono model i wejscie 1/5 A na podstawie karty producenta. "
+                        "Katalog analityczny nie stanowi dowodu na aktywne funkcje urzadzenia."
+                    ),
+                ),
+            },
+        },
         {
             "id": "EM_ETANGO_400_V0",
             "name_pl": "Przekaźnik Elektrometal e2TANGO-400",
