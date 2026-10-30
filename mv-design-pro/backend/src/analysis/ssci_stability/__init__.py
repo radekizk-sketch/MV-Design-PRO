@@ -26,6 +26,7 @@ from analysis.ssci_stability.models import (
     WhiteBoxStep,
     compute_ssci_stability_id,
     ocena_ssci_niewykonana,
+    rekord_ssci_niewykonany,
     worst_field_quality,
 )
 
@@ -45,5 +46,6 @@ __all__ = [
     "WhiteBoxStep",
     "compute_ssci_stability_id",
     "ocena_ssci_niewykonana",
+    "rekord_ssci_niewykonany",
     "worst_field_quality",
 ]

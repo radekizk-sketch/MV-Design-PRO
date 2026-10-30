@@ -578,7 +578,24 @@
           ],
           "why_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar.",
           "worst_phase_margin_deg": 0.403,
-          "worst_phase_margin_f_hz": 47.7044
+          "worst_phase_margin_f_hz": 47.7044,
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+              "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+              "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+              "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+              "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
+              "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+            ],
+            "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
+            "zastrzezenia": [
+              "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
+              "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+              "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+            ],
+            "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
+          }
         }
       },
       "wynik": {

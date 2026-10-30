@@ -31,9 +31,10 @@ from analysis.ssci_stability.models import (
     SsciStabilityView,
     WhiteBoxStep,
     compute_ssci_stability_id,
-    ocena_ssci_niewykonana,
+    rekord_ssci_niewykonany,
     worst_field_quality,
 )
+from application.ocena_niewykonana import rekord_json
 
 
 def _round(value: float, digits: int = 4) -> float:
@@ -126,20 +127,22 @@ class SsciStabilityBuilder:
         missing = list(solver_payload.get("missing_fields") or ())
         # Brak tablic impedancji: ocena niewykonana z brakiem tablic i brakami danych
         # nazwanymi przez solver — nigdy „brak ryzyka".
-        ocena = ocena_ssci_niewykonana(
+        rekord = rekord_ssci_niewykonany(
             converter_ref=solver_payload.get("converter_ref"),
             bus_ref=solver_payload.get("bus_ref"),
             nazwy=nazwy,
             tablice_obecne=False,
             braki_danych=missing,
         )
+        ocena = rekord_json(rekord)
         return SsciStabilityVerdict(
             converter_ref=solver_payload.get("converter_ref"),
             bus_ref=solver_payload.get("bus_ref"),
             verdict=VERDICT_NIE_OCENIONO,
             is_risk=None,
-            why_pl=ocena["wyjasnienie"]["zdanie_pl"],
+            why_pl=rekord.wyjasnienie.zdanie_pl,
             ocena=ocena,
+            wyjasnienie=rekord.wyjasnienie,
             max_minor_loop_gain=None,
             has_magnitude_crossover=False,
             gain_crossover=None,
@@ -189,12 +192,13 @@ class SsciStabilityBuilder:
         # się w werdykt: Z_grid(f) solvera jest liczone bez przekładni transformatora.
         # Częstotliwość najgorszego marginesu w paśmie |L| ≥ 1 — przy braku przecięcia brak.
         offending = worst_pm_f if has_crossover else None
-        ocena = ocena_ssci_niewykonana(
+        rekord = rekord_ssci_niewykonany(
             converter_ref=solver_payload.get("converter_ref"),
             bus_ref=solver_payload.get("bus_ref"),
             nazwy=nazwy,
             tablice_obecne=True,
         )
+        ocena = rekord_json(rekord)
 
         white_box = self._white_box(
             max_mag=max_mag,
@@ -211,8 +215,9 @@ class SsciStabilityBuilder:
             bus_ref=solver_payload.get("bus_ref"),
             verdict=VERDICT_NIE_OCENIONO,
             is_risk=None,
-            why_pl=ocena["wyjasnienie"]["zdanie_pl"],
+            why_pl=rekord.wyjasnienie.zdanie_pl,
             ocena=ocena,
+            wyjasnienie=rekord.wyjasnienie,
             max_minor_loop_gain=_round(max_mag),
             has_magnitude_crossover=has_crossover,
             gain_crossover=gain_crossover,

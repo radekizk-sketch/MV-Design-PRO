@@ -3,7 +3,7 @@
 Gałąź `claude/mv-design-pro-twin-audit-u4lhy0-werdykt-migracja`, drzewo `/home/user/wt-werdykt`.
 Cel karty: lista `scripts/werdykt_wyjasnialny_allowlist.json` bez wpisów MIGRACJA (strażnik
 `scripts/werdykt_wyjasnialny_guard.py`). Stan bazowy karty (`b1e677ced`): MIGRACJA 190,
-ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 97, ENUM_WEWNETRZNY 51** (strażnik RC=0).
+ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 95, ENUM_WEWNETRZNY 51** (strażnik RC=0).
 
 ## Domeny
 
@@ -14,7 +14,7 @@ ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 97, ENUM_WEWNETRZNY 51** (strażnik R
 | 3. Werdykt projektowy, raport zgodności DER-SN, ekran oceny, wniosek OSD | 11 | 0 | zmigrowane (commit grupy 3) |
 | 4. Ocena normatywna, wrażliwość, profil napięć | 7 | 0 | zmigrowane — w commicie WIP (zweryfikowane celowo: pytest 5834 zielone przed naprawami strażników; po naprawach bieg zbiorczy przerwany) |
 | 5. Wzorce odniesienia A i C (+ API, PDF/DOCX) | 18 | 0 | zmigrowane — w commicie WIP (testy wzorców i API 56+175 zielone, 4 iniekcje czerwone bez naprawy) |
-| 6. Modele analiz: siła sieci B11, adekwatność Q B10, SSCI B12, wgląd zabezpieczeń B7 | 8 | 3 | siła sieci B11 zmigrowana (rekord K SCR na węzeł i WSCR, `verdict`/`is_weak` projekcją, front pulpitu OZE i kontekst sekwencji FRT z etykietą i kartą rekordu); adekwatność Q B10 zmigrowana (rekord W: rezerwy w górę/w dół każdego źródła wobec ε i pasmo napięcia węzłów; nasycenie i naruszenie projekcją rekordów; brak danych źródła ≠ wystarczająca); B12, B7 w toku |
+| 6. Modele analiz: siła sieci B11, adekwatność Q B10, SSCI B12, wgląd zabezpieczeń B7 | 8 | 1 | siła sieci B11 zmigrowana (rekord K SCR na węzeł i WSCR, `verdict`/`is_weak` projekcją, front pulpitu OZE i kontekst sekwencji FRT z etykietą i kartą rekordu); adekwatność Q B10 zmigrowana (rekord W: rezerwy w górę/w dół każdego źródła wobec ε i pasmo napięcia węzłów; nasycenie i naruszenie projekcją rekordów; brak danych źródła ≠ wystarczająca); SSCI B12 zmigrowana (wyjaśnienie rekordu `NIE_OCENIONO` przy polu werdyktu, model i ładunek HTTP); B7 `ProtectionInsightItem.selectivity_status` ZATRZYMANE do decyzji architekta — klasa bez producenta w produkcji (wejście zawsze `None` w `pokrycie_analiz`/`wrazliwosc_rozplywu`), a ocena pokrycia odejmuje 5 pkt za „Brak analizy zabezpieczeń”, której nic nie dostarcza |
 | 7. nN / SWZ (C25, C27, C29, C30, arkusz obwodów, E75, E77, fieldLabels) | 22 | 22 | nietknięte |
 | 8. Proof Engine / audyt (C41, C44, C48, A36, sc_symmetrical/asymmetrical) | 19 | 19 | nietknięte |
 | 9. Frontend pozostały (D18…D72, E20…E62, SLD v2 G1–G9, NnSwitchgearCard) | 38 | 32 | nietknięte poza wpisami usuniętymi razem z grupami 2–4 |

@@ -51,8 +51,10 @@ from werdykt import (
     ClaimKind,
     EvidenceTier,
     FieldQuality,
+    OcenaKryterium,
     PodstawaWymagania,
     Przedmiot,
+    WyjasnienieWerdyktu,
     ZakresWaznosci,
 )
 
@@ -213,6 +215,26 @@ def ocena_ssci_niewykonana(
     tablice_obecne: bool,
     braki_danych: Sequence[str] = (),
 ) -> dict[str, Any]:
+    """Rekord ``NIE_OCENIONO`` analizy SSCI w postaci JSON odpowiedzi API."""
+    return rekord_json(
+        rekord_ssci_niewykonany(
+            converter_ref=converter_ref,
+            bus_ref=bus_ref,
+            nazwy=nazwy,
+            tablice_obecne=tablice_obecne,
+            braki_danych=braki_danych,
+        )
+    )
+
+
+def rekord_ssci_niewykonany(
+    *,
+    converter_ref: str | None,
+    bus_ref: str | None,
+    nazwy: Mapping[str, str],
+    tablice_obecne: bool,
+    braki_danych: Sequence[str] = (),
+) -> OcenaKryterium:
     """Rekord ``NIE_OCENIONO`` (``werdykt.OcenaKryterium``) analizy SSCI.
 
     ``nazwy`` — indeks ``ref_id -> nazwa`` modelu biegu: przedmiot nazywa przekształtnik
@@ -229,52 +251,48 @@ def ocena_ssci_niewykonana(
         *(_opis_braku_danych(pole) for pole in dict.fromkeys(braki_danych)),
         *BRAKI_OCENY_SSCI,
     )
-    return rekord_json(
-        ocena_niewykonana(
-            kryterium_id=f"ssci.nyquist.{converter_ref or 'nie_wskazano'}",
-            przedmiot=Przedmiot(
-                element_ref=converter_ref,
-                nazwa_pl=(
-                    "Przekształtnik "
-                    + nazwa_po_identyfikatorze(
-                        converter_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU
-                    )
-                    if converter_ref
-                    else "Przekształtnik (nie wskazano)"
-                ),
-                opis_pl=(
-                    "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny "
-                    + nazwa_po_identyfikatorze(bus_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
-                    if bus_ref
-                    else "Interakcja podsynchroniczna przekształtnika z siecią"
-                ),
+    return ocena_niewykonana(
+        kryterium_id=f"ssci.nyquist.{converter_ref or 'nie_wskazano'}",
+        przedmiot=Przedmiot(
+            element_ref=converter_ref,
+            nazwa_pl=(
+                "Przekształtnik "
+                + nazwa_po_identyfikatorze(converter_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
+                if converter_ref
+                else "Przekształtnik (nie wskazano)"
             ),
-            opis_kryterium_pl=(
-                "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne "
-                "Nyquista)"
+            opis_pl=(
+                "Interakcja podsynchroniczna przekształtnika z siecią widzianą z szyny "
+                + nazwa_po_identyfikatorze(bus_ref, indeks=nazwy, spoza_modelu=SPOZA_MODELU)
+                if bus_ref
+                else "Interakcja podsynchroniczna przekształtnika z siecią"
             ),
-            podstawa=PodstawaWymagania(
-                rodzaj="NIEUSTALONA",
-                dokument="Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)",
-                status="NIEUSTALONE",
-                uwagi_pl="kryterium z literatury — brak wymagania normatywnego operatora dla SSCI",
-            ),
-            powod_stosowalnosci_pl=(
-                "przekształtnik przyłączony do sieci modelu (źródło przekształtnikowe)"
-            ),
-            rodzaj_twierdzenia=ClaimKind.STATIC_CALCULATION,
-            poziom=EvidenceTier.UNVALIDATED_MODEL,
-            status_modelu="UNVALIDATED_MODEL",
-            zakres_waznosci=ZakresWaznosci(
-                opis_pl="Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
-                wykluczenia=("impedancja sieci z przekładnią transformatora",),
-            ),
-            powod_braku_niepewnosci_pl=(
-                "brak wielkości rozstrzygającej — metryki L(f) są materiałem audytowym, więc "
-                "niepewność wyniku nie dotyczy"
-            ),
-            czego_brakuje=braki,
-        )
+        ),
+        opis_kryterium_pl=(
+            "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne "
+            "Nyquista)"
+        ),
+        podstawa=PodstawaWymagania(
+            rodzaj="NIEUSTALONA",
+            dokument="Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)",
+            status="NIEUSTALONE",
+            uwagi_pl="kryterium z literatury — brak wymagania normatywnego operatora dla SSCI",
+        ),
+        powod_stosowalnosci_pl=(
+            "przekształtnik przyłączony do sieci modelu (źródło przekształtnikowe)"
+        ),
+        rodzaj_twierdzenia=ClaimKind.STATIC_CALCULATION,
+        poziom=EvidenceTier.UNVALIDATED_MODEL,
+        status_modelu="UNVALIDATED_MODEL",
+        zakres_waznosci=ZakresWaznosci(
+            opis_pl="Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+            wykluczenia=("impedancja sieci z przekładnią transformatora",),
+        ),
+        powod_braku_niepewnosci_pl=(
+            "brak wielkości rozstrzygającej — metryki L(f) są materiałem audytowym, więc "
+            "niepewność wyniku nie dotyczy"
+        ),
+        czego_brakuje=braki,
     )
 
 
@@ -290,6 +308,10 @@ class SsciStabilityVerdict:
     why_pl: str
     #: Rekord `NIE_OCENIONO` (``werdykt.OcenaKryterium`` w postaci JSON).
     ocena: dict[str, Any]
+    #: Wyjaśnienie rekordu ``ocena`` (kontrakt werdyktu wyjaśnialnego) — ``verdict`` i
+    #: ``is_risk`` nie są komunikatem: jedyna ich wartość („nie oceniono”, ``None``) jest
+    #: projekcją rekordu ``NIE_OCENIONO``.
+    wyjasnienie: WyjasnienieWerdyktu
     # --- metryki kryterium impedancyjnego ---
     max_minor_loop_gain: float | None
     has_magnitude_crossover: bool

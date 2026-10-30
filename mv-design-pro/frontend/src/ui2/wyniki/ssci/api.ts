@@ -114,6 +114,8 @@ export interface WerdyktSsci {
   readonly is_risk: boolean | null;
   readonly why_pl: string;
   readonly ocena: RekordOcenySsci;
+  /** Wyjaśnienie rekordu `ocena` (kontrakt werdyktu) — `verdict`/`is_risk` to jego projekcja. */
+  readonly wyjasnienie: RekordOcenySsci['wyjasnienie'];
   readonly max_minor_loop_gain: number | null;
   readonly has_magnitude_crossover: boolean;
   readonly gain_crossover: PunktPrzeciecia | null;

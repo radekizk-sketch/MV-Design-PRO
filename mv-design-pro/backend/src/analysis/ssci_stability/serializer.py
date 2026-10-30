@@ -60,6 +60,7 @@ def verdict_to_dict(verdict: SsciStabilityVerdict) -> dict[str, Any]:
         "is_risk": verdict.is_risk,
         "why_pl": verdict.why_pl,
         "ocena": dict(verdict.ocena),
+        "wyjasnienie": verdict.wyjasnienie.model_dump(mode="json"),
         "max_minor_loop_gain": (
             float(verdict.max_minor_loop_gain) if verdict.max_minor_loop_gain is not None else None
         ),

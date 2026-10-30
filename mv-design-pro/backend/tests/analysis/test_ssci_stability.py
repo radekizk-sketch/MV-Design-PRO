@@ -32,6 +32,7 @@ from analysis.ssci_stability import (
     SsciStabilityBuilder,
 )
 from analysis.ssci_stability.models import BRAK_TABLIC_SSCI_PL, BRAKI_OCENY_SSCI
+from analysis.ssci_stability.serializer import verdict_to_dict
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.provenance import CardFieldStatus
@@ -111,6 +112,10 @@ def _sprawdz_bez_werdyktu(v) -> None:
     assert v.is_risk is None
     assert v.ocena["status_maszynowy"] == "NIE_OCENIONO"
     assert v.why_pl == v.ocena["wyjasnienie"]["zdanie_pl"]
+    # Kontrakt werdyktu wyjaśnialnego (karta WERDYKT-MIGRACJA-190): wyjaśnienie pola werdyktu
+    # to wyjaśnienie rekordu — w modelu i w ładunku HTTP.
+    assert v.wyjasnienie.model_dump(mode="json") == v.ocena["wyjasnienie"]
+    assert verdict_to_dict(v)["wyjasnienie"] == v.ocena["wyjasnienie"]
     for brak in BRAKI_OCENY_SSCI:
         assert brak in v.ocena["wyjasnienie"]["czego_brakuje"]
 
