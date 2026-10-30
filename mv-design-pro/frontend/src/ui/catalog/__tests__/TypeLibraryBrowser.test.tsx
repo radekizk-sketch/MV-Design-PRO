@@ -22,6 +22,7 @@ const TAB_LABELS = [
   'Typy obciążeń',
   'Typy przekładników prądowych',
   'Typy przekładników napięciowych',
+  'Przekładniki Ferrantiego 3I₀',
   'Typy przekładników pomiarowych',
   'Typy falowników źródeł fotowoltaicznych',
   'Typy falowników magazynów energii',
@@ -279,8 +280,18 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       burden_va: 30,
     },
   ],
-  // Kategoria łączy CT+VT (dług V12T-018): `fetchTypesByCategory` zwraca
-  // `[...CTCatalogType, ...VTCatalogType]` (`api.ts`), więc fixture niesie
+  FERRANTI: [{
+    id: 'ferranti-se-csh120',
+    name: 'Schneider Electric CSH120 – czujnik 3I₀',
+    manufacturer: 'Schneider Electric',
+    model: 'CSH120',
+    measurement_kind: 'ZERO_SEQUENCE_3I0',
+    turns_ratio: '1/470',
+    construction: 'CLOSED_RING',
+    window_diameter_mm: 120,
+  }],
+  // Kategoria łączy CT+VT+Ferranti (dług V12T-018): `fetchTypesByCategory` zwraca
+  // `[...CTCatalogType, ...VTCatalogType, ...FerrantiCatalogType]` (`api.ts`), więc fixture niesie
   // rekordy w KSZTAŁCIE realnego dostawcy, nie zmyślony wspólny typ.
   MEASUREMENT_TRANSFORMER: [
     {
