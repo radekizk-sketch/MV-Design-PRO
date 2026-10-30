@@ -1386,3 +1386,14 @@ trzymana > 1 h). Biegi końcowe na drzewie zatwierdzonym: `tests/golden` + `test
 celowany backendu, `guardy_z_ci`, e2e `v126-okna-zrzuty`, `v126-jezyk-screenshot`,
 `dowody-flow-ekspert-screenshot`, `zwarcie-przez-impedancje-przejscia` oraz
 `ZRZUTY_DO_DOKUMENTACJI=1` `doziemienie-slad-zrzuty-screenshot` (skrypt `bieg.sh`).
+**Bieg końcowy, etap `tests/golden` + `tests/enm` (13:02–13:12): 1 failed, 7349 passed.**
+Czerwony `test_nazwy_pol_sa_slowami_frontu` — etykiety ZIP frontu niosą wzory (`$a_P$`), a nazwy
+pól w komunikatach operacji backendu są tekstem. Naprawa u źródła testu: etykieta frontu jest
+porównywana w postaci tekstowej (`_odczyt_bez_wzorow`: ograniczniki i klamry znikają, indeks po
+podkreślniku; segment z poleceniem LaTeX jawnie się rozjeżdża). Przy okazji wykryta klasa
+„pierwsze trafienie”: `bus_ref` ma w `akademickie/parametry.ts` trzy etykiety (`POLA_UZIOMU`,
+`POLA_SILNIKA`, `POLA_ODBIORCOW`), a parser brał pierwszą — silnik był sprawdzany względem etykiety
+uziomu. Parser zwraca teraz `NIEJEDNOZNACZNA` przy kilku różnych etykietach tego samego klucza;
+wpisy słownika wskazują stałą (`plik.ts STALA.klucz`: 25 wpisów uziomu i silnika, `feeder_ref`
+w `ODBIOR_STRINGS` — `ODBIOR_SN_STRINGS` ma tę samą etykietę z inną treścią). Iniekcja (silnik
+bez stałej, nazwa uziomu) — czerwień; plik testu 106 passed.
