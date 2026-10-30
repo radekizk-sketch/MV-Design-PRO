@@ -303,6 +303,10 @@ export function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JS
           />
         </>
       )}
+      {/* Pion odgałęzienia od styku stałego strony ziemi do najdłuższej kreski ziemi — ziemia wisi
+          na końcu pionu, pod stykiem, skierowana w dół (decyzja właściciela 2026-10-30, test klasy
+          `ui/sld/v3/symbols/__tests__/kierunekZiemi.test.tsx`). */}
+      <line x1={branchEndX} y1={cy + ES_BRANCH_LEN * 0.45} x2={branchEndX} y2={groundTopY + ES_BRANCH_LEN * 0.6} stroke={stroke} strokeWidth={sw} />
       {/* Trójkąt ziemi (3 poziome kreski) */}
       <line x1={branchEndX - 3.5} y1={groundTopY + ES_BRANCH_LEN * 0.6} x2={branchEndX + 3.5} y2={groundTopY + ES_BRANCH_LEN * 0.6} stroke={stroke} strokeWidth={sw} />
       <line x1={branchEndX - 2.5} y1={groundTopY + ES_BRANCH_LEN * 0.85} x2={branchEndX + 2.5} y2={groundTopY + ES_BRANCH_LEN * 0.85} stroke={stroke} strokeWidth={sw} />

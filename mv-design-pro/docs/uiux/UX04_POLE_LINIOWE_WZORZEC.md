@@ -1528,8 +1528,16 @@ przepisane na układ kafla. Kreska piktogramu kafla stała w świecie (`glyphs.t
 kompensacja kamery zostaje dla przewodów — bez tego margines i odstęp od noża łamały się na LOD1
 (iniekcja: 99 czerwonych).
 
-**W toku (polecenia sesji głównej 2026-10-30).** (1) Detektor kierunku ziemi w całej klasie glifów
-(v3, QET, CAD, v2, SVG kanoniczne). (2) Dokument: tabela rozmiarów znacznika, „Wzorzec HMI
+Detektor kierunku ziemi w całej klasie glifów (`symbols/__tests__/kierunekZiemi.test.tsx`, 76
+zielonych): inwentarz wyprowadzany z rysunku i porównywany z deklarowanym w obie strony (kafle QET
+Q1/Q5/Q8, `earthSwitch`, `neutralEarthing` ×4, `capacitorBank` w gwieździe uziemionej, `cad.uziemnik`,
+trzy symbole v2 harnessów; SVG kanoniczne bez konsumenta), iloczyn wpis × stan × motyw × LOD1/LOD2,
+iniekcje (ziemia w górę, na boku, nad kotwicą, poza osią, bez pionu). Wykryte i naprawione u źródła
+dwa defekty: punkt neutralny uziemiony bezpośrednio miał przerwę toru 8 → 18 j. (wyglądał jak sieć
+izolowana; `glyphs.tsx::NeutralEarthingGlyph`), uziemnik v2 miał ziemię odsuniętą od pionu
+odgałęzienia (`GpzApparatusSymbols.tsx::ApparatusEarthingSwitch`) — cofnięcie poprawek: 3 czerwone.
+
+**W toku (polecenia sesji głównej 2026-10-30).** (2) Dokument: tabela rozmiarów znacznika, „Wzorzec HMI
 e²TANGO — wnioski", tabela stan → kolor → geometria (§11.13), luka modelu członu wysuwnego, wpis
 rejestru konfliktów o kresce piktogramu. (3) Zrzuty ux04 i tablica rodzajów × stanów w obu
 motywach. (4) Przekładnik wieloprzekładniowy — wybrany zaczep w modelu i u konsumentów. (5) Decyzje
@@ -1538,4 +1546,4 @@ motywach. (4) Przekładnik wieloprzekładniowy — wybrany zaczep w modelu i u k
 **Znane czerwone.** `scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` (2 — wariant Z.10 bez
 przekładnika Ferrantiego: oznaczenie P1 znika z warstwy etykiet) — naprawa w pkt (5).
 
-**Pierwszy krok następcy.** Pkt (1): detektor kierunku ziemi.
+**Pierwszy krok następcy.** Pkt (2): dokument i wpis rejestru konfliktów.

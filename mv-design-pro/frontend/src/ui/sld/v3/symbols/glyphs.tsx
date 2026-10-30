@@ -462,6 +462,21 @@ export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
           strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
         />
       )}
+      {/* Uziemienie bezpośrednie = ciągłe połączenie zacisku z uziomem w miejscu rezystora albo
+          dławika. Bez tej kreski tor miał przerwę 8 → 18 i wyglądał jak sieć izolowana — jedyny
+          wariant, w którym przerwa jest treścią symbolu (`symbols/__tests__/kierunekZiemi.test.tsx`,
+          predykat „przerwa ⇔ izolowana"). */}
+      {kind === 'direct' && (
+        <line
+          x1={8}
+          y1={8}
+          x2={8}
+          y2={18}
+          stroke={stroke(props)}
+          strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+          data-tor-uziemienia="bezposredni"
+        />
+      )}
       {!izolowana && (
         <line x1={8} y1={18} x2={8} y2={21} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       )}
