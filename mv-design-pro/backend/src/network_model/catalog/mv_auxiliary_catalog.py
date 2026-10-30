@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .mv_converter_catalog import ZRODLO_MODELU_REFERENCYJNEGO
+from .lv_cable_nkt import get_all_nkt_lv_cable_types
 
 # Karta NAPRAWA-A (§0.1): dane żyły powrotnej PE/PEN dla WSZYSTKICH 17 pozycji
 # kab_nn_* — brakowały od P0.2 (`return_conductor_r_ohm_per_km_20c`/
@@ -512,7 +513,7 @@ def get_all_lv_cable_types() -> list[dict]:
                 "verification_note": _RETURN_CONDUCTOR_NOTE_NN,
             },
         },
-    ]
+    ] + get_all_nkt_lv_cable_types()
 
 
 def get_all_load_types() -> list[dict]:
