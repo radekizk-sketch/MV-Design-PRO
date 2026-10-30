@@ -196,7 +196,7 @@ def get_all_project_reference_vt_types() -> list[dict[str, Any]]:
                 {"index": 4, "role": "RESIDUAL_3U0", "consumer": "e2TANGO U0",
                  "rated_voltage_v": 100.0 / 3.0, "accuracy_class": "3P",
                  "burden_va_min": 0.0, "burden_va_max": 5.0,
-                 "connection": "OPEN_DELTA_THREE_PHASE_BANK"},
+                 "connection": "TO_CONFIRM"},
             ],
             **_project_meta(
                 WIOSKA_SOURCE,
@@ -204,8 +204,8 @@ def get_all_project_reference_vt_types() -> list[dict[str, Any]]:
                 "I 0–7,5VA kl.0,2 UP; II 0–5VA kl.0,2 ND45; "
                 "III 0–5VA kl.0,2 e2TANGO UL; "
                 "IV 0–5VA kl.3P e2TANGO U0. "
-                "Czwarte uzwojenie ma 0,1/3 kV i służy do 3U0; "
-                "nie wolno utożsamiać go z trzecim uzwojeniem 0,1/√3. "
+                "Czwarte uzwojenie ma 0,1/3 kV i służy do 3U0. "
+                "Nie utożsamiać go z uzwojeniem 0,1/√3. Schemat " "połączeń wtórnych (otwarty trójkąt) należy osobno potwierdzić; "
                 "Um, Fv i obciążalność łączną wymagają DTR "
                 "konkretnego wykonania TESAR."
             ),
