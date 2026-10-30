@@ -63,7 +63,7 @@ def test_wioska_tesar_3_rdzenie_40_5_5_5_i_cztery_uzwojenia_vt() -> None:
     assert [w["burden_va_max"] for w in windings] == [7.5, 5.0, 5.0, 5.0]
     assert windings[3]["role"] == "RESIDUAL_3U0"
     assert isclose(windings[3]["rated_voltage_v"], 100 / 3)
-    assert windings[3]["connection"] == "OPEN_DELTA_THREE_PHASE_BANK"
+    assert windings[3]["connection"] == "TO_CONFIRM"
     assert windings[2]["role"] == "LOCAL_OR_PROTECTION"
     assert VTType.from_dict(vt).to_dict() == vt
     assert len(repo.vt_types) == 38
