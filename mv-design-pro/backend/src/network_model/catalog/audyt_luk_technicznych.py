@@ -209,6 +209,33 @@ def ocena_pozycji(rodzina: str, obj: object) -> list[Luka]:
             dodaj("k_sc", "BRAK_TECHNICZNY",
                   "Brak zadeklarowanego wkładu zwarciowego przekształtnika")
 
+    # W starych rekordach 0 bywa wartością zastępczą: samo is-not-None
+    # nie dowodzi fizycznej kompletności. Osobna kategoria do sprawdzenia,
+    # nie jest automatycznie równoznaczna z brakiem ani nową blokadą.
+    zero_niedopuszczalne = {
+        "cable_types": ("r_ohm_per_km", "rated_current_a",
+                        "voltage_rating_kv", "cross_section_mm2"),
+        "line_types": ("r_ohm_per_km", "rated_current_a",
+                       "voltage_rating_kv", "cross_section_mm2"),
+        "transformer_types": ("rated_power_mva", "voltage_hv_kv",
+                              "voltage_lv_kv", "uk_percent"),
+        "ct_types": ("ratio_primary_a", "ratio_secondary_a"),
+        "vt_types": ("ratio_primary_v", "ratio_secondary_v"),
+        "pv_inverter_types": ("s_n_kva", "p_max_kw", "un_kv"),
+        "bess_inverter_types": ("p_charge_kw", "p_discharge_kw",
+                                "e_kwh", "un_kv"),
+    }
+    for pole in zero_niedopuszczalne.get(rodzina, ()):
+        if pole in widziane:
+            continue
+        wartosc = getattr(obj, pole, None)
+        if isinstance(wartosc, (float, int)) and not isinstance(wartosc, bool) and wartosc == 0:
+            braki.append(Luka(rodzina, typ_id, pole,
+                              "ZERO_DO_WERYFIKACJI",
+                              ANALIZY.get(pole, "dobór"),
+                              "Zerowa wartość znamionowa nie opisuje "
+                              "rzeczywistego wyrobu — sprawdź źródło"))
+
     return braki
 
 
@@ -251,7 +278,8 @@ def zbuduj_raport_luk_technicznych(
         "liczba_pozycji": sum(liczby.values()),
         "rodziny": liczby,
         "statusy": statusy,
-        "liczba_pustych_pol": len(wyniki),
+        "liczba_pustych_pol": sum(r.rodzaj in ("BRAK_TECHNICZNY", "DANE_PROJEKTU") for r in wyniki),
+        "liczba_zerowych_do_weryfikacji": sum(r.rodzaj == "ZERO_DO_WERYFIKACJI" for r in wyniki),
         "liczba_brakow_technicznych": sum(r.rodzaj == "BRAK_TECHNICZNY" for r in wyniki),
         "liczba_danych_projektu": sum(r.rodzaj == "DANE_PROJEKTU" for r in wyniki),
         "macierz": macierz,
