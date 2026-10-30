@@ -2,12 +2,47 @@
 
 ## Wynik
 
-Na bazie PR #509 wprowadzono **49 źródłowych rodzin 12 producentów**,
-**3 dodatkowe identyfikowalne wyroby VT ESITAS**. Razem w istniejącym
-katalogu CT/VT: **68 CT i 31 VT**; osobny katalog Ferranti: 5 typów
-z wcześniejszego etapu PR #509. **49 rodzin nie jest 49 zamawialnymi
+Na bazie PR #509 wprowadzono **49 źródłowych rodzin 15 producentów**,
+**3 zidentyfikowane kody VT ESITAS, 2 wykonania CT ZWARPOL i 6 konfiguracji VT RITZ**. Razem w istniejącym
+katalogu CT/VT: **70 CT i 37 VT**; osobny katalog Ferranti: 5 typów
+z wcześniejszego etapu PR #509. **57 rodzin nie jest 49 zamawialnymi
 typami przekładników**; nie mają wymaganych kompletów przekładnia +
 klasa + moc + rdzenie + Ith + poziom izolacji jednego konkretnego SKU.
+
+### Kolejne udokumentowane produkty i serie (rozbudowa)
+
+- **ZWARPOL, Warszawa** — dwa rzeczywiste wykonania CT JSGO-2a i JSGO-2b
+  opisane przez producenta w dostawie 2021: 1500//5/5 A (rdzenie 30 VA
+  0,2S FS5 i 120 VA 5P20) oraz 1500//5/0,625 A (30 VA 5P10
+  i 15 VA 5P150). Źródło: https://www.zwarpol.com/przekladnik-pradowy-jsgo-2a-i-jsgo-2b/
+  Nie podawano nieopublikowanych Ith, Idyn, Um ani Rct.
+- **RITZ, VES 12 / 17,5 / 24** — sześć konfigurowalnych VT na 10/15/20 kV
+  z 100/√3 V i klasami 0,2 przy 20 VA albo 0,5 przy 50 VA; Um odpowiednio
+  12/17,5/24 kV. Z tabeli VES na **s. 27**, bez dopisywania 3U₀ czy
+  współczynnika napięciowego bez konkretnej karty:
+  https://ritz-international.com/wp-content/uploads/RITZ-medium_voltage_instrument_transformers_standard_EN-1-1.pdf
+- **TESAR Polska** — rodziny **AD11 CT** (5–2500 A, Um do 24 kV) i **FD11 VT**
+  (100/√3 V, opcjonalne 100/3 V). Sam zakres rodzinny nie potwierdza
+  indywidualnego ALF, FS, Ith i napięcia resztkowego:
+  https://nowa.stb.com.pl/katalogi/TESARKATALOG.pdf
+- **KPB Intra Polska** — dołączono rodzinę **CTSO 25** napowietrzną
+  (5–600 A, Um 25 kV, rdzenie 1–2, FS/ALF i Ith zakresowo).
+  https://intrapolska.pl/uploads/produkt_files/k_kat_ctso_25.pdf
+- **KONČAR** — potwierdzone rodziny żywicznych CT i VT SN.
+  Katalog producenta obejmuje sieci 3,6–52 kV; nazwa rodziny bez karty
+  wykonania nie nadaje się do obliczeń:
+  https://koncar.hr/en/koncar-instrument-transformers
+- **POLCONTACT WARSZAWA JK24 D60** — krajowa rodzina CT **fazowego na
+  pojedynczy kabel SN** (nie Ferranti), historyczne wykonania 0,5 FS10
+  i zabezpieczeniowe 10P10. Nie jest automatycznie zgodna z
+  nowymi wymaganiami 0,2S FS5 ENEA:
+  https://www.polcontact-warszawa.pl/files/Przekladniki%20pradowe%20JK%2024/1283697870/lib/1.pdf
+
+**Wszystkie 57 rodzin pozostają tylko do przeglądania i konfiguracji**;
+w istniejącym katalogu obliczeniowym są osobno **70 CT i 37 VT**.
+Odmienne parametry z kilku produktów nie są łączone w pozornie pełny
+typ urządzenia. Szczególnie wtórne 0,625 A CT i 100/3 V VT nie są
+zamieniane na domyślne 1/5 A ani 100/√3 V.
 
 ### Kluczowi producenci i źródła w Polsce
 
@@ -55,8 +90,8 @@ kompatybilności wejścia, czułości i odwzorowania sygnału.
 
 ### Wdrożenie
 
-- `GET /api/catalog/instrument-transformer-families`: 49 rodzin, struktura z proweniencją i flagą `MANUFACTURER_FAMILY_NOT_SKU`, brak możliwości przypisania jako urządzenia.
-- `GET /api/catalog/vt-types`: 31 pozycji, w tym 3 kodowe ESITAS.
+- `GET /api/catalog/instrument-transformer-families`: 57 rodzin, struktura z proweniencją i flagą `MANUFACTURER_FAMILY_NOT_SKU`, brak możliwości przypisania jako urządzenia.
+- `GET /api/catalog/vt-types`: 31 pozycji, w tym 3 kodowe ESITAS i 6 konfiguracji RITZ VES.
 - Zakładka `Rodziny przekładników producentów` w `TypeLibraryBrowser` plus karty szczegółowe; blokada przypisywania w `TypePicker`.
 - Testy: `backend/tests/network_model/catalog/test_ct_vt_manufacturers_poland_2026.py`.
 - Ubuntu: `bash scripts/catalog_audit_ubuntu.sh`.
