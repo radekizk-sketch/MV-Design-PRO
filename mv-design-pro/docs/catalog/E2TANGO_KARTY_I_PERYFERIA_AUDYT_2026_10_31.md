@@ -95,3 +95,11 @@ Z punktu widzenia bezpieczeństwa i kontroli jakości baza danych oznacza oba ko
 **Kryterium przyszłego odbioru konfiguratora:** możliwość odwzorowania rzeczywistego kodu zamówienia i pozycji slotów na podstawie DTR/zdjęcia tabliczki, kontrola sumy I/O i zajętości, odrzucanie tylko reguł jednoznacznych, blokada automatycznej akceptacji sprzecznych TV/TRR, test wspólnego poboru i podłączenia napięć pomocniczych, osobne sygnały pomocnicze uziemnika i e²ECHO oraz brak samoczynnego aktywowania zabezpieczeń.
 
 **Zakres odpowiedzialności:** nie dotykać UX-04, wyglądu SLD, B-02 i pracy Opusa. Informacja o aparacie i okablowaniu to dane pochodzenia producenta, nie dowód zgodności z wymaganiami ENEA Operator.
+
+## 7. Dostępność DTR i brakujące dowody obwodów wtórnych
+
+Oficjalny [formularz producenta do uzyskania DTR](https://elektrometal-energetyka.pl/rozwiazania-2/formularz-dtr/) wymaga wskazania rodziny urządzenia i umożliwia podanie wersji firmware (FW), aby producent przesłał odpowiednią rewizję dokumentacji. Na dzień audytu nie pozyskano DTR poszczególnych wykonawczych kart ani rysunków zacisków i pinów.
+
+**Niezweryfikowane i nieimplementowane:** przypisanie styków DO/DI do zacisków, prądy łączeniowe poszczególnych styków, czas otwierania CB i obwód wyzwalający, wymiarowanie zasilaczy przy sumarycznym obciążeniu, przewody pomiarowe CT/VT, przekładnie czujników dla TRC/TRCZ, schematy realizacji 87T, sygnały GOOSE z ICD/CID/SCD, certyfikacja cyberbezpieczeństwa. Baza zawiera źródła produktów, **nie schematy wykonywalne rozdzielnicy**.
+
+**Istotna różnica rewizji:** angielska karta K-3.2.24 z lutego 2026 podaje przykładowe pary gniazd PSU2 C+E/D+F, a polska K-3.2.25 z kwietnia 2026 podaje np. C+D/E+F. Nie łączyć obydwu rewizji w jeden formalny algorytm obsady bez potwierdzenia producenta: https://elektrometal-energetyka.pl/wp-content/uploads/2026/02/Product-Data-Sheet-e2TANGO-600-1200-K-3.2.24.pdf
