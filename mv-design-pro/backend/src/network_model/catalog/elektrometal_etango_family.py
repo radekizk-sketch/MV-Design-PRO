@@ -47,8 +47,8 @@ def get_etango_sn_catalog_additions() -> list[dict[str, Any]]:
                     "catalog_status": "REFERENCYJNY_V1",
                     "contract_version": "2.0",
                     "verification_note": (
-                        "Producent potwierdza rodzinę i zastosowanie; wariant sprzętowy, "
-                        "czynne funkcje, przekładniki i nastawy wymagają dowodu z DTR "
+                        "Producent potwierdza rodzinę i zastosowanie; "
+                        "wariant sprzętowy, czynne funkcje, przekładniki i nastawy wymagają dowodu z DTR "
                         "i konfiguracji konkretnej instancji."
                     ),
                 },
