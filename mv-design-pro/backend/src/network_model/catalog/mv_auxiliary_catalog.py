@@ -4,6 +4,7 @@ from .mv_converter_catalog import ZRODLO_MODELU_REFERENCYJNEGO
 from .mv_ct_abb_tpu_standard import get_abb_tpu6_standard_types
 from .mv_ct_enea_multirange import get_all_enea_multirange_ct_types, get_all_enea_lv_metering_ct_types
 from .mv_ct_abb_kokm_cable_phase import get_abb_kokm1_phase_ct_types
+from .mv_ct_project_combinations import get_ct_project_combination_templates
 from .mv_ct_vt_other_pl import get_zwarpol_jsgo_ct_types, get_ritz_ves_vt_types
 from .mv_vt_esitas_verified import get_all_esitas_vt_confirmed_sku
 from .mv_instrument_transformers_full import (
@@ -1624,7 +1625,7 @@ def get_all_ct_types() -> list[dict]:
                 ),
             },
         },
-    ] + get_all_enea_ct_profiles() + get_abb_tpu_nameplate_example() + get_abb_tpu6_standard_types() + get_zwarpol_jsgo_ct_types() + get_all_enea_multirange_ct_types() + get_all_enea_lv_metering_ct_types() + get_abb_kokm1_phase_ct_types()
+    ] + get_all_enea_ct_profiles() + get_abb_tpu_nameplate_example() + get_abb_tpu6_standard_types() + get_zwarpol_jsgo_ct_types() + get_all_enea_multirange_ct_types() + get_all_enea_lv_metering_ct_types() + get_abb_kokm1_phase_ct_types() + get_ct_project_combination_templates()
 
 
 def get_all_vt_types() -> list[dict]:
