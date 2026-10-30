@@ -45,8 +45,11 @@ Kontrakt konsumowania:
    np. `[200.0,400.0]` — nie wyprowadza zaczepów z liczby rdzeni.
 2. Po wyborze przez projektanta aktywny zaczep **należy do instancji
    aparatu w projekcie**, nie do `CTType`.
-3. SLD pokazuje pełną tabliczkę `200–400/5 A`, podkreślając tylko
-   aktywną wartość 200 lub 400 — zgodnie z rozwiązaniem Opusa.
+3. Dla CT wieloprzekładniowego SLD pokazuje `200–400/5 A`,
+   podkreślając tylko aktywną wartość 200 lub 400. Dla
+   CT **jednozakresowego** pokazuje zwykłe `200/5 A`, bez
+   przełącznika zaczepów i bez sugerowania nieistniejącego 400/5 A.
+   Inspektor i oznaczenie aktywnego zaczepu realizuje Opus.
 4. Dla 200/5 A iloraz wynosi 40, a dla 400/5 A wynosi 80.
    Nastawy EAZ i obwody wtórne korzystają z faktycznie wybranego zaczepu.
 5. Przy braku jawnego wyboru nie wolno traktować mniejszego pola
