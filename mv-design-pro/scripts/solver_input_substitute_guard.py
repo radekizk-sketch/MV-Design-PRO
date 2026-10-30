@@ -1537,8 +1537,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # udzial_el`/`prog_udzialu_zsz` (`or 0.0`) NAPRAWIONE u zrodla (jawne
     # sprawdzenie None + wyjatek nazywajacy niezmiennik, patrz kod) — NIE
     # wpisane do zapadki, bo to NOWY kod tej karty, nie odziedziczony dlug.
+    # Karta WERDYKT-MIGRACJA-190: dwa odczyty `setting_window.i_min_a if … else 0`
+    # (szerokosc wzgledna okna podstawiala 0 za niedodatnia dolna granice) ZNIKNELY —
+    # `_szerokosc_wzgledna` zwraca wtedy None, a sprawdzenie okna niesie jawny sygnal
+    # ograniczenia „szerokosc wzgledna niewyznaczona" (wzorzec GRANICZNE, nie ZGODNE).
     "application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py": {
-        "B:ifexp:setting_window.i_min_a": 2,
         "F:dictget:fixture.delta_t_s": 1,
         "F:dictget:fixture.k_b": 1,
         "F:dictget:fixture.k_bth": 1,
@@ -1671,26 +1674,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "application/proof_engine/proof_inspector/inspector.py": {
         "H:local:kr.value": 6,
     },
-    # `application/reference_patterns/wzorzec_c_generacja_lokalna.py`: CZTERY
-    # pola w TRZECH niezaleznych funkcjach sprawdzajacych wplyw generacji
-    # lokalnej (E-L) na koordynacje zabezpieczen — ta sama rodzina „dzielenie
-    # przez prog/prad zwarciowy oslonione `> 0`, wynik trafia do werdyktu
-    # PASS/FAIL selektywnosci", co `analyzer.py` wyzej (KLASA NIE INSTANCJA,
-    # inny plik tej samej domeny — koordynacja zabezpieczen z DER). `prog_
-    # blokady_szyn_a` (prog blokady zabezpieczenia szyn) jest mianownikiem
-    # stosunku procentowego DWA razy w tej samej funkcji (opis tekstowy i
-    # `details` slownika). `i_wyzszy_stopien_a` (nastawa wyzszego stopnia) —
-    # mianownik rezerwy selektywnosci, DWA razy (bez generacji / z generacja
-    # maksymalna). `ik_za_nastepnym_zabezpieczeniem_a` — mianownik marginesu
-    # selektywnosci wobec kolejnego zabezpieczenia (`float("inf")` gdy brak).
-    # `ik_3f_a` (prad zwarciowy 3-fazowy, z/bez generacji) — mianownik zmiany
-    # procentowej wplywu generacji na prad zwarciowy w budowie artefaktow.
-    "application/reference_patterns/wzorzec_c_generacja_lokalna.py": {
-        "H:local:input_data.i_wyzszy_stopien_a": 2,
-        "H:local:input_data.ik_3f_a": 1,
-        "H:local:input_data.ik_za_nastepnym_zabezpieczeniem_a": 1,
-        "H:local:input_data.prog_blokady_szyn_a": 2,
-    },
+    # `application/reference_patterns/wzorzec_c_generacja_lokalna.py` ZDJETY (karta
+    # WERDYKT-MIGRACJA-190): szesc mianownikow oslonietych `> 0` (prog blokady szyn,
+    # nastawa wyzszego stopnia, I''k za nastepnym zabezpieczeniem, I''k 3-fazowy) podstawialo
+    # 0 % / nieskonczony margines za brak danych, a wynik trafial do werdyktu jako PASS.
+    # Teraz mianownik niedodatni albo nieobecny daje rekord K `NIE_OCENIONO` z brakiem
+    # nazwanym w `braki`, a wzorzec — `NIEROZSTRZYGNIETE` (brak danych != zgodny).
 }
 
 

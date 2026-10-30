@@ -426,7 +426,7 @@ def _pozycja(
     *,
     check_type: EnergyCheckType,
     target_id: str,
-    target_name: str | None,
+    target_name: str,
     observed_value: float | None,
     unit: str,
     limit_warn: float | None,
@@ -439,7 +439,7 @@ def _pozycja(
     rekordu. ``observed_value is None`` — wielkosci nie wyznaczono, ``why_pl`` nazywa brak."""
     ocena = ocena_pozycji(
         check_type=check_type,
-        nazwa_pl=target_name or target_id,
+        nazwa_pl=target_name,
         wynik=observed_value,
         limit=limit_fail,
         braki=() if observed_value is not None else (why_pl,),

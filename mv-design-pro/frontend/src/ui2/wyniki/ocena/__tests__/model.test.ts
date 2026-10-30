@@ -20,6 +20,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { OcenaElementu, OdpowiedzOceny, PozycjaOceny, ZrodloOceny } from '../api';
+import ocenaScena from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena.json';
 import {
   czasWykonaniaPL,
   czyBrakWynikow,
@@ -43,8 +44,17 @@ import {
 } from '../model';
 import { OCENA_STRINGS as T } from '../strings';
 
+/** Rekordy werdyktu z odpowiedzi złożonej backendem (`scripts/eksport_fixtur_harnessu.py`):
+ *  pozycja obciążenia długotrwałego gałęzi SPEŁNIA i jej pierwszy element — nie atrapa. */
+const POZYCJA_SCENY = (ocenaScena as unknown as OdpowiedzOceny).pozycje.find(
+  (p) => p.kryterium_id === 'galaz.obciazenie_dlugotrwale',
+)!;
+const ELEMENT_SCENY = POZYCJA_SCENY.elementy[0];
+
 function element(over: Partial<OcenaElementu> = {}): OcenaElementu {
   return {
+    ocena: ELEMENT_SCENY.ocena,
+    wyjasnienie: ELEMENT_SCENY.wyjasnienie,
     element_id: 'L-07',
     element_nazwa: 'Magistrala L-07',
     element_rodzaj: 'galaz_liniowa',
@@ -68,6 +78,8 @@ function element(over: Partial<OcenaElementu> = {}): OcenaElementu {
 
 function pozycja(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
   return {
+    ocena: POZYCJA_SCENY.ocena,
+    wyjasnienie: POZYCJA_SCENY.wyjasnienie,
     kryterium_id: 'galaz.obciazenie_dlugotrwale',
     etap: 'E5',
     nazwa_pl: 'Obciążenie długotrwałe gałęzi',

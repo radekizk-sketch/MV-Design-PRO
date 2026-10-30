@@ -35,7 +35,8 @@ _ZAKRES: Final = ZakresWaznosci(
     rodzaj_analizy="POWER_FLOW",
     opis_pl=(
         "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych "
-        "w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej."
+        "w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu "
+        "(walidacja energetyczna, profil napięć)."
     ),
     wykluczenia=(
         "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
@@ -172,9 +173,16 @@ def ocena_pozycji(
     wynik: float | None,
     limit: float | None,
     braki: tuple[str, ...] = (),
+    slad_krok: str | None = None,
+    odniesienie: str = "analysis/energy_validation/builder.py",
 ) -> OcenaKryterium:
     """Rekord K pozycji walidacji. ``wynik is None`` — wielkości nie wyznaczono (``braki``
-    nazywają przyczynę; reguła daje ``NIE_OCENIONO``, nigdy spełnienie)."""
+    nazywają przyczynę; reguła daje ``NIE_OCENIONO``, nigdy spełnienie).
+
+    Jedno źródło kryterium dla każdego konsumenta tej samej wielkości: profil napięć
+    (``analysis/voltage_profile``) ocenia odchylenie napięcia szyny TĄ funkcją, podając własny
+    krok śladu i odniesienie — dwie kopie warunku ``|ΔU| ≤ limit`` rozjechałyby się na
+    równości z progiem."""
     d = _DEFINICJE[check_type]
     return ocena_porownania(
         Porownanie(
@@ -199,12 +207,12 @@ def ocena_pozycji(
             if wynik is None
             else (
                 OdnosnikSladu(
-                    krok=f"energy_validation.{check_type.value.lower()}",
-                    opis_pl="Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)",
+                    krok=slad_krok or f"energy_validation.{check_type.value.lower()}",
+                    opis_pl="Wywód pozycji oceny (wzór, dane, wynik, progi)",
                 ),
             )
         ),
-        odniesienie="analysis/energy_validation/builder.py",
+        odniesienie=odniesienie,
     )
 
 

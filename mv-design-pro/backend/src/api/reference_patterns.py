@@ -24,6 +24,7 @@ from application.reference_patterns import (
     PATTERN_ID,
     PATTERN_NAME_PL,
     ReferencePatternResult,
+    fixture_to_input,
     get_pattern_a_fixtures_dir,
     run_pattern_a,
 )
@@ -31,6 +32,7 @@ from fastapi import APIRouter, HTTPException, Response
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel
+from werdykt import WyjasnienieWerdyktu, WynikWymagania
 
 if TYPE_CHECKING:
     # python-docx jest importowany LENIWIE w ciele eksportu (brak paczki => 501),
@@ -57,13 +59,20 @@ class PatternMetadata(BaseModel):
 
 
 class FixtureMetadata(BaseModel):
-    """Fixture metadata for listing."""
+    """Fixture metadata for listing.
+
+    ``expected_verdict`` — kod oczekiwany zapisany w fiksturze (przypadek odniesienia);
+    ``wymaganie`` i ``wyjasnienie`` — rekord W wzorca uruchomionego na tej fiksturze (ten sam
+    bieg co ``GET /fixtures/{plik}``), więc kod oczekiwany ma obok wyjaśnienie z liczbami.
+    """
 
     fixture_id: str
     filename: str
     description: str | None = None
     expected_verdict: str | None = None
     notes_pl: str | None = None
+    wymaganie: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
 
 
 class PatternRunRequest(BaseModel):
@@ -83,6 +92,8 @@ class PatternRunResponse(BaseModel):
     verdict: str
     verdict_description_pl: str
     summary_pl: str
+    wymaganie: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     checks: list[dict[str, Any]]
     trace: list[dict[str, Any]]
     artifacts: dict[str, Any]
@@ -116,6 +127,8 @@ def result_to_response(result: ReferencePatternResult, run_id: str) -> PatternRu
         verdict=data["verdict"],
         verdict_description_pl=data["verdict_description_pl"],
         summary_pl=data["summary_pl"],
+        wymaganie=result.wymaganie,
+        wyjasnienie=result.wyjasnienie,
         checks=data["checks"],
         trace=data["trace"],
         artifacts=data["artifacts"],
@@ -138,6 +151,7 @@ def list_pattern_a_fixtures() -> list[FixtureMetadata]:
             data = json.load(f)
 
         fixture_id = filepath.stem
+        wynik = run_pattern_a(input_data=fixture_to_input(data))
         fixtures.append(
             FixtureMetadata(
                 fixture_id=fixture_id,
@@ -145,10 +159,19 @@ def list_pattern_a_fixtures() -> list[FixtureMetadata]:
                 description=data.get("_description"),
                 expected_verdict=data.get("_expected_verdict"),
                 notes_pl=data.get("_notes_pl"),
+                wymaganie=wynik.wymaganie,
+                wyjasnienie=wynik.wyjasnienie,
             )
         )
 
     return fixtures
+
+
+def _zawin(tekst: str, szerokosc: int) -> list[str]:
+    """Zawinięcie tekstu raportu PDF do wierszy (bez obcinania treści wyjaśnienia)."""
+    import textwrap
+
+    return textwrap.wrap(tekst, width=szerokosc) or [""]
 
 
 # =============================================================================
@@ -312,17 +335,20 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
     c.drawString(left_margin, y, title)
     y -= 10 * mm
 
-    # Verdict banner
+    # Ocena wzorca — etykieta i zdanie rekordu W (kod werdyktu nie jest komunikatem)
     c.setFont("DejaVuSans-Bold", 14)
-    verdict_text = f"Werdykt: {data['verdict']}"
-    c.drawString(left_margin, y, verdict_text)
+    c.drawString(left_margin, y, f"Ocena wzorca: {result.wymaganie.etykieta.etykieta_pl}")
     y -= 6 * mm
 
     c.setFont("DejaVuSans", 10)
-    c.drawString(left_margin, y, data["verdict_description_pl"])
-    y -= 6 * mm
-    c.drawString(left_margin, y, data["summary_pl"])
-    y -= 10 * mm
+    for wiersz in _zawin(data["verdict_description_pl"], 100) + _zawin(data["summary_pl"], 100):
+        c.drawString(left_margin, y, wiersz)
+        y -= line_height
+        if y < 30 * mm:
+            c.showPage()
+            c.setFont("DejaVuSans", 10)
+            y = top_margin
+    y -= 5 * mm
 
     # Checks section
     c.setFont("DejaVuSans-Bold", 12)
@@ -331,15 +357,14 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
 
     c.setFont("DejaVuSans", 9)
     for check in data.get("checks", []):
-        status_text = f"[{check['status']}] {check['name_pl']}: {check['description_pl']}"
-        # Truncate if too long
-        if len(status_text) > 80:
-            status_text = status_text[:77] + "..."
-        c.drawString(left_margin, y, status_text)
-        y -= line_height
-        if y < 30 * mm:
-            c.showPage()
-            y = top_margin
+        tekst = f"{check['name_pl']} — {check['status_pl']}: {check['wyjasnienie']['zdanie_pl']}"
+        for wiersz in _zawin(tekst, 110):
+            c.drawString(left_margin, y, wiersz)
+            y -= line_height
+            if y < 30 * mm:
+                c.showPage()
+                c.setFont("DejaVuSans", 9)
+                y = top_margin
 
     y -= 5 * mm
 
@@ -468,9 +493,9 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
 
     doc.add_paragraph()
 
-    # Verdict section
+    # Ocena wzorca — etykieta i zdanie rekordu W (kod werdyktu nie jest komunikatem)
     verdict_para = doc.add_paragraph()
-    verdict_run = verdict_para.add_run(f"Werdykt: {data['verdict']}")
+    verdict_run = verdict_para.add_run(f"Ocena wzorca: {result.wymaganie.etykieta.etykieta_pl}")
     verdict_run.bold = True
     verdict_run.font.size = Pt(14)
 
@@ -487,8 +512,8 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
 
     hdr = checks_table.rows[0].cells
     hdr[0].text = "Kryterium"
-    hdr[1].text = "Status"
-    hdr[2].text = "Opis"
+    hdr[1].text = "Ocena"
+    hdr[2].text = "Wyjaśnienie"
     for cell in hdr:
         for p in cell.paragraphs:
             for r in p.runs:
@@ -498,7 +523,7 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
         row = checks_table.add_row().cells
         row[0].text = check["name_pl"]
         row[1].text = check["status_pl"]
-        row[2].text = check["description_pl"]
+        row[2].text = f"{check['wyjasnienie']['zdanie_pl']} {check['description_pl']}"
 
     doc.add_paragraph()
 

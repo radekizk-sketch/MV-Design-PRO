@@ -4,10 +4,10 @@ from datetime import datetime
 
 import pytest
 from analysis.lf_sensitivity.builder import LFSensitivityBuilder
+from analysis.normative.models import NormativeConfig
+from analysis.voltage_profile.builder import wiersz_profilu
 from analysis.voltage_profile.models import (
     VoltageProfileContext,
-    VoltageProfileRow,
-    VoltageProfileStatus,
     VoltageProfileSummary,
     VoltageProfileView,
 )
@@ -55,14 +55,13 @@ def _build_p32_proof() -> ProofDocument:
 
 def _build_voltage_profile(u_nom_kv: float | None) -> VoltageProfileView:
     rows = (
-        VoltageProfileRow(
+        wiersz_profilu(
             bus_id="BUS_01",
             bus_name=None,
             u_nom_kv=u_nom_kv,
             u_kv=9.8,
             u_pu=0.98,
-            delta_pct=-2.0,
-            status=VoltageProfileStatus.PASS,
+            config=NormativeConfig(),
             p_mw=1.0,
             q_mvar=0.5,
             case_name="Case P32",

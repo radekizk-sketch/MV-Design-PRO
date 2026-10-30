@@ -75,3 +75,38 @@
   font-size: 12px;
   color: var(--mvd-muted);
 }
+
+/* Szczegół wpisu wrażliwości ogólnej — rekordy werdyktu stanu bazowego i perturbacji. */
+.mvd-wrazliwosc-szczegol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--mvd-surface);
+}
+
+.mvd-wrazliwosc-szczegol-brak {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-wrazliwosc-szczegol-wariant {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-wrazliwosc-szczegol-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mvd-wrazliwosc-szczegol-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}

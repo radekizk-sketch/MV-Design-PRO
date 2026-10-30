@@ -187,7 +187,10 @@ def test_uszkodzona_fikstura_wzorca_nie_znika_z_listy_po_cichu(
 
     import api.reference_patterns as wzorce
 
-    (tmp_path / "a_dobra.json").write_text('{"_description": "ok"}', encoding="utf-8")
+    # Pozycja poprawna to pełna fikstura wzorca: lista uruchamia wzorzec na każdej pozycji
+    # (rekord W i wyjaśnienie obok kodu oczekiwanego — karta WERDYKT-MIGRACJA-190).
+    dobra = wzorce.get_pattern_a_fixtures_dir() / "case_A_zgodne.json"
+    (tmp_path / "a_dobra.json").write_text(dobra.read_text(encoding="utf-8"), encoding="utf-8")
     (tmp_path / "b_zla.json").write_text("{nie-json", encoding="utf-8")
     monkeypatch.setattr(wzorce, "get_pattern_a_fixtures_dir", lambda: tmp_path)
     with pytest.raises(json.JSONDecodeError):

@@ -115,7 +115,7 @@
         "zastrzezenia": [
           "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, bilans mocy biernej — próg współczynnika mocy węzła bilansującego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
         ]
       },
       "dowod": {
@@ -133,7 +133,7 @@
       },
       "zakres_waznosci": {
         "rodzaj_analizy": "POWER_FLOW",
-        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
         "technologia": null,
         "model_urzadzenia": null,
         "symetria_zaklocenia": null,
@@ -150,7 +150,7 @@
           "run_id": null,
           "wersja_silnika": null,
           "krok": "energy_validation.reactive_balance",
-          "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)"
         }
       ]
     },
@@ -255,7 +255,7 @@
         "zastrzezenia": [
           "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, budżet strat mocy czynnej sieci (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
         ]
       },
       "dowod": {
@@ -273,7 +273,7 @@
       },
       "zakres_waznosci": {
         "rodzaj_analizy": "POWER_FLOW",
-        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
         "technologia": null,
         "model_urzadzenia": null,
         "symetria_zaklocenia": null,
@@ -290,7 +290,7 @@
           "run_id": null,
           "wersja_silnika": null,
           "krok": "energy_validation.loss_budget",
-          "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)"
         }
       ]
     },
@@ -2598,7 +2598,7 @@
     "Zestawienia materiałowe nie są jeszcze generowane przez narzędzie — sekcja pominięta (bez danych zastępczych)."
   ],
   "odciski_sekcji_sha256": {
-    "bilans_mocy": "3feef3f4c68d77d7085eb84baec21ad3f5caeb9aebb511d28151ccbd20ae4426",
+    "bilans_mocy": "c99d74373c5548541e8c236fa5f46224cb4099b75b7bc0013ced7167aaeb09f0",
     "zwarcia_punkt_przylaczenia": "cf76634652e2c609833d413b2e7e333d4a13e1c92a2f61bf9475c77ffd43d50e",
     "zgodnosc_nc_rfg": "7f700f5b2c8ddc6e39890240648f1efeea0f6c23261c01325ecc6d47c18ecf12"
   },

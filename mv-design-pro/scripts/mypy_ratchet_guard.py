@@ -251,8 +251,14 @@ BACKEND = ROOT / "backend"
 # 169/22) i na drzewie scalonym (167/21); roznica zbiorow (plik, komunikat): scalone minus
 # program = 0, scalone minus UI/UX = 0, program minus scalone = dokladnie 2 bledy `assignment`
 # w `enm/catalog_completion.py`, zdjete przez karte W5-B (wyzej). Zero nowych.
-BASELINE_ERRORS = 167
-BASELINE_FILES = 21
+# Karta WERDYKT-MIGRACJA-190, grupa 4 (2026-10-30): 167/21 -> 163/20. POMIAR `mypy src`
+# (mypy 1.19.1) na HEAD `f09793df2` i na drzewie grupy; roznica zbiorow (plik, komunikat):
+# grupa minus HEAD = 0, HEAD minus grupa = dokladnie 4 bledy arg-type w
+# `analysis/normative/evaluator.py` (3x `float(value.value)` na `float | complex | str`
+# i 1x `observed_value` zespolony) — jedna regula progowa czyta liczbe rzeczywista przez
+# `_liczba`, wartosc zespolona pozycji zapisywana tekstem. Zero nowych.
+BASELINE_ERRORS = 163
+BASELINE_FILES = 20
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

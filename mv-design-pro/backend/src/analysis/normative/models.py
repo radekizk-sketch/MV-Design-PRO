@@ -12,6 +12,7 @@ from analysis.normative.kryteria_napiecia import (
     KRYTERIUM_PRZEKROCZENIE_PROCENT,
 )
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu
 
 
 class NormativeStatus(StrEnum):
@@ -94,6 +95,11 @@ class NormativeItem:
     margin: float | None
     why_pl: str
     requires: tuple[str, ...]
+    #: Rekord werdyktu wyjaśnialnego (poziom K) i jego wyjaśnienie — jedyne źródło
+    #: rozstrzygnięcia pozycji; ``status``/``severity`` są projekcją rekordu
+    #: (``analysis/normative/oceny.py``), ``why_pl`` jest zdaniem rekordu.
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
 
 
 @dataclass(frozen=True)

@@ -5,6 +5,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu
+
 
 class VoltageProfileStatus(StrEnum):
     PASS = "PASS"
@@ -26,6 +28,10 @@ class VoltageProfileRow:
     q_mvar: float | None
     case_name: str | None
     run_timestamp: datetime | None
+    #: Rekord werdyktu wyjaśnialnego (poziom K) odchylenia napięcia szyny i jego wyjaśnienie —
+    #: jedyne źródło rozstrzygnięcia; ``status`` jest projekcją rekordu.
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
 
 
 @dataclass(frozen=True)

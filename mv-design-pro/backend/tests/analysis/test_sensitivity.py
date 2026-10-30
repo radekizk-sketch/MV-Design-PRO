@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import UUID
 
-from analysis.normative.models import (
-    NormativeContext,
-    NormativeItem,
-    NormativeReport,
-    NormativeSeverity,
-    NormativeStatus,
-)
+import pytest
+from analysis.normative.evaluator import NormativeEvaluator
+from analysis.normative.models import NormativeConfig, NormativeReport
 from analysis.protection_insight.models import (
     ProtectionInsightContext,
     ProtectionInsightItem,
@@ -18,56 +15,55 @@ from analysis.protection_insight.models import (
 )
 from analysis.sensitivity.builder import SensitivityBuilder
 from analysis.sensitivity.models import SensitivityDecision
+from analysis.voltage_profile.builder import wiersz_profilu
 from analysis.voltage_profile.models import (
     VoltageProfileContext,
-    VoltageProfileRow,
-    VoltageProfileStatus,
     VoltageProfileSummary,
     VoltageProfileView,
+)
+from application.proof_engine.types import (
+    ProofDocument,
+    ProofHeader,
+    ProofSummary,
+    ProofType,
+    ProofValue,
 )
 
 RUN_TS = datetime(2024, 2, 1, 12, 0, 0)
 
 
+def _proof(target_id: str, key_results: dict[str, ProofValue], n: int) -> ProofDocument:
+    return ProofDocument(
+        document_id=UUID(int=n),
+        artifact_id=UUID(int=1000 + n),
+        created_at=RUN_TS,
+        proof_type=ProofType.LOAD_CURRENTS_OVERLOAD,
+        title_pl="Obciążenia",
+        header=ProofHeader(
+            project_name="Proj",
+            case_name="Case",
+            run_timestamp=RUN_TS,
+            solver_version="test",
+            target_id=target_id,
+        ),
+        steps=(),
+        summary=ProofSummary(
+            key_results=key_results, unit_check_passed=True, total_steps=0, warnings=()
+        ),
+    )
+
+
 def _normative_report() -> NormativeReport:
-    context = NormativeContext(
-        project_name="Proj",
-        case_name="Case",
-        run_timestamp=RUN_TS,
-        snapshot_id="snap-1",
-        trace_id="trace-1",
+    # Raport z prawdziwego ewaluatora (pozycje niosą rekordy K, kody są ich projekcją).
+    return NormativeEvaluator().evaluate(
+        [
+            _proof(
+                "LINE-1", {"k_i_percent": ProofValue.create("k_I", 90.0, "%", "k_i_percent")}, 1
+            ),
+            _proof("TR-1", {"k_s_percent": ProofValue.create("k_S", 70.0, "%", "k_s_percent")}, 2),
+        ],
+        NormativeConfig(),
     )
-    items = (
-        NormativeItem(
-            rule_id="NR_P15_001",
-            title_pl="Obciążenie prądowe %In",
-            severity=NormativeSeverity.WARNING,
-            status=NormativeStatus.WARNING,
-            target_id="LINE-1",
-            observed_value=90.0,
-            unit="%",
-            limit_value=80.0,
-            limit_unit="%",
-            margin=10.0,
-            why_pl="Przekroczony próg.",
-            requires=(),
-        ),
-        NormativeItem(
-            rule_id="NR_P15_002",
-            title_pl="Obciążenie mocowe %Sn",
-            severity=NormativeSeverity.INFO,
-            status=NormativeStatus.PASS,
-            target_id="TR-1",
-            observed_value=70.0,
-            unit="%",
-            limit_value=80.0,
-            limit_unit="%",
-            margin=-10.0,
-            why_pl="W normie.",
-            requires=(),
-        ),
-    )
-    return NormativeReport(report_id="rep-1", context=context, items=items)
 
 
 def _voltage_profile() -> VoltageProfileView:
@@ -79,14 +75,13 @@ def _voltage_profile() -> VoltageProfileView:
         trace_id="trace-1",
     )
     rows = (
-        VoltageProfileRow(
+        wiersz_profilu(
             bus_id="B1",
             bus_name="Bus 1",
             u_nom_kv=20.0,
             u_kv=18.6,
             u_pu=0.93,
-            delta_pct=-7.0,
-            status=VoltageProfileStatus.WARNING,
+            config=NormativeConfig(),
             p_mw=None,
             q_mvar=None,
             case_name="Case",
@@ -184,33 +179,7 @@ def test_sensitivity_margin_math_short_circuit() -> None:
 
 
 def test_sensitivity_not_computed_propagation() -> None:
-    context = NormativeContext(
-        project_name="Proj",
-        case_name="Case",
-        run_timestamp=RUN_TS,
-        snapshot_id="snap-1",
-        trace_id="trace-1",
-    )
-    report = NormativeReport(
-        report_id="rep-2",
-        context=context,
-        items=(
-            NormativeItem(
-                rule_id="NR_P15_001",
-                title_pl="Obciążenie prądowe %In",
-                severity=NormativeSeverity.WARNING,
-                status=NormativeStatus.NOT_COMPUTED,
-                target_id="LINE-2",
-                observed_value=None,
-                unit="%",
-                limit_value=None,
-                limit_unit="%",
-                margin=None,
-                why_pl="Brak danych.",
-                requires=("P15",),
-            ),
-        ),
-    )
+    report = NormativeEvaluator().evaluate([_proof("LINE-2", {}, 3)], NormativeConfig())
 
     view = SensitivityBuilder(delta_pct=5.0, top_n=1).build(
         proofs=[],
@@ -220,6 +189,27 @@ def test_sensitivity_not_computed_propagation() -> None:
         protection_curves_it=None,
     )
 
-    entry = view.entries[0]
-    assert entry.base_decision == SensitivityDecision.NOT_COMPUTED
-    assert view.summary.not_computed_count == 1
+    # Dowód bez wielkości kluczowych: obie reguły obciążenia nie wyznaczone — oba wpisy
+    # nierozstrzygnięte (rekord NIE_OCENIONO), nigdy spełnione.
+    assert len(view.entries) == 2
+    for entry in view.entries:
+        assert entry.base_decision == SensitivityDecision.NOT_COMPUTED
+        assert entry.ocena.status_maszynowy == "NIE_OCENIONO"
+    assert view.summary.not_computed_count == 2
+
+
+@pytest.mark.parametrize("warn,fail", [(5.0, 10.0), (3.0, 6.0)])
+def test_zapas_napieciowy_bez_skoku_na_progu_przekroczenia(warn: float, fail: float) -> None:
+    """Iloczyn: progi × |ΔU| wokół progu ostrzeżenia i przekroczenia (w tym równość). Zapas
+    nieujemny (spełnienie) wtedy i tylko wtedy, gdy |ΔU| nie przekracza progu ostrzeżenia; na
+    samym progu przekroczenia zapas liczony jest do progu ostrzeżenia (równość progu nie jest
+    przekroczeniem) — dawne ``>=`` dawało tam zapas zerowy, czyli spełnienie, choć tuż poniżej
+    zapas był ujemny."""
+    from analysis.sensitivity.builder import _voltage_margin
+
+    siatka = [0.0, warn - 0.01, warn, warn + 0.01, fail - 0.01, fail, fail + 0.01, 2 * fail]
+    for d in siatka:
+        z = _voltage_margin(d, warn, fail)
+        assert (z >= 0) == (d <= warn), (d, z)
+    assert _voltage_margin(fail, warn, fail) == pytest.approx(warn - fail)
+    assert _voltage_margin(fail + 0.5, warn, fail) == pytest.approx(-0.5)

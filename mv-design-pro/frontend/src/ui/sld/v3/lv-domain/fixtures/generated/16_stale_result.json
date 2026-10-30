@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "dda58cd7adfdf71826b1a0f0d6feaedf482e7822784e4d38eca40239e7251812",
+  "projection_hash": "11dae571dba49d5b869c0c6617dda51f1c762907e006a823b38332046f177ff4",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1687,6 +1687,144 @@
           "bus_name": "PV1 · punkt przyłączenia",
           "case_name": null,
           "delta_pct": 1.34919794,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "PV1 · punkt przyłączenia",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 8.65080206
+              },
+              "wzgledny": 0.865080206
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "PV1 · punkt przyłączenia",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (PV1 · punkt przyłączenia) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,349 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,651 pp, punkt: PV1 · punkt przyłączenia, względnie +86,51 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "PV1 · punkt przyłączenia",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 1.34919794
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1694,13 +1832,161 @@
           "status": "PASS",
           "u_kv": 0.405396792,
           "u_nom_kv": 0.4,
-          "u_pu": 1.01349198
+          "u_pu": 1.01349198,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (PV1 · punkt przyłączenia) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,349 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,651 pp, punkt: PV1 · punkt przyłączenia, względnie +86,51 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "FU-21_koniec",
           "bus_name": "Zacisk Odbiór RGN-2",
           "case_name": null,
           "delta_pct": -0.422402167,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Zacisk Odbiór RGN-2",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.57759783
+              },
+              "wzgledny": 0.957759783
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "Zacisk Odbiór RGN-2",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Zacisk Odbiór RGN-2) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,4224 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,578 pp, punkt: Zacisk Odbiór RGN-2, względnie +95,78 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Zacisk Odbiór RGN-2",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.422402167
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1708,13 +1994,161 @@
           "status": "PASS",
           "u_kv": 0.398310391,
           "u_nom_kv": 0.4,
-          "u_pu": 0.995775978
+          "u_pu": 0.995775978,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Zacisk Odbiór RGN-2) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,4224 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,578 pp, punkt: Zacisk Odbiór RGN-2, względnie +95,78 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "QF-01_koniec",
           "bus_name": "Zacisk Odbiór 1",
           "case_name": null,
           "delta_pct": -0.379196995,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Zacisk Odbiór 1",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.62080301
+              },
+              "wzgledny": 0.962080301
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "Zacisk Odbiór 1",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Zacisk Odbiór 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,3792 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,621 pp, punkt: Zacisk Odbiór 1, względnie +96,21 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Zacisk Odbiór 1",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.379196995
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1722,13 +2156,161 @@
           "status": "PASS",
           "u_kv": 0.398483212,
           "u_nom_kv": 0.4,
-          "u_pu": 0.99620803
+          "u_pu": 0.99620803,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Zacisk Odbiór 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,3792 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,621 pp, punkt: Zacisk Odbiór 1, względnie +96,21 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "QF-03_zacisk",
           "bus_name": "QF-03 zacisk wyjściowy",
           "case_name": null,
           "delta_pct": 0.0843853642,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "QF-03 zacisk wyjściowy",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.91561464
+              },
+              "wzgledny": 0.991561464
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "QF-03 zacisk wyjściowy",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (QF-03 zacisk wyjściowy) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,08439 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,916 pp, punkt: QF-03 zacisk wyjściowy, względnie +99,16 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "QF-03 zacisk wyjściowy",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.0843853642
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1736,13 +2318,161 @@
           "status": "PASS",
           "u_kv": 0.400337541,
           "u_nom_kv": 0.4,
-          "u_pu": 1.00084385
+          "u_pu": 1.00084385,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (QF-03 zacisk wyjściowy) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,08439 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,916 pp, punkt: QF-03 zacisk wyjściowy, względnie +99,16 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "RGnN-1",
           "bus_name": "RGnN-1",
           "case_name": null,
           "delta_pct": 0.0794598206,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "RGnN-1",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.92054018
+              },
+              "wzgledny": 0.992054018
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "RGnN-1",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (RGnN-1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,07946 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,921 pp, punkt: RGnN-1, względnie +99,21 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "RGnN-1",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.0794598206
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1750,13 +2480,161 @@
           "status": "PASS",
           "u_kv": 0.400317839,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0007946
+          "u_pu": 1.0007946,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (RGnN-1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,07946 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,921 pp, punkt: RGnN-1, względnie +99,21 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "QF-02_zacisk",
           "bus_name": "QF-02 zacisk wyjściowy",
           "case_name": null,
           "delta_pct": 0.0790080895,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "QF-02 zacisk wyjściowy",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.92099191
+              },
+              "wzgledny": 0.992099191
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "QF-02 zacisk wyjściowy",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (QF-02 zacisk wyjściowy) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,07901 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,921 pp, punkt: QF-02 zacisk wyjściowy, względnie +99,21 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "QF-02 zacisk wyjściowy",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.0790080895
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1764,13 +2642,161 @@
           "status": "PASS",
           "u_kv": 0.400316032,
           "u_nom_kv": 0.4,
-          "u_pu": 1.00079008
+          "u_pu": 1.00079008,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (QF-02 zacisk wyjściowy) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,07901 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,921 pp, punkt: QF-02 zacisk wyjściowy, względnie +99,21 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "QF-01_zacisk",
           "bus_name": "QF-01 zacisk wyjściowy",
           "case_name": null,
           "delta_pct": 0.0785567558,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "QF-01 zacisk wyjściowy",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.92144324
+              },
+              "wzgledny": 0.992144324
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "QF-01 zacisk wyjściowy",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (QF-01 zacisk wyjściowy) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,07856 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,921 pp, punkt: QF-01 zacisk wyjściowy, względnie +99,21 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "QF-01 zacisk wyjściowy",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.0785567558
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1778,13 +2804,161 @@
           "status": "PASS",
           "u_kv": 0.400314227,
           "u_nom_kv": 0.4,
-          "u_pu": 1.00078557
+          "u_pu": 1.00078557,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (QF-01 zacisk wyjściowy) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,07856 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,921 pp, punkt: QF-01 zacisk wyjściowy, względnie +99,21 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "T1_zacisk",
           "bus_name": "T1 zacisk nN",
           "case_name": null,
           "delta_pct": 0.0758892785,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "T1 zacisk nN",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.92411072
+              },
+              "wzgledny": 0.992411072
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "T1 zacisk nN",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (T1 zacisk nN) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,07589 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,924 pp, punkt: T1 zacisk nN, względnie +99,24 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "T1 zacisk nN",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.0758892785
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1792,13 +2966,161 @@
           "status": "PASS",
           "u_kv": 0.400303557,
           "u_nom_kv": 0.4,
-          "u_pu": 1.00075889
+          "u_pu": 1.00075889,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (T1 zacisk nN) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,07589 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,924 pp, punkt: T1 zacisk nN, względnie +99,24 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "FU-21_zacisk",
           "bus_name": "FU-21 zacisk wyjściowy",
           "case_name": null,
           "delta_pct": -0.0597292059,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "FU-21 zacisk wyjściowy",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.94027079
+              },
+              "wzgledny": 0.994027079
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "FU-21 zacisk wyjściowy",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (FU-21 zacisk wyjściowy) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,05973 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,94 pp, punkt: FU-21 zacisk wyjściowy, względnie +99,4 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "FU-21 zacisk wyjściowy",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.0597292059
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1806,13 +3128,161 @@
           "status": "PASS",
           "u_kv": 0.399761083,
           "u_nom_kv": 0.4,
-          "u_pu": 0.999402708
+          "u_pu": 0.999402708,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (FU-21 zacisk wyjściowy) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,05973 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,94 pp, punkt: FU-21 zacisk wyjściowy, względnie +99,4 % wartości granicznej)."
+          }
         },
         {
           "bus_id": "RGN-2_szyna",
           "bus_name": "RGN-2",
           "case_name": null,
           "delta_pct": -0.0592774682,
+          "ocena": {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "analysis/voltage_profile/builder.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "\\delta U \\le \\delta U_{\\text{limit}}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "walidacja_energetyczna.odchylenie_napiecia",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+                "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2010"
+              },
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 10.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "dopuszczalne odchylenie napięcia od znamionowego"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "RGN-2",
+              "skala": {
+                "jednostka": "pp",
+                "wartosc": 10.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "pp",
+                "wartosc": 9.94072253
+              },
+              "wzgledny": 0.994072253
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)",
+              "jednostka_redakcyjna": "4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": null,
+              "wydanie": "2010"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "RGN-2",
+              "opis_pl": "Szyna w stanie ustalonym biegu rozpływu"
+            },
+            "slad": [
+              {
+                "krok": "voltage_profile.odchylenie_napiecia",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              ],
+              "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (RGN-2) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,05928 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,941 pp, punkt: RGN-2, względnie +99,41 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "RGN-2",
+              "symbol_latex": "\\delta U",
+              "wartosc": {
+                "jednostka": "%",
+                "wartosc": 0.0592774682
+              },
+              "wielkosc_pl": "odchylenie napięcia od znamionowego"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "POWER_FLOW",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1)",
+                "przeciążalność krótkotrwała i cykliczna urządzeń"
+              ]
+            }
+          },
           "p_mw": null,
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
@@ -1820,7 +3290,17 @@
           "status": "PASS",
           "u_kv": 0.39976289,
           "u_nom_kv": 0.4,
-          "u_pu": 0.999407225
+          "u_pu": 0.999407225,
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            ],
+            "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (RGN-2) — kryterium spełnione. Odchylenie napięcia od znamionowego: 0,05928 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +9,941 pp, punkt: RGN-2, względnie +99,41 % wartości granicznej)."
+          }
         }
       ],
       "summary": {

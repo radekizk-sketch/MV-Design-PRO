@@ -12,9 +12,11 @@ from analysis.normative.models import (
     NormativeStatus,
     compute_report_id,
 )
+from analysis.normative.oceny import ProjekcjaPozycji, ocena_pozycji, status_pozycji
 from analysis.normative.rule_registry import RULES, NormativeRule
 from analysis.normative.serializer import sort_items
 from application.proof_engine.types import ProofDocument, ProofValue
+from werdykt import OcenaKryterium
 
 
 class NormativeEvaluator:
@@ -34,7 +36,7 @@ class NormativeEvaluator:
         for rule in RULES:
             matching = proofs_by_type.get(rule.proof_type.value, [])
             if not matching:
-                items.append(_missing_proof_item(rule))
+                items.append(_missing_proof_item(rule, config))
                 continue
             for proof in _sorted_proofs(matching):
                 items.append(_evaluate_rule(rule, proof, config))
@@ -81,21 +83,55 @@ def _build_context(proofs: list[ProofDocument]) -> NormativeContext:
     )
 
 
-def _missing_proof_item(rule: NormativeRule) -> NormativeItem:
-    requires = (rule.proof_type.value,)
+def _pozycja(
+    rule: NormativeRule,
+    *,
+    target_id: str,
+    ocena: OcenaKryterium,
+    projekcja: ProjekcjaPozycji,
+    observed_value: float | str | None = None,
+    unit: str | None = None,
+    limit_value: float | None = None,
+    limit_unit: str | None = None,
+    margin: float | None = None,
+    requires: tuple[str, ...] = (),
+) -> NormativeItem:
+    """Pozycja raportu z rekordu: kod i waga są projekcją rekordu, zdanie jest zdaniem rekordu
+    (jedno miejsce składania pozycji — żadna gałąź nie pisze własnego zdania rozstrzygnięcia)."""
     return NormativeItem(
         rule_id=rule.rule_id,
         title_pl=rule.title_pl,
-        severity=NormativeSeverity.WARNING,
-        status=NormativeStatus.NOT_COMPUTED,
-        target_id="—",
-        observed_value=None,
-        unit=None,
-        limit_value=None,
-        limit_unit=None,
-        margin=None,
-        why_pl=("Brak dowodu (ProofDocument) dla pakietu " f"{rule.proof_type.value}."),
+        severity=projekcja[1],
+        status=projekcja[0],
+        target_id=target_id,
+        observed_value=observed_value,
+        unit=unit,
+        limit_value=limit_value,
+        limit_unit=limit_unit,
+        margin=margin,
+        why_pl=ocena.wyjasnienie.zdanie_pl,
         requires=requires,
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
+    )
+
+
+def _missing_proof_item(rule: NormativeRule, config: NormativeConfig) -> NormativeItem:
+    proof_type = rule.proof_type.value
+    ocena = ocena_pozycji(
+        rule_id=rule.rule_id,
+        title_pl=rule.title_pl,
+        target_id="—",
+        proof_type=proof_type,
+        config=config,
+        braki=(f"dowód pakietu {proof_type} nie został wygenerowany dla tego przebiegu",),
+    )
+    return _pozycja(
+        rule,
+        target_id="—",
+        ocena=ocena,
+        projekcja=status_pozycji(ocena),
+        requires=(proof_type,),
     )
 
 
@@ -106,147 +142,160 @@ def _evaluate_rule(
 ) -> NormativeItem:
     key_results = proof.summary.key_results
     target_id = _target_id(proof)
+    proof_type = proof.proof_type.value
 
-    if rule.rule_id == "NR_P15_001":
-        return _evaluate_loading_rule(
+    if rule.rule_id in ("NR_P15_001", "NR_P15_002"):
+        return _evaluate_threshold_rule(
             rule,
-            key_results.get("k_i_percent"),
+            key_results.get(_rule_key(rule)),
+            target_id,
+            proof_type,
             config,
-            target_id,
+            warn=config.loading_warn_pct,
+            fail=config.loading_fail_pct,
         )
-    if rule.rule_id == "NR_P15_002":
-        return _evaluate_loading_rule(
-            rule,
-            key_results.get("k_s_percent"),
-            config,
-            target_id,
-        )
-    if rule.rule_id == "NR_P18_001":
+    if rule.rule_id in ("NR_P18_001", "NR_P18_002", "NR_P18_003"):
         return _evaluate_boolean_rule(
-            rule,
-            key_results.get("breaking_ok"),
-            target_id,
-        )
-    if rule.rule_id == "NR_P18_002":
-        return _evaluate_boolean_rule(
-            rule,
-            key_results.get("dynamic_ok"),
-            target_id,
-        )
-    if rule.rule_id == "NR_P18_003":
-        return _evaluate_boolean_rule(
-            rule,
-            key_results.get("thermal_ok"),
-            target_id,
+            rule, key_results.get(_rule_key(rule)), target_id, proof_type, config
         )
     if rule.rule_id == "NR_P18_004":
         return _evaluate_selectivity_rule(
-            rule,
-            key_results.get("selectivity_ok"),
-            target_id,
-            config,
+            rule, key_results.get(_rule_key(rule)), target_id, proof_type, config
         )
     if rule.rule_id == "NR_P19_001":
-        return _evaluate_touch_voltage_rule(
+        return _evaluate_threshold_rule(
             rule,
-            key_results.get("u_touch_v"),
+            key_results.get(_rule_key(rule)),
             target_id,
+            proof_type,
             config,
+            warn=config.touch_voltage_warn_v,
+            fail=config.touch_voltage_fail_v,
+            requires_bez_limitu=("touch_voltage_warn_v", "touch_voltage_fail_v"),
         )
     if rule.rule_id == "NR_P19_002":
-        return _evaluate_earth_current_rule(
+        return _evaluate_threshold_rule(
             rule,
-            key_results.get("i_earth_a"),
+            key_results.get(_rule_key(rule)),
             target_id,
+            proof_type,
             config,
+            warn=config.earth_current_warn_a,
+            fail=config.earth_current_fail_a,
+            requires_bez_limitu=("earth_current_warn_a", "earth_current_fail_a"),
         )
     if rule.rule_id == "NR_P11_001":
-        return _evaluate_availability_rule(
-            rule,
-            key_results,
-            target_id,
-        )
+        return _evaluate_availability_rule(rule, key_results, target_id, proof_type, config)
     if rule.rule_id == "NR_P17_001":
         return _evaluate_presence_rule(
-            rule,
-            key_results.get("e_loss_kwh"),
-            target_id,
+            rule, key_results.get(_rule_key(rule)), target_id, proof_type, config
         )
-
-    return NormativeItem(
-        rule_id=rule.rule_id,
-        title_pl=rule.title_pl,
-        severity=NormativeSeverity.WARNING,
-        status=NormativeStatus.NOT_COMPUTED,
-        target_id=target_id,
-        observed_value=None,
-        unit=None,
-        limit_value=None,
-        limit_unit=None,
-        margin=None,
-        why_pl="Reguła nieobsługiwana.",
-        requires=(rule.proof_type.value,),
-    )
+    # Rejestr reguł jest zamknięty (``rule_registry.RULES``) — reguła spoza tej listy to błąd
+    # programu, nie pozycja raportu (zakaz cichego „nieobsługiwana").
+    raise ValueError(f"Reguła oceny normatywnej bez ewaluatora: {rule.rule_id}")
 
 
-def _evaluate_loading_rule(
+def _evaluate_threshold_rule(
     rule: NormativeRule,
     value: ProofValue | None,
-    config: NormativeConfig,
     target_id: str,
+    proof_type: str,
+    config: NormativeConfig,
+    *,
+    warn: float | None,
+    fail: float | None,
+    requires_bez_limitu: tuple[str, ...] = (),
 ) -> NormativeItem:
-    if value is None or not _is_numeric(value.value):
-        return _missing_key_item(rule, target_id, _rule_key(rule))
+    """Reguła progowa: rekord ``wielkość ≤ próg przekroczenia``; próg ostrzeżenia nakłada sygnał
+    bliskości limitu na rekord spełniony. Brak obu progów ⇒ podstawa nieustalona (rekord
+    ``BRAK_PODSTAWY``, pozycja ``NOT_EVALUATED``) — nigdy spełnienie."""
+    observed = _liczba(value)
+    if value is None or observed is None:
+        return _missing_key_item(rule, target_id, proof_type, config)
 
-    observed = float(value.value)
     unit = value.unit
-    warn = config.loading_warn_pct
-    fail = config.loading_fail_pct
-    status, severity, limit = _threshold_status(observed, warn, fail)
-    margin = observed - limit
-    why_pl = _format_threshold_why(observed, limit, unit, status)
-
-    return NormativeItem(
+    fail_value = fail if fail is not None else warn
+    warn_value = warn if warn is not None else fail_value
+    ocena = ocena_pozycji(
         rule_id=rule.rule_id,
         title_pl=rule.title_pl,
-        severity=severity,
-        status=status,
         target_id=target_id,
+        proof_type=proof_type,
+        config=config,
+        wynik=observed,
+        jednostka=unit,
+        limit=fail_value,
+    )
+    projekcja = status_pozycji(
+        ocena,
+        wynik=observed,
+        prog_ostrzezenia=warn_value,
+        nierozstrzygniete=NormativeStatus.NOT_EVALUATED,
+        waga_nierozstrzygnietych=NormativeSeverity.INFO,
+    )
+    if fail_value is None or warn_value is None:
+        return _pozycja(
+            rule,
+            target_id=target_id,
+            ocena=ocena,
+            projekcja=projekcja,
+            observed_value=observed,
+            unit=unit,
+            limit_unit=unit,
+            requires=requires_bez_limitu,
+        )
+    limit = float(fail_value) if projekcja[0] == NormativeStatus.FAIL else float(warn_value)
+    return _pozycja(
+        rule,
+        target_id=target_id,
+        ocena=ocena,
+        projekcja=projekcja,
         observed_value=observed,
         unit=unit,
         limit_value=limit,
         limit_unit=unit,
-        margin=margin,
-        why_pl=why_pl,
-        requires=(),
+        margin=observed - limit,
     )
+
+
+#: Wynik warunku zapisany w dowodzie → wartość logiczna rekordu (``None`` — nie oceniono).
+_WYNIK_WARUNKU: dict[str, bool | None] = {"OK": True, "NOT_OK": False}
 
 
 def _evaluate_boolean_rule(
     rule: NormativeRule,
     value: ProofValue | None,
     target_id: str,
+    proof_type: str,
+    config: NormativeConfig,
 ) -> NormativeItem:
     if value is None or not isinstance(value.value, str):
-        return _missing_key_item(rule, target_id, _rule_key(rule))
+        return _missing_key_item(rule, target_id, proof_type, config)
 
-    status = _status_from_ok(value.value)
-    severity = _severity_from_status(status)
-    why_pl = _format_ok_why(value.value)
-
-    return NormativeItem(
+    ocena = ocena_pozycji(
         rule_id=rule.rule_id,
         title_pl=rule.title_pl,
-        severity=severity,
-        status=status,
         target_id=target_id,
-        observed_value=value.value,
+        proof_type=proof_type,
+        config=config,
+        spelniony=_WYNIK_WARUNKU.get(value.value),
+        braki=_braki_warunku(value.value),
+    )
+    return _pozycja(
+        rule,
+        target_id=target_id,
+        ocena=ocena,
+        projekcja=status_pozycji(
+            ocena,
+            nierozstrzygniete=_nierozstrzygniety(value.value),
+            waga_nierozstrzygnietych=(
+                NormativeSeverity.INFO
+                if value.value == "NOT_EVALUATED"
+                else NormativeSeverity.WARNING
+            ),
+        ),
+        observed_value=_wartosc_obserwowana(value.value),
         unit=value.unit,
-        limit_value=None,
-        limit_unit=None,
-        margin=None,
-        why_pl=why_pl,
-        requires=(),
     )
 
 
@@ -254,140 +303,43 @@ def _evaluate_selectivity_rule(
     rule: NormativeRule,
     value: ProofValue | None,
     target_id: str,
+    proof_type: str,
     config: NormativeConfig,
 ) -> NormativeItem:
+    """Selektywność: dowód bez oceny przy wymaganiu niewłączonym w konfiguracji ⇒ kryterium nie
+    stosuje się (``NIE_DOTYCZY`` z powodem); przy wymaganiu włączonym ⇒ ``NIE_OCENIONO``."""
     if value is None or not isinstance(value.value, str):
-        return _missing_key_item(rule, target_id, _rule_key(rule))
+        return _missing_key_item(rule, target_id, proof_type, config)
 
-    status = _status_from_ok(value.value)
-    severity = _severity_from_status(status)
-    if status == NormativeStatus.NOT_EVALUATED:
-        if config.selectivity_required:
-            severity = NormativeSeverity.WARNING
-            why_pl = "Selektywność wymagana, brak oceny w dowodzie."
-        else:
-            severity = NormativeSeverity.INFO
-            why_pl = "Selektywność niewymagana — brak oceny akceptowalny."
-    else:
-        why_pl = _format_ok_why(value.value)
-
-    return NormativeItem(
+    spelniony = _WYNIK_WARUNKU.get(value.value)
+    niewymagana = value.value == "NOT_EVALUATED" and not config.selectivity_required
+    ocena = ocena_pozycji(
         rule_id=rule.rule_id,
         title_pl=rule.title_pl,
-        severity=severity,
-        status=status,
         target_id=target_id,
-        observed_value=value.value,
+        proof_type=proof_type,
+        config=config,
+        spelniony=spelniony,
+        braki=() if niewymagana else _braki_warunku(value.value),
+        dotyczy=not niewymagana,
+        powod_stosowalnosci_pl=(
+            "selektywność zabezpieczeń nie jest wymagana w konfiguracji oceny normatywnej, "
+            "a dowód jej nie ocenił"
+            if niewymagana
+            else None
+        ),
+    )
+    return _pozycja(
+        rule,
+        target_id=target_id,
+        ocena=ocena,
+        projekcja=status_pozycji(
+            ocena,
+            nierozstrzygniete=_nierozstrzygniety(value.value),
+            waga_nierozstrzygnietych=NormativeSeverity.WARNING,
+        ),
+        observed_value=_wartosc_obserwowana(value.value),
         unit=value.unit,
-        limit_value=None,
-        limit_unit=None,
-        margin=None,
-        why_pl=why_pl,
-        requires=(),
-    )
-
-
-def _evaluate_touch_voltage_rule(
-    rule: NormativeRule,
-    value: ProofValue | None,
-    target_id: str,
-    config: NormativeConfig,
-) -> NormativeItem:
-    if value is None or not _is_numeric(value.value):
-        return _missing_key_item(rule, target_id, _rule_key(rule))
-
-    observed = float(value.value)
-    unit = value.unit
-    warn = config.touch_voltage_warn_v
-    fail = config.touch_voltage_fail_v
-
-    if warn is None and fail is None:
-        return NormativeItem(
-            rule_id=rule.rule_id,
-            title_pl=rule.title_pl,
-            severity=NormativeSeverity.INFO,
-            status=NormativeStatus.NOT_EVALUATED,
-            target_id=target_id,
-            observed_value=observed,
-            unit=unit,
-            limit_value=None,
-            limit_unit=unit,
-            margin=None,
-            why_pl="Brak limitów napięcia dotykowego w konfiguracji.",
-            requires=("touch_voltage_warn_v", "touch_voltage_fail_v"),
-        )
-
-    warn_value = warn if warn is not None else fail
-    fail_value = fail if fail is not None else warn
-    status, severity, limit = _threshold_status(observed, warn_value, fail_value)
-    margin = observed - limit
-    why_pl = _format_threshold_why(observed, limit, unit, status)
-
-    return NormativeItem(
-        rule_id=rule.rule_id,
-        title_pl=rule.title_pl,
-        severity=severity,
-        status=status,
-        target_id=target_id,
-        observed_value=observed,
-        unit=unit,
-        limit_value=limit,
-        limit_unit=unit,
-        margin=margin,
-        why_pl=why_pl,
-        requires=(),
-    )
-
-
-def _evaluate_earth_current_rule(
-    rule: NormativeRule,
-    value: ProofValue | None,
-    target_id: str,
-    config: NormativeConfig,
-) -> NormativeItem:
-    if value is None or not _is_numeric(value.value):
-        return _missing_key_item(rule, target_id, _rule_key(rule))
-
-    observed = float(value.value)
-    unit = value.unit
-    warn = config.earth_current_warn_a
-    fail = config.earth_current_fail_a
-
-    if warn is None and fail is None:
-        return NormativeItem(
-            rule_id=rule.rule_id,
-            title_pl=rule.title_pl,
-            severity=NormativeSeverity.INFO,
-            status=NormativeStatus.PASS,
-            target_id=target_id,
-            observed_value=observed,
-            unit=unit,
-            limit_value=None,
-            limit_unit=unit,
-            margin=None,
-            why_pl="Brak limitów prądu doziemnego — wynik informacyjny.",
-            requires=(),
-        )
-
-    warn_value = warn if warn is not None else fail
-    fail_value = fail if fail is not None else warn
-    status, severity, limit = _threshold_status(observed, warn_value, fail_value)
-    margin = observed - limit
-    why_pl = _format_threshold_why(observed, limit, unit, status)
-
-    return NormativeItem(
-        rule_id=rule.rule_id,
-        title_pl=rule.title_pl,
-        severity=severity,
-        status=status,
-        target_id=target_id,
-        observed_value=observed,
-        unit=unit,
-        limit_value=limit,
-        limit_unit=unit,
-        margin=margin,
-        why_pl=why_pl,
-        requires=(),
     )
 
 
@@ -395,38 +347,28 @@ def _evaluate_availability_rule(
     rule: NormativeRule,
     key_results: dict[str, ProofValue],
     target_id: str,
+    proof_type: str,
+    config: NormativeConfig,
 ) -> NormativeItem:
     keys = ("ikss_ka", "ip_ka", "ith_ka")
-    missing = [key for key in keys if key not in key_results]
-    if missing:
-        return NormativeItem(
-            rule_id=rule.rule_id,
-            title_pl=rule.title_pl,
-            severity=NormativeSeverity.WARNING,
-            status=NormativeStatus.NOT_COMPUTED,
-            target_id=target_id,
-            observed_value="BRAK",
-            unit="—",
-            limit_value=None,
-            limit_unit=None,
-            margin=None,
-            why_pl="Brak pełnego zestawu wyników SC3F.",
-            requires=tuple(missing),
-        )
-
-    return NormativeItem(
+    missing = tuple(key for key in keys if key not in key_results)
+    ocena = ocena_pozycji(
         rule_id=rule.rule_id,
         title_pl=rule.title_pl,
-        severity=NormativeSeverity.INFO,
-        status=NormativeStatus.PASS,
         target_id=target_id,
-        observed_value="DOSTĘPNE",
+        proof_type=proof_type,
+        config=config,
+        spelniony=None if missing else True,
+        braki=tuple(f"wielkość {key} w dowodzie zwarcia trójfazowego" for key in missing),
+    )
+    return _pozycja(
+        rule,
+        target_id=target_id,
+        ocena=ocena,
+        projekcja=status_pozycji(ocena),
+        observed_value="BRAK" if missing else "DOSTĘPNE",
         unit="—",
-        limit_value=None,
-        limit_unit=None,
-        margin=None,
-        why_pl="Wyniki SC3F dostępne (Ik″, ip, Ith).",
-        requires=(),
+        requires=missing,
     )
 
 
@@ -434,45 +376,68 @@ def _evaluate_presence_rule(
     rule: NormativeRule,
     value: ProofValue | None,
     target_id: str,
+    proof_type: str,
+    config: NormativeConfig,
 ) -> NormativeItem:
     if value is None:
-        return _missing_key_item(rule, target_id, _rule_key(rule))
+        return _missing_key_item(rule, target_id, proof_type, config)
 
-    return NormativeItem(
+    ocena = ocena_pozycji(
         rule_id=rule.rule_id,
         title_pl=rule.title_pl,
-        severity=NormativeSeverity.INFO,
-        status=NormativeStatus.PASS,
         target_id=target_id,
-        observed_value=value.value,
+        proof_type=proof_type,
+        config=config,
+        spelniony=True,
+    )
+    return _pozycja(
+        rule,
+        target_id=target_id,
+        ocena=ocena,
+        projekcja=status_pozycji(ocena),
+        observed_value=_wartosc_obserwowana(value.value),
         unit=value.unit,
-        limit_value=None,
-        limit_unit=None,
-        margin=None,
-        why_pl="Profil energii strat został obliczony.",
-        requires=(),
     )
 
 
 def _missing_key_item(
     rule: NormativeRule,
     target_id: str,
-    key: str,
+    proof_type: str,
+    config: NormativeConfig,
 ) -> NormativeItem:
-    return NormativeItem(
+    key = _rule_key(rule)
+    ocena = ocena_pozycji(
         rule_id=rule.rule_id,
         title_pl=rule.title_pl,
-        severity=NormativeSeverity.WARNING,
-        status=NormativeStatus.NOT_COMPUTED,
         target_id=target_id,
-        observed_value=None,
-        unit=None,
-        limit_value=None,
-        limit_unit=None,
-        margin=None,
-        why_pl="Brak wymaganych danych w ProofDocument.",
+        proof_type=proof_type,
+        config=config,
+        braki=(f"wielkość {key} w dowodzie pakietu {proof_type}",),
+    )
+    return _pozycja(
+        rule,
+        target_id=target_id,
+        ocena=ocena,
+        projekcja=status_pozycji(ocena),
         requires=(key,),
     )
+
+
+def _braki_warunku(wynik_warunku: str) -> tuple[str, ...]:
+    if wynik_warunku in _WYNIK_WARUNKU:
+        return ()
+    if wynik_warunku == "NOT_EVALUATED":
+        return ("dowód nie ocenił warunku (brak danych aparatu albo zwarcia w dowodzie)",)
+    return ("dowód nie zawiera rozpoznawalnego wyniku warunku",)
+
+
+def _nierozstrzygniety(wynik_warunku: str) -> NormativeStatus:
+    """Stan danych pozycji nierozstrzygniętej: dowód jawnie nie ocenił warunku
+    (``NOT_EVALUATED``) albo wyniku warunku w dowodzie nie ma (``NOT_COMPUTED``)."""
+    if wynik_warunku == "NOT_EVALUATED":
+        return NormativeStatus.NOT_EVALUATED
+    return NormativeStatus.NOT_COMPUTED
 
 
 def _target_id(proof: ProofDocument) -> str:
@@ -484,79 +449,18 @@ def _target_id(proof: ProofDocument) -> str:
     return "—"
 
 
-def _is_numeric(value: object) -> bool:
-    return isinstance(value, int | float)
+def _liczba(value: ProofValue | None) -> float | None:
+    """Wartość dowodu jako liczba rzeczywista; brak wartości, tekst albo liczba zespolona —
+    ``None`` (reguła progowa porównuje wyłącznie wielkość rzeczywistą)."""
+    if value is None or not isinstance(value.value, int | float):
+        return None
+    return float(value.value)
 
 
-def _status_from_ok(value: str) -> NormativeStatus:
-    if value == "OK":
-        return NormativeStatus.PASS
-    if value == "NOT_OK":
-        return NormativeStatus.FAIL
-    if value == "NOT_EVALUATED":
-        return NormativeStatus.NOT_EVALUATED
-    return NormativeStatus.NOT_COMPUTED
-
-
-def _severity_from_status(status: NormativeStatus) -> NormativeSeverity:
-    if status == NormativeStatus.FAIL:
-        return NormativeSeverity.FAIL
-    if status == NormativeStatus.WARNING:
-        return NormativeSeverity.WARNING
-    if status == NormativeStatus.NOT_COMPUTED:
-        return NormativeSeverity.WARNING
-    if status == NormativeStatus.NOT_EVALUATED:
-        return NormativeSeverity.INFO
-    return NormativeSeverity.INFO
-
-
-def _threshold_status(
-    observed: float,
-    warn: float | None,
-    fail: float | None,
-) -> tuple[NormativeStatus, NormativeSeverity, float]:
-    fail_value = fail if fail is not None else warn
-    warn_value = warn if warn is not None else fail_value
-    if fail_value is None:
-        return NormativeStatus.NOT_EVALUATED, NormativeSeverity.INFO, observed
-
-    if observed >= fail_value:
-        return NormativeStatus.FAIL, NormativeSeverity.FAIL, float(fail_value)
-    if warn_value is not None and observed >= warn_value:
-        return NormativeStatus.WARNING, NormativeSeverity.WARNING, float(warn_value)
-    return NormativeStatus.PASS, NormativeSeverity.INFO, float(warn_value or fail_value)
-
-
-def _format_threshold_why(
-    observed: float,
-    limit: float,
-    unit: str,
-    status: NormativeStatus,
-) -> str:
-    prefix = "Wartość"
-    status_label = {
-        NormativeStatus.FAIL: "przekracza",
-        NormativeStatus.WARNING: "zbliża się do",
-        NormativeStatus.PASS: "poniżej",
-    }.get(status, "")
-    return (
-        f"{prefix} { _format_value(observed)} {unit} {status_label} "
-        f"limitu { _format_value(limit)} {unit}."
-    )
-
-
-def _format_ok_why(value: str) -> str:
-    if value == "OK":
-        return "Warunek spełniony."
-    if value == "NOT_OK":
-        return "Warunek niespełniony."
-    if value == "NOT_EVALUATED":
-        return "Brak danych do oceny warunku."
-    return "Brak danych do oceny warunku."
-
-
-def _format_value(value: float) -> str:
-    return f"{value:.2f}"
+def _wartosc_obserwowana(value: float | complex | str) -> float | str:
+    """Wartość obserwowana pozycji: liczba zespolona dowodu zapisana tekstem (pole pozycji
+    i zapis JSON nie niosą liczb zespolonych)."""
+    return str(value) if isinstance(value, complex) else value
 
 
 def _rule_key(rule: NormativeRule) -> str:

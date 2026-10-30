@@ -31,6 +31,8 @@ def row_to_dict(row: VoltageProfileRow) -> dict[str, Any]:
         "q_mvar": float(row.q_mvar) if row.q_mvar is not None else None,
         "case_name": row.case_name,
         "run_timestamp": row.run_timestamp.isoformat() if row.run_timestamp else None,
+        "ocena": row.ocena.model_dump(mode="json"),
+        "wyjasnienie": row.wyjasnienie.model_dump(mode="json"),
     }
 
 

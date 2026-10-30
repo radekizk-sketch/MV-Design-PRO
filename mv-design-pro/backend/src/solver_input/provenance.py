@@ -427,6 +427,63 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="karta F-K3; karta WERDYKT-MIGRACJA-190",
         ),
         CapabilityEvidence(
+            capability_id="normatywna.ocena_dowodow",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Ocena normatywna dowodów (analysis/normative): wielkości kluczowe dowodów "
+                "obciążeń, zabezpieczeń nadprądowych, uziemień, zwarcia trójfazowego i strat "
+                "porównane z progami konfiguracji oceny albo z wynikiem warunku zapisanym "
+                "w dowodzie. Dowody pochodzą z modelu niezwalidowanego pomiarem — wynik nie "
+                "jest dowodem regulacyjnym."
+            ),
+            audit_ref="analysis/normative/evaluator.py; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="wzorzec_odniesienia.nastawy_i_bis",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Wzorzec odniesienia doboru nastawy I>> linii SN: okno nastaw z warunków "
+                "selektywności, czułości i cieplnego oraz cykl cieplny SPZ wyznaczone silnikiem "
+                "metodyki Hoppla (application/protection_settings/engine.py) z prądów "
+                "zwarciowych danych wzorca — obliczenie statyczne, metodyka z literatury "
+                "inżynierskiej, nie norma."
+            ),
+            audit_ref=(
+                "application/reference_patterns/pattern_line_i_doubleprime_thermal_spz.py; "
+                "karta WERDYKT-MIGRACJA-190"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="wzorzec_odniesienia.generacja_lokalna",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Wzorzec odniesienia wpływu generacji lokalnej na zabezpieczenia SN: zmiana "
+                "prądu zwarciowego, ryzyko blokady zabezpieczenia szyn i wpływ na selektywność "
+                "stopni nadprądowych porównane z progami diagnostycznymi wzorca (bez cytatu "
+                "normy) — obliczenie statyczne na prądach zwarciowych danych wzorca."
+            ),
+            audit_ref=(
+                "application/reference_patterns/wzorzec_c_generacja_lokalna.py; "
+                "karta WERDYKT-MIGRACJA-190"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="wrazliwosc.zapas_kryterium",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Wrażliwość zapasu kryterium (analysis/sensitivity): zapas do progu kryterium "
+                "(odchyłka napięcia, obciążenie, wytrzymałość zwarciowa aparatu, koordynacja "
+                "krzywych) w stanie bazowym i przy zmianie wielkości o ±delta %. Perturbacja "
+                "jest przeskalowaniem gotowego wyniku, nie nowym biegiem obliczeń — wynik "
+                "orientacyjny, nie dowód regulacyjny."
+            ),
+            audit_ref="analysis/sensitivity/builder.py; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
             capability_id="rozplyw.walidacja_energetyczna",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

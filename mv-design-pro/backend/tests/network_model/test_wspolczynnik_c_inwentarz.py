@@ -67,11 +67,11 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
         1,
         "górna granica pasma wiarygodności stosunku B′0/B′1 linii napowietrznej, nie c",
     ),
-    ("analysis/energy_validation/builder.py", "if cos_phi >= 0.9:"): (
+    ("analysis/energy_validation/builder.py", "_COS_PHI_OSTRZEZENIE = 0.9"): (
         1,
-        "próg cos φ bilansu mocy biernej",
+        "próg ostrzeżenia cos φ bilansu mocy biernej (jedna stała dla rekordu i progu "
+        "pozycji), nie c",
     ),
-    ("analysis/energy_validation/builder.py", "limit_warn=0.9,"): (1, "próg ostrzeżenia cos φ"),
     ("api/analysis_runs.py", "k_bth: float = Query(default=1.1),"): (
         3,
         "k_bth — współczynnik cieplny nastaw zabezpieczeń (Hoppel), nie c",

@@ -36,11 +36,13 @@ METHODOLOGY VALIDATION (Hoppel/IRiESD, `protection_settings/engine.py`):
 6. Local generation (generacja_lokalna): diagnostyka wkładu E-L i ryzyka
    blokady ZSZ — próg ryzyka jako wejście JAWNE (rozszerzenie W3-C2)
 
-VERDICT LOGIC:
-- ZGODNE: Valid window exists AND all criteria PASS AND window not narrow
-- GRANICZNE: Valid window exists BUT (narrow window OR SPZ blocked OR
-  ryzyko blokady ZSZ)
-- NIEZGODNE: Invalid window (I_min > I_max)
+WERDYKT (karta WERDYKT-MIGRACJA-190): każde sprawdzenie niesie rekord K (`oceny.py`),
+wzorzec — rekord W nad kryteriami selektywności, czułości, cieplnym, okna i SPZ. Kod
+`verdict` jest projekcją rekordów (`oceny.werdykt_wzorca`):
+- NIEZGODNE: którekolwiek kryterium naruszone (sprzeczne okno albo SPZ wymagające blokady);
+- GRANICZNE: kryteria spełnione, ale z ograniczeniem — wąskie okno albo ryzyko blokady ZSZ
+  w diagnostyce generacji lokalnej (diagnostyka nie wchodzi do rekordu W);
+- ZGODNE: kryteria spełnione bez ograniczeń.
 
 Poza zakresem tego wzorca (nazwa/PATTERN_ID = wyłącznie "I>>"): nastawa I>
 (opóźniona, stopniowana czasowo) i osobny ogólny test wytrzymałości cieplnej
@@ -70,15 +72,24 @@ from application.protection_settings.engine import (
     ProtectionSettingsResult,
     SPZAnalysisResult,
 )
+from enm.nazwy_elementow import opis_bez_nazwy
 from network_model.pochodne import a_na_ka
+from werdykt import OcenaKryterium, WynikWymagania
+from werdykt.porownanie import DOTYCZY_OBIEKTU, Porownanie
 
 from .base import (
     CheckStatus,
     ReferencePatternResult,
-    ReferenceVerdict,
     build_check,
     build_trace_step,
     stable_sort_dict,
+)
+from .oceny import (
+    ocena_sprawdzenia,
+    opis_werdyktu,
+    status_sprawdzenia,
+    werdykt_wzorca,
+    wymaganie_wzorca,
 )
 
 # =============================================================================
@@ -343,8 +354,9 @@ class LineIDoublePrimeReferencePattern:
 
         # Step 3: Build checks
         checks: list[dict[str, Any]] = []
+        linia = (analysis_result.line_id, analysis_result.line_name)
 
-        sel_check = self._build_selectivity_check(instantaneous, setting_window)
+        sel_check, sel_ocena = self._build_selectivity_check(linia, instantaneous, setting_window)
         checks.append(sel_check)
         trace_steps.append(
             build_trace_step(
@@ -359,7 +371,7 @@ class LineIDoublePrimeReferencePattern:
             )
         )
 
-        sens_check = self._build_sensitivity_check(instantaneous, setting_window)
+        sens_check, sens_ocena = self._build_sensitivity_check(linia, instantaneous, setting_window)
         checks.append(sens_check)
         trace_steps.append(
             build_trace_step(
@@ -374,7 +386,7 @@ class LineIDoublePrimeReferencePattern:
             )
         )
 
-        th_check = self._build_thermal_check(instantaneous, setting_window)
+        th_check, th_ocena = self._build_thermal_check(linia, instantaneous, setting_window)
         checks.append(th_check)
         trace_steps.append(
             build_trace_step(
@@ -389,7 +401,7 @@ class LineIDoublePrimeReferencePattern:
             )
         )
 
-        window_check = self._build_window_check(setting_window)
+        window_check, okno_ocena, waskie_okno = self._build_window_check(linia, setting_window)
         checks.append(window_check)
         trace_steps.append(
             build_trace_step(
@@ -407,7 +419,7 @@ class LineIDoublePrimeReferencePattern:
             )
         )
 
-        spz_check = self._build_spz_check(spz)
+        spz_check, spz_ocena = self._build_spz_check(linia, spz)
         checks.append(spz_check)
         trace_steps.append(
             build_trace_step(
@@ -423,7 +435,7 @@ class LineIDoublePrimeReferencePattern:
             )
         )
 
-        lg_check = self._build_local_generation_check(local_generation)
+        lg_check, lg_ocena = self._build_local_generation_check(linia, local_generation)
         checks.append(lg_check)
         trace_steps.append(
             build_trace_step(
@@ -444,8 +456,22 @@ class LineIDoublePrimeReferencePattern:
         # Step 4: Sort checks deterministically
         checks_sorted = sorted(checks, key=lambda c: c["name_pl"])
 
-        # Step 5: Determine verdict
-        verdict = self._determine_verdict(setting_window=setting_window, checks=checks_sorted)
+        # Step 5: Determine verdict — rekord W nad kryteriami okna i SPZ; diagnostyka
+        # generacji lokalnej i wąskie okno to sygnały ograniczenia (GRANICZNE), nie kryteria.
+        oceny = (sel_ocena, sens_ocena, th_ocena, okno_ocena, spz_ocena)
+        ograniczenia = [o for o in (waskie_okno,) if o is not None]
+        if lg_ocena.status_maszynowy == "NIE_SPELNIA":
+            ograniczenia.append(
+                f"ryzyko blokady ZSZ od generacji lokalnej ({lg_check['description_pl']})"
+            )
+        wymaganie = wymaganie_wzorca(
+            wzorzec="A",
+            wymaganie_id=f"wzorzec_a.{analysis_result.line_id}",
+            nazwa_pl=f"{PATTERN_NAME_PL} — {analysis_result.line_name or opis_bez_nazwy('branches')}",
+            oceny=oceny,
+        )
+        verdict = werdykt_wzorca(oceny, ograniczenia=ograniczenia)
+        opis = opis_werdyktu(wymaganie, verdict, ograniczenia)
 
         trace_steps.append(
             build_trace_step(
@@ -456,229 +482,354 @@ class LineIDoublePrimeReferencePattern:
                     "spz_allowed": spz.spz_allowed,
                     "ryzyko_blokady_zsz": local_generation.ryzyko_blokady_zsz,
                 },
-                outputs={"verdict": verdict},
+                outputs={"verdict": verdict, "wyjasnienie": wymaganie.wyjasnienie.zdanie_pl},
             )
         )
 
         # Step 6: Build summary
-        summary_pl = self._build_summary(verdict, setting_window, artifacts)
+        summary_pl = self._build_summary(wymaganie, ograniczenia, setting_window, artifacts)
 
         return ReferencePatternResult(
             pattern_id=PATTERN_ID,
             name_pl=PATTERN_NAME_PL,
             verdict=verdict,
+            verdict_description_pl=opis,
             summary_pl=summary_pl,
+            wymaganie=wymaganie,
+            wyjasnienie=wymaganie.wyjasnienie,
             checks=tuple(checks_sorted),
             trace=tuple(trace_steps),
             artifacts=stable_sort_dict(artifacts),
         )
 
+    def _ocena(
+        self,
+        result_line: tuple[str, str],
+        *,
+        kryterium_id: str,
+        opis_pl: str,
+        wielkosc_pl: str,
+        spelniony: bool | None,
+        stan_pl: str,
+        krok_sladu: str,
+        dotyczy: bool = True,
+        powod_stosowalnosci_pl: str | None = None,
+        braki: tuple[str, ...] = (),
+    ) -> OcenaKryterium:
+        """Rekord K sprawdzenia wzorca A — kryterium LOGICZNE czytane z decyzji silnika
+        nastaw (``range_valid``, ``spz_allowed``, ``ryzyko_blokady_zsz``): silnik decyduje na
+        wartościach niezaokrąglonych, więc rekord bierze JEGO rozstrzygnięcie (jedno źródło),
+        a liczby niesie opis stanu."""
+        line_id, line_name = result_line
+        return ocena_sprawdzenia(
+            Porownanie(
+                kryterium_id=f"wzorzec_a.{kryterium_id}",
+                opis_pl=opis_pl,
+                relacja="LOGICZNE",
+                wielkosc_pl=wielkosc_pl,
+                spelniony=spelniony if dotyczy else None,
+                stan_pl=stan_pl,
+                braki=braki,
+                dotyczy=dotyczy,
+                powod_stosowalnosci_pl=powod_stosowalnosci_pl or DOTYCZY_OBIEKTU,
+            ),
+            wzorzec="A",
+            element_ref=line_id,
+            nazwa_pl=line_name or opis_bez_nazwy("branches"),
+            krok_sladu=krok_sladu,
+        )
+
     def _build_selectivity_check(
         self,
+        linia: tuple[str, str],
         instantaneous: InstantaneousSettings,
         setting_window: InstantaneousSettingWindow,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], OcenaKryterium]:
         """Build selectivity criterion check."""
-        if not setting_window.window_valid:
-            status: CheckStatus = "FAIL"
-            desc = (
-                f"Selektywność wyznacza dolną granicę konfliktu: I_min = "
-                f"{instantaneous.i_min_selectivity_a:.1f} A (k_b={instantaneous.k_b}). "
-                f"{setting_window.conflict_pl}"
-            )
-        else:
-            status = "PASS"
-            desc = (
-                f"Selektywność spełniona: I_min = {instantaneous.i_min_selectivity_a:.1f} A "
-                f"(k_b={instantaneous.k_b})"
-            )
-
-        return build_check(
-            name_pl="Selektywność I>>",
-            status=status,
-            description_pl=desc,
-            details={
-                "i_min_selectivity_a": instantaneous.i_min_selectivity_a,
-                "k_b": instantaneous.k_b,
-            },
+        ocena = self._ocena(
+            linia,
+            kryterium_id="selektywnosc",
+            opis_pl=(
+                "Selektywność I>>: dolna granica nastawy k_b · I''k,max(następna strefa) "
+                "mieści się poniżej górnej granicy okna"
+            ),
+            wielkosc_pl="dolna granica selektywności I_min,sel wobec górnej granicy okna I>>",
+            spelniony=setting_window.window_valid,
+            stan_pl=(
+                f"I_min,sel = {instantaneous.i_min_selectivity_a:.1f} A (k_b = "
+                f"{instantaneous.k_b}), górna granica okna {setting_window.i_max_a:.1f} A"
+            ),
+            krok_sladu="check_selectivity",
+        )
+        desc = (
+            f"Selektywność wyznacza dolną granicę konfliktu: I_min = "
+            f"{instantaneous.i_min_selectivity_a:.1f} A (k_b={instantaneous.k_b}). "
+            f"{setting_window.conflict_pl}"
+            if not setting_window.window_valid
+            else f"Selektywność spełniona: I_min = {instantaneous.i_min_selectivity_a:.1f} A "
+            f"(k_b={instantaneous.k_b})"
+        )
+        return (
+            build_check(
+                name_pl="Selektywność I>>",
+                status=status_sprawdzenia(ocena, ograniczenie=False),
+                description_pl=desc,
+                ocena=ocena,
+                details={
+                    "i_min_selectivity_a": instantaneous.i_min_selectivity_a,
+                    "k_b": instantaneous.k_b,
+                },
+            ),
+            ocena,
         )
 
     def _build_sensitivity_check(
         self,
+        linia: tuple[str, str],
         instantaneous: InstantaneousSettings,
         setting_window: InstantaneousSettingWindow,
-    ) -> dict[str, Any]:
-        """Build sensitivity criterion check."""
+    ) -> tuple[dict[str, Any], OcenaKryterium]:
+        """Build sensitivity criterion check (naruszona, gdy czułość wyznacza górną granicę
+        sprzecznego okna)."""
         limituje = (
             not setting_window.window_valid
             and setting_window.limiting_criterion_max == "sensitivity"
         )
-        if limituje:
-            status: CheckStatus = "FAIL"
-            desc = (
-                f"Czułość wyznacza górną granicę konfliktu: I_max = "
-                f"{instantaneous.i_max_sensitivity_a:.1f} A (k_b={instantaneous.k_b}). "
-                f"{setting_window.conflict_pl}"
-            )
-        else:
-            status = "PASS"
-            desc = (
-                f"Czułość spełniona: I_max = {instantaneous.i_max_sensitivity_a:.1f} A "
-                f"(k_b={instantaneous.k_b})"
-            )
-
-        return build_check(
-            name_pl="Czułość I>>",
-            status=status,
-            description_pl=desc,
-            details={
-                "i_max_sensitivity_a": instantaneous.i_max_sensitivity_a,
-                "k_b": instantaneous.k_b,
-            },
+        ocena = self._ocena(
+            linia,
+            kryterium_id="czulosc",
+            opis_pl=(
+                "Czułość I>>: górna granica I''k3,min(początek linii) / k_b nie wyznacza "
+                "sprzecznego okna nastaw"
+            ),
+            wielkosc_pl="górna granica czułości I_max,cz wobec dolnej granicy selektywności",
+            spelniony=not limituje,
+            stan_pl=(
+                f"I_max,cz = {instantaneous.i_max_sensitivity_a:.1f} A (k_b = "
+                f"{instantaneous.k_b}), I_min,sel = {instantaneous.i_min_selectivity_a:.1f} A"
+            ),
+            krok_sladu="check_sensitivity",
+        )
+        desc = (
+            f"Czułość wyznacza górną granicę konfliktu: I_max = "
+            f"{instantaneous.i_max_sensitivity_a:.1f} A (k_b={instantaneous.k_b}). "
+            f"{setting_window.conflict_pl}"
+            if limituje
+            else f"Czułość spełniona: I_max = {instantaneous.i_max_sensitivity_a:.1f} A "
+            f"(k_b={instantaneous.k_b})"
+        )
+        return (
+            build_check(
+                name_pl="Czułość I>>",
+                status=status_sprawdzenia(ocena, ograniczenie=False),
+                description_pl=desc,
+                ocena=ocena,
+                details={
+                    "i_max_sensitivity_a": instantaneous.i_max_sensitivity_a,
+                    "k_b": instantaneous.k_b,
+                },
+            ),
+            ocena,
         )
 
     def _build_thermal_check(
         self,
+        linia: tuple[str, str],
         instantaneous: InstantaneousSettings,
         setting_window: InstantaneousSettingWindow,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], OcenaKryterium]:
         """Build thermal (window ceiling) criterion check."""
         limituje = (
             not setting_window.window_valid and setting_window.limiting_criterion_max == "thermal"
         )
-        if limituje:
-            status: CheckStatus = "FAIL"
-            desc = (
-                f"Kryterium cieplne wyznacza górną granicę konfliktu: I_max = "
-                f"{instantaneous.i_max_thermal_a:.1f} A (k_bth={instantaneous.k_bth}). "
-                f"{setting_window.conflict_pl}"
-            )
-        else:
-            status = "PASS"
-            desc = (
-                f"Kryterium cieplne spełnione: I_max = {instantaneous.i_max_thermal_a:.1f} A "
-                f"(k_bth={instantaneous.k_bth}, zadziałanie chwilowe 0,05 s)"
-            )
-
-        return build_check(
-            name_pl="Kryterium cieplne",
-            status=status,
-            description_pl=desc,
-            details={
-                "i_max_thermal_a": instantaneous.i_max_thermal_a,
-                "k_bth": instantaneous.k_bth,
-            },
+        ocena = self._ocena(
+            linia,
+            kryterium_id="cieplne",
+            opis_pl=(
+                "Kryterium cieplne I>>: górna granica I_th,max / k_bth (zadziałanie chwilowe "
+                "0,05 s) nie wyznacza sprzecznego okna nastaw"
+            ),
+            wielkosc_pl="górna granica cieplna I_max,th wobec dolnej granicy selektywności",
+            spelniony=not limituje,
+            stan_pl=(
+                f"I_max,th = {instantaneous.i_max_thermal_a:.1f} A (k_bth = "
+                f"{instantaneous.k_bth}), I_min,sel = {instantaneous.i_min_selectivity_a:.1f} A"
+            ),
+            krok_sladu="check_thermal",
+        )
+        desc = (
+            f"Kryterium cieplne wyznacza górną granicę konfliktu: I_max = "
+            f"{instantaneous.i_max_thermal_a:.1f} A (k_bth={instantaneous.k_bth}). "
+            f"{setting_window.conflict_pl}"
+            if limituje
+            else f"Kryterium cieplne spełnione: I_max = {instantaneous.i_max_thermal_a:.1f} A "
+            f"(k_bth={instantaneous.k_bth}, zadziałanie chwilowe 0,05 s)"
+        )
+        return (
+            build_check(
+                name_pl="Kryterium cieplne",
+                status=status_sprawdzenia(ocena, ograniczenie=False),
+                description_pl=desc,
+                ocena=ocena,
+                details={
+                    "i_max_thermal_a": instantaneous.i_max_thermal_a,
+                    "k_bth": instantaneous.k_bth,
+                },
+            ),
+            ocena,
         )
 
-    def _build_window_check(self, setting_window: InstantaneousSettingWindow) -> dict[str, Any]:
-        """Build setting window check."""
+    def _build_window_check(
+        self, linia: tuple[str, str], setting_window: InstantaneousSettingWindow
+    ) -> tuple[dict[str, Any], OcenaKryterium, str | None]:
+        """Build setting window check. Zwraca też zdanie ograniczenia (wąskie okno) — sygnał
+        nałożony na SPEŁNIONY rekord okna, liczony z tych samych granic okna."""
+        ocena = self._ocena(
+            linia,
+            kryterium_id="okno_nastaw",
+            opis_pl="Okno nastaw I>>: dolna granica nie przekracza górnej",
+            wielkosc_pl="okno nastaw [I_min; I_max]",
+            spelniony=setting_window.window_valid,
+            stan_pl=(
+                f"I_min = {setting_window.i_min_a:.1f} A "
+                f"({setting_window.limiting_criterion_min}), I_max = "
+                f"{setting_window.i_max_a:.1f} A ({setting_window.limiting_criterion_max})"
+            ),
+            krok_sladu="check_window",
+        )
+        relative_width = _szerokosc_wzgledna(setting_window)
+        ograniczenie: str | None = None
         if not setting_window.window_valid:
-            status: CheckStatus = "FAIL"
             desc = setting_window.conflict_pl or (
                 f"Okno nastaw sprzeczne: I_min ({setting_window.i_min_a:.1f} A) > "
                 f"I_max ({setting_window.i_max_a:.1f} A)"
             )
+        elif relative_width is None:
+            # Dolna granica okna niedodatnia: szerokości względnej nie da się wyznaczyć — sygnał
+            # ograniczenia jawny (nie zerowa ani nieskończona szerokość podstawiona za brak).
+            ograniczenie = (
+                f"szerokość względna okna nastaw niewyznaczona — dolna granica I_min = "
+                f"{setting_window.i_min_a:.1f} A nie jest dodatnia"
+            )
+            desc = (
+                f"Okno nastaw: [{setting_window.i_min_a:.1f}, {setting_window.i_max_a:.1f}] A, "
+                "szerokość względna niewyznaczona (I_min ≤ 0 A)"
+            )
+        elif relative_width < NARROW_WINDOW_THRESHOLD:
+            ograniczenie = (
+                f"okno nastaw wąskie — szerokość względna {relative_width*100:.1f}% < "
+                f"{NARROW_WINDOW_THRESHOLD*100}%"
+            )
+            desc = (
+                f"Okno nastaw wąskie: [{setting_window.i_min_a:.1f}, "
+                f"{setting_window.i_max_a:.1f}] A, szerokość względna = "
+                f"{relative_width*100:.1f}% < {NARROW_WINDOW_THRESHOLD*100}%"
+            )
         else:
-            window_width = setting_window.i_max_a - setting_window.i_min_a
-            relative_width = (
-                window_width / setting_window.i_min_a if setting_window.i_min_a > 0 else 0
+            desc = (
+                f"Okno nastaw prawidłowe: [{setting_window.i_min_a:.1f}, "
+                f"{setting_window.i_max_a:.1f}] A"
             )
 
-            if relative_width < NARROW_WINDOW_THRESHOLD:
-                status = "WARN"
-                desc = (
-                    f"Okno nastaw wąskie: [{setting_window.i_min_a:.1f}, "
-                    f"{setting_window.i_max_a:.1f}] A, szerokość względna = "
-                    f"{relative_width*100:.1f}% < {NARROW_WINDOW_THRESHOLD*100}%"
-                )
-            else:
-                status = "PASS"
-                desc = (
-                    f"Okno nastaw prawidłowe: [{setting_window.i_min_a:.1f}, "
-                    f"{setting_window.i_max_a:.1f}] A"
-                )
-
-        return build_check(
-            name_pl="Okno nastaw",
-            status=status,
-            description_pl=desc,
-            details={
-                "i_min_a": setting_window.i_min_a,
-                "i_max_a": setting_window.i_max_a,
-                "window_valid": setting_window.window_valid,
-                "limiting_min": setting_window.limiting_criterion_min,
-                "limiting_max": setting_window.limiting_criterion_max,
-            },
+        return (
+            build_check(
+                name_pl="Okno nastaw",
+                status=status_sprawdzenia(ocena, ograniczenie=ograniczenie is not None),
+                description_pl=desc,
+                ocena=ocena,
+                details={
+                    "i_min_a": setting_window.i_min_a,
+                    "i_max_a": setting_window.i_max_a,
+                    "window_valid": setting_window.window_valid,
+                    "limiting_min": setting_window.limiting_criterion_min,
+                    "limiting_max": setting_window.limiting_criterion_max,
+                },
+            ),
+            ocena,
+            ograniczenie,
         )
 
-    def _build_spz_check(self, spz: SPZAnalysisResult) -> dict[str, Any]:
-        """Build SPZ thermal-cycle check."""
-        if _spz_wylaczone(spz):
-            return build_check(
-                name_pl="SPZ: dozwolone/blokować",
-                status="INFO",
-                description_pl="SPZ wyłączone — analiza cyklu cieplnego niedostępna",
-            )
-
-        if spz.spz_allowed:
-            status: CheckStatus = "PASS"
-            desc = (
-                f"SPZ dozwolone: wymagana wytrzymałość {a_na_ka(spz.i_th_required_a):.2f} kA "
-                f"<= dostępna {a_na_ka(spz.i_th_available_a):.2f} kA w cyklu "
-                f"{spz.total_fault_time_s:.2f} s"
-            )
-        else:
-            status = "FAIL"
-            desc = (
-                f"SPZ powinno być zablokowane: wymagana wytrzymałość "
-                f"{a_na_ka(spz.i_th_required_a):.2f} kA > dostępna "
+    def _build_spz_check(
+        self, linia: tuple[str, str], spz: SPZAnalysisResult
+    ) -> tuple[dict[str, Any], OcenaKryterium]:
+        """Build SPZ thermal-cycle check (SPZ wyłączone — kryterium nie dotyczy)."""
+        wylaczone = _spz_wylaczone(spz)
+        ocena = self._ocena(
+            linia,
+            kryterium_id="spz",
+            opis_pl=(
+                "Cykl SPZ: wymagana wytrzymałość cieplna I''k,max nie przekracza dostępnej "
+                "s · j_thn / √t_cyklu"
+            ),
+            wielkosc_pl="wytrzymałość cieplna przewodu w pełnym cyklu SPZ",
+            spelniony=spz.spz_allowed,
+            stan_pl=(
+                f"wymagana {a_na_ka(spz.i_th_required_a):.2f} kA, dostępna "
                 f"{a_na_ka(spz.i_th_available_a):.2f} kA w cyklu {spz.total_fault_time_s:.2f} s"
+            ),
+            krok_sladu="check_spz",
+            dotyczy=not wylaczone,
+            powod_stosowalnosci_pl=(
+                "SPZ wyłączone w danych przypadku — cykl cieplny SPZ nie występuje"
+                if wylaczone
+                else None
+            ),
+        )
+        if wylaczone:
+            return (
+                build_check(
+                    name_pl="SPZ: dozwolone/blokować",
+                    status=status_sprawdzenia(ocena, ograniczenie=False),
+                    description_pl="SPZ wyłączone — analiza cyklu cieplnego niedostępna",
+                    ocena=ocena,
+                ),
+                ocena,
             )
 
-        return build_check(
-            name_pl="SPZ: dozwolone/blokować",
-            status=status,
-            description_pl=desc,
-            details={
-                "spz_allowed": spz.spz_allowed,
-                "total_fault_time_s": spz.total_fault_time_s,
-                "i_th_required_a": spz.i_th_required_a,
-                "i_th_available_a": spz.i_th_available_a,
-            },
+        desc = (
+            f"SPZ dozwolone: wymagana wytrzymałość {a_na_ka(spz.i_th_required_a):.2f} kA "
+            f"<= dostępna {a_na_ka(spz.i_th_available_a):.2f} kA w cyklu "
+            f"{spz.total_fault_time_s:.2f} s"
+            if spz.spz_allowed
+            else f"SPZ powinno być zablokowane: wymagana wytrzymałość "
+            f"{a_na_ka(spz.i_th_required_a):.2f} kA > dostępna "
+            f"{a_na_ka(spz.i_th_available_a):.2f} kA w cyklu {spz.total_fault_time_s:.2f} s"
+        )
+        return (
+            build_check(
+                name_pl="SPZ: dozwolone/blokować",
+                status=status_sprawdzenia(ocena, ograniczenie=False),
+                description_pl=desc,
+                ocena=ocena,
+                details={
+                    "spz_allowed": spz.spz_allowed,
+                    "total_fault_time_s": spz.total_fault_time_s,
+                    "i_th_required_a": spz.i_th_required_a,
+                    "i_th_available_a": spz.i_th_available_a,
+                },
+            ),
+            ocena,
         )
 
     def _build_local_generation_check(
-        self, local_generation: LocalGenerationDiagnostic
-    ) -> dict[str, Any]:
-        """Build local generation (E-L) diagnostic check."""
-        if not local_generation.aktywna:
-            return build_check(
-                name_pl="Generacja lokalna (E-L)",
-                status="INFO",
-                description_pl="Generacja lokalna nieaktywna — diagnostyka niedotycząca",
-            )
+        self, linia: tuple[str, str], local_generation: LocalGenerationDiagnostic
+    ) -> tuple[dict[str, Any], OcenaKryterium]:
+        """Build local generation (E-L) diagnostic check.
 
-        if local_generation.ryzyko_blokady_zsz is None:
-            return build_check(
-                name_pl="Generacja lokalna (E-L)",
-                status="INFO",
-                description_pl=(
-                    "Ryzyko blokady ZSZ niedostępne — brak jawnie podanego progu udziału E-L"
-                ),
-                details={
-                    "wklad_el_a": local_generation.wklad_el_a,
-                    "wklad_systemu_a": local_generation.wklad_systemu_a,
-                },
-            )
-
-        # `ryzyko_blokady_zsz` nie jest None (sprawdzone wyżej) => silnik
-        # (`ProtectionSettingsEngine._check_local_generation`) GWARANTUJE, że
-        # `udzial_el`/`prog_udzialu_zsz` są wtedy oba wyznaczone (niezmiennik:
-        # ryzyko liczone WYŁĄCZNIE gdy oba dostępne). Jawne sprawdzenie zamiast
-        # `or 0.0` — cichy zastępnik 0.0 maskowałby naruszenie tego
-        # niezmiennika zamiast je ujawnić (zero fabrykacji, wzorzec jak
-        # `_grid_source_shunt_admittance`: brak danych = zgłoszenie, nie liczba).
-        if local_generation.udzial_el is None or local_generation.prog_udzialu_zsz is None:
+        DIAGNOSTYKA, nie kryterium okna: rekord K „brak ryzyka blokady ZSZ” nie wchodzi do
+        rekordu W wzorca — jego naruszenie jest sygnałem ograniczenia (``WARN`` →
+        ``GRANICZNE``), a nierozstrzygnięcie (brak jawnego progu albo udziału) — ``INFO``."""
+        aktywna = local_generation.aktywna
+        ryzyko = local_generation.ryzyko_blokady_zsz
+        if (
+            aktywna
+            and ryzyko is not None
+            and (local_generation.udzial_el is None or local_generation.prog_udzialu_zsz is None)
+        ):
+            # `ryzyko_blokady_zsz` ustawione => silnik
+            # (`ProtectionSettingsEngine._check_local_generation`) GWARANTUJE, że
+            # `udzial_el`/`prog_udzialu_zsz` są wtedy oba wyznaczone. Jawne zgłoszenie
+            # zamiast cichego zastępnika (zero fabrykacji).
             raise ValueError(
                 "Niespójność silnika: ryzyko_blokady_zsz ustawione, ale udzial_el/"
                 "prog_udzialu_zsz są None — narusza niezmiennik "
@@ -686,88 +837,107 @@ class LineIDoublePrimeReferencePattern:
             )
         udzial = local_generation.udzial_el
         prog = local_generation.prog_udzialu_zsz
-
-        if local_generation.ryzyko_blokady_zsz:
-            status: CheckStatus = "WARN"
-            desc = f"Ryzyko blokady ZSZ: wkład E-L {udzial*100:.1f}% >= próg {prog*100:.1f}%"
+        braki: tuple[str, ...] = ()
+        if aktywna and ryzyko is None:
+            braki = (
+                ("jawnie podany próg udziału E-L w prądzie zwarciowym dla ryzyka blokady ZSZ",)
+                if prog is None
+                else ("dodatni prąd zwarciowy łącznie na początku linii (udział E-L)",)
+            )
+        ocena = self._ocena(
+            linia,
+            kryterium_id="generacja_lokalna_zsz",
+            opis_pl=(
+                "Generacja lokalna (E-L): udział wkładu E-L w prądzie zwarciowym poniżej progu "
+                "ryzyka niepożądanej blokady ZSZ"
+            ),
+            wielkosc_pl="ryzyko blokady ZSZ od wkładu generacji lokalnej",
+            spelniony=None if ryzyko is None else not ryzyko,
+            stan_pl=(
+                f"wkład E-L {udzial*100:.1f}% wobec progu {prog*100:.1f}%"
+                if udzial is not None and prog is not None
+                else "udział E-L albo próg ryzyka niewyznaczony"
+            ),
+            krok_sladu="check_local_generation",
+            dotyczy=aktywna,
+            powod_stosowalnosci_pl=(
+                None if aktywna else "generacja lokalna nieaktywna w danych przypadku"
+            ),
+            braki=braki,
+        )
+        ryzyko_stwierdzone = ocena.status_maszynowy == "NIE_SPELNIA"
+        details: dict[str, Any] | None = None
+        if not aktywna:
+            desc = "Generacja lokalna nieaktywna — diagnostyka niedotycząca"
+        elif udzial is None or prog is None:
+            desc = f"Ryzyko blokady ZSZ niedostępne — brak: {braki[0]}"
+            details = {
+                "wklad_el_a": local_generation.wklad_el_a,
+                "wklad_systemu_a": local_generation.wklad_systemu_a,
+            }
         else:
-            status = "PASS"
-            desc = f"Brak ryzyka blokady ZSZ: wkład E-L {udzial*100:.1f}% < próg {prog*100:.1f}%"
-
-        return build_check(
-            name_pl="Generacja lokalna (E-L)",
-            status=status,
-            description_pl=desc,
-            details={
+            desc = (
+                f"Ryzyko blokady ZSZ: wkład E-L {udzial*100:.1f}% >= próg {prog*100:.1f}%"
+                if ryzyko_stwierdzone
+                else f"Brak ryzyka blokady ZSZ: wkład E-L {udzial*100:.1f}% < próg "
+                f"{prog*100:.1f}%"
+            )
+            details = {
                 "typ_zrodla": local_generation.typ_zrodla,
                 "wklad_el_a": local_generation.wklad_el_a,
                 "wklad_systemu_a": local_generation.wklad_systemu_a,
                 "udzial_el": local_generation.udzial_el,
                 "prog_udzialu_zsz": local_generation.prog_udzialu_zsz,
                 "ryzyko_blokady_zsz": local_generation.ryzyko_blokady_zsz,
-            },
+            }
+        # Naruszenie diagnostyki = sygnał ograniczenia (WARN), nie niezgodność wzorca.
+        status: CheckStatus = (
+            "WARN" if ryzyko_stwierdzone else status_sprawdzenia(ocena, ograniczenie=False)
         )
-
-    def _determine_verdict(
-        self,
-        setting_window: InstantaneousSettingWindow,
-        checks: list[dict[str, Any]],
-    ) -> ReferenceVerdict:
-        """
-        Determine overall verdict based on criteria results.
-
-        Logic:
-        - NIEZGODNE: window invalid (dowolny konflikt kryteriów)
-        - GRANICZNE: window valid BUT (wąskie OKNO, blokada SPZ, ryzyko ZSZ —
-          każde z nich objawia się jako WARN w checks)
-        - ZGODNE: wszystkie kryteria PASS, okno prawidłowe i nie wąskie
-        """
-        if not setting_window.window_valid:
-            return "NIEZGODNE"
-
-        if any(c["status"] == "FAIL" for c in checks):
-            return "NIEZGODNE"
-
-        window_width = setting_window.i_max_a - setting_window.i_min_a
-        relative_width = window_width / setting_window.i_min_a if setting_window.i_min_a > 0 else 0
-        if relative_width < NARROW_WINDOW_THRESHOLD:
-            return "GRANICZNE"
-
-        if any(c["status"] == "WARN" for c in checks):
-            return "GRANICZNE"
-
-        return "ZGODNE"
+        return (
+            build_check(
+                name_pl="Generacja lokalna (E-L)",
+                status=status,
+                description_pl=desc,
+                ocena=ocena,
+                details=details,
+            ),
+            ocena,
+        )
 
     def _build_summary(
         self,
-        verdict: ReferenceVerdict,
+        wymaganie: WynikWymagania,
+        ograniczenia: list[str],
         setting_window: InstantaneousSettingWindow,
         artifacts: dict[str, Any],
     ) -> str:
-        """Build Polish summary of validation result."""
-        if verdict == "ZGODNE":
-            return (
-                f"Wzorzec ZGODNY. Okno nastaw I>>: [{setting_window.i_min_a:.1f}, "
+        """Podsumowanie po polsku: etykieta rekordu W, ograniczenia oraz okno i zalecana
+        nastawa (albo konflikt kryteriów, gdy okno jest sprzeczne). Pełne zdanie werdyktu
+        niesie ``verdict_description_pl`` i rekord ``wymaganie``."""
+        czesci = [f"{wymaganie.etykieta.etykieta_pl}."]
+        if ograniczenia:
+            czesci.append(f"Ograniczenia: {'; '.join(ograniczenia)}.")
+        if not setting_window.window_valid:
+            czesci.append(
+                f"{setting_window.conflict_pl} Nie można dobrać nastawy I>> spełniającej "
+                "wszystkie kryteria."
+            )
+        else:
+            czesci.append(
+                f"Okno nastaw I>>: [{setting_window.i_min_a:.1f}, "
                 f"{setting_window.i_max_a:.1f}] A. Zalecana nastawa: "
-                f"{artifacts['recommended_setting_primary_a']:.1f} A. Wszystkie kryteria "
-                f"(selektywność, czułość, cieplne, SPZ) spełnione."
+                f"{artifacts['recommended_setting_primary_a']:.1f} A."
             )
-        elif verdict == "GRANICZNE":
-            return (
-                f"Wzorzec GRANICZNY. Okno nastaw I>>: [{setting_window.i_min_a:.1f}, "
-                f"{setting_window.i_max_a:.1f}] A. Kryteria spełnione z ograniczeniami — "
-                "wąskie okno, blokada SPZ lub ryzyko blokady ZSZ od generacji lokalnej."
-            )
-        else:  # NIEZGODNE
-            if not setting_window.window_valid:
-                return (
-                    f"Wzorzec NIEZGODNY. {setting_window.conflict_pl} Nie można dobrać "
-                    "nastawy I>> spełniającej wszystkie kryteria."
-                )
-            return (
-                "Wzorzec NIEZGODNY. Jedno lub więcej kryteriów niespełnione. "
-                "Wymagana weryfikacja parametrów sieci i metodyki doboru."
-            )
+        return " ".join(czesci)
+
+
+def _szerokosc_wzgledna(setting_window: InstantaneousSettingWindow) -> float | None:
+    """Szerokość względna okna (I_max − I_min) / I_min — jedno źródło sygnału wąskiego okna;
+    ``None``, gdy dolna granica nie jest dodatnia (wielkość niewyznaczona, nie zero)."""
+    if setting_window.i_min_a <= 0:
+        return None
+    return (setting_window.i_max_a - setting_window.i_min_a) / setting_window.i_min_a
 
 
 # =============================================================================

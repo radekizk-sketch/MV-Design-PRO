@@ -9,6 +9,7 @@ import { brakKryteriowRozplywu,
   przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci, wniosekPustejListy,
   type OdczytOceny, type Przekroczenie, type WniosekPustejListy } from '../model';
 import type { OdpowiedzOceny, PozycjaOceny } from '../../ocena/api';
+import przekroczeniaScena from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena_przekroczenia.json';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from '../strings';
 import type { NazwaObiektu } from '../../wzorzec';
 
@@ -118,8 +119,17 @@ describe('przekroczeniaZbieznosci — brak zbieżności to przekroczenie (lit. d
   });
 });
 
+/** Odpowiedź oceny złożona backendem (`scripts/eksport_fixtur_harnessu.py`) — rekord
+ *  rozstrzygający pozycji NARUSZONE i wyjaśnienie werdyktu z backendu, nie atrapa. */
+const SCENA = przekroczeniaScena as unknown as OdpowiedzOceny;
+const POZYCJA_NARUSZONA = SCENA.pozycje.find(
+  (p) => p.kryterium_id === 'galaz.obciazenie_dlugotrwale',
+)!;
+
 function pozycjaWerdyktu(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
   return {
+    ocena: POZYCJA_NARUSZONA.ocena,
+    wyjasnienie: POZYCJA_NARUSZONA.wyjasnienie,
     kryterium_id: 'galaz.obciazenie_dlugotrwale',
     etap: 'E5',
     nazwa_pl: 'Obciążenie długotrwałe gałęzi',
@@ -169,7 +179,10 @@ function werdyktFixture(pozycje: PozycjaOceny[]): OdpowiedzOceny {
     },
     zakres_poza_automatem: [],
     ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 0 },
+    liczniki_etykiet: SCENA.liczniki_etykiet,
     grupy: [{ kod: 'obciazalnosc', nazwa_pl: 'Obciążalność' }],
+    kryterium_rozstrzygajace: pozycje[0]?.kryterium_id ?? null,
+    wyjasnienie: pozycje[0]?.wyjasnienie ?? null,
   };
 }
 

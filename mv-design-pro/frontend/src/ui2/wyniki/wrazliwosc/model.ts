@@ -13,10 +13,10 @@ import type {
   WierszZalozenia,
 } from '../wzorzec';
 import { nazwaObiektuZMigawki } from '../wzorzec/useNazwaObiektu';
+import type { OcenaKryterium } from '../wzorzec/werdykt';
 import type { CzynnikLf, WezelWrazliwosci, WidokLf, WidokOgolny, WpisOgolny } from './api';
 import {
   WRAZLIWOSC_STRINGS as T,
-  etykietaDecyzji,
   etykietaKryterium,
   fmtMargines,
   fmtPp,
@@ -109,13 +109,27 @@ export const KOLUMNY_OGOLNE: DefinicjaKolumny[] = [
 
 export const KLUCZ_WIERSZA_OGOLNEGO = 'kluczWiersza';
 
-function komorkaMarginesu(margines: number | null, jednostka: string | null): WartoscKomorki {
+/** Klucz wpisu ogólnego — ten sam w wierszu tabeli i przy wyborze szczegółu. */
+export function kluczWpisuOgolnego(wpis: WpisOgolny): string {
+  return `${wpis.parameter_id}|${wpis.target_id}`;
+}
+
+/** Naruszenie zapasu wyłącznie z rekordu K (próg nie jest liczony w interfejsie). */
+function naruszony(ocena: OcenaKryterium): boolean {
+  return ocena.status_maszynowy === 'NIE_SPELNIA';
+}
+
+function komorkaMarginesu(
+  margines: number | null,
+  jednostka: string | null,
+  ocena: OcenaKryterium,
+): WartoscKomorki {
   if (margines === null) return komorka(T.kreska);
   return {
     wartosc: fmtMargines(margines),
     jednostka: jednostka ?? undefined,
     sortKey: margines,
-    ostrzezenie: margines < 0,
+    ostrzezenie: naruszony(ocena),
   };
 }
 
@@ -125,15 +139,13 @@ export function naWierszeOgolne(
   wezly: Readonly<Record<string, WezelWrazliwosci>>,
 ): WierszTabeli[] {
   return wpisy.map((wpis) => ({
-    [KLUCZ_WIERSZA_OGOLNEGO]: komorka(`${wpis.parameter_id}|${wpis.target_id}`),
+    [KLUCZ_WIERSZA_OGOLNEGO]: komorka(kluczWpisuOgolnego(wpis)),
     kryterium: komorka(etykietaKryterium(wpis.parameter_id)),
     wezel: komorka(nazwaWezla(wpis.target_id, wezly)),
-    marginesBazowy: komorkaMarginesu(wpis.base_margin, wpis.margin_unit),
-    decyzja: komorka(etykietaDecyzji(wpis.base_decision), {
-      ostrzezenie: wpis.base_decision === 'FAIL',
-    }),
-    minus: komorkaMarginesu(wpis.minus.margin, wpis.margin_unit),
-    plus: komorkaMarginesu(wpis.plus.margin, wpis.margin_unit),
+    marginesBazowy: komorkaMarginesu(wpis.base_margin, wpis.margin_unit, wpis.ocena),
+    decyzja: komorka(wpis.ocena.etykieta.etykieta_pl, { ostrzezenie: naruszony(wpis.ocena) }),
+    minus: komorkaMarginesu(wpis.minus.margin, wpis.margin_unit, wpis.minus.ocena),
+    plus: komorkaMarginesu(wpis.plus.margin, wpis.margin_unit, wpis.plus.ocena),
   }));
 }
 

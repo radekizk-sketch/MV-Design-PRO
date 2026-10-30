@@ -262,8 +262,10 @@ class TestVerdictZgodne:
         """Test Polish summary for ZGODNE verdict."""
         result = pattern.validate(input_data=zgodny_input)
 
-        assert "ZGODNY" in result.summary_pl
+        # Podsumowanie zaczyna etykieta rekordu W (kod werdyktu nie jest komunikatem).
+        assert result.summary_pl.startswith(result.wymaganie.etykieta.etykieta_pl)
         assert "generacja" in result.summary_pl.lower()
+        assert "Ograniczenia" not in result.summary_pl
 
     def test_zmiana_pradu_info_for_zgodne(
         self,
@@ -310,7 +312,8 @@ class TestVerdictGraniczne:
         """Test Polish summary for GRANICZNE verdict."""
         result = pattern.validate(input_data=graniczny_input)
 
-        assert "GRANICZNY" in result.summary_pl
+        assert result.summary_pl.startswith(result.wymaganie.etykieta.etykieta_pl)
+        assert "Ograniczenia: A) Zmiana prądu zwarciowego" in result.summary_pl
 
     def test_zmiana_pradu_in_borderline_range(
         self,
@@ -357,8 +360,9 @@ class TestVerdictNiezgodne:
         """Test Polish summary for NIEZGODNE verdict."""
         result = pattern.validate(input_data=niezgodny_input)
 
-        assert "NIEZGODNY" in result.summary_pl
-        assert "ryzyko" in result.summary_pl.lower()
+        assert result.summary_pl.startswith(result.wymaganie.etykieta.etykieta_pl)
+        assert result.wymaganie.status_maszynowy == "NIE_SPELNIA"
+        assert "blokady zabezpieczenia szyn" in result.summary_pl.lower()
 
     def test_zmiana_pradu_exceeds_threshold(
         self,
@@ -564,9 +568,9 @@ class TestArtifacts:
             "wklad_generacji_max_a",
             "i_wyzszy_stopien_a",
             "i_nizszy_stopien_a",
-            "wynik_sprawdzenia_a",
-            "wynik_sprawdzenia_b",
-            "wynik_sprawdzenia_c",
+            "status_sprawdzenia_a",
+            "status_sprawdzenia_b",
+            "status_sprawdzenia_c",
         ]
 
         for key in required_keys:
@@ -635,10 +639,11 @@ class TestPolishLabels:
         """Test check status_pl is in Polish."""
         result = pattern.validate(input_data=zgodny_input)
 
-        polish_statuses = ["Spełnione", "Niespełnione", "Ostrzeżenie", "Informacja"]
+        # Etykieta sprawdzenia pochodzi z rekordu K (słownik etykiet pakietu werdykt), nie
+        # z mapy kod → tekst we wzorcu.
         for check in result.checks:
-            assert "status_pl" in check
-            assert check["status_pl"] in polish_statuses
+            assert check["status_pl"] == check["ocena"]["etykieta"]["etykieta_pl"]
+            assert check["wyjasnienie"] == check["ocena"]["wyjasnienie"]
 
     def test_no_codenames(
         self,
@@ -714,16 +719,16 @@ class TestFixtureVerdicts:
         result = pattern.validate(fixture_file="przypadek_zgodny.json")
 
         assert result.verdict == "ZGODNE"
-        assert result.artifacts["wynik_sprawdzenia_a"] == "INFO"
-        assert result.artifacts["wynik_sprawdzenia_b"] == "PASS"
-        assert result.artifacts["wynik_sprawdzenia_c"] == "PASS"
+        assert result.artifacts["status_sprawdzenia_a"] == "PASS"
+        assert result.artifacts["status_sprawdzenia_b"] == "PASS"
+        assert result.artifacts["status_sprawdzenia_c"] == "PASS"
 
     def test_przypadek_graniczny_verdict(self, pattern: WzorzecCGeneracjaLokalna):
         """Test GRANICZNE verdict from przypadek_graniczny.json fixture."""
         result = pattern.validate(fixture_file="przypadek_graniczny.json")
 
         assert result.verdict == "GRANICZNE"
-        assert result.artifacts["wynik_sprawdzenia_a"] == "GRANICZNE"
+        assert result.artifacts["status_sprawdzenia_a"] == "WARN"
 
     def test_przypadek_niezgodny_verdict(self, pattern: WzorzecCGeneracjaLokalna):
         """Test NIEZGODNE verdict from przypadek_niezgodny.json fixture."""
@@ -732,8 +737,8 @@ class TestFixtureVerdicts:
         assert result.verdict == "NIEZGODNE"
         # Sprawdzenie A lub B powinno być NIEZGODNE
         assert (
-            result.artifacts["wynik_sprawdzenia_a"] == "NIEZGODNE"
-            or result.artifacts["wynik_sprawdzenia_b"] == "NIEZGODNE"
+            result.artifacts["status_sprawdzenia_a"] == "FAIL"
+            or result.artifacts["status_sprawdzenia_b"] == "FAIL"
         )
 
 
@@ -962,9 +967,9 @@ class TestCaseSpecificArtifacts:
         assert result.artifacts["wklad_generacji_max_a"] == pytest.approx(120.0, rel=0.01)
 
         # Wyniki sprawdzeń
-        assert result.artifacts["wynik_sprawdzenia_a"] == "INFO"
-        assert result.artifacts["wynik_sprawdzenia_b"] == "PASS"
-        assert result.artifacts["wynik_sprawdzenia_c"] == "PASS"
+        assert result.artifacts["status_sprawdzenia_a"] == "PASS"
+        assert result.artifacts["status_sprawdzenia_b"] == "PASS"
+        assert result.artifacts["status_sprawdzenia_c"] == "PASS"
 
     def test_przypadek_graniczny_artifacts(self, pattern: WzorzecCGeneracjaLokalna):
         """Test przypadek_graniczny artifacts match expected values."""
@@ -974,7 +979,7 @@ class TestCaseSpecificArtifacts:
         assert result.artifacts["zmiana_pradu_zwarciowego_pct"] == pytest.approx(22.14, rel=0.1)
 
         # Wynik sprawdzenia A powinien być GRANICZNE
-        assert result.artifacts["wynik_sprawdzenia_a"] == "GRANICZNE"
+        assert result.artifacts["status_sprawdzenia_a"] == "WARN"
 
     def test_przypadek_niezgodny_artifacts(self, pattern: WzorzecCGeneracjaLokalna):
         """Test przypadek_niezgodny artifacts match expected values."""
@@ -989,5 +994,5 @@ class TestCaseSpecificArtifacts:
         assert wklad > prog  # 3450 > 2500
 
         # Wyniki sprawdzeń A i B powinny być NIEZGODNE
-        assert result.artifacts["wynik_sprawdzenia_a"] == "NIEZGODNE"
-        assert result.artifacts["wynik_sprawdzenia_b"] == "NIEZGODNE"
+        assert result.artifacts["status_sprawdzenia_a"] == "FAIL"
+        assert result.artifacts["status_sprawdzenia_b"] == "FAIL"

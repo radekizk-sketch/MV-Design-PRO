@@ -212,8 +212,10 @@ class TestVerdictZgodne:
         """Test Polish summary for ZGODNE verdict."""
         result = pattern.validate(input_data=valid_input)
 
-        assert "ZGODNY" in result.summary_pl
+        # Podsumowanie zaczyna etykieta rekordu W (kod werdyktu nie jest komunikatem).
+        assert result.summary_pl.startswith(result.wymaganie.etykieta.etykieta_pl)
         assert "okno nastaw" in result.summary_pl.lower()
+        assert "Ograniczenia" not in result.summary_pl
 
     def test_checks_all_pass_for_zgodne(
         self,
@@ -277,7 +279,8 @@ class TestVerdictNiezgodne:
         """Test Polish summary for NIEZGODNE verdict."""
         result = pattern.validate(input_data=conflicting_input)
 
-        assert "NIEZGODNY" in result.summary_pl
+        assert result.summary_pl.startswith(result.wymaganie.etykieta.etykieta_pl)
+        assert result.wymaganie.status_maszynowy == "NIE_SPELNIA"
         assert "konflikt" in result.summary_pl.lower()
 
     def test_window_check_fail_for_niezgodne(
@@ -349,7 +352,8 @@ class TestVerdictGraniczne:
         """Test Polish summary for GRANICZNE verdict."""
         result = pattern.validate(input_data=borderline_input)
 
-        assert "GRANICZNY" in result.summary_pl
+        assert result.summary_pl.startswith(result.wymaganie.etykieta.etykieta_pl)
+        assert "Ograniczenia: okno nastaw wąskie" in result.summary_pl
 
     def test_window_check_warn_for_graniczne(
         self,
@@ -680,7 +684,9 @@ class TestPolishLabels:
         result = pattern.validate(input_data=valid_input)
         data = result.to_dict()
 
-        assert "verdict_description_pl" in data
+        # Opis werdyktu = zdanie rekordu W (kryteria spełnione na liczbach, dowód niepełny —
+        # metodyka z literatury, model niezwalidowany).
+        assert data["verdict_description_pl"] == result.wymaganie.wyjasnienie.zdanie_pl
         assert "spełnione" in data["verdict_description_pl"].lower()
 
     def test_check_names_pl(
@@ -707,10 +713,11 @@ class TestPolishLabels:
         """Test check status_pl is in Polish."""
         result = pattern.validate(input_data=valid_input)
 
-        polish_statuses = ["Spełnione", "Niespełnione", "Ostrzeżenie", "Informacja"]
+        # Etykieta sprawdzenia pochodzi z rekordu K (słownik etykiet pakietu werdykt), nie
+        # z mapy kod → tekst we wzorcu.
         for check in result.checks:
-            assert "status_pl" in check
-            assert check["status_pl"] in polish_statuses
+            assert check["status_pl"] == check["ocena"]["etykieta"]["etykieta_pl"]
+            assert check["wyjasnienie"] == check["ocena"]["wyjasnienie"]
 
     def test_no_codenames(
         self,

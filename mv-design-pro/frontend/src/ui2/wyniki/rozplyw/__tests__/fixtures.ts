@@ -15,6 +15,7 @@ import type {
   PowerFlowRunHeader,
 } from '../../../../ui/power-flow-results/types';
 import type { WalidacjaItem, WalidacjaResponse } from '../../jakosc/api';
+import { R, kRekord } from '../../jakosc/__tests__/fixtures';
 
 /**
  * Fixture kryteriów napięciowych (karta W3-J) — 1:1 z kontraktem
@@ -128,6 +129,8 @@ export function powerFlowResultFixture(
  */
 export function walidacjaItemFixture(over: Partial<WalidacjaItem> = {}): WalidacjaItem {
   return {
+    // Rekord K pozycji z ostrzeżeniem złożony backendem (`jakosc_scena_rekordy.json`).
+    ...kRekord(R.walidacja_ostrzezenie),
     check_type: 'BRANCH_LOADING',
     target_id: 'L-1',
     target_name: 'Linia L-1',

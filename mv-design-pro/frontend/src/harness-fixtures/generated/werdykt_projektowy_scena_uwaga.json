@@ -47,7 +47,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -89,7 +89,7 @@
             "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -134,7 +134,7 @@
           "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -184,7 +184,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -226,7 +226,7 @@
             "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -271,7 +271,7 @@
           "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -321,7 +321,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -363,7 +363,7 @@
             "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -408,7 +408,7 @@
           "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -458,7 +458,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -500,7 +500,7 @@
             "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -545,7 +545,7 @@
           "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -595,7 +595,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -637,7 +637,7 @@
             "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -682,7 +682,7 @@
           "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -732,7 +732,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -774,7 +774,7 @@
             "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -819,7 +819,7 @@
           "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -869,7 +869,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -911,7 +911,7 @@
             "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -956,7 +956,7 @@
           "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -1006,7 +1006,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -1048,7 +1048,7 @@
             "Brak zakończonego biegu zwarciowego — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -1093,7 +1093,7 @@
           "Brak zakończonego biegu zwarciowego — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -1143,7 +1143,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -1185,7 +1185,7 @@
             "Brak zakończonego biegu zwarciowego — uruchom obliczenia, żeby ocenić kryterium."
           ],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -1230,7 +1230,7 @@
           "Brak zakończonego biegu zwarciowego — uruchom obliczenia, żeby ocenić kryterium."
         ],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -1280,7 +1280,7 @@
         },
         "podstawa": {
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "wydanie": "bieżący stan programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "status": "WSKAZANE",
@@ -1316,7 +1316,7 @@
           "przyczyna_pl": "Projekt nie zawiera toru przyłączenia źródła wytwórczego (DER-SN).",
           "czego_brakuje": [],
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ]
@@ -1357,7 +1357,7 @@
         "przyczyna_pl": "Projekt nie zawiera toru przyłączenia źródła wytwórczego (DER-SN).",
         "czego_brakuje": [],
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ]
@@ -1471,7 +1471,7 @@
       "Brak zakończonego biegu rozpływu mocy — uruchom obliczenia, żeby ocenić kryterium."
     ],
     "zastrzezenia": [
-      "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+      "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
       "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
       "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
     ]

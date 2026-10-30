@@ -1,8 +1,8 @@
 /*
  * Etykiety okna „Wrażliwość" — wyłącznie polskie, bez kodenamów projektowych.
- * Kody wewnętrzne kontraktu (`parameter_id`, `decision`) mapowane na język
- * projektanta TUTAJ (warstwa prezentacji), bez pokazywania surowych kodów
- * poza trybem eksperckim.
+ * Kody kryteriów kontraktu (`parameter_id`) mapowane na język projektanta TUTAJ
+ * (warstwa prezentacji). Rozstrzygnięcie wpisu NIE jest tłumaczone z kodu — etykietę
+ * i wyjaśnienie niesie rekord `ocena` z backendu (kontrakt werdyktu wyjaśnialnego).
  */
 
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
@@ -51,6 +51,13 @@ export const WRAZLIWOSC_STRINGS = {
   liczbaKryteriow: 'Liczba kryteriów',
   kolIdentyfikatorWezla: 'Identyfikator węzła',
 
+  szczegolBrakWyboru:
+    'Wybierz wiersz wrażliwości marginesów, aby zobaczyć uzasadnienie oceny stanu bazowego '
+    + 'i obu perturbacji.',
+  wariantBazowy: 'Stan bazowy',
+  wariantMinus: 'Perturbacja −delta%',
+  wariantPlus: 'Perturbacja +delta%',
+
   pominieteTytul: 'Źródła pominięte (uczciwy zakres)',
   brakCzynnikow: 'Brak czynników do pokazania dla tego przebiegu.',
 
@@ -71,21 +78,9 @@ export const KRYTERIA_PL: Readonly<Record<string, string>> = {
   protection_curve_margin: 'Marginesy krzywych zabezpieczeń',
 };
 
-/** Decyzje kontraktu → język projektanta. */
-export const DECYZJE_PL: Readonly<Record<string, string>> = {
-  PASS: 'spełnione',
-  FAIL: 'przekroczone',
-  NOT_COMPUTED: 'nieobliczone',
-};
-
 /** Etykieta kryterium: mapa PL; kod spoza słownika → uczciwe zdanie, nie kod (karta #145). */
 export function etykietaKryterium(parameterId: string): string {
   return etykietaZeSlownika(KRYTERIA_PL, parameterId);
-}
-
-/** Etykieta decyzji: mapa PL; kod spoza słownika → uczciwe zdanie, nie kod. */
-export function etykietaDecyzji(decyzja: string): string {
-  return etykietaZeSlownika(DECYZJE_PL, decyzja);
 }
 
 /** Format liczby w punktach procentowych (2 miejsca, znak jawny). */

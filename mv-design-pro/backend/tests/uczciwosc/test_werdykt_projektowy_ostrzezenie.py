@@ -313,9 +313,9 @@ def test_pozycja_odrzuca_rekord_rozstrzygajacy_niezgodny_z_elementami() -> None:
     """Rekord rozstrzygający o innym wyniku niż pozycja albo spoza jej elementów = błąd."""
     pozycja = _energia([_rekord("SPELNIA", 0), _rekord("NIE_SPELNIA", 1)], "PASS")
     spelniony = next(e for e in pozycja.elementy if e.wynik == WYNIK_SPELNIA)
-    with pytest.raises(ValueError, match="różni się od wyniku pozycji"):
+    with pytest.raises(AssertionError, match="różni się od wyniku pozycji"):
         dataclasses.replace(pozycja, ocena=spelniony.ocena)
-    with pytest.raises(ValueError, match="nie jest rekordem żadnego elementu"):
+    with pytest.raises(AssertionError, match="nie jest rekordem żadnego elementu"):
         dataclasses.replace(pozycja, ocena=_rekord("NIE_SPELNIA", 7))
 
 

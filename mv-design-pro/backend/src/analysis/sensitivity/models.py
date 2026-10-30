@@ -9,6 +9,7 @@ from enum import StrEnum
 from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu
 
 
 class SensitivityDecision(StrEnum):
@@ -46,6 +47,10 @@ class SensitivityPerturbation:
     margin: float | None
     delta_margin: float | None
     decision: SensitivityDecision
+    #: Rekord K zapasu w tym wariancie i jego wyjaśnienie — ``decision`` jest projekcją rekordu
+    #: (``analysis/sensitivity/oceny.py``). Poza odciskiem analizy (liczby i kody bez zmian).
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
 
 
 @dataclass(frozen=True)
@@ -59,6 +64,9 @@ class SensitivityEntry:
     base_decision: SensitivityDecision
     minus: SensitivityPerturbation
     plus: SensitivityPerturbation
+    #: Rekord K zapasu w stanie bazowym i jego wyjaśnienie — ``base_decision`` jest projekcją.
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
 
 
 @dataclass(frozen=True)

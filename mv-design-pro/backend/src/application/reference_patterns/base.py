@@ -24,31 +24,25 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu, WynikWymagania
+
 # =============================================================================
 # VERDICT TYPES
 # =============================================================================
 
-ReferenceVerdict = Literal["ZGODNE", "GRANICZNE", "NIEZGODNE"]
-
-VERDICT_DESCRIPTIONS_PL: dict[ReferenceVerdict, str] = {
-    "ZGODNE": "Wszystkie kryteria spełnione, okno nastaw prawidłowe",
-    "GRANICZNE": "Warunki spełnione z ograniczeniami (wąskie okno lub ostrzeżenia SPZ)",
-    "NIEZGODNE": "Kryteria niespełnione, brak prawidłowego okna nastaw",
-}
+#: Kod zastany wzorca — PROJEKCJA rekordu W (``oceny.werdykt_wzorca``); opis i etykietę niesie
+#: rekord ``wymaganie`` wyniku. ``NIEROZSTRZYGNIETE`` — sprawdzenie bez wielkości albo
+#: podstawy (brak danych ≠ zgodny).
+ReferenceVerdict = Literal["ZGODNE", "GRANICZNE", "NIEZGODNE", "NIEROZSTRZYGNIETE"]
 
 
 # =============================================================================
 # CHECK STATUS TYPES
 # =============================================================================
 
+#: Kod zastany sprawdzenia — PROJEKCJA rekordu K (``oceny.status_sprawdzenia``); ``INFO`` =
+#: rekord niestosujący się albo nierozstrzygnięty (znaczenie niesie rekord ``ocena``).
 CheckStatus = Literal["PASS", "FAIL", "WARN", "INFO"]
-
-CHECK_STATUS_PL: dict[CheckStatus, str] = {
-    "PASS": "Spełnione",
-    "FAIL": "Niespełnione",
-    "WARN": "Ostrzeżenie",
-    "INFO": "Informacja",
-}
 
 
 # =============================================================================
@@ -64,8 +58,12 @@ class ReferencePatternResult:
     Attributes:
         pattern_id: Internal pattern identifier (e.g., "RP-LINE-I2-THERMAL-SPZ")
         name_pl: Human-readable Polish name of the pattern
-        verdict: Overall verdict (ZGODNE/GRANICZNE/NIEZGODNE)
+        verdict: Overall verdict code — projection of ``wymaganie``
+            (ZGODNE/GRANICZNE/NIEZGODNE/NIEROZSTRZYGNIETE)
+        verdict_description_pl: zdanie rekordu W (z ograniczeniami przy spełnieniu)
         summary_pl: Summary of the validation result in Polish
+        wymaganie: rekord W wzorca nad sprawdzeniami rozstrzygającymi
+        wyjasnienie: wyjaśnienie rekordu W
         checks: List of individual checks (deterministically sorted)
         trace: WHITE-BOX trace of validation steps (deterministic, JSON-serializable)
         artifacts: Additional artifacts (e.g., setting window bounds, tk, Ithdop)
@@ -79,7 +77,10 @@ class ReferencePatternResult:
     pattern_id: str
     name_pl: str
     verdict: ReferenceVerdict
+    verdict_description_pl: str
     summary_pl: str
+    wymaganie: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     checks: tuple[dict[str, Any], ...]  # Immutable, deterministically sorted
     trace: tuple[dict[str, Any], ...]  # Immutable, deterministic WHITE-BOX trace
     artifacts: dict[str, Any] = field(default_factory=dict)  # Window, tk, Ithdop, etc.
@@ -95,8 +96,10 @@ class ReferencePatternResult:
             "pattern_id": self.pattern_id,
             "name_pl": self.name_pl,
             "verdict": self.verdict,
-            "verdict_description_pl": VERDICT_DESCRIPTIONS_PL.get(self.verdict, self.verdict),
+            "verdict_description_pl": self.verdict_description_pl,
             "summary_pl": self.summary_pl,
+            "wymaganie": self.wymaganie.model_dump(mode="json"),
+            "wyjasnienie": self.wyjasnienie.model_dump(mode="json"),
             "checks": list(self.checks),
             "trace": list(self.trace),
             "artifacts": self.artifacts,
@@ -178,6 +181,7 @@ def build_check(
     name_pl: str,
     status: CheckStatus,
     description_pl: str,
+    ocena: OcenaKryterium,
     details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -185,8 +189,9 @@ def build_check(
 
     Args:
         name_pl: Polish name of the check
-        status: Check status (PASS/FAIL/WARN/INFO)
+        status: Check status code — projection of ``ocena`` (``oceny.status_sprawdzenia``)
         description_pl: Description of check result in Polish
+        ocena: rekord K sprawdzenia — etykieta (``status_pl``) i wyjaśnienie z rekordu
         details: Optional details dictionary
 
     Returns:
@@ -195,8 +200,10 @@ def build_check(
     check: dict[str, Any] = {
         "name_pl": name_pl,
         "status": status,
-        "status_pl": CHECK_STATUS_PL.get(status, status),
+        "status_pl": ocena.etykieta.etykieta_pl,
         "description_pl": description_pl,
+        "ocena": ocena.model_dump(mode="json"),
+        "wyjasnienie": ocena.wyjasnienie.model_dump(mode="json"),
     }
     if details:
         check["details"] = stable_sort_dict(details)

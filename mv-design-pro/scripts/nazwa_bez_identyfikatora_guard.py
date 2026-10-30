@@ -563,6 +563,13 @@ _KOD_TESTU_PROFILU = (
 
 #: Lista dozwolona: tożsamość → (liczba wystąpień, uzasadnienie merytoryczne). Zapadka w dół.
 DOZWOLONE: dict[str, tuple[int, str]] = {
+    "analysis/normative/oceny.py:_podstawa_konfiguracji:tekst_argument:uwagi_pl:.standard_ref": (
+        1,
+        "`NormativeConfig.standard_ref` to TREŚĆ odniesienia normowego wpisana w konfiguracji "
+        "oceny normatywnej (np. „IEC/PN-EN — user configured”), nie identyfikator elementu — "
+        "token „ref” pochodzi z nazwy pola kontraktu; ta sama podstawa co wpis "
+        "`ocena_doboru_magistrali._ocena_spadku_odcinka` (`formula_ref`).",
+    ),
     'application/analyses/v126_gotowosc.py:_warunki_silnikow:zmienna:etykieta:.get("ref")': (
         1,
         "`motors[].ref` to „Oznaczenie silnika” wpisane przez projektanta w formularzu "

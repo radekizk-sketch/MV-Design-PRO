@@ -134,3 +134,65 @@ def test_export_docx_returns_200_nonempty_for_all_fixtures() -> None:
         assert response.status_code == 200, f"{fixture_file}: {response.text}"
         assert response.content[:2] == b"PK", f"{fixture_file}: not a ZIP/DOCX"
         assert len(response.content) > 500, f"{fixture_file}: suspiciously small DOCX"
+
+
+# --- Werdykt wyjaśnialny (karta WERDYKT-MIGRACJA-190, grupa 5) -------------------------------
+# Iloczyn cech: {lista fikstur, bieg fikstury, eksport PDF, eksport DOCX} × {cztery fikstury}.
+# Kod `verdict` jest projekcją rekordu W; każdy kanał niesie rekord albo jego etykietę.
+
+
+def test_lista_fikstur_niesie_rekord_zgodny_z_biegiem() -> None:
+    client = _client()
+    lista = client.get("/api/reference-patterns/patterns/RP-LINE-I2-THERMAL-SPZ/fixtures")
+    assert lista.status_code == 200, lista.text
+    for meta in lista.json()["fixtures"]:
+        bieg = client.get(f"/api/reference-patterns/fixtures/{meta['filename']}").json()
+        assert meta["wymaganie"] == bieg["wymaganie"], meta["filename"]
+        assert meta["wyjasnienie"] == bieg["wymaganie"]["wyjasnienie"]
+        # Przypadek odniesienia: kod oczekiwany zapisany w fiksturze = kod policzony z rekordu.
+        assert meta["expected_verdict"] == bieg["verdict"], meta["filename"]
+
+
+def test_bieg_fikstury_sprawdzenia_z_etykieta_rekordu() -> None:
+    client = _client()
+    for fixture_file in FIXTURE_FILES:
+        data = client.get(f"/api/reference-patterns/fixtures/{fixture_file}").json()
+        wymaganie = data["wymaganie"]
+        assert data["wyjasnienie"] == wymaganie["wyjasnienie"]
+        assert data["verdict_description_pl"].startswith(wymaganie["wyjasnienie"]["zdanie_pl"])
+        kryteria_w = {o["kryterium_id"] for o in wymaganie["oceny_skladowe"]}
+        for check in data["checks"]:
+            assert check["status_pl"] == check["ocena"]["etykieta"]["etykieta_pl"]
+            assert check["wyjasnienie"] == check["ocena"]["wyjasnienie"]
+        # Diagnostyka generacji lokalnej stoi obok rekordu W, nie w nim.
+        assert len(kryteria_w) == len(data["checks"]) - 1
+
+
+def test_eksport_pdf_i_docx_niesie_etykiete_rekordu() -> None:
+    import io
+
+    import pymupdf
+    from docx import Document
+
+    client = _client()
+    for fixture_file in FIXTURE_FILES:
+        data = client.get(f"/api/reference-patterns/fixtures/{fixture_file}").json()
+        etykieta = data["wymaganie"]["etykieta"]["etykieta_pl"]
+
+        pdf = client.get(f"/api/reference-patterns/fixtures/{fixture_file}/export/pdf")
+        assert pdf.status_code == 200
+        with pymupdf.open(stream=pdf.content, filetype="pdf") as dokument:
+            tekst_pdf = " ".join(" ".join(strona.get_text().split()) for strona in dokument)
+        assert f"Ocena wzorca: {etykieta}" in tekst_pdf, fixture_file
+        for check in data["checks"]:
+            assert f"{check['name_pl']} — {check['status_pl']}" in tekst_pdf, check["name_pl"]
+
+        docx = client.get(f"/api/reference-patterns/fixtures/{fixture_file}/export/docx")
+        assert docx.status_code == 200
+        dokument_docx = Document(io.BytesIO(docx.content))
+        tekst_docx = "\n".join(p.text for p in dokument_docx.paragraphs)
+        komorki = {k.text for t in dokument_docx.tables for w in t.rows for k in w.cells}
+        assert "Ocena wzorca:" in tekst_docx or "Ocena wzorca:" in komorki, fixture_file
+        assert etykieta in tekst_docx or etykieta in komorki, fixture_file
+        for check in data["checks"]:
+            assert check["status_pl"] in komorki, check["name_pl"]

@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
+
+from analysis.energy_validation.models import EnergyCheckType
+from analysis.energy_validation.oceny import ocena_pozycji, status_pozycji
 from analysis.normative.models import NormativeConfig
 from analysis.power_flow.result import PowerFlowResult
 from analysis.voltage_profile.models import (
@@ -10,7 +14,9 @@ from analysis.voltage_profile.models import (
     VoltageProfileView,
 )
 from analysis.voltage_profile.serializer import STATUS_ORDER
+from enm.nazwy_elementow import opis_bez_nazwy
 from network_model.core.graph import NetworkGraph
+from network_model.nazwy import nazwa_nadana
 
 
 class VoltageProfileBuilder:
@@ -64,40 +70,74 @@ class VoltageProfileBuilder:
         if u_pu is None and u_kv is not None and u_nom_kv:
             u_pu = u_kv / u_nom_kv
 
-        delta_pct = None
-        status = VoltageProfileStatus.NOT_COMPUTED
-
-        if u_kv is not None and u_nom_kv:
-            delta_pct = (u_kv - u_nom_kv) / u_nom_kv * 100.0
-            status = _status_from_delta(delta_pct, config)
-
-        return VoltageProfileRow(
+        return wiersz_profilu(
             bus_id=node_id,
             bus_name=bus_name,
             u_nom_kv=u_nom_kv,
             u_kv=u_kv,
             u_pu=u_pu,
-            delta_pct=delta_pct,
-            status=status,
-            p_mw=None,
-            q_mvar=None,
+            config=config,
             case_name=self._context.case_name if self._context else None,
             run_timestamp=self._context.run_timestamp if self._context else None,
         )
 
 
-def _status_from_delta(
-    delta_pct: float,
+def wiersz_profilu(
+    *,
+    bus_id: str,
+    bus_name: str | None,
+    u_nom_kv: float | None,
+    u_kv: float | None,
+    u_pu: float | None,
     config: NormativeConfig,
-) -> VoltageProfileStatus:
-    warn = config.voltage_warn_pct
-    fail = config.voltage_fail_pct
-    abs_delta = abs(delta_pct)
-    if abs_delta >= fail:
-        return VoltageProfileStatus.FAIL
-    if abs_delta >= warn:
-        return VoltageProfileStatus.WARNING
-    return VoltageProfileStatus.PASS
+    case_name: str | None = None,
+    run_timestamp: datetime | None = None,
+    p_mw: float | None = None,
+    q_mvar: float | None = None,
+) -> VoltageProfileRow:
+    """Wiersz profilu napięć z rekordem K odchylenia napięcia — jedyne miejsce składania wiersza
+    (builder i każdy konsument budujący wiersz z gotowych napięć).
+
+    Kod zastany ``status`` jest projekcją rekordu tą samą funkcją co pozycja walidacji
+    energetycznej (``analysis/energy_validation/oceny.py``): jedno rozstrzygnięcie |ΔU| wobec
+    progów, także na równości z progiem przekroczenia (równość spełnia relację)."""
+    delta_pct = None
+    braki: tuple[str, ...] = ()
+    if u_kv is not None and u_nom_kv:
+        delta_pct = (u_kv - u_nom_kv) / u_nom_kv * 100.0
+    elif u_kv is None:
+        braki = ("napięcie szyny w wyniku rozpływu",)
+    else:
+        braki = ("napięcie znamionowe szyny w modelu",)
+
+    odchylenie = abs(delta_pct) if delta_pct is not None else None
+    ocena = ocena_pozycji(
+        check_type=EnergyCheckType.VOLTAGE_DEVIATION,
+        nazwa_pl=nazwa_nadana(bus_name) or opis_bez_nazwy("buses"),
+        wynik=odchylenie,
+        limit=config.voltage_fail_pct,
+        braki=braki,
+        slad_krok="voltage_profile.odchylenie_napiecia",
+        odniesienie="analysis/voltage_profile/builder.py",
+    )
+    status = VoltageProfileStatus(
+        status_pozycji(ocena, wynik=odchylenie, prog_ostrzezenia=config.voltage_warn_pct).value
+    )
+    return VoltageProfileRow(
+        bus_id=bus_id,
+        bus_name=bus_name,
+        u_nom_kv=u_nom_kv,
+        u_kv=u_kv,
+        u_pu=u_pu,
+        delta_pct=delta_pct,
+        status=status,
+        p_mw=p_mw,
+        q_mvar=q_mvar,
+        case_name=case_name,
+        run_timestamp=run_timestamp,
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
+    )
 
 
 def _build_summary(rows: list[VoltageProfileRow]) -> VoltageProfileSummary:

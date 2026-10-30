@@ -4,13 +4,8 @@ from datetime import datetime
 from uuid import UUID
 
 from analysis.coverage_score.builder import CoverageScoreBuilder
-from analysis.normative.models import (
-    NormativeContext,
-    NormativeItem,
-    NormativeReport,
-    NormativeSeverity,
-    NormativeStatus,
-)
+from analysis.normative.evaluator import NormativeEvaluator
+from analysis.normative.models import NormativeConfig, NormativeReport
 from analysis.protection_insight.models import (
     ProtectionInsightContext,
     ProtectionInsightItem,
@@ -30,10 +25,9 @@ from analysis.sensitivity.models import (
     SensitivitySummary,
     SensitivityView,
 )
+from analysis.voltage_profile.builder import wiersz_profilu
 from analysis.voltage_profile.models import (
     VoltageProfileContext,
-    VoltageProfileRow,
-    VoltageProfileStatus,
     VoltageProfileSummary,
     VoltageProfileView,
 )
@@ -64,30 +58,12 @@ def _proof_doc(proof_type: ProofType, document_id: str) -> ProofDocument:
 
 
 def _normative_report() -> NormativeReport:
-    context = NormativeContext(
-        project_name="Proj",
-        case_name="Case",
-        run_timestamp=RUN_TS,
-        snapshot_id="snap-1",
-        trace_id="trace-1",
+    # Raport z prawdziwego ewaluatora (pozycje niosą rekordy K): dowód obciążeń bez wielkości
+    # kluczowych daje pozycje „nie wyznaczono”, pozostałe reguły — brak dowodu pakietu.
+    return NormativeEvaluator().evaluate(
+        [_proof_doc(ProofType.LOAD_CURRENTS_OVERLOAD, "33333333-3333-3333-3333-333333333333")],
+        NormativeConfig(),
     )
-    items = (
-        NormativeItem(
-            rule_id="NR_P20_001",
-            title_pl="Test",
-            severity=NormativeSeverity.WARNING,
-            status=NormativeStatus.NOT_COMPUTED,
-            target_id="BUS-1",
-            observed_value=None,
-            unit=None,
-            limit_value=None,
-            limit_unit=None,
-            margin=None,
-            why_pl="Brak danych",
-            requires=("P21",),
-        ),
-    )
-    return NormativeReport(report_id="rep-1", context=context, items=items)
 
 
 def _voltage_profile() -> VoltageProfileView:
@@ -99,14 +75,13 @@ def _voltage_profile() -> VoltageProfileView:
         trace_id="trace-1",
     )
     rows = (
-        VoltageProfileRow(
+        wiersz_profilu(
             bus_id="BUS-1",
             bus_name=None,
             u_nom_kv=None,
             u_kv=None,
             u_pu=None,
-            delta_pct=None,
-            status=VoltageProfileStatus.NOT_COMPUTED,
+            config=NormativeConfig(),
             p_mw=None,
             q_mvar=None,
             case_name="Case",

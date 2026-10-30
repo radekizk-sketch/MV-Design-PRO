@@ -26,6 +26,8 @@ def perturbation_to_dict(perturbation: SensitivityPerturbation) -> dict[str, Any
             float(perturbation.delta_margin) if perturbation.delta_margin is not None else None
         ),
         "decision": perturbation.decision.value,
+        "ocena": perturbation.ocena.model_dump(mode="json"),
+        "wyjasnienie": perturbation.wyjasnienie.model_dump(mode="json"),
     }
 
 
@@ -40,6 +42,8 @@ def entry_to_dict(entry: SensitivityEntry) -> dict[str, Any]:
         "base_decision": entry.base_decision.value,
         "minus": perturbation_to_dict(entry.minus),
         "plus": perturbation_to_dict(entry.plus),
+        "ocena": entry.ocena.model_dump(mode="json"),
+        "wyjasnienie": entry.wyjasnienie.model_dump(mode="json"),
     }
 
 

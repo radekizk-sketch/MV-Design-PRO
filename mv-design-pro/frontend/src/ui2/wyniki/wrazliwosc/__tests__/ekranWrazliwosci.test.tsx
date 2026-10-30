@@ -8,10 +8,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EkranWrazliwosci } from '../EkranWrazliwosci';
 import { WRAZLIWOSC_STRINGS } from '../strings';
-import type { WrazliwoscResponse } from '../api';
+import type { WidokOgolny, WrazliwoscResponse } from '../api';
+// Sekcja ogólna z generatora backendu (`tests/uczciwosc/generuj_fixtury_ocen_fe.py`:
+// `SensitivityBuilder` na profilu z `wiersz_profilu`) — rekordy K zapasu nie są składane
+// ręcznie; |ΔU| {1,1 %, 7 %, 10 %, 12 %} i szyna bez napięcia znamionowego.
+import OGOLNA from './wrazliwoscOgolna.json';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
@@ -69,28 +74,15 @@ const ODPOWIEDZ: WrazliwoscResponse = {
       },
     ],
   },
-  ogolna: {
-    analysis_id: 'og-1',
-    delta_pct: 5.0,
-    entries: [
-      {
-        parameter_id: 'voltage_limit',
-        parameter_label: 'Voltage limits',
-        target_id: 'wezel-a',
-        // Surowy kod wewnetrzny kontraktu — wartosc syntetyczna, bo asercja
-        // sprawdza KLASE: zaden surowy kod `source` nie jest renderowany
-        // (kodenamow projektu nie wolno uzywac nawet w fixturach testow).
-        source: 'kod-zrodla-wewnetrzny',
-        base_margin: 3.9,
-        margin_unit: '%',
-        base_decision: 'PASS',
-        minus: { delta_pct: -5.0, margin: 3.95, delta_margin: 0.05, decision: 'PASS' },
-        plus: { delta_pct: 5.0, margin: 3.84, delta_margin: -0.06, decision: 'PASS' },
-      },
-    ],
-    summary: { total_entries: 1, not_computed_count: 0 },
+  ogolna: OGOLNA as unknown as WidokOgolny,
+  wezly: {
+    'wezel-a': { name: 'Szyna SN', u_nom_kv: 15.0 },
+    'wezel-b': { name: 'Szyna SN odbiorcza', u_nom_kv: 15.0 },
+    'wezel-c': { name: 'Szyna SN końcowa', u_nom_kv: 15.0 },
+    'wezel-d': { name: 'Szyna SN daleka', u_nom_kv: 15.0 },
+    'wezel-f': { name: 'Szyna SN przy progu', u_nom_kv: 15.0 },
+    'wezel-e': { name: 'Szyna nN bez napięcia znamionowego', u_nom_kv: null },
   },
-  wezly: { 'wezel-a': { name: 'Szyna SN', u_nom_kv: 15.0 } },
   pominiete_zrodla_pl: ['raport normatywny (żadna reguła rejestru nie czyta dowodu)'],
 };
 
@@ -177,8 +169,8 @@ describe('EkranWrazliwosci — wynik', () => {
       screen.getByText(/Wpływ napięcia znamionowego z dowodu spadków napięć/),
     ).toBeTruthy();
     // Kryterium ogólne przetłumaczone na PL (nie surowe parameter_id/source).
-    expect(screen.getByText('Odchyłka napięcia węzła')).toBeTruthy();
-    expect(screen.queryByText('kod-zrodla-wewnetrzny')).toBeNull();
+    expect(screen.getAllByText('Odchyłka napięcia węzła').length).toBe(OGOLNA.entries.length);
+    expect(screen.queryByText(OGOLNA.entries[0].source)).toBeNull();
     // Uczciwa deklaracja pominiętych źródeł.
     expect(screen.getByTestId('mvd-wrazliwosc-pominiete')).toHaveTextContent(
       'raport normatywny',
@@ -199,5 +191,75 @@ describe('EkranWrazliwosci — wynik', () => {
     render(<EkranWrazliwosci szczegolyAudytowe />);
     await waitFor(() => expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy());
     expect(screen.queryAllByText('wezel-a')).toHaveLength(0);
+  });
+});
+
+/*
+ * Werdykt wyjaśnialny wpisu ogólnego (karta WERDYKT-MIGRACJA-190, grupa 4). Iloczyn cech:
+ * stan wpisu {zapas dodatni, ujemny, na równości progu przekroczenia, powyżej progu, brak
+ * napięcia znamionowego} × miejsce rozstrzygnięcia {kolumna werdyktu, komórki marginesu
+ * bazowego i perturbacji, szczegół wpisu: stan bazowy / −delta / +delta}. Etykieta i ton
+ * wyłącznie z rekordu `ocena` — kod `base_decision`/`decision` nie jest czytany.
+ */
+describe('EkranWrazliwosci — rozstrzygnięcie z rekordów', () => {
+  async function wyrenderuj(): Promise<HTMLElement> {
+    mockFetchTrasowany(ODPOWIEDZ);
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
+    render(<EkranWrazliwosci szczegolyAudytowe />);
+    return await screen.findByTestId('mvd-wrazliwosc-ogolna');
+  }
+
+  it.each(OGOLNA.entries.map((wpis) => [wpis.target_id, wpis] as const))(
+    'wiersz %s: kolumna werdyktu = etykieta rekordu, ostrzeżenie tylko przy naruszeniu',
+    async (_id, wpis) => {
+      const sekcja = await wyrenderuj();
+      const nazwa = ODPOWIEDZ.wezly[wpis.target_id]?.name ?? '';
+      const wiersz = within(sekcja)
+        .getAllByTestId('mvd-wyn-wiersz')
+        .find((tr) => within(tr).queryByText(nazwa) !== null);
+      expect(wiersz).toBeDefined();
+      expect(within(wiersz!).getByText(wpis.ocena.etykieta.etykieta_pl)).toBeTruthy();
+      const naruszone = [wpis.ocena, wpis.minus.ocena, wpis.plus.ocena].filter(
+        (o, i) => o.status_maszynowy === 'NIE_SPELNIA'
+          && [wpis.base_margin, wpis.minus.margin, wpis.plus.margin][i] !== null,
+      ).length;
+      // Kolumna werdyktu + komórki marginesów: tag ostrzeżenia tylko dla rekordów NIE_SPELNIA.
+      const oczekiwane = naruszone + (wpis.ocena.status_maszynowy === 'NIE_SPELNIA' ? 1 : 0);
+      expect(within(wiersz!).queryAllByTestId('mvd-wyn-tag-ostrzezenie')).toHaveLength(oczekiwane);
+    },
+  );
+
+  it('natywny klik wiersza otwiera szczegół z kartami rekordów trzech wariantów', async () => {
+    const sekcja = await wyrenderuj();
+    expect(screen.getByTestId('mvd-wrazliwosc-szczegol-pusty')).toBeTruthy();
+    const wpis = OGOLNA.entries.find((w) => w.ocena.status_maszynowy === 'NIE_SPELNIA')!;
+    const nazwa = ODPOWIEDZ.wezly[wpis.target_id]?.name ?? '';
+    const wiersz = within(sekcja)
+      .getAllByTestId('mvd-wyn-wiersz')
+      .find((tr) => within(tr).queryByText(nazwa) !== null)!;
+    await userEvent.click(wiersz);
+    const szczegol = await screen.findByTestId('mvd-wrazliwosc-szczegol');
+    for (const [klucz, ocena] of [
+      ['bazowy', wpis.ocena],
+      ['minus', wpis.minus.ocena],
+      ['plus', wpis.plus.ocena],
+    ] as const) {
+      const wariant = within(szczegol).getByTestId(`mvd-wrazliwosc-szczegol-${klucz}`);
+      expect(
+        within(wariant).getByTestId(`mvd-wrazliwosc-szczegol-${klucz}-etykieta`),
+      ).toHaveTextContent(ocena.etykieta.etykieta_pl);
+      expect(wariant).toHaveTextContent(ocena.wyjasnienie.zdanie_pl.slice(0, 40));
+    }
+  });
+
+  it('brak napięcia znamionowego: rekord „ocena niewykonana”, nigdy spełnienie', async () => {
+    const wpis = OGOLNA.entries.find((w) => w.base_margin === null)!;
+    expect(wpis.ocena.status_maszynowy).toBe('NIE_OCENIONO');
+    const sekcja = await wyrenderuj();
+    const wiersz = within(sekcja)
+      .getAllByTestId('mvd-wyn-wiersz')
+      .find((tr) => within(tr).queryByText(ODPOWIEDZ.wezly[wpis.target_id]!.name!) !== null)!;
+    expect(within(wiersz).getByText(wpis.ocena.etykieta.etykieta_pl)).toBeTruthy();
+    expect(within(wiersz).queryAllByTestId('mvd-wyn-tag-ostrzezenie')).toHaveLength(0);
   });
 });

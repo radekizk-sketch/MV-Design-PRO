@@ -22,7 +22,8 @@ import './wrazliwosc.css';
 import { useSwiezoscNaglowka } from '../../freshness';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
-import { fetchWrazliwosc, type WrazliwoscResponse } from './api';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../wzorzec/KartaWerdyktu';
+import { fetchWrazliwosc, type WezelWrazliwosci, type WpisOgolny, type WrazliwoscResponse } from './api';
 import {
   KLUCZ_WIERSZA_LF,
   KLUCZ_WIERSZA_OGOLNEGO,
@@ -32,8 +33,10 @@ import {
   naWierszeOgolne,
   naZalozeniaLf,
   naZalozeniaOgolne,
+  nazwaWezla,
+  kluczWpisuOgolnego,
 } from './model';
-import { WRAZLIWOSC_STRINGS as T } from './strings';
+import { WRAZLIWOSC_STRINGS as T, etykietaKryterium } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 // ---------------------------------------------------------------------------
@@ -98,7 +101,10 @@ export function EkranWrazliwosci({ szczegolyAudytowe }: EkranWrazliwosciProps) {
     runId ? { rodzaj: 'ladowanie' } : { rodzaj: 'brakPrzebiegu' },
   );
 
+  const [wybranyOgolny, setWybranyOgolny] = useState<string | null>(null);
+
   useEffect(() => {
+    setWybranyOgolny(null);
     if (!runId) {
       setStan({ rodzaj: 'brakPrzebiegu' });
       return;
@@ -179,6 +185,15 @@ export function EkranWrazliwosci({ szczegolyAudytowe }: EkranWrazliwosciProps) {
               onOtworzDowod={BEZ_DOWODU}
               szczegolyAudytowe={szczegolyAudytowe}
               kluczWiersza={KLUCZ_WIERSZA_OGOLNEGO}
+              onWybierzWiersz={setWybranyOgolny}
+              wybranyWiersz={wybranyOgolny}
+            />
+            <SzczegolWpisu
+              wpis={
+                stan.dane.ogolna.entries.find((w) => kluczWpisuOgolnego(w) === wybranyOgolny)
+                ?? null
+              }
+              wezly={stan.dane.wezly}
             />
           </section>
           {stan.dane.pominiete_zrodla_pl.length > 0 && (
@@ -197,5 +212,56 @@ export function EkranWrazliwosci({ szczegolyAudytowe }: EkranWrazliwosciProps) {
         </>
       )}
     </div>
+  );
+}
+
+
+/**
+ * Szczegół wpisu wrażliwości ogólnej: rozstrzygnięcie stanu bazowego i obu perturbacji
+ * WYŁĄCZNIE z rekordów K backendu — etykieta, zdanie, przyczyna, podstawa progu, margines,
+ * dowód i zakres ważności (`KartaWerdyktu`). Żaden status nie stoi tu bez wyjaśnienia.
+ */
+function SzczegolWpisu({
+  wpis,
+  wezly,
+}: {
+  wpis: WpisOgolny | null;
+  wezly: Readonly<Record<string, WezelWrazliwosci>>;
+}) {
+  if (!wpis) {
+    return (
+      <p className="mvd-wrazliwosc-szczegol-brak" data-testid="mvd-wrazliwosc-szczegol-pusty">
+        {T.szczegolBrakWyboru}
+      </p>
+    );
+  }
+  const warianty = [
+    { klucz: 'bazowy', tytul: T.wariantBazowy, ocena: wpis.ocena },
+    { klucz: 'minus', tytul: T.wariantMinus, ocena: wpis.minus.ocena },
+    { klucz: 'plus', tytul: T.wariantPlus, ocena: wpis.plus.ocena },
+  ] as const;
+  return (
+    <section className="mvd-wrazliwosc-szczegol" data-testid="mvd-wrazliwosc-szczegol">
+      <h3 className="mvd-wrazliwosc-sekcja-tytul">
+        {etykietaKryterium(wpis.parameter_id)} — {nazwaWezla(wpis.target_id, wezly)}
+      </h3>
+      {warianty.map(({ klucz, tytul, ocena }) => (
+        <div
+          key={klucz}
+          className="mvd-wrazliwosc-szczegol-wariant"
+          data-testid={`mvd-wrazliwosc-szczegol-${klucz}`}
+        >
+          <div className="mvd-wrazliwosc-szczegol-head">
+            <span className="mvd-wrazliwosc-szczegol-tytul">{tytul}</span>
+            <EtykietaWerdyktu
+              etykieta={ocena.etykieta}
+              status={ocena.status_maszynowy}
+              testid={`mvd-wrazliwosc-szczegol-${klucz}-etykieta`}
+            />
+          </div>
+          <KartaWerdyktu rekord={ocena} />
+        </div>
+      ))}
+    </section>
   );
 }

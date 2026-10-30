@@ -618,16 +618,15 @@ class PozycjaWerdyktu:
     elementy: tuple[OcenaElementu, ...] = ()
 
     def __post_init__(self) -> None:
-        if self.elementy and not any(e.ocena is self.ocena for e in self.elementy):
-            raise ValueError(
-                f"Pozycja {self.definicja.kryterium_id}: rekord rozstrzygający nie jest rekordem "
-                "żadnego elementu pozycji"
-            )
-        if _wynik_z_ocen(_skladowe(self.ocena)) != self.wynik:
-            raise ValueError(
-                f"Pozycja {self.definicja.kryterium_id}: wynik rekordu rozstrzygającego różni "
-                "się od wyniku pozycji"
-            )
+        # Niezmienniki programu (nie odmowa danych): naruszenie to błąd składania pozycji.
+        assert not self.elementy or any(e.ocena is self.ocena for e in self.elementy), (
+            f"Pozycja {self.definicja.kryterium_id}: rekord rozstrzygający nie jest rekordem "
+            "żadnego elementu pozycji"
+        )
+        assert _wynik_z_ocen(_skladowe(self.ocena)) == self.wynik, (
+            f"Pozycja {self.definicja.kryterium_id}: wynik rekordu rozstrzygającego różni "
+            "się od wyniku pozycji"
+        )
 
     @property
     def oceny_skladowe(self) -> tuple[OcenaKryterium, ...]:
@@ -854,7 +853,7 @@ def _definicja(kryterium_id: str) -> DefinicjaKryterium:
 
 
 _PODSTAWA_REJESTRU = podstawa_zalozenia(
-    "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+    "Rejestr kryteriów werdyktu projektowego programu",
     "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
     uwagi_pl=(
         "podstawa każdego kryterium (norma, warunki OSD, katalog, założenie) jest w rekordzie "

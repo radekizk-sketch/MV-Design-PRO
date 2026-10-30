@@ -8,7 +8,7 @@
   "bus_results": [
     {
       "bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-      "v_pu": 0.968556421661,
+      "v_pu": 0.968556421662,
       "angle_deg": 26.8094341802,
       "p_injected_mw": 0.0,
       "q_injected_mvar": 0.0,
@@ -18,14 +18,14 @@
       "bus_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "v_pu": 1.0,
       "angle_deg": 0.0,
-      "p_injected_mw": 11.4961870737,
-      "q_injected_mvar": 6.40880179731,
+      "p_injected_mw": 11.4961870736,
+      "q_injected_mvar": 6.40880179714,
       "status": "solved"
     },
     {
       "bus_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-      "v_pu": 0.748329967937,
-      "angle_deg": 40.5582958475,
+      "v_pu": 0.748329967938,
+      "angle_deg": 40.5582958476,
       "p_injected_mw": -3.2,
       "q_injected_mvar": -1.2,
       "status": "solved"
@@ -33,7 +33,7 @@
     {
       "bus_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "v_pu": 0.968548597972,
-      "angle_deg": 26.809274879,
+      "angle_deg": 26.8092748791,
       "p_injected_mw": 0.0,
       "q_injected_mvar": 0.0,
       "status": "solved"
@@ -51,29 +51,29 @@
     {
       "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
       "p_from_mw": 3.54157716166,
-      "q_from_mvar": 2.65011545339,
+      "q_from_mvar": 2.65011545338,
       "p_to_mw": -3.19999999996,
       "q_to_mvar": -1.19999999998,
-      "losses_p_mw": 0.341577161695,
+      "losses_p_mw": 0.341577161694,
       "losses_q_mvar": 1.45011545341
     },
     {
       "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
-      "p_from_mw": 0.00379067548483,
-      "q_from_mvar": -0.0127240965529,
-      "p_to_mw": -0.00379064751576,
+      "p_from_mw": 0.00379067548475,
+      "q_from_mvar": -0.012724096553,
+      "p_to_mw": -0.00379064751569,
       "q_to_mvar": -0.014630705205,
-      "losses_p_mw": 2.7969069347e-08,
+      "losses_p_mw": 2.79690693466e-08,
       "losses_q_mvar": -0.0273548017579
     },
     {
       "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
-      "p_from_mw": 11.4961870737,
-      "q_from_mvar": 6.40880179731,
-      "p_to_mw": -11.4629259426,
-      "q_to_mvar": -5.57793900923,
-      "losses_p_mw": 0.0332611310803,
-      "losses_q_mvar": 0.830862788083
+      "p_from_mw": 11.4961870736,
+      "q_from_mvar": 6.40880179714,
+      "p_to_mw": -11.4629259425,
+      "q_to_mvar": -5.57793900907,
+      "losses_p_mw": 0.0332611310796,
+      "losses_q_mvar": 0.830862788066
     },
     {
       "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
@@ -81,17 +81,17 @@
       "q_from_mvar": 2.95510133785,
       "p_to_mw": -7.6,
       "q_to_mvar": -2.6,
-      "losses_p_mw": 0.321271733579,
-      "losses_q_mvar": 0.355101337852
+      "losses_p_mw": 0.321271733578,
+      "losses_q_mvar": 0.355101337851
     }
   ],
   "summary": {
-    "total_losses_p_mw": 0.696110054323,
-    "total_losses_q_mvar": 2.60872477759,
-    "min_v_pu": 0.748329967937,
+    "total_losses_p_mw": 0.696110054321,
+    "total_losses_q_mvar": 2.60872477757,
+    "min_v_pu": 0.748329967938,
     "max_v_pu": 1.0,
-    "slack_p_mw": 11.4961870737,
-    "slack_q_mvar": 6.40880179731
+    "slack_p_mw": 11.4961870736,
+    "slack_q_mvar": 6.40880179714
   },
   "unsolved_node_ids": [],
   "kryteria_napiecia": {

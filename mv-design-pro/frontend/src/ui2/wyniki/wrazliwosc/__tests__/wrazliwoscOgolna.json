@@ -1,0 +1,2707 @@
+{
+  "analysis_id": "abd29e18a9faa4bc00ee14fc9415d769ea1144dae5dd29b23b4492288fac2c3d",
+  "context": null,
+  "delta_pct": 5.0,
+  "entries": [
+    {
+      "base_decision": "PASS",
+      "base_margin": 3.9,
+      "margin_unit": "%",
+      "minus": {
+        "decision": "PASS",
+        "delta_margin": -0.25,
+        "delta_pct": -5.0,
+        "margin": 3.65,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.minus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 3.65
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-a",
+            "nazwa_pl": "Szyna SN",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.minus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN) — kryterium spełnione. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): 3,65 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines +3,65 pp, punkt: Szyna SN)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 3.65
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN) — kryterium spełnione. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): 3,65 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines +3,65 pp, punkt: Szyna SN)."
+        }
+      },
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/sensitivity/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\text{zapas} \\ge 0",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "wrazliwosc.voltage_limit.bazowy",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 0.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna SN",
+          "skala": null,
+          "skala_rodzaj": null,
+          "wartosc": {
+            "jednostka": "pp",
+            "wartosc": 3.9
+          },
+          "wzgledny": null
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+          "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "wezel-a",
+          "nazwa_pl": "Szyna SN",
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+        },
+        "slad": [
+          {
+            "krok": "sensitivity.voltage_limit.bazowy",
+            "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN) — kryterium spełnione. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): 3,9 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines +3,9 pp, punkt: Szyna SN)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna SN",
+          "symbol_latex": "\\text{zapas}",
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 3.9
+          },
+          "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+          ]
+        }
+      },
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "plus": {
+        "decision": "PASS",
+        "delta_margin": 0.25,
+        "delta_pct": 5.0,
+        "margin": 4.15,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.plus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 4.15
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-a",
+            "nazwa_pl": "Szyna SN",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.plus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN) — kryterium spełnione. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): 4,15 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines +4,15 pp, punkt: Szyna SN)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 4.15
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN) — kryterium spełnione. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): 4,15 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines +4,15 pp, punkt: Szyna SN)."
+        }
+      },
+      "source": "P21",
+      "target_id": "wezel-a",
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": null,
+        "zastrzezenia": [
+          "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+        ],
+        "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN) — kryterium spełnione. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): 3,9 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines +3,9 pp, punkt: Szyna SN)."
+      }
+    },
+    {
+      "base_decision": "FAIL",
+      "base_margin": -2.0,
+      "margin_unit": "%",
+      "minus": {
+        "decision": "FAIL",
+        "delta_margin": -0.25,
+        "delta_pct": -5.0,
+        "margin": -2.25,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.minus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN odbiorcza",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": -2.25
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-b",
+            "nazwa_pl": "Szyna SN odbiorcza",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.minus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 2,25 pp (Szyna SN odbiorcza)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN odbiorcza) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −2,25 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −2,25 pp, punkt: Szyna SN odbiorcza)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN odbiorcza",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": -2.25
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 2,25 pp (Szyna SN odbiorcza)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN odbiorcza) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −2,25 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −2,25 pp, punkt: Szyna SN odbiorcza)."
+        }
+      },
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/sensitivity/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\text{zapas} \\ge 0",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "wrazliwosc.voltage_limit.bazowy",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 0.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna SN odbiorcza",
+          "skala": null,
+          "skala_rodzaj": null,
+          "wartosc": {
+            "jednostka": "pp",
+            "wartosc": -2.0
+          },
+          "wzgledny": null
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+          "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "wezel-b",
+          "nazwa_pl": "Szyna SN odbiorcza",
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+        },
+        "slad": [
+          {
+            "krok": "sensitivity.voltage_limit.bazowy",
+            "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 2 pp (Szyna SN odbiorcza)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN odbiorcza) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −2 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −2 pp, punkt: Szyna SN odbiorcza)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna SN odbiorcza",
+          "symbol_latex": "\\text{zapas}",
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": -2.0
+          },
+          "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+          ]
+        }
+      },
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "plus": {
+        "decision": "FAIL",
+        "delta_margin": 0.25,
+        "delta_pct": 5.0,
+        "margin": -1.75,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.plus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN odbiorcza",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": -1.75
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-b",
+            "nazwa_pl": "Szyna SN odbiorcza",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.plus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 1,75 pp (Szyna SN odbiorcza)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN odbiorcza) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −1,75 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −1,75 pp, punkt: Szyna SN odbiorcza)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN odbiorcza",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": -1.75
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 1,75 pp (Szyna SN odbiorcza)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN odbiorcza) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −1,75 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −1,75 pp, punkt: Szyna SN odbiorcza)."
+        }
+      },
+      "source": "P21",
+      "target_id": "wezel-b",
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 2 pp (Szyna SN odbiorcza)",
+        "zastrzezenia": [
+          "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+        ],
+        "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN odbiorcza) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −2 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −2 pp, punkt: Szyna SN odbiorcza)."
+      }
+    },
+    {
+      "base_decision": "FAIL",
+      "base_margin": -5.0,
+      "margin_unit": "%",
+      "minus": {
+        "decision": "FAIL",
+        "delta_margin": 4.5,
+        "delta_pct": -5.0,
+        "margin": -0.5,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.minus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN końcowa",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": -0.5
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-c",
+            "nazwa_pl": "Szyna SN końcowa",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.minus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 0,5 pp (Szyna SN końcowa)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN końcowa) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −0,5 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −0,5 pp, punkt: Szyna SN końcowa)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN końcowa",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": -0.5
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 0,5 pp (Szyna SN końcowa)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN końcowa) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −0,5 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −0,5 pp, punkt: Szyna SN końcowa)."
+        }
+      },
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/sensitivity/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\text{zapas} \\ge 0",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "wrazliwosc.voltage_limit.bazowy",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 0.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna SN końcowa",
+          "skala": null,
+          "skala_rodzaj": null,
+          "wartosc": {
+            "jednostka": "pp",
+            "wartosc": -5.0
+          },
+          "wzgledny": null
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+          "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "wezel-c",
+          "nazwa_pl": "Szyna SN końcowa",
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+        },
+        "slad": [
+          {
+            "krok": "sensitivity.voltage_limit.bazowy",
+            "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 5 pp (Szyna SN końcowa)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN końcowa) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −5 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −5 pp, punkt: Szyna SN końcowa)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna SN końcowa",
+          "symbol_latex": "\\text{zapas}",
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": -5.0
+          },
+          "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+          ]
+        }
+      },
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "plus": {
+        "decision": "FAIL",
+        "delta_margin": 0.25,
+        "delta_pct": 5.0,
+        "margin": -4.75,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.plus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN końcowa",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": -4.75
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-c",
+            "nazwa_pl": "Szyna SN końcowa",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.plus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 4,75 pp (Szyna SN końcowa)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN końcowa) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −4,75 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −4,75 pp, punkt: Szyna SN końcowa)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN końcowa",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": -4.75
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 4,75 pp (Szyna SN końcowa)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN końcowa) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −4,75 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −4,75 pp, punkt: Szyna SN końcowa)."
+        }
+      },
+      "source": "P21",
+      "target_id": "wezel-c",
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 5 pp (Szyna SN końcowa)",
+        "zastrzezenia": [
+          "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+        ],
+        "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN końcowa) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −5 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −5 pp, punkt: Szyna SN końcowa)."
+      }
+    },
+    {
+      "base_decision": "FAIL",
+      "base_margin": -2.0,
+      "margin_unit": "%",
+      "minus": {
+        "decision": "FAIL",
+        "delta_margin": -0.5,
+        "delta_pct": -5.0,
+        "margin": -2.5,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.minus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN daleka",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": -2.5
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-d",
+            "nazwa_pl": "Szyna SN daleka",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.minus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 2,5 pp (Szyna SN daleka)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN daleka) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −2,5 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −2,5 pp, punkt: Szyna SN daleka)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN daleka",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": -2.5
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 2,5 pp (Szyna SN daleka)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN daleka) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −2,5 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −2,5 pp, punkt: Szyna SN daleka)."
+        }
+      },
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/sensitivity/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\text{zapas} \\ge 0",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "wrazliwosc.voltage_limit.bazowy",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 0.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna SN daleka",
+          "skala": null,
+          "skala_rodzaj": null,
+          "wartosc": {
+            "jednostka": "pp",
+            "wartosc": -2.0
+          },
+          "wzgledny": null
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+          "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "wezel-d",
+          "nazwa_pl": "Szyna SN daleka",
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+        },
+        "slad": [
+          {
+            "krok": "sensitivity.voltage_limit.bazowy",
+            "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 2 pp (Szyna SN daleka)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN daleka) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −2 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −2 pp, punkt: Szyna SN daleka)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna SN daleka",
+          "symbol_latex": "\\text{zapas}",
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": -2.0
+          },
+          "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+          ]
+        }
+      },
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "plus": {
+        "decision": "FAIL",
+        "delta_margin": 0.5,
+        "delta_pct": 5.0,
+        "margin": -1.5,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.plus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN daleka",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": -1.5
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-d",
+            "nazwa_pl": "Szyna SN daleka",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.plus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 1,5 pp (Szyna SN daleka)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN daleka) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −1,5 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −1,5 pp, punkt: Szyna SN daleka)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN daleka",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": -1.5
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 1,5 pp (Szyna SN daleka)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN daleka) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −1,5 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −1,5 pp, punkt: Szyna SN daleka)."
+        }
+      },
+      "source": "P21",
+      "target_id": "wezel-d",
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 2 pp (Szyna SN daleka)",
+        "zastrzezenia": [
+          "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+        ],
+        "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN daleka) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −2 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −2 pp, punkt: Szyna SN daleka)."
+      }
+    },
+    {
+      "base_decision": "NOT_COMPUTED",
+      "base_margin": null,
+      "margin_unit": "%",
+      "minus": {
+        "decision": "NOT_COMPUTED",
+        "delta_margin": null,
+        "delta_pct": -5.0,
+        "margin": null,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.minus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-e",
+            "nazwa_pl": "Szyna bez nazwy",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "zapas do progu — brak wielkości albo progu kryterium w danych wejściowych"
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna bez nazwy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "zapas do progu — brak wielkości albo progu kryterium w danych wejściowych"
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna bez nazwy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        }
+      },
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/sensitivity/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\text{zapas} \\ge 0",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "wrazliwosc.voltage_limit.bazowy",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 0.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+        },
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+          "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "wezel-e",
+          "nazwa_pl": "Szyna bez nazwy",
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+        },
+        "slad": [],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "zapas do progu — brak wielkości albo progu kryterium w danych wejściowych"
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna bez nazwy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+          ]
+        }
+      },
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "plus": {
+        "decision": "NOT_COMPUTED",
+        "delta_margin": null,
+        "delta_pct": 5.0,
+        "margin": null,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Ocena niewykonana",
+            "semantyka": "neutralna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.plus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": null,
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-e",
+            "nazwa_pl": "Szyna bez nazwy",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [],
+          "status_maszynowy": "NIE_OCENIONO",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "zapas do progu — brak wielkości albo progu kryterium w danych wejściowych"
+            ],
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna bez nazwy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+          },
+          "wynik": null,
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "zapas do progu — brak wielkości albo progu kryterium w danych wejściowych"
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna bez nazwy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        }
+      },
+      "source": "P21",
+      "target_id": "wezel-e",
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "zapas do progu — brak wielkości albo progu kryterium w danych wejściowych"
+        ],
+        "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych)",
+        "zastrzezenia": [
+          "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+        ],
+        "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna bez nazwy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (zapas do progu — brak wielkości albo progu kryterium w danych wejściowych). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+      }
+    },
+    {
+      "base_decision": "FAIL",
+      "base_margin": -0.1,
+      "margin_unit": "%",
+      "minus": {
+        "decision": "FAIL",
+        "delta_margin": -0.25,
+        "delta_pct": -5.0,
+        "margin": -0.35,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium naruszone",
+            "semantyka": "negatywna"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.minus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN przy progu",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": -0.35
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-f",
+            "nazwa_pl": "Szyna SN przy progu",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.minus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "NIE_SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 0,35 pp (Szyna SN przy progu)",
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN przy progu) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −0,35 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −0,35 pp, punkt: Szyna SN przy progu)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN przy progu",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": -0.35
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 0,35 pp (Szyna SN przy progu)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o −5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o −5 % (Szyna SN przy progu) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −0,35 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −0,35 pp, punkt: Szyna SN przy progu)."
+        }
+      },
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "analysis/sensitivity/builder.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "\\text{zapas} \\ge 0",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "wrazliwosc.voltage_limit.bazowy",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": 0.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Szyna SN przy progu",
+          "skala": null,
+          "skala_rodzaj": null,
+          "wartosc": {
+            "jednostka": "pp",
+            "wartosc": -0.1
+          },
+          "wzgledny": null
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+          "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+          "rodzaj": "ZALOZENIE_PROJEKTOWE",
+          "status": "WSKAZANE",
+          "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+          "wydanie": "bieżący stan programu"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "wezel-f",
+          "nazwa_pl": "Szyna SN przy progu",
+          "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+        },
+        "slad": [
+          {
+            "krok": "sensitivity.voltage_limit.bazowy",
+            "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 0,1 pp (Szyna SN przy progu)",
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN przy progu) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −0,1 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −0,1 pp, punkt: Szyna SN przy progu)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Szyna SN przy progu",
+          "symbol_latex": "\\text{zapas}",
+          "wartosc": {
+            "jednostka": "%",
+            "wartosc": -0.1
+          },
+          "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+          ]
+        }
+      },
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "plus": {
+        "decision": "PASS",
+        "delta_margin": 0.25,
+        "delta_pct": 5.0,
+        "margin": 0.15,
+        "ocena": {
+          "dowod": {
+            "domena_pl": null,
+            "metoda": "OBLICZENIE",
+            "odniesienie": "analysis/sensitivity/builder.py",
+            "poziom": "UNVALIDATED_MODEL",
+            "rodzaj_twierdzenia": "STATIC_CALCULATION",
+            "status_danych": {
+              "dane_przyjete": [],
+              "stan": "ZWALIDOWANE"
+            },
+            "status_modelu": "NIE_DOTYCZY",
+            "w_domenie_walidacji": null
+          },
+          "etykieta": {
+            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+            "semantyka": "ostrzegawcza"
+          },
+          "kompletnosc_dowodu": "NIEPELNY",
+          "kryterium": {
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 %",
+            "relacja": "NIE_MNIEJ",
+            "warunek_latex": "\\text{zapas} \\ge 0",
+            "warunek_wstepny_pl": null,
+            "warunek_wstepny_podstawa": null
+          },
+          "kryterium_id": "wrazliwosc.voltage_limit.plus",
+          "limit": {
+            "jednostka_obwiedni": null,
+            "obwiednia": null,
+            "pasmo": null,
+            "podstawa": {
+              "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+              "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+              "rodzaj": "ZALOZENIE_PROJEKTOWE",
+              "status": "WSKAZANE",
+              "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+              "wydanie": "bieżący stan programu"
+            },
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.0
+            },
+            "wersja_profilu": null,
+            "zakres_stosowalnosci_pl": "zapas zerowy — wielkość na progu kryterium"
+          },
+          "margines": {
+            "definicja_latex": "m = x - x_{\\lim}",
+            "niedefiniowalny": false,
+            "powod_pl": null,
+            "punkt_pl": "Szyna SN przy progu",
+            "skala": null,
+            "skala_rodzaj": null,
+            "wartosc": {
+              "jednostka": "pp",
+              "wartosc": 0.15
+            },
+            "wzgledny": null
+          },
+          "niepewnosc": {
+            "metoda_pl": null,
+            "nie_dotyczy": true,
+            "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+            "wartosc": null
+          },
+          "podstawa": {
+            "dokument": "Kryteria napięciowe SN programu (profil napięć i ocena normatywna)",
+            "jednostka_redakcyjna": "próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160)",
+            "rodzaj": "ZALOZENIE_PROJEKTOWE",
+            "status": "WSKAZANE",
+            "uwagi_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wydanie": "bieżący stan programu"
+          },
+          "powody_niepelnosci": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przedmiot": {
+            "element_ref": "wezel-f",
+            "nazwa_pl": "Szyna SN przy progu",
+            "opis_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego"
+          },
+          "slad": [
+            {
+              "krok": "sensitivity.voltage_limit.plus",
+              "opis_pl": "Zapas do progu kryterium w analizie wrażliwości",
+              "run_id": null,
+              "wersja_silnika": null
+            }
+          ],
+          "status_maszynowy": "SPELNIA",
+          "stosowalnosc": {
+            "dotyczy": true,
+            "modul_istniejacy": null,
+            "podstawa": null,
+            "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+            "technologia": null,
+            "typ_modulu": null,
+            "warunek_wstepny_nieuruchomiony": false
+          },
+          "wyjasnienie": {
+            "czego_brakuje": [],
+            "przyczyna_pl": null,
+            "zastrzezenia": [
+              "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+            ],
+            "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN przy progu) — kryterium spełnione. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): 0,15 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines +0,15 pp, punkt: Szyna SN przy progu)."
+          },
+          "wynik": {
+            "chwila_s": null,
+            "metoda": "OBLICZENIE",
+            "punkt_krytyczny_pl": "Szyna SN przy progu",
+            "symbol_latex": "\\text{zapas}",
+            "wartosc": {
+              "jednostka": "%",
+              "wartosc": 0.15
+            },
+            "wielkosc_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia)"
+          },
+          "zakres_waznosci": {
+            "model_urzadzenia": null,
+            "ograniczniki": [],
+            "opis_pl": "Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 %",
+            "parametry_sieci": [],
+            "regulator": null,
+            "rodzaj_analizy": "POWER_FLOW",
+            "symetria_zaklocenia": null,
+            "technologia": null,
+            "wykluczenia": [
+              "perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń"
+            ]
+          }
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Analiza wrażliwości gotowego wyniku — zmiana wielkości o +5 % — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+          ],
+          "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — zmiana wielkości o +5 % (Szyna SN przy progu) — kryterium spełnione. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): 0,15 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines +0,15 pp, punkt: Szyna SN przy progu)."
+        }
+      },
+      "source": "P21",
+      "target_id": "wezel-f",
+      "wyjasnienie": {
+        "czego_brakuje": [],
+        "przyczyna_pl": "zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia) nie osiąga wartości granicznej o 0,1 pp (Szyna SN przy progu)",
+        "zastrzezenia": [
+          "Podstawa „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)”, wydanie bieżący stan programu, próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+          "Zakres ważności: Analiza wrażliwości gotowego wyniku — stan bazowy przebiegu — wynik nie obejmuje: perturbacja przeskalowuje wynik bazowy liniowo — nie jest nowym biegiem obliczeń."
+        ],
+        "zdanie_pl": "Zapas odchyłki napięcia węzła do progu kryterium napięciowego — stan bazowy przebiegu (Szyna SN przy progu) — kryterium naruszone. Zapas = próg − |ΔU| (próg ostrzeżenia, a po przekroczeniu progu przekroczenia — próg przekroczenia): −0,1 % wobec wymaganych ≥ 0 % wg próg ostrzeżenia ± 5 % Un i próg przekroczenia ± 10 % Un (PN-EN 50160) „Kryteria napięciowe SN programu (profil napięć i ocena normatywna)” (margines −0,1 pp, punkt: Szyna SN przy progu)."
+      }
+    }
+  ],
+  "summary": {
+    "not_computed_count": 1,
+    "total_entries": 6
+  },
+  "top_drivers": [
+    {
+      "delta_margin": 4.5,
+      "direction": "MINUS",
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "score": 4.5,
+      "source": "P21",
+      "target_id": "wezel-c"
+    },
+    {
+      "delta_margin": 0.5,
+      "direction": "PLUS",
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "score": 0.5,
+      "source": "P21",
+      "target_id": "wezel-d"
+    },
+    {
+      "delta_margin": 0.25,
+      "direction": "PLUS",
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "score": 0.25,
+      "source": "P21",
+      "target_id": "wezel-a"
+    },
+    {
+      "delta_margin": 0.25,
+      "direction": "PLUS",
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "score": 0.25,
+      "source": "P21",
+      "target_id": "wezel-b"
+    },
+    {
+      "delta_margin": 0.25,
+      "direction": "PLUS",
+      "parameter_id": "voltage_limit",
+      "parameter_label": "Voltage limits",
+      "score": 0.25,
+      "source": "P21",
+      "target_id": "wezel-f"
+    }
+  ]
+}

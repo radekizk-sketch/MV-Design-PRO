@@ -31,7 +31,8 @@ import {
   RODZAJ_REGULACJI_PL,
   TRYB_STEROWANIA_PL,
 } from '../../zbieznosc/zbieznoscModel';
-import { DECYZJE_PL, KRYTERIA_PL, etykietaDecyzji, etykietaKryterium } from '../../wrazliwosc/strings';
+import * as STRINGI_WRAZLIWOSCI from '../../wrazliwosc/strings';
+import { KRYTERIA_PL, etykietaKryterium } from '../../wrazliwosc/strings';
 import {
   PROWENIENCJE_WIDMA,
   etykietaProweniencjiWidma,
@@ -83,7 +84,6 @@ describe('funkcje etykiet ekranów — kod spoza słownika nigdy surowo', () => 
     ['tryb danych źródła', trybZrodlaSiecowegoPL],
     ['pochodzenie R/X', rxRatioZrodloPL],
     ['kryterium wrażliwości', etykietaKryterium],
-    ['decyzja wrażliwości', etykietaDecyzji],
     ['stan przebiegu', etykietaStanuPrzebiegu],
     ['rodzaj analizy', etykietaRodzaju],
     ['proweniencja widma', etykietaProweniencjiWidma],
@@ -166,10 +166,11 @@ describe('słowniki = zbiory kodów backendu (parytet z kodem źródłowym)', ()
     expect(tokeny.sort()).toEqual(Object.keys(METODY_SOLVERA_PL).sort());
   });
 
-  it('decyzje wrażliwości: SensitivityDecision (kryteria przypina `wrazliwosc/__tests__/strings.test.ts`)', () => {
-    expect(
-      wartosciEnumu(zrodlo('analysis', 'sensitivity', 'models.py'), 'SensitivityDecision').sort(),
-    ).toEqual(Object.keys(DECYZJE_PL).sort());
+  it('decyzje wrażliwości: bez słownika kodów — etykietę niesie rekord `ocena` backendu', () => {
+    // Karta WERDYKT-MIGRACJA-190: rozstrzygnięcie wpisu wrażliwości nie jest tłumaczone z kodu
+    // `SensitivityDecision` (projekcja rekordu); słownik decyzji na froncie byłby drugą prawdą.
+    expect(Object.keys(STRINGI_WRAZLIWOSCI)).not.toContain('DECYZJE_PL');
+    expect(Object.keys(STRINGI_WRAZLIWOSCI)).not.toContain('etykietaDecyzji');
     expect(Object.keys(KRYTERIA_PL).length).toBeGreaterThan(0);
   });
 

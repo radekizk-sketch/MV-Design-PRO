@@ -664,10 +664,12 @@ type PozycjaBezRekordu = Omit<BezRekordu<PozycjaCieplna>, 'kryteria' | 'wrazliwo
   readonly wrazliwosc: readonly PunktWrazliwosci[];
 };
 
-const SCENA_CIEPLNA: Record<StatusWarunku, typeof R.cieplna_spelnia> = {
-  PASS: R.cieplna_spelnia,
-  FAIL: R.cieplna_nie_spelnia,
-  UNAVAILABLE: R.cieplna_brak_danych,
+/** Sceny rekordów cieplnych wg stanu — JSON backendu odczytany jako rekord W (kształty
+ *  scen różnią się długością śladu, więc wspólnym typem jest kontrakt rekordu, nie JSON). */
+const SCENA_CIEPLNA: Record<StatusWarunku, { ocena: WynikWymagania }> = {
+  PASS: R.cieplna_spelnia as unknown as { ocena: WynikWymagania },
+  FAIL: R.cieplna_nie_spelnia as unknown as { ocena: WynikWymagania },
+  UNAVAILABLE: R.cieplna_brak_danych as unknown as { ocena: WynikWymagania },
 };
 
 /**

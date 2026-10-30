@@ -7439,7 +7439,7 @@
         "zastrzezenia": [
           "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
         ]
       },
       "dowod": {
@@ -7457,7 +7457,7 @@
       },
       "zakres_waznosci": {
         "rodzaj_analizy": "POWER_FLOW",
-        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
         "technologia": null,
         "model_urzadzenia": null,
         "symetria_zaklocenia": null,
@@ -7474,7 +7474,7 @@
           "run_id": null,
           "wersja_silnika": null,
           "krok": "energy_validation.branch_loading",
-          "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)"
         }
       ]
     },
@@ -7485,7 +7485,7 @@
       "zastrzezenia": [
         "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-        "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
       ]
     }
   },
@@ -7590,7 +7590,7 @@
         "zastrzezenia": [
           "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
         ]
       },
       "dowod": {
@@ -7608,7 +7608,7 @@
       },
       "zakres_waznosci": {
         "rodzaj_analizy": "POWER_FLOW",
-        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
         "technologia": null,
         "model_urzadzenia": null,
         "symetria_zaklocenia": null,
@@ -7625,7 +7625,7 @@
           "run_id": null,
           "wersja_silnika": null,
           "krok": "energy_validation.branch_loading",
-          "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)"
         }
       ]
     },
@@ -7636,7 +7636,7 @@
       "zastrzezenia": [
         "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-        "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
       ]
     }
   },
@@ -7741,7 +7741,7 @@
         "zastrzezenia": [
           "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
         ]
       },
       "dowod": {
@@ -7759,7 +7759,7 @@
       },
       "zakres_waznosci": {
         "rodzaj_analizy": "POWER_FLOW",
-        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
         "technologia": null,
         "model_urzadzenia": null,
         "symetria_zaklocenia": null,
@@ -7776,7 +7776,7 @@
           "run_id": null,
           "wersja_silnika": null,
           "krok": "energy_validation.branch_loading",
-          "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)"
+          "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)"
         }
       ]
     },
@@ -7787,7 +7787,7 @@
       "zastrzezenia": [
         "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-        "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
       ]
     }
   },
@@ -7870,7 +7870,7 @@
         "zastrzezenia": [
           "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
         ]
       },
       "dowod": {
@@ -7888,7 +7888,7 @@
       },
       "zakres_waznosci": {
         "rodzaj_analizy": "POWER_FLOW",
-        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+        "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
         "technologia": null,
         "model_urzadzenia": null,
         "symetria_zaklocenia": null,
@@ -7912,7 +7912,7 @@
       "zastrzezenia": [
         "Podstawa „Progi walidacji energetycznej programu (konfiguracja walidacji)”, wydanie bieżący stan programu, obciążenie gałęzi — próg przekroczenia prądu znamionowego (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-        "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+        "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
       ]
     }
   },

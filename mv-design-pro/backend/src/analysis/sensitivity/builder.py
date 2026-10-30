@@ -17,15 +17,22 @@ from analysis.sensitivity.models import (
     SensitivityView,
     compute_sensitivity_id,
 )
+from analysis.sensitivity.oceny import Wariant, decyzja, ocena_zapasu
 from analysis.voltage_profile.models import (
     VoltageProfileRow,
     VoltageProfileStatus,
     VoltageProfileView,
 )
 from application.proof_engine.types import ProofDocument
+from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.nazwy import nazwa_nadana
+from werdykt import OcenaKryterium
 
 DEFAULT_DELTA_PCT = 5.0
 DEFAULT_TOP_N = 5
+#: Przedmiot wpisów wrażliwości zabezpieczeń: widoki zabezpieczeń niosą wyłącznie identyfikator
+#: aparatu (``primary_device_id``), nie jego nazwę — opis rodzaju, nigdy identyfikator.
+_ZABEZPIECZENIE_PODSTAWOWE = "Zabezpieczenie podstawowe pola"
 
 
 class SensitivityBuilder:
@@ -122,6 +129,7 @@ def _entries_from_normative(
                 parameter_id=parameter_id,
                 parameter_label=parameter_label,
                 target_id=item.target_id,
+                nazwa_pl=item.title_pl,
                 source=source,
                 observed=item.observed_value,
                 limit=item.limit_value,
@@ -171,20 +179,19 @@ def _entries_from_protection_curves(
 ) -> list[SensitivityEntry]:
     margins = [float(value) for value in view.margins_pct.values()]
     base_margin = min(margins) if margins else None
-    base_decision = _decision_from_margin(base_margin)
 
     minus_margin = _apply_margin_delta(base_margin, -delta_pct)
     plus_margin = _apply_margin_delta(base_margin, delta_pct)
 
     return [
-        _build_entry(
+        wpis_wrazliwosci(
             parameter_id="protection_curve_margin",
             parameter_label="Protection curve margins",
             target_id=view.primary_device_id,
+            nazwa_pl=_ZABEZPIECZENIE_PODSTAWOWE,
             source="C-P22",
             base_margin=base_margin,
             margin_unit="%",
-            base_decision=base_decision,
             minus_margin=minus_margin,
             plus_margin=plus_margin,
             delta_pct=delta_pct,
@@ -197,6 +204,7 @@ def _entry_from_observed_limit(
     parameter_id: str,
     parameter_label: str,
     target_id: str,
+    nazwa_pl: str,
     source: str,
     observed: float | str | None,
     limit: float | None,
@@ -206,28 +214,28 @@ def _entry_from_observed_limit(
     safe_margin_fn: Callable[[float, float], float],
 ) -> SensitivityEntry:
     if status in (NormativeStatus.NOT_COMPUTED, NormativeStatus.NOT_EVALUATED):
-        return _build_entry(
+        return wpis_wrazliwosci(
             parameter_id=parameter_id,
             parameter_label=parameter_label,
             target_id=target_id,
+            nazwa_pl=nazwa_pl,
             source=source,
             base_margin=None,
             margin_unit=unit,
-            base_decision=SensitivityDecision.NOT_COMPUTED,
             minus_margin=None,
             plus_margin=None,
             delta_pct=delta_pct,
         )
 
     if not isinstance(observed, int | float) or limit is None:
-        return _build_entry(
+        return wpis_wrazliwosci(
             parameter_id=parameter_id,
             parameter_label=parameter_label,
             target_id=target_id,
+            nazwa_pl=nazwa_pl,
             source=source,
             base_margin=None,
             margin_unit=unit,
-            base_decision=SensitivityDecision.NOT_COMPUTED,
             minus_margin=None,
             plus_margin=None,
             delta_pct=delta_pct,
@@ -243,14 +251,14 @@ def _entry_from_observed_limit(
     minus_margin = safe_margin_fn(limit_value, observed_minus)
     plus_margin = safe_margin_fn(limit_value, observed_plus)
 
-    return _build_entry(
+    return wpis_wrazliwosci(
         parameter_id=parameter_id,
         parameter_label=parameter_label,
         target_id=target_id,
+        nazwa_pl=nazwa_pl,
         source=source,
         base_margin=base_margin,
         margin_unit=unit,
-        base_decision=_decision_from_margin(base_margin),
         minus_margin=minus_margin,
         plus_margin=plus_margin,
         delta_pct=delta_pct,
@@ -265,14 +273,14 @@ def _entry_from_voltage_row(
     delta_pct: float,
 ) -> SensitivityEntry:
     if row.status == VoltageProfileStatus.NOT_COMPUTED or row.delta_pct is None:
-        return _build_entry(
+        return wpis_wrazliwosci(
             parameter_id="voltage_limit",
             parameter_label="Voltage limits",
             target_id=row.bus_id,
+            nazwa_pl=nazwa_nadana(row.bus_name) or opis_bez_nazwy("buses"),
             source="P21",
             base_margin=None,
             margin_unit="%",
-            base_decision=SensitivityDecision.NOT_COMPUTED,
             minus_margin=None,
             plus_margin=None,
             delta_pct=delta_pct,
@@ -289,14 +297,14 @@ def _entry_from_voltage_row(
     minus_margin = _voltage_margin(abs_delta, warn_minus, fail_minus)
     plus_margin = _voltage_margin(abs_delta, warn_plus, fail_plus)
 
-    return _build_entry(
+    return wpis_wrazliwosci(
         parameter_id="voltage_limit",
         parameter_label="Voltage limits",
         target_id=row.bus_id,
+        nazwa_pl=nazwa_nadana(row.bus_name) or opis_bez_nazwy("buses"),
         source="P21",
         base_margin=base_margin,
         margin_unit="%",
-        base_decision=_decision_from_margin(base_margin),
         minus_margin=minus_margin,
         plus_margin=plus_margin,
         delta_pct=delta_pct,
@@ -333,14 +341,14 @@ def _entry_from_short_circuit(
         ith_limit_ka2s=item.ith_limit_ka2s,
     )
 
-    return _build_entry(
+    return wpis_wrazliwosci(
         parameter_id="short_circuit_level",
         parameter_label="Short-circuit level",
         target_id=item.primary_device_id,
+        nazwa_pl=_ZABEZPIECZENIE_PODSTAWOWE,
         source="P22a",
         base_margin=base_margin,
         margin_unit="%",
-        base_decision=_decision_from_margin(base_margin),
         minus_margin=minus_margin,
         plus_margin=plus_margin,
         delta_pct=delta_pct,
@@ -377,14 +385,14 @@ def _entry_from_protection_settings(
         ith_limit_ka2s=_apply_delta(item.ith_limit_ka2s, delta_pct),
     )
 
-    return _build_entry(
+    return wpis_wrazliwosci(
         parameter_id="protection_margin",
         parameter_label="Protection settings margins",
         target_id=item.primary_device_id,
+        nazwa_pl=_ZABEZPIECZENIE_PODSTAWOWE,
         source="P22a",
         base_margin=base_margin,
         margin_unit="%",
-        base_decision=_decision_from_margin(base_margin),
         minus_margin=minus_margin,
         plus_margin=plus_margin,
         delta_pct=delta_pct,
@@ -411,13 +419,7 @@ def _apply_margin_delta(value: float | None, delta_pct: float) -> float | None:
     return float(value) * (1.0 + delta_pct / 100.0)
 
 
-def _decision_from_margin(margin: float | None) -> SensitivityDecision:
-    if margin is None:
-        return SensitivityDecision.NOT_COMPUTED
-    return SensitivityDecision.PASS if margin >= 0 else SensitivityDecision.FAIL
-
-
-def _build_entry(
+def wpis_wrazliwosci(
     *,
     parameter_id: str,
     parameter_label: str,
@@ -425,13 +427,30 @@ def _build_entry(
     source: str,
     base_margin: float | None,
     margin_unit: str | None,
-    base_decision: SensitivityDecision,
     minus_margin: float | None,
     plus_margin: float | None,
     delta_pct: float,
+    nazwa_pl: str,
 ) -> SensitivityEntry:
-    minus = _build_perturbation(-delta_pct, base_margin, minus_margin)
-    plus = _build_perturbation(delta_pct, base_margin, plus_margin)
+    """Wpis z rekordami K zapasu (stan bazowy, −delta, +delta); kody decyzji są projekcją
+    rekordów — jedno miejsce składania wpisu dla każdego źródła wrażliwości."""
+
+    def _ocena(wariant: Wariant, zapas: float | None) -> OcenaKryterium:
+        return ocena_zapasu(
+            parameter_id=parameter_id,
+            wariant=wariant,
+            delta_pct=delta_pct,
+            target_id=target_id,
+            nazwa_pl=nazwa_pl,
+            zapas=zapas,
+            jednostka=margin_unit,
+        )
+
+    minus = _build_perturbation(
+        -delta_pct, base_margin, minus_margin, _ocena("minus", minus_margin)
+    )
+    plus = _build_perturbation(delta_pct, base_margin, plus_margin, _ocena("plus", plus_margin))
+    ocena = _ocena("bazowy", base_margin)
 
     return SensitivityEntry(
         parameter_id=parameter_id,
@@ -440,9 +459,11 @@ def _build_entry(
         source=source,
         base_margin=base_margin,
         margin_unit=margin_unit,
-        base_decision=base_decision,
+        base_decision=decyzja(ocena),
         minus=minus,
         plus=plus,
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
     )
 
 
@@ -450,21 +471,27 @@ def _build_perturbation(
     delta_pct: float,
     base_margin: float | None,
     margin: float | None,
+    ocena: OcenaKryterium,
 ) -> SensitivityPerturbation:
     delta_margin = None
     if base_margin is not None and margin is not None:
         delta_margin = margin - base_margin
-    decision = _decision_from_margin(margin)
     return SensitivityPerturbation(
         delta_pct=delta_pct,
         margin=margin,
         delta_margin=delta_margin,
-        decision=decision,
+        decision=decyzja(ocena),
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
     )
 
 
 def _voltage_margin(delta_pct_abs: float, warn: float, fail: float) -> float:
-    if delta_pct_abs >= fail:
+    """Zapas do progu kryterium napięciowego: do progu ostrzeżenia, a po PRZEKROCZENIU progu
+    przekroczenia — do progu przekroczenia. Równość z progiem przekroczenia go nie przekracza
+    (reguła pakietu werdykt), więc zapas liczony jest wtedy do progu ostrzeżenia — dawne ``>=``
+    dawało na samym progu zapas zerowy (spełnienie), choć tuż poniżej progu zapas był ujemny."""
+    if delta_pct_abs > fail:
         return float(fail - delta_pct_abs)
     return float(warn - delta_pct_abs)
 

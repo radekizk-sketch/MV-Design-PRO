@@ -51,6 +51,7 @@ from typing import Any, Final, Literal
 
 from domain.readiness_bridge import opis_kanoniczny
 from network_model.core.uziemienie import UZIEMIENIA_WYMAGAJACE_FV_19
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import ka_na_a, napiecie_fazowe_v
 from network_model.solvers.equipment_checks.ct_burden_saturation import (
     CtBurdenInput,
@@ -421,7 +422,7 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
     idyn = przekladnik.get("idyn_ka_peak")
     obciazalnosc = przekladnik.get("burden_va")
     klasa = przekladnik.get("accuracy_class")
-    nazwa_typu = str(przekladnik.get("name") or przekladnik.get("id") or "przekładnik prądowy")
+    nazwa_typu = nazwa_nadana(przekladnik.get("name")) or "przekładnik prądowy"
     przedmiot = Przedmiot(
         element_ref=None,
         nazwa_pl=tor.nazwa_pl,
@@ -986,7 +987,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
     obciazalnosc = przekladnik.get("burden_va")
     uzwojenie_resztkowe = przekladnik.get("has_residual_winding")
     klasa = przekladnik.get("accuracy_class")
-    nazwa_typu = str(przekladnik.get("name") or przekladnik.get("id") or "przekładnik napięciowy")
+    nazwa_typu = nazwa_nadana(przekladnik.get("name")) or "przekładnik napięciowy"
     przedmiot = Przedmiot(
         element_ref=None,
         nazwa_pl=tor.nazwa_pl,

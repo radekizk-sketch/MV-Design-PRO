@@ -173,7 +173,7 @@
             "slad": [
               {
                 "krok": "energy_validation.voltage_deviation",
-                "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)",
+                "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
                 "run_id": null,
                 "wersja_silnika": null
               }
@@ -194,7 +194,7 @@
               "zastrzezenia": [
                 "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                 "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+                "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
               ],
               "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej)."
             },
@@ -212,7 +212,7 @@
             "zakres_waznosci": {
               "model_urzadzenia": null,
               "ograniczniki": [],
-              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+              "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
               "parametry_sieci": [],
               "regulator": null,
               "rodzaj_analizy": "POWER_FLOW",
@@ -237,7 +237,7 @@
             "zastrzezenia": [
               "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
               "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+              "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
             ],
             "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej)."
           },
@@ -342,7 +342,7 @@
         "slad": [
           {
             "krok": "energy_validation.voltage_deviation",
-            "opis_pl": "Wywód pozycji walidacji energetycznej (wzór, dane, wynik, progi)",
+            "opis_pl": "Wywód pozycji oceny (wzór, dane, wynik, progi)",
             "run_id": null,
             "wersja_silnika": null
           }
@@ -363,7 +363,7 @@
           "zastrzezenia": [
             "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+            "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
           ],
           "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej)."
         },
@@ -381,7 +381,7 @@
         "zakres_waznosci": {
           "model_urzadzenia": null,
           "ograniczniki": [],
-          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej.",
+          "opis_pl": "Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć).",
           "parametry_sieci": [],
           "regulator": null,
           "rodzaj_analizy": "POWER_FLOW",
@@ -411,7 +411,7 @@
         "zastrzezenia": [
           "Podstawa „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)”, wydanie 2010, 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami walidacji energetycznej — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
+          "Zakres ważności: Stan ustalony jednego biegu rozpływu mocy przy obciążeniach i generacji zapisanych w modelu; wielkości z wyniku rozpływu porównane z progami kryteriów rozpływu (walidacja energetyczna, profil napięć) — wynik nie obejmuje: inne stany pracy niż zapisany w modelu (szczyt, dolina, stany awaryjne N-1); przeciążalność krótkotrwała i cykliczna urządzeń."
         ],
         "zdanie_pl": "Odchylenie napięcia od znamionowego nie większe od dopuszczalnego (Szyna SN 1) — kryterium spełnione. Odchylenie napięcia od znamionowego: 1,2 % wobec wymaganych ≤ 10 % wg 4.2.2 i 5.2.2 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 % „PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych)” (margines +8,8 pp, punkt: Szyna SN 1, względnie +88 % wartości granicznej)."
       },
@@ -468,7 +468,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -502,7 +502,7 @@
           ],
           "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ],
@@ -546,7 +546,7 @@
         ],
         "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ],
@@ -605,7 +605,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -639,7 +639,7 @@
           ],
           "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ],
@@ -683,7 +683,7 @@
         ],
         "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ],
@@ -742,7 +742,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -776,7 +776,7 @@
           ],
           "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ],
@@ -820,7 +820,7 @@
         ],
         "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ],
@@ -879,7 +879,7 @@
           "wartosc": null
         },
         "podstawa": {
-          "dokument": "Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)",
+          "dokument": "Rejestr kryteriów werdyktu projektowego programu",
           "jednostka_redakcyjna": "kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu)",
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "WSKAZANE",
@@ -913,7 +913,7 @@
           ],
           "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
           "zastrzezenia": [
-            "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
             "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
           ],
@@ -957,7 +957,7 @@
         ],
         "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
         "zastrzezenia": [
-          "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+          "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
           "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
         ],
@@ -1735,7 +1735,7 @@
     ],
     "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli dla bieżącego biegu rozpływu)",
     "zastrzezenia": [
-      "Podstawa „Rejestr kryteriów werdyktu projektowego (application/analyses/werdykt_projektowy.py)”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+      "Podstawa „Rejestr kryteriów werdyktu projektowego programu”, wydanie bieżący stan programu, kryteria projektu objęte oceną automatyczną (rejestr kryteriów modułu) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
       "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
       "Zakres ważności: Kryteria projektu ocenione z najnowszych aktualnych biegów rozpływu mocy i zwarć przypadku oraz z modelu (dobory toru źródła) w chwili budowy werdyktu — wynik nie obejmuje: Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe); Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu; Obciążalność przewodu z korektą warunków ułożenia na całym modelu; Ekonomiczna gęstość prądu przekroju."
     ],

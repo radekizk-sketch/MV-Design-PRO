@@ -4,11 +4,9 @@ from datetime import datetime
 
 from analysis.recommendations.builder import RecommendationBuilder
 from analysis.recommendations.models import RecommendationEffect
+from analysis.sensitivity.builder import wpis_wrazliwosci
 from analysis.sensitivity.models import (
     SensitivityContext,
-    SensitivityDecision,
-    SensitivityEntry,
-    SensitivityPerturbation,
     SensitivitySummary,
     SensitivityView,
 )
@@ -24,68 +22,41 @@ def _sensitivity_view() -> SensitivityView:
         snapshot_id="snap-1",
         trace_id="trace-1",
     )
-    entry_primary = SensitivityEntry(
+    entry_primary = wpis_wrazliwosci(
         parameter_id="load_p",
         parameter_label="Load P (k_S)",
         target_id="LINE-1",
+        nazwa_pl="Linia L-1",
         source="P20",
         base_margin=-1.0,
         margin_unit="%",
-        base_decision=SensitivityDecision.FAIL,
-        minus=SensitivityPerturbation(
-            delta_pct=-5.0,
-            margin=-2.0,
-            delta_margin=-1.0,
-            decision=SensitivityDecision.FAIL,
-        ),
-        plus=SensitivityPerturbation(
-            delta_pct=5.0,
-            margin=0.0,
-            delta_margin=1.0,
-            decision=SensitivityDecision.PASS,
-        ),
+        minus_margin=-2.0,
+        plus_margin=0.0,
+        delta_pct=5.0,
     )
-    entry_alt = SensitivityEntry(
+    entry_alt = wpis_wrazliwosci(
         parameter_id="voltage_limit",
         parameter_label="Voltage limits",
         target_id="BUS-1",
+        nazwa_pl="Szyna SN 1",
         source="P21",
         base_margin=-2.0,
         margin_unit="%",
-        base_decision=SensitivityDecision.FAIL,
-        minus=SensitivityPerturbation(
-            delta_pct=-5.0,
-            margin=-3.0,
-            delta_margin=-1.0,
-            decision=SensitivityDecision.FAIL,
-        ),
-        plus=SensitivityPerturbation(
-            delta_pct=5.0,
-            margin=-1.0,
-            delta_margin=1.0,
-            decision=SensitivityDecision.FAIL,
-        ),
+        minus_margin=-3.0,
+        plus_margin=-1.0,
+        delta_pct=5.0,
     )
-    entry_nc = SensitivityEntry(
+    entry_nc = wpis_wrazliwosci(
         parameter_id="load_q",
         parameter_label="Load Q (k_I)",
         target_id="LINE-2",
+        nazwa_pl="Linia L-2",
         source="P20",
         base_margin=None,
         margin_unit="%",
-        base_decision=SensitivityDecision.NOT_COMPUTED,
-        minus=SensitivityPerturbation(
-            delta_pct=-5.0,
-            margin=None,
-            delta_margin=None,
-            decision=SensitivityDecision.NOT_COMPUTED,
-        ),
-        plus=SensitivityPerturbation(
-            delta_pct=5.0,
-            margin=None,
-            delta_margin=None,
-            decision=SensitivityDecision.NOT_COMPUTED,
-        ),
+        minus_margin=None,
+        plus_margin=None,
+        delta_pct=5.0,
     )
     entries = (entry_primary, entry_alt, entry_nc)
     summary = SensitivitySummary(total_entries=3, not_computed_count=1)

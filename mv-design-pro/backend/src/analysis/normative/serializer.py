@@ -46,4 +46,6 @@ def item_to_dict(item: NormativeItem) -> dict[str, object]:
         "margin": item.margin,
         "why_pl": item.why_pl,
         "requires": list(item.requires),
+        "ocena": item.ocena.model_dump(mode="json"),
+        "wyjasnienie": item.wyjasnienie.model_dump(mode="json"),
     }

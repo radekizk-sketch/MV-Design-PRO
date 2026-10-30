@@ -24,20 +24,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.normative.models:NormativeItem.severity",
-   "klasa": "ENUM_WEWNETRZNY",
-   "uzasadnienie_pl": "Inwentarz B1: 1. `analysis/normative/models.py:17,25,84` — `NormativeStatus` {PASS, FAIL, WARNING, NOT_COMPUTED, NOT_EVALUATED} + `NormativeSeverity` in `NormativeItem`. Present: SUBJ, MEAS (observed_value+unit), LIM (limit_value+limit_unit, threshold rules only), MARG (observed−limit), WHY. CRIT only as title text. Missing: SRC, BASIS, EVID, DOM, LaTeX. Reach: only `pokrycie_analiz.py:60` (NOT_COMPUTED count → `/api/insights/analysis-coverage`); `NormativeReport.to_dict` never called in production; production feeds only LOAD_FLOW_VOLTAGE proof which no rule matches → every production item NOT_COMPUTED. Class: ENUM_WEWNETRZNY (must migrate if exposed).",
-   "wiersz_inwentarza": "B1"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.normative.models:NormativeItem.status",
-   "klasa": "ENUM_WEWNETRZNY",
-   "uzasadnienie_pl": "Inwentarz B1: 1. `analysis/normative/models.py:17,25,84` — `NormativeStatus` {PASS, FAIL, WARNING, NOT_COMPUTED, NOT_EVALUATED} + `NormativeSeverity` in `NormativeItem`. Present: SUBJ, MEAS (observed_value+unit), LIM (limit_value+limit_unit, threshold rules only), MARG (observed−limit), WHY. CRIT only as title text. Missing: SRC, BASIS, EVID, DOM, LaTeX. Reach: only `pokrycie_analiz.py:60` (NOT_COMPUTED count → `/api/insights/analysis-coverage`); `NormativeReport.to_dict` never called in production; production feeds only LOAD_FLOW_VOLTAGE proof which no rule matches → every production item NOT_COMPUTED. Class: ENUM_WEWNETRZNY (must migrate if exposed).",
-   "wiersz_inwentarza": "B1"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "analysis.protection_insight.models:ProtectionInsightItem.selectivity_status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz B7 (LEGACY_USUNAC): kasacja (fala WW-0).",
@@ -66,20 +52,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.sensitivity.models:SensitivityEntry.base_decision",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B5 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "B5"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.sensitivity.models:SensitivityPerturbation.decision",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B5 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "B5"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "analysis.ssci_stability.models:SsciStabilityVerdict.is_risk",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz B12 (MIGRACJA): migracja (plan §8).",
@@ -91,13 +63,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz B12 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "B12"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.voltage_profile.models:VoltageProfileRow.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B4 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "B4"
   },
   {
    "sprawdzenie": "1_backend",
@@ -154,27 +119,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.reference_patterns:FixtureMetadata.expected_verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.reference_patterns:PatternRunResponse.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.reference_patterns:PatternRunResponse.verdict_description_pl",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "1_backend",
@@ -294,13 +238,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C40 opisuje ten plik, nie ten symbol.",
    "wiersz_inwentarza": "C40 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "application.reference_patterns.base:ReferencePatternResult.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C50"
   },
   {
    "sprawdzenie": "1_backend",
@@ -500,13 +437,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/wyniki/wrazliwosc/strings.ts:DECYZJE_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D57 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D57"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui2/wyniki/wzorzec/SladSekcyjny.tsx:IKONA_STATUSU",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D22 (MIGRACJA): migracja (plan §8).",
@@ -695,13 +625,6 @@
    "wiersz_inwentarza": "D26"
   },
   {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/wrazliwosc/model.ts:komorkaMarginesu.ostrzezenie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D57 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "D57 (dopasowanie po pliku)"
-  },
-  {
    "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "api.analysis_run_exports:build_nn_circuit_report_section.status",
    "klasa": "MIGRACJA",
@@ -871,48 +794,6 @@
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._sprawdz_ryzyko_blokady_szyn.trace.outputs.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._sprawdz_ryzyko_blokady_szyn.trace.outputs.wynik",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._sprawdz_wplyw_na_selektywnosc.trace.outputs.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._sprawdz_wplyw_na_selektywnosc.trace.outputs.wynik",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._sprawdz_zmiane_pradu_zwarciowego.trace.outputs.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._sprawdz_zmiane_pradu_zwarciowego.trace.outputs.wynik",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "frontend/src/ui2/oze/kompensacja/strings.ts:KOMPENSACJA_STRINGS.werdyktNieSpelnia",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Etykiety „spełnia / nie spełnia” doboru kompensacji w interfejsie (bool `spelnia_*` z backendu → tekst) — inwentarz C20/D18, fala WW-4, plan AB §8.",
@@ -1060,80 +941,10 @@
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.reference_patterns.pattern_line_i_doubleprime_thermal_spz:LineIDoublePrimeReferencePattern._build_summary:NIEZGODNY",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.reference_patterns.pattern_line_i_doubleprime_thermal_spz:LineIDoublePrimeReferencePattern._build_summary:ZGODNY",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._buduj_podsumowanie:NIEZGODNY",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._buduj_podsumowanie:ZGODNY",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
    "tozsamosc": "network_model.catalog.audit2_catalogs:ocen_wytrzymalosc_aparatu.message:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A37 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "A37"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "analysis.normative.evaluator:_format_ok_why",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B2 (LEGACY_USUNAC): kasacja (fala WW-0). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "B2"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "analysis.normative.evaluator:_format_threshold_why.status_label",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B2 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "B2 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "application.reference_patterns.base:CHECK_STATUS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "application.reference_patterns.base:VERDICT_DESCRIPTIONS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "application.reference_patterns.pattern_line_i_doubleprime_thermal_spz:LineIDoublePrimeReferencePattern._build_summary",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "application.reference_patterns.wzorzec_c_generacja_lokalna:WzorzecCGeneracjaLokalna._buduj_podsumowanie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C50 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C50 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

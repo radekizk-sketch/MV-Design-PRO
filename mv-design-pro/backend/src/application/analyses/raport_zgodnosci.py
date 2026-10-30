@@ -559,9 +559,7 @@ def ocena_doborow(track: DerSnTrack, oceny: Sequence[OcenaKryterium]) -> WynikWy
     """Rekord W doborów toru nad rekordami pozycji (agregacja §2.3 kontraktu werdyktu)."""
     return wymaganie_z_ocen(
         wymaganie_id=WYMAGANIE_DOBOROW,
-        nazwa_pl=(
-            f"Dobory toru przyłączenia źródła {track.source_name or track.source_ref} " "(DER-SN)"
-        ),
+        nazwa_pl=(f"Dobory toru przyłączenia źródła {track.source_name or 'bez nazwy'} (DER-SN)"),
         podstawa=_PODSTAWA_WYMAGANIA,
         oceny=oceny,
         zdolnosc=classify_dynamic_capability(ZDOLNOSC_DOBOROW),

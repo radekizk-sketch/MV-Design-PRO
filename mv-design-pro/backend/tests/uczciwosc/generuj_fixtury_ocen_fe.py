@@ -24,7 +24,11 @@ from typing import Any
 from analysis.energy_validation.builder import _pozycja as _pozycja_walidacji
 from analysis.energy_validation.models import EnergyCheckType
 from analysis.energy_validation.serializer import item_to_dict
+from analysis.normative.models import NormativeConfig
+from analysis.sensitivity.builder import SensitivityBuilder
 from analysis.ssci_stability.models import ocena_ssci_niewykonana
+from analysis.voltage_profile.builder import wiersz_profilu
+from analysis.voltage_profile.models import VoltageProfileSummary, VoltageProfileView
 from application.analyses.der_sn_track import DerSnTrack, extract_der_sn_track
 from application.analyses.frt_sekwencja import build_frt_sekwencja_view
 from application.analyses.frt_trajektorie import build_frt_trajectories_view
@@ -390,6 +394,61 @@ def _raporty_zgodnosci_der_sn() -> dict[str, Any]:
     }
 
 
+def _wrazliwosc_ogolna() -> dict[str, Any]:
+    """Sekcja ogólna widoku wrażliwości (``analysis/sensitivity/serializer.view_to_dict`` —
+    ta sama funkcja co końcówka ``GET /api/insights/sensitivity``, pole ``ogolna``) dla profilu
+    napięć zbudowanego ``wiersz_profilu`` (funkcja buildera profilu): odchyłka |ΔU| {1,1 %,
+    7 %, 10 % (równość z progiem przekroczenia), 12 %, 5,1 % (perturbacja zmienia
+    rozstrzygnięcie: wariant bazowy narusza, wariant plus spełnia)} oraz szyna bez napięcia
+    znamionowego."""
+    config = NormativeConfig()
+    wiersze = tuple(
+        wiersz_profilu(
+            bus_id=bus_id,
+            bus_name=nazwa,
+            u_nom_kv=u_nom,
+            u_kv=u_kv,
+            u_pu=None,
+            config=config,
+        )
+        for bus_id, nazwa, u_nom, u_kv in (
+            ("wezel-a", "Szyna SN", 15.0, 15.0 * (1 - 0.011)),
+            ("wezel-b", "Szyna SN odbiorcza", 15.0, 15.0 * 0.93),
+            ("wezel-c", "Szyna SN końcowa", 15.0, 15.0 * 0.90),
+            ("wezel-d", "Szyna SN daleka", 15.0, 15.0 * 0.88),
+            ("wezel-f", "Szyna SN przy progu", 15.0, 15.0 * 0.949),
+            ("wezel-e", None, None, 14.7),
+        )
+    )
+    widok_profilu = VoltageProfileView(
+        context=None,
+        thresholds={
+            "voltage_warn_pct": config.voltage_warn_pct,
+            "voltage_fail_pct": config.voltage_fail_pct,
+        },
+        rows=wiersze,
+        summary=VoltageProfileSummary(
+            worst_bus_id=None,
+            worst_delta_pct_abs=None,
+            pass_count=0,
+            warning_count=0,
+            fail_count=0,
+            not_computed_count=0,
+        ),
+    )
+    return (
+        SensitivityBuilder(delta_pct=5.0)
+        .build(
+            proofs=[],
+            normative_report=None,
+            voltage_profile=widok_profilu,
+            protection_insight=None,
+            protection_curves_it=None,
+        )
+        .to_dict()
+    )
+
+
 def _akademickie() -> dict[str, Any]:
     return {
         "jakosc_energii": ocena_jakosci_energii_niewykonana(),
@@ -423,6 +482,12 @@ FIXTURY: dict[Path, Any] = {
     / "zrodlo-oze"
     / "__tests__"
     / "raportyZgodnosci.json": _raporty_zgodnosci_der_sn,
+    _FRONTEND_SRC
+    / "ui2"
+    / "wyniki"
+    / "wrazliwosc"
+    / "__tests__"
+    / "wrazliwoscOgolna.json": _wrazliwosc_ogolna,
 }
 
 

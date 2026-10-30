@@ -11,7 +11,14 @@
  *
  * Warstwa PREZENTACJI: wyłącznie odczyt (GET), zero fizyki, zero mutacji.
  * Wzór pobierania: `ui2/wyniki/jakosc/api.ts`.
+ *
+ * Werdykt wyjaśnialny (karta WERDYKT-MIGRACJA-190): wpis ogólny i każda perturbacja niosą
+ * rekord K zapasu kryterium (`analysis/sensitivity/oceny.py`); kody `base_decision`/
+ * `decision` są jego projekcją i nie są czytane przez ekran — etykieta, ton i wyjaśnienie
+ * pochodzą wyłącznie z rekordu.
  */
+
+import type { OcenaKryterium, WyjasnienieWerdyktu } from '../wzorzec/werdykt';
 
 /** Kontekst przebiegu (pochodzenie wyniku) — koperta `zbuduj_kontekst_widoku`. */
 export interface KontekstWrazliwosci {
@@ -56,6 +63,8 @@ export interface PerturbacjaOgolna {
   readonly margin: number | null;
   readonly delta_margin: number | null;
   readonly decision: string;
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
 }
 
 /** Wpis wrażliwości ogólnej (margines kryterium × perturbacje ±). */
@@ -69,6 +78,8 @@ export interface WpisOgolny {
   readonly base_decision: string;
   readonly minus: PerturbacjaOgolna;
   readonly plus: PerturbacjaOgolna;
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
 }
 
 export interface WidokOgolny {

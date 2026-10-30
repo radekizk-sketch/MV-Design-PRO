@@ -5421,7 +5421,7 @@
     "type": "object"
    },
    "FixtureMetadata": {
-    "description": "Fixture metadata for listing.",
+    "description": "Fixture metadata for listing.\n\n``expected_verdict`` — kod oczekiwany zapisany w fiksturze (przypadek odniesienia);\n``wymaganie`` i ``wyjasnienie`` — rekord W wzorca uruchomionego na tej fiksturze (ten sam\nbieg co ``GET /fixtures/{plik}``), więc kod oczekiwany ma obok wyjaśnienie z liczbami.",
     "properties": {
      "description": {
       "anyOf": [
@@ -5463,11 +5463,19 @@
        }
       ],
       "title": "Notes Pl"
+     },
+     "wyjasnienie": {
+      "$ref": "#/components/schemas/WyjasnienieWerdyktu"
+     },
+     "wymaganie": {
+      "$ref": "#/components/schemas/WynikWymagania"
      }
     },
     "required": [
      "fixture_id",
-     "filename"
+     "filename",
+     "wymaganie",
+     "wyjasnienie"
     ],
     "title": "FixtureMetadata",
     "type": "object"
@@ -9850,6 +9858,12 @@
      "verdict_description_pl": {
       "title": "Verdict Description Pl",
       "type": "string"
+     },
+     "wyjasnienie": {
+      "$ref": "#/components/schemas/WyjasnienieWerdyktu"
+     },
+     "wymaganie": {
+      "$ref": "#/components/schemas/WynikWymagania"
      }
     },
     "required": [
@@ -9859,6 +9873,8 @@
      "verdict",
      "verdict_description_pl",
      "summary_pl",
+     "wymaganie",
+     "wyjasnienie",
      "checks",
      "trace",
      "artifacts"
