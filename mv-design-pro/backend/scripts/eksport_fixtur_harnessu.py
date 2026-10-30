@@ -206,6 +206,7 @@ from enm.models import (  # noqa: E402
     Generator,
     TapChanger,
 )
+from enm.pola import ref_pola_wytworcy  # noqa: E402
 from enm.scenariusze import (  # noqa: E402
     OperatingScenario,
     RodzajScenariusza,
@@ -3807,8 +3808,8 @@ _NASTAWY_LOM_SCENY: tuple[dict[str, Any], ...] = (
 
 def _enm_sceny_lom() -> EnergyNetworkModel:
     """Model sceny „lom": GPZ 110/15 kV → magistrala → stacja SN/nN z trzema
-    polami SN (aparat pola z katalogu) → farma PV 1 MW w polu wytwórcy, a na
-    polu LINIA_OUT przekaźnik z nastawami funkcji LoM (operacja `add_relay`).
+    polami SN (aparat pola z katalogu) → farma PV 1 MW w polu wytwórcy, a w TYM polu
+    (relacja `Generator.meta.field_ref`) przekaźnik z nastawami funkcji LoM (`add_relay`).
 
     Wszystko operacjami domenowymi — tą samą drogą, którą model buduje
     projektant. Scena „lom" istnieje po to, żeby pokazać OCENĘ nastaw wobec okien
@@ -3886,13 +3887,16 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
             "catalog_binding": _wiazanie_katalogowe("CONVERTER", _KATALOG_PV_SCENY_POLA),
         },
     )
-    pole_wytworcy = next(
-        pole["ref_id"]
-        for pole in enm["bays"]
-        if pole.get("bay_role") == "OUT"
-        and pole.get("bus_ref") == szyna_sn
-        and pole.get("equipment_refs")
-    )
+    # Pole wytwórcy = relacja `Generator.meta.field_ref` (`enm.pola.ref_pola_wytworcy`, jeden
+    # klucz od karty W5-B) — TO SAMO pole, które ocenia `build_ochrona_lom_view`. NAPRAWA
+    # (karta FIX-LOM-SCENA): scena wybierała pole po roli „OUT" na szynie SN, czyli pole liniowe
+    # wyjściowe; od W5-B ocena LoM przypisuje moduł jego polu źródłowemu, więc przekaźnik
+    # z nastawami lądował w polu, którego analiza (słusznie) nie ocenia, a ekran pokazywał
+    # wyłącznie „pole bez funkcji LoM".
+    (farma_pv,) = (gen for gen in enm["generators"] if gen.get("name") == "Farma PV 1 MW")
+    pole_wytworcy = ref_pola_wytworcy(farma_pv)
+    if pole_wytworcy is None:
+        raise RuntimeError("Scena LoM: źródło PV bez relacji z polem wytwórcy (meta.field_ref).")
     enm = _operacja_domenowa_sceny(
         enm,
         "add_relay",
