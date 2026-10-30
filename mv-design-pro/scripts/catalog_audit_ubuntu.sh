@@ -11,6 +11,9 @@ export PYTHONPATH="$ROOT/backend/src:$ROOT/backend${PYTHONPATH:+:$PYTHONPATH}"
 echo "[KATALOG] 27 rodzin: liczność i minimum danych"
 python -m network_model.catalog.completeness_report --summary
 
+echo "[KATALOG] pomiar luk technicznych — zestawienie rodzin, pól i analiz"
+python -m network_model.catalog.audyt_luk_technicznych --csv
+
 echo "[KATALOG] testy danych NKT/ENEA, CT i kontroli jakości"
 python -m pytest -q \
   backend/tests/network_model/catalog/test_cable_line_catalog_width.py \
@@ -19,6 +22,8 @@ python -m pytest -q \
   backend/tests/network_model/catalog/test_enea_ct_multirange_catalog.py \
   backend/tests/network_model/catalog/test_abb_kokm_cable_phase_catalog.py \
   backend/tests/network_model/catalog/test_ct_project_combinations.py \
+  backend/tests/network_model/catalog/test_weryfikacja_rodzin_cts25_ctt25_tpu6.py \
+  backend/tests/network_model/catalog/test_audyt_luk_technicznych.py \
   backend/tests/network_model/catalog/test_ct_vt_manufacturers_poland_2026.py \
   backend/tests/network_model/catalog/test_other_instrument_manufacturers_pl.py \
   backend/tests/network_model/test_lv_catalog_p02.py \
