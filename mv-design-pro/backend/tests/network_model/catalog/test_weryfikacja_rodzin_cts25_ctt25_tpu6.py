@@ -63,3 +63,40 @@ def test_abb_tpu6_rodzina_z_dtr_bez_fikcyjnych_zaczepow() -> None:
     assert "primary_taps_a" not in f
     assert "ratio_primary_a" not in f
     assert "secondary_cores" not in f
+
+
+def test_kpb_ctb25_przepustowy_5_do_1000_z_karty_producenta() -> None:
+    f = _rodzina("CTB 25", "KPB Intra")
+    assert f["mounting"] == "INDOOR_BUSHING"
+    assert (f["primary_a_min"], f["primary_a_max"]) == (5, 1000)
+    assert f["core_count_max"] == 3
+    assert f["secondary_current_options_a"] == [1, 5]
+    assert f["secondary_reconnection_supported"] is True
+    assert f["primary_reconnection_supported"] is False
+    assert f["ith_range_ka"] == [2, 80]
+    assert f["fs_options"] == [5, 10]
+    assert f["alf_options"] == [5, 10, 15, 20]
+    assert f["power_frequency_withstand_kv"] == 50
+    assert f["lightning_impulse_withstand_kv"] == 125
+    assert f["mass_kg"] == 22
+    assert "k_kat_ctb_25" in f["source_reference"]
+    assert "ith_ka_1s" not in f  # zakres rodziny, nie Ith egzemplarza
+
+
+def test_kpb_vts25_i_wersja_sch_resztkowe_jest_opcja() -> None:
+    for nazwa in ("VTS 25", "VTS 25 Sch"):
+        f = _rodzina(nazwa, "KPB Intra")
+        assert f["um_kv"] == 25
+        assert f["core_count_max"] == 4
+        assert f["residual_capability"] is True
+        assert f["secondary_taps_supported"] is True
+        assert f["primary_voltage_range_v"] == ["3000/√3", "22000/√3"]
+        assert f["residual_voltage_options_v"] == ["100/3", "110/3", "120/3"]
+        assert f["limiting_output_va_range"] == [200, 500]
+        assert f["power_frequency_withstand_kv"] == 50
+        assert f["lightning_impulse_withstand_kv"] == 125
+        assert "has_residual_winding" not in f
+        assert "secondary_windings" not in f
+    assert "400/√3" in _rodzina("VTS 25", "KPB Intra")["secondary_voltage_options_v"]
+    assert "400/√3" not in _rodzina("VTS 25 Sch", "KPB Intra")["secondary_voltage_options_v"]
+    assert _rodzina("VTS 25 Sch", "KPB Intra")["mounting"] == "INDOOR_SM6"
