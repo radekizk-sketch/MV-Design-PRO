@@ -20,6 +20,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { jestRodzajemStacji, podpisRodzajuStacjiPl } from '../../shared/rodzajStacji';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import {
   applyStationTemplate,
@@ -887,7 +888,9 @@ function PreviewStep(props: {
                     {d.expected_count_per_kind}× {d.block_transformer_name ?? d.block_transformer_ref}
                   </span>
                   <span className="text-zinc-500">
-                    {` ($S_{n}$ ${d.block_transformer_sn_mva ?? '—'} MVA, wymagane ${d.required_apparent_power_mva_each ?? '—'} MVA na jednostkę; falownik ${d.inverter_output_kv ?? '—'} kV; kabel ${d.mv_cable_ref ?? '—'}; aparat pola ${d.mv_field_apparatus_ref ?? '—'})`}
+                    <TekstZWzorami
+                      tekst={` ($S_{n}$ ${d.block_transformer_sn_mva ?? '—'} MVA, wymagane ${d.required_apparent_power_mva_each ?? '—'} MVA na jednostkę; falownik ${d.inverter_output_kv ?? '—'} kV; kabel ${d.mv_cable_ref ?? '—'}; aparat pola ${d.mv_field_apparatus_ref ?? '—'})`}
+                    />
                   </span>
                 </div>
               ))}

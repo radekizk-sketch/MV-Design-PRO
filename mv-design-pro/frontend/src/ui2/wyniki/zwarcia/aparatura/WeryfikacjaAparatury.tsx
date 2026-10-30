@@ -98,27 +98,27 @@ function PradyPola({ pole }: { readonly pole: PoleWytrzymalosci }) {
           <dd>{prady.punkt_nazwa ?? T.kreska}</dd>
         </div>
         <div>
-          <dt>{T.pradyIp}</dt>
+          <dt><TekstZWzorami tekst={T.pradyIp} /></dt>
           <dd className="mvd-num">{kiloampery(prady.ip_ka)}</dd>
         </div>
         <div>
-          <dt>{T.pradyIth}</dt>
+          <dt><TekstZWzorami tekst={T.pradyIth} /></dt>
           <dd className="mvd-num">{kiloampery(prady.ith_ka)}</dd>
         </div>
         {/* Karta SC-IB-ITH-ZRODLA: wielkości kryterium wyłączania z TEGO SAMEGO wiersza
             biegu — Ib (prąd wyłączeniowy symetryczny), iDC(tb) informacyjnie i tb biegu. */}
         <div>
-          <dt>{T.pradyIb}</dt>
+          <dt><TekstZWzorami tekst={T.pradyIb} /></dt>
           <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-ib-${pole.pole}`}>
             {kiloampery(prady.ib_ka)}
           </dd>
         </div>
         <div>
-          <dt>{T.pradyIdc}</dt>
+          <dt><TekstZWzorami tekst={T.pradyIdc} /></dt>
           <dd className="mvd-num">{kiloampery(prady.i_dc_ka)}</dd>
         </div>
         <div>
-          <dt>{T.pradyTb}</dt>
+          <dt><TekstZWzorami tekst={T.pradyTb} /></dt>
           <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-tb-${pole.pole}`}>
             {prady.tb_s === null ? T.pradyTbBrak : sekundy(prady.tb_s)}
           </dd>

@@ -23,6 +23,7 @@
 import { useEffect, useState } from 'react';
 
 import { MathInline } from '../../proof/MathRenderer';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import {
   komunikatyKodow,
@@ -405,7 +406,8 @@ export function DoborPrzekladnikowSekcja({
         <p className="text-xs text-scada-muted" data-testid="dobor-wejscia">
           {/* Prądy zwarciowe pochodzą z przebiegu; ich BRAK jest tu widoczny wprost,
               żeby projektant wiedział, dlaczego część kryteriów nie ma werdyktu. */}
-          {[
+          <TekstZWzorami
+            tekst={[
             wejscia.napiecie_sieci_v !== null
               ? `napięcie sieci ${(wejscia.napiecie_sieci_v / 1000).toFixed(1)} kV`
               : 'napięcie sieci nieznane',
@@ -416,6 +418,7 @@ export function DoborPrzekladnikowSekcja({
               ? `$I_{k}''$ ${wejscia.ik_ka.toFixed(2)} kA z obliczeń zwarciowych`
               : 'prądy zwarciowe: brak zakończonego przebiegu',
           ].join(' · ')}
+          />
         </p>
       </div>
 

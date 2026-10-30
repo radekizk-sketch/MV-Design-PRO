@@ -83,6 +83,7 @@ import {
   rodzajProblemuZabezpieczenPL,
   wagaPL,
 } from './strings';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 /** Ranking nie ma dowodu per komórka (patrz `EkranPorownania.tsx` — ten sam uzasadnienie). */
 const BEZ_DOWODU = (): void => {};
@@ -546,7 +547,7 @@ function SelektorPrzebiegu({
 }: SelektorPrzebieguProps) {
   return (
     <label className="mvd-por-pole">
-      <span className="mvd-por-pole-etyk">{etykieta}</span>
+      <span className="mvd-por-pole-etyk"><TekstZWzorami tekst={etykieta} /></span>
       <select
         className="mvd-por-select"
         value={wybrany}

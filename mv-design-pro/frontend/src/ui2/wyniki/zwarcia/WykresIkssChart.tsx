@@ -15,6 +15,7 @@
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import type { SlupekIkss } from './zwarciaModel';
 import { fmtKA, ZWARCIA_STRINGS } from './strings';
+import { TekstZWzorami, tekstBezWzorow } from '../../kreatory/rama/tekstZWzorami';
 
 interface WykresIkssChartProps {
   slupki: SlupekIkss[];
@@ -60,7 +61,7 @@ export function WykresIkssChart({
 }: WykresIkssChartProps) {
   return (
     <div data-testid="mvd-zwarcia-wykres">
-      <h3 className="mvd-wyn-wykres-tytul">{tytul}</h3>
+      <h3 className="mvd-wyn-wykres-tytul"><TekstZWzorami tekst={tytul} /></h3>
       <BarChart
         width={szerokosc}
         height={wysokosc}
@@ -86,7 +87,7 @@ export function WykresIkssChart({
         />
         <Bar
           dataKey="ikss"
-          name={nazwaWielkosci}
+          name={tekstBezWzorow(nazwaWielkosci)}
           fill="var(--mvd-accent)"
           isAnimationActive={false}
         />

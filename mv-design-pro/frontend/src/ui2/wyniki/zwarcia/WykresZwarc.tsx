@@ -22,6 +22,7 @@ import {
   naSlupkiWielkosci,
   type WielkoscWykresu,
 } from './zwarciaModel';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export interface WykresZwarcProps {
   /** Wiersze kanoniczne wyniku zwarciowego (read-only ze store'u). */
@@ -52,7 +53,7 @@ export function WykresZwarc({ rows }: WykresZwarcProps) {
             data-testid={`mvd-zwarcia-wykres-btn-${w}`}
             onClick={() => setWielkosc(w)}
           >
-            {KONFIG_WYKRESU_ZWARC[w].przycisk}
+            <TekstZWzorami tekst={KONFIG_WYKRESU_ZWARC[w].przycisk} />
           </button>
         ))}
       </div>

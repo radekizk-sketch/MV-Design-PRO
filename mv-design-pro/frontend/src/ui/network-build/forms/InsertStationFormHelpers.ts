@@ -477,47 +477,6 @@ export function mergeStarterManufacturers(
   return orderManufacturers([...merged.values()]);
 }
 
-// Catalog entries
-export interface CatalogEntry {
-  id: string;
-  name: string;
-  manufacturer: string | undefined;
-  summary: string;
-}
-
-export function toTransformerCatalogEntries(
-  types: TransformerType[],
-  sourcePowerMva: number | null,
-): CatalogEntry[] {
-  return types.map((type) => {
-    const powerStatus =
-      sourcePowerMva == null
-        ? 'moc: do bilansu odbiorów'
-        : type.rated_power_mva >= sourcePowerMva
-          ? `moc zgodna dla ${formatMva(sourcePowerMva)} MVA`
-          : `moc za mała dla ${formatMva(sourcePowerMva)} MVA`;
-    return {
-      id: type.id,
-      name: type.name,
-      manufacturer: type.manufacturer,
-      summary:
-        `SN zgodne · nN zgodne · ${powerStatus} · $u_{k}$ ${formatMva(type.uk_percent)}% · `
-        + `${type.vector_group}`,
-    };
-  });
-}
-
-export function toConverterCatalogEntries(types: ConverterType[]): CatalogEntry[] {
-  return types.map((type) => ({
-    id: type.id,
-    name: type.name,
-    manufacturer: type.manufacturer,
-    summary:
-      `$U_{n}$ ${formatKv(type.un_kv)} kV · $S_{n}$ ${formatMva(type.sn_mva)} MVA · `
-      + `$P_{\\max}$ ${formatMva(type.pmax_mw)} MW`,
-  }));
-}
-
 // StationSnFieldTemplate / StationSwitchgearChoice types
 export interface StationSwitchgearChoice {
   manufacturerRef: string;

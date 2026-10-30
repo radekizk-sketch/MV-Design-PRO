@@ -15,13 +15,13 @@ import {
   selectTapChangersForTransformer,
 } from '../../station-der/catalogs';
 import { MathInline } from '../../../proof/MathRenderer';
+import { tekstBezWzorow } from '../../../../ui2/kreatory/rama/tekstZWzorami';
 import type { TapChangerItem } from '../../station-der/audit2-api';
 
 export interface StationTransformerCatalogOption {
   readonly id: string;
   readonly name: string;
   readonly manufacturer?: string;
-  readonly summary: string;
   readonly ratedPowerMva: number;
   readonly voltageHvKv: number;
   readonly voltageLvKv: number;
@@ -188,7 +188,7 @@ export function StationConfigTransformerCard(
                       {catalogOptions.map((option) => (
                         <option key={option.id} value={option.id}>
                           {option.recommended ? 'Rekomendowany: ' : ''}
-                          {optionLabel(option)}
+                          {tekstBezWzorow(optionLabel(option))}
                         </option>
                       ))}
                     </select>

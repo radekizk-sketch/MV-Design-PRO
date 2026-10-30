@@ -19,6 +19,7 @@ import {
 } from './types';
 import { useStudyCasesStore } from './store';
 import { MathInline } from '../proof/MathRenderer';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 interface CreateCaseDialogProps {
   projectId: string;
@@ -200,7 +201,7 @@ export function CreateCaseDialog({
               </select>
               <p className="mt-1 text-xs text-gray-500">
                 Wymagania NC RfG / IRiESD wybranego operatora wpływają na walidację
-                profili FRT, Q(U), cos φ(P) oraz krzywych zabezpieczeń.
+                profili FRT, Q(U), <MathInline latex="\cos\varphi(P)" /> oraz krzywych zabezpieczeń.
               </p>
             </div>
 
@@ -239,7 +240,7 @@ export function CreateCaseDialog({
                     htmlFor="sc-sk-mva"
                     className="mb-1 block text-sm font-medium text-gray-700"
                   >
-                    {CONFIG_FIELD_LABELS.sc_simplified_sk_mva}
+                    <TekstZWzorami tekst={CONFIG_FIELD_LABELS.sc_simplified_sk_mva} />
                   </label>
                   <input
                     id="sc-sk-mva"

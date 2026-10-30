@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { WorkspaceSurfaceDescriptor } from '../types';
+import { MathInline } from '../../proof/MathRenderer';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 type GpzCardId = 'identification' | 'hv-side' | 'transformer' | 'sections' | 'bays-balance';
 type ShortCircuitInputMode = 'HV_110_ADVANCED' | 'SN_SIMPLIFIED';
@@ -203,7 +205,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                     : 'border-scada-border text-scada-muted hover:text-scada-text')
                 }
               >
-                Tryb WN/SN: Sk3 na szynie 110 kV
+                Tryb WN/SN: <MathInline latex="S_{k}''" /> na szynie 110 kV
               </button>
               <button
                 type="button"
@@ -216,7 +218,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                     : 'border-scada-border text-scada-muted hover:text-scada-text')
                 }
               >
-                Tryb uproszczony: tylko Sk3 po stronie SN
+                Tryb uproszczony: tylko <MathInline latex="S_{k}''" /> po stronie SN
               </button>
             </div>
 
@@ -372,7 +374,7 @@ function Field({ label, value, onChange, placeholder, required }: FieldProps) {
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
+        <TekstZWzorami tekst={label} />
         {required && <span className="text-red-400"> *</span>}
       </label>
       <input
@@ -399,7 +401,7 @@ function NumberField({ label, unit, value, onChange, placeholder, required }: Nu
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
+        <TekstZWzorami tekst={label} />
         {unit && <span className="text-scada-muted"> [{unit}]</span>}
         {required && <span className="text-red-400"> *</span>}
       </label>
@@ -434,7 +436,7 @@ function SelectField({ label, value, onChange, options, required }: SelectFieldP
   return (
     <div>
       <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
-        {label}
+        <TekstZWzorami tekst={label} />
         {required && <span className="text-red-400"> *</span>}
       </label>
       <select

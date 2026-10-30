@@ -8,6 +8,8 @@
  * współczynnik obejmuje typowe etykiety energetyczne PL).
  */
 
+import { tekstBezWzorow, wyrazyPozaWzorami } from '../../../proof/latexTekst';
+
 export type LabelClass = 't1' | 't2' | 't3' | 't4';
 
 /**
@@ -418,7 +420,9 @@ export function shortenPreservingIdentity(text: string, fontSize: number, maxWid
   const pierwszy = czlony[0];
   const pierwszyZeZnakiem = czlony.length > 1 ? `${pierwszy} …` : pierwszy;
   if (miesciSie(pierwszyZeZnakiem)) return pierwszyZeZnakiem;
-  const wyrazy = pierwszy.split(' ').filter((w) => w.length > 0);
+  // Wzór `$…$` jest wyrazem niepodzielnym; głowę tnie się w ODCZYCIE (`tekstBezWzorow`), bo
+  // ucięty zapis LaTeX-a nie złożyłby się w symbol.
+  const wyrazy = wyrazyPozaWzorami(pierwszy);
   if (wyrazy.length === 0) return '';
 
   // Ogon rozróżniający: ostatni wyraz, a przy jednostce miary — para
@@ -433,7 +437,7 @@ export function shortenPreservingIdentity(text: string, fontSize: number, maxWid
     // (3) głowa skracana od najdłuższej do najkrótszej — pierwsza mieszcząca
     // się wygrywa. Zakres = długość pierwszego wyrazu (kilkanaście znaków),
     // więc pętla liniowa jest tańsza i czytelniejsza niż połówkowa.
-    const glowa = wyrazy[0];
+    const glowa = tekstBezWzorow(wyrazy[0]);
     for (let g = glowa.length; g >= 1; g--) {
       const kandydat = `${glowa.slice(0, g)}…${ogon}`;
       if (miesciSie(kandydat)) return kandydat;
@@ -456,7 +460,7 @@ export function shortenPreservingIdentity(text: string, fontSize: number, maxWid
   // całkowicie (pomiar: 2 podpisy pól GPZ i nazwa GPZ na sieci wielostacyjnej
   // przy kadrze „Dopasuj widok"), a rysunek bez podpisu pola nie mówi, czym to
   // pole jest — gorzej niż podpis oznaczony jako skrócony.
-  const glowa = wyrazy[0];
+  const glowa = tekstBezWzorow(wyrazy[0]);
   for (let g = glowa.length - 1; g >= 1; g--) {
     const kandydat = `${glowa.slice(0, g)}…`;
     if (miesciSie(kandydat)) return kandydat;
@@ -513,7 +517,9 @@ const AVG_GLYPH_WIDTH_FACTOR = 0.62;
  *  — jedna formuła dla klas typograficznych (`measureLabelWidth` niżej) i dla
  *  pisma przeskalowanego do rozmiaru minimalnego (KD-11, `minReadableFontSize`). */
 export function measureTextWidth(text: string, fontSize: number): number {
-  return Math.ceil(text.length * fontSize * AVG_GLYPH_WIDTH_FACTOR);
+  // Wzór `$…$` rysuje się `<tspan>`-ami symbolu (`TekstSvgZWzorami`) — szerokość liczy się
+  // z ODCZYTU (`$I_{k}''$` → „Ik″"), nie z zapisu LaTeX-a.
+  return Math.ceil(tekstBezWzorow(text).length * fontSize * AVG_GLYPH_WIDTH_FACTOR);
 }
 
 /** Deterministyczna szerokość etykiety [px świata]. */

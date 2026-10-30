@@ -76,6 +76,7 @@ import { useNazwaObiektu } from './useNazwaObiektu';
 import { opisOdnosnikaSladu } from './opisKrokuSladu';
 import './wzorzec.css';
 import './kartaWerdyktu.css';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 // ---------------------------------------------------------------------------
 // JEDYNA mapa koloru: semantyka etykiety → token motywu (§9)
@@ -386,7 +387,7 @@ function Pole({
 }) {
   return (
     <div className="mvd-werdykt-pole" data-testid={testId}>
-      <dt className="mvd-werdykt-pole-etykieta">{etykieta}</dt>
+      <dt className="mvd-werdykt-pole-etykieta"><TekstZWzorami tekst={etykieta} /></dt>
       <dd className="mvd-werdykt-pole-tresc">{children}</dd>
     </div>
   );
@@ -441,7 +442,7 @@ function SekcjaRozwijana({
         data-testid={`${testId}-przelacz`}
         onClick={() => setOtwarta((stan) => !stan)}
       >
-        <span className="mvd-werdykt-rozwijana-tytul">{tytul}</span>
+        <span className="mvd-werdykt-rozwijana-tytul"><TekstZWzorami tekst={tytul} /></span>
         <span className="mvd-werdykt-rozwijana-zwijak">{otwarta ? TEKSTY.zwin : TEKSTY.rozwin}</span>
       </button>
       {otwarta && (

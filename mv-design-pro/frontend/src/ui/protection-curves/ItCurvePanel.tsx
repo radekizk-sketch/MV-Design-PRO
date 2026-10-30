@@ -83,7 +83,7 @@ export function ItCurvePanel({
             className="mt-1 text-xs text-slate-500"
             data-testid="it-curve-summary"
           >
-            {itCurve!.curve_label_pl} · {itCurve!.points.length} pkt · Ip ={' '}
+            {itCurve!.curve_label_pl} · {itCurve!.points.length} pkt · prąd rozruchowy{' '}
             {fmtPl(itCurve!.pickup_a, 0)} A
           </div>
         </>

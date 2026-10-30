@@ -90,18 +90,18 @@ const NAMESPACE_PARAM_LABELS: Partial<Record<CatalogNamespace, Record<string, st
   APARAT_SN: {
     u_n_kv: '$U_{n}$ [kV]',
     i_n_a: '$I_{n}$ [A]',
-    breaking_capacity_ka: 'Iwyl [kA]',
+    breaking_capacity_ka: 'Zdolność wyłączalna [kA]',
   },
   APARAT_NN: {
     u_n_kv: '$U_{n}$ [kV]',
     i_n_a: '$I_{n}$ [A]',
-    breaking_capacity_ka: 'Iwyl [kA]',
+    breaking_capacity_ka: 'Zdolność wyłączalna [kA]',
   },
   APARAT_NN_RCD: {
-    i_delta_n_a: 'IΔn [A]',
+    i_delta_n_a: '$I_{\\Delta n}$ [A]',
     rcd_type: 'Rodzaj',
     in_a: '$I_{n}$ [A]',
-    t_a_s: 'ta przy IΔn [s]',
+    t_a_s: '$t_{a}$ przy $I_{\\Delta n}$ [s]',
   },
   KABEL_NN: {
     u_n_kv: '$U_{n}$ [kV]',

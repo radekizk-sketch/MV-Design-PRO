@@ -12,6 +12,7 @@
 
 import type { ShortCircuitRow } from '../../../ui/results-inspector/types';
 import { ZWARCIA_STRINGS, fmtCzas, fmtKA, fmtKV, fmtKappa, fmtMVA, fmtOhm } from './strings';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 interface PozycjaBilansu {
   readonly etykieta: string;
@@ -119,7 +120,7 @@ export function BilansIEC({
               p.tekst ? 'mvd-zwarcia-bilans-poz mvd-zwarcia-bilans-poz--tekst' : 'mvd-zwarcia-bilans-poz'
             }
           >
-            <dt>{p.etykieta}</dt>
+            <dt><TekstZWzorami tekst={p.etykieta} /></dt>
             <dd className={p.tekst ? undefined : 'mvd-num'}>
               {p.wartosc}
               {p.jednostka && p.wartosc !== ZWARCIA_STRINGS.kreska ? ` ${p.jednostka}` : ''}

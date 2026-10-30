@@ -72,6 +72,7 @@ import {
   tylkoRozniceGalezi,
   tylkoRozniceSzyn,
 } from './porownanieModel';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 /**
  * Ranking nie ma dowodu per komórka (problem nie jest wartością jednego
@@ -504,7 +505,7 @@ function SelektorPrzebiegu({
 }: SelektorPrzebieguProps) {
   return (
     <label className="mvd-por-pole">
-      <span className="mvd-por-pole-etyk">{etykieta}</span>
+      <span className="mvd-por-pole-etyk"><TekstZWzorami tekst={etykieta} /></span>
       <select
         className="mvd-por-select"
         value={wybrany}

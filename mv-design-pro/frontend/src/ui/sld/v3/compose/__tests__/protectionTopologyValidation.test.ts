@@ -139,7 +139,7 @@ describe('protectionTopologyGapLabel / protectionTopologyGapCode (formatowanie a
   it('label PL zwięzły „⟨kod⟩: ⟨przyczyna⟩" (przykład ze zlecenia: „67N: brak VT")', () => {
     expect(protectionTopologyGapLabel({ code: '67N', reason: 'missing_vt' })).toBe('67N: brak VT');
     expect(protectionTopologyGapLabel({ code: '87T', reason: 'missing_transformer' })).toBe('87T: brak transformatora');
-    expect(protectionTopologyGapLabel({ code: '51N', reason: 'missing_i0' })).toBe('51N: brak I0');
+    expect(protectionTopologyGapLabel({ code: '51N', reason: 'missing_i0' })).toBe('51N: brak pomiaru prądu zerowego');
   });
 
   it('kod missingData/stopNotes niesie prefiks „protection.topology." (zadanie F10.5 pkt B)', () => {

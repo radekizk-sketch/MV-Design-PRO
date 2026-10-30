@@ -111,24 +111,6 @@ export type OverlayAnalysisType =
   | 'VARIANT_DELTA';
 
 /**
- * Polish labels for overlay analysis types.
- * Used in legend headers and UI labels.
- */
-export const OVERLAY_ANALYSIS_LABELS: Readonly<Record<OverlayAnalysisType, string>> = {
-  SC_3F: 'Zwarcie trójfazowe (3F)',
-  SC_1F: 'Zwarcie jednofazowe (1F)',
-  SC_2F: 'Zwarcie dwufazowe (2F)',
-  LOAD_FLOW: 'Rozpływ mocy',
-  PROTECTION_COVERAGE: 'Pokrycie ochronne',
-  VOLTAGE_PROFILE: 'Profil napięciowy',
-  OVERLOAD: 'Przeciążenie termiczne',
-  THERMAL_WITHSTAND: 'Wytrzymałość cieplna ($I_{th}$)',
-  DYNAMIC_WITHSTAND: 'Wytrzymałość dynamiczna ($I_{dyn}$)',
-  LOSSES: 'Straty mocy',
-  VARIANT_DELTA: 'Porównanie wariantów',
-} as const;
-
-/**
  * Power flow overlay numeric badges (pre-computed by backend).
  * NO physics in frontend — all values are backend-provided.
  */

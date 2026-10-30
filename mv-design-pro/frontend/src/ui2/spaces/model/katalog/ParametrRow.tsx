@@ -43,7 +43,9 @@ export function ParametrRow({ definicja, wartosc }: ParametrRowProps): JSX.Eleme
         <span className="mvd-katalog__param-symbol">
           <MathInline latex={definicja.symbolLatex} />
         </span>
-        <span>{definicja.etykieta}</span>
+        <span>
+          <TekstZWzorami tekst={definicja.etykieta} />
+        </span>
         <span className="mvd-katalog__param-def">
           <TekstZWzorami tekst={definicja.definicja} /> ({definicja.norma})
         </span>

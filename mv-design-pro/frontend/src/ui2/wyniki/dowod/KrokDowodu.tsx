@@ -16,6 +16,7 @@
 import { TRACE_FIELD_LABELS } from '../../../ui/results-inspector/types';
 import { MathBlock } from '../../../ui/proof';
 import { emituj } from '../../events';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 import { InformacjeAudytowe, useNazwaObiektu } from '../wzorzec';
 import type { WierszInformacjiAudytowych } from '../wzorzec';
 import { DOWOD_STRINGS } from './strings';
@@ -50,7 +51,9 @@ function ListaWielkosci({
     <dl className="mvd-dowod-wielkosci" data-testid={testId}>
       {wielkosci.map((w) => (
         <div className="mvd-dowod-wielkosc" key={w.klucz} data-testid="mvd-dowod-wielkosc">
-          <dt className="mvd-dowod-wielkosc-etykieta">{w.etykieta}</dt>
+          <dt className="mvd-dowod-wielkosc-etykieta">
+            <TekstZWzorami tekst={w.etykieta ?? ''} />
+          </dt>
           <dd className="mvd-dowod-wielkosc-wartosc mvd-num">
             {w.latex !== undefined ? (
               <MathBlock latex={w.latex} />
@@ -168,7 +171,9 @@ export function KrokDowodu({ krok, szczegolyAudytowe }: KrokDowoduProps) {
       {uwagiNaPierwszymPlanie && (
         <section className="mvd-dowod-pole" data-testid="mvd-dowod-pole-uwagi">
           <h4 className="mvd-dowod-pole-tytul">{TRACE_FIELD_LABELS.notes}</h4>
-          <p className="mvd-dowod-uwagi">{uwagiNaPierwszymPlanie}</p>
+          <p className="mvd-dowod-uwagi">
+            <TekstZWzorami tekst={uwagiNaPierwszymPlanie} />
+          </p>
         </section>
       )}
 

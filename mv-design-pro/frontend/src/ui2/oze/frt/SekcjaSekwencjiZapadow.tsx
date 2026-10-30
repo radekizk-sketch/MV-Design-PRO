@@ -48,6 +48,7 @@ const ZAPAD_DOMYSLNY: ParaZapaduFrt = { glebokoscPu: 0.05, czasS: 0.15 };
 
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 type StanZasobu =
   | { readonly rodzaj: 'idle' }
@@ -150,7 +151,7 @@ function WynikSekwencji({
               </dd>
             </div>
             <div className="mvd-frt-zal-para">
-              <dt>{FRT_STRINGS.sekwKontekstMocZwarciowa}</dt>
+              <dt><TekstZWzorami tekst={FRT_STRINGS.sekwKontekstMocZwarciowa} /></dt>
               <dd className="mvd-num">
                 {kontekst.s_sc_mva === null
                   ? FRT_STRINGS.kreska

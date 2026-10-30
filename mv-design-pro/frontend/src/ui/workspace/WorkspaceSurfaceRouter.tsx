@@ -147,6 +147,7 @@ import type { EnergyNetworkModel, FixAction } from '../../types/enm';
 import { szynyStacji } from '../shared/szynyStacji';
 import { transformatoryNalezaceDoStacji } from '../shared/transformatoryStacji';
 import { MathInline } from '../proof/MathRenderer';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -568,8 +569,8 @@ function buildShortCircuitAnalysisRows(rows: readonly ShortCircuitRow[]): Analys
       name: targetLabel,
       voltage: faultType,
       input: 'IEC 60909; dane z wyniku serwerowego',
-      resultA: `${formatNullableResult("Ik''", row.ikss_ka, 'kA', 2)}; ${formatNullableResult('ip', row.ip_ka, 'kA', 2)}`,
-      resultB: `${formatNullableResult('Ith', row.ith_ka, 'kA', 2)}; ${formatNullableResult("Sk''", row.sk_mva, 'MVA', 3)}`,
+      resultA: `${formatNullableResult("$I_{k}''$", row.ikss_ka, 'kA', 2)}; ${formatNullableResult('$i_{p}$', row.ip_ka, 'kA', 2)}`,
+      resultB: `${formatNullableResult('$I_{th}$', row.ith_ka, 'kA', 2)}; ${formatNullableResult("$S_{k}''$", row.sk_mva, 'MVA', 3)}`,
       status: complete ? `${formatFlags(row.flags)}; uzasadnienie dostępne` : 'wynik częściowy: brak kompletu wartości',
     };
   });
@@ -887,9 +888,15 @@ function AnalysisDataTable({
                 <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">{row.type}</td>
                 <td className="px-3 py-2">{row.name}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.voltage}</td>
-                <td className="px-3 py-2 text-slate-600">{row.input}</td>
-                <td className="whitespace-nowrap px-3 py-2">{row.resultA}</td>
-                <td className="whitespace-nowrap px-3 py-2">{row.resultB}</td>
+                <td className="px-3 py-2 text-slate-600">
+                  <TekstZWzorami tekst={row.input} />
+                </td>
+                <td className="whitespace-nowrap px-3 py-2">
+                  <TekstZWzorami tekst={row.resultA} />
+                </td>
+                <td className="whitespace-nowrap px-3 py-2">
+                  <TekstZWzorami tekst={row.resultB} />
+                </td>
                 <td className="px-3 py-2 text-amber-700">{row.status}</td>
               </tr>
             ))}
@@ -2595,7 +2602,9 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               <div className="mt-1 text-sm font-medium text-slate-800">
                 {pt.labelPl}
               </div>
-              <div className="mt-1 text-xs text-slate-500">{pt.descriptionPl}</div>
+              <div className="mt-1 text-xs text-slate-500">
+                <TekstZWzorami tekst={pt.descriptionPl} />
+              </div>
             </div>
           ))}
         </div>

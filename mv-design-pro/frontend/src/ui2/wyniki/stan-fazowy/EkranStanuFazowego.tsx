@@ -71,8 +71,8 @@ function StanZerowy({
 }) {
   return (
     <div className="mvd-fazowy-stan" data-testid={testid} data-tone="idle">
-      <h4>{tytul}</h4>
-      <p>{opis}</p>
+      <h4><TekstZWzorami tekst={tytul} /></h4>
+      <p><TekstZWzorami tekst={opis} /></p>
       {akcja && onAkcja && (
         <button
           type="button"
@@ -307,7 +307,7 @@ export function EkranStanuFazowego() {
             <dl className="mvd-fazowy-siatka" data-testid="mvd-fazowy-rn-podsumowanie">
               {naPodsumowanieNiesymetrii(rn).map((p) => (
                 <div className="mvd-fazowy-pozycja" key={p.etykieta} data-werdykt="brak">
-                  <dt>{p.etykieta}</dt>
+                  <dt><TekstZWzorami tekst={p.etykieta} /></dt>
                   <dd>
                     <span className="mvd-num">{p.wartosc}</span>
                     {p.jednostka ? (
@@ -401,7 +401,7 @@ export function EkranStanuFazowego() {
             <dl className="mvd-fazowy-siatka" data-testid="mvd-fazowy-asymetrie">
               {naPozycjeAsymetrii(wiersz).map((p) => (
                 <div className="mvd-fazowy-pozycja" key={p.etykieta} data-werdykt={p.werdykt}>
-                  <dt>{p.etykieta}</dt>
+                  <dt><TekstZWzorami tekst={p.etykieta} /></dt>
                   <dd>
                     <span className="mvd-num">{p.wartosc}</span>{' '}
                     <span className="mvd-fazowy-jedn">{T.jednProcent}</span>

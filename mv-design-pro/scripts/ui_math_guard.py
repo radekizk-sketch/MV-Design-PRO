@@ -263,7 +263,8 @@ WZORZEC_SPLASZCZONY = re.compile(
       | P(?:k|0|max|min|n|zainst|gen|load)(?!\w)
       | Q(?:max|min|n)(?!\w)
       | S(?:n|k|k3|kmax|kmin|r)(?!\w)
-      | (?:[XZ][012]|[RB]0)(?!\w)
+      | (?:[XZ][012]|(?<!rewizja\ )R0|B0)(?!\w)
+      | IΔ\w*
       | cos\s?(?:φ|phi|fi)(?!\w) | tg\s?φ | tan\s?φ
     )"""
 )

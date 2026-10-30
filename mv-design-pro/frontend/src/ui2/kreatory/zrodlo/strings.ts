@@ -302,8 +302,8 @@ export const ZRODLO_STRINGS = {
     + 'odniesienie; podwojenie $S_{k}\'\'$ o połowę zmniejsza Z (sieć sztywniejsza: wyższe prądy zwarciowe, '
     + 'mniejsze wahania napięcia). Rzeczywiste $I_{k}\'\'$/Z liczy backend wg IEC 60909.',
   wykresAria: 'Sztywność sieci: impedancja źródła w funkcji mocy zwarciowej (Z proporcjonalne do 1/$S_{k}\'\'$)',
-  wykresOsSk: 'Moc zwarciowa $S_{k}\'\'$/Skn',
-  wykresOsZ: 'Impedancja Z/Zn',
+  wykresOsSk: 'Moc zwarciowa $S_{k}\'\'/S_{k,n}\'\'$',
+  wykresOsZ: 'Impedancja $Z/Z_{n}$',
   wykresPunkt: 'odniesienie',
 
   // Akcje / błędy.

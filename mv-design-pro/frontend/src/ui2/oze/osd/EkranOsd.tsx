@@ -515,7 +515,7 @@ export function EkranOsd({ szczegolyAudytowe, onOtworzDowod }: EkranOsdProps) {
 
             {pola.has('cosfi') && (
               <div className="mvd-osd-param">
-                <label htmlFor="mvd-osd-cosfi">{OSD_STRINGS.paramCosfi}</label>
+                <label htmlFor="mvd-osd-cosfi"><TekstZWzorami tekst={OSD_STRINGS.paramCosfi} /></label>
                 <div className="mvd-osd-param-pole">
                   <input
                     id="mvd-osd-cosfi"

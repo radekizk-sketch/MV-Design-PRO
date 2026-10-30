@@ -52,6 +52,7 @@ import {
 } from './strings';
 import { PrzyciskAkcjiStanu, useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 // ---------------------------------------------------------------------------
 // Stan pobierania (jawny bieg: idle / ładowanie / błąd / gotowe)
@@ -139,13 +140,13 @@ function WynikTrajektorii({
           <dd>{rodzajEtykieta}</dd>
         </div>
         <div className="mvd-frt-zal-para">
-          <dt>{FRT_STRINGS.zalozeniaPmax}</dt>
+          <dt><TekstZWzorami tekst={FRT_STRINGS.zalozeniaPmax} /></dt>
           <dd className="mvd-num">
             {fmtPuFrt(dane.modul_der.pmax_mw)} MW
           </dd>
         </div>
         <div className="mvd-frt-zal-para">
-          <dt>{FRT_STRINGS.zalozeniaUn}</dt>
+          <dt><TekstZWzorami tekst={FRT_STRINGS.zalozeniaUn} /></dt>
           <dd className="mvd-num">{fmtPuFrt(dane.modul_der.un_kv)} kV</dd>
         </div>
         {dane.ocena_dowodowa && (

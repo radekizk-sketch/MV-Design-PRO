@@ -7,6 +7,8 @@
 
 import { RamkaWykresu, VBH, VBW, px, py } from '../rama';
 import { ODBIOR_STRINGS as T } from './strings';
+import { tekstBezWzorow } from '../rama/tekstZWzorami';
+import { TekstSvgZWzorami } from '../../../ui/proof/TekstSvgZWzorami';
 
 /** Trójkąt: przyprostokątne P (czynna) i Q (bierna), przeciwprostokątna S (pozorna). */
 export function WykresTrojkatMocy({ cosPhi }: { cosPhi: number }) {
@@ -20,7 +22,7 @@ export function WykresTrojkatMocy({ cosPhi }: { cosPhi: number }) {
   const xP = px(nx(c));
   const yQ = py(ny(sin));
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={T.wykresAria}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={tekstBezWzorow(T.wykresAria)}>
       <RamkaWykresu osX={T.wykresOsP} osY={T.wykresOsQ} />
       {/* przyprostokątna P (czynna) */}
       <line x1={x0} y1={y0} x2={xP} y2={y0} className="mvd-wykres-krzywa" />
@@ -30,16 +32,16 @@ export function WykresTrojkatMocy({ cosPhi }: { cosPhi: number }) {
       <line x1={x0} y1={y0} x2={xP} y2={yQ} className="mvd-wykres-krzywa-lustro" />
       <circle cx={xP} cy={yQ} r={3} className="mvd-wykres-punkt" />
       <text x={(x0 + xP) / 2} y={y0 - 6} textAnchor="middle" className="mvd-wykres-znak">
-        {T.wykresP}
+        <TekstSvgZWzorami tekst={T.wykresP} />
       </text>
       <text x={xP + 6} y={(y0 + yQ) / 2} className="mvd-wykres-znak">
-        {T.wykresQ}
+        <TekstSvgZWzorami tekst={T.wykresQ} />
       </text>
       <text x={(x0 + xP) / 2 - 6} y={(y0 + yQ) / 2 - 4} textAnchor="end" className="mvd-wykres-znak">
-        {T.wykresS}
+        <TekstSvgZWzorami tekst={T.wykresS} />
       </text>
       <text x={xP + 6} y={yQ - 4} className="mvd-wykres-znak">
-        {`$\\cos\\varphi$ = ${c.toFixed(2)}`}
+        <TekstSvgZWzorami tekst={`$\\cos\\varphi$ = ${c.toFixed(2)}`} />
       </text>
     </svg>
   );

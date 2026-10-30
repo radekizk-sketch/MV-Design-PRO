@@ -52,6 +52,7 @@ import {
   naWierszePunktowZwarciowych,
   przebiegiZwarciowe,
 } from './zwarciePorownanieModel';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 type StanPorownania = 'bezczynny' | 'wtrakcie' | 'blad';
 
@@ -283,7 +284,7 @@ function SelektorPrzebiegu({
 }: SelektorPrzebieguProps) {
   return (
     <label className="mvd-por-pole">
-      <span className="mvd-por-pole-etyk">{etykieta}</span>
+      <span className="mvd-por-pole-etyk"><TekstZWzorami tekst={etykieta} /></span>
       <select
         className="mvd-por-select"
         value={wybrany}

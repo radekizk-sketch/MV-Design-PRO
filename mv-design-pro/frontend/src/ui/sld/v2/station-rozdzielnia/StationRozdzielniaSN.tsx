@@ -36,6 +36,7 @@ import {
 } from '../theme/tokens';
 import { ApparatusCableHead, ApparatusCbSquare, ApparatusEarthingSwitch, ApparatusFuse, ApparatusThreePositionSwitch, ApparatusTransformerSymbol, ApparatusVtThreePhase, CtPrimary } from './GpzApparatusSymbols';
 import type { MouseEvent } from 'react';
+import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 import {
   buildPowerFlowIndex,
   type SldPowerFlowCompanion,
@@ -919,7 +920,7 @@ function BusbarShortCircuitPanel(props: {
         const ry = y + 20 + i * rowH;
         return (
           <g key={k}>
-            <text x={x + 6} y={ry} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6.6}>{k}</text>
+            <text x={x + 6} y={ry} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={6.6}><TekstSvgZWzorami tekst={k} /></text>
             <text x={x + panelW - 6} y={ry} textAnchor="end" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={700}>{v}</text>
           </g>
         );
@@ -927,7 +928,7 @@ function BusbarShortCircuitPanel(props: {
       {/* Icw verification verdict. */}
       <rect x={x + 4} y={y + panelH - 18} width={panelW - 8} height={14} rx={2} fill={ok ? '#0C2A18' : '#3A0E0E'} stroke={ok ? COLOR_DEVICE_CLOSED_BORDER : COLOR_DEVICE_OPEN_BORDER} strokeWidth={1} />
       <text x={x + panelW / 2} y={y + panelH - 8} textAnchor="middle" fill={ok ? '#5BE08A' : '#FF6B6B'} fontFamily={FONT_MONO} fontSize={6.6} fontWeight={800}>
-        {`$I_{k,\\max}''$ ${sc.verification.ikss_max_ka.toFixed(1)} ${ok ? '≤' : '>'} $I_{cw}$ ${sc.verification.icw_ka} kA ${ok ? '✓' : '✗'}`}
+        <TekstSvgZWzorami tekst={`$I_{k,\\max}''$ ${sc.verification.ikss_max_ka.toFixed(1)} ${ok ? '≤' : '>'} $I_{cw}$ ${sc.verification.icw_ka} kA ${ok ? '✓' : '✗'}`} />
       </text>
       {/* White Box affordance — the derivation exists (LaTeX trace from the solver). */}
       <text data-testid={`sr-sc-whitebox-${sc.bus_ref}`} data-wb-steps={sc.max.white_box_trace.length} x={x + 6} y={y + panelH + 8} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={6} fontWeight={600}>

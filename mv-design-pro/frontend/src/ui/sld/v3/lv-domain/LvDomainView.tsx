@@ -29,6 +29,8 @@ import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/ov
 import { KartaObwoduNn } from './KartaObwoduNn';
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
+import { tekstBezWzorow } from '../../../proof/latexTekst';
+import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 import { CadSymbol } from '../cad/CadSymbol';
 import { ELECTRICAL_CAD_SYMBOL_REGISTRY, gabarytCad, type CadOrientation, type CadSwitchState } from '../cad/cadSymbolRegistry';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
@@ -789,7 +791,7 @@ function WarningMarker({ node, ctx, dx, dy }: { readonly node: LvDomainSceneNode
   const r = ctx.sp(6.5);
   return (
     <g data-testid={`lv-domain-warning-marker-${node.ref}`} data-severity={worst}>
-      <title>{messages.map((m) => `${m.code}: ${m.message_pl}`).join('\n')}</title>
+      <title>{tekstBezWzorow(messages.map((m) => `${m.code}: ${m.message_pl}`).join('\n'))}</title>
       <circle cx={node.x + dx} cy={node.y + dy} r={r} fill={ctx.paleta.tlo} stroke={tonWagi(worst, ctx.paleta)} strokeWidth={ctx.sp(1.4)} />
       <text x={node.x + dx} y={node.y + dy + ctx.sp(3.4)} textAnchor="middle" fontSize={ctx.sp(SLD_LABEL.WARNING)} fontWeight={700} fill={tonWagi(worst, ctx.paleta)}>
         !
@@ -813,7 +815,7 @@ function ScaledGlyph({ node, ctx }: { readonly node: LvDomainSceneNode; readonly
   return (
     <>
       {functionCodes ? (
-        <title>{`${node.label} · funkcje: ${znakiIecPelne(functionCodes).join(', ')} (ANSI ${kodyAnsiPelne(functionCodes).join(', ')}) · ${nazwyFunkcjiPl(functionCodes).join(', ')}`}</title>
+        <title>{tekstBezWzorow(`${node.label} · funkcje: ${znakiIecPelne(functionCodes).join(', ')} (ANSI ${kodyAnsiPelne(functionCodes).join(', ')}) · ${nazwyFunkcjiPl(functionCodes).join(', ')}`)}</title>
       ) : null}
       <CadSymbol
         id={node.symbolId}
@@ -840,7 +842,7 @@ function TerminalNode({ node, ctx, onSelect }: { readonly node: LvDomainSceneNod
   const center = node.symbolId ? ELECTRICAL_CAD_SYMBOL_REGISTRY[node.symbolId].anchors.center : { x: 0, y: 0 };
   return (
     <g data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref} data-energization={energization} data-degree={degree} onClick={() => onSelect(node.ref)} style={{ cursor: 'pointer' }}>
-      <title>{`${node.label} · ${energization ?? '—'}`}</title>
+      <title>{tekstBezWzorow(`${node.label} · ${energization ?? '—'}`)}</title>
       {/* Obszar trafienia zacisku — także zacisku stopnia 2, który nie ma kropki (styk dwóch
           kabli, cel „Scal odcinki”). Bez niego pas trafienia kabla przykrywał zacisk i menu
           zacisku było nieosiągalne myszą (wykryte biegiem e2e `menu-schematu-nn.spec.ts`).
@@ -896,7 +898,7 @@ function AnchorBarNode({ node, ctx }: { readonly node: LvDomainSceneNode; readon
       {opisLinie.length > 0 && ctx.widoczne('parametryKotwicyZrodla') ? (
         <text {...textHalo(ctx)} data-testid={`lv-domain-anchor-opis-${node.ref}`} x={left + ctx.sp(28)} y={opisY0} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={ctx.paleta.kreskaWygaszona} fontFamily="monospace">
           {opisLinie.map((linia, i) => (
-            <tspan key={i} x={left + ctx.sp(28)} dy={i === 0 ? 0 : opisStep}>{linia}</tspan>
+            <tspan key={i} x={left + ctx.sp(28)} dy={i === 0 ? 0 : opisStep}><TekstSvgZWzorami tekst={linia} /></tspan>
           ))}
         </text>
       ) : null}
@@ -1090,9 +1092,9 @@ function ElementNode({ node, ctx, activeOverlay, resultOverlayPayload, swzEntry,
       {/* Pełna nazwa i nazwa polska klasy aparatu w podpowiedzi (R2 §17/§18) —
           etykieta na kanwie jest skracana wielokropkiem, nigdy łamana. */}
       {node.kind === 'apparatus' ? (
-        <title>{`${node.label} · ${String(node.meta?.nazwaPl ?? '')} · ${stanSlowny((node.meta?.deviceState as LvDeviceState | undefined) ?? 'UNKNOWN')}`}</title>
+        <title>{tekstBezWzorow(`${node.label} · ${String(node.meta?.nazwaPl ?? '')} · ${stanSlowny((node.meta?.deviceState as LvDeviceState | undefined) ?? 'UNKNOWN')}`)}</title>
       ) : node.kind === 'load' || node.kind === 'generator' || node.kind === 'transformer' ? (
-        <title>{node.kind === 'transformer' ? `${String(node.meta?.name ?? node.ref)} · ${node.label}` : node.label}</title>
+        <title>{tekstBezWzorow(node.kind === 'transformer' ? `${String(node.meta?.name ?? node.ref)} · ${node.label}` : node.label)}</title>
       ) : null}
       <ScaledGlyph node={node} ctx={ctx} />
       <NodeLabel node={node} ctx={ctx} />
@@ -1183,9 +1185,9 @@ function SceneEdgeLine({ edge, scene, ctx }: { readonly edge: LvDomainSceneEdge;
 // Etykiety węzłów (cztery poziomy graficzne §20).
 // ---------------------------------------------------------------------------
 
-/** Opis tabliczki RCD na rysunku: „IΔn 30 mA · A · S · 40 A" (S — selektywny). */
+/** Opis tabliczki RCD na rysunku: „$I_{\Delta n}$ 30 mA · A · S · 40 A" (S — selektywny). */
 export function tabliczkaRcd(rcd: LvDomainRcdTabliczka): string {
-  const czesci = [`IΔn ${plNumber(Math.round(rcd.i_delta_n_a * 1000))} mA`];
+  const czesci = [`$I_{\\Delta n}$ ${plNumber(Math.round(rcd.i_delta_n_a * 1000))} mA`];
   if (rcd.rcd_type) czesci.push(rcd.rcd_type);
   if (rcd.selective) czesci.push('S');
   if (rcd.in_a != null) czesci.push(`${plNumber(rcd.in_a)} A`);
@@ -1217,7 +1219,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
           <text x={xText} y={node.y + step} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}>{`${plNumber(uhv)}/${plNumber(ulv)} kV${group ? ` · ${group}` : ''}`}</text>
         ) : null}
         {uk != null && pokazTabliczke ? (
-          <text x={xText} y={node.y + 2 * step} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}>{`$u_{k}$ = ${plNumber(uk)}%`}</text>
+          <text x={xText} y={node.y + 2 * step} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona}><TekstSvgZWzorami tekst={`$u_{k}$ = ${plNumber(uk)}%`} /></text>
         ) : null}
         {/* Zaciski jawne (§9): SN u góry, nN u dołu glifu. */}
         {pokazTabliczke ? (
@@ -1278,7 +1280,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
         ) : null}
         {pokazRcd && rcd ? (
           <text data-testid={`lv-domain-tabliczka-rcd-${node.ref}`} x={xText} y={node.y + ctx.sp(4 - SLD_LABEL.SECONDARY * LINE_HEIGHT)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona} fontFamily="monospace">
-            {tabliczkaRcd(rcd)}
+            <TekstSvgZWzorami tekst={tabliczkaRcd(rcd)} />
           </text>
         ) : null}
         {pokazStan ? (
@@ -1402,7 +1404,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
     return (
       <text {...textHalo(ctx)} data-testid={`lv-domain-tabliczka-${node.ref}`} x={xText} y={node.y + ctx.sp(3.5) - (step * (wiersze.length - 1)) / 2} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona}>
         {wiersze.map((w, i) => (
-          <tspan key={i} x={xText} dy={i === 0 ? 0 : step}>{w}</tspan>
+          <tspan key={i} x={xText} dy={i === 0 ? 0 : step}><TekstSvgZWzorami tekst={w} /></tspan>
         ))}
       </text>
     );
@@ -1460,7 +1462,7 @@ function BusResultBadge({ node, ctx, overlay, payload, outdated, kotwica }: { re
     <g {...textHalo(ctx)} data-testid={`lv-domain-badge-${overlay}-${node.ref}`} data-run-id={payload.run_id} data-outdated={outdated ? 'true' : 'false'}>
       {wiersze.map((wiersz, i) => (
         <text key={`w${i}`} x={kotwica.x} y={yWiersza(i)} textAnchor={kotwica.textAnchor} fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaBazowa} fontFamily="monospace">
-          {wiersz}
+          <TekstSvgZWzorami tekst={wiersz} />
         </text>
       ))}
       {pochodzenie.length > 0 ? (

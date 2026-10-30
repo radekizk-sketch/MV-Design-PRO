@@ -194,7 +194,7 @@ function KreatorOdbioru({ poziom }: { readonly poziom: PoziomOdbioru }) {
   }, [dane, napiecieV]);
 
   const opcjeTypow = useMemo(
-    () => typy.map((t) => ({ id: t.id, etykieta: `${t.name} · ${t.p_kw} kW${typeof t.cos_phi === 'number' ? ` · cosφ ${t.cos_phi}` : ''}` })),
+    () => typy.map((t) => ({ id: t.id, etykieta: `${t.name} · ${t.p_kw} kW${typeof t.cos_phi === 'number' ? ` · $\\cos\\varphi$ ${t.cos_phi}` : ''}` })),
     [typy],
   );
 

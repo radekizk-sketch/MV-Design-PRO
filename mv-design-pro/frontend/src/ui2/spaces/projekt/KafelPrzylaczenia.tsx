@@ -21,6 +21,7 @@ import { PULPIT_STRINGS, fmtLiczbaPL } from './strings';
 import type { PrzylaczenieKafel } from './pulpitAdapter';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 /** Parsuje liczbę z pola formularza (przecinek PL dozwolony); '' → null. */
 function parsujLiczbe(tekst: string): number | null {
@@ -92,7 +93,7 @@ function FormularzWarunkowOsd({ onZamknij }: { onZamknij: () => void }) {
         />
       </label>
       <label className="mvd-kafel-form-pole">
-        <span>{PULPIT_STRINGS.osdFormCosPhi}</span>
+        <span><TekstZWzorami tekst={PULPIT_STRINGS.osdFormCosPhi} /></span>
         <input
           type="text"
           inputMode="decimal"

@@ -72,6 +72,7 @@ interface KatalogPQ {
 }
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 function StanPanel({
   komunikat,
@@ -146,13 +147,13 @@ function WynikPokrycia({
           <dd>{dane.operator.nazwa}</dd>
         </div>
         <div className="mvd-krzywe-zal-para">
-          <dt>{KRZYWE_STRINGS.zalozeniaPn}</dt>
+          <dt><TekstZWzorami tekst={KRZYWE_STRINGS.zalozeniaPn} /></dt>
           <dd className="mvd-num">
             {fmtMWPQ(dane.wymaganie.pn_mw)} {KRZYWE_STRINGS.jednMW}
           </dd>
         </div>
         <div className="mvd-krzywe-zal-para">
-          <dt>{KRZYWE_STRINGS.zalozeniaUdzialQ}</dt>
+          <dt><TekstZWzorami tekst={KRZYWE_STRINGS.zalozeniaUdzialQ} /></dt>
           <dd className="mvd-num">
             {fmtPctPQ(dane.operator.udzial_q_min_pct_pn)}
             {KRZYWE_STRINGS.rozdzielaczPasma}

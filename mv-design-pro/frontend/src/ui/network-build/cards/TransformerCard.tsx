@@ -250,7 +250,7 @@ export function TransformerCard({ elementId }: { elementId: string }) {
           { key: 'q_flow', label: 'Przepływ Q', value: null, unit: 'Mvar', source: 'calculated' },
           { key: 'i_hv', label: 'Prąd strona WN', value: null, unit: 'A', source: 'calculated' },
           { key: 'i_lv', label: 'Prąd strona nN', value: null, unit: 'A', source: 'calculated' },
-          { key: 'loading', label: 'Obciążenie $S_{n}$', value: null, unit: '%', source: 'calculated' },
+          { key: 'loading', label: 'Obciążenie względem $S_{n}$', value: null, unit: '%', source: 'calculated' },
           { key: 'losses', label: 'Straty ΔP', value: null, unit: 'kW', source: 'calculated' },
           { key: 'tap_actual', label: 'Zaczep aktualny', value: null, source: 'calculated' },
           { key: 'no_results', label: 'Status', value: 'Uruchom analizę, aby pokazać wyniki', severity: 'warning' },

@@ -16,6 +16,7 @@
 
 import { useState } from 'react';
 
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 import { WZORZEC_STRINGS } from './strings';
 
 export interface WierszInformacjiAudytowych {
@@ -60,7 +61,9 @@ export function InformacjeAudytowe({
         <dl className="mvd-audyt-lista" data-testid={`${testid}-lista`}>
           {wiersze.map((wiersz) => (
             <div className="mvd-audyt-wiersz" key={wiersz.etykieta}>
-              <dt className="mvd-audyt-etyk">{wiersz.etykieta}</dt>
+              <dt className="mvd-audyt-etyk">
+                <TekstZWzorami tekst={wiersz.etykieta} />
+              </dt>
               <dd className="mvd-audyt-wartosc mvd-num">{wiersz.wartosc}</dd>
             </div>
           ))}

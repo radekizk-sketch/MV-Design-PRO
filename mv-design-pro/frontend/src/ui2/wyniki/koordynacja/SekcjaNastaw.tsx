@@ -71,7 +71,7 @@ function WierszWarunku({
 }) {
   return (
     <tr>
-      <th scope="row">{etykieta}</th>
+      <th scope="row"><TekstZWzorami tekst={etykieta} /></th>
       <td>
         {wartosc.toFixed(1)} {jednostka}
       </td>

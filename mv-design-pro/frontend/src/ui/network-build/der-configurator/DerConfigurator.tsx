@@ -10,6 +10,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 
 import type { GeneratorConnectionVariant } from '../../../types/enm';
 import { punktPrzylaczeniaOpisPl, type ConnectionSide, type SnConnectionPointKind } from '../station-der';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 import { DerPccVariantInfo } from './DerPccVariantInfo';
 
@@ -308,7 +309,9 @@ function DefaultCard({
         {DEFAULT_CARD_HINTS[derKind][cardId].map((item) => (
           <li key={item} className="flex gap-2">
             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-scada-sn" />
-            <span>{item}</span>
+            <span>
+              <TekstZWzorami tekst={item} />
+            </span>
           </li>
         ))}
       </ul>

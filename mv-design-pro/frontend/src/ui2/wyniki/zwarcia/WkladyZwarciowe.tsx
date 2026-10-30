@@ -41,6 +41,7 @@ import {
   naWierszeWkladow,
   type WkladZwarciowy,
 } from './zwarciaModel';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export interface WkladyZwarcioweProps {
   /** Nazwa wybranego punktu zwarcia (nagłówek sekcji, pierwszy plan). */
@@ -101,7 +102,7 @@ function SzczegolWkladuPanel({ wklad }: { wklad: WkladZwarciowy }) {
           <dl className="mvd-zwarcia-bilans-siatka">
             {naPozycjeSzczegoluWkladu(szczegol).map((p) => (
               <div key={p.etykieta} className="mvd-zwarcia-bilans-poz">
-                <dt>{p.etykieta}</dt>
+                <dt><TekstZWzorami tekst={p.etykieta} /></dt>
                 <dd className="mvd-num">
                   {p.wartosc}
                   {p.jednostka && p.wartosc !== ZWARCIA_STRINGS.kreska ? ` ${p.jednostka}` : ''}

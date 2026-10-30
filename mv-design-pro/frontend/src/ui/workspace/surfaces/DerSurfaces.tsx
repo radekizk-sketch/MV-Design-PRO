@@ -988,7 +988,7 @@ function PvInverterCatalogPanel({
           <FieldRow label="Zakres bazy źródłowej" value={ptpireeSourceSummary(rejestr)} />
         </dl>
         <EngineeringNote>
-          Certyfikat PTPiREE potwierdza wpis urządzenia w wykazie NC RfG/WOS. Parametry $U_{n}$, $S_{n}$, $I_{k}$, FRT i model dynamiczny nadal muszą pochodzić z karty katalogowej lub typu katalogowego.
+          {'Certyfikat PTPiREE potwierdza wpis urządzenia w wykazie NC RfG/WOS. Parametry $U_{n}$, $S_{n}$, $I_{k}$, FRT i model dynamiczny nadal muszą pochodzić z karty katalogowej lub typu katalogowego.'}
         </EngineeringNote>
       </div>
 

@@ -64,7 +64,11 @@ export function PanelTeorii({
             <TekstZWzorami tekst={wymog} />
           </p>
         ) : null}
-        {podstawa ? <p className="mvd-teoria-podstawa">{podstawa}</p> : null}
+        {podstawa ? (
+          <p className="mvd-teoria-podstawa">
+            <TekstZWzorami tekst={podstawa} />
+          </p>
+        ) : null}
       </div>
     </details>
   );

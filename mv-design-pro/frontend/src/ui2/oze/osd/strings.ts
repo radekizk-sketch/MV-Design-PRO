@@ -176,7 +176,7 @@ export function etykietaPoleceniaOsd(command: RodzajPoleceniaOsd): string {
       return OSD_STRINGS.polecenieOgraniczenieP;
     case 'moc_bierna':
       return OSD_STRINGS.polecenieMocBierna;
-    case '$\\cos\\varphi$':
+    case 'cosfi':
       return OSD_STRINGS.polecenieCosfi;
     case 'lfsm_o':
       return OSD_STRINGS.polecenieLfsmO;

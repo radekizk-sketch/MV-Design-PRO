@@ -108,6 +108,7 @@ import {
   type IstotnoscStatusu,
 } from './strings';
 import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 // ---------------------------------------------------------------------------
 // Zasób jakości — stan pobierania (brak przebiegu / ładowanie / błąd / gotowe)
@@ -178,7 +179,7 @@ export function Chip({
   return (
     <div className={`mvd-jakosc-chip mvd-jakosc-chip--${istotnosc}`} data-testid="mvd-jakosc-chip">
       <span className="mvd-jakosc-chip-liczba mvd-num">{wartosc}</span>
-      <span className="mvd-jakosc-chip-etykieta">{etykieta}</span>
+      <span className="mvd-jakosc-chip-etykieta"><TekstZWzorami tekst={etykieta} /></span>
     </div>
   );
 }
@@ -202,12 +203,12 @@ export function StanSekcji({
 }) {
   return (
     <section className="mvd-jakosc-sekcja" data-testid={testid}>
-      <h2 className="mvd-jakosc-sekcja-tytul">{tytul}</h2>
+      <h2 className="mvd-jakosc-sekcja-tytul"><TekstZWzorami tekst={tytul} /></h2>
       <div
         className={wariant === 'blad' ? 'mvd-jakosc-stan mvd-jakosc-stan--blad' : 'mvd-jakosc-stan'}
       >
         <p className="mvd-jakosc-stan-title">{komunikat}</p>
-        {opis && <p className="mvd-jakosc-stan-desc">{opis}</p>}
+        {opis && <p className="mvd-jakosc-stan-desc"><TekstZWzorami tekst={opis} /></p>}
         <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
       </div>
     </section>
@@ -351,7 +352,7 @@ function SzczegolWiarygodnosci({
           </dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
-          <dt>{JAKOSC_STRINGS.kolIkss}</dt>
+          <dt><TekstZWzorami tekst={JAKOSC_STRINGS.kolIkss} /></dt>
           <dd className="mvd-num">
             {item.ikss_ka !== null ? `${fmtKA(item.ikss_ka)} ${JAKOSC_STRINGS.jednKA}` : JAKOSC_STRINGS.kreska}
           </dd>
@@ -655,7 +656,7 @@ function SzczegolMigotania({
       />
       <dl className="mvd-jakosc-szczegol-dane">
         <div className="mvd-jakosc-szczegol-para">
-          <dt>{JAKOSC_STRINGS.kolSk}</dt>
+          <dt><TekstZWzorami tekst={JAKOSC_STRINGS.kolSk} /></dt>
           <dd className="mvd-num">{wartoscMva(wezel.sk_mva)}</dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
@@ -692,7 +693,7 @@ function SzczegolMigotania({
               </div>
               <dl className="mvd-jakosc-szczegol-dane">
                 <div className="mvd-jakosc-szczegol-para">
-                  <dt>{JAKOSC_STRINGS.modulSn}</dt>
+                  <dt><TekstZWzorami tekst={JAKOSC_STRINGS.modulSn} /></dt>
                   <dd className="mvd-num">{wartoscMva(modul.sn_mva)}</dd>
                 </div>
                 <div className="mvd-jakosc-szczegol-para">
@@ -900,7 +901,7 @@ function SzczegolArcFlash({
           <dd className="mvd-num">{wynik.ppe_category ?? JAKOSC_STRINGS.kreska}</dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
-          <dt>{JAKOSC_STRINGS.kolIbf}</dt>
+          <dt><TekstZWzorami tekst={JAKOSC_STRINGS.kolIbf} /></dt>
           <dd className="mvd-num">
             {wynik.i_bf_ka !== null
               ? `${fmtKA(wynik.i_bf_ka)} ${JAKOSC_STRINGS.jednKA}`

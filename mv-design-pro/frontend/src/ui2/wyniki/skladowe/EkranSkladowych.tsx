@@ -67,8 +67,8 @@ function Stan({
 }) {
   return (
     <div className="mvd-skladowe-stan" data-testid={testid} data-tone={tone} role={tone === 'error' ? 'alert' : undefined}>
-      <h4>{tytul}</h4>
-      <p>{opis}</p>
+      <h4><TekstZWzorami tekst={tytul} /></h4>
+      <p><TekstZWzorami tekst={opis} /></p>
       {akcja && onAkcja && (
         <button type="button" className="mvd-skladowe-akcja" data-testid={`${testid}-akcja`} onClick={onAkcja}>
           {akcja}
@@ -89,7 +89,7 @@ function WartoscSkladowej({
 }) {
   return (
     <div className="mvd-skladowe-wartosc" data-testid={testid}>
-      <dt>{etykieta}</dt>
+      <dt><TekstZWzorami tekst={etykieta} /></dt>
       <dd className="mvd-num">
         {wartosc ? `${fmtZespolona(wartosc)} ${T.jednOhm}` : T.kreska}
       </dd>
@@ -214,7 +214,7 @@ export function EkranSkladowych() {
           </section>
 
           <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-skladowe">
-            <h4>{T.skladoweTytul}</h4>
+            <h4><TekstZWzorami tekst={T.skladoweTytul} /></h4>
             <p className="mvd-skladowe-nota">{T.skladoweOpis}</p>
             {!skladowe ? (
               // RESULT-FIRST: brak składowych i w wyniku, i w śladzie. Rozróżnij
@@ -453,7 +453,7 @@ export function EkranSkladowych() {
 
       <div className="mvd-skladowe-stopka">
         <span className="mvd-skladowe-lbl">{T.nastepnyEyebrow}</span>
-        <p>{T.nastepnyOpis}</p>
+        <p><TekstZWzorami tekst={T.nastepnyOpis} /></p>
         <button
           type="button"
           className="mvd-skladowe-powrot"

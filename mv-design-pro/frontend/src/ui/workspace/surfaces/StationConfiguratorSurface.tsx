@@ -187,31 +187,6 @@ function isTransformerCatalogVoltageCompatible(
   );
 }
 
-function formatMva(value: number): string {
-  return value.toLocaleString('pl-PL', { maximumFractionDigits: 3 });
-}
-
-function buildTransformerCatalogSummary(
-  type: TransformerType,
-  transformer: StationConfigTransformerRow,
-): string {
-  const target = transformer.snMva;
-  const powerStatus =
-    target == null || target <= 0
-      ? 'moc wg bilansu'
-      : type.rated_power_mva >= target
-        ? `zapas ${formatMva(type.rated_power_mva - target)} MVA`
-        : `za mały o ${formatMva(target - type.rated_power_mva)} MVA`;
-  return [
-    `${formatMva(type.rated_power_mva)} MVA`,
-    `${type.voltage_hv_kv}/${type.voltage_lv_kv} kV`,
-    type.vector_group,
-    `$u_{k}$ ${type.uk_percent}%`,
-    `$P_{k}$ ${type.pk_kw} kW`,
-    powerStatus,
-  ].join(' · ');
-}
-
 function compareTransformerCatalogTypes(
   transformer: StationConfigTransformerRow,
 ): (left: TransformerType, right: TransformerType) => number {
@@ -261,7 +236,6 @@ function buildTransformerCatalogOptionsById(
         id: type.id,
         name: type.name,
         manufacturer: type.manufacturer,
-        summary: buildTransformerCatalogSummary(type, transformer),
         ratedPowerMva: type.rated_power_mva,
         voltageHvKv: type.voltage_hv_kv,
         voltageLvKv: type.voltage_lv_kv,

@@ -22,6 +22,7 @@ import {
   PULPIT_STRINGS,
 } from './strings';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 export interface SekcjaSilySieciProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
@@ -60,7 +61,7 @@ function WpisWezla({
         <span className="mvd-oze-num">{formatWskaznik(wpis.scr)}</span>
       </div>
       <div className="mvd-oze-metryka">
-        <span>{PULPIT_STRINGS.silaSsc}</span>
+        <span><TekstZWzorami tekst={PULPIT_STRINGS.silaSsc} /></span>
         <span className="mvd-oze-num">{formatMva(wpis.s_sc_mva)}</span>
       </div>
       <div className="mvd-oze-metryka">

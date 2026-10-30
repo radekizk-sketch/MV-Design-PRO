@@ -123,6 +123,8 @@ import {
 // kontekst (dostawca niżej w `SldCanvasV3`), a węzły sceny biorą ją hakiem.
 import { SldPaletteContext, sldPaletteForTheme, useSldPalette } from '../theme/palette';
 import { GpzAdnotacjeWarstwa } from './GpzAdnotacjeWarstwa';
+import { tekstBezWzorow } from '../../../proof/latexTekst';
+import { TekstSvgZWzorami } from '../../../proof/TekstSvgZWzorami';
 import { useThemeModeStore, type ThemeMode } from '../../../../ui2/theme/themeMode';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
@@ -678,7 +680,7 @@ function HitShapeNode(props: {
          *  kształcie TRAFIENIA, nie na rysunku — warstwa trafień leży NAD
          *  rysunkiem, więc `<title>` na grupie symbolu nigdy by się nie pokazał
          *  (kontrolka-widmo). `undefined` ⇒ brak węzła, zero pustych `<title>`. */}
-        {area.tytul != null ? <title>{area.tytul}</title> : null}
+        {area.tytul != null ? <title>{tekstBezWzorow(area.tytul)}</title> : null}
       </rect>
     );
   }
@@ -1091,7 +1093,7 @@ function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): J
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
         >
-          {placement.label}
+          <TekstSvgZWzorami tekst={placement.label} />
         </text>
       ) : null}
     </g>
@@ -1449,7 +1451,7 @@ function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; rea
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
       >
-        {placement.label}
+        <TekstSvgZWzorami tekst={placement.label} />
       </text>
     </g>
   );
@@ -2041,7 +2043,7 @@ function SceneResultLabelNode(props: {
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
         >
-          {resultLabelLineText(line)}
+          <TekstSvgZWzorami tekst={resultLabelLineText(line)} />
         </text>
       ))}
       {/* R3 (wym. 9): znacznik przekroczenia „⚠” w rogu bloku (padding, poza
@@ -2166,7 +2168,7 @@ function SceneResultAggregateNode(props: {
               fontSize={typo.fontSize}
               fontWeight={typo.fontWeight}
             >
-              {provenanceText}
+              <TekstSvgZWzorami tekst={provenanceText} />
             </text>
           )}
           {aggregate.members.map((m, i) => {
@@ -2234,7 +2236,7 @@ function SceneResultAggregateNode(props: {
                   fontSize={typo.fontSize}
                   fontWeight={typo.fontWeight}
                 >
-                  {rowExceeded ? `${RESULT_EXCEEDANCE_GLYPH} ${memberText(m)}` : memberText(m)}
+                  <TekstSvgZWzorami tekst={rowExceeded ? `${RESULT_EXCEEDANCE_GLYPH} ${memberText(m)}` : memberText(m)} />
                 </text>
               </g>
             );
@@ -2318,7 +2320,7 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
         fontSize={planned.fontSize}
         fontWeight={typo.fontWeight}
       >
-        {planned.text}
+        <TekstSvgZWzorami tekst={planned.text} />
       </text>
     </g>
   );
@@ -3794,7 +3796,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                   fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
                   dominantBaseline="middle"
                 >
-                  {row}
+                  <TekstSvgZWzorami tekst={row} />
                 </text>
               ))}
             </g>

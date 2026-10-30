@@ -99,6 +99,7 @@ import {
 import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
 import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
 import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
+import { TekstZWzorami, tekstBezWzorow } from '../../ui2/kreatory/rama/tekstZWzorami';
 
 // =============================================================================
 // Types
@@ -3237,7 +3238,9 @@ function EngineeringField({
       data-testid={`engineering-field-${field.key}`}
       className="flex items-baseline justify-between gap-2"
     >
-      <span className="text-[length:var(--mvd-font-size-data)] text-gray-500 flex-shrink-0">{field.label}</span>
+      <span className="text-[length:var(--mvd-font-size-data)] text-gray-500 flex-shrink-0">
+        <TekstZWzorami tekst={field.label} />
+      </span>
       {editing ? (
         <input
           value={value}
@@ -3259,7 +3262,7 @@ function EngineeringField({
           role={editable ? 'button' : undefined}
           tabIndex={editable ? 0 : undefined}
           className={valueClassName}
-          title={value}
+          title={tekstBezWzorow(value)}
           onClick={editable ? () => setEditing(true) : undefined}
           onKeyDown={editable ? (event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -3268,7 +3271,7 @@ function EngineeringField({
             }
           } : undefined}
         >
-          {value}
+          <TekstZWzorami tekst={value} />
           {showUnit && <span className="text-gray-400 ml-0.5"> {field.unit}</span>}
         </div>
       )}

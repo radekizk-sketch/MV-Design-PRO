@@ -33,6 +33,7 @@
  * nie ukrywa nigdy drogi prądu, transformatora, aparatów ze stanem,
  * punktów otwartych, źródeł, odbiorów, granic ani stanu zasilania.
  */
+import { tekstBezWzorow, wyrazyPozaWzorami } from '../../../proof/latexTekst';
 import { CAD_SYMBOL_STROKE_PX } from '../cad/CadSymbol';
 import { sldPaletteForTheme } from '../theme/palette';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
@@ -210,17 +211,26 @@ export const LINE_HEIGHT = 1.25;
  *  zmieściła. ZAKAZ łamania w środku wyrazu (także technicznego z dywizem,
  *  np. „grid-following"): wyraz dłuższy niż linia zostaje w całości i jest
  *  uczciwie skrócony wielokropkiem — pełna nazwa żyje w podpowiedzi i w
- *  inspektorze, nie w połamanej etykiecie. Czysta funkcja, deterministyczna. */
+ *  inspektorze, nie w połamanej etykiecie. Czysta funkcja, deterministyczna.
+ *
+ *  Wzór `$…$` (symbol renderowany `<tspan>`-ami przez `TekstSvgZWzorami`) jest
+ *  wyrazem niepodzielnym, także gdy zawiera spacje, a jego długość to długość
+ *  ODCZYTU (`tekstBezWzorow`: `$I_{k3}''$` → „Ik3″", 4 znaki), nie zapisu LaTeX.
+ *  Wyraz ze wzorem, który trzeba skrócić, traci zapis wzoru na rzecz odczytu —
+ *  ucięty zapis LaTeX nie dałby się złożyć. */
 export function zawinNazwe(text: string, maxChars: number, maxLines: number): readonly string[] {
   const limit = Math.max(2, Math.floor(maxChars));
-  const slowa = text.trim().split(/\s+/).filter(Boolean);
+  const slowa = wyrazyPozaWzorami(text);
   if (slowa.length === 0) return [''];
-  const skroc = (s: string): string => (s.length <= limit ? s : `${s.slice(0, Math.max(1, limit - 1)).trimEnd()}…`);
+  const dlugosc = (s: string): number => tekstBezWzorow(s).length;
+  const utnij = (s: string): string =>
+    `${tekstBezWzorow(s).slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
+  const skroc = (s: string): string => (dlugosc(s) <= limit ? s : utnij(s));
   const linie: string[] = [];
   let biezaca = '';
   for (const slowo of slowa) {
     const kandydat = biezaca ? `${biezaca} ${slowo}` : slowo;
-    if (kandydat.length <= limit || biezaca === '') {
+    if (dlugosc(kandydat) <= limit || biezaca === '') {
       biezaca = kandydat;
     } else {
       linie.push(biezaca);
@@ -232,7 +242,7 @@ export function zawinNazwe(text: string, maxChars: number, maxLines: number): re
   if (zLimitem.length <= maxLines) return zLimitem;
   const skrocone = zLimitem.slice(0, maxLines);
   const ostatnia = skrocone[maxLines - 1];
-  skrocone[maxLines - 1] = ostatnia.endsWith('…') ? ostatnia : `${ostatnia.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
+  skrocone[maxLines - 1] = ostatnia.endsWith('…') ? ostatnia : utnij(ostatnia);
   return skrocone;
 }
 
@@ -490,12 +500,12 @@ export const REJESTR_ELEMENTOW_KANWY: Readonly<Record<ElementKanwyNn, WpisRejest
   plakietkaWyniku: { warstwa: 'tozsamosc', lody: OD_SIECI, powod: 'Liczbowa plakietka nakładki — na przeglądzie zastępuje ją kropka werdyktu.' },
   kropkaWerdyktu: { warstwa: 'tozsamosc', lody: TYLKO_PRZEGLAD, powod: 'Uproszczona postać nakładki na przeglądzie: werdykt bez liczby.' },
 
-  parametryKotwicyZrodla: { warstwa: 'opis', lody: TYLKO_PELNY, powod: '$S_{k}\'\'$/$I_{k}\'\'$ strony SN — parametr, nie tożsamość.' },
-  tabliczkaTransformatora: { warstwa: 'opis', lody: TYLKO_PELNY, powod: '$S_{n}$/przekładnia/grupa/$u_{k}$ — opis drugorzędny.' },
+  parametryKotwicyZrodla: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Moc i prąd zwarciowy strony SN — parametr, nie tożsamość.' },
+  tabliczkaTransformatora: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Moc znamionowa, przekładnia, grupa połączeń, napięcie zwarcia — opis drugorzędny.' },
   parametrZrodlaDer: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Moc źródła i zdolność pracy wyspowej — parametr.' },
   parametrOdbioru: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Moc odbioru — parametr.' },
   parametrKabla: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Typ/przekrój kabla z katalogu — parametr.' },
-  tabliczkaAparatu: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Tabliczka aparatu z katalogu (RCD: IΔn, typ, $I_{n}$) — parametr.' },
+  tabliczkaAparatu: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Tabliczka aparatu z katalogu (RCD: znamionowy prąd różnicowy, typ, prąd znamionowy) — parametr.' },
   napiecieSekcji: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Napięcie szyny — parametr; poziom napięcia domeny jest w nagłówku.' },
   napiecieGranicy: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Napięcie zacisku granicznego — parametr.' },
   nazwaZaciskuModelu: { warstwa: 'opis', lody: TYLKO_PELNY, powod: 'Nazwa zacisku modelu (tryb audytu topologii) — opis modelu.' },

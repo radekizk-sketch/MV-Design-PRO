@@ -20,7 +20,7 @@
 
 import { Fragment } from 'react';
 import { MathInline } from '../../../ui/proof/MathRenderer';
-import { jestWzorem, latexNaTekst, SEGMENT_WZORU_INLINE } from '../../../ui/proof/latexTekst';
+import { jestWzorem, SEGMENT_WZORU_INLINE, tekstBezWzorow } from '../../../ui/proof/latexTekst';
 
 export interface TekstZWzoramiProps {
   /** Tekst PL z opcjonalnymi wzorami LaTeX w delimiterach `$...$`. */
@@ -28,9 +28,7 @@ export interface TekstZWzoramiProps {
 }
 
 /** Tekst bez wzorów dla atrybutów i natywnych `<option>` (patrz nagłówek modułu). */
-export function tekstBezWzorow(tekst: string): string {
-  return tekst.replace(/\$([^$]+)\$/g, (_cale, latex: string) => latexNaTekst(latex));
-}
+export { tekstBezWzorow };
 
 /** Tekst z osadzonymi wzorami LaTeX renderowanymi przez KaTeX (MathInline). */
 export function TekstZWzorami({ tekst }: TekstZWzoramiProps) {

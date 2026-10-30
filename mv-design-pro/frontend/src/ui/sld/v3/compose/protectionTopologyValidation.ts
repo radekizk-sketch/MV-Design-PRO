@@ -87,7 +87,7 @@ export interface ProtectionTopologyDomainContext {
 const REASON_LABEL_PL: Readonly<Record<ProtectionTopologyGapReason, string>> = {
   missing_vt: 'brak VT',
   missing_transformer: 'brak transformatora',
-  missing_i0: 'brak $I_{0}$',
+  missing_i0: 'brak pomiaru prądu zerowego',
   vt_not_open_delta: 'VT nie w układzie otwartego trójkąta',
   missing_second_ct: 'brak drugiego CT strefy',
 };

@@ -131,7 +131,7 @@ function StanPanel({
       data-testid={testid}
     >
       <p className="mvd-akad-stan-title">{komunikat}</p>
-      {opis && <p className="mvd-akad-stan-desc">{opis}</p>}
+      {opis && <p className="mvd-akad-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
@@ -179,7 +179,7 @@ function Zwijana({
   return (
     <section className="mvd-akad-sekcja" data-testid={testid}>
       <div className="mvd-akad-sekcja-naglowek">
-        <h3 className="mvd-akad-sekcja-tytul">{tytul}</h3>
+        <h3 className="mvd-akad-sekcja-tytul"><TekstZWzorami tekst={tytul} /></h3>
         {!pusta && (
           <span className="mvd-akad-licznik mvd-num" data-testid={`${testid}-licznik`}>
             {licznik}
@@ -203,7 +203,7 @@ function Zwijana({
         </p>
       ) : (
         <>
-          {opis && <p className="mvd-akad-opis">{opis}</p>}
+          {opis && <p className="mvd-akad-opis"><TekstZWzorami tekst={opis} /></p>}
           {otwarte && children}
         </>
       )}
@@ -402,8 +402,8 @@ function KartaAnalizy({
 function Podsekcja({ tytul, opis, testid, children }: { tytul: string; opis?: string; testid: string; children: React.ReactNode }) {
   return (
     <div className="mvd-akad-podsekcja" data-testid={testid}>
-      <h4 className="mvd-akad-podsekcja-tytul">{tytul}</h4>
-      {opis && <p className="mvd-akad-opis">{opis}</p>}
+      <h4 className="mvd-akad-podsekcja-tytul"><TekstZWzorami tekst={tytul} /></h4>
+      {opis && <p className="mvd-akad-opis"><TekstZWzorami tekst={opis} /></p>}
       {children}
     </div>
   );

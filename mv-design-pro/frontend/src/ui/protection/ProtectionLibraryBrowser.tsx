@@ -514,7 +514,7 @@ function TemplateDetails({ type }: { type: ProtectionSettingTemplate }) {
                 {field.unit && <div className="text-gray-500">Jednostka: {field.unit}</div>}
                 {field.jednostka_status === 'NIEUSTALONA' && (
                   <div className="text-amber-700" data-testid="szablon-jednostka-nieustalona">
-                    Jednostka: nieustalona — brak podstawy (ampery wtórne, krotność In wejścia
+                    Jednostka: nieustalona — brak podstawy (ampery wtórne, krotność prądu znamionowego wejścia
                     przekaźnika czy ampery pierwotne); zakres nie jest źródłem nastaw oceny
                   </div>
                 )}

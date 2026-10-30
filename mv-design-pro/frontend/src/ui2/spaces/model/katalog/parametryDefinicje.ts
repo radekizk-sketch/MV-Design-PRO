@@ -539,32 +539,32 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
   t_a_s: {
     symbol: 'ta(IΔn)',
     symbolLatex: 't_a(I_{\\Delta n})',
-    etykieta: 'Maksymalny czas wyłączenia przy IΔn',
+    etykieta: 'Maksymalny czas wyłączenia przy $I_{\\Delta n}$',
     jednostka: 's',
     typ: 'liczba',
     miejscaDziesietne: 2,
-    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym IΔn.',
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym $I_{\\Delta n}$.',
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
   },
   t_a_2idn_s: {
     symbol: 'ta(2·IΔn)',
     symbolLatex: 't_a(2 \\cdot I_{\\Delta n})',
-    etykieta: 'Maksymalny czas wyłączenia przy 2·IΔn',
+    etykieta: 'Maksymalny czas wyłączenia przy $2 \\cdot I_{\\Delta n}$',
     jednostka: 's',
     typ: 'liczba',
     miejscaDziesietne: 2,
-    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym 2·IΔn.',
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym $2 \\cdot I_{\\Delta n}$.',
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
   },
   t_a_5idn_s: {
     symbol: 'ta(5·IΔn)',
     symbolLatex: 't_a(5 \\cdot I_{\\Delta n})',
-    etykieta: 'Maksymalny czas wyłączenia przy 5·IΔn',
+    etykieta: 'Maksymalny czas wyłączenia przy $5 \\cdot I_{\\Delta n}$',
     jednostka: 's',
     typ: 'liczba',
     miejscaDziesietne: 2,
-    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym 5·IΔn '
-      + '(dla IΔn ≤ 0,03 A — przy 0,25 A).',
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym $5 \\cdot I_{\\Delta n}$ '
+      + '(dla $I_{\\Delta n}$ ≤ 0,03 A — przy 0,25 A).',
     norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
   },
   t_nieczuly_min_s: {

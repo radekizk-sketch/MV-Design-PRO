@@ -17,6 +17,7 @@ import {
   type StanZapisuKomorki,
 } from './edytowalnaTabelaModel';
 import './edytowalnaTabela.css';
+import { TekstZWzorami } from '../kreatory/rama/tekstZWzorami';
 
 export interface EdytowalnaTabelaProps<T> {
   kolumny: readonly KolumnaEdytowalna<T>[];
@@ -86,7 +87,7 @@ export function EdytowalnaTabela<T>({
               const wskaznik = aktywne ? (sort.kierunek === 'rosnaco' ? '▲' : '▼') : '';
               const tresc = (
                 <>
-                  <span>{kol.etykieta}</span>
+                  <span><TekstZWzorami tekst={kol.etykieta} /></span>
                   {kol.jednostka ? <span className="mvd-edyt-tabela-th-unit">[{kol.jednostka}]</span> : null}
                   {wskaznik ? <span aria-hidden="true">{wskaznik}</span> : null}
                 </>

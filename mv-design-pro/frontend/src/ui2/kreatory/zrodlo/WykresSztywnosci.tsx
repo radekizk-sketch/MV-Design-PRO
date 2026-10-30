@@ -8,6 +8,8 @@
 
 import { PAD, RamkaWykresu, VBH, VBW, px, py } from '../rama';
 import { ZRODLO_STRINGS as T } from './strings';
+import { tekstBezWzorow } from '../rama/tekstZWzorami';
+import { TekstSvgZWzorami } from '../../../ui/proof/TekstSvgZWzorami';
 
 /** Hiperbola Z/Zn = Skn/Sk″ z punktem odniesienia (1;1). */
 export function WykresSztywnosci() {
@@ -22,7 +24,7 @@ export function WykresSztywnosci() {
     pts.push(`${px(nx(s)).toFixed(1)},${py(ny(1 / s)).toFixed(1)}`);
   }
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={T.wykresAria}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={tekstBezWzorow(T.wykresAria)}>
       {/* linie odniesienia Sk=Skn, Z=Zn */}
       <line x1={px(nx(1))} y1={PAD.t} x2={px(nx(1))} y2={py(0)} className="mvd-wykres-siatka" />
       <line x1={PAD.l} y1={py(ny(1))} x2={px(1)} y2={py(ny(1))} className="mvd-wykres-siatka" />
@@ -30,7 +32,7 @@ export function WykresSztywnosci() {
       <polyline points={pts.join(' ')} className="mvd-wykres-krzywa" />
       <circle cx={px(nx(1))} cy={py(ny(1))} r={3} className="mvd-wykres-punkt" />
       <text x={px(nx(1)) + 6} y={py(ny(1)) - 6} className="mvd-wykres-znak">
-        {T.wykresPunkt}
+        <TekstSvgZWzorami tekst={T.wykresPunkt} />
       </text>
     </svg>
   );

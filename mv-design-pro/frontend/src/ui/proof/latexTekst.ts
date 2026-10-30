@@ -289,3 +289,21 @@ export const SEGMENT_WZORU_INLINE = /(\$[^$]+\$)/g;
 export function jestWzorem(segment: string): boolean {
   return segment.length > 2 && segment.startsWith('$') && segment.endsWith('$');
 }
+
+/**
+ * Tekst bez wzorów — segment `$…$` zamieniony na odczyt symbolu (`latexNaTekst`). Dla miejsc,
+ * które nie renderują HTML-a ani `<tspan>` (atrybuty `title`/`aria-label`, natywne `<option>`,
+ * eksport tekstowy) oraz do szacowania długości czytanej etykiety (zawijanie, skracanie).
+ */
+export function tekstBezWzorow(tekst: string): string {
+  return tekst.replace(/\$([^$]+)\$/g, (_cale, latex: string) => latexNaTekst(latex));
+}
+
+/** Wyrazy tekstu: podział po białych znakach POZA wzorami `$…$` — wzór jest wyrazem
+ *  niepodzielnym także wtedy, gdy zawiera spację (`$2\pi f \cdot t_{b}$`). */
+export function wyrazyPozaWzorami(tekst: string): string[] {
+  return tekst
+    .trim()
+    .split(/\s+(?=(?:[^$]*\$[^$]*\$)*[^$]*$)/)
+    .filter((wyraz) => wyraz.length > 0);
+}

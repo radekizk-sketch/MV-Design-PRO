@@ -19,7 +19,7 @@ const REQUIRED_SCOPES = [
   'profile operatora',
   'profile źródeł',
   'profile Q(U)',
-  'profile cos φ(P)',
+  'profile $\\cos\\varphi$(P)',
   'profile FRT/LVRT/HVRT',
   'przypadki obliczeniowe',
   'warianty pracy',

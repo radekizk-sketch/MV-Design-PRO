@@ -33,6 +33,7 @@ import {
 } from '../protection';
 import { formatProtectionFunction, formatNumberPl } from './formatProtection';
 import { ItCurvePanel } from '../protection-curves';
+import { MathInline } from '../proof/MathRenderer';
 
 // =============================================================================
 // Types
@@ -204,10 +205,14 @@ function SettingsSummaryView({ summary }: SettingsSummaryViewProps) {
         <div className="text-xs text-gray-500 pt-1 border-t border-gray-200">
           <span className="italic">Dane bazowe:</span>
           {summary.base_values.i_rated_a !== undefined && (
-            <span className="ml-2">In={formatNumberPl(summary.base_values.i_rated_a, 0)} A</span>
+            <span className="ml-2">
+              <MathInline latex="I_{n}" />={formatNumberPl(summary.base_values.i_rated_a, 0)} A
+            </span>
           )}
           {summary.base_values.u_rated_kv !== undefined && (
-            <span className="ml-2">Un={formatNumberPl(summary.base_values.u_rated_kv, 1)} kV</span>
+            <span className="ml-2">
+              <MathInline latex="U_{n}" />={formatNumberPl(summary.base_values.u_rated_kv, 1)} kV
+            </span>
           )}
           {summary.base_values.f_rated_hz !== undefined && (
             <span className="ml-2">fn={formatNumberPl(summary.base_values.f_rated_hz, 0)} Hz</span>

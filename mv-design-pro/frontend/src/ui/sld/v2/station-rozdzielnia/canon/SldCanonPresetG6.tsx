@@ -160,7 +160,7 @@ export function SldCanonPresetG6({ companion }: { companion: SldOzeArchetypeComp
           {lbl(fx, 595, '◯ stojan + ~/= wirnik (crowbar)', TXT2, 9, 700, 'middle')}
         </g>
       ))}
-      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 616, '0,69 kV: stojan DFIG na sieci = MASZYNA asynchroniczna (PN-EN 60909, za X″); crowbar zwiera wirnik przy zwarciu → klatkowa', TXT_MUTED, 9, 600, 'middle')}
+      {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 616, '0,69 kV: stojan DFIG na sieci = MASZYNA asynchroniczna (PN-EN 60909, za $X\'\'$); crowbar zwiera wirnik przy zwarciu → klatkowa', TXT_MUTED, 9, 600, 'middle')}
       {lbl((X.t[0] + X.t[X.t.length - 1]) / 2, 629, `zab. maszyny: ${machineProt} + crowbar + przekształtnik wirnikowy: ${convProt}`, TXT_MUTED, 8.5, 600, 'middle')}
 
       {/* ── node ① — collector 15 kV (sieć + MASZYNA referred through the turbine TR) ── */}

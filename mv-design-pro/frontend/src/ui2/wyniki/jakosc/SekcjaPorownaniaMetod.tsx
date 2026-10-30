@@ -47,6 +47,7 @@ import {
   type WynikBieguMetody,
 } from './porownanieMetodModel';
 import { JAKOSC_STRINGS as T } from './strings';
+import { TekstZWzorami } from '../../kreatory/rama/tekstZWzorami';
 
 type StanOdkrycia =
   | { faza: 'ladowanie' }
@@ -79,8 +80,8 @@ function StanMetod({
       className={wariant === 'blad' ? 'mvd-jakosc-stan mvd-jakosc-stan--blad' : 'mvd-jakosc-stan'}
       data-testid={testid}
     >
-      <p className="mvd-jakosc-stan-title">{tytul}</p>
-      {opis && <p className="mvd-jakosc-stan-desc">{opis}</p>}
+      <p className="mvd-jakosc-stan-title"><TekstZWzorami tekst={tytul} /></p>
+      {opis && <p className="mvd-jakosc-stan-desc"><TekstZWzorami tekst={opis} /></p>}
       {akcja && onAkcja && (
         <button type="button" className="mvd-jakosc-af-licz" onClick={onAkcja} data-testid={`${testid}-akcja`}>
           {akcja}
@@ -239,7 +240,7 @@ export function SekcjaPorownaniaMetod({ szczegolyAudytowe, onOtworzDowod }: Sekc
             {naPodsumowaniePorownaniaMetod(stan.porownanie.summary).map((p) => (
               <div className="mvd-jakosc-chip mvd-jakosc-chip--neutral" key={p.etykieta}>
                 <span className="mvd-jakosc-chip-liczba mvd-num">{p.wartosc}</span>
-                <span className="mvd-jakosc-chip-etykieta">{p.etykieta}</span>
+                <span className="mvd-jakosc-chip-etykieta"><TekstZWzorami tekst={p.etykieta} /></span>
               </div>
             ))}
           </div>

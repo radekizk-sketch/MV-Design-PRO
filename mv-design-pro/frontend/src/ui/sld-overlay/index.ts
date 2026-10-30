@@ -27,8 +27,6 @@ export type {
   VariantDeltaOverlayBadges,
 } from './overlayTypes';
 
-export { OVERLAY_ANALYSIS_LABELS } from './overlayTypes';
-
 // Store
 export { useOverlayStore, ALL_OVERLAY_KINDS } from './overlayStore';
 export type { OverlayKind } from './overlayStore';
