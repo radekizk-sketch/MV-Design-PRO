@@ -297,7 +297,7 @@ def ocen_swz(
             trace.append(
                 {
                     "step": "aparat_wkladka_gg_brak_in",
-                    "method": "G-D2 — bramki I-t gG wymagają In wkładki",
+                    "method": "G-D2 — bramki prądowo-czasowe gG wymagają prądu znamionowego wkładki",
                     "result": "NIEROZSTRZYGALNE",
                 }
             )
@@ -305,8 +305,9 @@ def ocen_swz(
                 SwzResult(
                     status=SwzStatus.NIEROZSTRZYGALNE,
                     przyczyna_pl=(
-                        "Wkładka topikowa gG bez prądu znamionowego In — bramki I-t (G-D2, "
-                        "IEC 60269-1) nie do wyznaczenia bez In. Werdykt SWZ NIEROZSTRZYGALNY."
+                        "Wkładka topikowa gG bez prądu znamionowego — bramki prądowo-czasowe "
+                        "(G-D2, IEC 60269-1) nie do wyznaczenia bez prądu znamionowego. Werdykt "
+                        "SWZ NIEROZSTRZYGALNY."
                     ),
                     ik1_min_a=ik1_min_a,
                     ia_wymagane_a=None,
@@ -323,7 +324,10 @@ def ocen_swz(
             trace.append(
                 {
                     "step": "aparat_wkladka_gg_poza_zakresem",
-                    "method": "G-D2 — mnożniki bramek dla In<=16 A NIE zaimplementowane",
+                    "method": (
+                        "G-D2 — mnożniki bramek dla prądu znamionowego do 16 A NIE "
+                        "zaimplementowane"
+                    ),
                     "in_a": aparat.in_a,
                     "result": "NIEROZSTRZYGALNE",
                 }
@@ -332,10 +336,11 @@ def ocen_swz(
                 SwzResult(
                     status=SwzStatus.NIEROZSTRZYGALNE,
                     przyczyna_pl=(
-                        f"Wkładka topikowa gG In={aparat.in_a:g} A <= 16 A — poza zweryfikowanym "
-                        "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16 A różnią się od "
-                        "In>16 A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
-                        "źródłowej — patrz `protection_lv_curves._czas_umowny_fuse_gg_s`). "
+                        f"Wkładka topikowa gG o prądzie znamionowym {aparat.in_a:g} A (nie "
+                        "większym od 16 A) — poza zweryfikowanym zakresem G-D2 (mnożniki bramek "
+                        "prądu niezadziałania i zadziałania do 16 A różnią się od mnożników "
+                        "powyżej 16 A wg IEC 60269-1 i nie mają w tej karcie podwójnej "
+                        "weryfikacji źródłowej). "
                         "Werdykt SWZ NIEROZSTRZYGALNY, nie fabrykacja mnożnika."
                     ),
                     ik1_min_a=ik1_min_a,
@@ -377,9 +382,11 @@ def ocen_swz(
                 {
                     "step": "werdykt_gg_nie_spelnia",
                     "method": (
-                        "Ik1_min <= Inf ⇒ brak stopienia gwarantowany NAWET w czasie "
-                        "umownym normy (dłuższym niż t_wymagany SWZ) — monotoniczność "
-                        "charakterystyki t-I gG (mniejszy prąd nigdy nie topi szybciej)"
+                        "najmniejszy prąd zwarcia jednofazowego nie większy od prądu "
+                        "niezadziałania, więc brak stopienia gwarantowany NAWET w czasie "
+                        "umownym normy (dłuższym niż wymagany czas wyłączenia SWZ) — "
+                        "monotoniczność charakterystyki czasowo-prądowej gG (mniejszy prąd "
+                        "nigdy nie topi szybciej)"
                     ),
                     "ik1_min_a": ik1_min_a,
                     "inf_a": bramka_konwencjonalna.inf_a,
@@ -388,12 +395,14 @@ def ocen_swz(
                 }
             )
             przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A <= Inf={bramka_konwencjonalna.inf_a:.1f} A "
+                f"Najmniejszy prąd zwarcia jednofazowego {ik1_min_a:.1f} A nie większy od prądu "
+                f"niezadziałania {bramka_konwencjonalna.inf_a:.1f} A "
                 f"(wkładka gG {aparat.in_a:g} A, IEC 60269-1, {FUSE_GG_GATE_SOURCE_PL}) — "
                 "norma gwarantuje BRAK stopienia nawet w (dłuższym) czasie umownym normy "
                 f"({bramka_konwencjonalna.t_umowny_s:g} s), więc a fortiori wkładka NIE "
-                f"stopi się w krótszym t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 "
-                f"{pasmo}) — charakterystyka t-I gG jest monotoniczna. NIE SPEŁNIA."
+                f"stopi się w krótszym wymaganym czasie wyłączenia {t_wymagany:g} s SWZ "
+                f"({rodzaj}, pasmo napięcia względem ziemi {pasmo}) — charakterystyka "
+                "czasowo-prądowa gG jest monotoniczna. NIE SPEŁNIA."
             )
             return z_danymi_przyjetymi(
                 SwzResult(
@@ -443,10 +452,10 @@ def ocen_swz(
                 }
             )
             przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A >= bramka(t_wymagany={t_wymagany:g} s)="
-                f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — norma gwarantuje "
-                f"stopienie w t_wymagany={t_wymagany:g} s ({rodzaj}, pasmo U0 {pasmo}). "
-                "SPEŁNIA."
+                f"Najmniejszy prąd zwarcia jednofazowego {ik1_min_a:.1f} A nie mniejszy od "
+                f"bramki dla wymaganego czasu wyłączenia {t_wymagany:g} s ({bramka_t_wym_a:.1f} "
+                f"A, wkładka gG {aparat.in_a:g} A) — norma gwarantuje stopienie w "
+                f"{t_wymagany:g} s ({rodzaj}, pasmo napięcia względem ziemi {pasmo}). SPEŁNIA."
             )
             return z_danymi_przyjetymi(
                 SwzResult(
@@ -465,22 +474,25 @@ def ocen_swz(
 
         if bramka_t_wym_a is None:
             przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A > Inf={bramka_konwencjonalna.inf_a:.1f} A "
+                f"Najmniejszy prąd zwarcia jednofazowego {ik1_min_a:.1f} A większy od prądu "
+                f"niezadziałania {bramka_konwencjonalna.inf_a:.1f} A "
                 f"(wkładka gG {aparat.in_a:g} A) — norma NIE gwarantuje braku stopienia, ale "
-                f"brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy "
-                f"t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 {pasmo}) w rejestrze "
-                f"({FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL}). Bramki Inf/If (G-D2) gwarantują "
+                f"brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy wymaganym czasie "
+                f"wyłączenia {t_wymagany:g} s SWZ ({rodzaj}, pasmo napięcia względem ziemi "
+                f"{pasmo}) w rejestrze ({FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL}). Bramki prądu "
+                "niezadziałania i zadziałania (G-D2) gwarantują "
                 f"WYŁĄCZNIE zachowanie w czasie umownym normy "
-                f"({bramka_konwencjonalna.t_umowny_s:g} s), NIE w t_wymagany SWZ — nie da "
+                f"({bramka_konwencjonalna.t_umowny_s:g} s), NIE w wymaganym czasie SWZ — nie da "
                 "się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty "
                 "P0.7). NIEROZSTRZYGALNE (warunkowe)."
             )
         else:
             przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A < bramka(t_wymagany={t_wymagany:g} s)="
-                f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — Ik1_min powyżej "
-                f"Inf, ale poniżej bramki gwarantującej stopienie w t_wymagany={t_wymagany:g} "
-                f"s ({rodzaj}, pasmo U0 {pasmo}) — norma nie gwarantuje ani braku, ani "
+                f"Najmniejszy prąd zwarcia jednofazowego {ik1_min_a:.1f} A mniejszy od bramki "
+                f"dla wymaganego czasu wyłączenia {t_wymagany:g} s ({bramka_t_wym_a:.1f} A, "
+                f"wkładka gG {aparat.in_a:g} A) — prąd powyżej prądu niezadziałania, ale "
+                f"poniżej bramki gwarantującej stopienie w {t_wymagany:g} s ({rodzaj}, pasmo "
+                f"napięcia względem ziemi {pasmo}) — norma nie gwarantuje ani braku, ani "
                 "wystąpienia stopienia w tym przedziale (zakaz interpolacji, §0.2 karty "
                 "P0.7). NIEROZSTRZYGALNE (warunkowe)."
             )
@@ -515,7 +527,10 @@ def ocen_swz(
             trace.append(
                 {
                     "step": "aparat_mccb_brak_nastawy_ii",
-                    "method": "Karta D1 — Ia z nastawy Ii (magnetycznej/bezzwłocznej)",
+                    "method": (
+                        "Karta D1 — prąd zapewniający samoczynne wyłączenie z nastawy członu "
+                        "bezzwłocznego (magnetycznego)"
+                    ),
                     "result": "NIEROZSTRZYGALNE",
                 }
             )
@@ -524,7 +539,8 @@ def ocen_swz(
                     status=SwzStatus.NIEROZSTRZYGALNE,
                     przyczyna_pl=(
                         "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
-                        "zwarciowej Ii w katalogu — Ia nie do wyznaczenia bez fabrykacji danych."
+                        "zwarciowej w katalogu — prądu zapewniającego samoczynne wyłączenie nie "
+                        "da się wyznaczyć bez fabrykacji danych."
                     ),
                     ik1_min_a=ik1_min_a,
                     ia_wymagane_a=None,
@@ -544,8 +560,9 @@ def ocen_swz(
         trace.append(
             {
                 "step": "ia_z_nastawy_ii_mccb",
-                "method": "Ia = Ii (nastawa zwarciowa/bezzwłoczna wyzwalacza elektronicznego, "
-                "IEC 60947-2) — karta D1, bez interpolacji pasma (Ii jest KONKRETNĄ nastawą)",
+                "method": "prąd zapewniający samoczynne wyłączenie równy nastawie zwarciowej "
+                "(bezzwłocznej) wyzwalacza elektronicznego (IEC 60947-2) — karta D1, bez "
+                "interpolacji pasma (nastawa jest KONKRETNĄ wartością)",
                 "ii_a": aparat.ii_a,
                 "ia_a": ia,
             }
@@ -553,8 +570,10 @@ def ocen_swz(
         trace.append(
             {
                 "step": "werdykt",
-                "method": "Ik1_min ≥ Ia ⇒ wyzwolenie zwarciowe (natychmiastowe) gwarantowane "
-                "(<0,1 s < t_wymagany z Tab. 41.1)",
+                "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu "
+                "zapewniającego samoczynne wyłączenie, więc wyzwolenie zwarciowe (natychmiastowe) "
+                "gwarantowane "
+                "(krócej niż 0,1 s, czyli przed wymaganym czasem wyłączenia z Tab. 41.1)",
                 "ik1_min_a": ik1_min_a,
                 "ia_a": ia,
                 "margines": margines,
@@ -563,17 +582,21 @@ def ocen_swz(
         )
 
         przyczyna = (
-            f"Ik1_min={ik1_min_a:.1f} A {'≥' if spelnia else '<'} Ia={ia:.1f} A "
-            f"(MCCB, nastawa Ii={aparat.ii_a:.1f} A — wyzwolenie zwarciowe natychmiastowe, "
-            f"<0,1 s, IEC 60947-2). Czas wyzwolenia jest poniżej t_wymagany={t_wymagany:g} s "
-            f"z Tab. 41.1 ({rodzaj}, pasmo U0 {pasmo}), więc kryterium czasowe jest spełnione "
+            f"Najmniejszy prąd zwarcia jednofazowego {ik1_min_a:.1f} A "
+            f"{'nie mniejszy od' if spelnia else 'mniejszy od'} prądu zapewniającego "
+            f"samoczynne wyłączenie {ia:.1f} A "
+            f"(MCCB, nastawa bezzwłoczna {aparat.ii_a:.1f} A — wyzwolenie zwarciowe "
+            "natychmiastowe, krótsze niż 0,1 s, IEC 60947-2). Czas wyzwolenia jest poniżej "
+            f"wymaganego czasu wyłączenia {t_wymagany:g} s "
+            f"z Tab. 41.1 ({rodzaj}, pasmo napięcia względem ziemi {pasmo}), więc kryterium czasowe jest spełnione "
             "automatycznie po spełnieniu kryterium prądowego."
             if spelnia
             else (
-                f"Ik1_min={ik1_min_a:.1f} A < Ia={ia:.1f} A (MCCB, nastawa Ii="
+                f"Najmniejszy prąd zwarcia jednofazowego {ik1_min_a:.1f} A mniejszy od prądu "
+                f"zapewniającego samoczynne wyłączenie {ia:.1f} A (MCCB, nastawa bezzwłoczna "
                 f"{aparat.ii_a:.1f} A) — wyzwolenie zwarciowe NIE jest gwarantowane przy tej "
-                f"nastawie; aparat może nie wyłączyć w czasie t_wymagany={t_wymagany:g} s "
-                f"z Tab. 41.1 ({rodzaj}, pasmo U0 {pasmo})."
+                f"nastawie; aparat może nie wyłączyć w wymaganym czasie {t_wymagany:g} s "
+                f"z Tab. 41.1 ({rodzaj}, pasmo napięcia względem ziemi {pasmo})."
             )
         )
 
@@ -606,7 +629,8 @@ def ocen_swz(
                 status=SwzStatus.NIEROZSTRZYGALNE,
                 przyczyna_pl=(
                     f"Typ aparatu '{aparat.typ}' nieobsłużony w werdykcie SWZ karty P0.6 "
-                    f"(obsługiwane: {', '.join(_TYPY_APARATU_DOZWOLONE)}) — brak modelu Ia, "
+                    f"(obsługiwane: {', '.join(_TYPY_APARATU_DOZWOLONE)}) — brak modelu prądu "
+                    "zapewniającego samoczynne wyłączenie, "
                     "nie fabrykacja."
                 ),
                 ik1_min_a=ik1_min_a,
@@ -633,8 +657,8 @@ def ocen_swz(
             SwzResult(
                 status=SwzStatus.NIEROZSTRZYGALNE,
                 przyczyna_pl=(
-                    "MCB bez kompletnych danych (In i/lub klasa B/C/D) — Ia nie do "
-                    "wyznaczenia bez fabrykacji."
+                    "MCB bez kompletnych danych (prąd znamionowy i/lub klasa B/C/D) — prądu "
+                    "zapewniającego samoczynne wyłączenie nie da się wyznaczyć bez fabrykacji."
                 ),
                 ik1_min_a=ik1_min_a,
                 ia_wymagane_a=None,
@@ -663,8 +687,10 @@ def ocen_swz(
     trace.append(
         {
             "step": "werdykt",
-            "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s "
-            "< t_wymagany z Tab. 41.1)",
+            "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu "
+            "zapewniającego samoczynne wyłączenie, więc wyzwolenie magnetyczne gwarantowane "
+            "(chwilowe, krótsze niż 0,1 s, czyli przed wymaganym czasem wyłączenia z "
+            "Tab. 41.1)",
             "ik1_min_a": ik1_min_a,
             "ia_a": ia,
             "margines": margines,
@@ -673,18 +699,22 @@ def ocen_swz(
     )
 
     przyczyna = (
-        f"Ik1_min={ik1_min_a:.1f} A {'≥' if spelnia else '<'} Ia={ia:.1f} A "
+        f"Najmniejszy prąd zwarcia jednofazowego {ik1_min_a:.1f} A "
+        f"{'nie mniejszy od' if spelnia else 'mniejszy od'} prądu zapewniającego "
+        f"samoczynne wyłączenie {ia:.1f} A "
         f"(MCB {aparat.klasa_mcb} {aparat.in_a:g} A, wyzwolenie magnetyczne gwarantowane "
         f"na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest "
-        f"chwilowy (<0,1 s) — poniżej t_wymagany={t_wymagany:g} s z Tab. 41.1 "
-        f"({rodzaj}, pasmo U0 {pasmo}), więc kryterium czasowe jest spełnione automatycznie "
+        f"chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia {t_wymagany:g} s "
+        "z Tab. 41.1 "
+        f"({rodzaj}, pasmo napięcia względem ziemi {pasmo}), więc kryterium czasowe jest spełnione automatycznie "
         "po spełnieniu kryterium prądowego."
         if spelnia
         else (
-            f"Ik1_min={ik1_min_a:.1f} A < Ia={ia:.1f} A (MCB {aparat.klasa_mcb} "
+            f"Najmniejszy prąd zwarcia jednofazowego {ik1_min_a:.1f} A mniejszy od prądu "
+            f"zapewniającego samoczynne wyłączenie {ia:.1f} A (MCB {aparat.klasa_mcb} "
             f"{aparat.in_a:g} A) — wyzwolenie magnetyczne NIE jest gwarantowane; "
-            f"aparat może nie wyłączyć w czasie t_wymagany={t_wymagany:g} s z Tab. 41.1 "
-            f"({rodzaj}, pasmo U0 {pasmo})."
+            f"aparat może nie wyłączyć w wymaganym czasie {t_wymagany:g} s z Tab. 41.1 "
+            f"({rodzaj}, pasmo napięcia względem ziemi {pasmo})."
         )
     )
 

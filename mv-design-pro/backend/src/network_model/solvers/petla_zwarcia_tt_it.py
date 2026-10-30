@@ -62,10 +62,13 @@ ETYKIETA_R_A = "Uziom instalacji odbiorczej R_A"
 #: Opis prądu niesionego przez ``FaultLoopResult.ik_min_a`` dla każdego układu (pole
 #: ``WynikTtIt.rodzaj_pradu_pl``) — bez niego wartość „Ik1_min" układu IT byłaby czytana
 #: jak prąd pętli L-PE układu TN.
-RODZAJ_PRADU_TT_PL = "prąd zwarcia doziemnego przez uziomy R_A i R_B (pętla TT)"
+RODZAJ_PRADU_TT_PL = (
+    "prąd zwarcia doziemnego przez uziom instalacji odbiorczej i uziom roboczy sieci (pętla TT)"
+)
 RODZAJ_PRADU_IT_PL = (
     "prąd drugiego zwarcia doziemnego na dwóch fazach z części przewodzącymi dostępnymi na "
-    "wspólnym przewodzie ochronnym (obie usterki w tym samym punkcie, napięcie napędowe U_LL/2)"
+    "wspólnym przewodzie ochronnym (obie usterki w tym samym punkcie, napięcie napędowe równe "
+    "połowie napięcia międzyprzewodowego)"
 )
 
 
@@ -102,7 +105,7 @@ class PojemnoscDoziemnaOdcinka:
         # treść bez identyfikatora i kluczy pól; nazwę dokłada `enm/zdania_odmow_rdzenia`).
         if self.b0_siemens_per_km < 0.0:
             raise self._odmowa(
-                "Susceptancja zerowa b_0 odcinka sieci IT nie może być ujemna, otrzymano "
+                "Susceptancja zerowa odcinka sieci IT nie może być ujemna, otrzymano "
                 f"{self.b0_siemens_per_km} S/km."
             )
         if self.length_km <= 0.0:
@@ -221,7 +224,8 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
     """Pętla zwarcia doziemnego układu TT (L → R_A → ziemia → R_B → transformator)."""
     if data.dane_tt_it is None:
         raise OdmowaDanychError(
-            "Układ TT: brak danych pętli doziemnej (R_A, R_B, I_Δn) — pętla nie jest liczona."
+            "Układ TT: brak danych pętli doziemnej (rezystancja uziomu instalacji, rezystancja "
+            "uziomu roboczego, znamionowy prąd różnicowy zadziałania) — pętla nie jest liczona."
         )
     dane = data.dane_tt_it
     r_a = _wymagana(dane, "r_a_ohm", NetworkType.TT)
@@ -230,16 +234,17 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
     if not _skladowa_zerowa(data.return_conductor):
         raise OdmowaDanychError(
             "Układ TT: przewód powrotny PE/PEN kabla nie jest drogą powrotu prądu zwarcia "
-            f"doziemnego, a otrzymano niezerową składową powrotną (R={data.return_conductor.r_ohm}, "
-            f"X={data.return_conductor.x_ohm}). Droga powrotu w TT to uziomy R_A i R_B."
+            "doziemnego, a otrzymano niezerową składową powrotną (rezystancja "
+            f"{data.return_conductor.r_ohm} Ω, reaktancja {data.return_conductor.x_ohm} Ω). "
+            "Droga powrotu w TT to uziom instalacji odbiorczej i uziom roboczy sieci."
         )
 
     trace: list[dict[str, Any]] = [
         {
             "step": "uklad_tt_droga_powrotu",
             "method": (
-                "TT: droga powrotu prądu zwarcia doziemnego przez uziom instalacji R_A i uziom "
-                "punktu neutralnego R_B; przewód ochronny kabla zasilającego nie należy do pętli"
+                "TT: droga powrotu prądu zwarcia doziemnego przez uziom instalacji i uziom "
+                "punktu neutralnego; przewód ochronny kabla zasilającego nie należy do pętli"
             ),
             "r_a_ohm": r_a,
             "r_b_ohm": r_b,
@@ -259,15 +264,21 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
     ik_min, ik_max, krok_pradu = prad_z_petli(
         u_v=data.u_nom_v, z_magnitude=modul_zespolony(z_loop), fault_node_id=data.fault_node_id, c=c
     )
-    krok_pradu = {**krok_pradu, "method": "I_d = c · U_0 / |Z_s| (pętla doziemna TT)"}
+    krok_pradu = {
+        **krok_pradu,
+        "method": (
+            "prąd doziemny jako iloraz napięcia względem ziemi pomnożonego przez współczynnik "
+            "napięciowy i modułu impedancji pętli (pętla doziemna TT)"
+        ),
+    }
     trace.append(krok_pradu)
 
     u_dotyk = r_a * i_delta_n
     trace.append(
         {
             "step": "napiecie_dotykowe_rcd",
-            "method": "U_dotyk = R_A · I_Δn (napięcie na uziomie instalacji przy prądzie "
-            "różnicowym znamionowym RCD)",
+            "method": "napięcie dotykowe jako iloczyn rezystancji uziomu instalacji "
+            "i znamionowego prądu różnicowego zadziałania RCD",
             "r_a_ohm": r_a,
             "i_delta_n_a": i_delta_n,
             "u_dotyk_v": u_dotyk,
@@ -275,7 +286,8 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
     )
     if u_dotyk < 0.0:
         raise OdmowaDanychError(
-            f"Sanity: U_dotyk = {u_dotyk} V < 0 — iloczyn dodatnich R_A i I_Δn nie może być ujemny."
+            f"Sanity: napięcie dotykowe {u_dotyk} V ujemne — iloczyn dodatniej rezystancji "
+            "uziomu i dodatniego prądu różnicowego nie może być ujemny."
         )
 
     return FaultLoopResult(
@@ -315,7 +327,8 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
     dane = data.dane_tt_it
     if not dane.pojemnosci:
         raise OdmowaDanychError(
-            "Układ IT: brak pojemności doziemnych odcinków sieci (b_0 kabli) — prąd pierwszego "
+            "Układ IT: brak pojemności doziemnych odcinków sieci (susceptancji zerowej kabli) — "
+            "prąd pierwszego "
             "zwarcia doziemnego nie jest liczony bez nich."
         )
     f_hz = _wymagana(dane, "czestotliwosc_hz", NetworkType.IT)
@@ -343,7 +356,11 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
     trace.append(
         {
             "step": "pojemnosc_doziemna_sieci_it",
-            "method": "B_e = Σ b_0,i · l_i · n_i ; C_e = B_e / ω ; ω = 2πf",
+            "method": (
+                "susceptancja doziemna sieci jako suma iloczynów susceptancji jednostkowej, "
+                "długości i liczby torów odcinków; pojemność doziemna jako jej iloraz przez "
+                "pulsację"
+            ),
             "odcinki": pojemnosci_slad,
             "czestotliwosc_hz": f_hz,
             "omega_rad_s": omega,
@@ -354,8 +371,9 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
     trace.append(
         {
             "step": "prad_pierwszego_zwarcia_it",
-            "method": "I_d = 3 · ω · C_e · U_0 (prąd pierwszego zwarcia doziemnego przez "
-            "pojemności doziemne dwóch zdrowych faz)",
+            "method": "prąd pierwszego zwarcia doziemnego jako potrojony iloczyn pulsacji, "
+            "pojemności doziemnej i napięcia względem ziemi (przez pojemności doziemne dwóch "
+            "zdrowych faz)",
             "u0_v": data.u_nom_v,
             "i_d_pierwsze_zwarcie_a": i_d1,
         }
@@ -374,8 +392,8 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
         )
         if u_dotyk1 < 0.0:
             raise OdmowaDanychError(
-                f"Sanity: U_dotyk = {u_dotyk1} V < 0 — iloczyn dodatnich R_A i I_d nie może być "
-                "ujemny."
+                f"Sanity: napięcie dotykowe {u_dotyk1} V ujemne — iloczyn dodatniej rezystancji "
+                "uziomu i dodatniego prądu doziemnego nie może być ujemny."
             )
     else:
         trace.append(
@@ -383,7 +401,10 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
                 "step": "napiecie_dotykowe_pierwszego_zwarcia_it",
                 "method": "U_dotyk = R_A · I_d",
                 "r_a_ohm": None,
-                "result": "nie liczone — brak R_A instalacji w punkcie (dana nieobecna, nie zero)",
+                "result": (
+                    "nie liczone — brak rezystancji uziomu instalacji w punkcie (dana "
+                    "nieobecna, nie zero)"
+                ),
             }
         )
 
@@ -406,8 +427,10 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
             **krok_pradu,
             "step": "prad_drugiego_zwarcia_it",
             "method": (
-                "I_d2 = c · U_LL / (2·|Z_s|) — dwa jednakowe tory L-PE w szeregu napędzane "
-                "napięciem międzyfazowym U_LL = √3 · U_0; |Z_s| to moduł pętli jednego toru"
+                "prąd drugiego zwarcia doziemnego jako iloraz napięcia międzyfazowego "
+                "pomnożonego przez współczynnik napięciowy i podwojonego modułu impedancji "
+                "pętli jednego toru — dwa jednakowe tory L-PE w szeregu napędzane napięciem "
+                "międzyfazowym"
             ),
             "u_ll_v": u_ll,
             "u_napedowe_v": u_napedowe,

@@ -144,6 +144,7 @@ describe('PasmoMinMax — obie strony dostępne', () => {
               z_q_abs_ohm: 0.66,
               z_q_ohm: { re: 0.0657, im: 0.6568 },
               formula: 'Z_Q = c·U_nQ²/S″_kQ',
+              formula_latex: 'Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S\'\'_{kQ}}',
             },
           ],
         }),
@@ -166,6 +167,7 @@ describe('PasmoMinMax — obie strony dostępne', () => {
               z_q_abs_ohm: 1.0,
               z_q_ohm: { re: 0.196, im: 0.9806 },
               formula: 'Z_Q = c·U_nQ²/S″_kQ',
+              formula_latex: 'Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S\'\'_{kQ}}',
             },
           ],
         }),
@@ -180,6 +182,12 @@ describe('PasmoMinMax — obie strony dostępne', () => {
     expect(within(blokMax).getByText('250,0 MVA')).toBeInTheDocument(); // S''kQ max
     expect(within(blokMin).getByTestId('mvd-zwarcia-zrodla')).toBeInTheDocument();
     expect(within(blokMin).getByText('150,0 MVA')).toBeInTheDocument(); // S''kQ min
+    // Kolumna „Wzór": KaTeX z `formula_latex`, nie spłaszczony zapis `formula` (karta ZU).
+    for (const blok of [blokMax, blokMin]) {
+      const tabela = within(blok).getByTestId('mvd-zwarcia-zrodla');
+      expect(tabela.querySelector('.katex')).not.toBeNull();
+      expect(tabela).not.toHaveTextContent('Z_Q = c·U_nQ²/S″_kQ');
+    }
   });
 
   it('ta sama rewizja obu stron: BEZ ostrzeżenia świeżości', async () => {

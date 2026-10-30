@@ -268,7 +268,8 @@ export function zrodloSiecioweSladMaxFixture(
     rx_ratio_zrodlo: 'MODEL',
     z_q_abs_ohm: 0.66,
     z_q_ohm: { re: 0.0657, im: 0.6568 },
-    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    formula: 'Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy maksymalny); reaktancja i rezystancja ze stosunku R/X',
+    formula_latex: 'Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S\'\'_{kQ}},\\quad c = c_{\\max},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)',
     ...over,
   };
 }
@@ -289,7 +290,8 @@ export function zrodloSiecioweSladMinZDanymiFixture(
     rx_ratio_zrodlo: 'MODEL_MIN',
     z_q_abs_ohm: 1.0,
     z_q_ohm: { re: 0.196, im: 0.9806 },
-    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_min); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    formula: 'Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy minimalny); reaktancja i rezystancja ze stosunku R/X',
+    formula_latex: 'Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S\'\'_{kQ}},\\quad c = c_{\\min},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)',
     ...over,
   };
 }
@@ -314,12 +316,16 @@ export function zrodloSiecioweSladMinBrakDanychFixture(
     rx_ratio_zrodlo: 'MODEL_MAX',
     z_q_abs_ohm: 0.6006,
     z_q_ohm: { re: 0.0597, im: 0.5976 },
-    formula: "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+    formula: 'Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy maksymalny); reaktancja i rezystancja ze stosunku R/X',
+    formula_latex: 'Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S\'\'_{kQ}},\\quad c = c_{\\max},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)',
     zalozenie: 'source.sk_min_missing',
     zalozenie_opis:
-      "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
-      + "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
-      + 'niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).',
+      'Brak minimalnej mocy zwarciowej i minimalnego prądu zwarciowego sieci zasilającej: '
+      + 'impedancja sieci z danych maksymalnych (maksymalny współczynnik napięciowy, maksymalna '
+      + 'moc zwarciowa), minimalny współczynnik napięciowy tylko w źródle napięciowym — '
+      + 'minimalny prąd zwarciowy sieci jest prądem maksymalnym przeskalowanym stosunkiem '
+      + 'współczynników napięciowych; założenie niekonserwatywne dla czułości zabezpieczeń '
+      + '(impedancja dla minimum nie mniejsza niż dla maksimum).',
     ...over,
   };
 }
@@ -334,7 +340,8 @@ export function zrodloSiecioweSladImpedancjaJawnaFixture(
     scenariusz: 'MAX',
     u_nq_kv: 15.0,
     z_q_ohm: { re: 0.09, im: 0.9 },
-    formula: "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)",
+    formula: 'Impedancja sieci zasilającej jawna z modelu (rezystancja i reaktancja), bez współczynnika napięciowego; scenariusz minimalny: minimalny współczynnik napięciowy wyłącznie w źródle napięciowym',
+    formula_latex: 'Z_{Q} = R_{Q} + jX_{Q}',
     ...over,
   };
 }
@@ -347,9 +354,12 @@ export function zalozenieBieguFixture(
     code: 'source.sk_min_missing',
     element_ref: 's1',
     message_pl:
-      "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
-      + "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
-      + 'niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).',
+      'Brak minimalnej mocy zwarciowej i minimalnego prądu zwarciowego sieci zasilającej: '
+      + 'impedancja sieci z danych maksymalnych (maksymalny współczynnik napięciowy, maksymalna '
+      + 'moc zwarciowa), minimalny współczynnik napięciowy tylko w źródle napięciowym — '
+      + 'minimalny prąd zwarciowy sieci jest prądem maksymalnym przeskalowanym stosunkiem '
+      + 'współczynników napięciowych; założenie niekonserwatywne dla czułości zabezpieczeń '
+      + '(impedancja dla minimum nie mniejsza niż dla maksimum).',
     scenariusz: 'MIN',
     ...over,
   };

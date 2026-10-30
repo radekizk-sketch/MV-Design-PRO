@@ -734,7 +734,7 @@
     "scenario_id": "MAX",
     "station_ref": "stSWZ"
   },
-  "projection_hash": "4ad1fa9b2d115ec4a753cba5ab2b2494f0666bf6b896d4c5839128c9ce8f8834",
+  "projection_hash": "06c3002d10d2e89e91bc2b97fc9013a0910ecd0bdef193255cc38a9f1264ba4c",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1059,7 +1059,7 @@
                 "ik1_min_a": 290.776463,
                 "margines": null,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=290.8 A > Inf=50.0 A (wkładka gG 40 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy t_wymagany=0.4 s SWZ (odbiorczy, pasmo U0 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki Inf/If (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (3600 s), NIE w t_wymagany SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe).",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 290.8 A większy od prądu niezadziałania 50.0 A (wkładka gG 40 A) — norma NIE gwarantuje braku stopienia, ale brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy wymaganym czasie wyłączenia 0.4 s SWZ (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230) w rejestrze (Brak podwójnie zweryfikowanej bramki prądowo-czasowej gG przy wymaganym czasie (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne prądu niezadziałania i zadziałania przy czasie umownym (1-4 h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd całki Joule'a ETI wobec Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.). Bramki prądu niezadziałania i zadziałania (G-D2) gwarantują WYŁĄCZNIE zachowanie w czasie umownym normy (3600 s), NIE w wymaganym czasie SWZ — nie da się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty P0.7). NIEROZSTRZYGALNE (warunkowe).",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "nierozstrzygalne",
                 "t_wymagany_s": 0.4,
@@ -1080,18 +1080,18 @@
                       "if_a": 64.0,
                       "in_a": 40.0,
                       "inf_a": 50.0,
-                      "opis_pl": "I=290.776 A >= If=64 A (1.6×In) — norma (IEC 60269-1) gwarantuje stopienie wkładki w czasie umownym <= 3600 s (dokładny czas nieokreślony dwoma punktami kontrolnymi — tylko górna granica).",
+                      "opis_pl": "Prąd 290.776 A nie mniejszy od prądu zadziałania 64 A (1.6-krotność prądu znamionowego) — norma (IEC 60269-1) gwarantuje stopienie wkładki w czasie umownym nie dłuższym niż 3600 s (dokładny czas nieokreślony dwoma punktami kontrolnymi — tylko górna granica).",
                       "standard": "IEC 60269-1",
                       "step": "FUSE_GG_GATE",
                       "t_umowny_s": 3600.0,
-                      "zrodlo_czasu_umownego": "IEC 60269-1 struktura czasu umownego wg zakresu In — źródło: zbiorcze wyszukiwanie techniczne (Schneider Electric Electrical Installation Guide + viox.com IEC 60269 guide), jedno źródło NIE podwójnie potwierdzone w tej karcie (patrz raport P0.7) — 1h(In<=63A)/2h(63<In<=160A)/3h(160<In<=400A)/4h(In>400A).",
-                      "zrodlo_mnoznikow": "IEC 60269-1 (Inf=1,25×In, If=1,6×In dla In>16 A) — zweryfikowane podwójnie: (1) zbiorcze źródła techniczne (Schneider Electric Electrical Installation Guide, electrical-installation.org/enwiki/Elementary_switching_devices; viox.com/iec-60269-low-voltage-fuse-selection-guide-gg-am-nh); (2) elektro.info.pl, „Bezpieczniki topikowe do zabezpieczeń instalacji niskiego napięcia” (cytat wprost: Inf=1,25×In, If=1,6×In dla gG)."
+                      "zrodlo_czasu_umownego": "IEC 60269-1 struktura czasu umownego wg zakresu prądu znamionowego — źródło: zbiorcze wyszukiwanie techniczne (Schneider Electric Electrical Installation Guide + viox.com IEC 60269 guide), jedno źródło NIE podwójnie potwierdzone w tej karcie (patrz raport P0.7) — 1 h do 63 A, 2 h od 63 A do 160 A, 3 h od 160 A do 400 A, 4 h powyżej 400 A prądu znamionowego.",
+                      "zrodlo_mnoznikow": "IEC 60269-1 (prąd niezadziałania 1,25-krotność, prąd zadziałania 1,6-krotność prądu znamionowego dla prądu znamionowego powyżej 16 A) — zweryfikowane podwójnie: (1) zbiorcze źródła techniczne (Schneider Electric Electrical Installation Guide, electrical-installation.org/enwiki/Elementary_switching_devices; viox.com/iec-60269-low-voltage-fuse-selection-guide-gg-am-nh); (2) elektro.info.pl, „Bezpieczniki topikowe do zabezpieczeń instalacji niskiego napięcia” (cytat wprost: prąd niezadziałania 1,25-krotność, prąd zadziałania 1,6-krotność prądu znamionowego dla gG)."
                     },
                     "step": "aparat_wkladka_gg_bramka_konwencjonalna"
                   },
                   {
                     "bramka_t_wymagany_a": null,
-                    "status_zrodel": "Brak podwójnie zweryfikowanej bramki I-t gG przy t_wymagany (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne Inf/If przy czasie umownym (1-4h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd analogiczny do I²t ETI vs Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.",
+                    "status_zrodel": "Brak podwójnie zweryfikowanej bramki prądowo-czasowej gG przy wymaganym czasie (patrz karta D2, 2026-08-14, §0 pkt 1b/1c) — próba WebSearch/WebFetch podjęta (IEC 60269-1/2 podglądy iTeh Standards, Musiał E./Politechnika Gdańska, katalogi Bussmann/Eaton/Mersen/ETI-POLAM/Schneider Electric), bez dwóch zgodnych źródeł liczbowych — norma publikuje WYŁĄCZNIE bramki konwencjonalne prądu niezadziałania i zadziałania przy czasie umownym (1-4 h), poniżej tego czasu charakterystyka jest pasmowa i specyficzna dla producenta (rozjazd całki Joule'a ETI wobec Bussmann 30-60% z karty P0.7). Rejestr PUSTY do czasu pozyskania normy IEC 60269-2 (Tabela gates for specified pre-arcing times) albo dwóch zgodnych katalogów producentów z jawną tabelą liczbową.",
                     "step": "aparat_wkladka_gg_bramka_t_wymagany",
                     "t_wymagany_s": 0.4
                   },
@@ -1409,7 +1409,7 @@
                 "ik1_min_a": 2496.27823,
                 "margines": 6.24069558,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2496.3 A ≥ Ia=400.0 A (MCB C 40 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 2496.3 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 400.0 A (MCB C 40 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
                 "t_wymagany_s": 0.4,
@@ -1434,7 +1434,7 @@
                     "ia_a": 400.0,
                     "ik1_min_a": 2496.27823,
                     "margines": 6.24069558,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu zapewniającego samoczynne wyłączenie, więc wyzwolenie magnetyczne gwarantowane (chwilowe, krótsze niż 0,1 s, czyli przed wymaganym czasem wyłączenia z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
                   }
@@ -1743,7 +1743,7 @@
                 "ik1_min_a": 61.2580579,
                 "margines": 0.0972350126,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=61.3 A < Ia=630.0 A (MCB C 63 A) — wyzwolenie magnetyczne NIE jest gwarantowane; aparat może nie wyłączyć w czasie t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230).",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 61.3 A mniejszy od prądu zapewniającego samoczynne wyłączenie 630.0 A (MCB C 63 A) — wyzwolenie magnetyczne NIE jest gwarantowane; aparat może nie wyłączyć w wymaganym czasie 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230).",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "nie spełnia",
                 "t_wymagany_s": 0.4,
@@ -1768,7 +1768,7 @@
                     "ia_a": 630.0,
                     "ik1_min_a": 61.2580579,
                     "margines": 0.0972350126,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu zapewniającego samoczynne wyłączenie, więc wyzwolenie magnetyczne gwarantowane (chwilowe, krótsze niż 0,1 s, czyli przed wymaganym czasem wyłączenia z Tab. 41.1)",
                     "result": "nie spełnia",
                     "step": "werdykt"
                   }

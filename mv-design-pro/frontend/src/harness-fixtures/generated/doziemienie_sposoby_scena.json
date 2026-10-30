@@ -42,7 +42,7 @@
           "reporting_status_pl": "nieraportowalny",
           "proof_status_pl": "częściowy",
           "reporting_limitations_pl": [
-            "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+            "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych)."
           ],
           "non_physical_reason": "fault.zero_sequence_outside_iec60909",
           "brak_wyniku_zerowego": {
@@ -50,7 +50,7 @@
             "kod": "fault.zero_sequence_outside_iec60909",
             "status": "NIE_DOTYCZY",
             "wyjasnienie": {
-              "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+              "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych).",
               "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
               "czego_brakuje": [],
               "zastrzezenia": []
@@ -180,7 +180,8 @@
             "re": 0.44146483339,
             "im": 4.4146483339
           },
-          "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+          "formula": "Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy maksymalny); reaktancja i rezystancja ze stosunku R/X",
+          "formula_latex": "Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S''_{kQ}},\\quad c = c_{\\max},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)"
         }
       ],
       "siec_zerowa": [
@@ -220,7 +221,7 @@
             "wezly": [],
             "prog_k": 1.4
           },
-          "substitution": "Sieć zerowa gałęzi Magistrala 01 — odcinek 01: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności B0 nie wchodzą do macierzy Y0 zwarć.",
+          "substitution": "Sieć zerowa gałęzi Magistrala 01 — odcinek 01: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności doziemne nie wchodzą do macierzy admitancyjnej zerowej zwarć.",
           "substitution_latex": null,
           "result": {
             "k_max": null,
@@ -322,7 +323,7 @@
           "result": {
             "liczba_wezlow": 3
           },
-          "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia Z0 żadnego węzła liczonego."
+          "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia impedancji zerowej żadnego węzła liczonego."
         }
       ],
       "zalozenia": [
@@ -418,7 +419,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "66fc06fca0fcaa936524baff86db22ae104e4ed3a2c22cb1fb8f9476e06baa73",
-          "result_hash": "6857d0dfc9fd8f428f4f002db0f22c947e5a858d773867c79cf35281a1dccd8e",
+          "result_hash": "ac8f6fce5b17e1ea53651f2d716d1a0886bb9b66f0c0c082ca2bca96669765a1",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -774,7 +775,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "66fc06fca0fcaa936524baff86db22ae104e4ed3a2c22cb1fb8f9476e06baa73",
-          "result_hash": "6857d0dfc9fd8f428f4f002db0f22c947e5a858d773867c79cf35281a1dccd8e",
+          "result_hash": "ac8f6fce5b17e1ea53651f2d716d1a0886bb9b66f0c0c082ca2bca96669765a1",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -1243,7 +1244,7 @@
           "reporting_status_pl": "nieraportowalny",
           "proof_status_pl": "częściowy",
           "reporting_limitations_pl": [
-            "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania składowej czynnej): prąd doziemienia jest prądem resztkowym √(I_w² + (I_C − I_L)²), nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+            "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania składowej czynnej): prąd doziemienia jest prądem resztkowym (składowa czynna i różnica prądu pojemnościowego i prądu dławika dodane geometrycznie), nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych)."
           ],
           "non_physical_reason": "fault.zero_sequence_outside_iec60909",
           "brak_wyniku_zerowego": {
@@ -1251,7 +1252,7 @@
             "kod": "fault.zero_sequence_outside_iec60909",
             "status": "NIE_DOTYCZY",
             "wyjasnienie": {
-              "zdanie_pl": "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania składowej czynnej): prąd doziemienia jest prądem resztkowym √(I_w² + (I_C − I_L)²), nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+              "zdanie_pl": "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania składowej czynnej): prąd doziemienia jest prądem resztkowym (składowa czynna i różnica prądu pojemnościowego i prądu dławika dodane geometrycznie), nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych).",
               "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
               "czego_brakuje": [],
               "zastrzezenia": []
@@ -1428,7 +1429,8 @@
             "re": 0.44146483339,
             "im": 4.4146483339
           },
-          "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+          "formula": "Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy maksymalny); reaktancja i rezystancja ze stosunku R/X",
+          "formula_latex": "Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S''_{kQ}},\\quad c = c_{\\max},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)"
         }
       ],
       "siec_zerowa": [
@@ -1527,7 +1529,7 @@
               }
             ]
           },
-          "substitution": "Z0,TU = 1.5 + j6 Ω; Z_N(spoczynek) = 0 + j86.6025 Ω; Z_N(AWSC załączona) = 0 + j86.6025 Ω; Z0,ZU(spoczynek) = 1.5 + j265.808 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
+          "substitution": "impedancja zerowa transformatora uziemiającego 1.5 + j6 Ω; impedancja punktu neutralnego w spoczynku 0 + j86.6025 Ω, przy załączonej AWSC 0 + j86.6025 Ω; impedancja zerowa zespołu uziemiającego (spoczynek) 1.5 + j265.808 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -1554,7 +1556,7 @@
             "wezly": [],
             "prog_k": 1.4
           },
-          "substitution": "Sieć zerowa gałęzi Magistrala 01 — odcinek 01: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności B0 nie wchodzą do macierzy Y0 zwarć.",
+          "substitution": "Sieć zerowa gałęzi Magistrala 01 — odcinek 01: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności doziemne nie wchodzą do macierzy admitancyjnej zerowej zwarć.",
           "substitution_latex": null,
           "result": {
             "k_max": null,
@@ -1654,7 +1656,7 @@
           "result": {
             "liczba_wezlow": 1
           },
-          "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia Z0 żadnego węzła liczonego."
+          "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia impedancji zerowej żadnego węzła liczonego."
         }
       ],
       "zalozenia": [
@@ -1777,7 +1779,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "0ef2a64b81ebb191c82511522b51e8ad4a9da61d29df5b5e23b9d5e62cefa3b6",
-          "result_hash": "9ca1c75f687e745f081d74e1216c64af07f244e6f676fff3578a9ed5d7c1bb07",
+          "result_hash": "44f5ebb5425827a2b6eb83016fc10bf9563168579b5b348d3c363d9f7d2d50c8",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -2133,7 +2135,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "0ef2a64b81ebb191c82511522b51e8ad4a9da61d29df5b5e23b9d5e62cefa3b6",
-          "result_hash": "9ca1c75f687e745f081d74e1216c64af07f244e6f676fff3578a9ed5d7c1bb07",
+          "result_hash": "44f5ebb5425827a2b6eb83016fc10bf9563168579b5b348d3c363d9f7d2d50c8",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -3035,7 +3037,8 @@
             "re": 0.44146483339,
             "im": 4.4146483339
           },
-          "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+          "formula": "Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy maksymalny); reaktancja i rezystancja ze stosunku R/X",
+          "formula_latex": "Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S''_{kQ}},\\quad c = c_{\\max},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)"
         }
       ],
       "siec_zerowa": [
@@ -3126,7 +3129,7 @@
               }
             ]
           },
-          "substitution": "Z0,TU = 1.5 + j6 Ω; Z_N(spoczynek) = 43.3 + j0 Ω; Z_N(AWSC załączona) = 43.3 + j0 Ω; Z0,ZU(spoczynek) = 131.4 + j6 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
+          "substitution": "impedancja zerowa transformatora uziemiającego 1.5 + j6 Ω; impedancja punktu neutralnego w spoczynku 43.3 + j0 Ω, przy załączonej AWSC 43.3 + j0 Ω; impedancja zerowa zespołu uziemiającego (spoczynek) 131.4 + j6 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -3178,7 +3181,7 @@
             ],
             "prog_k": 1.4
           },
-          "substitution": "max k = 1,74183 (Szyna GPZ S1 15 kV) > 1,4 — pojemności B0 gałęzi Magistrala 01 — odcinek 01 WCHODZĄ do macierzy Y0.",
+          "substitution": "max k = 1,74183 (Szyna GPZ S1 15 kV) > 1,4 — pojemności doziemne gałęzi Magistrala 01 — odcinek 01 WCHODZĄ do macierzy Y0.",
           "substitution_latex": null,
           "result": {
             "k_max": 1.741834,
@@ -3188,7 +3191,7 @@
         },
         {
           "key": "z0_line_shunt[seg/de6c34633e7795100583126168f7d5f6/segment]",
-          "title": "Gałąź Magistrala 01 — odcinek 01: pojemność doziemna (bocznik B0, model π)",
+          "title": "Gałąź Magistrala 01 — odcinek 01: pojemność doziemna (bocznik poprzeczny, model π)",
           "formula_latex": "Y_{0,sh} = j B_0 \\cdot \\ell;\\quad Y_{0,sh,end} = Y_{0,sh}/2",
           "inputs": {
             "ref_id": "seg/de6c34633e7795100583126168f7d5f6/segment",
@@ -3196,7 +3199,7 @@
             "length_km": 2.0,
             "z_base_ohm": 2.25
           },
-          "substitution": "B0=0.000122522 S/km · 2 km = 0.000245044 S; Y0 na każdym końcu = j0.000275675 pu (na Szyna GPZ S1 15 kV i Zacisk końcowy odcinka SN)",
+          "substitution": "susceptancja jednostkowa 0.000122522 S/km razy długość 2 km daje 0.000245044 S; admitancja zerowa na każdym końcu j0.000275675 pu (na Szyna GPZ S1 15 kV i Zacisk końcowy odcinka SN)",
           "substitution_latex": null,
           "result": {
             "y0_shunt_per_end_pu": {
@@ -3298,7 +3301,7 @@
           "result": {
             "liczba_wezlow": 1
           },
-          "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia Z0 żadnego węzła liczonego."
+          "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia impedancji zerowej żadnego węzła liczonego."
         }
       ],
       "zalozenia": [
@@ -3449,7 +3452,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "8b9e053ed73cabc14b230059f2ac58fdd84549ffb4fe43c1f5a333ccc8d28b5d",
-          "result_hash": "b0efb3ba9029e602431cb7e09133163c7b51c24d4cdd7edd888ea35322d12e2a",
+          "result_hash": "23c55e7c21a07b62b07e7724defb6075b8f2317176f3ee1caea34a73d04189f4",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -4263,7 +4266,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "8b9e053ed73cabc14b230059f2ac58fdd84549ffb4fe43c1f5a333ccc8d28b5d",
-          "result_hash": "b0efb3ba9029e602431cb7e09133163c7b51c24d4cdd7edd888ea35322d12e2a",
+          "result_hash": "23c55e7c21a07b62b07e7724defb6075b8f2317176f3ee1caea34a73d04189f4",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -5110,7 +5113,8 @@
             "re": 0.44146483339,
             "im": 4.4146483339
           },
-          "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+          "formula": "Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy maksymalny); reaktancja i rezystancja ze stosunku R/X",
+          "formula_latex": "Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S''_{kQ}},\\quad c = c_{\\max},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)"
         }
       ],
       "siec_zerowa": [
@@ -5185,7 +5189,7 @@
               }
             ]
           },
-          "substitution": "Z0,TU = 1.5 + j6 Ω; Z_N(spoczynek) = 0 + j0 Ω; Z_N(AWSC załączona) = 0 + j0 Ω; Z0,ZU(spoczynek) = 1.5 + j6 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
+          "substitution": "impedancja zerowa transformatora uziemiającego 1.5 + j6 Ω; impedancja punktu neutralnego w spoczynku 0 + j0 Ω, przy załączonej AWSC 0 + j0 Ω; impedancja zerowa zespołu uziemiającego (spoczynek) 1.5 + j6 Ω (bocznik Zacisk odpływowy Pole zespołu uziemiającego)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -5237,7 +5241,7 @@
             ],
             "prog_k": 1.4
           },
-          "substitution": "max k = 1,45204 (Szyna GPZ S1 15 kV) > 1,4 — pojemności B0 gałęzi Magistrala 01 — odcinek 01 WCHODZĄ do macierzy Y0.",
+          "substitution": "max k = 1,45204 (Szyna GPZ S1 15 kV) > 1,4 — pojemności doziemne gałęzi Magistrala 01 — odcinek 01 WCHODZĄ do macierzy Y0.",
           "substitution_latex": null,
           "result": {
             "k_max": 1.452037,
@@ -5247,7 +5251,7 @@
         },
         {
           "key": "z0_line_shunt[seg/de6c34633e7795100583126168f7d5f6/segment]",
-          "title": "Gałąź Magistrala 01 — odcinek 01: pojemność doziemna (bocznik B0, model π)",
+          "title": "Gałąź Magistrala 01 — odcinek 01: pojemność doziemna (bocznik poprzeczny, model π)",
           "formula_latex": "Y_{0,sh} = j B_0 \\cdot \\ell;\\quad Y_{0,sh,end} = Y_{0,sh}/2",
           "inputs": {
             "ref_id": "seg/de6c34633e7795100583126168f7d5f6/segment",
@@ -5255,7 +5259,7 @@
             "length_km": 2.0,
             "z_base_ohm": 2.25
           },
-          "substitution": "B0=0.000122522 S/km · 2 km = 0.000245044 S; Y0 na każdym końcu = j0.000275675 pu (na Szyna GPZ S1 15 kV i Zacisk końcowy odcinka SN)",
+          "substitution": "susceptancja jednostkowa 0.000122522 S/km razy długość 2 km daje 0.000245044 S; admitancja zerowa na każdym końcu j0.000275675 pu (na Szyna GPZ S1 15 kV i Zacisk końcowy odcinka SN)",
           "substitution_latex": null,
           "result": {
             "y0_shunt_per_end_pu": {
@@ -5357,7 +5361,7 @@
           "result": {
             "liczba_wezlow": 1
           },
-          "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia Z0 żadnego węzła liczonego."
+          "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia impedancji zerowej żadnego węzła liczonego."
         }
       ],
       "zalozenia": [
@@ -5499,7 +5503,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "413361ea254166f4e10be70e7000df54614bb1bae25da29a79ed14bf5c05e0d2",
-          "result_hash": "aeeb8c052e1d5097b018730a4218c36a683fa16f78b270a35df0616e1ec2c059",
+          "result_hash": "ee4814bf8dbf798a85b43e0a4bd987a0b9ea8321656c5e83751f4a0e679d678d",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -6313,7 +6317,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "413361ea254166f4e10be70e7000df54614bb1bae25da29a79ed14bf5c05e0d2",
-          "result_hash": "aeeb8c052e1d5097b018730a4218c36a683fa16f78b270a35df0616e1ec2c059",
+          "result_hash": "ee4814bf8dbf798a85b43e0a4bd987a0b9ea8321656c5e83751f4a0e679d678d",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",

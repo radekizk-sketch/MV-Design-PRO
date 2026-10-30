@@ -22,7 +22,8 @@ CZEGO SKAN NIE LICZY — reguły strukturalne, nie lista wyjątków (każda z uz
   3. Argumenty wywołań loggera (`*.debug/info/warning/error/exception/critical/log` na
      obiekcie, którego nazwa zawiera „log") — dziennik serwera, nie ekran.
   4. Identyfikatory i kody wewnątrz tekstu: fragmenty w odwrotnych apostrofach, identyfikatory
-     snake_case z co najmniej dwoma podkreślnikami, kody statusów WIELKIMI_LITERAMI.
+     snake_case z co najmniej dwoma podkreślnikami, kody statusów WIELKIMI_LITERAMI, numery
+     kart programu (`P0.7`).
   5. `EquationDefinition(notes=...)` w `application/proof_engine/equation_registry.py` —
      pole idzie wyłącznie do `proof.json` (`EquationDefinition.to_dict`); eksport LaTeX/PDF,
      inspektor dowodu i frontend go nie renderują (pomiar 2026-10-30, karta ZU).
@@ -91,6 +92,8 @@ def oczysc(tekst: str) -> str:
     """Usuwa z tekstu identyfikatory i kody (reguła 4) — zostaje proza."""
     tekst = re.sub(r"`[^`]*`", " ", tekst)
     tekst = re.sub(r"\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+){2,}\b", " ", tekst)
+    # Numer karty albo punktu programu („karty P0.7", „P0.6") — odwołanie, nie symbol P0.
+    tekst = re.sub(r"\b[A-Z]\d+\.\d+\b", " ", tekst)
     return re.sub(r"\b[A-ZĄĆĘŁŃÓŚŹŻ]{2,}(?:_[A-ZĄĆĘŁŃÓŚŹŻ0-9]{2,})+\b", " ", tekst)
 
 

@@ -1231,7 +1231,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "85ad43044d162377e43c2caea18f8fa6ae636ff61e59db07800dc12182d9a94e",
+  "projection_hash": "1dd48aad646c78a49d8750f5fa3dfd8e5379a2d17f2aa541a214ada5fbc98913",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1556,7 +1556,7 @@
                 "ik1_min_a": 1549.21039,
                 "margines": 2.45906411,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=1549.2 A ≥ Ia=630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=0.4 s z Tab. 41.1 (odbiorczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 1549.2 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 630.0 A (MCB C 63 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 0.4 s z Tab. 41.1 (odbiorczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "odbiorczy",
                 "status": "spełnia",
                 "t_wymagany_s": 0.4,
@@ -1581,7 +1581,7 @@
                     "ia_a": 630.0,
                     "ik1_min_a": 1549.21039,
                     "margines": 2.45906411,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu zapewniającego samoczynne wyłączenie, więc wyzwolenie magnetyczne gwarantowane (chwilowe, krótsze niż 0,1 s, czyli przed wymaganym czasem wyłączenia z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
                   }
@@ -2102,7 +2102,7 @@
                 "ik1_min_a": 2519.73733,
                 "margines": 2.51973733,
                 "pasmo_u0": "120<U0<=230",
-                "przyczyna_pl": "Ik1_min=2519.7 A ≥ Ia=1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (<0,1 s) — poniżej t_wymagany=5 s z Tab. 41.1 (rozdzielczy, pasmo U0 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
+                "przyczyna_pl": "Najmniejszy prąd zwarcia jednofazowego 2519.7 A nie mniejszy od prądu zapewniającego samoczynne wyłączenie 1000.0 A (MCB C 100 A, wyzwolenie magnetyczne gwarantowane na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest chwilowy (krótszy niż 0,1 s) — poniżej wymaganego czasu wyłączenia 5 s z Tab. 41.1 (rozdzielczy, pasmo napięcia względem ziemi 120<U0<=230), więc kryterium czasowe jest spełnione automatycznie po spełnieniu kryterium prądowego.",
                 "rodzaj_obwodu": "rozdzielczy",
                 "status": "spełnia",
                 "t_wymagany_s": 5.0,
@@ -2127,7 +2127,7 @@
                     "ia_a": 1000.0,
                     "ik1_min_a": 2519.73733,
                     "margines": 2.51973733,
-                    "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s < t_wymagany z Tab. 41.1)",
+                    "method": "najmniejszy prąd zwarcia jednofazowego nie mniejszy od prądu zapewniającego samoczynne wyłączenie, więc wyzwolenie magnetyczne gwarantowane (chwilowe, krótsze niż 0,1 s, czyli przed wymaganym czasem wyłączenia z Tab. 41.1)",
                     "result": "spełnia",
                     "step": "werdykt"
                   }

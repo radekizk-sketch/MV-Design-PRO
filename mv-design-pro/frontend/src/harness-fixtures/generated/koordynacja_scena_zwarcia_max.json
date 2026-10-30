@@ -1532,7 +1532,8 @@
         "re": 0.0985086818308,
         "im": 0.985086818308
       },
-      "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+      "formula": "Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy maksymalny); reaktancja i rezystancja ze stosunku R/X",
+      "formula_latex": "Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S''_{kQ}},\\quad c = c_{\\max},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)"
     }
   ],
   "zalozenia": [
@@ -1780,7 +1781,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "b64e7a1c3787f710b18b57038d9f730a2afa8f56b834fe38aa47647a7d476a6c",
-      "result_hash": "95a93bc6f0e19d0046222e4ca653cbd890e630e47c4bd583c425c4bc35d1da12",
+      "result_hash": "c303c534f1966bcbb6180cebd58c51a662ae5735b9b7fcd7d106c1fb60a3517f",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

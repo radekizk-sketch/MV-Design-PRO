@@ -153,8 +153,9 @@ def _odmowa_zerowej_impedancji_z0(element_pl: str) -> str:
     odmowa danych z nazwą elementu.
     """
     return (
-        f"{element_pl}: impedancja składowej zerowej Z0 jest równa zeru — admitancji Y0 = 1/Z0 "
-        "nie da się wyznaczyć. Podaj niezerową rezystancję lub reaktancję zerową (R0, X0)."
+        f"{element_pl}: impedancja składowej zerowej jest równa zeru — admitancji zerowej "
+        "(odwrotności impedancji zerowej) nie da się wyznaczyć. Podaj niezerową rezystancję "
+        "lub reaktancję zerową."
     )
 
 
@@ -325,9 +326,11 @@ def impedancja_zasilania_systemowego(
             "u_nq_kv": u_nq_kv,
             "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
             "formula": (
-                "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; "
-                "scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
+                "Impedancja sieci zasilającej jawna z modelu (rezystancja i reaktancja), bez "
+                "współczynnika napięciowego; scenariusz minimalny: minimalny współczynnik "
+                "napięciowy wyłącznie w źródle napięciowym"
             ),
+            "formula_latex": r"Z_{Q} = R_{Q} + jX_{Q}",
         }
     tryb_min = tryb_danych(sk3_mva=sk3_min_mva, ik3_ka=ik3_min_ka)
     uzyj_min = scenario == "MIN" and tryb_min is not None
@@ -393,10 +396,24 @@ def impedancja_zasilania_systemowego(
         "z_q_abs_ohm": z_abs,
         "z_q_ohm": {"re": z_ohm.real, "im": z_ohm.imag},
         "formula": (
-            ("Z_Q = c·U_nQ/(√3·I''_kQ)" if ik is not None else "Z_Q = c·U_nQ²/S''_kQ")
-            + " (IEC 60909-0:2016 §6.2.1 eq. 6; c = "
-            + ("c_min" if uzyj_min else "c_max")
-            + "); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
+            (
+                "Impedancja sieci zasilającej z początkowego prądu zwarciowego"
+                if ik is not None
+                else "Impedancja sieci zasilającej z mocy zwarciowej"
+            )
+            + " (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy "
+            + ("minimalny" if uzyj_min else "maksymalny")
+            + "); reaktancja i rezystancja ze stosunku R/X"
+        ),
+        "formula_latex": (
+            (
+                r"Z_{Q} = \frac{c \cdot U_{nQ}}{\sqrt{3} \cdot I''_{kQ}}"
+                if ik is not None
+                else r"Z_{Q} = \frac{c \cdot U_{nQ}^{2}}{S''_{kQ}}"
+            )
+            + r",\quad c = "
+            + (r"c_{\min}" if uzyj_min else r"c_{\max}")
+            + r",\quad X_{Q} = \frac{Z_{Q}}{\sqrt{1 + (R/X)^{2}}},\quad R_{Q} = X_{Q} \cdot (R/X)"
         ),
     }
     if tolerancja_nn_robocza and not powyzej_pasma_nn(u_nq_kv):
@@ -404,9 +421,13 @@ def impedancja_zasilania_systemowego(
     if scenario == "MIN" and not uzyj_min:
         slad["zalozenie"] = KOD_SK_MIN_BRAK
         slad["zalozenie_opis"] = (
-            "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w "
-            "źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie "
-            "niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax)."
+            "Brak minimalnej mocy zwarciowej i minimalnego prądu zwarciowego sieci "
+            "zasilającej: impedancja sieci z danych maksymalnych (maksymalny współczynnik "
+            "napięciowy, maksymalna moc zwarciowa), minimalny współczynnik napięciowy tylko "
+            "w źródle napięciowym — minimalny prąd zwarciowy sieci jest prądem maksymalnym "
+            "przeskalowanym stosunkiem współczynników napięciowych; założenie "
+            "niekonserwatywne dla czułości zabezpieczeń (impedancja dla minimum nie mniejsza "
+            "niż dla maksimum)."
         )
     return z_ohm, slad
 
@@ -726,9 +747,9 @@ def _assemble_zero_sequence_y0(
         # ``b0_siemens_per_km`` jest w S/km (NIE μS/km jak ``b_us_per_km`` zgodnej).
         if skladowa.b0_s_per_km is not None and skladowa.b0_s_per_km < 0.0:
             raise OdmowaDanychError(
-                f"Gałąź {nazwa_elementu(branch, 'branches')}: susceptancja doziemna B′0 = "
+                f"Gałąź {nazwa_elementu(branch, 'branches')}: susceptancja doziemna "
                 f"{skladowa.b0_s_per_km:.6g} S/km jest ujemna — pojemność doziemna odcinka nie "
-                "może być ujemna. Popraw B′0 w parametrach odcinka."
+                "może być ujemna. Popraw susceptancję zerową w parametrach odcinka."
             )
         if skladowa.b0_s_per_km is not None and skladowa.b0_s_per_km > 0.0:
             kandydaci_b0.append(
@@ -799,7 +820,10 @@ def _assemble_zero_sequence_y0(
                         "albo punkt neutralny uzwojenia transformatora — nie źródło."
                     ),
                     result={},
-                    notes="Z0 źródła na szynie SN nie jest drogą prądu zerowego modelu.",
+                    notes=(
+                        "Impedancja zerowa źródła na szynie SN nie jest drogą prądu zerowego "
+                        "modelu."
+                    ),
                 )
             continue
         # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
@@ -827,8 +851,9 @@ def _assemble_zero_sequence_y0(
             formula_latex=r"Y_{0,src} = 1 / (Z_{0,src}/Z_{base})",
             inputs={"ref_id": source.ref_id, "z0_ohm": z0_source_ohm},
             substitution=(
-                f"Z0 źródła = {z0_source_ohm.real:.6g} + j{z0_source_ohm.imag:.6g} Ω "
-                f"(bocznik do ziemi na szynie {nazwa_szyny[source.bus_ref]})"
+                f"impedancja zerowa źródła {z0_source_ohm.real:.6g} + "
+                f"j{z0_source_ohm.imag:.6g} Ω (bocznik do ziemi na szynie "
+                f"{nazwa_szyny[source.bus_ref]})"
             ),
             result={"z0_ohm": z0_source_ohm},
         )
@@ -976,9 +1001,10 @@ def _assemble_zero_sequence_y0(
                     "parametry": [p.to_dict() for p in punkt.parametry],
                 },
                 substitution=(
-                    f"Z0,TU = {_opis_z(punkt.z0_tu_ohm)}; Z_N(spoczynek) = "
-                    f"{_opis_z(z_n_spoczynek)}; Z_N(AWSC załączona) = {_opis_z(z_n_zalaczony)}; "
-                    f"Z0,ZU({stan_awsc}) = {_opis_z(z0_zu_ohm)} (bocznik "
+                    f"impedancja zerowa transformatora uziemiającego {_opis_z(punkt.z0_tu_ohm)}; "
+                    f"impedancja punktu neutralnego w spoczynku {_opis_z(z_n_spoczynek)}, przy "
+                    f"załączonej AWSC {_opis_z(z_n_zalaczony)}; impedancja zerowa zespołu "
+                    f"uziemiającego ({stan_awsc}) {_opis_z(z0_zu_ohm)} (bocznik "
                     f"{nazwa_szyny[punkt.bus_ref]})"
                 ),
                 result={"z0_ohm": _z_sladu(z0_zu_ohm), "wariant": punkt.wariant(stan_awsc)},
@@ -1066,7 +1092,7 @@ def _assemble_zero_sequence_y0(
                 "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną "
                 "przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok "
                 "tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc "
-                "odniesienie nie zmienia Z0 żadnego węzła liczonego."
+                "odniesienie nie zmienia impedancji zerowej żadnego węzła liczonego."
             ),
         )
 
@@ -1183,12 +1209,16 @@ def _przyczyny_braku_zerowej(
                 wyjasnienie=WyjasnienieWerdyktu(
                     zdanie_pl=(
                         "Węzeł w sieci składowej zerowej źródła bez impedancji zerowej "
-                        f"({nazwy_zrodel}): Z0 sieci zasilającej nieznane — wynik zwarcia "
-                        "doziemnego nieoznaczalny. Podaj R0/X0 albo Z0/Z1 źródła (dane "
+                        f"({nazwy_zrodel}): impedancja zerowa sieci zasilającej nieznana — "
+                        "wynik zwarcia doziemnego nieoznaczalny. Podaj rezystancję i reaktancję "
+                        "zerową źródła albo stosunek impedancji zerowej do zgodnej (dane "
                         "operatora sieci zasilającej)."
                     ),
                     przyczyna_pl="Impedancja zerowa sieci zasilającej nieznana.",
-                    czego_brakuje=(f"R0/X0 albo Z0/Z1 źródła: {nazwy_zrodel}",),
+                    czego_brakuje=(
+                        "rezystancja i reaktancja zerowa albo stosunek impedancji zerowej do "
+                        f"zgodnej źródła: {nazwy_zrodel}",
+                    ),
                 ),
                 elementy=elementy,
             )
@@ -1212,15 +1242,18 @@ def _przyczyny_braku_zerowej(
                 powody = "; ".join(f"{nazwy[ref]}: {powody_bez_z0[ref]}" for ref in galezie)
                 zdania.append(
                     "Węzeł odcięty od uziemienia punktu neutralnego brakiem danych składowej "
-                    f"zerowej gałęzi ({nazwy_galezi}): R′0/X′0 nieznane, a wartości roboczej "
-                    f"nie da się przyjąć ({powody}) — wynik zwarcia doziemnego nieoznaczalny. "
-                    "Uzupełnij R′0 i X′0 gałęzi."
+                    f"zerowej gałęzi ({nazwy_galezi}): jednostkowa rezystancja i reaktancja "
+                    f"zerowa nieznane, a wartości roboczej nie da się przyjąć ({powody}) — "
+                    "wynik zwarcia doziemnego nieoznaczalny. Uzupełnij jednostkową rezystancję "
+                    "i reaktancję zerową gałęzi."
                 )
                 przyczyny_pl.append(
                     "Dane składowej zerowej gałęzi w ruchu nieznane i bez podstawy wartości "
                     "roboczej."
                 )
-                czego_brakuje.append(f"R′0 i X′0 gałęzi: {nazwy_galezi}")
+                czego_brakuje.append(
+                    f"jednostkowa rezystancja i reaktancja zerowa gałęzi: {nazwy_galezi}"
+                )
             if transformatory:
                 nazwy_trafo = ", ".join(nazwy[ref] for ref in transformatory)
                 zdania.append(
@@ -1374,9 +1407,9 @@ def _warunek_pojemnosci_zerowej(
                 + (
                     "(sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego)"
                     if not indeksy
-                    else "(impedancja Z_1 albo Z_0 węzłów nieoznaczalna — sieć bez zasilania)"
+                    else "(impedancja zgodna albo zerowa węzłów nieoznaczalna — sieć bez zasilania)"
                 )
-                + " — pojemności B0 nie wchodzą do macierzy Y0 zwarć."
+                + " — pojemności doziemne nie wchodzą do macierzy admitancyjnej zerowej zwarć."
             )
         else:
             wezel_max = next(w["wezel"] for w in wezly_k if w["k"] == k_max)
@@ -1387,7 +1420,7 @@ def _warunek_pojemnosci_zerowej(
             prog = f"{PROG_WSPOLCZYNNIKA_ZWARCIA_DOZIEMNEGO:g}".replace(".", ",")
             podstawienie = (
                 f"max k = {k_tekst} ({wezel_max}) {relacja} {prog} "
-                f"— pojemności B0 gałęzi {nazwy_galezi} {skutek}"
+                f"— pojemności doziemne gałęzi {nazwy_galezi} {skutek}"
             )
         slad.add(
             key=f"z0_warunek_pojemnosci[{numer}]",
@@ -1428,7 +1461,7 @@ def _warunek_pojemnosci_zerowej(
                 b0_robocze[g.ref_id] = g.robocze_b0
             slad.add(
                 key=f"z0_line_shunt[{g.ref_id}]",
-                title=f"Gałąź {g.nazwa_pl}: pojemność doziemna (bocznik B0, model π)",
+                title=f"Gałąź {g.nazwa_pl}: pojemność doziemna (bocznik poprzeczny, model π)",
                 formula_latex=r"Y_{0,sh} = j B_0 \cdot \ell;\quad Y_{0,sh,end} = Y_{0,sh}/2",
                 inputs={
                     "ref_id": g.ref_id,
@@ -1437,9 +1470,9 @@ def _warunek_pojemnosci_zerowej(
                     "z_base_ohm": g.z_base_ohm,
                 },
                 substitution=(
-                    f"B0={g.b0_s_per_km:.6g} S/km · {g.length_km:.6g} km = {y_s:.6g} S; "
-                    f"Y0 na każdym końcu = j{y_konca_pu.imag:.6g} pu (na {g.nazwa_od} "
-                    f"i {g.nazwa_do})"
+                    f"susceptancja jednostkowa {g.b0_s_per_km:.6g} S/km razy długość "
+                    f"{g.length_km:.6g} km daje {y_s:.6g} S; admitancja zerowa na każdym końcu "
+                    f"j{y_konca_pu.imag:.6g} pu (na {g.nazwa_od} i {g.nazwa_do})"
                 ),
                 result={"y0_shunt_per_end_pu": y_konca_pu},
                 notes=(
@@ -1492,11 +1525,11 @@ def _przyczyny_trybu_sieci_sn(
             continue
         opis = (
             "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem "
-            "pojemnościowym sieci I_C"
+            "pojemnościowym sieci"
             if tryb == "izolowany"
             else "Sieć SN skompensowana (dławik gaszący, także z automatyką wymuszania "
-            "składowej czynnej): prąd doziemienia jest prądem resztkowym "
-            "√(I_w² + (I_C − I_L)²)"
+            "składowej czynnej): prąd doziemienia jest prądem resztkowym (składowa czynna "
+            "i różnica prądu pojemnościowego i prądu dławika dodane geometrycznie)"
         )
         brak = BrakWynikuZerowego(
             przyczyna="poza_zakresem_iec60909",
@@ -1506,7 +1539,8 @@ def _przyczyny_trybu_sieci_sn(
                 zdanie_pl=(
                     f"{opis}, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione "
                     "przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu "
-                    "pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+                    "pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz "
+                    "zdrowych)."
                 ),
                 przyczyna_pl=(
                     "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych "
@@ -1566,10 +1600,10 @@ def zbuduj_siec_zerowa(
 #: Odmowa zwarcia doziemnego bez drogi powrotu prądu zerowego (macierz Y0 osobliwa) — jedno
 #: zdanie dla obu dróg wykrycia (ranga SVD i ``LinAlgError`` inwersji).
 KOMUNIKAT_SIEC_ZEROWA_OSOBLIWA = (
-    "Sieć składowej zerowej nie ma drogi powrotu prądu zerowego do ziemi — impedancji Z0 "
-    "w miejscu zwarcia nie da się wyznaczyć: brak uziemionego punktu neutralnego i brak "
-    "pojemności doziemnej B0 linii i kabli. Dla sieci izolowanej podaj susceptancję doziemną "
-    "linii i kabli (B0), by uwzględnić prąd pojemnościowy doziemienia."
+    "Sieć składowej zerowej nie ma drogi powrotu prądu zerowego do ziemi — impedancji "
+    "zerowej w miejscu zwarcia nie da się wyznaczyć: brak uziemionego punktu neutralnego "
+    "i brak pojemności doziemnej linii i kabli. Dla sieci izolowanej podaj susceptancję "
+    "doziemną linii i kabli, by uwzględnić prąd pojemnościowy doziemienia."
 )
 
 
@@ -1845,7 +1879,7 @@ def _add_generator_sc_sources(
             if zrodlo_sc.wklad_zrodlo != K_SC_ZRODLO_DEKLARACJA:
                 tracer.add(
                     key=f"k_sc_zalozenie_{gen.ref_id}",
-                    title="Założenie: udział zwarciowy falownika k_sc",
+                    title="Założenie: współczynnik udziału zwarciowego falownika",
                     formula_latex=r"I_k = k_{sc} \cdot I_n",
                     inputs={
                         "generator_ref": gen.ref_id,
@@ -2049,22 +2083,28 @@ def _k_sc_substytucja_zalozenia(zrodlo: InverterSource, catalog_ref: str | None)
     ref_pl = catalog_ref or "(brak referencji katalogowej)"
     if zrodlo.wklad_zrodlo == K_SC_ZRODLO_NIEPOPRAWNE:
         return (
-            f"k_sc = 1,1 przyjęte do rachunku ROBOCZEGO — karta katalogowa konwertera "
-            f"{ref_pl} niesie wartość k_sc={zrodlo.k_sc!r}, niemożliwą do przyjęcia "
+            f"współczynnik udziału zwarciowego 1,1 przyjęty do rachunku ROBOCZEGO — karta "
+            f"katalogowa konwertera {ref_pl} niesie wartość {zrodlo.k_sc!r}, niemożliwą do "
+            "przyjęcia "
             "(wymagana liczba skończona i dodatnia)"
         )
     if zrodlo.wklad_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
         return (
-            f"k_sc = 1,1 przyjęte do rachunku ROBOCZEGO — iloczyn zadeklarowanego "
-            f"k_sc={zrodlo.k_sc!r} i prądu znamionowego źródła (karta {ref_pl}) "
+            "współczynnik udziału zwarciowego 1,1 przyjęty do rachunku ROBOCZEGO — iloczyn "
+            f"zadeklarowanego współczynnika {zrodlo.k_sc!r} i prądu znamionowego źródła (karta "
+            f"{ref_pl}) "
             "wykracza poza zakres liczb skończonych"
         )
     if zrodlo.wklad_zrodlo == K_SC_ZRODLO_PRAD_NIEPOPRAWNY:
         return (
-            f"k_sc = 1,1 przyjęte do rachunku ROBOCZEGO — źródło (karta {ref_pl}) nie ma "
-            "poprawnego prądu znamionowego I_n, więc wkładu nie da się policzyć"
+            "współczynnik udziału zwarciowego 1,1 przyjęty do rachunku ROBOCZEGO — źródło "
+            f"(karta {ref_pl}) nie ma poprawnego prądu znamionowego, więc wkładu nie da się "
+            "policzyć"
         )
-    return f"k_sc = 1,1 przyjęte — brak danych karty katalogowej konwertera {ref_pl}"
+    return (
+        "współczynnik udziału zwarciowego 1,1 przyjęty — brak danych karty katalogowej "
+        f"konwertera {ref_pl}"
+    )
 
 
 def _k_sc_notatka_zalozenia(wklad_zrodlo: str) -> str:
@@ -2077,15 +2117,15 @@ def _k_sc_notatka_zalozenia(wklad_zrodlo: str) -> str:
     """
     if wklad_zrodlo == K_SC_ZRODLO_NIEPOPRAWNE:
         return (
-            "DANE NIEPOPRAWNE: karta katalogowa przekształtnika niesie "
-            "k_sc niemożliwy do przyjęcia (NaN, ±Inf, zero, ujemny, tekst albo bool) — to "
-            "błąd danych, nie brak. Wynik zwarciowy NIE jest miarodajny dla doboru "
-            "aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Popraw k_sc w karcie "
-            "katalogowej."
+            "DANE NIEPOPRAWNE: karta katalogowa przekształtnika niesie współczynnik udziału "
+            "zwarciowego niemożliwy do przyjęcia (wartość nieokreślona, nieskończona, zero, "
+            "ujemna, tekst albo wartość logiczna) — to błąd danych, nie brak. Wynik zwarciowy "
+            "NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu "
+            "dowodowego. Popraw współczynnik udziału zwarciowego w karcie katalogowej."
         )
     if wklad_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
         return (
-            "POZA DZIEDZINĄ WYNIKU: współczynnik k_sc i prąd znamionowy "
+            "POZA DZIEDZINĄ WYNIKU: współczynnik udziału zwarciowego i prąd znamionowy "
             "są każdy z osobna poprawne, ale ich iloczyn nie jest liczbą skończoną. Wynik "
             "zwarciowy NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani "
             "pakietu dowodowego. Popraw dane znamionowe źródła."
@@ -2098,11 +2138,11 @@ def _k_sc_notatka_zalozenia(wklad_zrodlo: str) -> str:
             "pakietu dowodowego. Uzupełnij tabliczkę znamionową źródła."
         )
     return (
-        "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — "
-        "przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość "
-        "wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru "
-        "aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty "
-        "producenta, aby zastąpić domyślkę zmierzoną wartością."
+        "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie współczynnika "
+        "udziału zwarciowego — przyjęto domyślkę systemową 1,1 (nie jest to dana producenta "
+        "ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla "
+        "doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz współczynnik "
+        "udziału zwarciowego z karty producenta, aby zastąpić domyślkę zmierzoną wartością."
     )
 
 

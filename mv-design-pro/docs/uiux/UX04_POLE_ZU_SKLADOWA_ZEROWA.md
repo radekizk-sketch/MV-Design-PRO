@@ -1482,4 +1482,53 @@ bez składania (nowy wspólny formatter `ui2/shared/legendaZWzorami.tsx` we wszy
 wykresach z legendą) i zawężenie typu (`typeof tekst !== 'string'`) w komponencie składającym;
 wzór chemiczny gazu (`SF₆`) nie jest symbolem wielkości. Pomiar po zmianie: 250 = tylko
 towarzysze archetypów (punkt 4).
-Punkt 4 — w toku.
+Punkt 4 (proza backendu trafiająca do UI i raportu) — w toku, stan zmierzony.
+Strażnik `scripts/backend_proza_symboli_guard.py` (samotest 32 testy: rodzaj tekstu × zapis symbolu
+× reguła miejsca × ten sam tekst poza regułą × zapadka per plik) mierzy w `backend/src` stałe
+tekstowe i całe f-stringi ze słowem polskim i symbolem z indeksem albo spłaszczonym (`I″k`, `U_n`,
+`cos φ`, `R′0`, `Ik3`, `t_b`); tekst z ukośnikiem albo `$` jest LaTeX-em. Zapadka per plik w obie
+strony (`guard_references/backend_proza_symboli_pin.json`, plik spoza mapy ma pin 0,
+`--aktualizuj` odmawia podniesienia); wpięty w `p0-extended-guards.yml`. Iniekcja literału do
+czystego pliku (`wartosci_robocze.py`) — kod 1. Pomiar: 1031 trafień przed punktem 4 (skan
+roboczy), 790 przy pierwszym pinie, **663 w 164 plikach teraz**. Wyjątki — reguły strukturalne
+z uzasadnieniem, nie lista: docstringi, komunikaty `assert`/`AssertionError`, logger (dziennik
+serwera), identyfikatory i kody w tekście, numery kart (`P0.7`); `EquationDefinition.notes`
+w `equation_registry.py` (35 wpisów — pole idzie wyłącznie do `proof.json`, eksport LaTeX/PDF,
+inspektor i frontend go nie renderują); wzór `trace.add` rdzenia V12.6 (bliźniak LaTeX
+`v126_wzory.py`, test kompletności) i podstawienie tylko dla kluczy z budowniczym podstawienia;
+wzór śladu NC RfG (nowy rejestr `application/ncrfg_compliance/wzory_sladu.py`, 14 zapisów,
+test kompletności z AST rdzenia w obie strony, katalog testów wydaje `wzory_sladu_latex`, widok
+`SladTestu` renderuje `MathBlock`).
+Przepisane słowami (pliki do zera albo prawie): `wartosci_robocze.py`, `niezmienniki_katalogu.py`,
+`czas_wylaczenia.py`, `machine_sc_iec60909.py` (+ `partial_formula_latex`, `small_motor_rule_latex`),
+`equation_registry.py` (nazwy i opisy), `enm/mapping.py` (+ `formula_latex` śladu źródła
+sieciowego; kolumna „Wzór” tabeli źródeł zwarć renderuje KaTeX), `protection_lv_curves.py`,
+`swz/werdykt.py`, `swz/werdykt_tt_it.py`, `petla_zwarcia_tt_it.py`,
+`packs/lv_circuit_verification.py`, generator archetypów stacji (tryby regulacji jako LaTeX).
+**B-01 — wyłącznie teksty (do przyjęcia przez architekta).** Tabela zmian (AST z normalizacją
+stałych tekstowych względem 01c5def16 — identyczne; żadna zmieniona stała nie jest kluczem
+słownika, indeksem ani operandem porównania; odcisk `solver_hashes.json` odświeżony `--init`,
+sankcje w `solver_boundary_guard.py`):
+
+| Rdzeń | Zmienione stałe | Rodzaj |
+|---|---|---|
+| `short_circuit_iec60909.py` | 11 | uwagi i tytuły kroków śladu, podstawienia słowne, bilans Kirchhoffa |
+| `short_circuit_contributions.py` | 1 | przyczyna wkładu zerowego innej wyspy |
+| `state_estimation_wls.py` | 4 | komunikaty `ValueError` (węzeł początkowy/końcowy) |
+| `v126_academic.py` | 47 | komunikaty odmowy, opisy sanity, dane przyjęte, podstawienia słowne |
+| `ncrfg_ptpiree/engine.py` | 10 | jednostki p.u., opisy zdolności, stron i FRT (zapis wzoru bez zmian) |
+
+Parytet liczbowy: złote SC1 asymetryczne przegenerowane funkcją testu złotego — różnice wyłącznie
+w `name_pl`/`title_pl`/`description_pl`; fikstury przegenerowane generatorami
+(`fikstury_enm_sld`, `sld_substrate_fixtures`, rejestr maszyn, `generuj_odpowiedzi_v126`,
+`eksport_fixtur_projekcji_nn`, `eksport_fixtur_harnessu`, towarzysze archetypów) bez zmian
+liczb przypisanych tej karcie. Dwie różnice liczbowe w towarzyszach i w
+`sldSubstrate52s.powerflow.maintenance.json` (`0.500002 → 0.500003` w czterech podstawieniach R/X,
+`p_from_mw 0.180288 → 0.180287`) zbadane bisekcją na czystej kopii 01c5def16 bez zmian tej karty:
+to wyjście generatorów już na źródle bazowym (bez pycache, przy różnych `PYTHONHASHSEED`
+i liczbie wątków BLAS) — pliki w drzewie były nieświeże wobec źródła, nie skutek zmiany tekstów.
+Zostaje (pomiar `backend_proza_symboli_guard.py --lista`, 663 w 164 plikach, największe:
+`arc_flash/builder.py` 18, `enm/assembler.py` 17, `mv_converter_catalog.py` 15,
+`equipment_proof/generator.py` 14, `wytrzymalosc_aparatury_pol.py` 14, `nn_device_selection.py` 14,
+`api/proof_pack.py` 14, `v126_oceny.py` 13) — zapadka pilnuje, że nie rośnie, i wymusza
+obniżanie pinu przy każdej naprawie.

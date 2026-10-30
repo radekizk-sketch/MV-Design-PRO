@@ -290,7 +290,9 @@ describe('naWierszeZrodelSieciowych — ślad Z_Q źródeł sieciowych (CV-4.3 K
     expect(w.c).toEqual({ wartosc: fmtWspolczynnik(1.1) });
     expect(w.rx.wartosc).toBe(`${fmtWspolczynnik(0.1)} (${rxRatioZrodloPL('MODEL')})`);
     expect(w.zq).toMatchObject({ wartosc: expect.stringContaining('0,6600') });
-    expect(w.wzor).toEqual({ wartosc: zrodloSiecioweSladMaxFixture().formula });
+    // Wzór idzie do komórki jako segment `$...$` z `formula_latex` (KaTeX w `TekstZWzorami`),
+    // nie jako spłaszczony zapis `formula` (kontrakt prezentacji inżynierskiej, karta ZU).
+    expect(w.wzor).toEqual({ wartosc: `$${zrodloSiecioweSladMaxFixture().formula_latex}$` });
     expect(w[KLUCZ_ZRODLA_SIECIOWE]).toEqual({ wartosc: 's1::MAX' });
   });
 

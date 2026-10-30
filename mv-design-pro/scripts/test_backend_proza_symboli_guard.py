@@ -56,6 +56,8 @@ def _liczba(tmp_path: Path, wzgledna: str, tresc: str) -> int:
         ("Prąd_I_th", False),  # bez spacji — identyfikator
         ("Pole `i_th_a` jest puste", False),  # identyfikator w odwrotnych apostrofach
         ("Kod NIE_DOTYCZY dla pola", False),  # kod statusu
+        ("Zakaz interpolacji, §0.2 karty P0.7", False),  # numer karty, nie symbol P0
+        ("Straty jałowe P0 transformatora", True),  # symbol P0 w prozie
         ("Prąd znamionowy jest za duży", False),  # proza słowami
     ],
 )

@@ -2765,10 +2765,10 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "6be5528fff3b51787d3537ee88c87f6bb7a867edd7622f3e738dca23ccba6c2a",
-        "proof_id": "proof:v126:earthing_safety:d158a9f9b7fa8932",
+        "proof_hash": "b3a92d27bc51c62bfd2ce13fcf6e4f4f93375d03af31169a7013a1995f3b4cf5",
+        "proof_id": "proof:v126:earthing_safety:3b6911a73a991180",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
-        "source_result_hash": "d158a9f9b7fa8932f579cb6d4e6fee982260741235f4177c82b189a56c2069c5",
+        "source_result_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750",
         "steps": [
           {
             "data": {
@@ -2842,7 +2842,7 @@
       "koperta": {
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
-        "deterministic_hash": "d158a9f9b7fa8932f579cb6d4e6fee982260741235f4177c82b189a56c2069c5",
+        "deterministic_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety",
@@ -2855,19 +2855,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "d83ad2186d864bd2f4d922d2cf3fda45db02b0e7c48a983d303756ef5dd8747a",
-        "report_id": "report:v126:earthing_safety:d158a9f9b7fa8932",
+        "report_hash": "7dc162b9629705d4f330d3d5ba16ff620b12f6068c3242dd39ea637218b066b1",
+        "report_id": "report:v126:earthing_safety:3b6911a73a991180",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earthing_safety:d158a9f9b7fa8932"
+                "value": "proof:v126:earthing_safety:3b6911a73a991180"
               },
               {
                 "label": "proof_hash",
-                "value": "6be5528fff3b51787d3537ee88c87f6bb7a867edd7622f3e738dca23ccba6c2a"
+                "value": "b3a92d27bc51c62bfd2ce13fcf6e4f4f93375d03af31169a7013a1995f3b4cf5"
               },
               {
                 "label": "trace_step_count",
@@ -2881,7 +2881,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "d158a9f9b7fa8932f579cb6d4e6fee982260741235f4177c82b189a56c2069c5"
+                "value": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750"
               },
               {
                 "label": "solver_version",
@@ -2889,19 +2889,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "947df27b1c66bc04ad1a067f2bbf46f1f423e2f6fc037e542a3079fa48679837"
+                "value": "089b1066e40cab4f2e77a5aff9c7399612a5193b86d60133e604b592fb2d7103"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "6be5528fff3b51787d3537ee88c87f6bb7a867edd7622f3e738dca23ccba6c2a",
-        "source_result_hash": "d158a9f9b7fa8932f579cb6d4e6fee982260741235f4177c82b189a56c2069c5"
+        "source_proof_hash": "b3a92d27bc51c62bfd2ce13fcf6e4f4f93375d03af31169a7013a1995f3b4cf5",
+        "source_result_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750"
       },
       "slad": {
         "analysis_type": "earthing_safety",
-        "deterministic_hash": "d158a9f9b7fa8932f579cb6d4e6fee982260741235f4177c82b189a56c2069c5",
+        "deterministic_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "steps": [
           {
@@ -2981,13 +2981,13 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earthing_safety:d158a9f9b7fa8932",
-        "report_ref": "report:v126:earthing_safety:d158a9f9b7fa8932",
+        "proof_ref": "proof:v126:earthing_safety:3b6911a73a991180",
+        "report_ref": "report:v126:earthing_safety:3b6911a73a991180",
         "result": {
           "analysis_type": "earthing_safety",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "d158a9f9b7fa8932f579cb6d4e6fee982260741235f4177c82b189a56c2069c5",
-          "input_hash": "947df27b1c66bc04ad1a067f2bbf46f1f423e2f6fc037e542a3079fa48679837",
+          "deterministic_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750",
+          "input_hash": "089b1066e40cab4f2e77a5aff9c7399612a5193b86d60133e604b592fb2d7103",
           "result": {
             "bus_ref": "bus_sn_main",
             "dane_przyjete": [
@@ -3098,7 +3098,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk d158a9f9b7fa8932)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 3b6911a73a991180)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -3227,7 +3227,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk d158a9f9b7fa8932)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 3b6911a73a991180)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
@@ -3484,7 +3484,7 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk d158a9f9b7fa8932)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk 3b6911a73a991180)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {

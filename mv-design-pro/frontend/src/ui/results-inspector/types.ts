@@ -419,7 +419,10 @@ export interface ZrodloSiecioweSlad {
   rx_ratio_zrodlo?: 'MODEL_MIN' | 'MODEL_MAX' | 'MODEL' | 'IEC_60909_DOMYSLNY_0_1';
   z_q_abs_ohm?: number;
   z_q_ohm: ZQOhm;
+  /** Opis wzoru słowami (proza dla audytu tekstowego). */
   formula: string;
+  /** Ten sam wzór w LaTeX — ekran renderuje go KaTeX-em (kontrakt prezentacji inżynierskiej). */
+  formula_latex: string;
   /** Kod gotowości (np. „source.sk_min_missing") — obecny WYŁĄCZNIE gdy scenariusz
    *  MIN liczył się z danych MAX (brak S″kQmin/I″kQmin); nigdy cicho. */
   zalozenie?: string;

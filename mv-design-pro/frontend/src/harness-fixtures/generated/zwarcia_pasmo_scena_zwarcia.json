@@ -723,14 +723,15 @@
             "re": 0.5,
             "im": 5.0
           },
-          "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
+          "formula": "Impedancja sieci zasilającej jawna z modelu (rezystancja i reaktancja), bez współczynnika napięciowego; scenariusz minimalny: minimalny współczynnik napięciowy wyłącznie w źródle napięciowym",
+          "formula_latex": "Z_{Q} = R_{Q} + jX_{Q}"
         }
       ],
       "zalozenia": [
         {
           "code": "inverter.k_sc_default_forbidden",
           "element_ref": "gen_pv",
-          "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
+          "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie współczynnika udziału zwarciowego — przyjęto domyślkę systemową 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz współczynnik udziału zwarciowego z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
           "scenariusz": "MAX"
         },
         {
@@ -854,7 +855,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "c2733a89f86d574c298a642f8668f8fda7add9c71c36c11532648d8adde8ea2a",
+        "result_hash": "50c63efa48f982754e37d941fba8d5a53db30f1c9162f8f8db726211cf68b226",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1595,14 +1596,15 @@
             "re": 0.5,
             "im": 5.0
           },
-          "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
+          "formula": "Impedancja sieci zasilającej jawna z modelu (rezystancja i reaktancja), bez współczynnika napięciowego; scenariusz minimalny: minimalny współczynnik napięciowy wyłącznie w źródle napięciowym",
+          "formula_latex": "Z_{Q} = R_{Q} + jX_{Q}"
         }
       ],
       "zalozenia": [
         {
           "code": "inverter.k_sc_default_forbidden",
           "element_ref": "gen_pv",
-          "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
+          "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie współczynnika udziału zwarciowego — przyjęto domyślkę systemową 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz współczynnik udziału zwarciowego z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
           "scenariusz": "MIN"
         },
         {
@@ -1726,7 +1728,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "4bde36d2c7931ed53400c86930725006da002b190471201a1c5586f74889af43",
-        "result_hash": "677600b39007a9d6af6a1171adc786b62d453e80b85986b41a755bb42137cc43",
+        "result_hash": "e4c2767407d8af5414635029163e4409f95f3cc17b644e533f22a5b5ffcf71e6",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",

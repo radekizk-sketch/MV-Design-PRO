@@ -40,7 +40,7 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych)."
       ],
       "non_physical_reason": "fault.zero_sequence_outside_iec60909",
       "brak_wyniku_zerowego": {
@@ -48,7 +48,7 @@
         "kod": "fault.zero_sequence_outside_iec60909",
         "status": "NIE_DOTYCZY",
         "wyjasnienie": {
-          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych).",
           "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
           "czego_brakuje": [],
           "zastrzezenia": []
@@ -495,7 +495,7 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych)."
       ],
       "non_physical_reason": "fault.zero_sequence_outside_iec60909",
       "brak_wyniku_zerowego": {
@@ -503,7 +503,7 @@
         "kod": "fault.zero_sequence_outside_iec60909",
         "status": "NIE_DOTYCZY",
         "wyjasnienie": {
-          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych).",
           "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
           "czego_brakuje": [],
           "zastrzezenia": []
@@ -664,7 +664,7 @@
       "reporting_status_pl": "nieraportowalny",
       "proof_status_pl": "częściowy",
       "reporting_limitations_pl": [
-        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych)."
+        "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych)."
       ],
       "non_physical_reason": "fault.zero_sequence_outside_iec60909",
       "brak_wyniku_zerowego": {
@@ -672,7 +672,7 @@
         "kod": "fault.zero_sequence_outside_iec60909",
         "status": "NIE_DOTYCZY",
         "wyjasnienie": {
-          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci I_C, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie U0, napięcia faz zdrowych).",
+          "zdanie_pl": "Sieć SN z punktem neutralnym izolowanym: prąd doziemienia jest prądem pojemnościowym sieci, nie prądem zwarciowym IEC 60909-0 (zakres normy: sieci uziemione przez małą impedancję) — wiersz niesie doziemienie wyznaczone wg sposobu pracy punktu neutralnego (prąd, napięcie składowej zerowej, napięcia faz zdrowych).",
           "przyczyna_pl": "IEC 60909-0:2016 rozdz. 1 nie obejmuje doziemień w sieciach izolowanych i skompensowanych.",
           "czego_brakuje": [],
           "zastrzezenia": []
@@ -805,7 +805,8 @@
         "re": 0.5,
         "im": 5.0
       },
-      "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
+      "formula": "Impedancja sieci zasilającej jawna z modelu (rezystancja i reaktancja), bez współczynnika napięciowego; scenariusz minimalny: minimalny współczynnik napięciowy wyłącznie w źródle napięciowym",
+      "formula_latex": "Z_{Q} = R_{Q} + jX_{Q}"
     }
   ],
   "siec_zerowa": [
@@ -860,7 +861,7 @@
           "im": 6.0
         }
       },
-      "substitution": "Z0 źródła = 0.6 + j6 Ω (bocznik do ziemi na szynie GPZ 110 kV)",
+      "substitution": "impedancja zerowa źródła 0.6 + j6 Ω (bocznik do ziemi na szynie GPZ 110 kV)",
       "substitution_latex": null,
       "result": {
         "z0_ohm": {
@@ -892,7 +893,7 @@
         "wezly": [],
         "prog_k": 1.4
       },
-      "substitution": "Sieć zerowa gałęzi Kabel SN 1, Linia SN 1: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności B0 nie wchodzą do macierzy Y0 zwarć.",
+      "substitution": "Sieć zerowa gałęzi Kabel SN 1, Linia SN 1: brak węzła liczonego zwarciem IEC 60909 (sieć nieuziemiona przez małą impedancję albo bez wyniku zerowego) — pojemności doziemne nie wchodzą do macierzy admitancyjnej zerowej zwarć.",
       "substitution_latex": null,
       "result": {
         "k_max": null,
@@ -1078,14 +1079,14 @@
       "result": {
         "liczba_wezlow": 3
       },
-      "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia Z0 żadnego węzła liczonego."
+      "notes": "Zwarcie doziemne w tych węzłach NIE jest liczone — wiersz wyniku niesie nazwaną przyczynę (brak drogi prądu zerowego albo brak danych składowej zerowej). Blok tych węzłów nie ma elementów szeregowych do reszty sieci zerowej, więc odniesienie nie zmienia impedancji zerowej żadnego węzła liczonego."
     }
   ],
   "zalozenia": [
     {
       "code": "inverter.k_sc_default_forbidden",
       "element_ref": "gen_pv",
-      "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
+      "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie współczynnika udziału zwarciowego — przyjęto domyślkę systemową 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz współczynnik udziału zwarciowego z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
       "scenariusz": "MAX"
     },
     {
@@ -1175,7 +1176,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "16b5333e29a460e1689af4780f93259d80e46545809733bf47d00d71fd44bcc8",
+      "result_hash": "90bab26e9e06effd30cf6b13addc27c3b5c273d9786c3d3ccc71f6d9229a062a",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

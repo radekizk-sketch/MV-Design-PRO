@@ -1532,16 +1532,17 @@
         "re": 0.0985086818308,
         "im": 0.985086818308
       },
-      "formula": "Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0:2016 §6.2.1 eq. 6; c = c_max); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)",
+      "formula": "Impedancja sieci zasilającej z mocy zwarciowej (IEC 60909-0:2016 §6.2.1 wzór 6; współczynnik napięciowy maksymalny); reaktancja i rezystancja ze stosunku R/X",
+      "formula_latex": "Z_{Q} = \\frac{c \\cdot U_{nQ}^{2}}{S''_{kQ}},\\quad c = c_{\\max},\\quad X_{Q} = \\frac{Z_{Q}}{\\sqrt{1 + (R/X)^{2}}},\\quad R_{Q} = X_{Q} \\cdot (R/X)",
       "zalozenie": "source.sk_min_missing",
-      "zalozenie_opis": "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax)."
+      "zalozenie_opis": "Brak minimalnej mocy zwarciowej i minimalnego prądu zwarciowego sieci zasilającej: impedancja sieci z danych maksymalnych (maksymalny współczynnik napięciowy, maksymalna moc zwarciowa), minimalny współczynnik napięciowy tylko w źródle napięciowym — minimalny prąd zwarciowy sieci jest prądem maksymalnym przeskalowanym stosunkiem współczynników napięciowych; założenie niekonserwatywne dla czułości zabezpieczeń (impedancja dla minimum nie mniejsza niż dla maksimum)."
     }
   ],
   "zalozenia": [
     {
       "code": "source.sk_min_missing",
       "element_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/source/main",
-      "message_pl": "Brak S''_kQmin/I''_kQmin: Z_Q z danych MAX (c_max, S''_kQmax), c_min tylko w źródle napięciowym — Ik''min(Q) = (c_min/c_max)·I''_kQmax; założenie niekonserwatywne dla czułości zabezpieczeń (Z_Qmin ≥ Z_Qmax).",
+      "message_pl": "Brak minimalnej mocy zwarciowej i minimalnego prądu zwarciowego sieci zasilającej: impedancja sieci z danych maksymalnych (maksymalny współczynnik napięciowy, maksymalna moc zwarciowa), minimalny współczynnik napięciowy tylko w źródle napięciowym — minimalny prąd zwarciowy sieci jest prądem maksymalnym przeskalowanym stosunkiem współczynników napięciowych; założenie niekonserwatywne dla czułości zabezpieczeń (impedancja dla minimum nie mniejsza niż dla maksimum).",
       "scenariusz": "MIN"
     },
     {
@@ -1788,7 +1789,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "d71a75cf91f1bcce53a037f80114e2b0df09f25b99ce9966984090c57f66951c",
-      "result_hash": "2a5182a23960cfb02607fdd6a3b04b856a852070a55be7879da33d8e49e9b4b3",
+      "result_hash": "fbf7a0982f36c20a7cc1c8b4093df2b89cf99918430ff4df583ce2a89680a37f",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

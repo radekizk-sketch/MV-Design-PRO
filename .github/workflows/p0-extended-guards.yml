@@ -180,6 +180,13 @@ jobs:
       - name: Formuly fizyczne poza solverami — zapadka poza network_model/pochodne (CV-4.3 K4)
         run: $GUARD_PY scripts/backend_no_physics_guard.py
 
+      # Karta UX-04/ZU punkt 4 (2026-10-30): proza backendu trafiajaca do UI i raportu nie niesie
+      # symbolu splaszczonego (`I″k`, `U_n`, `cos φ`) — symbol slowami, wzor polem `*_latex`.
+      # Zapadka per plik w obie strony (guard_references/backend_proza_symboli_pin.json).
+      # Samotest: `scripts/test_backend_proza_symboli_guard.py`.
+      - name: Proza backendu bez symboli splaszczonych — zapadka per plik (UX-04/ZU)
+        run: $GUARD_PY scripts/backend_proza_symboli_guard.py
+
       # Karta #151 (2026-09-25): zaden handler `except Exception`/`BaseException`/gole
       # `except`/krotka z nimi/`suppress(Exception)` w backend/src nie polyka ani nie
       # przebiera wyjatku — dozwolony tylko handler konczacy sie ponownym `raise`.
