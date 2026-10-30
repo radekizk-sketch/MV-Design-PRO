@@ -163,7 +163,9 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
             "model": device.model,
             "series": series_value,
             "revision": "v0",
-            "rated_current_a": float(meta["rated"]) if meta.get("rated") is not None else None,
+            # meta.rated jest numerem wariantu/modelu, NIE prądem znamionowym IED.
+            # Prąd znamionowy wejścia 1/5 A należy do konfiguracji toru CT i karty produktu.
+            "rated_current_a": None,
             "notes_pl": " ".join(notes) if notes else None,
             "source_catalog": "backend/src/application/analyses/protection/catalog/data/devices_v0.json",
             "unverified": bool(meta.get("unverified", False)),
