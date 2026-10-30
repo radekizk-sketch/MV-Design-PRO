@@ -394,7 +394,10 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
     operator_records = [
         _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable")
         for record in CABLE_ENEA_2026_NKT_TYPES
-    ] + legacy_operator_records
+    ] + legacy_operator_records + [
+        _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable")
+        for record in CABLE_NKT_PELNY_ODBIORCA_TYPES
+    ]
     base_records = [
         _with_catalog_quality(
             _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable"),
@@ -2135,6 +2138,88 @@ CABLE_ENEA_2026_NKT_TYPES: list[dict[str, Any]] = [
     ),
 ]
 
+
+
+# Pełny typoszereg NKT CTL00109 rev. 4 — także poza specyfikacją ENEA.
+# W instalacji odbiorcy nie wolno filtrować katalogu po tab. 3 ENEA.
+# R20/C/L/Iz/Ith pochodzą z kart PRODUCENTA; X = 2π·50 Hz·L(trójkąt).
+# Odrębne wartości L przy innym przekroju ekranu mają własny wiersz.
+# Format: przekrój, powrót, R20, C [µF/km], L[mH/km], Iz_grunt_trojkąt,
+# Ith_żyły [kA], Ith_powrotu[kA].
+_NKT_CTL00109_PELNY_TYPO_SZEREG: tuple[tuple[int, int, float, float, float, int, float, float], ...] = (
+    (50, 16, 0.641, 0.17, 0.45, 212, 4.7, 3.2),
+    (70, 25, 0.443, 0.19, 0.42, 260, 6.6, 5.0),
+    (120, 25, 0.253, 0.23, 0.39, 354, 11.3, 5.0),
+    (120, 50, 0.253, 0.23, 0.38, 354, 11.3, 10.0),
+    (150, 25, 0.206, 0.25, 0.37, 398, 14.2, 5.0),
+    (150, 50, 0.206, 0.25, 0.37, 398, 14.2, 10.0),
+    (240, 25, 0.125, 0.29, 0.35, 523, 22.7, 5.0),
+    (240, 50, 0.125, 0.29, 0.34, 523, 22.7, 10.0),
+    (300, 25, 0.100, 0.32, 0.33, 589, 28.4, 5.0),
+    (300, 50, 0.100, 0.32, 0.33, 589, 28.4, 10.0),
+    (400, 25, 0.0778, 0.36, 0.32, 675, 37.8, 5.0),
+    (400, 50, 0.0778, 0.36, 0.32, 675, 37.8, 10.0),
+    (500, 25, 0.0605, 0.40, 0.31, 766, 47.3, 5.0),
+    (630, 25, 0.0469, 0.44, 0.29, 870, 59.6, 5.0),
+    (630, 35, 0.0469, 0.44, 0.29, 870, 59.6, 7.0),
+    (630, 50, 0.0469, 0.44, 0.29, 870, 59.6, 10.0),
+)
+
+def _nkt_pelny_odcinek_od_punktu_przylaczenia() -> list[dict[str, Any]]:
+    """Warianty CTL00109 poza 3 typami już istniejącymi jako ENEA 2026."""
+    import math
+
+    pokryte_enea = {(70, 25), (150, 25), (240, 25)}
+    wynik = []
+    for przekroj, powrot, r20, pojemnosc, l_mh, iz, ith, ith_powrot in _NKT_CTL00109_PELNY_TYPO_SZEREG:
+        if (przekroj, powrot) in pokryte_enea:
+            continue
+        wynik.append({
+            "id": f"cable-nkt-xruhakxs1-{przekroj}-{powrot}-12-20",
+            "name": f"NKT XRUHAKXS1 1×{przekroj}/{powrot} mm² 12/20 kV",
+            "params": {
+                "manufacturer": "NKT",
+                "trade_name": f"XRUHAKXS1 1x{przekroj}/{powrot}",
+                "conductor_material": "AL",
+                "return_conductor_material": "CU",
+                "return_conductor_cross_section_mm2": float(powrot),
+                "return_conductor_ith_1s_a": ith_powrot * 1000.0,
+                "return_conductor_jth_1s_a_per_mm2": ith_powrot * 1000.0 / powrot,
+                "insulation_type": "XLPE",
+                "cross_section_mm2": float(przekroj),
+                "number_of_cores": 1,
+                "r_ohm_per_km": r20,
+                "x_ohm_per_km": round(math.tau * 50.0 * l_mh / 1000, 6),
+                "c_nf_per_km": pojemnosc * 1000.0,
+                "rated_current_a": float(iz),
+                "ith_1s_a": ith * 1000.0,
+                "jth_1s_a_per_mm2": ith * 1000.0 / przekroj,
+                "voltage_rating_kv": 20.0,
+                "max_temperature_c": TEMP_OPERATING_XLPE_C,
+                "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+                "standard": "PN-HD 620 10-R",
+                "source_reference": (
+                    "NKT XRUHAKXS1 12/20 kV, CTL00109 rev. 4, str. 2-3: "
+                    + NKT_XRUHAKXS1_KARTA_URL
+                ),
+                "catalog_status": "PRODUKCYJNY_V1",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "contract_version": CATALOG_CONTRACT_VERSION,
+                "verification_note": (
+                    "Parametry elektryczne i cieplne z dokładnego wiersza NKT "
+                    "CTL00109 rev. 4. Iz: trójkąt, grunt 20°C, 1,0 K m/W, "
+                    "głębokość 0,7 m, współczynnik obciążenia 0,7. "
+                    "Składowa zerowa R0/X0 jest liczona z jawnych założeń "
+                    "i nie pochodzi z karty NKT. "
+                    "To pełnoprawny wariant kabla dla instalacji odbiorcy; "
+                    "nie oznaczono zgodności z ograniczonym typoszeregiem ENEA."
+                ),
+            },
+        })
+    return wynik
+
+
+CABLE_NKT_PELNY_ODBIORCA_TYPES = _nkt_pelny_odcinek_od_punktu_przylaczenia()
 
 CABLE_INCOMPLETE_TYPES: list[dict[str, Any]] = [
     {
