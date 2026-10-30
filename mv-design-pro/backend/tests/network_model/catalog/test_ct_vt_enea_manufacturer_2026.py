@@ -16,7 +16,7 @@ from network_model.catalog.types import CTType, VTType
 
 def test_enea_30_ct_wymagania_5a_5b_5c_5d_z_rdzeniami() -> None:
     items = get_all_enea_ct_profiles()
-    assert len(items) == 30
+    assert len(items) == 36
     assert len({x["id"] for x in items}) == 30
     repo = get_default_mv_catalog()
     for item in items:
@@ -129,9 +129,9 @@ def test_ferranti_ma_odrebne_api_bez_pozornej_przekladni_pradowej() -> None:
 
 def test_przekladniki_osobne_licznosci_bez_duplikatow() -> None:
     repo = get_default_mv_catalog()
-    # 14 CT na bazie PR #508 + 30 profili 5A-D.
-    assert len(repo.ct_types) == 44
+    # 14 CT na bazie PR #508 + 36 profili 5A-D.
+    assert len(repo.ct_types) == 50
     # 13 VT dotychczasowych + 6 ENEA + 9 ABB.
     assert len(repo.vt_types) == 28
-    assert len(set(repo.ct_types)) == 44
+    assert len(set(repo.ct_types)) == 50
     assert len(set(repo.vt_types)) == 28
