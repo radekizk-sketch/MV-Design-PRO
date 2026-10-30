@@ -26,7 +26,7 @@ def test_raport_globalny_jest_deterministyczny_i_nic_nie_chowa() -> None:
     assert raport == zbuduj_raport_kompletnosci()
     assert raport["razem"] == sum(v["rekordy"] for v in raport["rodziny"].values())
     assert raport["suma_brakow_minimum"] == len(raport["braki_wymagane"])
-    assert raport["rodziny"]["cable_types"]["rekordy"] == 69
+    assert raport["rodziny"]["cable_types"]["rekordy"] == 82
     for rodzina, dane in raport["rodziny"].items():
         assert dane["minimum"], rodzina
         assert "pola_opcjonalne_niewypelnione" in dane, rodzina
