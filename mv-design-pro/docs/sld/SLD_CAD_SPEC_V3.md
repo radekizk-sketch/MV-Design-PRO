@@ -663,7 +663,7 @@ jako WARSTWA ADNOTACJI schematu.
 ### 17.4 LOD (spójnie z §15.2)
 
 - L2: pełne oznaczenie (okrąg + kody + linia wyzwalania + „52" + „M"; w układzie powiązań
-  obwodów wtórnych §17.6 — blok przekaźnika w ramce, linia wyzwalania do cewki, bez „52").
+  obwodów wtórnych §17.6 — blok przekaźnika w ramce, linia wyzwalania do portu `wylacz` wyłącznika, bez „52").
 - L1: okrąg przekaźnika bez kodów i bez „52"/„M"; linia wyzwalania ukryta.
 - L0: warstwa adnotacji nieobecna (plan sieci).
 
@@ -721,10 +721,11 @@ jako WARSTWA ADNOTACJI schematu.
   podłogi opisów celu kadru i podłogi czytelności S9-7, więc obrys ze slotów sceny nie obejmowałby
   tuszu (pomiar e2e przed naprawą: 8,1 px poza ramką w kadrze pola Z.11.1). Tło nie kurczy się
   poniżej obrysu sceny; wiersz nienarysowany nie wchodzi do ramki, a blok bez narysowanych wierszy
-  nie ma ramki. Geometria sceny (rezerwacja kolumny) zostaje przy ramce sceny. Linia wyzwalania kończy się na zacisku cewki wyłączającej wyłącznika (port wtórny
-  `wylacz` symbolu QET, EN 60617 07-15-01), więc numer „52" (§17.1) się nie rysuje: powiązanie
-  przekaźnik → wyłącznik niesie linia do cewki, a numer bez związku z linią był oderwaną
-  etykietą. Pole bez powiązań z rekordów (układ stacji, R-2, i GPZ bez szablonu pola liniowego)
+  nie ma ramki. Geometria sceny (rezerwacja kolumny) zostaje przy ramce sceny. Linia wyzwalania kończy się w porcie wtórnym `wylacz` na prawej krawędzi kafla wyłącznika
+  QET (do 2026-10-30 — na zacisku cewki wyłączającej EN 60617 07-15-01, zdjętej z kafla decyzją
+  właściciela: kafel łącznika zawiera tylko nóż, styk stały ze znacznikiem rodzaju i ewentualnie
+  napęd M), więc numer „52" (§17.1) się nie rysuje: powiązanie przekaźnik → wyłącznik niesie
+  linia do wyłącznika, a numer bez związku z linią był oderwaną etykietą. Pole bez powiązań z rekordów (układ stacji, R-2, i GPZ bez szablonu pola liniowego)
   zachowuje §17.1–§17.4 bez zmian.
 - **Zaczep tekstu etykiet warstwy adnotacji zabezpieczeń (UX-04/POLE-LINIOWE-WZORZEC,
   2026-10-29).** Do 2026-10-30 szerokość prostokąta etykiety była szacunkiem z długości tekstu

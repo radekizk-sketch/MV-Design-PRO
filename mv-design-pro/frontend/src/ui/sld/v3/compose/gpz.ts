@@ -2280,12 +2280,26 @@ export function composeGpz(
         const ctTextAnchorX = textAnchorX;
         ctAnnotations.forEach((ann, ctIndex) => {
           const center = protectionDeviceCenter(ann.device);
+          const y = wysokoscAdnotacjiPrzekladnika(ann.device, center.y);
+          // Tabliczka omija oznaczenia zacisków pierwotnych przekładników pola (P1/P2 stoją przy
+          // prawej krawędzi kafla, wiersz P1 dzieli pas z wierszem tabliczki nad linią pomiarową;
+          // bez przekładnika Ferrantiego gabaryt pola kończy się na kaflu, więc pasmo adnotacji
+          // zaczyna się tuż za nim). Prostokąty z tej samej funkcji, którą scena liczy sloty
+          // (`prostokatEtykietyZakotwiczonej`), z oznaczeń już złożonych dla pola — jedno źródło
+          // położenia; przesunięcie o całe oczka, w stałej kolejności (determinizm).
+          const zaciskiCt = fieldDesignations
+            .filter((d) => d.ownerRef.startsWith(`${bay.bayRef}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}`))
+            .map(prostokatEtykietyZakotwiczonej);
+          const tabliczkaOd = (x: number) =>
+            prostokatEtykietyZakotwiczonej({ text: ann.text, labelClass: PROTECTION_FULL_LIST_LABEL_CLASS, anchor: { x, y }, placement: 'right' });
+          let x = ctTextAnchorX;
+          for (let krok = 0; krok < 4 && zaciskiCt.some((r) => rectsOverlap(r, tabliczkaOd(x))); krok += 1) x += GRID;
           protectionLabels.push({
             ownerRef: `${bay.bayRef}#ct-rating-${ann.device.deviceRef ?? ctIndex}`,
             ownerKind: 'protection',
             text: ann.text,
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-            anchor: { x: ctTextAnchorX, y: wysokoscAdnotacjiPrzekladnika(ann.device, center.y) },
+            anchor: { x, y },
             placement: 'right',
             wyrownanieTekstu: 'poczatek',
             // W5 (§12–15/uwaga 7): wariant CT z danych — `data-ct-purpose`,

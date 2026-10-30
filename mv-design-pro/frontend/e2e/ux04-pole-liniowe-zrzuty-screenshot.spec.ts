@@ -1361,8 +1361,9 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
   for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
     await ustawMotyw(page, theme);
     await przyblizDoAparatu(page, q1.device_ref);
-    // Uziemiony: zestyk uziemiający zamknięty — kafel czerwony, nóż na zestyku uziemiającym.
-    await oczekujKafla(page, q1.device_ref, 'zamkniety', `${klucz}: Q1 uziemiony`);
+    // Uziemiony: kolor odnosi się do toru głównego (decyzja właściciela 2026-10-30) — tor otwarty,
+    // kafel zielony; nóż na zestyku uziemiającym, ziemia pod nim (UX04 §11.13).
+    await oczekujKafla(page, q1.device_ref, 'otwarty', `${klucz}: Q1 uziemiony`);
     await expect(page.locator(`${KANWA} g[data-device-ref="${q1.device_ref}"] [data-qet-polozenie]`).first()).toHaveAttribute('data-qet-polozenie', 'earthed');
     await oczekujKafla(page, q0.device_ref, 'otwarty', `${klucz}: Q0 otwarty`);
     await zrzut(page, `pole-z10-wylacznik-otwarty-uziemiony-${klucz}`, q1.device_ref, poleZajete, ['Q1', 'Q0', 'T1']);
@@ -1441,8 +1442,10 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
 
   // ---- 2a. Stan wyjściowy po zmianie szablonu: kafel z rekordu położenia albo „?" bez rekordu ---
   await wrocNaSchemat(page);
+  // Uziemiony = kafel otwarty: tor główny otwarty, nóż na zestyku uziemiającym (jedna tabela stanu
+  // `glyphs.tsx::POLOZENIE_ZE_STANU`, UX04 §11.13).
   const stanKaflaZModelu = (polozenie: string | null): StanKafla =>
-    polozenie === 'zamkniety' || polozenie === 'uziemiony' ? 'zamkniety' : polozenie === 'otwarty' ? 'otwarty' : 'nieustalony';
+    polozenie === 'zamkniety' ? 'zamkniety' : polozenie === 'otwarty' || polozenie === 'uziemiony' ? 'otwarty' : 'nieustalony';
   for (const [klucz, theme] of [['ciemny', 'dark_scada'], ['jasny', 'light_technical']] as const) {
     await ustawMotyw(page, theme);
     await przyblizDoAparatu(page, q5.device_ref);
@@ -1495,8 +1498,9 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
       await expect(page.locator(`${KANWA} g[data-device-ref="${aparat(poleZ11Po, ozn).device_ref}"]`), ozn).toHaveCount(1);
     }
     await oczekujKafla(page, q0.device_ref, 'otwarty', `${klucz}: Q0 otwarty`);
-    // Uziemiony: zestyk uziemiający zamknięty — kafel czerwony, nóż na zestyku uziemiającym.
-    await oczekujKafla(page, q1.device_ref, 'zamkniety', `${klucz}: Q1 uziemiony`);
+    // Uziemiony: kolor odnosi się do toru głównego (decyzja właściciela 2026-10-30) — tor otwarty,
+    // kafel zielony; nóż na zestyku uziemiającym, ziemia pod nim (UX04 §11.13).
+    await oczekujKafla(page, q1.device_ref, 'otwarty', `${klucz}: Q1 uziemiony`);
     await expect(page.locator(`${KANWA} g[data-device-ref="${q1.device_ref}"] [data-qet-polozenie]`).first()).toHaveAttribute('data-qet-polozenie', 'earthed');
     await oczekujKafla(page, q5.device_ref, 'zamkniety', `${klucz}: Q5 zamknięty`);
     await zrzut(page, `pole-z11-1-wylacznik-otwarty-uziemiony-${klucz}`, q5.device_ref, poleZ11Po, ['PF0', 'Q1', 'Q0', 'Q5', 'T3']);

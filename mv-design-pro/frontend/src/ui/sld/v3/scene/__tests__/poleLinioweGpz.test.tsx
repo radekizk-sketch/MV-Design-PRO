@@ -147,8 +147,11 @@ const RYSUNEK_Q0: Readonly<Record<StanQ0, SwitchState>> = { zamkniety: 'closed',
 function kafelOczekiwany(symbolId: string, state: SwitchState | undefined): StanKafla {
   if (state === 'closed') return 'zamkniety';
   if (state === 'open') return 'otwarty';
-  // Rodzaj SEMANTYCZNY rysunku (znak napędu nie zmienia rodzaju łącznika).
-  if (state === 'earthed' && rodzajSymbolu(symbolId as SymbolId) === 'qetThreePositionSwitch') return 'zamkniety';
+  // Rodzaj SEMANTYCZNY rysunku (znak napędu nie zmienia rodzaju łącznika). Uziemiony łącznik
+  // trójpołożeniowy ma kafel OTWARTY: tor główny jest otwarty, nóż spoczywa na zestyku
+  // uziemiającym (jedna tabela stanu `glyphs.tsx::POLOZENIE_ZE_STANU`, UX04 §11.13; dawna
+  // wyrocznia „zamknięty" sprzed tej tabeli czytała uziemienie jak zamknięcie toru).
+  if (state === 'earthed' && rodzajSymbolu(symbolId as SymbolId) === 'qetThreePositionSwitch') return 'otwarty';
   return 'nieustalony';
 }
 const BARWA_KAFLA: Readonly<Record<StanKafla, string>> = {

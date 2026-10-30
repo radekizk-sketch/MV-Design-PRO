@@ -194,14 +194,14 @@ describe('zaciski pierwotne i tabliczka przekładnika — wzorce pól z fikstur 
         true,
       ],
       [
-        'uziemnik na węźle zacisku dolnego bez wskaźnika napięcia — odczep przy P2, P2 po stronie podpisów',
+        'uziemnik na węźle zacisku dolnego bez wskaźnika napięcia — odczep przy zacisku dolnym, jego oznaczenie po stronie podpisów',
         (e) => zmienPola(e, (devices) => naWezleZacisku(devices.filter((d) => d.kind !== 'VOLTAGE_INDICATOR'), 'wy')),
         true,
         true,
         () => ({ odSzyny: 'right', odOdplywu: 'left' }),
       ],
       [
-        'uziemnik na węźle zacisku górnego — odczep przy P1 (Z.10), P1 po stronie podpisów',
+        'uziemnik na węźle zacisku górnego — odczep przy zacisku górnym (Z.10), jego oznaczenie po stronie podpisów',
         (e) => zmienPola(e, (devices) => naWezleZacisku(devices, 'we')),
         true,
         true,
