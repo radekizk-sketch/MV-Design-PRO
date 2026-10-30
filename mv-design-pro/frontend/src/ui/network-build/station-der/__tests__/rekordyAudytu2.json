@@ -1,0 +1,2937 @@
+{
+  "pakiet_projektu": {
+    "liczby_statusow": {
+      "BRAK_DOWODU": 2,
+      "BRAK_PODSTAWY": 1,
+      "NIE_OCENIONO": 1,
+      "NIE_SPELNIA": 1
+    },
+    "per_station": [
+      {
+        "braki_danych": [],
+        "generated_at": "1970-01-01T00:00:00Z",
+        "liczby_statusow": {
+          "BRAK_DOWODU": 2,
+          "BRAK_PODSTAWY": 1,
+          "NIE_OCENIONO": 1,
+          "NIE_SPELNIA": 1
+        },
+        "proof_count": 5,
+        "proofs": [
+          {
+            "details": {
+              "der_id": "gen/bess-1",
+              "pcs_four_quadrant": true,
+              "pcs_grid_forming": true,
+              "selected_modes": [
+                {
+                  "catalog_namespace": "bess_operation_mode",
+                  "catalog_version": "2026-08-14",
+                  "description_pl": "Symetryczna rezerwa pierwotna: magazyn zmienia moc czynną w obie strony wokół częstotliwości znamionowej. Wymagany czas reakcji, wielkość rezerwy i statyzm określa regulamin rynku bilansującego operatora systemu przesyłowego — nie ten katalog.",
+                  "id": "mode_fcr_n",
+                  "label_pl": "FCR-N (rezerwa pierwotna symetryczna)",
+                  "mode_code": "fcr_n",
+                  "requires_four_quadrant": true,
+                  "requires_grid_forming": false
+                },
+                {
+                  "catalog_namespace": "bess_operation_mode",
+                  "catalog_version": "2026-08-14",
+                  "description_pl": "Regulacja mocy biernej w funkcji napięcia w punkcie przyłączenia (charakterystyka Q(U)). Wymaga przekształtnika pracującego w czterech ćwiartkach; zakres regulacji wynika z karty przekształtnika i z warunków przyłączenia, nie z tego katalogu.",
+                  "id": "mode_voltage_support",
+                  "label_pl": "Wsparcie napięciowe Q(U)",
+                  "mode_code": "voltage_support",
+                  "requires_four_quadrant": true,
+                  "requires_grid_forming": false
+                }
+              ],
+              "unknown_mode_refs": [],
+              "zdolnosc_4q_pl": "tak",
+              "zdolnosc_gfm_pl": "tak"
+            },
+            "formulas_latex": [
+              "$$\\text{Mode}_{\\text{compatible}} \\iff (\\text{4Q required} \\implies \\text{PCS}_{\\text{4Q}}) \\land (\\text{GFM required} \\implies \\text{PCS}_{\\text{GFM}})$$"
+            ],
+            "generated_at": "1970-01-01T00:00:00Z",
+            "proof_id": "b753542b-7505-5dd4-8925-1e0b1584397e",
+            "proof_type": "AUDIT2_BESS_OPERATION_MODES",
+            "rodzaj_pl": "Tryby pracy magazynu energii",
+            "summary_pl": "Tryby pracy magazynu energii Magazyn Łąkowa wobec zdolności przekształtnika (wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa) — zdolność przekształtnika: praca w czterech ćwiartkach P–Q: przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q; Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa) — zdolność przekształtnika: praca w czterech ćwiartkach P–Q: przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q.",
+            "wymaganie": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "network_model/catalog/audit2_oceny.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [],
+                  "stan": "ZWALIDOWANE"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Brak wystarczającego dowodu",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryteria_naruszone": [],
+              "kryterium_najblizej_granicy": null,
+              "nazwa_pl": "Tryby pracy magazynu energii Magazyn Łąkowa wobec zdolności przekształtnika",
+              "oceny_skladowe": [
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+                    "semantyka": "ostrzegawcza"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryterium": {
+                    "opis_pl": "Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: praca w czterech ćwiartkach P–Q",
+                    "relacja": "LOGICZNE",
+                    "warunek_latex": "",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.bess.mode_fcr_n.praca_czterokwadrantowa",
+                  "limit": null,
+                  "margines": {
+                    "definicja_latex": null,
+                    "niedefiniowalny": true,
+                    "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny.",
+                    "punkt_pl": "przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q",
+                    "skala": null,
+                    "skala_rodzaj": null,
+                    "wartosc": null,
+                    "wzgledny": null
+                  },
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2”",
+                    "jednostka_redakcyjna": "wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia)",
+                    "rodzaj": "KATALOG_PRODUCENTA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": null,
+                    "wydanie": "pozycja katalogu typów programu"
+                  },
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przedmiot": {
+                    "element_ref": "gen/bess-1",
+                    "nazwa_pl": "Magazyn Łąkowa",
+                    "opis_pl": "magazyn energii — wybrane tryby pracy wobec zdolności przekształtnika"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.bess.mode_fcr_n.praca_czterokwadrantowa",
+                      "opis_pl": "wymaganie usługi z katalogu trybów wobec deklaracji przekształtnika",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "SPELNIA",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "usługa „FCR-N (rezerwa pierwotna symetryczna)” wymaga zdolności: praca w czterech ćwiartkach P–Q",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [],
+                    "przyczyna_pl": null,
+                    "zastrzezenia": [
+                      "Podstawa „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””, wydanie pozycja katalogu typów programu, wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu — wynik nie obejmuje: wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem."
+                    ],
+                    "zdanie_pl": "Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa) — kryterium spełnione. Zdolność przekształtnika: praca w czterech ćwiartkach P–Q: przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q (stan wymagany wg wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””)."
+                  },
+                  "wynik": {
+                    "chwila_s": null,
+                    "metoda": "OBLICZENIE",
+                    "punkt_krytyczny_pl": "przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q",
+                    "symbol_latex": "",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 1.0
+                    },
+                    "wielkosc_pl": "zdolność przekształtnika: praca w czterech ćwiartkach P–Q"
+                  },
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "POWER_FLOW",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem"
+                    ]
+                  }
+                },
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Nie dotyczy",
+                    "semantyka": "neutralna"
+                  },
+                  "kompletnosc_dowodu": "NIE_DOTYCZY",
+                  "kryterium": {
+                    "opis_pl": "Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: tworzenie napięcia (grid-forming)",
+                    "relacja": "LOGICZNE",
+                    "warunek_latex": "",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.bess.mode_fcr_n.tworzenie_napiecia",
+                  "limit": null,
+                  "margines": null,
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2”",
+                    "jednostka_redakcyjna": "wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia)",
+                    "rodzaj": "KATALOG_PRODUCENTA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": null,
+                    "wydanie": "pozycja katalogu typów programu"
+                  },
+                  "powody_niepelnosci": [],
+                  "przedmiot": {
+                    "element_ref": "gen/bess-1",
+                    "nazwa_pl": "Magazyn Łąkowa",
+                    "opis_pl": "magazyn energii — wybrane tryby pracy wobec zdolności przekształtnika"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.bess.mode_fcr_n.tworzenie_napiecia",
+                      "opis_pl": "wymaganie usługi z katalogu trybów wobec deklaracji przekształtnika",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "NIE_DOTYCZY",
+                  "stosowalnosc": {
+                    "dotyczy": false,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "usługa „FCR-N (rezerwa pierwotna symetryczna)” nie wymaga zdolności: tworzenie napięcia (grid-forming)",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [],
+                    "przyczyna_pl": "usługa „FCR-N (rezerwa pierwotna symetryczna)” nie wymaga zdolności: tworzenie napięcia (grid-forming)",
+                    "zastrzezenia": [
+                      "Podstawa „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””, wydanie pozycja katalogu typów programu, wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu — wynik nie obejmuje: wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem."
+                    ],
+                    "zdanie_pl": "Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: tworzenie napięcia (grid-forming) (Magazyn Łąkowa) — nie dotyczy: usługa „FCR-N (rezerwa pierwotna symetryczna)” nie wymaga zdolności: tworzenie napięcia (grid-forming)."
+                  },
+                  "wynik": null,
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "POWER_FLOW",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem"
+                    ]
+                  }
+                },
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+                    "semantyka": "ostrzegawcza"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryterium": {
+                    "opis_pl": "Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: praca w czterech ćwiartkach P–Q",
+                    "relacja": "LOGICZNE",
+                    "warunek_latex": "",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.bess.mode_voltage_support.praca_czterokwadrantowa",
+                  "limit": null,
+                  "margines": {
+                    "definicja_latex": null,
+                    "niedefiniowalny": true,
+                    "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny.",
+                    "punkt_pl": "przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q",
+                    "skala": null,
+                    "skala_rodzaj": null,
+                    "wartosc": null,
+                    "wzgledny": null
+                  },
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2”",
+                    "jednostka_redakcyjna": "wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia)",
+                    "rodzaj": "KATALOG_PRODUCENTA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": null,
+                    "wydanie": "pozycja katalogu typów programu"
+                  },
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przedmiot": {
+                    "element_ref": "gen/bess-1",
+                    "nazwa_pl": "Magazyn Łąkowa",
+                    "opis_pl": "magazyn energii — wybrane tryby pracy wobec zdolności przekształtnika"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.bess.mode_voltage_support.praca_czterokwadrantowa",
+                      "opis_pl": "wymaganie usługi z katalogu trybów wobec deklaracji przekształtnika",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "SPELNIA",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "usługa „Wsparcie napięciowe Q(U)” wymaga zdolności: praca w czterech ćwiartkach P–Q",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [],
+                    "przyczyna_pl": null,
+                    "zastrzezenia": [
+                      "Podstawa „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””, wydanie pozycja katalogu typów programu, wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu — wynik nie obejmuje: wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem."
+                    ],
+                    "zdanie_pl": "Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa) — kryterium spełnione. Zdolność przekształtnika: praca w czterech ćwiartkach P–Q: przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q (stan wymagany wg wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””)."
+                  },
+                  "wynik": {
+                    "chwila_s": null,
+                    "metoda": "OBLICZENIE",
+                    "punkt_krytyczny_pl": "przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q",
+                    "symbol_latex": "",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 1.0
+                    },
+                    "wielkosc_pl": "zdolność przekształtnika: praca w czterech ćwiartkach P–Q"
+                  },
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "POWER_FLOW",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem"
+                    ]
+                  }
+                },
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Nie dotyczy",
+                    "semantyka": "neutralna"
+                  },
+                  "kompletnosc_dowodu": "NIE_DOTYCZY",
+                  "kryterium": {
+                    "opis_pl": "Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: tworzenie napięcia (grid-forming)",
+                    "relacja": "LOGICZNE",
+                    "warunek_latex": "",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.bess.mode_voltage_support.tworzenie_napiecia",
+                  "limit": null,
+                  "margines": null,
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2”",
+                    "jednostka_redakcyjna": "wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia)",
+                    "rodzaj": "KATALOG_PRODUCENTA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": null,
+                    "wydanie": "pozycja katalogu typów programu"
+                  },
+                  "powody_niepelnosci": [],
+                  "przedmiot": {
+                    "element_ref": "gen/bess-1",
+                    "nazwa_pl": "Magazyn Łąkowa",
+                    "opis_pl": "magazyn energii — wybrane tryby pracy wobec zdolności przekształtnika"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.bess.mode_voltage_support.tworzenie_napiecia",
+                      "opis_pl": "wymaganie usługi z katalogu trybów wobec deklaracji przekształtnika",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "NIE_DOTYCZY",
+                  "stosowalnosc": {
+                    "dotyczy": false,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "usługa „Wsparcie napięciowe Q(U)” nie wymaga zdolności: tworzenie napięcia (grid-forming)",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [],
+                    "przyczyna_pl": "usługa „Wsparcie napięciowe Q(U)” nie wymaga zdolności: tworzenie napięcia (grid-forming)",
+                    "zastrzezenia": [
+                      "Podstawa „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””, wydanie pozycja katalogu typów programu, wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu — wynik nie obejmuje: wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem."
+                    ],
+                    "zdanie_pl": "Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: tworzenie napięcia (grid-forming) (Magazyn Łąkowa) — nie dotyczy: usługa „Wsparcie napięciowe Q(U)” nie wymaga zdolności: tworzenie napięcia (grid-forming)."
+                  },
+                  "wynik": null,
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "POWER_FLOW",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem"
+                    ]
+                  }
+                }
+              ],
+              "podstawa": {
+                "dokument": "karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2”",
+                "jednostka_redakcyjna": "wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia)",
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "pozycja katalogu typów programu"
+              },
+              "podstawa_sposobu_wykazania": null,
+              "pokrycie_programu": "NIE_DOTYCZY",
+              "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+              ],
+              "slad": [
+                {
+                  "krok": "audyt2.bess.mode_fcr_n.praca_czterokwadrantowa",
+                  "opis_pl": "wymaganie usługi z katalogu trybów wobec deklaracji przekształtnika",
+                  "run_id": null,
+                  "wersja_silnika": null
+                },
+                {
+                  "krok": "audyt2.bess.mode_fcr_n.tworzenie_napiecia",
+                  "opis_pl": "wymaganie usługi z katalogu trybów wobec deklaracji przekształtnika",
+                  "run_id": null,
+                  "wersja_silnika": null
+                },
+                {
+                  "krok": "audyt2.bess.mode_voltage_support.praca_czterokwadrantowa",
+                  "opis_pl": "wymaganie usługi z katalogu trybów wobec deklaracji przekształtnika",
+                  "run_id": null,
+                  "wersja_silnika": null
+                },
+                {
+                  "krok": "audyt2.bess.mode_voltage_support.tworzenie_napiecia",
+                  "opis_pl": "wymaganie usługi z katalogu trybów wobec deklaracji przekształtnika",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "sposob_wykazania": "OBLICZENIE",
+              "status_maszynowy": "BRAK_DOWODU",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [
+                  "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                ],
+                "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "zastrzezenia": [
+                  "Podstawa „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””, wydanie pozycja katalogu typów programu, wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                  "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                  "Zakres ważności: Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu — wynik nie obejmuje: wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem."
+                ],
+                "zdanie_pl": "Tryby pracy magazynu energii Magazyn Łąkowa wobec zdolności przekształtnika (wymagania usługi wobec przekształtnika (praca czterokwadrantowa, tworzenie napięcia) „karta katalogowa pozycji „katalog trybów pracy magazynu energii audytu 2””) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Przekształtnik ma zdolność, której wymaga usługa „FCR-N (rezerwa pierwotna symetryczna)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa) — zdolność przekształtnika: praca w czterech ćwiartkach P–Q: przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q; Przekształtnik ma zdolność, której wymaga usługa „Wsparcie napięciowe Q(U)”: praca w czterech ćwiartkach P–Q (Magazyn Łąkowa) — zdolność przekształtnika: praca w czterech ćwiartkach P–Q: przekształtnik ma zdolności: praca w czterech ćwiartkach P–Q."
+              },
+              "wymaganie_id": "audyt2.bess.tryby_pracy",
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Magazyn energii Magazyn Łąkowa: zgodność wybranych usług z deklaracją zdolności przekształtnika z karty katalogowej typu.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "POWER_FLOW",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "wymagania rynku bilansującego wobec usług (czas reakcji, rezerwa) — regulamin operatora systemu przesyłowego, poza modelem"
+                ]
+              }
+            }
+          },
+          {
+            "details": {
+              "bay_designation": "Pole 02",
+              "device_id": "wstd_breaker_vacuum_15_25",
+              "i_th_effective_ka": 25,
+              "utilization_dyn_percent": 112.0,
+              "utilization_th_percent": 80.0
+            },
+            "formulas_latex": [
+              "$$I_{\\text{dyn}} \\geq \\kappa \\sqrt{2} \\cdot I_k''$$",
+              "$$I_{\\text{th eff}}(t) = I_{\\text{th rated}} \\cdot \\sqrt{\\min\\left(1,\\ \\frac{t_{\\text{rated}}}{t_{\\text{clearing}}}\\right)}$$",
+              "$$I_{\\text{th eff}}(t) \\geq I_{\\text{th}}$$"
+            ],
+            "generated_at": "1970-01-01T00:00:00Z",
+            "proof_id": "068a0449-af98-5f06-9572-aeced930f47d",
+            "proof_type": "AUDIT2_DEVICE_WITHSTAND",
+            "rodzaj_pl": "Wytrzymałość zwarciowa aparatury",
+            "summary_pl": "Wytrzymałość zwarciowa aparatu „aparat pola Pole 02” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (aparat pola Pole 02) — prąd udarowy zwarcia w punkcie zabudowy: 70 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines −7,5 kA, punkt: aparat pola Pole 02, względnie −12 % wartości granicznej). Pozostałe kryteria składowe: Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (aparat pola Pole 02) — kryterium spełnione — dowód niepełny (margines +5 kA).",
+            "wymaganie": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "network_model/catalog/audit2_oceny.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [],
+                  "stan": "ZWALIDOWANE"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Wymaganie naruszone",
+                "semantyka": "negatywna"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryteria_naruszone": [
+                "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna"
+              ],
+              "kryterium_najblizej_granicy": null,
+              "nazwa_pl": "Wytrzymałość zwarciowa aparatu „aparat pola Pole 02”",
+              "oceny_skladowe": [
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Kryterium naruszone",
+                    "semantyka": "negatywna"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryterium": {
+                    "opis_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu",
+                    "relacja": "NIE_WIECEJ",
+                    "warunek_latex": "i_p \\le I_{dyn}",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+                  "limit": {
+                    "jednostka_obwiedni": null,
+                    "obwiednia": null,
+                    "pasmo": null,
+                    "podstawa": {
+                      "dokument": "karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”",
+                      "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+                      "rodzaj": "KATALOG_PRODUCENTA",
+                      "status": "WSKAZANE",
+                      "uwagi_pl": null,
+                      "wydanie": "pozycja katalogu typów programu"
+                    },
+                    "wartosc": {
+                      "jednostka": "kA",
+                      "wartosc": 62.5
+                    },
+                    "wersja_profilu": null,
+                    "zakres_stosowalnosci_pl": "znamionowy prąd szczytowy wytrzymywany aparatu I_dyn"
+                  },
+                  "margines": {
+                    "definicja_latex": "m = x_{\\lim} - x",
+                    "niedefiniowalny": false,
+                    "powod_pl": null,
+                    "punkt_pl": "aparat pola Pole 02",
+                    "skala": {
+                      "jednostka": "kA",
+                      "wartosc": 62.5
+                    },
+                    "skala_rodzaj": "LIMIT",
+                    "wartosc": {
+                      "jednostka": "kA",
+                      "wartosc": -7.5
+                    },
+                    "wzgledny": -0.12
+                  },
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+                    "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+                    "rodzaj": "NORMA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+                    "wydanie": "2007"
+                  },
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przedmiot": {
+                    "element_ref": null,
+                    "nazwa_pl": "aparat pola Pole 02",
+                    "opis_pl": "aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądów zwarciowych podanych do oceny"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+                      "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "NIE_SPELNIA",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [],
+                    "przyczyna_pl": "prąd udarowy zwarcia w punkcie zabudowy przekracza wartość graniczną o 7,5 kA (aparat pola Pole 02)",
+                    "zastrzezenia": [
+                      "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+                    ],
+                    "zdanie_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (aparat pola Pole 02) — kryterium naruszone. Prąd udarowy zwarcia w punkcie zabudowy: 70 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines −7,5 kA, punkt: aparat pola Pole 02, względnie −12 % wartości granicznej)."
+                  },
+                  "wynik": {
+                    "chwila_s": null,
+                    "metoda": "OBLICZENIE",
+                    "punkt_krytyczny_pl": "aparat pola Pole 02",
+                    "symbol_latex": "i_p",
+                    "wartosc": {
+                      "jednostka": "kA",
+                      "wartosc": 70.0
+                    },
+                    "wielkosc_pl": "prąd udarowy zwarcia w punkcie zabudowy"
+                  },
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "SHORT_CIRCUIT",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "zwarcia niesymetryczne",
+                      "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+                    ]
+                  }
+                },
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+                    "semantyka": "ostrzegawcza"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryterium": {
+                    "opis_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia",
+                    "relacja": "NIE_WIECEJ",
+                    "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+                  "limit": {
+                    "jednostka_obwiedni": null,
+                    "obwiednia": null,
+                    "pasmo": null,
+                    "podstawa": {
+                      "dokument": "karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”",
+                      "jednostka_redakcyjna": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
+                      "rodzaj": "KATALOG_PRODUCENTA",
+                      "status": "WSKAZANE",
+                      "uwagi_pl": null,
+                      "wydanie": "pozycja katalogu typów programu"
+                    },
+                    "wartosc": {
+                      "jednostka": "kA",
+                      "wartosc": 25.0
+                    },
+                    "wersja_profilu": null,
+                    "zakres_stosowalnosci_pl": "prąd krótkotrwały 25 kA / 1 s przeliczony na czas wyłączenia T_k = 1 s"
+                  },
+                  "margines": {
+                    "definicja_latex": "m = x_{\\lim} - x",
+                    "niedefiniowalny": false,
+                    "powod_pl": null,
+                    "punkt_pl": "aparat pola Pole 02",
+                    "skala": {
+                      "jednostka": "kA",
+                      "wartosc": 25.0
+                    },
+                    "skala_rodzaj": "LIMIT",
+                    "wartosc": {
+                      "jednostka": "kA",
+                      "wartosc": 5.0
+                    },
+                    "wzgledny": 0.2
+                  },
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków",
+                    "jednostka_redakcyjna": "wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr",
+                    "rodzaj": "NORMA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": "prąd cieplny zastępczy zwarcia porównany z prądem krótkotrwałym aparatu przeliczonym na czas wyłączenia; przy czasie krótszym od znamionowego limitem jest sam prąd znamionowy (bez przeliczenia w górę)",
+                    "wydanie": "2011"
+                  },
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przedmiot": {
+                    "element_ref": null,
+                    "nazwa_pl": "aparat pola Pole 02",
+                    "opis_pl": "aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądów zwarciowych podanych do oceny"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+                      "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "SPELNIA",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [],
+                    "przyczyna_pl": null,
+                    "zastrzezenia": [
+                      "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+                    ],
+                    "zdanie_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (aparat pola Pole 02) — kryterium spełnione. Prąd cieplny zastępczy zwarcia w punkcie zabudowy: 20 kA wobec wymaganych ≤ 25 kA wg § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines +5 kA, punkt: aparat pola Pole 02, względnie +20 % wartości granicznej)."
+                  },
+                  "wynik": {
+                    "chwila_s": null,
+                    "metoda": "OBLICZENIE",
+                    "punkt_krytyczny_pl": "aparat pola Pole 02",
+                    "symbol_latex": "I_{th}",
+                    "wartosc": {
+                      "jednostka": "kA",
+                      "wartosc": 20.0
+                    },
+                    "wielkosc_pl": "prąd cieplny zastępczy zwarcia w punkcie zabudowy"
+                  },
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "SHORT_CIRCUIT",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "zwarcia niesymetryczne",
+                      "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+                    ]
+                  }
+                }
+              ],
+              "podstawa": {
+                "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+                "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+                "wydanie": "2007"
+              },
+              "podstawa_sposobu_wykazania": null,
+              "pokrycie_programu": "NIE_DOTYCZY",
+              "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (aparat pola Pole 02): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (aparat pola Pole 02): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+              ],
+              "slad": [
+                {
+                  "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+                  "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                },
+                {
+                  "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+                  "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "sposob_wykazania": "OBLICZENIE",
+              "status_maszynowy": "NIE_SPELNIA",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [
+                  "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (aparat pola Pole 02): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (aparat pola Pole 02): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                ],
+                "przyczyna_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (aparat pola Pole 02) — prąd udarowy zwarcia w punkcie zabudowy przekracza wartość graniczną o 7,5 kA (aparat pola Pole 02)",
+                "zastrzezenia": [
+                  "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                  "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                  "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                  "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny.",
+                  "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                  "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+                ],
+                "zdanie_pl": "Wytrzymałość zwarciowa aparatu „aparat pola Pole 02” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (aparat pola Pole 02) — prąd udarowy zwarcia w punkcie zabudowy: 70 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines −7,5 kA, punkt: aparat pola Pole 02, względnie −12 % wartości granicznej). Pozostałe kryteria składowe: Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (aparat pola Pole 02) — kryterium spełnione — dowód niepełny (margines +5 kA)."
+              },
+              "wymaganie_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25",
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "SHORT_CIRCUIT",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zwarcia niesymetryczne",
+                  "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+                ]
+              }
+            }
+          },
+          {
+            "details": {
+              "p_export_kw": 600.0,
+              "p_import_kw": 500.0,
+              "p_net_export_kw": 100.0,
+              "station_id": "stn/1"
+            },
+            "formulas_latex": [
+              "$$P_{exp} = \\sum P_{DER} - \\sum P_{odb} \\le P_{przyl}$$"
+            ],
+            "generated_at": "1970-01-01T00:00:00Z",
+            "proof_id": "4f5b0f84-2b7c-5453-b4f6-97fed5b7115e",
+            "proof_type": "AUDIT2_HOSTING_CAPACITY_EXPORT",
+            "rodzaj_pl": "Zdolność przyłączeniowa — eksport wobec importu",
+            "summary_pl": "Bilans eksportu stacji Stacja Łąkowa wobec warunków przyłączenia („warunki przyłączenia OSD — moc przyłączeniowa stacji”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa) — kryterium nie ma limitu z podstawą.",
+            "wymaganie": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "network_model/catalog/audit2_oceny.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [],
+                  "stan": "ZWALIDOWANE"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryteria_naruszone": [],
+              "kryterium_najblizej_granicy": null,
+              "nazwa_pl": "Bilans eksportu stacji Stacja Łąkowa wobec warunków przyłączenia",
+              "oceny_skladowe": [
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+                    "semantyka": "ostrzegawcza"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryterium": {
+                    "opis_pl": "Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia",
+                    "relacja": "NIE_WIECEJ",
+                    "warunek_latex": "P_{exp} = \\sum P_{DER} - \\sum P_{odb} \\le P_{przyl}",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.eksport.netto",
+                  "limit": null,
+                  "margines": null,
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "warunki przyłączenia OSD — moc przyłączeniowa stacji",
+                    "jednostka_redakcyjna": null,
+                    "rodzaj": "NIEUSTALONA",
+                    "status": "NIEUSTALONE",
+                    "uwagi_pl": "granica eksportu wynika z warunków przyłączenia wydanych przez OSD; model ich nie niesie, więc limitu nie ma",
+                    "wydanie": null
+                  },
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                    "Podstawa „warunki przyłączenia OSD — moc przyłączeniowa stacji” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+                  ],
+                  "przedmiot": {
+                    "element_ref": "stn/1",
+                    "nazwa_pl": "Stacja Łąkowa",
+                    "opis_pl": "stacja — bilans mocy źródeł i odbiorów wobec sieci OSD"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.eksport.netto",
+                      "opis_pl": "suma mocy źródeł stacji minus suma mocy odbiorów",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "BRAK_PODSTAWY",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "stacja Stacja Łąkowa oddaje moc do sieci OSD (moc źródeł 600 kW przy mocy odbiorów 500 kW)",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [
+                      "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej."
+                    ],
+                    "przyczyna_pl": "kryterium nie ma limitu z podstawą",
+                    "zastrzezenia": [
+                      "Podstawa „warunki przyłączenia OSD — moc przyłączeniowa stacji” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (granica eksportu wynika z warunków przyłączenia wydanych przez OSD; model ich nie niesie, więc limitu nie ma).",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Stacja Stacja Łąkowa: bilans mocy znamionowych źródeł z konfiguracji stacji i mocy odbiorów z modelu — stan najgorszy (pełna generacja) — wynik nie obejmuje: profil dobowy generacji i obciążenia."
+                    ],
+                    "zdanie_pl": "Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): eksport netto stacji (moc źródeł minus moc odbiorów): 100 kW."
+                  },
+                  "wynik": {
+                    "chwila_s": null,
+                    "metoda": "OBLICZENIE",
+                    "punkt_krytyczny_pl": "Stacja Łąkowa",
+                    "symbol_latex": "P_{exp}",
+                    "wartosc": {
+                      "jednostka": "kW",
+                      "wartosc": 100.0
+                    },
+                    "wielkosc_pl": "eksport netto stacji (moc źródeł minus moc odbiorów)"
+                  },
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Stacja Stacja Łąkowa: bilans mocy znamionowych źródeł z konfiguracji stacji i mocy odbiorów z modelu — stan najgorszy (pełna generacja).",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "POWER_FLOW",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "profil dobowy generacji i obciążenia"
+                    ]
+                  }
+                }
+              ],
+              "podstawa": {
+                "dokument": "warunki przyłączenia OSD — moc przyłączeniowa stacji",
+                "jednostka_redakcyjna": null,
+                "rodzaj": "NIEUSTALONA",
+                "status": "NIEUSTALONE",
+                "uwagi_pl": "granica eksportu wynika z warunków przyłączenia wydanych przez OSD; model ich nie niesie, więc limitu nie ma",
+                "wydanie": null
+              },
+              "podstawa_sposobu_wykazania": null,
+              "pokrycie_programu": "NIE_DOTYCZY",
+              "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "Podstawa „warunki przyłączenia OSD — moc przyłączeniowa stacji” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+                "Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa): Podstawa „warunki przyłączenia OSD — moc przyłączeniowa stacji” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+              ],
+              "slad": [
+                {
+                  "krok": "audyt2.eksport.netto",
+                  "opis_pl": "suma mocy źródeł stacji minus suma mocy odbiorów",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "sposob_wykazania": "OBLICZENIE",
+              "status_maszynowy": "BRAK_PODSTAWY",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "stacja Stacja Łąkowa oddaje moc do sieci OSD (moc źródeł 600 kW przy mocy odbiorów 500 kW)",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [
+                  "Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+                  "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "Podstawa „warunki przyłączenia OSD — moc przyłączeniowa stacji” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+                  "Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa): Podstawa „warunki przyłączenia OSD — moc przyłączeniowa stacji” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+                ],
+                "przyczyna_pl": "Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa) — kryterium nie ma limitu z podstawą",
+                "zastrzezenia": [
+                  "Podstawa „warunki przyłączenia OSD — moc przyłączeniowa stacji” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (granica eksportu wynika z warunków przyłączenia wydanych przez OSD; model ich nie niesie, więc limitu nie ma).",
+                  "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                  "Zakres ważności: Stacja Stacja Łąkowa: bilans mocy znamionowych źródeł z konfiguracji stacji i mocy odbiorów z modelu — stan najgorszy (pełna generacja) — wynik nie obejmuje: profil dobowy generacji i obciążenia."
+                ],
+                "zdanie_pl": "Bilans eksportu stacji Stacja Łąkowa wobec warunków przyłączenia („warunki przyłączenia OSD — moc przyłączeniowa stacji”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Eksport netto stacji do sieci OSD nie przekracza granicy zdolności przyłączeniowej z warunków przyłączenia (Stacja Łąkowa) — kryterium nie ma limitu z podstawą."
+              },
+              "wymaganie_id": "audyt2.eksport.bilans",
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Stacja Stacja Łąkowa: bilans mocy znamionowych źródeł z konfiguracji stacji i mocy odbiorów z modelu — stan najgorszy (pełna generacja).",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "POWER_FLOW",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "profil dobowy generacji i obciążenia"
+                ]
+              }
+            }
+          },
+          {
+            "details": {
+              "klasa_transformatora_pl": "SN/nN",
+              "requires_avr": false,
+              "tap_changer": {
+                "applicable_to": [
+                  "transformer_15_04",
+                  "block_transformer"
+                ],
+                "catalog_namespace": "tap_changer",
+                "catalog_version": "2026-08-14",
+                "id": "tc_detc_snnn_5_25",
+                "label_pl": "DETC SN/nN · 5 zaczepów · ±5% (off-load)",
+                "neutral_position": 0,
+                "range_percent": 5.0,
+                "regulated_side": "hv",
+                "step_percent": 2.5,
+                "supports_avr": false,
+                "tap_count": 5,
+                "type": "detc"
+              },
+              "tap_changer_ref": "tc_detc_snnn_5_25",
+              "transformer_id": "tr/1",
+              "transformer_type": "transformer_15_04"
+            },
+            "formulas_latex": [
+              "$$\\Delta U_{\\text{regulation}} = \\pm \\text{step}\\% \\times N_{\\text{taps}}$$",
+              "$$U_{\\text{output}} = U_{\\text{nominal}} \\cdot (1 + \\frac{n - n_{\\text{neutral}}}{N_{\\text{taps}}} \\cdot \\text{range}\\%)$$"
+            ],
+            "generated_at": "1970-01-01T00:00:00Z",
+            "proof_id": "964841fa-c933-59c9-becb-926b5dc67627",
+            "proof_type": "AUDIT2_TAP_CHANGER_PLAN",
+            "rodzaj_pl": "Plan regulacji zaczepów transformatora",
+            "summary_pl": "Plan zaczepów transformatora Transformator T1 Łąkowa (przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem „karta katalogowa pozycji „katalog przełączników zaczepów audytu 2””) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Przełącznik zaczepów przeznaczony dla transformatora klasy SN/nN (Transformator T1 Łąkowa) — przeznaczenie przełącznika zaczepów: „DETC SN/nN · 5 zaczepów · ±5% (off-load)” — przeznaczenie: SN/nN, blokowy.",
+            "wymaganie": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "network_model/catalog/audit2_oceny.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [],
+                  "stan": "ZWALIDOWANE"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Brak wystarczającego dowodu",
+                "semantyka": "ostrzegawcza"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryteria_naruszone": [],
+              "kryterium_najblizej_granicy": null,
+              "nazwa_pl": "Plan zaczepów transformatora Transformator T1 Łąkowa",
+              "oceny_skladowe": [
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+                    "semantyka": "ostrzegawcza"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryterium": {
+                    "opis_pl": "Przełącznik zaczepów przeznaczony dla transformatora klasy SN/nN",
+                    "relacja": "LOGICZNE",
+                    "warunek_latex": "",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.zaczepy.klasa_transformatora",
+                  "limit": null,
+                  "margines": {
+                    "definicja_latex": null,
+                    "niedefiniowalny": true,
+                    "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny.",
+                    "punkt_pl": "„DETC SN/nN · 5 zaczepów · ±5% (off-load)” — przeznaczenie: SN/nN, blokowy",
+                    "skala": null,
+                    "skala_rodzaj": null,
+                    "wartosc": null,
+                    "wzgledny": null
+                  },
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "karta katalogowa pozycji „katalog przełączników zaczepów audytu 2”",
+                    "jednostka_redakcyjna": "przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem",
+                    "rodzaj": "KATALOG_PRODUCENTA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": null,
+                    "wydanie": "pozycja katalogu typów programu"
+                  },
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przedmiot": {
+                    "element_ref": "tr/1",
+                    "nazwa_pl": "Transformator T1 Łąkowa",
+                    "opis_pl": "transformator — przełącznik zaczepów przypisany w konfiguracji stacji"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.zaczepy.klasa_transformatora",
+                      "opis_pl": "przeznaczenie pozycji katalogu wobec klasy transformatora z napięć modelu",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "SPELNIA",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [],
+                    "przyczyna_pl": null,
+                    "zastrzezenia": [
+                      "Podstawa „karta katalogowa pozycji „katalog przełączników zaczepów audytu 2””, wydanie pozycja katalogu typów programu, przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Transformator Transformator T1 Łąkowa: przełącznik zaczepów przypisany w konfiguracji stacji wobec klasy transformatora z napięć modelu — wynik nie obejmuje: zakres i krok regulacji wobec profilu napięć — ocenia rozpływ mocy."
+                    ],
+                    "zdanie_pl": "Przełącznik zaczepów przeznaczony dla transformatora klasy SN/nN (Transformator T1 Łąkowa) — kryterium spełnione. Przeznaczenie przełącznika zaczepów: „DETC SN/nN · 5 zaczepów · ±5% (off-load)” — przeznaczenie: SN/nN, blokowy (stan wymagany wg przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem „karta katalogowa pozycji „katalog przełączników zaczepów audytu 2””)."
+                  },
+                  "wynik": {
+                    "chwila_s": null,
+                    "metoda": "OBLICZENIE",
+                    "punkt_krytyczny_pl": "„DETC SN/nN · 5 zaczepów · ±5% (off-load)” — przeznaczenie: SN/nN, blokowy",
+                    "symbol_latex": "",
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 1.0
+                    },
+                    "wielkosc_pl": "przeznaczenie przełącznika zaczepów"
+                  },
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Transformator Transformator T1 Łąkowa: przełącznik zaczepów przypisany w konfiguracji stacji wobec klasy transformatora z napięć modelu.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "POWER_FLOW",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "zakres i krok regulacji wobec profilu napięć — ocenia rozpływ mocy"
+                    ]
+                  }
+                },
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Nie dotyczy",
+                    "semantyka": "neutralna"
+                  },
+                  "kompletnosc_dowodu": "NIE_DOTYCZY",
+                  "kryterium": {
+                    "opis_pl": "Przełącznik zaczepów obsługuje regulację automatyczną napięcia (AVR)",
+                    "relacja": "LOGICZNE",
+                    "warunek_latex": "",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.zaczepy.regulacja_automatyczna",
+                  "limit": null,
+                  "margines": null,
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "karta katalogowa pozycji „katalog przełączników zaczepów audytu 2”",
+                    "jednostka_redakcyjna": "przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem",
+                    "rodzaj": "KATALOG_PRODUCENTA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": null,
+                    "wydanie": "pozycja katalogu typów programu"
+                  },
+                  "powody_niepelnosci": [],
+                  "przedmiot": {
+                    "element_ref": "tr/1",
+                    "nazwa_pl": "Transformator T1 Łąkowa",
+                    "opis_pl": "transformator — przełącznik zaczepów przypisany w konfiguracji stacji"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.zaczepy.regulacja_automatyczna",
+                      "opis_pl": "regulacja pozycji katalogu wobec wymogu konfiguracji stacji",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "NIE_DOTYCZY",
+                  "stosowalnosc": {
+                    "dotyczy": false,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "konfiguracja stacji nie wymaga regulacji automatycznej napięcia",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [],
+                    "przyczyna_pl": "konfiguracja stacji nie wymaga regulacji automatycznej napięcia",
+                    "zastrzezenia": [
+                      "Podstawa „karta katalogowa pozycji „katalog przełączników zaczepów audytu 2””, wydanie pozycja katalogu typów programu, przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Transformator Transformator T1 Łąkowa: przełącznik zaczepów przypisany w konfiguracji stacji wobec klasy transformatora z napięć modelu — wynik nie obejmuje: zakres i krok regulacji wobec profilu napięć — ocenia rozpływ mocy."
+                    ],
+                    "zdanie_pl": "Przełącznik zaczepów obsługuje regulację automatyczną napięcia (AVR) (Transformator T1 Łąkowa) — nie dotyczy: konfiguracja stacji nie wymaga regulacji automatycznej napięcia."
+                  },
+                  "wynik": null,
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Transformator Transformator T1 Łąkowa: przełącznik zaczepów przypisany w konfiguracji stacji wobec klasy transformatora z napięć modelu.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "POWER_FLOW",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "zakres i krok regulacji wobec profilu napięć — ocenia rozpływ mocy"
+                    ]
+                  }
+                }
+              ],
+              "podstawa": {
+                "dokument": "karta katalogowa pozycji „katalog przełączników zaczepów audytu 2”",
+                "jednostka_redakcyjna": "przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem",
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "pozycja katalogu typów programu"
+              },
+              "podstawa_sposobu_wykazania": null,
+              "pokrycie_programu": "NIE_DOTYCZY",
+              "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "Przełącznik zaczepów przeznaczony dla transformatora klasy SN/nN (Transformator T1 Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+              ],
+              "slad": [
+                {
+                  "krok": "audyt2.zaczepy.klasa_transformatora",
+                  "opis_pl": "przeznaczenie pozycji katalogu wobec klasy transformatora z napięć modelu",
+                  "run_id": null,
+                  "wersja_silnika": null
+                },
+                {
+                  "krok": "audyt2.zaczepy.regulacja_automatyczna",
+                  "opis_pl": "regulacja pozycji katalogu wobec wymogu konfiguracji stacji",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "sposob_wykazania": "OBLICZENIE",
+              "status_maszynowy": "BRAK_DOWODU",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [
+                  "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "Przełącznik zaczepów przeznaczony dla transformatora klasy SN/nN (Transformator T1 Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                ],
+                "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Przełącznik zaczepów przeznaczony dla transformatora klasy SN/nN (Transformator T1 Łąkowa): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "zastrzezenia": [
+                  "Podstawa „karta katalogowa pozycji „katalog przełączników zaczepów audytu 2””, wydanie pozycja katalogu typów programu, przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                  "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                  "Zakres ważności: Transformator Transformator T1 Łąkowa: przełącznik zaczepów przypisany w konfiguracji stacji wobec klasy transformatora z napięć modelu — wynik nie obejmuje: zakres i krok regulacji wobec profilu napięć — ocenia rozpływ mocy."
+                ],
+                "zdanie_pl": "Plan zaczepów transformatora Transformator T1 Łąkowa (przeznaczenie przełącznika (klasa transformatora) i regulacja pod obciążeniem „karta katalogowa pozycji „katalog przełączników zaczepów audytu 2””) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Przełącznik zaczepów przeznaczony dla transformatora klasy SN/nN (Transformator T1 Łąkowa) — przeznaczenie przełącznika zaczepów: „DETC SN/nN · 5 zaczepów · ±5% (off-load)” — przeznaczenie: SN/nN, blokowy."
+              },
+              "wymaganie_id": "audyt2.zaczepy.plan",
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Transformator Transformator T1 Łąkowa: przełącznik zaczepów przypisany w konfiguracji stacji wobec klasy transformatora z napięć modelu.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "POWER_FLOW",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "zakres i krok regulacji wobec profilu napięć — ocenia rozpływ mocy"
+                ]
+              }
+            }
+          },
+          {
+            "details": {
+              "bay_designation": "Pole 01",
+              "grounding_type": "isolated",
+              "vt_voltage_factor": null
+            },
+            "formulas_latex": [],
+            "generated_at": "1970-01-01T00:00:00Z",
+            "proof_id": "1e87be3e-771a-5af4-ad5e-22baea7ae1ae",
+            "proof_type": "AUDIT2_VT_GROUNDING_VALIDATION",
+            "rodzaj_pl": "Przekładniki napięciowe wobec uziemienia sieci",
+            "summary_pl": "Przekładnik napięciowy pola Pole 01 wobec uziemienia sieci (tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne”) — ocena niewykonana. Kryteria nieocenione: Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy pola Pole 01) — brak wyznaczonej wielkości ocenianej (współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej).",
+            "wymaganie": {
+              "dowod": {
+                "domena_pl": null,
+                "metoda": "OBLICZENIE",
+                "odniesienie": "network_model/catalog/audit2_oceny.py",
+                "poziom": "UNVALIDATED_MODEL",
+                "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                "status_danych": {
+                  "dane_przyjete": [],
+                  "stan": "ZWALIDOWANE"
+                },
+                "status_modelu": "NIE_DOTYCZY",
+                "w_domenie_walidacji": null
+              },
+              "etykieta": {
+                "etykieta_pl": "Ocena niewykonana",
+                "semantyka": "neutralna"
+              },
+              "kompletnosc_dowodu": "NIEPELNY",
+              "kryteria_naruszone": [],
+              "kryterium_najblizej_granicy": null,
+              "nazwa_pl": "Przekładnik napięciowy pola Pole 01 wobec uziemienia sieci",
+              "oceny_skladowe": [
+                {
+                  "dowod": {
+                    "domena_pl": null,
+                    "metoda": "OBLICZENIE",
+                    "odniesienie": "network_model/catalog/audit2_oceny.py",
+                    "poziom": "UNVALIDATED_MODEL",
+                    "rodzaj_twierdzenia": "STATIC_CALCULATION",
+                    "status_danych": {
+                      "dane_przyjete": [],
+                      "stan": "ZWALIDOWANE"
+                    },
+                    "status_modelu": "NIE_DOTYCZY",
+                    "w_domenie_walidacji": null
+                  },
+                  "etykieta": {
+                    "etykieta_pl": "Ocena niewykonana",
+                    "semantyka": "neutralna"
+                  },
+                  "kompletnosc_dowodu": "NIEPELNY",
+                  "kryterium": {
+                    "opis_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany",
+                    "relacja": "NIE_MNIEJ",
+                    "warunek_latex": "F_v \\ge F_{v,wym}",
+                    "warunek_wstepny_pl": null,
+                    "warunek_wstepny_podstawa": null
+                  },
+                  "kryterium_id": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+                  "limit": {
+                    "jednostka_obwiedni": null,
+                    "obwiednia": null,
+                    "pasmo": null,
+                    "podstawa": {
+                      "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+                      "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+                      "rodzaj": "NORMA",
+                      "status": "WSKAZANE",
+                      "uwagi_pl": null,
+                      "wydanie": "2011"
+                    },
+                    "wartosc": {
+                      "jednostka": "1",
+                      "wartosc": 1.9
+                    },
+                    "wersja_profilu": null,
+                    "zakres_stosowalnosci_pl": "współczynnik wymagany dla sieci o punkcie neutralnym izolowany"
+                  },
+                  "margines": null,
+                  "niepewnosc": {
+                    "metoda_pl": null,
+                    "nie_dotyczy": true,
+                    "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+                    "wartosc": null
+                  },
+                  "podstawa": {
+                    "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+                    "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+                    "rodzaj": "NORMA",
+                    "status": "WSKAZANE",
+                    "uwagi_pl": null,
+                    "wydanie": "2011"
+                  },
+                  "powody_niepelnosci": [
+                    "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                  ],
+                  "przedmiot": {
+                    "element_ref": null,
+                    "nazwa_pl": "przekładnik napięciowy pola Pole 01",
+                    "opis_pl": "przekładnik napięciowy pola wobec sieci o punkcie neutralnym izolowany"
+                  },
+                  "slad": [
+                    {
+                      "krok": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+                      "opis_pl": "współczynnik napięciowy typu wobec wymaganego dla sposobu uziemienia",
+                      "run_id": null,
+                      "wersja_silnika": null
+                    }
+                  ],
+                  "status_maszynowy": "NIE_OCENIONO",
+                  "stosowalnosc": {
+                    "dotyczy": true,
+                    "modul_istniejacy": null,
+                    "podstawa": null,
+                    "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                    "technologia": null,
+                    "typ_modulu": null,
+                    "warunek_wstepny_nieuruchomiony": false
+                  },
+                  "wyjasnienie": {
+                    "czego_brakuje": [
+                      "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                      "współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej"
+                    ],
+                    "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej)",
+                    "zastrzezenia": [
+                      "Podstawa „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne”, wydanie 2011, tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                      "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                      "Zakres ważności: Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego — wynik nie obejmuje: czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py); uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego."
+                    ],
+                    "zdanie_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy pola Pole 01) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+                  },
+                  "wynik": null,
+                  "zakres_waznosci": {
+                    "model_urzadzenia": null,
+                    "ograniczniki": [],
+                    "opis_pl": "Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego.",
+                    "parametry_sieci": [],
+                    "regulator": null,
+                    "rodzaj_analizy": "POWER_FLOW",
+                    "symetria_zaklocenia": null,
+                    "technologia": null,
+                    "wykluczenia": [
+                      "czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py)",
+                      "uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego"
+                    ]
+                  }
+                }
+              ],
+              "podstawa": {
+                "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+                "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+                "rodzaj": "NORMA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "2011"
+              },
+              "podstawa_sposobu_wykazania": null,
+              "pokrycie_programu": "NIE_DOTYCZY",
+              "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+              "powody_niepelnosci": [
+                "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy pola Pole 01): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+              ],
+              "slad": [
+                {
+                  "krok": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+                  "opis_pl": "współczynnik napięciowy typu wobec wymaganego dla sposobu uziemienia",
+                  "run_id": null,
+                  "wersja_silnika": null
+                }
+              ],
+              "sposob_wykazania": "OBLICZENIE",
+              "status_maszynowy": "NIE_OCENIONO",
+              "stosowalnosc": {
+                "dotyczy": true,
+                "modul_istniejacy": null,
+                "podstawa": null,
+                "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+                "technologia": null,
+                "typ_modulu": null,
+                "warunek_wstepny_nieuruchomiony": false
+              },
+              "wyjasnienie": {
+                "czego_brakuje": [
+                  "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy pola Pole 01): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                  "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy pola Pole 01): współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej",
+                  "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+                  "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy pola Pole 01): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+                ],
+                "przyczyna_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy pola Pole 01) — brak wyznaczonej wielkości ocenianej (współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej)",
+                "zastrzezenia": [
+                  "Podstawa „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne”, wydanie 2011, tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                  "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                  "Zakres ważności: Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego — wynik nie obejmuje: czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py); uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego."
+                ],
+                "zdanie_pl": "Przekładnik napięciowy pola Pole 01 wobec uziemienia sieci (tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne”) — ocena niewykonana. Kryteria nieocenione: Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy pola Pole 01) — brak wyznaczonej wielkości ocenianej (współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej)."
+              },
+              "wymaganie_id": "audyt2.vt.uziemienie",
+              "zakres_waznosci": {
+                "model_urzadzenia": null,
+                "ograniczniki": [],
+                "opis_pl": "Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego.",
+                "parametry_sieci": [],
+                "regulator": null,
+                "rodzaj_analizy": "POWER_FLOW",
+                "symetria_zaklocenia": null,
+                "technologia": null,
+                "wykluczenia": [
+                  "czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py)",
+                  "uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego"
+                ]
+              }
+            }
+          }
+        ],
+        "station_id": "stn/1",
+        "station_nazwa": "Stacja Łąkowa"
+      },
+      {
+        "braki_danych": [
+          {
+            "proof_type": "AUDIT2_HOSTING_CAPACITY_EXPORT",
+            "przyczyna_pl": "Źródło PV Polna nie ma mocy znamionowej z katalogu — bilans eksportu byłby zaniżony.",
+            "rodzaj_pl": "Zdolność przyłączeniowa — eksport wobec importu"
+          },
+          {
+            "proof_type": "AUDIT2_TAP_CHANGER_PLAN",
+            "przyczyna_pl": "Konfiguracja stacji nie przypisuje przełącznika zaczepów żadnemu transformatorowi.",
+            "rodzaj_pl": "Plan regulacji zaczepów transformatora"
+          }
+        ],
+        "generated_at": "1970-01-01T00:00:00Z",
+        "liczby_statusow": {},
+        "proof_count": 0,
+        "proofs": [],
+        "station_id": "stn/2",
+        "station_nazwa": "Stacja Polna"
+      }
+    ],
+    "project_id": "proj-1",
+    "station_count": 2
+  },
+  "vt": {
+    "brak_wspolczynnika": {
+      "message_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym uziemiony przez rezystor (przekładnik napięciowy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Ocena niewykonana",
+          "semantyka": "neutralna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym uziemiony przez rezystor",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "F_v \\ge F_{v,wym}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+            "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2011"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 1.9
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "współczynnik wymagany dla sieci o punkcie neutralnym uziemiony przez rezystor"
+        },
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+          "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": null,
+          "wydanie": "2011"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "przekładnik napięciowy",
+          "opis_pl": "przekładnik napięciowy wobec sieci o punkcie neutralnym uziemiony przez rezystor"
+        },
+        "slad": [
+          {
+            "krok": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+            "opis_pl": "współczynnik napięciowy typu wobec wymaganego dla sposobu uziemienia",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_OCENIONO",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej"
+          ],
+          "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej)",
+          "zastrzezenia": [
+            "Podstawa „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne”, wydanie 2011, tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego — wynik nie obejmuje: czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py); uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego."
+          ],
+          "zdanie_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym uziemiony przez rezystor (przekładnik napięciowy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (współczynnik napięciowy przekładnika — typ spoza katalogu albo karta bez tej danej). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+        },
+        "wynik": null,
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py)",
+            "uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego"
+          ]
+        }
+      }
+    },
+    "nie_spelnia": {
+      "message_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy) — kryterium naruszone. Znamionowy współczynnik napięciowy przekładnika: 1,5 wobec wymaganych ≥ 1,9 wg tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne” (margines −0,4, punkt: przekładnik napięciowy, względnie −21,05 % wartości granicznej).",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "F_v \\ge F_{v,wym}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+            "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2011"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 1.9
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "współczynnik wymagany dla sieci o punkcie neutralnym izolowany"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "przekładnik napięciowy",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 1.9
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": -0.4
+          },
+          "wzgledny": -0.210526315789
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+          "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": null,
+          "wydanie": "2011"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "przekładnik napięciowy",
+          "opis_pl": "przekładnik napięciowy wobec sieci o punkcie neutralnym izolowany"
+        },
+        "slad": [
+          {
+            "krok": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+            "opis_pl": "współczynnik napięciowy typu wobec wymaganego dla sposobu uziemienia",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "znamionowy współczynnik napięciowy przekładnika nie osiąga wartości granicznej o 0,4 (przekładnik napięciowy)",
+          "zastrzezenia": [
+            "Podstawa „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne”, wydanie 2011, tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego — wynik nie obejmuje: czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py); uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego."
+          ],
+          "zdanie_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym izolowany (przekładnik napięciowy) — kryterium naruszone. Znamionowy współczynnik napięciowy przekładnika: 1,5 wobec wymaganych ≥ 1,9 wg tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne” (margines −0,4, punkt: przekładnik napięciowy, względnie −21,05 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "przekładnik napięciowy",
+          "symbol_latex": "F_v",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 1.5
+          },
+          "wielkosc_pl": "znamionowy współczynnik napięciowy przekładnika"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py)",
+            "uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego"
+          ]
+        }
+      }
+    },
+    "spelnia": {
+      "message_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym kompensowany (cewka Petersena) (przekładnik napięciowy) — kryterium spełnione. Znamionowy współczynnik napięciowy przekładnika: 1,9 wobec wymaganych ≥ 1,9 wg tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne” (margines 0, punkt: przekładnik napięciowy, względnie 0 % wartości granicznej).",
+      "ocena": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym kompensowany (cewka Petersena)",
+          "relacja": "NIE_MNIEJ",
+          "warunek_latex": "F_v \\ge F_{v,wym}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+            "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+            "rodzaj": "NORMA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "2011"
+          },
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 1.9
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "współczynnik wymagany dla sieci o punkcie neutralnym kompensowany (cewka Petersena)"
+        },
+        "margines": {
+          "definicja_latex": "m = x - x_{\\lim}",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "przekładnik napięciowy",
+          "skala": {
+            "jednostka": "1",
+            "wartosc": 1.9
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 0.0
+          },
+          "wzgledny": 0.0
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne",
+          "jednostka_redakcyjna": "tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": null,
+          "wydanie": "2011"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": null,
+          "nazwa_pl": "przekładnik napięciowy",
+          "opis_pl": "przekładnik napięciowy wobec sieci o punkcie neutralnym kompensowany (cewka Petersena)"
+        },
+        "slad": [
+          {
+            "krok": "audyt2.vt.wspolczynnik_napieciowy_uziemienie",
+            "opis_pl": "współczynnik napięciowy typu wobec wymaganego dla sposobu uziemienia",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne”, wydanie 2011, tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego — wynik nie obejmuje: czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py); uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego."
+          ],
+          "zdanie_pl": "Współczynnik napięciowy przekładnika (uzwojenie faza–ziemia) nie mniejszy od wymaganego dla sieci o punkcie neutralnym kompensowany (cewka Petersena) (przekładnik napięciowy) — kryterium spełnione. Znamionowy współczynnik napięciowy przekładnika: 1,9 wobec wymaganych ≥ 1,9 wg tab. 2 — znamionowy współczynnik napięciowy wg sposobu uziemienia sieci „IEC 61869-3 (PN-EN 61869-3) Przekładniki — przekładniki napięciowe indukcyjne” (margines 0, punkt: przekładnik napięciowy, względnie 0 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "przekładnik napięciowy",
+          "symbol_latex": "F_v",
+          "wartosc": {
+            "jednostka": "1",
+            "wartosc": 1.9
+          },
+          "wielkosc_pl": "znamionowy współczynnik napięciowy przekładnika"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Przekładnik napięciowy z uzwojeniem pierwotnym pracującym między fazą a ziemią w sieci SN o podanym sposobie uziemienia punktu neutralnego.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "POWER_FLOW",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "czas deklaracji współczynnika napięciowego (30 s / 8 h) — ocenia go kryterium doboru przekładnika pola (`vt.wspolczynnik_napieciowy`, domain/dobor_przekladnika.py)",
+            "uzwojenie pracujące między fazami — wymaga wyłącznie współczynnika ciągłego"
+          ]
+        }
+      }
+    }
+  },
+  "wytrzymalosc": {
+    "przekroczona": {
+      "i_th_effective_ka": 25,
+      "message_pl": "Wytrzymałość zwarciowa aparatu „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — prąd udarowy zwarcia w punkcie zabudowy: 70 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines −7,5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie −12 % wartości granicznej). Pozostałe kryteria składowe: Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — kryterium spełnione — dowód niepełny (margines +5 kA).",
+      "utilization_dyn_percent": 112.0,
+      "utilization_th_percent": 80.0,
+      "wymaganie": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Wymaganie naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryteria_naruszone": [
+          "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna"
+        ],
+        "kryterium_najblizej_granicy": null,
+        "nazwa_pl": "Wytrzymałość zwarciowa aparatu „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”",
+        "oceny_skladowe": [
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "network_model/catalog/audit2_oceny.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium naruszone",
+              "semantyka": "negatywna"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "i_p \\le I_{dyn}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”",
+                "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "pozycja katalogu typów programu"
+              },
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 62.5
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "znamionowy prąd szczytowy wytrzymywany aparatu I_dyn"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "skala": {
+                "jednostka": "kA",
+                "wartosc": 62.5
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": -7.5
+              },
+              "wzgledny": -0.12
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+              "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+              "wydanie": "2007"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "opis_pl": "aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądów zwarciowych podanych do oceny"
+            },
+            "slad": [
+              {
+                "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+                "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "NIE_SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": "prąd udarowy zwarcia w punkcie zabudowy przekracza wartość graniczną o 7,5 kA (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA)",
+              "zastrzezenia": [
+                "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+              ],
+              "zdanie_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — kryterium naruszone. Prąd udarowy zwarcia w punkcie zabudowy: 70 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines −7,5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie −12 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "symbol_latex": "i_p",
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 70.0
+              },
+              "wielkosc_pl": "prąd udarowy zwarcia w punkcie zabudowy"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "zwarcia niesymetryczne",
+                "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+              ]
+            }
+          },
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "network_model/catalog/audit2_oceny.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”",
+                "jednostka_redakcyjna": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "pozycja katalogu typów programu"
+              },
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 25.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "prąd krótkotrwały 25 kA / 1 s przeliczony na czas wyłączenia T_k = 1 s"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "skala": {
+                "jednostka": "kA",
+                "wartosc": 25.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 5.0
+              },
+              "wzgledny": 0.2
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków",
+              "jednostka_redakcyjna": "wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "prąd cieplny zastępczy zwarcia porównany z prądem krótkotrwałym aparatu przeliczonym na czas wyłączenia; przy czasie krótszym od znamionowego limitem jest sam prąd znamionowy (bez przeliczenia w górę)",
+              "wydanie": "2011"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "opis_pl": "aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądów zwarciowych podanych do oceny"
+            },
+            "slad": [
+              {
+                "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+                "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+              ],
+              "zdanie_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — kryterium spełnione. Prąd cieplny zastępczy zwarcia w punkcie zabudowy: 20 kA wobec wymaganych ≤ 25 kA wg § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines +5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie +20 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "symbol_latex": "I_{th}",
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 20.0
+              },
+              "wielkosc_pl": "prąd cieplny zastępczy zwarcia w punkcie zabudowy"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "zwarcia niesymetryczne",
+                "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+              ]
+            }
+          }
+        ],
+        "podstawa": {
+          "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+          "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+          "wydanie": "2007"
+        },
+        "podstawa_sposobu_wykazania": null,
+        "pokrycie_programu": "NIE_DOTYCZY",
+        "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "slad": [
+          {
+            "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+            "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+            "run_id": null,
+            "wersja_silnika": null
+          },
+          {
+            "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+            "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "sposob_wykazania": "OBLICZENIE",
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przyczyna_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — prąd udarowy zwarcia w punkcie zabudowy przekracza wartość graniczną o 7,5 kA (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA)",
+          "zastrzezenia": [
+            "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny.",
+            "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+          ],
+          "zdanie_pl": "Wytrzymałość zwarciowa aparatu „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — prąd udarowy zwarcia w punkcie zabudowy: 70 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines −7,5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie −12 % wartości granicznej). Pozostałe kryteria składowe: Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — kryterium spełnione — dowód niepełny (margines +5 kA)."
+        },
+        "wymaganie_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25",
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zwarcia niesymetryczne",
+            "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+          ]
+        }
+      }
+    },
+    "w_granicach": {
+      "i_th_effective_ka": 25,
+      "message_pl": "Wytrzymałość zwarciowa aparatu „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — prąd udarowy zwarcia w punkcie zabudowy: 50 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines +12,5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie +20 % wartości granicznej); Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — prąd cieplny zastępczy zwarcia w punkcie zabudowy: 20 kA wobec wymaganych ≤ 25 kA wg § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines +5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie +20 % wartości granicznej).",
+      "utilization_dyn_percent": 80.0,
+      "utilization_th_percent": 80.0,
+      "wymaganie": {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Brak wystarczającego dowodu",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryteria_naruszone": [],
+        "kryterium_najblizej_granicy": null,
+        "nazwa_pl": "Wytrzymałość zwarciowa aparatu „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”",
+        "oceny_skladowe": [
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "network_model/catalog/audit2_oceny.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "i_p \\le I_{dyn}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”",
+                "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "pozycja katalogu typów programu"
+              },
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 62.5
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "znamionowy prąd szczytowy wytrzymywany aparatu I_dyn"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "skala": {
+                "jednostka": "kA",
+                "wartosc": 62.5
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 12.5
+              },
+              "wzgledny": 0.2
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+              "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+              "wydanie": "2007"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "opis_pl": "aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądów zwarciowych podanych do oceny"
+            },
+            "slad": [
+              {
+                "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+                "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+              ],
+              "zdanie_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — kryterium spełnione. Prąd udarowy zwarcia w punkcie zabudowy: 50 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines +12,5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie +20 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "symbol_latex": "i_p",
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 50.0
+              },
+              "wielkosc_pl": "prąd udarowy zwarcia w punkcie zabudowy"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "zwarcia niesymetryczne",
+                "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+              ]
+            }
+          },
+          {
+            "dowod": {
+              "domena_pl": null,
+              "metoda": "OBLICZENIE",
+              "odniesienie": "network_model/catalog/audit2_oceny.py",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_danych": {
+                "dane_przyjete": [],
+                "stan": "ZWALIDOWANE"
+              },
+              "status_modelu": "NIE_DOTYCZY",
+              "w_domenie_walidacji": null
+            },
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "kompletnosc_dowodu": "NIEPELNY",
+            "kryterium": {
+              "opis_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia",
+              "relacja": "NIE_WIECEJ",
+              "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "kryterium_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+            "limit": {
+              "jednostka_obwiedni": null,
+              "obwiednia": null,
+              "pasmo": null,
+              "podstawa": {
+                "dokument": "karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”",
+                "jednostka_redakcyjna": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "status": "WSKAZANE",
+                "uwagi_pl": null,
+                "wydanie": "pozycja katalogu typów programu"
+              },
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 25.0
+              },
+              "wersja_profilu": null,
+              "zakres_stosowalnosci_pl": "prąd krótkotrwały 25 kA / 1 s przeliczony na czas wyłączenia T_k = 1 s"
+            },
+            "margines": {
+              "definicja_latex": "m = x_{\\lim} - x",
+              "niedefiniowalny": false,
+              "powod_pl": null,
+              "punkt_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "skala": {
+                "jednostka": "kA",
+                "wartosc": 25.0
+              },
+              "skala_rodzaj": "LIMIT",
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 5.0
+              },
+              "wzgledny": 0.2
+            },
+            "niepewnosc": {
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+              "wartosc": null
+            },
+            "podstawa": {
+              "dokument": "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków",
+              "jednostka_redakcyjna": "wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr",
+              "rodzaj": "NORMA",
+              "status": "WSKAZANE",
+              "uwagi_pl": "prąd cieplny zastępczy zwarcia porównany z prądem krótkotrwałym aparatu przeliczonym na czas wyłączenia; przy czasie krótszym od znamionowego limitem jest sam prąd znamionowy (bez przeliczenia w górę)",
+              "wydanie": "2011"
+            },
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "opis_pl": "aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądów zwarciowych podanych do oceny"
+            },
+            "slad": [
+              {
+                "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+                "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+                "run_id": null,
+                "wersja_silnika": null
+              }
+            ],
+            "status_maszynowy": "SPELNIA",
+            "stosowalnosc": {
+              "dotyczy": true,
+              "modul_istniejacy": null,
+              "podstawa": null,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "technologia": null,
+              "typ_modulu": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wyjasnienie": {
+              "czego_brakuje": [],
+              "przyczyna_pl": null,
+              "zastrzezenia": [
+                "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+              ],
+              "zdanie_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — kryterium spełnione. Prąd cieplny zastępczy zwarcia w punkcie zabudowy: 20 kA wobec wymaganych ≤ 25 kA wg § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines +5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie +20 % wartości granicznej)."
+            },
+            "wynik": {
+              "chwila_s": null,
+              "metoda": "OBLICZENIE",
+              "punkt_krytyczny_pl": "Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA",
+              "symbol_latex": "I_{th}",
+              "wartosc": {
+                "jednostka": "kA",
+                "wartosc": 20.0
+              },
+              "wielkosc_pl": "prąd cieplny zastępczy zwarcia w punkcie zabudowy"
+            },
+            "zakres_waznosci": {
+              "model_urzadzenia": null,
+              "ograniczniki": [],
+              "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+              "parametry_sieci": [],
+              "regulator": null,
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "symetria_zaklocenia": null,
+              "technologia": null,
+              "wykluczenia": [
+                "zwarcia niesymetryczne",
+                "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+              ]
+            }
+          }
+        ],
+        "podstawa": {
+          "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+          "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+          "wydanie": "2007"
+        },
+        "podstawa_sposobu_wykazania": null,
+        "pokrycie_programu": "NIE_DOTYCZY",
+        "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "slad": [
+          {
+            "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.dynamiczna",
+            "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+            "run_id": null,
+            "wersja_silnika": null
+          },
+          {
+            "krok": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25.cieplna",
+            "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "sposob_wykazania": "OBLICZENIE",
+        "status_maszynowy": "BRAK_DOWODU",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+            "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+          ],
+          "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+          "zastrzezenia": [
+            "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny.",
+            "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+          ],
+          "zdanie_pl": "Wytrzymałość zwarciowa aparatu „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — prąd udarowy zwarcia w punkcie zabudowy: 50 kA wobec wymaganych ≤ 62,5 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines +12,5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie +20 % wartości granicznej); Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA) — prąd cieplny zastępczy zwarcia w punkcie zabudowy: 20 kA wobec wymaganych ≤ 25 kA wg § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k „karta katalogowa pozycji „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA”” (margines +5 kA, punkt: Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA, względnie +20 % wartości granicznej)."
+        },
+        "wymaganie_id": "audyt2.wytrzymalosc.wstd_breaker_vacuum_15_25",
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Aparat „Wyłącznik próżniowy 15 kV · I_th=25 kA/1s · I_dyn=62,5 kA” wobec prądu udarowego i prądu cieplnego zastępczego podanych do oceny oraz czasu wyłączenia zwarcia.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zwarcia niesymetryczne",
+            "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+          ]
+        }
+      }
+    }
+  }
+}

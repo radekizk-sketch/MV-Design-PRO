@@ -4,6 +4,8 @@ Testy API katalogow audytu 2 (eng.5/6/9/10/11/13/15/17/18/20 + B.1/B.5).
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 pytest.importorskip("fastapi")
@@ -149,25 +151,35 @@ def test_snapshot_aggregator(app_client):
         assert len(items) > 0, key
 
 
-def test_validate_vt_grounding_isolated_requires_19(app_client):
+# Karta WERDYKT-MIGRACJA-190: walidatory zwracają rekord werdyktu wyjaśnialnego (`ocena` — K,
+# `wymaganie` — W) i jego zdanie (`message_pl`); dawne flagi `ok` / `i_dyn_ok` / `i_th_ok`
+# i słowa statusu eksportu z progów bez podstawy usunięte.
+
+
+def _vt(app_client, wspolczynnik: float, uziemienie: str) -> dict:
     res = app_client.post(
         "/api/v1/catalog/audit2/validate-vt-grounding",
-        json={"voltage_factor": 1.5, "grounding_type": "isolated"},
+        json={"voltage_factor": wspolczynnik, "grounding_type": uziemienie},
     )
     assert res.status_code == 200
     body = res.json()
-    assert body["ok"] is False
-    assert "izolowana" in body["message_pl"].lower() or "1.9" in body["message_pl"]
+    assert body["message_pl"] == body["ocena"]["wyjasnienie"]["zdanie_pl"]
+    return body
+
+
+def test_validate_vt_grounding_isolated_requires_19(app_client):
+    body = _vt(app_client, 1.5, "isolated")
+    assert body["ocena"]["status_maszynowy"] == "NIE_SPELNIA"
+    assert body["ocena"]["limit"]["wartosc"]["wartosc"] == 1.9
+    assert "izolowany" in body["message_pl"]
 
 
 def test_validate_vt_grounding_petersen_19_ok(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-vt-grounding",
-        json={"voltage_factor": 1.9, "grounding_type": "petersen_coil"},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["ok"] is True
+    body = _vt(app_client, 1.9, "petersen_coil")
+    # Spełnione na liczbach; dowód niepełny (zdolność bez walidacji) — nigdy „OK” bez
+    # zastrzeżenia.
+    assert body["ocena"]["status_maszynowy"] == "SPELNIA"
+    assert body["ocena"]["kompletnosc_dowodu"] == "NIEPELNY"
 
 
 def test_validate_vt_grounding_directly_wymaga_15_nie_12(app_client):
@@ -181,19 +193,13 @@ def test_validate_vt_grounding_directly_wymaga_15_nie_12(app_client):
     sprawdzenie pilnuje, ze lagodniejszy wariant nie wroci — trafialby do PAKIETU
     DOWODOWEGO jako werdykt zgodnosci.
     """
-    zanizone = app_client.post(
-        "/api/v1/catalog/audit2/validate-vt-grounding",
-        json={"voltage_factor": 1.2, "grounding_type": "directly_grounded"},
-    )
-    assert zanizone.status_code == 200
-    assert zanizone.json()["ok"] is False
-    assert "1.5" in zanizone.json()["message_pl"]
+    zanizone = _vt(app_client, 1.2, "directly_grounded")
+    assert zanizone["ocena"]["status_maszynowy"] == "NIE_SPELNIA"
+    assert zanizone["ocena"]["limit"]["wartosc"]["wartosc"] == 1.5
+    assert "1,5" in zanizone["message_pl"]
 
-    wystarczajace = app_client.post(
-        "/api/v1/catalog/audit2/validate-vt-grounding",
-        json={"voltage_factor": 1.5, "grounding_type": "directly_grounded"},
-    )
-    assert wystarczajace.json()["ok"] is True
+    wystarczajace = _vt(app_client, 1.5, "directly_grounded")
+    assert wystarczajace["ocena"]["status_maszynowy"] == "SPELNIA"
 
 
 def test_validate_vt_grounding_rezystor_wymaga_19(app_client):
@@ -202,102 +208,108 @@ def test_validate_vt_grounding_rezystor_wymaga_19(app_client):
     Poprzednia wersja reguly dopuszczala tam 1,5. Przy zwarciu doziemnym napiecie faz
     zdrowych rosnie praktycznie do miedzyfazowego, wiec wymaganie 1,5 bylo zanizone.
     """
+    body = _vt(app_client, 1.5, "resistor_grounded")
+    assert body["ocena"]["status_maszynowy"] == "NIE_SPELNIA"
+    assert "1,9" in body["message_pl"]
+
+
+def test_validate_vt_grounding_nieznany_typ_uziemienia_to_422_nie_ocena(app_client):
+    """Typ uziemienia spoza słownika to błąd żądania, nie ocena przekładnika."""
     res = app_client.post(
         "/api/v1/catalog/audit2/validate-vt-grounding",
-        json={"voltage_factor": 1.5, "grounding_type": "resistor_grounded"},
+        json={"voltage_factor": 1.9, "grounding_type": "kosmiczne"},
     )
-    assert res.json()["ok"] is False
-    assert "1.9" in res.json()["message_pl"]
+    assert res.status_code == 422
+    assert "kosmiczne" in res.json()["detail"]
 
 
-def test_validate_device_withstand_within_limits(app_client):
+def _wytrzymalosc(app_client, i_peak: float, i_th: float = 20.0) -> dict:
     res = app_client.post(
         "/api/v1/catalog/audit2/validate-device-withstand",
         json={
             "device_id": "wstd_breaker_vacuum_15_25",
+            "i_peak_calculated_ka": i_peak,
+            "i_thermal_calculated_ka": i_th,
+            "t_clearing_s": 1.0,
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["message_pl"] == body["wymaganie"]["wyjasnienie"]["zdanie_pl"]
+    return body
+
+
+def _statusy_skladowych(body: dict) -> dict[str, str]:
+    return {
+        o["kryterium_id"].rsplit(".", 1)[-1]: o["status_maszynowy"]
+        for o in body["wymaganie"]["oceny_skladowe"]
+    }
+
+
+def test_validate_device_withstand_within_limits(app_client):
+    body = _wytrzymalosc(app_client, 50)
+    assert _statusy_skladowych(body) == {"dynamiczna": "SPELNIA", "cieplna": "SPELNIA"}
+    assert body["wymaganie"]["status_maszynowy"] == "BRAK_DOWODU"
+    assert body["utilization_dyn_percent"] == pytest.approx(80.0)
+
+
+def test_validate_device_withstand_idyn_exceeded(app_client):
+    body = _wytrzymalosc(app_client, 70)
+    assert _statusy_skladowych(body) == {"dynamiczna": "NIE_SPELNIA", "cieplna": "SPELNIA"}
+    assert body["wymaganie"]["status_maszynowy"] == "NIE_SPELNIA"
+
+
+def test_validate_device_withstand_pozycja_spoza_katalogu_to_404(app_client):
+    res = app_client.post(
+        "/api/v1/catalog/audit2/validate-device-withstand",
+        json={
+            "device_id": "wstd_nie_istnieje",
             "i_peak_calculated_ka": 50,
             "i_thermal_calculated_ka": 20,
             "t_clearing_s": 1.0,
         },
     )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["ok"] is True
-    assert body["i_dyn_ok"] is True
-    assert body["i_th_ok"] is True
-
-
-def test_validate_device_withstand_idyn_exceeded(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-device-withstand",
-        json={
-            "device_id": "wstd_breaker_vacuum_15_25",
-            "i_peak_calculated_ka": 70,
-            "i_thermal_calculated_ka": 20,
-            "t_clearing_s": 1.0,
-        },
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["ok"] is False
-    assert body["i_dyn_ok"] is False
-
-
-def test_validate_hosting_capacity_no_export(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-hosting-capacity-export",
-        json={"station_id": "stacja-001", "p_export_kw": 500, "p_import_kw": 1000},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["status"] == "no_export"
-
-
-def test_validate_hosting_capacity_high_warning(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-hosting-capacity-export",
-        json={"station_id": "stacja-002", "p_export_kw": 2500, "p_import_kw": 1000},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["status"] == "high_export_warning"
-    assert "curtailment" in body["message_pl"].lower()
-
-
-def test_validate_hosting_capacity_requires_ramp_down(app_client):
-    res = app_client.post(
-        "/api/v1/catalog/audit2/validate-hosting-capacity-export",
-        json={"station_id": "stacja-003", "p_export_kw": 5000, "p_import_kw": 1000},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["status"] == "requires_ramp_down"
-    assert "ramp-down" in body["message_pl"].lower()
+    assert res.status_code == 404
+    assert "wstd_nie_istnieje" not in res.json()["detail"]
 
 
 @pytest.mark.parametrize(
-    ("p_export_kw", "status", "fragment"),
+    ("p_export_kw", "p_import_kw", "status"),
     [
-        (0, "no_export", "Brak mocy źródeł i odbiorów"),
-        (100, "requires_ramp_down", "przy braku odbiorów w stacji"),
+        (500, 1000, "NIE_DOTYCZY"),
+        (0, 0, "NIE_DOTYCZY"),
+        (2500, 1000, "BRAK_PODSTAWY"),
+        (5000, 1000, "BRAK_PODSTAWY"),
+        (100, 0, "BRAK_PODSTAWY"),
     ],
-    ids=["bez_zrodel_i_odbiorow", "zrodla_bez_odbiorow"],
+    ids=["autokonsumpcja", "bez_zrodel_i_odbiorow", "eksport", "eksport_duzy", "bez_odbiorow"],
 )
-def test_validate_hosting_capacity_bez_odbiorow_stosunek_nieokreslony(
-    app_client, p_export_kw, status, fragment
+def test_validate_hosting_capacity_rekord_bez_progow_bez_podstawy(
+    app_client, p_export_kw, p_import_kw, status
 ):
-    """Karta PROOFPACK-KONTRAKT: import zerowy nie daje stosunku `inf` — dawniej tekst
-    „stosunek infx", a 0/0 dostawalo werdykt „krytyczny eksport 0 kW"."""
+    """Granica eksportu wynika z warunków przyłączenia OSD, których model nie niesie:
+    eksport netto to BRAK_PODSTAWY z wynikiem informacyjnym, brak eksportu — NIE_DOTYCZY.
+    Dawne progi 0,8 / 1,5 / 3,0 stosunku eksportu do importu i zalecenia „WYMAGANE: studium
+    NC RfG…” nie miały podstawy (karta WERDYKT-MIGRACJA-190). Import zerowy nie daje
+    stosunku `inf` (karta PROOFPACK-KONTRAKT) — stosunku nie ma wcale."""
     res = app_client.post(
         "/api/v1/catalog/audit2/validate-hosting-capacity-export",
-        json={"station_id": "stacja-004", "p_export_kw": p_export_kw, "p_import_kw": 0},
+        json={"station_id": "stacja-004", "p_export_kw": p_export_kw, "p_import_kw": p_import_kw},
     )
     assert res.status_code == 200
     body = res.json()
-    assert body["status"] == status
-    assert body["export_to_import_ratio"] is None
-    assert fragment in body["message_pl"]
-    assert "inf" not in body["message_pl"]
+    assert body["ocena"]["status_maszynowy"] == status
+    assert body["p_net_export_kw"] == p_export_kw - p_import_kw
+    assert body["message_pl"] == body["ocena"]["wyjasnienie"]["zdanie_pl"]
+    assert "export_to_import_ratio" not in body and "status" not in body
+    for slowo in ("curtailment", "ramp-down", "WYMAGANE"):
+        assert slowo not in body["message_pl"]
+    assert re.search(r"\binf\b", body["message_pl"]) is None
+    if status == "BRAK_PODSTAWY":
+        assert body["ocena"]["wynik"]["wartosc"] == {
+            "wartosc": float(p_export_kw - p_import_kw),
+            "jednostka": "kW",
+        }
 
 
 @pytest.mark.parametrize(
@@ -340,7 +352,7 @@ def test_build_station_payload_deterministyczny(app_client):
 
 @pytest.mark.parametrize(
     "pakiet",
-    [{}, {"proofs": [{"proof_type": "OBCY", "pass_status": True}]}, {"braki_danych": ["x"]}],
+    [{}, {"proofs": [{"proof_type": "OBCY", "summary_pl": "x"}]}, {"braki_danych": ["x"]}],
     ids=["pusty", "rodzaj_obcy", "brak_w_zlym_ksztalcie"],
 )
 def test_generate_report_pakiet_dowolnego_ksztaltu_nie_daje_500(app_client, pakiet):

@@ -20,6 +20,7 @@ import { useAppStateStore } from '../../app-state';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useStationDerStore } from '../../network-build/station-der';
 import type { Audit2ProjectProofPackResponse } from '../../network-build/station-der';
+import rekordyAudytu2 from '../../network-build/station-der/__tests__/rekordyAudytu2.json';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { WorkspaceSurfaceRouter } from '../WorkspaceSurfaceRouter';
 import { REPORT_SURFACE_SCREEN_CODE, type WorkspaceSurfaceDescriptor } from '../types';
@@ -44,62 +45,11 @@ const PROOF_SURFACE = { ...SURFACE_BASE, surfaceId: 'proof', screenCode: 'E-36',
 const REPORT_SURFACE = { ...SURFACE_BASE, surfaceId: 'report', screenCode: REPORT_SURFACE_SCREEN_CODE, titlePl: 'R' } as never as WorkspaceSurfaceDescriptor;
 const E04_SURFACE = { ...SURFACE_BASE, surfaceId: 'e04', screenCode: 'E-04', titlePl: 'P' } as never as WorkspaceSurfaceDescriptor;
 
-const PAKIET: Audit2ProjectProofPackResponse = {
-  project_id: 'proj-1',
-  all_pass: true,
-  station_count: 2,
-  per_station: [
-    {
-      station_id: 'stn/1',
-      station_nazwa: 'Stacja Łąkowa',
-      all_pass: true,
-      fail_count: 0,
-      proof_count: 5,
-      proofs: [
-        ['AUDIT2_BESS_OPERATION_MODES', 'Tryby pracy magazynu energii', 'OK: DER Magazyn Łąkowa ma 1 trybów zgodnych ze zdolnościami PCS.'],
-        ['AUDIT2_DEVICE_WITHSTAND', 'Wytrzymałość zwarciowa aparatury', 'Pole 02: OK: aparatura wytrzymała.'],
-        ['AUDIT2_HOSTING_CAPACITY_EXPORT', 'Zdolność przyłączeniowa — eksport wobec importu', 'Eksport normalny: 100 kW eksportowanych do OSD (stosunek 1.20x).'],
-        ['AUDIT2_TAP_CHANGER_PLAN', 'Plan regulacji zaczepów transformatora', 'OK: Tap-changer dla transformatora T1 Łąkowa jest zgodny z wymaganiami.'],
-        ['AUDIT2_VT_GROUNDING_VALIDATION', 'Przekładniki napięciowe wobec uziemienia sieci', 'Pole 01: OK: VT U_th=1.9 pasuje.'],
-      ].map(([proof_type, rodzaj_pl, summary_pl], i) => ({
-        proof_id: `00000000-0000-0000-0000-00000000000${i}`,
-        proof_type: proof_type as never,
-        rodzaj_pl,
-        pass_status: true,
-        summary_pl,
-        details:
-          proof_type === 'AUDIT2_HOSTING_CAPACITY_EXPORT'
-            ? { station_id: 'stn/1', p_export_kw: 600, p_import_kw: 500, p_net_export_kw: 100, export_to_import_ratio: 1.2, status: 'normal_export', message_pl: summary_pl }
-            : {},
-        formulas_latex: [],
-        generated_at: '1970-01-01T00:00:00Z',
-      })),
-      braki_danych: [],
-      generated_at: '1970-01-01T00:00:00Z',
-    },
-    {
-      station_id: 'stn/2',
-      station_nazwa: 'Stacja Polna',
-      all_pass: true,
-      fail_count: 0,
-      proof_count: 0,
-      proofs: [],
-      braki_danych: [
-        {
-          proof_type: 'AUDIT2_HOSTING_CAPACITY_EXPORT',
-          rodzaj_pl: 'Zdolność przyłączeniowa — eksport wobec importu',
-          przyczyna_pl: 'Źródło PV Polna nie ma mocy znamionowej z katalogu — bilans eksportu byłby zaniżony.',
-        },
-        {
-          proof_type: 'AUDIT2_TAP_CHANGER_PLAN',
-          rodzaj_pl: 'Plan regulacji zaczepów transformatora',
-          przyczyna_pl: 'Konfiguracja stacji nie przypisuje przełącznika zaczepów żadnemu transformatorowi.',
-        },
-      ],
-      generated_at: '1970-01-01T00:00:00Z',
-    },
-  ],
-};
+// Pakiet z TYCH SAMYCH generatorów co końcówka `_validate-all` (fixtura generowana przez
+// `backend/tests/uczciwosc/generuj_fixtury_ocen_fe.py`, parytet pilnuje
+// `test_fixtury_ocen_fe.py`): stacja z pięcioma dowodami o pięciu statusach rekordu W
+// (BRAK_DOWODU ×2, NIE_SPELNIA, BRAK_PODSTAWY, NIE_OCENIONO) i stacja z samymi brakami.
+const PAKIET = rekordyAudytu2.pakiet_projektu as unknown as Audit2ProjectProofPackResponse;
 
 interface Zapytanie {
   readonly url: string;
@@ -173,14 +123,33 @@ describe('Pakiet dowodów walidacji rozszerzeń — ekrany (karta PROOFPACK-KONT
     expect(zapytania.some((z) => z.url.includes('generate-proof-pack'))).toBe(false);
 
     const [lakowa, polna] = screen.getAllByTestId('audit2-pakiet-stacji');
-    expect(within(lakowa).getAllByTestId('audit2-proof')).toHaveLength(5);
-    expect(within(lakowa).getByTestId('audit2-pakiet-status').textContent).toBe('Weryfikacja pozytywna');
+    const dowody = within(lakowa).getAllByTestId('audit2-proof');
+    expect(dowody).toHaveLength(5);
+    // Karta WERDYKT-MIGRACJA-190: każdy dowód pokazuje etykietę SWOJEGO rekordu W (tekst
+    // i semantyka koloru z backendu) — iloczyn pięciu statusów rekordu.
+    const rekordy = PAKIET.per_station[0].proofs;
+    dowody.forEach((dowod, i) => {
+      const w = rekordy[i].wymaganie;
+      expect(dowod.getAttribute('data-status')).toBe(w.status_maszynowy);
+      const etykieta = within(dowod).getByTestId('audit2-proof-etykieta');
+      expect(etykieta.textContent).toBe(w.etykieta.etykieta_pl);
+      expect(etykieta.getAttribute('data-semantyka')).toBe(w.etykieta.semantyka);
+      expect(dowod.textContent).toContain(w.wyjasnienie.zdanie_pl);
+    });
+    expect(new Set(dowody.map((d) => d.getAttribute('data-status')))).toEqual(
+      new Set(['BRAK_DOWODU', 'NIE_SPELNIA', 'BRAK_PODSTAWY', 'NIE_OCENIONO']),
+    );
+    // Brak werdyktu zbiorczego pakietu (agregat nie zastępuje składników) i brak własnego
+    // „OK"/„pozytywna" z flagi.
+    expect(screen.queryByTestId('audit2-pakiet-status')).toBeNull();
+    expect(tekstEkranu()).not.toMatch(/Weryfikacja pozytywna|Wymaga sprawdzenia|\bOK\b/);
     expect(within(polna).queryAllByTestId('audit2-proof')).toHaveLength(0);
     const braki = within(polna).getAllByTestId('audit2-brak-danych');
     expect(braki).toHaveLength(2);
     expect(braki[0].textContent).toContain('brak danych: Źródło PV Polna nie ma mocy znamionowej');
-    // Brak danych ≠ spełnia: stacja bez dowodów nie jest „pozytywna".
-    expect(within(polna).getByTestId('audit2-pakiet-status').textContent).not.toContain('pozytywna');
+    expect(within(polna).getByTestId('audit2-pakiet-naglowek').textContent).toContain(
+      '0 dowodów, 2 braków danych',
+    );
 
     // Nazwy z modelu i polskie nazwy rodzajów — nigdy identyfikator ani kod.
     expect(tekstEkranu()).toContain('Stacja Łąkowa');
@@ -231,7 +200,15 @@ describe('Pakiet dowodów walidacji rozszerzeń — ekrany (karta PROOFPACK-KONT
 
     await waitFor(() => expect(screen.getAllByTestId('hosting-capacity-stacja')).toHaveLength(1));
     const wiersz = screen.getByTestId('hosting-capacity-stacja');
-    expect(wiersz.getAttribute('data-status')).toBe('normal_export');
+    // Granica eksportu z warunków OSD nie jest w modelu: rekord BRAK_PODSTAWY z etykietą
+    // rekordu (dawne słowo „normal_export" z progów bez podstawy usunięte).
+    expect(wiersz.getAttribute('data-status')).toBe('BRAK_PODSTAWY');
+    const rekordEksportu = PAKIET.per_station[0].proofs.find(
+      (d) => d.proof_type === 'AUDIT2_HOSTING_CAPACITY_EXPORT',
+    )!.wymaganie;
+    expect(within(wiersz).getByTestId('hosting-capacity-etykieta').textContent).toBe(
+      rekordEksportu.etykieta.etykieta_pl,
+    );
     expect(wiersz.textContent).toContain('Stacja: Stacja Łąkowa');
     expect(wiersz.textContent).toContain('P_export: 600 kW');
     expect(wiersz.textContent).toContain('P_import: 500 kW');

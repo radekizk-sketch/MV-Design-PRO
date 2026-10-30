@@ -3,7 +3,6 @@ export { useOtworzKonfiguracjeStacji } from './przejscieDoStacji';
 export { useZmienWartoscAparatu } from './zmianaWartosciAparatu';
 export {
   pobierzWytrzymaloscAparatury,
-  znacznikWerdyktu,
   type PoleWytrzymalosci,
   type WidokWytrzymalosciAparatury,
 } from './api';

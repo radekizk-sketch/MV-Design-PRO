@@ -15,8 +15,12 @@
  *     tam, gdzie backend mówi „niezgodne".
  *
  * ZERO REGUŁY I ZERO KATALOGU W PREZENTACJI: typy pochodzą z `/api/catalog/vt-types`,
- * werdykt z `/api/v1/catalog/audit2/validate-vt-grounding`. Ten plik nic nie liczy
- * i niczego nie rozstrzyga — pokazuje odpowiedzi backendu i uczciwie nazywa braki.
+ * ocena z `/api/v1/catalog/audit2/validate-vt-grounding` — rekord K werdyktu wyjaśnialnego,
+ * pokazany etykietą rekordu (`EtykietaWerdyktu`) i jego zdaniem (karta WERDYKT-MIGRACJA-190:
+ * dawna flaga `ok` i własne „zgodny z siecią…” usunięte). Karta typu bez współczynnika też
+ * idzie do backendu i wraca jako rekord „ocena niewykonana” z nazwanym brakiem. Bez rekordu
+ * zostają wyłącznie braki, których nie ma czego oceniać (typ spoza katalogu, sposób
+ * uziemienia nieustalony w modelu) — nazwane wprost jako brak danych, nigdy jako status.
  *
  * SPOSÓB UZIEMIENIA Z MODELU (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA). Typ punktu
  * neutralnego sieci SN pola nie pochodzi już z wyboru w konfiguratorze (katalog
@@ -30,6 +34,8 @@ import { useEffect, useState } from 'react';
 
 import { fetchVtTypes } from '../../../catalog/api';
 import { fetchUziemienieSnStacji, validateVtGroundingApi } from '../../station-der/audit2-api';
+import { EtykietaWerdyktu } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
+import type { OcenaKryterium } from '../../../../ui2/wyniki/wzorzec/werdykt';
 
 /** Stacja projektu, której model niesie uziemienie sieci SN pól. */
 export interface KontekstUziemieniaStacji {
@@ -48,7 +54,8 @@ interface WierszWerdyktu {
   readonly bayDesignation: string;
   readonly nazwaTypu: string | null;
   readonly wspolczynnik: number | null;
-  readonly ok: boolean | null;
+  /** Rekord K z backendu; `null` — brak danych, którego nie ma czego oceniać. */
+  readonly ocena: OcenaKryterium | null;
   readonly komunikat: string;
 }
 
@@ -101,7 +108,7 @@ export function WalidacjaVtPolaSekcja({
                 bayDesignation: pole.bayDesignation,
                 nazwaTypu: null,
                 wspolczynnik: null,
-                ok: null,
+                ocena: null,
                 komunikat:
                   uziemieniePola?.przyczyna_braku
                   ?? 'Sposobu uziemienia punktu neutralnego sieci SN pola nie ustalono.',
@@ -116,24 +123,13 @@ export function WalidacjaVtPolaSekcja({
                 bayDesignation: pole.bayDesignation,
                 nazwaTypu: null,
                 wspolczynnik: null,
-                ok: null,
+                ocena: null,
                 komunikat:
                   `Typ ${pole.vtCatalogRef} nie występuje w katalogu — zgodności `
                   + 'ze sposobem uziemienia nie da się sprawdzić.',
               };
             }
             const fv = typ.rated_voltage_factor ?? null;
-            if (fv === null) {
-              return {
-                bayDesignation: pole.bayDesignation,
-                nazwaTypu: typ.name,
-                wspolczynnik: null,
-                ok: null,
-                komunikat:
-                  'Karta tego typu nie podaje współczynnika napięciowego — sprawdzenie '
-                  + 'wymaga uzupełnienia danych producenta.',
-              };
-            }
             const odpowiedz = await validateVtGroundingApi({
               voltage_factor: fv,
               grounding_type: typUziemienia,
@@ -142,7 +138,7 @@ export function WalidacjaVtPolaSekcja({
               bayDesignation: pole.bayDesignation,
               nazwaTypu: typ.name,
               wspolczynnik: fv,
-              ok: odpowiedz.ok,
+              ocena: odpowiedz.ocena,
               komunikat: odpowiedz.message_pl,
             };
           }),
@@ -194,23 +190,28 @@ export function WalidacjaVtPolaSekcja({
         <p
           key={wiersz.bayDesignation}
           data-testid={`vt-validation-${wiersz.bayDesignation}`}
-          // Znacznik maszynowy werdyktu: `true` / `false` / `nieustalone` — trzeci stan
-          // MUSI byc odrozalny, inaczej brak podstawy wygladalby jak zgodnosc.
-          data-vt-ok={wiersz.ok === null ? 'nieustalone' : String(wiersz.ok)}
-          className={
-            wiersz.ok === false
-              ? 'text-xs text-scada-alarm'
-              : wiersz.ok === null
-                ? 'text-xs text-scada-grounded'
-                : 'text-xs text-scada-muted'
-          }
+          // Status maszynowy rekordu K albo `brak-danych` — trzeci stan MUSI być odróżnialny,
+          // inaczej brak podstawy wyglądałby jak zgodność.
+          data-status={wiersz.ocena?.status_maszynowy ?? 'brak-danych'}
+          className="text-xs text-scada-muted"
         >
           <span className="font-mono-eng">{wiersz.bayDesignation}</span>
           {' · '}
           {wiersz.nazwaTypu ?? 'typ spoza katalogu'}
           {wiersz.wspolczynnik !== null && ` · F_v = ${wiersz.wspolczynnik}`}
+          {' '}
+          {wiersz.ocena !== null ? (
+            <EtykietaWerdyktu
+              etykieta={wiersz.ocena.etykieta}
+              status={wiersz.ocena.status_maszynowy}
+              testid={`vt-validation-etykieta-${wiersz.bayDesignation}`}
+              zwarta
+            />
+          ) : (
+            <span className="text-scada-grounded">brak danych</span>
+          )}
           {' — '}
-          {wiersz.ok === true ? 'zgodny z siecią o tym sposobie uziemienia' : wiersz.komunikat}
+          {wiersz.komunikat}
         </p>
       ))}
     </div>

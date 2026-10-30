@@ -13,7 +13,7 @@ import { vi } from 'vitest';
 /** Pusty pakiet dowodów projektu (`POST …/audit2-station-config/_validate-all`). */
 const EMPTY_AUDIT2_PROJECT_PACK = {
   project_id: 'stub',
-  all_pass: true,
+  liczby_statusow: {},
   station_count: 0,
   per_station: [],
 };

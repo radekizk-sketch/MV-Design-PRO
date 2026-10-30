@@ -11,7 +11,24 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { StationConfigTransformerCard } from '../StationConfigTransformerCard';
 import { StationConfigBaysCard } from '../StationConfigBaysCard';
 import { StationConfigProtectionCard } from '../StationConfigProtectionCard';
-import type { HvFuseItem, TapChangerItem } from '../../../station-der/audit2-api';
+import type {
+  DeviceWithstandValidationResponse,
+  HvFuseItem,
+  TapChangerItem,
+  VtGroundingValidationResponse,
+} from '../../../station-der/audit2-api';
+import rekordyAudytu2 from '../../../station-der/__tests__/rekordyAudytu2.json';
+
+// Rekordy odpowiedzi walidatorów z TYCH SAMYCH funkcji backendu (fixtura generowana; karta
+// WERDYKT-MIGRACJA-190 — rekordy K/W zamiast flag `ok`).
+const VT = rekordyAudytu2.vt as unknown as Record<
+  'spelnia' | 'nie_spelnia',
+  VtGroundingValidationResponse
+>;
+const WYTRZYMALOSC = rekordyAudytu2.wytrzymalosc as unknown as Record<
+  'w_granicach' | 'przekroczona',
+  DeviceWithstandValidationResponse
+>;
 
 // Karta FAB-L: katalog WYŁĄCZNIE ze snapshotu audytu 2 — kształt 1:1 z backendu
 // (`audit2_catalogs.py::TapChangerItem.to_dict`), nie statyk modułowy.
@@ -263,18 +280,14 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
           } as Response;
         }
         if (url.includes('/validate-vt-grounding')) {
-          // Atrapa REGULY backendu: prog 1,9 dla sieci kompensowanej (V12K-256).
+          // Atrapa REGULY backendu: prog 1,9 dla sieci kompensowanej (V12K-256); odpowiedz
+          // to rekord K z backendu (fixtura), wybrany wg progu.
           const body = JSON.parse(String(init?.body ?? '{}')) as { voltage_factor?: number };
-          const ok = Number(body.voltage_factor) >= 1.9;
+          const spelnia = Number(body.voltage_factor) >= 1.9;
           return {
             ok: true,
             status: 200,
-            json: async () => ({
-              ok,
-              message_pl: ok
-                ? ''
-                : 'Siec skompensowana (Petersena) wymaga VT (faza-ziemia) z U_th >= 1.9.',
-            }),
+            json: async () => (spelnia ? VT.spelnia : VT.nie_spelnia),
           } as Response;
         }
         if (url.endsWith('/device-withstand')) {
@@ -302,21 +315,12 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
           const body = JSON.parse(String(init?.body ?? '{}')) as {
             i_peak_calculated_ka?: number;
           };
-          const iDynOk = Number(body.i_peak_calculated_ka) <= 63;
+          const wGranicach = Number(body.i_peak_calculated_ka) <= 62.5;
           return {
             ok: true,
             status: 200,
-            json: async () => ({
-              ok: iDynOk,
-              i_dyn_ok: iDynOk,
-              i_th_ok: true,
-              message_pl: iDynOk
-                ? 'OK: aparatura wytrzymała.'
-                : 'BLOKER: I_dyn 70,0 kA > 63,0 kA (limit) — przekroczenie '
-                  + 'wytrzymałości dynamicznej.',
-              utilization_dyn_percent: 0,
-              utilization_th_percent: 0,
-            }),
+            json: async () =>
+              wGranicach ? WYTRZYMALOSC.w_granicach : WYTRZYMALOSC.przekroczona,
           } as Response;
         }
         throw new Error(`nieoczekiwane zapytanie: ${url}`);
@@ -351,8 +355,8 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       // Werdykt NOK, bo F_v 1,2 nie wystarcza w sieci kompensowanej — i to BACKEND
       // tak mowi; karta pokazuje jego komunikat.
       const validation = await screen.findByTestId('vt-validation-POLE-01');
-      expect(validation.getAttribute('data-vt-ok')).toBe('false');
-      expect(validation.textContent?.toLowerCase()).toContain('petersena');
+      expect(validation.getAttribute('data-status')).toBe('NIE_SPELNIA');
+      expect(validation.textContent).toContain(VT.nie_spelnia.message_pl);
     });
 
     it('renderuje walidację I_dyn / I_th aparatury (eng.18) — werdykt z backendu', async () => {
@@ -372,8 +376,8 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       );
 
       const validation = await screen.findByTestId('withstand-POLE-01');
-      expect(validation.getAttribute('data-withstand-ok')).toBe('false');
-      expect(validation.textContent).toContain('I_dyn');
+      expect(validation.getAttribute('data-status')).toBe('NIE_SPELNIA');
+      expect(validation.textContent).toContain(WYTRZYMALOSC.przekroczona.message_pl);
     });
 
     it('walidacja VT OK gdy U_th=1.9 dla sieci skompensowanej', async () => {
@@ -395,7 +399,9 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       );
 
       await waitFor(() =>
-        expect(screen.getByTestId('vt-validation-POLE-01').getAttribute('data-vt-ok')).toBe('true'),
+        expect(screen.getByTestId('vt-validation-POLE-01').getAttribute('data-status')).toBe(
+          'SPELNIA',
+        ),
       );
     });
   });

@@ -35,7 +35,7 @@ import {
   wzbogacDeryOKlaseCt,
   zlozZBramkaModelu,
   type BramkaModelu,
-  type HostingCapacityExportResponse,
+  type SzczegolyDowoduEksportu,
   useAudit2ProjectProofPack,
   useGenerateAudit2ProjectReport,
   useGenerateProjectAudit2ProofPack,
@@ -43,6 +43,7 @@ import {
   useStationAudit2ConfigList,
 } from '../network-build/station-der';
 import { PakietDowodowProjektu } from './PakietDowodowRozszerzen';
+import { EtykietaWerdyktu } from '../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { EkranFrt } from '../../ui2/oze/frt';
@@ -1983,9 +1984,11 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
   // (karta PROOFPACK-KONTRAKT). Dawniej ekran sumował moce źródeł (`nominal_power_kw`)
   // i odbiorów stacji oraz wydawał werdykt progami 0,8/1,5/3,0 we własnej kopii reguły
   // (`validateHostingCapacityExport` w `catalogs.ts`, usunięta) i pokazywał identyfikator
-  // stacji. Teraz sumy, stosunek i werdykt liczy backend (`validate_hosting_capacity_export`
-  // na mocach z konfiguracji stacji i odbiorach z modelu), a stacja, dla której bilansu
-  // nie da się policzyć, przychodzi jako jawny brak z przyczyną — brak nie jest zerem.
+  // stacji. Teraz bilans liczy backend na mocach z konfiguracji stacji i odbiorach z modelu,
+  // a ocenę niesie rekord W dowodu (karta WERDYKT-MIGRACJA-190: granica eksportu wynika
+  // z warunków przyłączenia OSD, których model nie niesie — rekord mówi to wprost, progi
+  // bez podstawy usunięte). Stacja, dla której bilansu nie da się policzyć, przychodzi jako
+  // jawny brak z przyczyną — brak nie jest zerem.
   const audit2ProjektPakiet = useAudit2ProjectProofPack(activeProjectId);
   const hostingCapacityRows = useMemo(
     () => (audit2ProjektPakiet.data?.per_station ?? []).flatMap((pakiet) =>
@@ -1994,8 +1997,8 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
         .map((dowod) => ({
           stationId: pakiet.station_id,
           stationNazwa: pakiet.station_nazwa,
-          summaryPl: dowod.summary_pl,
-          details: dowod.details as unknown as HostingCapacityExportResponse,
+          wymaganie: dowod.wymaganie,
+          details: dowod.details as unknown as SzczegolyDowoduEksportu,
         })),
     ),
     [audit2ProjektPakiet.data],
@@ -2246,7 +2249,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
       {hostingCapacityNieznane.length > 0 && (
         <SectionCard
           title={`Kierunek przepływu — nie sprawdzono (${hostingCapacityNieznane.length})`}
-          eyebrow="NC RfG Art. 17"
+          eyebrow="Warunki przyłączenia OSD"
         >
           {/*
             V12K-226: brak oceny musi być WIDOCZNY. Milczenie w tym miejscu czytałoby się
@@ -2270,28 +2273,27 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
       )}
       {hostingCapacityRows.length > 0 && (
         <SectionCard
-          title={`Hosting capacity (export vs import) — ${hostingCapacityRows.length} stacji`}
-          eyebrow="NC RfG Art. 17"
+          title={`Bilans eksportu stacji — ${hostingCapacityRows.length} stacji`}
+          eyebrow="Warunki przyłączenia OSD"
         >
           <div data-testid="hosting-capacity-export-rows" className="space-y-2">
             {hostingCapacityRows.map((row) => (
               <div
                 key={row.stationId}
                 data-testid="hosting-capacity-stacja"
-                data-status={row.details.status}
-                className={
-                  'rounded border p-3 text-sm '
-                  + (row.details.status === 'requires_ramp_down'
-                    ? 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
-                    : row.details.status === 'high_export_warning'
-                      ? 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
-                      : row.details.status === 'normal_export'
-                        ? 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz'
-                        : 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz')
-                }
+                data-status={row.wymaganie.status_maszynowy}
+                className="rounded border border-slate-600 p-3 text-sm"
               >
-                <div className="font-semibold">Stacja: {row.stationNazwa}</div>
-                <div className="mt-1 text-[11px]">{row.summaryPl}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">Stacja: {row.stationNazwa}</span>
+                  <EtykietaWerdyktu
+                    etykieta={row.wymaganie.etykieta}
+                    status={row.wymaganie.status_maszynowy}
+                    testid="hosting-capacity-etykieta"
+                    zwarta
+                  />
+                </div>
+                <div className="mt-1 text-[11px]">{row.wymaganie.wyjasnienie.zdanie_pl}</div>
                 <div className="mt-1 grid grid-cols-3 gap-2 font-mono text-[10px]">
                   <span>P_export: {row.details.p_export_kw.toFixed(0)} kW</span>
                   <span>P_import: {row.details.p_import_kw.toFixed(0)} kW</span>

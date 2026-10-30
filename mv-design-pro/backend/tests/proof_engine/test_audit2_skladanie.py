@@ -11,6 +11,7 @@ ILOCZYN CECH, W KTORYM DEFEKT MOGL SIE SCHOWAC:
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import pytest
@@ -184,7 +185,7 @@ def _teksty(pakiet: dict[str, Any]) -> list[str]:
     teksty = [pakiet["station_nazwa"]]
     for dowod in pakiet["proofs"]:
         teksty.append(dowod["summary_pl"])
-        teksty.extend(dowod["details"].get("issues", []))
+        teksty.extend(k["wyjasnienie"]["zdanie_pl"] for k in dowod["wymaganie"]["oceny_skladowe"])
     teksty.extend(b["przyczyna_pl"] for b in pakiet["braki_danych"])
     return teksty
 
@@ -203,11 +204,14 @@ def test_pelna_konfiguracja_daje_piec_rodzajow_z_nazwami_z_modelu() -> None:
     eksport = next(d for d in pakiet["proofs"] if d["proof_type"] == RODZAJE_DOWODOW[2])
     assert eksport["details"]["p_export_kw"] == 1200.0
     assert eksport["details"]["p_import_kw"] == 1000.0
-    assert eksport["details"]["status"] == "normal_export"
-    # Karta GFM z granicami Q po obu stronach zera: oba tryby zgodne.
+    # Granica eksportu z warunków OSD nie jest w modelu — rekord bez werdyktu zgodności.
+    assert eksport["wymaganie"]["status_maszynowy"] == "BRAK_PODSTAWY"
+    # Karta GFM z granicami Q po obu stronach zera: kryteria spełnione na liczbach, dowód
+    # niepełny (zdolność bez walidacji) — `BRAK_DOWODU`, nigdy „zgodny”.
     bess = next(d for d in pakiet["proofs"] if d["proof_type"] == RODZAJE_DOWODOW[0])
-    assert bess["pass_status"] is True
-    assert pakiet["all_pass"] is True
+    assert bess["wymaganie"]["status_maszynowy"] == "BRAK_DOWODU"
+    assert "NIE_SPELNIA" not in pakiet["liczby_statusow"]
+    assert sum(pakiet["liczby_statusow"].values()) == 5
 
 
 @pytest.mark.parametrize(
@@ -239,8 +243,10 @@ def test_rodzaj_bez_danych_jest_jawnym_brakiem_a_pozostale_zostaja(
     dowody, braki = _rodzaje(pakiet)
     assert rodzaj in braki and rodzaj not in dowody
     assert przyczyna in [b["przyczyna_pl"] for b in pakiet["braki_danych"]]
-    # Brak danych nie jest zgodnoscia, ale tez nie jest dowodem niezaliczonym.
-    assert pakiet["fail_count"] == 0
+    # Brak danych nie jest zgodnoscia, ale tez nie jest dowodem niezaliczonym: zestawienie
+    # statusow obejmuje wylacznie wygenerowane dowody.
+    assert "NIE_SPELNIA" not in pakiet["liczby_statusow"]
+    assert sum(pakiet["liczby_statusow"].values()) == pakiet["proof_count"]
 
 
 def test_magazyn_spoza_modelu_i_bez_trybow_to_braki_pozycji() -> None:
@@ -270,25 +276,27 @@ def test_magazyn_spoza_modelu_i_bez_trybow_to_braki_pozycji() -> None:
 
 
 @pytest.mark.parametrize(
-    ("katalog", "zgodny", "fragment"),
+    ("katalog", "status", "fragment"),
     [
-        (MAGAZYN_GFM, True, None),
+        (MAGAZYN_GFM, "BRAK_DOWODU", None),
         # Karta bez trybu sterowania: tworzenie napiecia nieustalone — tryb wyspowy
         # nie dostaje zgodnosci na domysl.
-        (MAGAZYN_GFL, False, "karta przekształtnika nie podaje trybu sterowania"),
+        (MAGAZYN_GFL, "NIE_OCENIONO", "nie podaje zdolności: tworzenie napięcia"),
         # Typ spoza katalogu: obie zdolnosci nieustalone.
-        ("conv-spoza-katalogu", False, "karta przekształtnika nie podaje granic mocy biernej"),
+        ("conv-spoza-katalogu", "NIE_OCENIONO", "nie podaje zdolności: praca w czterech"),
     ],
     ids=["karta_gfm", "karta_bez_trybu_sterowania", "typ_spoza_katalogu"],
 )
 def test_zdolnosci_pcs_z_karty_typu_zrodla_w_modelu(
-    katalog: str, zgodny: bool, fragment: str | None
+    katalog: str, status: str, fragment: str | None
 ) -> None:
+    """Zdolność nieustalona z karty typu nie jest potwierdzeniem (brak danych ≠ spełnia):
+    tryb, który jej wymaga, daje kryterium `NIE_OCENIONO` z nazwanym brakiem."""
     pakiet = _pakiet(_konfiguracja_pelna(), _model(katalog_magazynu=katalog))
     bess = next(d for d in pakiet["proofs"] if d["proof_type"] == RODZAJE_DOWODOW[0])
-    assert bess["pass_status"] is zgodny
+    assert bess["wymaganie"]["status_maszynowy"] == status
     if fragment is not None:
-        assert any(fragment in pozycja for pozycja in bess["details"]["issues"])
+        assert fragment in bess["summary_pl"]
 
 
 @pytest.mark.parametrize(
@@ -316,29 +324,29 @@ def test_zdolnosci_przeksztaltnika_brak_danej_to_nieustalone(
 
 
 @pytest.mark.parametrize(
-    ("uhv", "ulv", "avr", "przelacznik", "zgodny"),
+    ("uhv", "ulv", "avr", "przelacznik", "status"),
     [
-        (15.0, 0.4, False, "tc_detc_snnn_5_25", True),
-        (20.0, 0.4, False, "tc_detc_snnn_5_25", True),
+        (15.0, 0.4, False, "tc_detc_snnn_5_25", "BRAK_DOWODU"),
+        (20.0, 0.4, False, "tc_detc_snnn_5_25", "BRAK_DOWODU"),
         # Model deklaruje sterowanie automatyczne — DETC bez AVR nie wystarcza (dawny
         # warunek `requires_avr = tc.supports_avr` nie mogl nigdy zawiesc).
-        (15.0, 0.4, True, "tc_detc_snnn_5_25", False),
-        (15.0, 0.4, True, "tc_oltc_snnn_9_15", True),
-        (110.0, 15.0, True, "tc_oltc_110sn_19_125", True),
+        (15.0, 0.4, True, "tc_detc_snnn_5_25", "NIE_SPELNIA"),
+        (15.0, 0.4, True, "tc_oltc_snnn_9_15", "BRAK_DOWODU"),
+        (110.0, 15.0, True, "tc_oltc_110sn_19_125", "BRAK_DOWODU"),
         # Klasa z napiec modelu, nie „pierwsza pozycja katalogu" (dawny domysl zawsze zgodny).
-        (110.0, 20.0, False, "tc_detc_snnn_5_25", False),
-        (15.0, 0.4, False, "tc_z_innego_swiata", False),
+        (110.0, 20.0, False, "tc_detc_snnn_5_25", "NIE_SPELNIA"),
+        (15.0, 0.4, False, "tc_z_innego_swiata", "NIE_OCENIONO"),
     ],
 )
 def test_plan_zaczepow_klasa_i_avr_z_modelu(
-    uhv: float, ulv: float, avr: bool, przelacznik: str, zgodny: bool
+    uhv: float, ulv: float, avr: bool, przelacznik: str, status: str
 ) -> None:
     pakiet = _pakiet(
         _konfiguracja_pelna(transformer_tap_changers={"tr/5b0f7d1e": przelacznik}),
         _model(uhv_kv=uhv, ulv_kv=ulv, avr_w_modelu=avr),
     )
     dowod = next(d for d in pakiet["proofs"] if d["proof_type"] == RODZAJE_DOWODOW[1])
-    assert dowod["pass_status"] is zgodny
+    assert dowod["wymaganie"]["status_maszynowy"] == status
     assert dowod["details"]["requires_avr"] is avr
     assert "tr/5b0f7d1e" not in " ".join(_teksty(pakiet))
 
@@ -372,9 +380,10 @@ def test_stacja_bez_odbiorow_to_zero_importu_a_stacja_spoza_modelu_to_brak() -> 
     pakiet = _pakiet(_konfiguracja_pelna(), _model(odbiory_mw=()))
     eksport = next(d for d in pakiet["proofs"] if d["proof_type"] == RODZAJE_DOWODOW[2])
     assert eksport["details"]["p_import_kw"] == 0.0
-    assert eksport["details"]["export_to_import_ratio"] is None
-    assert eksport["details"]["status"] == "requires_ramp_down"
-    assert "inf" not in eksport["summary_pl"]
+    assert eksport["details"]["p_net_export_kw"] == 1200.0
+    assert "export_to_import_ratio" not in eksport["details"]
+    assert eksport["wymaganie"]["status_maszynowy"] == "BRAK_PODSTAWY"
+    assert re.search(r"\binf\b", eksport["summary_pl"]) is None
     # Projekt bez modelu: import nieznany — brak, nie zero.
     pakiet = _pakiet(_konfiguracja_pelna(), None)
     assert STACJA_BEZ_SZYN in [b["przyczyna_pl"] for b in pakiet["braki_danych"]]
@@ -399,9 +408,10 @@ def test_przekladnik_spoza_katalogu_daje_dowod_niezaliczony_z_powodem() -> None:
         for d in pakiet["proofs"]
         if d["proof_type"] == RODZAJE_DOWODOW[4]
     }
-    assert vt["Pole 01"]["pass_status"] is True
-    assert vt["Pole 03"]["pass_status"] is False
-    assert "nieznany" in vt["Pole 03"]["summary_pl"]
+    assert vt["Pole 01"]["wymaganie"]["status_maszynowy"] == "BRAK_DOWODU"
+    # Typ spoza katalogu: współczynnik nieznany — kryterium bez wyniku, nigdy domyślne 1,9.
+    assert vt["Pole 03"]["wymaganie"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert "typ spoza katalogu" in vt["Pole 03"]["summary_pl"]
     assert "petersen_coil" not in vt["Pole 01"]["summary_pl"]
 
 

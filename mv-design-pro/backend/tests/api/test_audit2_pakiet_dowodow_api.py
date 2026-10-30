@@ -152,7 +152,10 @@ def test_pakiet_projektu_piec_rodzajow_nazwy_z_modelu_kazda_stacja(app_client, p
     # Stacja z pelna konfiguracja: piec rodzajow uzasadnien, zero brakow.
     assert {d["proof_type"] for d in lakowa["proofs"]} == WYMAGANE_RODZAJE
     assert lakowa["braki_danych"] == []
-    assert lakowa["all_pass"] is True
+    # Zestawienie statusów rekordów W (bez werdyktu zbiorczego): nic niespełnionego.
+    assert "all_pass" not in lakowa
+    assert "NIE_SPELNIA" not in lakowa["liczby_statusow"]
+    assert sum(lakowa["liczby_statusow"].values()) == 5
     # Stacja z samym zrodlem: jeden dowod (bilans z jej odbiorow), cztery jawne braki.
     assert [d["proof_type"] for d in polna["proofs"]] == ["AUDIT2_HOSTING_CAPACITY_EXPORT"]
     assert polna["proofs"][0]["details"]["p_import_kw"] == 100.0

@@ -18,9 +18,9 @@ FastAPI router dla katalogow audytu 2 (read-only).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from network_model.catalog.audit2_catalogs import (
     BESS_OPERATION_MODE_CATALOG,
     BLOCK_TRANSFORMER_CATALOG,
@@ -29,12 +29,19 @@ from network_model.catalog.audit2_catalogs import (
     PF_CURVE_CATALOG,
     TAP_CHANGER_CATALOG,
     get_audit2_catalog_snapshot,
-    is_vt_voltage_factor_valid_for_grounding,
-    validate_device_withstand,
-    validate_hosting_capacity_export,
 )
-from network_model.core.uziemienie import TYPY_PUNKTU_NEUTRALNEGO
+from network_model.catalog.audit2_oceny import (
+    ocen_aparat_katalogu_wytrzymalosci,
+    ocena_eksportu_stacji,
+    ocena_wspolczynnika_napieciowego_vt,
+)
+from network_model.core.uziemienie import (
+    ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
+    TYPY_PUNKTU_NEUTRALNEGO,
+    TypPunktuNeutralnego,
+)
 from pydantic import BaseModel
+from werdykt import Przedmiot
 
 router = APIRouter(prefix="/api/v1/catalog/audit2", tags=["Audit2 Catalogs"])
 
@@ -86,19 +93,51 @@ def get_snapshot() -> dict[str, Any]:
 # =============================================================================
 
 
+# Odpowiedzi walidatorów niosą rekord werdyktu wyjaśnialnego (`ocena` — rekord K, `wymaganie` —
+# rekord W) i zdanie tego rekordu (`message_pl`); status żyje wyłącznie w rekordzie (karta
+# WERDYKT-MIGRACJA-190 — dawne flagi `ok` / `i_dyn_ok` / `i_th_ok`, komunikaty „OK: …" i słowa
+# statusu eksportu z progów bez podstawy usunięte).
+
+
 class VtGroundingValidationRequest(BaseModel):
-    voltage_factor: float
+    # `None` — karta typu nie podaje współczynnika: rekord `NIE_OCENIONO` z nazwanym brakiem
+    # (brak danych ≠ spełnia), nigdy wartość domyślna.
+    voltage_factor: float | None
     grounding_type: str  # "isolated" | "petersen_coil" | "resistor_grounded" | "directly_grounded"
+
+
+def _typ_uziemienia(wartosc: str) -> TypPunktuNeutralnego:
+    """Typ punktu neutralnego z żądania — wartość spoza słownika to błąd żądania (422), nie
+    ocena przekładnika."""
+    if wartosc in TYPY_PUNKTU_NEUTRALNEGO:
+        # Przynależność do `get_args(TypPunktuNeutralnego)` sprawdzona wyżej.
+        return cast(TypPunktuNeutralnego, wartosc)
+    raise HTTPException(
+        status_code=422,
+        detail=f"Nieznany typ uziemienia punktu neutralnego sieci: {wartosc}",
+    )
 
 
 @router.post("/validate-vt-grounding")
 def validate_vt_grounding(req: VtGroundingValidationRequest) -> dict[str, Any]:
-    """Naprawa eng.20: walidacja VT voltage_factor vs typ uziemienia."""
-    grounding = req.grounding_type
-    if grounding not in TYPY_PUNKTU_NEUTRALNEGO:
-        return {"ok": False, "message_pl": f"Nieznany typ uziemienia: {grounding}"}
-    ok, message = is_vt_voltage_factor_valid_for_grounding(req.voltage_factor, grounding)  # type: ignore[arg-type]
-    return {"ok": ok, "message_pl": message}
+    """Naprawa eng.20: współczynnik napięciowy VT wobec sposobu uziemienia sieci (rekord K)."""
+    grounding = _typ_uziemienia(req.grounding_type)
+    ocena = ocena_wspolczynnika_napieciowego_vt(
+        voltage_factor=req.voltage_factor,
+        grounding_type=grounding,
+        przedmiot=Przedmiot(
+            element_ref=None,
+            nazwa_pl="przekładnik napięciowy",
+            opis_pl=(
+                "przekładnik napięciowy wobec sieci o punkcie neutralnym "
+                f"{ETYKIETA_PL_PUNKTU_NEUTRALNEGO[grounding]}"
+            ),
+        ),
+    )
+    return {
+        "ocena": ocena.model_dump(mode="json"),
+        "message_pl": ocena.wyjasnienie.zdanie_pl,
+    }
 
 
 class DeviceWithstandValidationRequest(BaseModel):
@@ -110,13 +149,19 @@ class DeviceWithstandValidationRequest(BaseModel):
 
 @router.post("/validate-device-withstand")
 def validate_device_withstand_endpoint(req: DeviceWithstandValidationRequest) -> dict[str, Any]:
-    """Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909)."""
-    return validate_device_withstand(
+    """Naprawa eng.18: wytrzymałość I_dyn / I_th aparatury z katalogu (rekordy K i W)."""
+    ocena = ocen_aparat_katalogu_wytrzymalosci(
         device_id=req.device_id,
         i_peak_calculated_ka=req.i_peak_calculated_ka,
         i_thermal_calculated_ka=req.i_thermal_calculated_ka,
         t_clearing_s=req.t_clearing_s,
     )
+    if ocena is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Brak aparatury w katalogu wytrzymałości zwarciowej.",
+        )
+    return ocena.to_dict()
 
 
 class HostingCapacityExportRequest(BaseModel):
@@ -129,12 +174,29 @@ class HostingCapacityExportRequest(BaseModel):
 def validate_hosting_capacity_export_endpoint(
     req: HostingCapacityExportRequest,
 ) -> dict[str, Any]:
-    """Naprawa eng.15: walidacja eksportu vs import dla stacji."""
-    return validate_hosting_capacity_export(
-        station_id=req.station_id,
+    """Naprawa eng.15: eksport netto stacji wobec granicy zdolności przyłączeniowej (rekord K).
+
+    Granica eksportu wynika z warunków przyłączenia OSD, których model nie niesie — eksport
+    netto daje ``BRAK_PODSTAWY`` z wynikiem informacyjnym, brak eksportu — ``NIE_DOTYCZY``.
+    """
+    ocena = ocena_eksportu_stacji(
+        stacja_nazwa="wskazana w żądaniu",
+        przedmiot=Przedmiot(
+            element_ref=req.station_id,
+            nazwa_pl="stacja wskazana w żądaniu",
+            opis_pl="stacja — bilans mocy źródeł i odbiorów wobec sieci OSD",
+        ),
         p_export_kw=req.p_export_kw,
         p_import_kw=req.p_import_kw,
     )
+    return {
+        "station_id": req.station_id,
+        "p_export_kw": req.p_export_kw,
+        "p_import_kw": req.p_import_kw,
+        "p_net_export_kw": req.p_export_kw - req.p_import_kw,
+        "ocena": ocena.model_dump(mode="json"),
+        "message_pl": ocena.wyjasnienie.zdanie_pl,
+    }
 
 
 # =============================================================================

@@ -1,0 +1,1102 @@
+{
+  "bez_czasu_wylaczenia": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "network_model/catalog/audit2_oceny.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+      "semantyka": "ostrzegawcza"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wytrzymałość zwarciowa i zdolność wyłączania aparatu „Aparat pola SN 1”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "i_p \\le I_{dyn}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "aparatura.field/x/in.aparat/01.dynamiczna",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "karta katalogowa pozycji „Aparat pola SN 1”",
+            "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+            "rodzaj": "KATALOG_PRODUCENTA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "pozycja katalogu typów programu"
+          },
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 50.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "znamionowy prąd szczytowy wytrzymywany aparatu I_dyn"
+        },
+        "margines": {
+          "definicja_latex": "m = x_{\\lim} - x",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Aparat pola SN 1",
+          "skala": {
+            "jednostka": "kA",
+            "wartosc": 50.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 18.8
+          },
+          "wzgledny": 0.376
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+          "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+          "wydanie": "2007"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "aparat/01",
+          "nazwa_pl": "Aparat pola SN 1",
+          "opis_pl": "aparat pola P-1"
+        },
+        "slad": [
+          {
+            "krok": "aparatura.field/x/in.aparat/01.dynamiczna",
+            "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+          ],
+          "zdanie_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1) — kryterium spełnione. Prąd udarowy zwarcia w punkcie zabudowy: 31,2 kA wobec wymaganych ≤ 50 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Aparat pola SN 1”” (margines +18,8 kA, punkt: Aparat pola SN 1, względnie +37,6 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Aparat pola SN 1",
+          "symbol_latex": "i_p",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 31.2
+          },
+          "wielkosc_pl": "prąd udarowy zwarcia w punkcie zabudowy"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zwarcia niesymetryczne",
+            "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+          ]
+        }
+      },
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Brak zweryfikowanej podstawy wymagania",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "aparatura.field/x/in.aparat/01.cieplna",
+        "limit": null,
+        "margines": null,
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków",
+          "jednostka_redakcyjna": "wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": "prąd cieplny zastępczy zwarcia porównany z prądem krótkotrwałym aparatu przeliczonym na czas wyłączenia; przy czasie krótszym od znamionowego limitem jest sam prąd znamionowy (bez przeliczenia w górę)",
+          "wydanie": "2011"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "aparat/01",
+          "nazwa_pl": "Aparat pola SN 1",
+          "opis_pl": "aparat pola P-1"
+        },
+        "slad": [
+          {
+            "krok": "aparatura.field/x/in.aparat/01.cieplna",
+            "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "BRAK_PODSTAWY",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [
+            "Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+            "czas wyłączenia zwarcia nie jest ustalony"
+          ],
+          "przyczyna_pl": "kryterium nie ma limitu z podstawą",
+          "zastrzezenia": [
+            "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+          ],
+          "zdanie_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — kryterium nie ma limitu z podstawą. Wynik obliczeniowy (informacyjnie): prąd cieplny zastępczy zwarcia w punkcie zabudowy: 12,5 kA."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Aparat pola SN 1",
+          "symbol_latex": "I_{th}",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 12.5
+          },
+          "wielkosc_pl": "prąd cieplny zastępczy zwarcia w punkcie zabudowy"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zwarcia niesymetryczne",
+            "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+      "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+      "rodzaj": "NORMA",
+      "status": "WSKAZANE",
+      "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+      "wydanie": "2007"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "aparatura.field/x/in.aparat/01.dynamiczna",
+        "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+        "run_id": null,
+        "wersja_silnika": null
+      },
+      {
+        "krok": "aparatura.field/x/in.aparat/01.cieplna",
+        "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "BRAK_PODSTAWY",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+        "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): czas wyłączenia zwarcia nie jest ustalony",
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1) — kryterium nie ma limitu z podstawą",
+      "zastrzezenia": [
+        "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny.",
+        "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+      ],
+      "zdanie_pl": "Wytrzymałość zwarciowa i zdolność wyłączania aparatu „Aparat pola SN 1” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1) — kryterium nie ma limitu z podstawą."
+    },
+    "wymaganie_id": "aparatura.field/x/in.aparat/01",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "SHORT_CIRCUIT",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zwarcia niesymetryczne",
+        "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+      ]
+    }
+  },
+  "przekroczenie_dynamiczne": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "network_model/catalog/audit2_oceny.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Wymaganie naruszone",
+      "semantyka": "negatywna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [
+      "aparatura.field/x/in.aparat/01.dynamiczna"
+    ],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wytrzymałość zwarciowa i zdolność wyłączania aparatu „Aparat pola SN 1”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium naruszone",
+          "semantyka": "negatywna"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "i_p \\le I_{dyn}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "aparatura.field/x/in.aparat/01.dynamiczna",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "karta katalogowa pozycji „Aparat pola SN 1”",
+            "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+            "rodzaj": "KATALOG_PRODUCENTA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "pozycja katalogu typów programu"
+          },
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 50.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "znamionowy prąd szczytowy wytrzymywany aparatu I_dyn"
+        },
+        "margines": {
+          "definicja_latex": "m = x_{\\lim} - x",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Aparat pola SN 1",
+          "skala": {
+            "jednostka": "kA",
+            "wartosc": 50.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": -12.0
+          },
+          "wzgledny": -0.24
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+          "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+          "wydanie": "2007"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "aparat/01",
+          "nazwa_pl": "Aparat pola SN 1",
+          "opis_pl": "aparat pola P-1"
+        },
+        "slad": [
+          {
+            "krok": "aparatura.field/x/in.aparat/01.dynamiczna",
+            "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "NIE_SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": "prąd udarowy zwarcia w punkcie zabudowy przekracza wartość graniczną o 12 kA (Aparat pola SN 1)",
+          "zastrzezenia": [
+            "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+          ],
+          "zdanie_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1) — kryterium naruszone. Prąd udarowy zwarcia w punkcie zabudowy: 62 kA wobec wymaganych ≤ 50 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Aparat pola SN 1”” (margines −12 kA, punkt: Aparat pola SN 1, względnie −24 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Aparat pola SN 1",
+          "symbol_latex": "i_p",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 62.0
+          },
+          "wielkosc_pl": "prąd udarowy zwarcia w punkcie zabudowy"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zwarcia niesymetryczne",
+            "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+          ]
+        }
+      },
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "aparatura.field/x/in.aparat/01.cieplna",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "karta katalogowa pozycji „Aparat pola SN 1”",
+            "jednostka_redakcyjna": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
+            "rodzaj": "KATALOG_PRODUCENTA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "pozycja katalogu typów programu"
+          },
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 20.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "prąd krótkotrwały 20 kA / 1 s przeliczony na czas wyłączenia T_k = 0,5 s"
+        },
+        "margines": {
+          "definicja_latex": "m = x_{\\lim} - x",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Aparat pola SN 1",
+          "skala": {
+            "jednostka": "kA",
+            "wartosc": 20.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 7.5
+          },
+          "wzgledny": 0.375
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków",
+          "jednostka_redakcyjna": "wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": "prąd cieplny zastępczy zwarcia porównany z prądem krótkotrwałym aparatu przeliczonym na czas wyłączenia; przy czasie krótszym od znamionowego limitem jest sam prąd znamionowy (bez przeliczenia w górę)",
+          "wydanie": "2011"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "aparat/01",
+          "nazwa_pl": "Aparat pola SN 1",
+          "opis_pl": "aparat pola P-1"
+        },
+        "slad": [
+          {
+            "krok": "aparatura.field/x/in.aparat/01.cieplna",
+            "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+          ],
+          "zdanie_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1) — kryterium spełnione. Prąd cieplny zastępczy zwarcia w punkcie zabudowy: 12,5 kA wobec wymaganych ≤ 20 kA wg § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k „karta katalogowa pozycji „Aparat pola SN 1”” (margines +7,5 kA, punkt: Aparat pola SN 1, względnie +37,5 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Aparat pola SN 1",
+          "symbol_latex": "I_{th}",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 12.5
+          },
+          "wielkosc_pl": "prąd cieplny zastępczy zwarcia w punkcie zabudowy"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zwarcia niesymetryczne",
+            "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+      "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+      "rodzaj": "NORMA",
+      "status": "WSKAZANE",
+      "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+      "wydanie": "2007"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "aparatura.field/x/in.aparat/01.dynamiczna",
+        "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+        "run_id": null,
+        "wersja_silnika": null
+      },
+      {
+        "krok": "aparatura.field/x/in.aparat/01.cieplna",
+        "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "NIE_SPELNIA",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1) — prąd udarowy zwarcia w punkcie zabudowy przekracza wartość graniczną o 12 kA (Aparat pola SN 1)",
+      "zastrzezenia": [
+        "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny.",
+        "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+      ],
+      "zdanie_pl": "Wytrzymałość zwarciowa i zdolność wyłączania aparatu „Aparat pola SN 1” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — wymaganie nie jest spełnione. Naruszone kryteria składowe: Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1) — prąd udarowy zwarcia w punkcie zabudowy: 62 kA wobec wymaganych ≤ 50 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Aparat pola SN 1”” (margines −12 kA, punkt: Aparat pola SN 1, względnie −24 % wartości granicznej). Pozostałe kryteria składowe: Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1) — kryterium spełnione — dowód niepełny (margines +7,5 kA)."
+    },
+    "wymaganie_id": "aparatura.field/x/in.aparat/01",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "SHORT_CIRCUIT",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zwarcia niesymetryczne",
+        "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+      ]
+    }
+  },
+  "spelnione_na_liczbach": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "OBLICZENIE",
+      "odniesienie": "network_model/catalog/audit2_oceny.py",
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "STATIC_CALCULATION",
+      "status_danych": {
+        "dane_przyjete": [],
+        "stan": "ZWALIDOWANE"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Brak wystarczającego dowodu",
+      "semantyka": "ostrzegawcza"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryteria_naruszone": [],
+    "kryterium_najblizej_granicy": null,
+    "nazwa_pl": "Wytrzymałość zwarciowa i zdolność wyłączania aparatu „Aparat pola SN 1”",
+    "oceny_skladowe": [
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "i_p \\le I_{dyn}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "aparatura.field/x/in.aparat/01.dynamiczna",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "karta katalogowa pozycji „Aparat pola SN 1”",
+            "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+            "rodzaj": "KATALOG_PRODUCENTA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "pozycja katalogu typów programu"
+          },
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 50.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "znamionowy prąd szczytowy wytrzymywany aparatu I_dyn"
+        },
+        "margines": {
+          "definicja_latex": "m = x_{\\lim} - x",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Aparat pola SN 1",
+          "skala": {
+            "jednostka": "kA",
+            "wartosc": 50.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 18.8
+          },
+          "wzgledny": 0.376
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+          "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+          "wydanie": "2007"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "aparat/01",
+          "nazwa_pl": "Aparat pola SN 1",
+          "opis_pl": "aparat pola P-1"
+        },
+        "slad": [
+          {
+            "krok": "aparatura.field/x/in.aparat/01.dynamiczna",
+            "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+          ],
+          "zdanie_pl": "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1) — kryterium spełnione. Prąd udarowy zwarcia w punkcie zabudowy: 31,2 kA wobec wymaganych ≤ 50 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Aparat pola SN 1”” (margines +18,8 kA, punkt: Aparat pola SN 1, względnie +37,6 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Aparat pola SN 1",
+          "symbol_latex": "i_p",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 31.2
+          },
+          "wielkosc_pl": "prąd udarowy zwarcia w punkcie zabudowy"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zwarcia niesymetryczne",
+            "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+          ]
+        }
+      },
+      {
+        "dowod": {
+          "domena_pl": null,
+          "metoda": "OBLICZENIE",
+          "odniesienie": "network_model/catalog/audit2_oceny.py",
+          "poziom": "UNVALIDATED_MODEL",
+          "rodzaj_twierdzenia": "STATIC_CALCULATION",
+          "status_danych": {
+            "dane_przyjete": [],
+            "stan": "ZWALIDOWANE"
+          },
+          "status_modelu": "NIE_DOTYCZY",
+          "w_domenie_walidacji": null
+        },
+        "etykieta": {
+          "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+          "semantyka": "ostrzegawcza"
+        },
+        "kompletnosc_dowodu": "NIEPELNY",
+        "kryterium": {
+          "opis_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia",
+          "relacja": "NIE_WIECEJ",
+          "warunek_latex": "I_{th} \\le I_{thr}\\sqrt{\\min\\left(1,\\ \\frac{T_{kr}}{T_k}\\right)}",
+          "warunek_wstepny_pl": null,
+          "warunek_wstepny_podstawa": null
+        },
+        "kryterium_id": "aparatura.field/x/in.aparat/01.cieplna",
+        "limit": {
+          "jednostka_obwiedni": null,
+          "obwiednia": null,
+          "pasmo": null,
+          "podstawa": {
+            "dokument": "karta katalogowa pozycji „Aparat pola SN 1”",
+            "jednostka_redakcyjna": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
+            "rodzaj": "KATALOG_PRODUCENTA",
+            "status": "WSKAZANE",
+            "uwagi_pl": null,
+            "wydanie": "pozycja katalogu typów programu"
+          },
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 20.0
+          },
+          "wersja_profilu": null,
+          "zakres_stosowalnosci_pl": "prąd krótkotrwały 20 kA / 1 s przeliczony na czas wyłączenia T_k = 0,5 s"
+        },
+        "margines": {
+          "definicja_latex": "m = x_{\\lim} - x",
+          "niedefiniowalny": false,
+          "powod_pl": null,
+          "punkt_pl": "Aparat pola SN 1",
+          "skala": {
+            "jednostka": "kA",
+            "wartosc": 20.0
+          },
+          "skala_rodzaj": "LIMIT",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 7.5
+          },
+          "wzgledny": 0.375
+        },
+        "niepewnosc": {
+          "metoda_pl": null,
+          "nie_dotyczy": true,
+          "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża stan danych rekordu",
+          "wartosc": null
+        },
+        "podstawa": {
+          "dokument": "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków",
+          "jednostka_redakcyjna": "wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr",
+          "rodzaj": "NORMA",
+          "status": "WSKAZANE",
+          "uwagi_pl": "prąd cieplny zastępczy zwarcia porównany z prądem krótkotrwałym aparatu przeliczonym na czas wyłączenia; przy czasie krótszym od znamionowego limitem jest sam prąd znamionowy (bez przeliczenia w górę)",
+          "wydanie": "2011"
+        },
+        "powody_niepelnosci": [
+          "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+        ],
+        "przedmiot": {
+          "element_ref": "aparat/01",
+          "nazwa_pl": "Aparat pola SN 1",
+          "opis_pl": "aparat pola P-1"
+        },
+        "slad": [
+          {
+            "krok": "aparatura.field/x/in.aparat/01.cieplna",
+            "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+            "run_id": null,
+            "wersja_silnika": null
+          }
+        ],
+        "status_maszynowy": "SPELNIA",
+        "stosowalnosc": {
+          "dotyczy": true,
+          "modul_istniejacy": null,
+          "podstawa": null,
+          "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+          "technologia": null,
+          "typ_modulu": null,
+          "warunek_wstepny_nieuruchomiony": false
+        },
+        "wyjasnienie": {
+          "czego_brakuje": [],
+          "przyczyna_pl": null,
+          "zastrzezenia": [
+            "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+            "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+            "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny."
+          ],
+          "zdanie_pl": "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1) — kryterium spełnione. Prąd cieplny zastępczy zwarcia w punkcie zabudowy: 12,5 kA wobec wymaganych ≤ 20 kA wg § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k „karta katalogowa pozycji „Aparat pola SN 1”” (margines +7,5 kA, punkt: Aparat pola SN 1, względnie +37,5 % wartości granicznej)."
+        },
+        "wynik": {
+          "chwila_s": null,
+          "metoda": "OBLICZENIE",
+          "punkt_krytyczny_pl": "Aparat pola SN 1",
+          "symbol_latex": "I_{th}",
+          "wartosc": {
+            "jednostka": "kA",
+            "wartosc": 12.5
+          },
+          "wielkosc_pl": "prąd cieplny zastępczy zwarcia w punkcie zabudowy"
+        },
+        "zakres_waznosci": {
+          "model_urzadzenia": null,
+          "ograniczniki": [],
+          "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+          "parametry_sieci": [],
+          "regulator": null,
+          "rodzaj_analizy": "SHORT_CIRCUIT",
+          "symetria_zaklocenia": null,
+          "technologia": null,
+          "wykluczenia": [
+            "zwarcia niesymetryczne",
+            "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+          ]
+        }
+      }
+    ],
+    "podstawa": {
+      "dokument": "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza",
+      "jednostka_redakcyjna": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
+      "rodzaj": "NORMA",
+      "status": "WSKAZANE",
+      "uwagi_pl": "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie przekracza jego znamionowego prądu szczytowego wytrzymywanego",
+      "wydanie": "2007"
+    },
+    "podstawa_sposobu_wykazania": null,
+    "pokrycie_programu": "NIE_DOTYCZY",
+    "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu — program badań nie dotyczy",
+    "powody_niepelnosci": [
+      "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+    ],
+    "slad": [
+      {
+        "krok": "aparatura.field/x/in.aparat/01.dynamiczna",
+        "opis_pl": "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
+        "run_id": null,
+        "wersja_silnika": null
+      },
+      {
+        "krok": "aparatura.field/x/in.aparat/01.cieplna",
+        "opis_pl": "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
+        "run_id": null,
+        "wersja_silnika": null
+      }
+    ],
+    "sposob_wykazania": "OBLICZENIE",
+    "status_maszynowy": "BRAK_DOWODU",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+        "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+      ],
+      "przyczyna_pl": "dowód niepełny: Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).; Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
+      "zastrzezenia": [
+        "Podstawa „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”, wydanie 2007, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.6 znamionowy prąd szczytowy wytrzymywany I_p (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+        "Zakres ważności: Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola — wynik nie obejmuje: zwarcia niesymetryczne; rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny.",
+        "Podstawa „IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków”, wydanie 2011, wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+        "Podstawa „karta katalogowa pozycji „Aparat pola SN 1””, wydanie pozycja katalogu typów programu, § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
+      ],
+      "zdanie_pl": "Wytrzymałość zwarciowa i zdolność wyłączania aparatu „Aparat pola SN 1” (§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p „IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza”) — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, ale dowód jest niepełny. Właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie dowodowym, bieg w zadeklarowanej domenie walidacji), pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną. Wynik obliczeniowy składników: Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego prądu szczytowego wytrzymywanego aparatu (Aparat pola SN 1) — prąd udarowy zwarcia w punkcie zabudowy: 31,2 kA wobec wymaganych ≤ 50 kA wg § 4.6 znamionowy prąd szczytowy wytrzymywany I_p „karta katalogowa pozycji „Aparat pola SN 1”” (margines +18,8 kA, punkt: Aparat pola SN 1, względnie +37,6 % wartości granicznej); Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia (Aparat pola SN 1) — prąd cieplny zastępczy zwarcia w punkcie zabudowy: 12,5 kA wobec wymaganych ≤ 20 kA wg § 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k „karta katalogowa pozycji „Aparat pola SN 1”” (margines +7,5 kA, punkt: Aparat pola SN 1, względnie +37,5 % wartości granicznej)."
+    },
+    "wymaganie_id": "aparatura.field/x/in.aparat/01",
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": "SHORT_CIRCUIT",
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "zwarcia niesymetryczne",
+        "rozdział prądu zwarcia na gałęzie pola — porównany pełny prąd podany do oceny"
+      ]
+    }
+  }
+}

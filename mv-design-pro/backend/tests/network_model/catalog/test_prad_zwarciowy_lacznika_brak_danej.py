@@ -290,7 +290,10 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
                 "wyjasnienie"
             ]
         assert "aparatura.pozycja_bez_znamion_wytrzymalosci" not in pole["kody_gotowosci"]
-        assert pole["komunikat_pl"].startswith("NIE DOTYCZY")
+        # Komunikat pola to zdanie rekordu W (karta WERDYKT-MIGRACJA-190) — składowe
+        # wytrzymałości „nie dotyczy” nie stają się brakiem znamion w zdaniu wymagania.
+        assert pole["komunikat_pl"] == pole["wymaganie"]["wyjasnienie"]["zdanie_pl"]
+        assert "nie niesie" not in pole["komunikat_pl"]
     elif icw is None:
         # Kryterium dynamiczne zależy wyłącznie od I_cw (I_dyn = 2,5·I_cw — propozycja
         # normowa): brak danej to BRAK_PODSTAWY z nazwanym brakiem, nie „nie dotyczy”.

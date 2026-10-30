@@ -43,12 +43,32 @@ def _braki_danych(ctx: Audit2ReportContext) -> list[dict[str, Any]]:
     return [b for b in braki if isinstance(b, dict)]
 
 
-def _wynik_calosciowy(fail_count: int, braki_count: int) -> str:
-    if fail_count:
-        return "BLOKERY OBECNE"
-    if braki_count:
-        return "NIEKOMPLETNY — BRAKI DANYCH"
-    return "OK"
+#: Etykieta pozycji pakietu bez rekordu oceny (pakiet dostarcza wołający — raport tylko
+#: renderuje; brak rekordu nie jest oceną, więc dokument nie przypisuje mu statusu).
+BEZ_REKORDU_OCENY = "brak rekordu oceny w pakiecie"
+
+
+def _etykieta_dowodu(proof: dict[str, Any]) -> str:
+    """Etykieta rekordu W dowodu — dokument cytuje rekord, nie układa własnego słowa statusu
+    (karta WERDYKT-MIGRACJA-190: dawne „OK” / „BLOKER” z flagi `pass_status` usunięte)."""
+    wymaganie = proof.get("wymaganie")
+    etykieta = wymaganie.get("etykieta") if isinstance(wymaganie, dict) else None
+    tekst = etykieta.get("etykieta_pl") if isinstance(etykieta, dict) else None
+    return tekst if isinstance(tekst, str) and tekst else BEZ_REKORDU_OCENY
+
+
+def _zestawienie_etykiet(proofs: list[dict[str, Any]]) -> list[tuple[str, int]]:
+    """Liczba dowodów według etykiety ich rekordu W (porządek alfabetyczny etykiet) —
+    zestawienie, nie werdykt pakietu: agregat nie zastępuje rekordów składowych."""
+    liczby: dict[str, int] = {}
+    for proof in proofs:
+        etykieta = _etykieta_dowodu(proof)
+        liczby[etykieta] = liczby.get(etykieta, 0) + 1
+    return sorted(liczby.items())
+
+
+def _opis_zestawienia(proofs: list[dict[str, Any]]) -> str:
+    return "; ".join(f"{etykieta}: {liczba}" for etykieta, liczba in _zestawienie_etykiet(proofs))
 
 
 @dataclass(frozen=True)
@@ -68,8 +88,6 @@ class Audit2ReportContext:
 def render_audit2_report_json(ctx: Audit2ReportContext) -> dict[str, Any]:
     """Strukturalny raport JSON (deterministic)."""
     proofs = ctx.proof_pack_dict.get("proofs", [])
-    pass_count = sum(1 for p in proofs if p.get("pass_status"))
-    fail_count = sum(1 for p in proofs if not p.get("pass_status"))
     return {
         "report_kind": "audit2_validation_report",
         "format_version": "1.0",
@@ -80,9 +98,7 @@ def render_audit2_report_json(ctx: Audit2ReportContext) -> dict[str, Any]:
         "generated_at": ctx.generated_at_iso,
         "summary": {
             "total_proofs": len(proofs),
-            "pass_count": pass_count,
-            "fail_count": fail_count,
-            "all_pass": ctx.proof_pack_dict.get("all_pass", False),
+            "liczby_etykiet": dict(_zestawienie_etykiet(proofs)),
         },
         "proofs_by_type": _group_proofs_by_type(proofs),
         "all_proofs": proofs,
@@ -121,9 +137,7 @@ def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
     lines.append(f"Wygenerowano: {ctx.generated_at_iso}")
     lines.append("")
 
-    pass_count = sum(1 for p in proofs if p.get("pass_status"))
-    fail_count = len(proofs) - pass_count
-    lines.append(f"PODSUMOWANIE: {len(proofs)} walidacji, {pass_count} OK, {fail_count} blokerów.")
+    lines.append(f"PODSUMOWANIE: {len(proofs)} dowodów — {_opis_zestawienia(proofs)}.")
     if braki:
         lines.append(f"Braki danych: {len(braki)} — rodzaje albo pozycje bez dowodu (niżej).")
     lines.append("")
@@ -132,8 +146,7 @@ def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
     for proof_type, group in grouped.items():
         lines.append(f"--- {_etykieta_rodzaju(proof_type)} ({len(group)} dowodów) ---")
         for p in group:
-            status = "OK" if p.get("pass_status") else "BLOKER"
-            lines.append(f"  [{status}] {p.get('summary_pl', '')}")
+            lines.append(f"  [{_etykieta_dowodu(p)}] {p.get('summary_pl', '')}")
         lines.append("")
 
     return "\n".join(lines) + "\n" + "".join(_linie_brakow(braki))
@@ -205,16 +218,12 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
 
     # Podsumowanie.
     proofs = ctx.proof_pack_dict.get("proofs", [])
-    pass_count = sum(1 for p in proofs if p.get("pass_status"))
-    fail_count = len(proofs) - pass_count
     braki = _braki_danych(ctx)
     elements.append(Paragraph("Podsumowanie", styles["Heading1"]))
     summary_data = [
-        ["Total walidacji", str(len(proofs))],
-        ["OK", str(pass_count)],
-        ["Blokery", str(fail_count)],
+        ["Liczba dowodów", str(len(proofs))],
+        *([etykieta, str(liczba)] for etykieta, liczba in _zestawienie_etykiet(proofs)),
         ["Braki danych", str(len(braki))],
-        ["Wynik całościowy", _wynik_calosciowy(fail_count, len(braki))],
     ]
     summary_table = Table(summary_data, colWidths=[6 * cm, 4 * cm])
     summary_table.setStyle(
@@ -234,11 +243,15 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     grouped = _group_proofs_by_type(proofs)
     for proof_type, group in grouped.items():
         elements.append(Paragraph(_etykieta_rodzaju(proof_type), styles["Heading2"]))
-        rows: list[list[str]] = [["Status", "Podsumowanie"]]
+        rows: list[list[Any]] = [["Ocena", "Wyjaśnienie"]]
         for p in group:
-            status = "OK" if p.get("pass_status") else "BLOKER"
-            rows.append([status, str(p.get("summary_pl", ""))[:200]])
-        tbl = Table(rows, colWidths=[2 * cm, 14 * cm])
+            rows.append(
+                [
+                    Paragraph(_etykieta_dowodu(p), styles["Normal"]),
+                    Paragraph(str(p.get("summary_pl", "")), styles["Normal"]),
+                ]
+            )
+        tbl = Table(rows, colWidths=[4 * cm, 12 * cm])
         tbl.setStyle(
             TableStyle(
                 [
@@ -301,15 +314,11 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
     # Podsumowanie.
     doc.add_heading("Podsumowanie", level=1)
     proofs = ctx.proof_pack_dict.get("proofs", [])
-    pass_count = sum(1 for p in proofs if p.get("pass_status"))
-    fail_count = len(proofs) - pass_count
     braki = _braki_danych(ctx)
     rows_data = [
-        ("Total walidacji", str(len(proofs))),
-        ("OK", str(pass_count)),
-        ("Blokery", str(fail_count)),
+        ("Liczba dowodów", str(len(proofs))),
+        *((etykieta, str(liczba)) for etykieta, liczba in _zestawienie_etykiet(proofs)),
         ("Braki danych", str(len(braki))),
-        ("Wynik całościowy", _wynik_calosciowy(fail_count, len(braki))),
     ]
     summary_table = doc.add_table(rows=len(rows_data), cols=2)
     summary_table.style = "Light Shading"
@@ -323,12 +332,11 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
         doc.add_heading(_etykieta_rodzaju(proof_type), level=2)
         tbl = doc.add_table(rows=1 + len(group), cols=2)
         tbl.style = "Light Grid"
-        tbl.rows[0].cells[0].text = "Status"
-        tbl.rows[0].cells[1].text = "Podsumowanie"
+        tbl.rows[0].cells[0].text = "Ocena"
+        tbl.rows[0].cells[1].text = "Wyjaśnienie"
         for i, p in enumerate(group, start=1):
-            status = "OK" if p.get("pass_status") else "BLOKER"
-            tbl.rows[i].cells[0].text = status
-            tbl.rows[i].cells[1].text = str(p.get("summary_pl", ""))[:300]
+            tbl.rows[i].cells[0].text = _etykieta_dowodu(p)
+            tbl.rows[i].cells[1].text = str(p.get("summary_pl", ""))
 
     if braki:
         doc.add_heading("Braki danych", level=2)
@@ -352,6 +360,11 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
     return make_docx_bytes_deterministic(buffer.getvalue())
 
 
+def _tex(tekst: str) -> str:
+    """Znaki specjalne LaTeX w tekście z rekordu (jedno miejsce ucieczki)."""
+    return tekst.replace("&", r"\&").replace("_", r"\_").replace("%", r"\%")
+
+
 def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
     """LaTeX source (do dolaczenia do dowodow inzynierskich w E-36 ProofSurface)."""
     proofs = ctx.proof_pack_dict.get("proofs", [])
@@ -368,10 +381,8 @@ def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
     lines.append(rf"\section{{Projekt}} {ctx.project_name}")
     lines.append(rf"\section{{Operator}} {ctx.operator_pl or 'brak'}")
     lines.append(r"\section{Podsumowanie}")
-    pass_count = sum(1 for p in proofs if p.get("pass_status"))
     lines.append(
-        rf"\textbf{{Total walidacji:}} {len(proofs)}, OK: {pass_count}, "
-        rf"Blokery: {len(proofs) - pass_count}."
+        rf"\textbf{{Liczba dowodów:}} {len(proofs)} --- " + _tex(_opis_zestawienia(proofs)) + "."
     )
     lines.append(r"")
 
@@ -379,9 +390,8 @@ def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
     for proof_type, group in grouped.items():
         lines.append(rf"\subsection{{{_etykieta_rodzaju(proof_type)}}}")
         for p in group:
-            status = "OK" if p.get("pass_status") else "BLOKER"
-            summary = str(p.get("summary_pl", "")).replace("&", r"\&").replace("_", r"\_")
-            lines.append(rf"\textbf{{[{status}]}} {summary}\par")
+            summary = _tex(str(p.get("summary_pl", "")))
+            lines.append(rf"\textbf{{[{_tex(_etykieta_dowodu(p))}]}} {summary}\par")
             for formula in p.get("formulas_latex", []):
                 lines.append(formula)
 
@@ -389,7 +399,7 @@ def render_audit2_report_latex(ctx: Audit2ReportContext) -> str:
     if braki:
         lines.append(r"\subsection{Braki danych}")
         for brak in braki:
-            przyczyna = str(brak.get("przyczyna_pl", "")).replace("&", r"\&").replace("_", r"\_")
+            przyczyna = _tex(str(brak.get("przyczyna_pl", "")))
             lines.append(
                 rf"\textbf{{{_etykieta_rodzaju(str(brak.get('proof_type', '')))}:}} {przyczyna}\par"
             )

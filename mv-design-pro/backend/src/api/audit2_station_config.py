@@ -26,6 +26,7 @@ from application.proof_engine.packs.audit2_skladanie import (
     uziemienie_sn_stacji,
     zloz_pakiety_projektu,
 )
+from application.proof_engine.packs.audit2_validation import liczby_statusow_projektu
 from application.twin_key import klucz_twin_dla_projektu
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm, has_enm
@@ -252,7 +253,8 @@ def validate_all_audit2(
     pakiety = zloz_pakiety_projektu(wiersze, _model_projektu(project_id, uow_factory))
     return {
         "project_id": str(project_id),
-        "all_pass": all(pakiet.all_pass for pakiet in pakiety),
+        # Zestawienie liczby dowodów według statusu ich rekordów W — nie werdykt projektu.
+        "liczby_statusow": liczby_statusow_projektu(pakiety),
         "station_count": len(pakiety),
         "per_station": [pakiet.to_dict() for pakiet in pakiety],
     }

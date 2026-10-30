@@ -14,7 +14,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { DeviceWithstandValidationResponse } from '../../../station-der/audit2-api';
+import rekordyAudytu2 from '../../../station-der/__tests__/rekordyAudytu2.json';
 import { WalidacjaWytrzymalosciAparaturySekcja } from '../WalidacjaWytrzymalosciAparaturySekcja';
+
+// Odpowiedzi końcówki z TEJ SAMEJ funkcji backendu (fixtura generowana, parytet pilnuje
+// `test_fixtury_ocen_fe.py`) — rekord W, nie flagi `ok`/`i_dyn_ok` (WERDYKT-MIGRACJA-190).
+const WYTRZYMALOSC = rekordyAudytu2.wytrzymalosc as unknown as Record<
+  'w_granicach' | 'przekroczona',
+  DeviceWithstandValidationResponse
+>;
 
 const KATALOG = [
   {
@@ -43,7 +52,7 @@ const originalFetch = global.fetch;
 let zapytania: Array<{ url: string; body: unknown }> = [];
 
 function zamontujFetch(
-  odpowiedz: Record<string, unknown> | 'blad',
+  odpowiedz: DeviceWithstandValidationResponse | 'blad',
   opoznienie?: Promise<void>,
 ): void {
   zapytania = [];
@@ -67,15 +76,7 @@ function zamontujFetch(
   }) as unknown as typeof fetch;
 }
 
-const WERDYKT_OK = {
-  ok: true,
-  i_dyn_ok: true,
-  i_th_ok: true,
-  message_pl: 'OK: aparatura „Wyłącznik próżniowy 15 kV” wytrzymała '
-    + '(wykorzystanie I_dyn 79%, I_th 80%).',
-  utilization_dyn_percent: 79.36507936507937,
-  utilization_th_percent: 80,
-};
+const WERDYKT_OK = WYTRZYMALOSC.w_granicach;
 
 describe('WalidacjaWytrzymalosciAparaturySekcja — katalog i werdykt z backendu', () => {
   afterEach(() => {
@@ -101,26 +102,26 @@ describe('WalidacjaWytrzymalosciAparaturySekcja — katalog i werdykt z backendu
       i_thermal_calculated_ka: 20,
       t_clearing_s: 1.0,
     });
-    expect(screen.getByTestId('withstand-J01')).toHaveAttribute('data-withstand-ok', 'true');
-    expect(screen.getByTestId('withstand-J01').textContent).toContain('wytrzymała');
+    // Kryteria spełnione na liczbach, dowód niepełny — etykieta rekordu W, nie własne „OK".
+    expect(screen.getByTestId('withstand-J01')).toHaveAttribute('data-status', 'BRAK_DOWODU');
+    expect(screen.getByTestId('withstand-etykieta-J01').textContent).toBe(
+      WERDYKT_OK.wymaganie.etykieta.etykieta_pl,
+    );
+    expect(screen.getByTestId('withstand-J01').textContent).toContain(WERDYKT_OK.message_pl);
   });
 
-  it('BLOKER z backendu jest pokazywany jako brak zgodności (nie „ok")', async () => {
-    zamontujFetch({
-      ok: false,
-      i_dyn_ok: false,
-      i_th_ok: true,
-      message_pl: 'BLOKER: I_dyn 70,0 kA > 63,0 kA (limit) — przekroczenie '
-        + 'wytrzymałości dynamicznej.',
-      utilization_dyn_percent: 111.11111111111111,
-      utilization_th_percent: 80,
-    });
+  it('niespełnienie z backendu jest pokazywane etykietą rekordu (nie „ok")', async () => {
+    const przekroczona = WYTRZYMALOSC.przekroczona;
+    zamontujFetch(przekroczona);
     render(<WalidacjaWytrzymalosciAparaturySekcja pola={POLA} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('withstand-J01')).toHaveAttribute('data-withstand-ok', 'false');
+      expect(screen.getByTestId('withstand-J01')).toHaveAttribute('data-status', 'NIE_SPELNIA');
     });
-    expect(screen.getByTestId('withstand-J01').textContent).toContain('BLOKER');
+    expect(screen.getByTestId('withstand-etykieta-J01').getAttribute('data-semantyka')).toBe(
+      przekroczona.wymaganie.etykieta.semantyka,
+    );
+    expect(screen.getByTestId('withstand-J01').textContent).toContain(przekroczona.message_pl);
   });
 
   it('aparat SPOZA katalogu daje trzeci stan, nie werdykt negatywny', async () => {
@@ -135,10 +136,7 @@ describe('WalidacjaWytrzymalosciAparaturySekcja — katalog i werdykt z backendu
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('withstand-J01')).toHaveAttribute(
-        'data-withstand-ok',
-        'nieustalone',
-      );
+      expect(screen.getByTestId('withstand-J01')).toHaveAttribute('data-status', 'brak-danych');
     });
     expect(screen.getByTestId('withstand-J01').textContent).toContain('nie występuje w katalogu');
     // Backend NIE jest pytany o werdykt dla aparatu, którego nie zna.
@@ -171,7 +169,7 @@ describe('WalidacjaWytrzymalosciAparaturySekcja — katalog i werdykt z backendu
     });
     expect(screen.queryByTestId('withstand-J01')).toBeNull();
     expect(screen.getByTestId('device-withstand-blad').textContent).toContain(
-      'Werdykt pochodzi z backendu',
+      'Ocena pochodzi z backendu',
     );
   });
 

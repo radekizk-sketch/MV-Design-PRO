@@ -30,7 +30,18 @@ import { useSnapshotStore } from '../../../../../ui/topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { shortCircuitRowFixture } from '../../__tests__/fixtures';
 import { WeryfikacjaAparatury } from '../WeryfikacjaAparatury';
-import { znacznikWerdyktu, type PoleWytrzymalosci, type WartoscParametruAparatu } from '../api';
+import type { PoleWytrzymalosci, WartoscParametruAparatu } from '../api';
+import type { WynikWymagania } from '../../../wzorzec/werdykt';
+import rekordyWytrzymalosci from './rekordyWytrzymalosci.json';
+
+// Rekordy W z TYCH SAMYCH funkcji backendu co widok pól (fixtura generowana; parytet pilnuje
+// `test_fixtury_ocen_fe.py`). Karta WERDYKT-MIGRACJA-190: dawny „werdykt jądra" z flagami
+// `ok`/`i_dyn_ok`/`i_th_ok` i znacznik prezentacji `data-withstand-ok` usunięte — wiersz
+// niesie status i etykietę rekordu W.
+const W = rekordyWytrzymalosci as unknown as Record<
+  'spelnione_na_liczbach' | 'przekroczenie_dynamiczne' | 'bez_czasu_wylaczenia',
+  WynikWymagania
+>;
 import { nazwaStacji, powodBrakuPodstawy, stacjeDlaPunktu } from '../model';
 import type { OcenaKryterium } from '../../../wzorzec/werdykt';
 
@@ -234,16 +245,8 @@ function poleOdpowiedzi(nadpisania: Partial<PoleWytrzymalosci>): PoleWytrzymalos
       zalozenia_pl: [],
       kody_gotowosci: [],
     },
-    werdykt: {
-      ok: true,
-      i_dyn_ok: true,
-      i_th_ok: true,
-      message_pl: 'OK: aparatura wytrzymała.',
-      utilization_dyn_percent: 50,
-      utilization_th_percent: 50,
-      i_th_effective_ka: 28,
-    },
-    komunikat_pl: 'OK: aparatura wytrzymała.',
+    wymaganie: W.spelnione_na_liczbach,
+    komunikat_pl: W.spelnione_na_liczbach.wyjasnienie.zdanie_pl,
     kody_gotowosci: [],
     ...nadpisania,
   };
@@ -308,10 +311,13 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     expect(prady.textContent).not.toContain('99,9');
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
-    expect(pole.getAttribute('data-withstand-ok')).toBe('true');
+    expect(pole.getAttribute('data-status')).toBe('BRAK_DOWODU');
     expect(pole.getAttribute('data-zrodlo')).toBe('model');
-    // Komunikat jest CYTATEM backendu (prezentacja nic nie układa).
-    expect(pole.textContent).toContain('OK: aparatura wytrzymała.');
+    // Etykieta i komunikat są CYTATEM rekordu backendu (prezentacja nic nie układa).
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-etykieta-P-1').textContent).toBe(
+      W.spelnione_na_liczbach.etykieta.etykieta_pl,
+    );
+    expect(pole.textContent).toContain(W.spelnione_na_liczbach.wyjasnienie.zdanie_pl);
     expect(screen.getByTestId('mvd-zwarcia-aparatura-zrodlo-P-1').textContent).toContain(
       'aparat z modelu',
     );
@@ -481,16 +487,8 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     zamontujBackend([
       poleOdpowiedzi({
         pole: 'P-2',
-        werdykt: {
-          ok: false,
-          i_dyn_ok: false,
-          i_th_ok: true,
-          message_pl: 'BLOKER: przekroczenie.',
-          utilization_dyn_percent: 140,
-          utilization_th_percent: 50,
-          i_th_effective_ka: 28,
-        },
-        komunikat_pl: 'BLOKER: przekroczenie.',
+        wymaganie: W.przekroczenie_dynamiczne,
+        komunikat_pl: W.przekroczenie_dynamiczne.wyjasnienie.zdanie_pl,
       }),
     ]);
 
@@ -498,17 +496,20 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-2');
-    expect(pole.getAttribute('data-withstand-ok')).toBe('false');
-    expect(pole.textContent).toContain('BLOKER: przekroczenie.');
+    expect(pole.getAttribute('data-status')).toBe('NIE_SPELNIA');
+    expect(
+      screen.getByTestId('mvd-zwarcia-aparatura-etykieta-P-2').getAttribute('data-semantyka'),
+    ).toBe(W.przekroczenie_dynamiczne.etykieta.semantyka);
+    expect(pole.textContent).toContain(W.przekroczenie_dynamiczne.wyjasnienie.zdanie_pl);
   });
 
-  it('APARAT SPOZA KATALOGU → „nieustalone", a nie werdykt negatywny', async () => {
+  it('APARAT SPOZA KATALOGU → „brak danych", a nie werdykt negatywny', async () => {
     const user = userEvent.setup();
     zamontujBackend([
       poleOdpowiedzi({
         pole: 'P-3',
         znamiona: null,
-        werdykt: null,
+        wymaganie: null,
         komunikat_pl: 'Aparat spoza katalogu — wytrzymałości nie da się sprawdzić.',
         kody_gotowosci: ['aparatura.aparat_spoza_katalogu'],
       }),
@@ -518,7 +519,8 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-3');
-    expect(pole.getAttribute('data-withstand-ok')).toBe('nieustalone');
+    expect(pole.getAttribute('data-status')).toBe('brak-danych');
+    expect(screen.queryByTestId('mvd-zwarcia-aparatura-etykieta-P-3')).toBeNull();
   });
 
   it('NIEROZSTRZYGNIĘTE kryterium cieplne nie udaje werdyktu negatywnego', async () => {
@@ -536,16 +538,8 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
           zalozenia_pl: [],
           kody_gotowosci: [],
         },
-        werdykt: {
-          ok: false,
-          i_dyn_ok: true,
-          i_th_ok: null,
-          message_pl: 'NIEUSTALONE: brak czasu wyłączenia. Sprawdzone: I_dyn 62%.',
-          utilization_dyn_percent: 62,
-          utilization_th_percent: null,
-          i_th_effective_ka: null,
-        },
-        komunikat_pl: 'NIEUSTALONE: brak czasu wyłączenia. Sprawdzone: I_dyn 62%.',
+        wymaganie: W.bez_czasu_wylaczenia,
+        komunikat_pl: W.bez_czasu_wylaczenia.wyjasnienie.zdanie_pl,
         kody_gotowosci: ['aparatura.czas_wylaczenia_nieustalony'],
       }),
     ]);
@@ -554,8 +548,9 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-4');
-    expect(pole.getAttribute('data-withstand-ok')).toBe('nieustalone');
-    expect(pole.textContent).toContain('NIEUSTALONE');
+    // Brak czasu wyłączenia: rekord BRAK_PODSTAWY (nie NIE_SPELNIA) z etykietą rekordu.
+    expect(pole.getAttribute('data-status')).toBe('BRAK_PODSTAWY');
+    expect(pole.textContent).toContain(W.bez_czasu_wylaczenia.wyjasnienie.zdanie_pl);
   });
 
   it('PUNKT POZA STACJĄ → uczciwy brak podstawy (bez pytania backendu)', async () => {
@@ -625,7 +620,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
           kody_gotowosci: ['aparatura.brak_pradu_pola_w_biegu'],
           powod_pl: 'Bieg zwarciowy nie niesie wiersza zwarcia trójfazowego dla punktu zabudowy.',
         },
-        werdykt: null,
+        wymaganie: null,
         oceny: [
           ocenaK('dynamiczna', 'NIE_OCENIONO'),
           ocenaK('cieplna', 'NIE_OCENIONO'),
@@ -639,7 +634,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-5');
-    expect(pole.getAttribute('data-withstand-ok')).toBe('nieustalone');
+    expect(pole.getAttribute('data-status')).toBe('brak-danych');
     expect(screen.getByTestId('mvd-zwarcia-aparatura-prady-P-5').textContent).toContain(
       'nie niesie wiersza zwarcia trójfazowego',
     );
@@ -695,9 +690,10 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     if (tb_s === null) expect(prady.textContent).not.toContain('0,1 s');
     const oceny = screen.getByTestId('mvd-zwarcia-aparatura-oceny-P-1');
     expect(oceny.textContent).toContain('Zdanie wyjaśnienia kryterium wylaczanie z backendu.');
-    // Brak Ib nie dotyka znacznika WYTRZYMAŁOŚCI (I_dyn, I_th) — to osobny rekord K.
-    expect(screen.getByTestId('mvd-zwarcia-aparatura-pole-P-1').getAttribute('data-withstand-ok')).toBe(
-      'true',
+    // Status wiersza to status rekordu W z backendu — prezentacja nie składa go ze statusów
+    // rekordów K (agregat liczy backend).
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-pole-P-1').getAttribute('data-status')).toBe(
+      W.spelnione_na_liczbach.status_maszynowy,
     );
   });
 
@@ -804,69 +800,8 @@ describe('model ogniwa — czyste selektory', () => {
     expect(powodBrakuPodstawy({ runId: BIEG, stacje: [STACJA], liczbaPol: 2 })).toBeNull();
   });
 
-  // Znacznik wytrzymałości nie zależy od rekordu wyłączania (osobne kryterium, bez agregatu
-  // statusów w prezentacji): każdy status rekordu wyłączania × werdykt wytrzymałości.
-  it.each([
-    ['SPELNIA', true, 'true'],
-    ['NIE_SPELNIA', true, 'true'],
-    ['NIE_OCENIONO', true, 'true'],
-    ['NIE_DOTYCZY', false, 'false'],
-    ['BRAK_PODSTAWY', false, 'false'],
-  ] as const)(
-    'znacznik wytrzymałości: rekord wyłączania %s × wytrzymałość ok=%s → %s',
-    (status, ok, oczekiwany) => {
-      const pole = poleOdpowiedzi({
-        werdykt: {
-          ok,
-          i_dyn_ok: ok,
-          i_th_ok: true,
-          message_pl: 'werdykt',
-          utilization_dyn_percent: ok ? 50 : 150,
-          utilization_th_percent: 10,
-          i_th_effective_ka: 28,
-        },
-        oceny: [
-          ocenaK('dynamiczna', ok ? 'SPELNIA' : 'NIE_SPELNIA'),
-          ocenaK('cieplna', 'SPELNIA'),
-          ocenaK('wylaczanie', status),
-        ],
-      });
-      expect(znacznikWerdyktu(pole)).toBe(oczekiwany);
-    },
-  );
-
-  it('znacznik werdyktu odróżnia „nieustalone" od oceny negatywnej', () => {
-    expect(znacznikWerdyktu(poleOdpowiedzi({}))).toBe('true');
-    expect(znacznikWerdyktu(poleOdpowiedzi({ werdykt: null }))).toBe('nieustalone');
-    expect(
-      znacznikWerdyktu(
-        poleOdpowiedzi({
-          werdykt: {
-            ok: false,
-            i_dyn_ok: true,
-            i_th_ok: null,
-            message_pl: 'NIEUSTALONE',
-            utilization_dyn_percent: 10,
-            utilization_th_percent: null,
-            i_th_effective_ka: null,
-          },
-        }),
-      ),
-    ).toBe('nieustalone');
-    expect(
-      znacznikWerdyktu(
-        poleOdpowiedzi({
-          werdykt: {
-            ok: false,
-            i_dyn_ok: false,
-            i_th_ok: true,
-            message_pl: 'BLOKER',
-            utilization_dyn_percent: 150,
-            utilization_th_percent: 10,
-            i_th_effective_ka: 28,
-          },
-        }),
-      ),
-    ).toBe('false');
-  });
+  // Dawne testy `znacznikWerdyktu` (znacznik prezentacji składany z flag `ok`/`i_dyn_ok`/
+  // `i_th_ok`) usunięte razem z funkcją: status wiersza to status rekordu W backendu, a jego
+  // niezależność od prezentacji przypinają testy wierszy wyżej (każdy wariant rekordu ×
+  // brak rekordu).
 });

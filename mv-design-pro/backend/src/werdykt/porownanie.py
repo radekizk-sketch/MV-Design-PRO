@@ -326,13 +326,19 @@ def wymaganie_z_ocen(
     powod_stosowalnosci_pl: str = DOTYCZY_OBIEKTU,
     braki: Sequence[str] = (),
     sposob_wykazania: SposobWykazaniaZOcen = "OBLICZENIE",
+    dotyczy: bool = True,
 ) -> WynikWymagania:
     """Rekord W: agregacja §2.3 nad ocenami składowymi, dowód z danymi przyjętymi wszystkich
     STOSOWALNYCH składowych.
 
     ``sposob_wykazania`` — metoda wykazania wymagania: ``OBLICZENIE`` (jeden bieg obliczeń,
     domyślnie) albo ``DEKLARACJA`` (porównanie danych znamionowych zapisanych w modelu).
+    ``dotyczy=False`` — wymaganie nie stosuje się do przedmiotu (powód w
+    ``powod_stosowalnosci_pl``); rekord W dostaje ``NIE_DOTYCZY`` zamiast „ocena niewykonana”
+    i — zgodnie z kontraktem rekordu W — nie niesie ocen składowych ani śladu.
     """
+    if not dotyczy:
+        oceny = ()
     dane = [
         dana
         for ocena in oceny
@@ -343,7 +349,7 @@ def wymaganie_z_ocen(
         wymaganie_id=wymaganie_id,
         nazwa_pl=nazwa_pl,
         podstawa=podstawa,
-        stosowalnosc=Stosowalnosc(dotyczy=True, powod_pl=powod_stosowalnosci_pl),
+        stosowalnosc=Stosowalnosc(dotyczy=dotyczy, powod_pl=powod_stosowalnosci_pl),
         sposob_wykazania=sposob_wykazania,
         oceny_skladowe=oceny,
         pokrycie_programu="NIE_DOTYCZY",

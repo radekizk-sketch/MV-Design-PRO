@@ -57,6 +57,9 @@ type WidokWytrzymalosci = {
     pole_ref: string | null;
     zrodlo: 'model' | 'konfiguracja';
     komunikat_pl: string;
+    /** Rekord W wymagania aparatu pola (składowe K w `oceny`); `null` — brak danych. */
+    wymaganie: { status_maszynowy: string; etykieta: { etykieta_pl: string } } | null;
+    oceny: Array<{ kryterium_id: string; status_maszynowy: string }>;
     prady_pola: PradyPola;
     czas_wylaczenia: { zrodlo: string | null };
   }>;
@@ -350,7 +353,22 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
     },
   );
   expect(werdyktResponse.ok()).toBeTruthy();
-  const werdykt = (await werdyktResponse.json()) as { ok: boolean; message_pl: string };
+  // Karta WERDYKT-MIGRACJA-190: odpowiedź niesie rekord W (składowe K dynamiczna i cieplna),
+  // nie flagę `ok`. Ta sama reguła na tych samych wejściach co widok pól — statusy rekordów
+  // K wytrzymałości muszą być identyczne (jedno jądro, nie dwie kopie reguły).
+  const referencja = (await werdyktResponse.json()) as {
+    wymaganie: { oceny_skladowe: Array<{ kryterium_id: string; status_maszynowy: string }> };
+  };
+  const statusyK = (oceny: Array<{ kryterium_id: string; status_maszynowy: string }>) =>
+    Object.fromEntries(
+      oceny
+        .map((o) => [o.kryterium_id.split('.').pop()!, o.status_maszynowy] as const)
+        .filter(([rodzaj]) => rodzaj === 'dynamiczna' || rodzaj === 'cieplna'),
+    );
+  expect(statusyK(wierszKonfiguracji!.oceny)).toEqual(
+    statusyK(referencja.wymaganie.oceny_skladowe),
+  );
+  const wymaganiePola = wierszKonfiguracji!.wymaganie!;
 
   // --- Aplikacja: ekran zwarć → wybór punktu → weryfikacja aparatury ---------
   await ustawKontekst(page, {
@@ -385,9 +403,13 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
 
   const wierszWerdyktu = page.getByTestId(`mvd-zwarcia-aparatura-pole-${POLE}`);
   await expect(wierszWerdyktu).toBeVisible({ timeout: 30000 });
-  // Werdykt na ekranie = werdykt backendu dla prądów z biegu (nie literał UI).
-  await expect(wierszWerdyktu).toHaveAttribute('data-withstand-ok', String(werdykt.ok));
-  await expect(wierszWerdyktu).toContainText(werdykt.message_pl);
+  // Ocena na ekranie = rekord W backendu dla prądów z biegu (status i etykieta rekordu,
+  // nie literał UI).
+  await expect(wierszWerdyktu).toHaveAttribute('data-status', wymaganiePola.status_maszynowy);
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-etykieta-${POLE}`)).toHaveText(
+    wymaganiePola.etykieta.etykieta_pl,
+  );
+  await expect(wierszWerdyktu).toContainText(wierszKonfiguracji!.komunikat_pl);
   // Prądy pola widoczne przy werdykcie, z punktem zabudowy jako daną maszynową.
   await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${POLE}`)).toHaveAttribute(
     'data-punkt-ref',

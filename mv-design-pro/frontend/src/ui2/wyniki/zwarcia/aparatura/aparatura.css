@@ -114,19 +114,9 @@
   border-radius: 8px;
 }
 
-.mvd-apar-werdykt[data-withstand-ok='true'] {
-  color: var(--mvd-ok);
-  background: var(--mvd-ok-bg);
-  border-color: var(--mvd-ok);
-}
-
-.mvd-apar-werdykt[data-withstand-ok='false'] {
-  color: var(--mvd-err);
-  background: var(--mvd-err-bg);
-  border-color: var(--mvd-err);
-}
-
-.mvd-apar-werdykt[data-withstand-ok='nieustalone'] {
+/* Brak rekordu (aparat spoza katalogu, brak prądu pola) — stan wyciszony; wiersz z rekordem
+   nie dostaje koloru z prezentacji: semantykę niesie etykieta rekordu W. */
+.mvd-apar-werdykt[data-status='brak-danych'] {
   color: var(--mvd-muted);
 }
 

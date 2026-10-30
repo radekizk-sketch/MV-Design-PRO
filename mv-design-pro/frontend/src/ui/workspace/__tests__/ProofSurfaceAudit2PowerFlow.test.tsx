@@ -171,11 +171,11 @@ describe('ProofSurface — przycisk rozpływu mocy rozszerzonego (CV-4.2)', () =
             ok: true,
             json: async () => ({
               project_id: 'proj-1',
-              all_pass: true,
+              liczby_statusow: {},
               station_count: 2,
               per_station: [
-                { station_id: 'station-A', station_nazwa: 'Stacja Łąkowa', all_pass: true, fail_count: 0, proof_count: 0, proofs: [], braki_danych: [], generated_at: '1970-01-01T00:00:00Z' },
-                { station_id: 'station-B', station_nazwa: 'Stacja bez konfiguracji', all_pass: true, fail_count: 0, proof_count: 0, proofs: [], braki_danych: [], generated_at: '1970-01-01T00:00:00Z' },
+                { station_id: 'station-A', station_nazwa: 'Stacja Łąkowa', liczby_statusow: {}, proof_count: 0, proofs: [], braki_danych: [], generated_at: '1970-01-01T00:00:00Z' },
+                { station_id: 'station-B', station_nazwa: 'Stacja bez konfiguracji', liczby_statusow: {}, proof_count: 0, proofs: [], braki_danych: [], generated_at: '1970-01-01T00:00:00Z' },
               ],
             }),
           } as never);

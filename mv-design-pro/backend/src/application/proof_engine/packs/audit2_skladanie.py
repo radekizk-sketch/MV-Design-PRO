@@ -37,7 +37,10 @@ from enm.pola import poziom_pol
 from enm.tor_pola import szyny_stacji
 from enm.uziemienie_sekcji import UziemienieSekcji, uziemienie_sieci
 from network_model.catalog import get_default_mv_catalog
-from network_model.catalog.audit2_catalogs import klasa_transformatora_przelacznika
+from network_model.catalog.audit2_catalogs import (
+    get_device_withstand,
+    klasa_transformatora_przelacznika,
+)
 from network_model.catalog.types import ConverterType
 from network_model.core.uziemienie import (
     STANY_AWSC,
@@ -161,6 +164,16 @@ ZRODLO_SPOZA_MODELU = (
 BRAK_WYTRZYMALOSCI = (
     "Konfiguracja stacji nie zawiera danych wytrzymałości zwarciowej aparatury pól."
 )
+
+
+def _aparat_spoza_katalogu(oznaczenie: str) -> str:
+    return (
+        f"Aparatu wskazanego dla pola {oznaczenie} nie ma w katalogu wytrzymałości zwarciowej "
+        "— znamion I_dyn i I_th nie ma z czym porównać; otwórz konfigurator stacji, aby "
+        "wskazać pozycję katalogu."
+    )
+
+
 POLE_BEZ_OZNACZENIA = (
     "Wpis konfiguracji stacji nie ma oznaczenia pola — dowodu nie da się przypisać do pola."
 )
@@ -450,7 +463,7 @@ def _dowody_planu_zaczepow(
 
 
 def _dowod_eksportu(
-    station_id: str, cfg: StationAudit2ConfigBody, ctx: _Kontekst, chwila: str
+    station_id: str, station_nazwa: str, cfg: StationAudit2ConfigBody, ctx: _Kontekst, chwila: str
 ) -> tuple[list[Audit2ProofResult], list[BrakDanychDowodu]]:
     if not cfg.der_specs:
         return [], [BrakDanychDowodu(EKSPORT, BRAK_ZRODEL)]
@@ -477,7 +490,10 @@ def _dowod_eksportu(
     return [
         generate_hosting_capacity_export_proof(
             SpecDowoduEksportuStacji(
-                station_id=station_id, p_export_kw=p_export_kw, p_import_kw=p_import_kw
+                station_id=station_id,
+                station_nazwa=station_nazwa,
+                p_export_kw=p_export_kw,
+                p_import_kw=p_import_kw,
             ),
             generated_at_iso=chwila,
         )
@@ -504,6 +520,9 @@ def _dowody_wytrzymalosci(
             )
         except ValidationError:
             braki.append(BrakDanychDowodu(WYTRZYMALOSC, POLE_BEZ_OZNACZENIA))
+            continue
+        if get_device_withstand(spec.device_id) is None:
+            braki.append(BrakDanychDowodu(WYTRZYMALOSC, _aparat_spoza_katalogu(pole)))
             continue
         dowody.append(generate_device_withstand_proof(spec, generated_at_iso=chwila))
     return dowody, braki
@@ -577,7 +596,7 @@ def zloz_pakiet_stacji(
     for czesc in (
         _dowody_trybow_bess(cfg, ctx, generated_at_iso),
         _dowody_planu_zaczepow(cfg, ctx, generated_at_iso),
-        _dowod_eksportu(station_id, cfg, ctx, generated_at_iso),
+        _dowod_eksportu(station_id, nazwa_stacji, cfg, ctx, generated_at_iso),
         _dowody_wytrzymalosci(cfg, generated_at_iso),
         _dowody_przekladnikow(station_id, cfg, ctx, generated_at_iso),
     ):

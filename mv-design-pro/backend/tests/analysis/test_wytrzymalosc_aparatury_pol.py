@@ -39,10 +39,8 @@ from enm.models import (
     SwitchBranch,
 )
 from enm.rola_pola_sn import NAZWA_ROLI_POLA_SN_PL
-from network_model.catalog.audit2_catalogs import (
-    DEVICE_WITHSTAND_CATALOG,
-    ocen_wytrzymalosc_aparatu,
-)
+from network_model.catalog.audit2_catalogs import DEVICE_WITHSTAND_CATALOG
+from network_model.catalog.audit2_oceny import limit_cieplny_aparatu_ka
 from network_model.core.czas_wylaczenia import CzasWylaczeniaTb, czas_tb_roboczy
 
 # Pozycje REALNEGO katalogu APARAT_SN (nie fixture): wyłącznik z Icw 20 kA/1 s
@@ -159,7 +157,6 @@ def test_werdykt_dynamiczny_powstaje_z_pozycji_katalogu_aparat_sn() -> None:
     assert pole["znamiona"]["i_dyn_ka"] == 50.0
     assert pole["znamiona"]["i_dyn_pochodzenie"] == "wartosc_robocza"
     assert pole["znamiona"]["wartosci"]["i_dyn_ka"]["pochodzenie"] == "PROPOZYCJA"
-    assert pole["werdykt"]["i_dyn_ok"] is True
     ocena = _ocena(pole, "dynamiczna")
     assert ocena["status_maszynowy"] == "SPELNIA"
     assert ocena["kompletnosc_dowodu"] == "NIEPELNY"
@@ -186,9 +183,10 @@ def test_bez_czasu_wylaczenia_kryterium_cieplne_ma_brak_podstawy() -> None:
     pole = _widok()["pola"][0]
 
     assert pole["czas_wylaczenia"]["t_clearing_s"] is None
-    assert pole["werdykt"]["i_th_ok"] is None
-    assert pole["werdykt"]["ok"] is False
-    assert "NIEUSTALONE" in pole["werdykt"]["message_pl"]
+    # Rekord W wiersza: brak podstawy cieplnej nie daje ani „spełnia”, ani „nie spełnia”,
+    # a komunikat wiersza to zdanie rekordu (karta WERDYKT-MIGRACJA-190).
+    assert pole["wymaganie"]["status_maszynowy"] in {"BRAK_PODSTAWY", "NIE_OCENIONO"}
+    assert pole["komunikat_pl"] == pole["wymaganie"]["wyjasnienie"]["zdanie_pl"]
     assert "aparatura.czas_wylaczenia_nieustalony" in pole["kody_gotowosci"]
     cieplna = _ocena(pole, "cieplna")
     assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY"
@@ -217,7 +215,6 @@ def test_zapisana_konfiguracja_ma_pierwszenstwo_i_jest_tak_oznaczona() -> None:
     assert pierwsze["aparat_catalog_ref"] == APARAT_KONFIGURACJI
     assert pierwsze["czas_wylaczenia"]["t_clearing_s"] == 0.5
     # Czas z konfiguracji domyka kryterium cieplne; prąd i tak z biegu dla TEGO pola.
-    assert pierwsze["werdykt"]["i_th_ok"] is True
     cieplna = _ocena(pierwsze, "cieplna")
     assert cieplna["status_maszynowy"] == "SPELNIA"
     # 0,5 s < 1 s znamionowej: limit = I_th 25 kA, BEZ przeliczenia w górę (IEC 60865-1).
@@ -238,9 +235,7 @@ def test_wylacznik_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny(
 
     assert pole["znamiona"]["i_th_ka"] is None
     assert pole["znamiona"]["i_dyn_ka"] is None
-    assert pole["werdykt"]["i_dyn_ok"] is None
-    assert pole["werdykt"]["i_th_ok"] is None
-    assert "NIEUSTALONE" in pole["werdykt"]["message_pl"]
+    assert pole["wymaganie"]["status_maszynowy"] in {"BRAK_PODSTAWY", "NIE_OCENIONO"}
     assert READINESS_POZYCJA_BEZ_ZNAMION in pole["kody_gotowosci"]
     assert {_ocena(pole, r)["status_maszynowy"] for r in ("dynamiczna", "cieplna")} == {
         "BRAK_PODSTAWY"
@@ -259,8 +254,7 @@ def test_bezpiecznik_wytrzymalosc_nie_dotyczy_a_nie_brak_danych_ani_negatywny() 
 
     assert pole["znamiona"]["i_th_ka"] is None
     assert pole["znamiona"]["i_dyn_ka"] is None
-    assert pole["werdykt"] is None
-    assert pole["komunikat_pl"].startswith("NIE DOTYCZY")
+    assert pole["komunikat_pl"] == pole["wymaganie"]["wyjasnienie"]["zdanie_pl"]
     assert READINESS_POZYCJA_BEZ_ZNAMION not in pole["kody_gotowosci"]
     for rodzaj in ("dynamiczna", "cieplna"):
         ocena = _ocena(pole, rodzaj)
@@ -277,9 +271,8 @@ def test_przekroczenie_wytrzymalosci_dynamicznej_jest_blokerem() -> None:
     """Prąd udarowy 60 kA > I_dyn 50 kA ⇒ jawny bloker z liczbami i marginesem."""
     pole = _widok(prady_pol={"pole/in": _prady(20.0, 60.0, 5.0)})["pola"][0]
 
-    assert pole["werdykt"]["i_dyn_ok"] is False
-    assert pole["werdykt"]["ok"] is False
-    assert "BLOKER" in pole["werdykt"]["message_pl"]
+    assert pole["wymaganie"]["status_maszynowy"] == "NIE_SPELNIA"
+    assert pole["komunikat_pl"] == pole["wymaganie"]["wyjasnienie"]["zdanie_pl"]
     ocena = _ocena(pole, "dynamiczna")
     assert ocena["status_maszynowy"] == "NIE_SPELNIA"
     assert ocena["margines"]["wartosc"]["wartosc"] == pytest.approx(-10.0)
@@ -291,12 +284,13 @@ def test_pole_bez_pradu_w_biegu_ma_nazwany_brak_a_nie_cudzy_prad() -> None:
     pierwsze, drugie = widok["pola"]
 
     assert widok["status"] == "OK"
-    assert pierwsze["werdykt"] is not None
-    assert drugie["werdykt"] is None
+    assert pierwsze["wymaganie"] is not None
+    # Brak prądu pola: rekord W nieoceniony, nigdy z cudzego prądu.
+    assert drugie["wymaganie"]["status_maszynowy"] == "NIE_OCENIONO"
     assert READINESS_BRAK_PRADU_POLA in drugie["kody_gotowosci"]
     assert drugie["prady_pola"]["ip_ka"] is None
     assert {o["status_maszynowy"] for o in drugie["oceny"]} == {"NIE_OCENIONO"}
-    assert "NIEUSTALONE" in drugie["komunikat_pl"]
+    assert drugie["komunikat_pl"] == drugie["wymaganie"]["wyjasnienie"]["zdanie_pl"]
 
 
 def test_nieznana_stacja_nie_udaje_pustej_stacji() -> None:
@@ -324,7 +318,7 @@ def test_wpis_konfiguracji_bez_odpowiednika_w_modelu_nie_znika() -> None:
     assert len(osierocone) == 1
     assert osierocone[0]["zrodlo"] == ZRODLO_KONFIGURACJA
     assert osierocone[0]["pole_ref"] is None
-    assert osierocone[0]["werdykt"] is None
+    assert osierocone[0]["wymaganie"]["status_maszynowy"] == "NIE_OCENIONO"
     assert READINESS_BRAK_PRADU_POLA in osierocone[0]["kody_gotowosci"]
     assert {o["status_maszynowy"] for o in osierocone[0]["oceny"]} == {"NIE_OCENIONO"}
 
@@ -396,15 +390,15 @@ def test_prady_pol_nieznanej_stacji_sa_puste() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Predykaty parami: status rekordu K == rozstrzygnięcie jądra K7-B
+# Predykaty parami: status rekordu K == porównanie z limitem JEDNEJ reguły limitu cieplnego
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("t_k", [0.3, 1.0, 1.0001, 2.0, 4.0])
 @pytest.mark.parametrize("ith", [10.0, 14.0, 19.9, 20.0, 25.0])
 def test_status_cieplny_rekordu_jest_rozstrzygnieciem_jadra(t_k: float, ith: float) -> None:
-    """Rekord K i jądro ``ocen_wytrzymalosc_aparatu`` nie mogą się rozjechać: SPELNIA ⇔
-    i_th_ok jest True. Siatka obejmuje oba reżimy przeliczenia (t_k ≤ t_zn: limit = I_th;
+    """Rekord K i reguła ``limit_cieplny_aparatu_ka`` (jedna na system, wspólna z oceną aparatu
+    z katalogu wytrzymałości) nie mogą się rozjechać: SPELNIA ⇔ I_th ≤ limit reguły. Siatka obejmuje oba reżimy przeliczenia (t_k ≤ t_zn: limit = I_th;
     t_k > t_zn: limit maleje jak √(t_zn/t_k)) i granicę równości."""
     czas = {
         "t_clearing_s": t_k,
@@ -420,18 +414,11 @@ def test_status_cieplny_rekordu_jest_rozstrzygnieciem_jadra(t_k: float, ith: flo
         czasy_pol={"pole/in": czas},
     )
     pole = widok["pola"][0]
-    jadro = ocen_wytrzymalosc_aparatu(
-        etykieta_pl="x",
-        i_dyn_ka=50.0,
-        i_th_ka=20.0,
-        i_th_duration_s=1.0,
-        i_peak_calculated_ka=12.0,
-        i_thermal_calculated_ka=ith,
-        t_clearing_s=t_k,
-    )
+    limit_reguly = limit_cieplny_aparatu_ka(20.0, 1.0, t_k)
     cieplna = _ocena(pole, "cieplna")
 
-    assert (cieplna["status_maszynowy"] == "SPELNIA") is (jadro["i_th_ok"] is True)
+    assert limit_reguly is not None
+    assert (cieplna["status_maszynowy"] == "SPELNIA") is (ith <= limit_reguly)
     assert cieplna["status_maszynowy"] in {"SPELNIA", "NIE_SPELNIA"}
     limit_oczekiwany = 20.0 if t_k <= 1.0 else 20.0 * (1.0 / t_k) ** 0.5
     assert cieplna["limit"]["wartosc"]["wartosc"] == pytest.approx(limit_oczekiwany, rel=1e-12)

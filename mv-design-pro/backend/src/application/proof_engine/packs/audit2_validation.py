@@ -20,13 +20,17 @@ INVARIANTS:
 - Identical input -> identical output (deterministic) — takze identyfikator dowodu:
   `proof_id` jest wyprowadzony z rodzaju dowodu i specyfikacji (UUID v5), nie losowany.
 - LaTeX-only math.
-- Walidacje zwracaja zarowno status (pass/fail) jak i message_pl + dane uzasadnienia.
+- Kazdy dowod niesie rekord W werdyktu wyjasnialnego (`wymaganie`) z rekordami K kryteriow
+  (`network_model/catalog/audit2_oceny.py`); `summary_pl` to zdanie tego rekordu, a status
+  zyje wylacznie w rekordzie (karta WERDYKT-MIGRACJA-190 — dawne `pass_status` i
+  podsumowania „OK: …" / „BLOKER: …" usuniete).
 - Teksty dla czlowieka nazywaja elementy nazwa z modelu, nigdy identyfikatorem
   (identyfikatory zostaja w `details`).
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
 from uuid import UUID, uuid5
@@ -36,13 +40,24 @@ from network_model.catalog.audit2_catalogs import (
     KlasaTransformatoraPrzelacznika,
     get_bess_operation_mode,
     get_tap_changer,
-    is_vt_voltage_factor_valid_for_grounding,
-    validate_device_withstand,
-    validate_hosting_capacity_export,
+)
+from network_model.catalog.audit2_oceny import (
+    ocen_aparat_katalogu_wytrzymalosci,
+    ocena_eksportu_stacji,
+    ocena_trybu_spoza_katalogu,
+    ocena_wspolczynnika_napieciowego_vt,
+    ocena_zdolnosci_trybu_bess,
+    oceny_przelacznika_zaczepow,
+    wymaganie_eksportu_stacji,
+    wymaganie_planu_zaczepow,
+    wymaganie_trybow_bess,
+    wymaganie_wspolczynnika_vt,
 )
 from network_model.core.uziemienie import ETYKIETA_PL_PUNKTU_NEUTRALNEGO, TypPunktuNeutralnego
 from network_model.nazwy import nazwa_nadana
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+from werdykt import OcenaKryterium, Przedmiot, StatusWerdyktu, WynikWymagania
 
 #: Chwila generacji, gdy wolajacy jej nie poda — przypieta, bo pakiet jest deterministyczny.
 CHWILA_GENERACJI_DOMYSLNA = "1970-01-01T00:00:00Z"
@@ -121,6 +136,7 @@ class SpecDowoduEksportuStacji(_SpecyfikacjaDowodu):
     """Bilans mocy stacji: suma mocy znamionowych zrodel i suma mocy odbiorow [kW]."""
 
     station_id: Identyfikator
+    station_nazwa: NazwaElementu
     p_export_kw: WartoscNieujemna
     p_import_kw: WartoscNieujemna
 
@@ -139,7 +155,7 @@ class SpecDowoduUziemieniaPrzekladnika(_SpecyfikacjaDowodu):
     """Przekladnik napieciowy pola wobec sposobu uziemienia punktu neutralnego sieci SN.
 
     `vt_voltage_factor is None` znaczy „nie da sie ustalic" (typ spoza katalogu albo karta
-    bez tej danej) i daje dowod NIEZALICZONY z nazwanym powodem.
+    bez tej danej) i daje rekord ``NIE_OCENIONO`` z nazwanym brakiem.
     """
 
     bay_designation: NazwaElementu
@@ -154,11 +170,16 @@ def _identyfikator_dowodu(proof_type: str, spec: _SpecyfikacjaDowodu) -> UUID:
 
 @dataclass(frozen=True)
 class Audit2ProofResult:
-    """Wynik dowodu audytu 2 (jednorodny format dla wszystkich 5 typow)."""
+    """Wynik dowodu audytu 2 (jednorodny format dla wszystkich 5 typow).
+
+    ``wymaganie`` — rekord W werdyktu wyjasnialnego z rekordami K kryteriow; jedyny nosnik
+    statusu dowodu. ``summary_pl`` — zdanie rekordu (z oznaczeniem pola, gdy dowod dotyczy
+    pola stacji).
+    """
 
     proof_id: UUID
     proof_type: str
-    pass_status: bool
+    wymaganie: WynikWymagania
     summary_pl: str
     details: dict[str, Any]
     formulas_latex: list[str]
@@ -169,7 +190,7 @@ class Audit2ProofResult:
             "proof_id": str(self.proof_id),
             "proof_type": self.proof_type,
             "rodzaj_pl": ETYKIETY_RODZAJOW_DOWODU[self.proof_type],
-            "pass_status": self.pass_status,
+            "wymaganie": self.wymaganie.model_dump(mode="json"),
             "summary_pl": self.summary_pl,
             "details": self.details,
             "formulas_latex": self.formulas_latex,
@@ -204,7 +225,12 @@ def generate_bess_modes_proof(
     """
     proof_type = "AUDIT2_BESS_OPERATION_MODES"
     der_nazwa = spec.der_nazwa
-    issues: list[str] = []
+    przedmiot = Przedmiot(
+        element_ref=spec.der_id,
+        nazwa_pl=der_nazwa,
+        opis_pl="magazyn energii — wybrane tryby pracy wobec zdolności przekształtnika",
+    )
+    oceny: list[OcenaKryterium] = []
     selected_modes: list[dict[str, Any]] = []
     unknown_mode_refs: list[str] = []
 
@@ -212,31 +238,36 @@ def generate_bess_modes_proof(
         mode = get_bess_operation_mode(ref)
         if mode is None:
             unknown_mode_refs.append(ref)
-            issues.append(
-                f"Trybu pracy wskazanego dla magazynu {der_nazwa} nie ma w katalogu trybów BESS."
+            oceny.append(
+                ocena_trybu_spoza_katalogu(tryb_ref=ref, der_nazwa=der_nazwa, przedmiot=przedmiot)
             )
             continue
-        # PCS capability check — potwierdzenie wymaga danej z karty przeksztaltnika.
-        if mode.requires_four_quadrant and spec.pcs_four_quadrant is not True:
-            powod = (
-                "nie obsługuje"
-                if spec.pcs_four_quadrant is False
-                else "karta przekształtnika nie podaje granic mocy biernej — zdolności "
-                "nie da się potwierdzić"
+        # Zdolnosc przeksztaltnika — potwierdzenie wymaga danej z karty przeksztaltnika
+        # (`None` = karta jej nie podaje: rekord NIE_OCENIONO, nie zgodnosc).
+        oceny.append(
+            ocena_zdolnosci_trybu_bess(
+                tryb_id=mode.id,
+                tryb_pl=mode.label_pl,
+                zdolnosc_id="praca_czterokwadrantowa",
+                wymagana_zdolnosc_pl="praca w czterech ćwiartkach P–Q",
+                wymagana=mode.requires_four_quadrant,
+                zdolnosc_pcs=spec.pcs_four_quadrant,
+                der_nazwa=der_nazwa,
+                przedmiot=przedmiot,
             )
-            issues.append(
-                f"Tryb '{mode.label_pl}' wymaga PCS 4-quadrant (PCS DER {der_nazwa}: {powod})."
+        )
+        oceny.append(
+            ocena_zdolnosci_trybu_bess(
+                tryb_id=mode.id,
+                tryb_pl=mode.label_pl,
+                zdolnosc_id="tworzenie_napiecia",
+                wymagana_zdolnosc_pl="tworzenie napięcia (grid-forming)",
+                wymagana=mode.requires_grid_forming,
+                zdolnosc_pcs=spec.pcs_grid_forming,
+                der_nazwa=der_nazwa,
+                przedmiot=przedmiot,
             )
-        if mode.requires_grid_forming and spec.pcs_grid_forming is not True:
-            powod = (
-                "nie obsługuje"
-                if spec.pcs_grid_forming is False
-                else "karta przekształtnika nie podaje trybu sterowania — zdolności "
-                "nie da się potwierdzić"
-            )
-            issues.append(
-                f"Tryb '{mode.label_pl}' wymaga PCS grid-forming (PCS DER {der_nazwa}: {powod})."
-            )
+        )
         selected_modes.append(mode.to_dict())
 
     # LISTY TRYBOW WYMAGANYCH PRZEZ NC RfG NIE MA (karta K-Q, 2026-08-14).
@@ -244,25 +275,16 @@ def generate_bess_modes_proof(
     # modulu NC RfG X" na podstawie katalogowego pola `required_for_nc_rfg_modules`.
     # Rozporzadzenie 2016/631 sprawdzone na tekscie zrodlowym: nie nakazuje
     # modulom wytworczym swiadczenia FCR-N / FCR-D / aFRR / mFRR — to produkty
-    # rynku bilansujacego, a nie warunek przylaczenia. Dowod oglaszal wiec
-    # niezgodnosc z norma, ktorej nie ma; pole i selektor usuniete u zrodla.
-    # Dowod sprawdza teraz WYLACZNIE to, co da sie sprawdzic: czy przeksztaltnik
-    # ma zdolnosci, ktorych wymaga sama definicja wybranej uslugi. Dlatego
-    # specyfikacja nie niesie juz typu modulu NC RfG (karta PROOFPACK-KONTRAKT):
-    # dana, ktorej dowod nie sprawdza, nie trafia do jego szczegolow.
-
-    pass_status = len(issues) == 0
-    summary = (
-        f"OK: DER {der_nazwa} ma {len(selected_modes)} trybów zgodnych ze zdolnościami PCS."
-        if pass_status
-        else f"BLOKER: DER {der_nazwa} — {len(issues)} problemów z trybami BESS."
-    )
-
+    # rynku bilansujacego, a nie warunek przylaczenia. Dowod sprawdza WYLACZNIE to,
+    # co da sie sprawdzic: czy przeksztaltnik ma zdolnosci, ktorych wymaga sama
+    # definicja wybranej uslugi (karta PROOFPACK-KONTRAKT: specyfikacja nie niesie typu
+    # modulu NC RfG, bo dana, ktorej dowod nie sprawdza, nie trafia do jego szczegolow).
+    wymaganie = wymaganie_trybow_bess(der_nazwa=der_nazwa, przedmiot=przedmiot, oceny=oceny)
     return Audit2ProofResult(
         proof_id=_identyfikator_dowodu(proof_type, spec),
         proof_type=proof_type,
-        pass_status=pass_status,
-        summary_pl=summary,
+        wymaganie=wymaganie,
+        summary_pl=wymaganie.wyjasnienie.zdanie_pl,
         details={
             "der_id": spec.der_id,
             "pcs_four_quadrant": spec.pcs_four_quadrant,
@@ -271,7 +293,6 @@ def generate_bess_modes_proof(
             "zdolnosc_gfm_pl": _opis_zdolnosci(spec.pcs_grid_forming),
             "selected_modes": selected_modes,
             "unknown_mode_refs": unknown_mode_refs,
-            "issues": issues,
         },
         formulas_latex=[
             r"$$\text{Mode}_{\text{compatible}} \iff (\text{4Q required} \implies \text{PCS}_{\text{4Q}}) "
@@ -305,42 +326,34 @@ def generate_tap_changer_plan_proof(
     proof_type = "AUDIT2_TAP_CHANGER_PLAN"
     transformer_nazwa = spec.transformer_nazwa
     tc = get_tap_changer(spec.tap_changer_ref)
-    issues: list[str] = []
-
-    if tc is None:
-        issues.append(
-            f"Przełącznika zaczepów wskazanego dla transformatora {transformer_nazwa} "
-            "nie ma w katalogu przełączników."
-        )
-    else:
-        if spec.transformer_type not in tc.applicable_to:
-            przeznaczenie = ", ".join(
-                ETYKIETY_KLAS_TRANSFORMATORA.get(klasa, klasa) for klasa in tc.applicable_to
-            )
-            issues.append(
-                f"Tap-changer '{tc.label_pl}' nie jest przeznaczony dla transformatora "
-                f"{transformer_nazwa} klasy "
-                f"{ETYKIETY_KLAS_TRANSFORMATORA[spec.transformer_type]} "
-                f"(przeznaczenie: {przeznaczenie})."
-            )
-        if spec.requires_avr and not tc.supports_avr:
-            issues.append(
-                f"Wymagany AVR (Automatic Voltage Regulation), tap-changer '{tc.label_pl}' "
-                "nie obsługuje (typ DETC off-load)."
-            )
-
-    pass_status = len(issues) == 0
-    summary = (
-        f"OK: Tap-changer dla transformatora {transformer_nazwa} jest zgodny z wymaganiami."
-        if pass_status
-        else f"BLOKER: {len(issues)} problemów z planem zaczepów dla {transformer_nazwa}."
+    przedmiot = Przedmiot(
+        element_ref=spec.transformer_id,
+        nazwa_pl=transformer_nazwa,
+        opis_pl="transformator — przełącznik zaczepów przypisany w konfiguracji stacji",
+    )
+    klasa, avr = oceny_przelacznika_zaczepow(
+        transformer_nazwa=transformer_nazwa,
+        przedmiot=przedmiot,
+        przelacznik_pl=None if tc is None else tc.label_pl,
+        klasa_pl=ETYKIETY_KLAS_TRANSFORMATORA[spec.transformer_type],
+        przeznaczenie_pl=(
+            None
+            if tc is None
+            else ", ".join(ETYKIETY_KLAS_TRANSFORMATORA.get(k, k) for k in tc.applicable_to)
+        ),
+        pasuje_do_klasy=None if tc is None else spec.transformer_type in tc.applicable_to,
+        wymaga_avr=spec.requires_avr,
+        obsluguje_avr=None if tc is None else tc.supports_avr,
+    )
+    wymaganie = wymaganie_planu_zaczepow(
+        transformer_nazwa=transformer_nazwa, przedmiot=przedmiot, oceny=(klasa, avr)
     )
 
     return Audit2ProofResult(
         proof_id=_identyfikator_dowodu(proof_type, spec),
         proof_type=proof_type,
-        pass_status=pass_status,
-        summary_pl=summary,
+        wymaganie=wymaganie,
+        summary_pl=wymaganie.wyjasnienie.zdanie_pl,
         details={
             "transformer_id": spec.transformer_id,
             "transformer_type": spec.transformer_type,
@@ -348,7 +361,6 @@ def generate_tap_changer_plan_proof(
             "tap_changer_ref": spec.tap_changer_ref,
             "tap_changer": tc.to_dict() if tc else None,
             "requires_avr": spec.requires_avr,
-            "issues": issues,
         },
         formulas_latex=[
             r"$$\Delta U_{\text{regulation}} = \pm \text{step}\% \times N_{\text{taps}}$$",
@@ -368,21 +380,39 @@ def generate_hosting_capacity_export_proof(
     *,
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA,
 ) -> Audit2ProofResult:
-    """Dowod bilansu eksportu vs importu (NC RfG Art. 17)."""
+    """Dowod bilansu eksportu stacji wobec granicy zdolnosci przylaczeniowej.
+
+    Granica eksportu wynika z warunkow przylaczenia OSD, ktorych model nie niesie: eksport
+    netto daje rekord ``BRAK_PODSTAWY`` z wynikiem informacyjnym, brak eksportu —
+    ``NIE_DOTYCZY``. Dawne progi stosunku eksportu do importu (0,8 / 1,5 / 3,0) i zalecenia
+    „WYMAGANE: studium NC RfG…" nie mialy podstawy (ani normy, ani dokumentu OSD) — usuniete
+    (karta WERDYKT-MIGRACJA-190).
+    """
     proof_type = "AUDIT2_HOSTING_CAPACITY_EXPORT"
-    result = validate_hosting_capacity_export(
-        station_id=spec.station_id, p_export_kw=spec.p_export_kw, p_import_kw=spec.p_import_kw
+    ocena = ocena_eksportu_stacji(
+        stacja_nazwa=spec.station_nazwa,
+        przedmiot=Przedmiot(
+            element_ref=spec.station_id,
+            nazwa_pl=spec.station_nazwa,
+            opis_pl="stacja — bilans mocy źródeł i odbiorów wobec sieci OSD",
+        ),
+        p_export_kw=spec.p_export_kw,
+        p_import_kw=spec.p_import_kw,
     )
-    pass_status = result["status"] in ("no_export", "normal_export")
+    wymaganie = wymaganie_eksportu_stacji(stacja_nazwa=spec.station_nazwa, ocena=ocena)
     return Audit2ProofResult(
         proof_id=_identyfikator_dowodu(proof_type, spec),
         proof_type=proof_type,
-        pass_status=pass_status,
-        summary_pl=result["message_pl"],
-        details=result,
+        wymaganie=wymaganie,
+        summary_pl=wymaganie.wyjasnienie.zdanie_pl,
+        details={
+            "station_id": spec.station_id,
+            "p_export_kw": spec.p_export_kw,
+            "p_import_kw": spec.p_import_kw,
+            "p_net_export_kw": spec.p_export_kw - spec.p_import_kw,
+        },
         formulas_latex=[
-            r"$$P_{\text{net export}} = \sum P_{\text{DER}} - \sum P_{\text{load}}$$",
-            r"$$\text{ratio} = \frac{P_{\text{export}}}{P_{\text{import}}}$$",
+            r"$$P_{exp} = \sum P_{DER} - \sum P_{odb} \le P_{przyl}$$",
         ],
         generated_at=generated_at_iso,
     )
@@ -400,23 +430,37 @@ def generate_device_withstand_proof(
 ) -> Audit2ProofResult:
     """Dowod wytrzymalosci aparatury I_dyn / I_th (IEC 60909) w polu `bay_designation`."""
     proof_type = "AUDIT2_DEVICE_WITHSTAND"
-    result = validate_device_withstand(
+    ocena = ocen_aparat_katalogu_wytrzymalosci(
         device_id=spec.device_id,
         i_peak_calculated_ka=spec.i_peak_calculated_ka,
         i_thermal_calculated_ka=spec.i_thermal_calculated_ka,
         t_clearing_s=spec.t_clearing_s,
+        przedmiot_nazwa_pl=f"aparat pola {spec.bay_designation}",
     )
+    if ocena is None:
+        # Skladanie pakietu odsiewa pozycje spoza katalogu jako jawny brak danych — tu nie
+        # trafiaja; wywolanie z taka pozycja to odmowa danych (422), nie ocena.
+        raise OdmowaDanychError(
+            "Dowód wytrzymałości wymaga pozycji katalogu wytrzymałości aparatury — "
+            "wskazanej pozycji nie ma w katalogu."
+        )
     return Audit2ProofResult(
         proof_id=_identyfikator_dowodu(proof_type, spec),
         proof_type=proof_type,
-        pass_status=bool(result["ok"]),
-        summary_pl=f"Pole {spec.bay_designation}: {result['message_pl']}",
-        details={"bay_designation": spec.bay_designation, "device_id": spec.device_id, **result},
+        wymaganie=ocena.wymaganie,
+        summary_pl=ocena.wymaganie.wyjasnienie.zdanie_pl,
+        details={
+            "bay_designation": spec.bay_designation,
+            "device_id": spec.device_id,
+            "i_th_effective_ka": ocena.i_th_effective_ka,
+            "utilization_dyn_percent": ocena.utilization_dyn_percent,
+            "utilization_th_percent": ocena.utilization_th_percent,
+        },
         formulas_latex=[
             r"$$I_{\text{dyn}} \geq \kappa \sqrt{2} \cdot I_k''$$",
             # IEC 60865-1: przeliczenie prądu krótkotrwałego na czas wyłączenia tylko w dół;
             # porównanie z prądem cieplnym zastępczym I_th biegu (nie z I_k″) — dokładnie
-            # to, co liczy jądro `ocen_wytrzymalosc_aparatu`.
+            # to, co porównuje rekord cieplny (`audit2_oceny.limit_cieplny_aparatu_ka`).
             r"$$I_{\text{th eff}}(t) = I_{\text{th rated}} \cdot \sqrt{\min\left(1,\ "
             r"\frac{t_{\text{rated}}}{t_{\text{clearing}}}\right)}$$",
             r"$$I_{\text{th eff}}(t) \geq I_{\text{th}}$$",
@@ -445,54 +489,41 @@ def generate_vt_grounding_validation_proof(
     """
     proof_type = "AUDIT2_VT_GROUNDING_VALIDATION"
     bay_designation = spec.bay_designation
-    vt_voltage_factor = spec.vt_voltage_factor
-    grounding_type = spec.grounding_type
-    proof_id = _identyfikator_dowodu(proof_type, spec)
-    if vt_voltage_factor is None:
-        return Audit2ProofResult(
-            proof_id=proof_id,
-            proof_type=proof_type,
-            pass_status=False,
-            summary_pl=(
-                f"Pole {bay_designation}: współczynnik napięciowy przekładnika jest nieznany "
-                "(typ spoza katalogu albo karta bez tej danej) — zgodności ze sposobem "
-                "uziemienia nie da się wykazać."
+    ocena = ocena_wspolczynnika_napieciowego_vt(
+        voltage_factor=spec.vt_voltage_factor,
+        grounding_type=spec.grounding_type,
+        przedmiot=Przedmiot(
+            element_ref=None,
+            nazwa_pl=f"przekładnik napięciowy pola {bay_designation}",
+            opis_pl=(
+                "przekładnik napięciowy pola wobec sieci o punkcie neutralnym "
+                f"{ETYKIETA_PL_PUNKTU_NEUTRALNEGO[spec.grounding_type]}"
             ),
-            details={
-                "bay_designation": bay_designation,
-                "vt_voltage_factor": None,
-                "grounding_type": grounding_type,
-                "ok": False,
-                "message_pl": "brak współczynnika napięciowego",
-            },
-            formulas_latex=[],
-            generated_at=generated_at_iso,
-        )
-    ok, message = is_vt_voltage_factor_valid_for_grounding(vt_voltage_factor, grounding_type)
-    return Audit2ProofResult(
-        proof_id=proof_id,
-        proof_type=proof_type,
-        pass_status=ok,
-        summary_pl=f"Pole {bay_designation}: "
-        + (
-            message
-            or f"OK: VT U_th={vt_voltage_factor} pasuje do sieci o punkcie neutralnym "
-            f"{ETYKIETA_PL_PUNKTU_NEUTRALNEGO[grounding_type]}."
         ),
+    )
+    wymaganie = wymaganie_wspolczynnika_vt(pole_pl=bay_designation, ocena=ocena)
+    return Audit2ProofResult(
+        proof_id=_identyfikator_dowodu(proof_type, spec),
+        proof_type=proof_type,
+        wymaganie=wymaganie,
+        summary_pl=wymaganie.wyjasnienie.zdanie_pl,
         details={
             "bay_designation": bay_designation,
-            "vt_voltage_factor": vt_voltage_factor,
-            "grounding_type": grounding_type,
-            "ok": ok,
-            "message_pl": message,
+            "vt_voltage_factor": spec.vt_voltage_factor,
+            "grounding_type": spec.grounding_type,
         },
-        formulas_latex=[
-            r"$$U_{\text{th VT}} \geq U_{\text{required}}(\text{grounding})$$",
-            r"$$U_{\text{required}} = \begin{cases} 1.9 & \text{izolowana / kompensowana / "
-            r"przez rezystor (faza--ziemia)} \\ 1.5 & \text{bezpo\'srednio uziemiona "
-            r"(faza--ziemia, 30 s)} \\ 1.2 & \text{uzwojenie mi\k{e}dzyfazowe (ci\k{a}g\l{}e)} "
-            r"\end{cases}$$",
-        ],
+        # Wzór bez danej nie jest dowodem — przy nieznanym współczynniku nie udajemy rachunku.
+        formulas_latex=(
+            []
+            if spec.vt_voltage_factor is None
+            else [
+                r"$$U_{\text{th VT}} \geq U_{\text{required}}(\text{grounding})$$",
+                r"$$U_{\text{required}} = \begin{cases} 1{,}9 & \text{izolowana / kompensowana / "
+                r"przez rezystor (faza--ziemia)} \\ 1{,}5 & \text{bezpo\'srednio uziemiona "
+                r"(faza--ziemia, 30 s)} \\ 1{,}2 & \text{uzwojenie mi\k{e}dzyfazowe (ci\k{a}g\l{}e)} "
+                r"\end{cases}$$",
+            ]
+        ),
         generated_at=generated_at_iso,
     )
 
@@ -532,24 +563,38 @@ class StationAudit2ProofPack:
     generated_at_iso: str = CHWILA_GENERACJI_DOMYSLNA
 
     @property
-    def all_pass(self) -> bool:
-        return all(p.pass_status for p in self.proofs)
-
-    @property
-    def fail_count(self) -> int:
-        return sum(1 for p in self.proofs if not p.pass_status)
+    def liczby_statusow(self) -> dict[StatusWerdyktu, int]:
+        """Liczba dowodow wedlug statusu ich rekordu W (klucze posortowane) — zestawienie,
+        nie werdykt pakietu: agregat nie zastepuje rekordow skladowych."""
+        liczby: dict[StatusWerdyktu, int] = {}
+        for dowod in self.proofs:
+            status = dowod.wymaganie.status_maszynowy
+            liczby[status] = liczby.get(status, 0) + 1
+        return dict(sorted(liczby.items()))
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "station_id": self.station_id,
             "station_nazwa": self.station_nazwa,
-            "all_pass": self.all_pass,
-            "fail_count": self.fail_count,
+            "liczby_statusow": self.liczby_statusow,
             "proof_count": len(self.proofs),
             "proofs": [p.to_dict() for p in self.proofs],
             "braki_danych": [b.to_dict() for b in self.braki_danych],
             "generated_at": self.generated_at_iso,
         }
+
+
+def liczby_statusow_projektu(
+    pakiety: Sequence[StationAudit2ProofPack],
+) -> dict[StatusWerdyktu, int]:
+    """Suma zestawień statusów pakietów stacji (klucze posortowane) — zestawienie projektu,
+    nie werdykt: dawne `all_pass` uznawało projekt bez dowodów za zgodny (karta
+    WERDYKT-MIGRACJA-190). Jedno źródło dla końcówki `_validate-all` i fixtur frontu."""
+    liczby: dict[StatusWerdyktu, int] = {}
+    for pakiet in pakiety:
+        for status, liczba in pakiet.liczby_statusow.items():
+            liczby[status] = liczby.get(status, 0) + liczba
+    return dict(sorted(liczby.items()))
 
 
 def generate_station_audit2_proof_pack(

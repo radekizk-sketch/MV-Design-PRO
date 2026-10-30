@@ -343,7 +343,15 @@ def test_validate_all_returns_pack_per_station(app_client):
         assert len(rodzaje) == 5
     stacja_b = next(s for s in body["per_station"] if s["station_id"] == "station-V-B")
     assert [d["proof_type"] for d in stacja_b["proofs"]] == ["AUDIT2_DEVICE_WITHSTAND"]
-    assert stacja_b["proofs"][0]["summary_pl"].startswith("Pole POLE-01: ")
+    # Zdanie rekordu W nazywa pole (przedmiot „aparat pola POLE-01”).
+    assert "aparat pola POLE-01" in stacja_b["proofs"][0]["summary_pl"]
+    # Zestawienie statusów całego projektu = suma zestawień stacji (nie werdykt zbiorczy).
+    suma: dict[str, int] = {}
+    for stacja in body["per_station"]:
+        for status, liczba in stacja["liczby_statusow"].items():
+            suma[status] = suma.get(status, 0) + liczba
+    assert body["liczby_statusow"] == suma
+    assert "all_pass" not in body
 
 
 @pytest.mark.parametrize(
@@ -475,10 +483,11 @@ def test_dowod_VT_nie_udaje_zgodnosci_dla_typu_spoza_katalogu(app_client):
 
     realny = dowody["POLE-REALNE"]
     assert realny["details"]["grounding_type"] == "isolated"
-    assert realny["pass_status"] is True
+    assert realny["wymaganie"]["status_maszynowy"] == "BRAK_DOWODU"
     assert realny["details"]["vt_voltage_factor"] == 1.9
 
     widmo = dowody["POLE-WIDMO"]
-    assert widmo["pass_status"] is False
+    # Typ spoza katalogu: współczynnik nieznany — kryterium bez wyniku (nie domyślne 1,9).
+    assert widmo["wymaganie"]["status_maszynowy"] == "NIE_OCENIONO"
     assert widmo["details"]["vt_voltage_factor"] is None
-    assert "nieznany" in widmo["summary_pl"].lower()
+    assert "typ spoza katalogu" in widmo["summary_pl"]

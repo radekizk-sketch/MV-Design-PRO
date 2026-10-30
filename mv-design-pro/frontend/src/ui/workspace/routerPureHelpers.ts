@@ -7,7 +7,6 @@
 
 import type { ExecutionRun } from '../study-cases/types';
 import { ANALYSIS_TYPE_LABELS } from '../study-cases/types';
-import type { Audit2ProofPackResponse } from '../network-build/station-der';
 import { calculationScopeDisplayName } from '../shell/publicNames';
 import { formatDateTime } from './routerDisplayHelpers';
 
@@ -30,30 +29,8 @@ export function resolveRunLabel(
   return `${typeLabel} · ${dateLabel}`;
 }
 
-export interface AuditProofPackStatus {
-  readonly label: string;
-  readonly className: string;
-}
-
-/**
- * Status pakietu dowodów stacji. BRAK DANYCH NIE JEST ZGODNOŚCIĄ (karta PROOFPACK-KONTRAKT):
- * pakiet, w którym część rodzajów jest jawnym brakiem, nie dostaje „Weryfikacja pozytywna",
- * nawet gdy wszystkie wygenerowane dowody są zaliczone.
- */
-export function auditProofPackStatus(data: Audit2ProofPackResponse): AuditProofPackStatus {
-  if (data.proof_count <= 0) {
-    return {
-      label: 'Brak dowodów do oceny',
-      className: 'text-amber-700',
-    };
-  }
-  if (!data.all_pass) {
-    return { label: 'Wymaga sprawdzenia', className: 'text-rose-700' };
-  }
-  return data.braki_danych.length !== 0
-    ? { label: 'Niekompletny — część rodzajów bez danych', className: 'text-amber-700' }
-    : { label: 'Weryfikacja pozytywna', className: 'text-emerald-700' };
-}
+// `auditProofPackStatus` (werdykt pakietu z flagi `all_pass`) usunięty w karcie
+// WERDYKT-MIGRACJA-190 — pakiet pokazuje etykiety rekordów W dowodów (`PakietDowodowRozszerzen`).
 
 export function resolveLatestCompletedRun(runs: ExecutionRun[]): ExecutionRun | null {
   return runs

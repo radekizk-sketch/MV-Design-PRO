@@ -59,6 +59,21 @@ from application.analyses.werdykt_projektowy import (
 )
 from application.dynamika.opis_wyniku import oceny_biegu_dynamiki
 from application.ocena_niewykonana import rekord_json
+from application.proof_engine.packs.audit2_validation import (
+    BrakDanychDowodu,
+    SpecDowoduEksportuStacji,
+    SpecDowoduPlanuZaczepow,
+    SpecDowoduTrybowBess,
+    SpecDowoduUziemieniaPrzekladnika,
+    SpecDowoduWytrzymalosciAparatu,
+    generate_bess_modes_proof,
+    generate_device_withstand_proof,
+    generate_hosting_capacity_export_proof,
+    generate_station_audit2_proof_pack,
+    generate_tap_changer_plan_proof,
+    generate_vt_grounding_validation_proof,
+    liczby_statusow_projektu,
+)
 from application.v126_artifacts import ocena_jakosci_energii_niewykonana
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from enm.models import (
@@ -583,6 +598,158 @@ def _adekwatnosc_q() -> dict[str, Any]:
     )
 
 
+def _audyt2() -> dict[str, Any]:
+    """Rekordy walidacji rozszerzeń stacji dla ekranów frontu (karta WERDYKT-MIGRACJA-190):
+    pakiet projektu (kształt końcówki ``_validate-all``: TE SAME generatory dowodów i TO SAMO
+    zestawienie ``liczby_statusow_projektu``) — stacja z pięcioma dowodami o pięciu różnych
+    statusach rekordu W i stacja z samymi brakami danych — oraz odpowiedzi walidatorów VT
+    i wytrzymałości aparatu (te same funkcje końcówek ``/catalog/audit2/validate-*``)."""
+    from api.audit2_catalogs import (
+        DeviceWithstandValidationRequest,
+        VtGroundingValidationRequest,
+        validate_device_withstand_endpoint,
+        validate_vt_grounding,
+    )
+
+    dowody = [
+        generate_bess_modes_proof(
+            SpecDowoduTrybowBess(
+                der_id="gen/bess-1",
+                der_nazwa="Magazyn Łąkowa",
+                pcs_four_quadrant=True,
+                pcs_grid_forming=True,
+                selected_mode_refs=["mode_fcr_n", "mode_voltage_support"],
+            )
+        ),
+        generate_device_withstand_proof(
+            SpecDowoduWytrzymalosciAparatu(
+                bay_designation="Pole 02",
+                device_id="wstd_breaker_vacuum_15_25",
+                i_peak_calculated_ka=70.0,
+                i_thermal_calculated_ka=20.0,
+                t_clearing_s=1.0,
+            )
+        ),
+        generate_hosting_capacity_export_proof(
+            SpecDowoduEksportuStacji(
+                station_id="stn/1",
+                station_nazwa="Stacja Łąkowa",
+                p_export_kw=600.0,
+                p_import_kw=500.0,
+            )
+        ),
+        generate_tap_changer_plan_proof(
+            SpecDowoduPlanuZaczepow(
+                transformer_id="tr/1",
+                transformer_nazwa="Transformator T1 Łąkowa",
+                transformer_type="transformer_15_04",
+                tap_changer_ref="tc_detc_snnn_5_25",
+                requires_avr=False,
+            )
+        ),
+        generate_vt_grounding_validation_proof(
+            SpecDowoduUziemieniaPrzekladnika(
+                bay_designation="Pole 01", vt_voltage_factor=None, grounding_type="isolated"
+            )
+        ),
+    ]
+    pakiety = [
+        generate_station_audit2_proof_pack(
+            station_id="stn/1", station_nazwa="Stacja Łąkowa", proofs=dowody
+        ),
+        generate_station_audit2_proof_pack(
+            station_id="stn/2",
+            station_nazwa="Stacja Polna",
+            proofs=[],
+            braki_danych=[
+                BrakDanychDowodu(
+                    "AUDIT2_HOSTING_CAPACITY_EXPORT",
+                    "Źródło PV Polna nie ma mocy znamionowej z katalogu — bilans eksportu "
+                    "byłby zaniżony.",
+                ),
+                BrakDanychDowodu(
+                    "AUDIT2_TAP_CHANGER_PLAN",
+                    "Konfiguracja stacji nie przypisuje przełącznika zaczepów żadnemu "
+                    "transformatorowi.",
+                ),
+            ],
+        ),
+    ]
+    return {
+        "pakiet_projektu": {
+            "project_id": "proj-1",
+            "liczby_statusow": liczby_statusow_projektu(pakiety),
+            "station_count": len(pakiety),
+            "per_station": [p.to_dict() for p in pakiety],
+        },
+        "vt": {
+            klucz: validate_vt_grounding(
+                VtGroundingValidationRequest(voltage_factor=wsp, grounding_type=uziemienie)
+            )
+            for klucz, wsp, uziemienie in (
+                ("spelnia", 1.9, "petersen_coil"),
+                ("nie_spelnia", 1.5, "isolated"),
+                ("brak_wspolczynnika", None, "resistor_grounded"),
+            )
+        },
+        "wytrzymalosc": {
+            klucz: validate_device_withstand_endpoint(
+                DeviceWithstandValidationRequest(
+                    device_id="wstd_breaker_vacuum_15_25",
+                    i_peak_calculated_ka=ip,
+                    i_thermal_calculated_ka=20.0,
+                    t_clearing_s=1.0,
+                )
+            )
+            for klucz, ip in (("w_granicach", 50.0), ("przekroczona", 70.0))
+        },
+    }
+
+
+def _wytrzymalosc_pol() -> dict[str, Any]:
+    """Rekordy W wytrzymałości aparatu pola (``audit2_oceny`` — TE SAME funkcje co widok
+    ``wytrzymalosc_aparatury_pol``) dla ekranu weryfikacji aparatury: kryteria spełnione na
+    liczbach (dowód niepełny), przekroczenie I_dyn i brak czasu wyłączenia."""
+    from network_model.catalog.audit2_oceny import (
+        oceny_wytrzymalosci_aparatu,
+        wymaganie_wytrzymalosci_aparatu,
+    )
+    from werdykt import Przedmiot
+
+    przedmiot = Przedmiot(
+        element_ref="aparat/01", nazwa_pl="Aparat pola SN 1", opis_pl="aparat pola P-1"
+    )
+
+    def _w(i_peak: float, t_clearing: float | None) -> dict[str, Any]:
+        oceny = oceny_wytrzymalosci_aparatu(
+            kryterium_id="aparatura.field/x/in.aparat/01",
+            przedmiot=przedmiot,
+            etykieta_pl="Aparat pola SN 1",
+            i_dyn_ka=50.0,
+            i_th_ka=20.0,
+            i_th_duration_s=1.0,
+            i_peak_calculated_ka=i_peak,
+            i_thermal_calculated_ka=12.5,
+            t_clearing_s=t_clearing,
+            zakres_opis_pl="Pole P-1: prądy zwarcia z biegu MAX w punkcie zabudowy pola.",
+        )
+        return rekord_json(
+            wymaganie_wytrzymalosci_aparatu(
+                wymaganie_id="aparatura.field/x/in.aparat/01",
+                nazwa_pl="Wytrzymałość zwarciowa i zdolność wyłączania aparatu „Aparat pola SN 1”",
+                oceny=oceny,
+                # Zakres agregatu = zakres składników (te same wykluczenia).
+                zakres=oceny[0].zakres_waznosci,
+            )
+        )
+
+    return {
+        "spelnione_na_liczbach": _w(31.2, 0.5),
+        "przekroczenie_dynamiczne": _w(62.0, 0.5),
+        "bez_czasu_wylaczenia": _w(31.2, None),
+    }
+
+
 #: Plik fixtury frontu → funkcja budująca jego treść.
 FIXTURY: dict[Path, Any] = {
     _FRONTEND_SRC / "ui2" / "oze" / "frt" / "__tests__" / "rekordyOceny.json": _frt,
@@ -620,6 +787,19 @@ FIXTURY: dict[Path, Any] = {
     / "pulpit"
     / "__tests__"
     / "widokAdekwatnosciQ.json": _adekwatnosc_q,
+    _FRONTEND_SRC
+    / "ui"
+    / "network-build"
+    / "station-der"
+    / "__tests__"
+    / "rekordyAudytu2.json": _audyt2,
+    _FRONTEND_SRC
+    / "ui2"
+    / "wyniki"
+    / "zwarcia"
+    / "aparatura"
+    / "__tests__"
+    / "rekordyWytrzymalosci.json": _wytrzymalosc_pol,
 }
 
 

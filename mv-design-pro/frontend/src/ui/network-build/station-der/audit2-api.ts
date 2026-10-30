@@ -24,7 +24,12 @@
  */
 
 import type { TypPunktuNeutralnego } from '../../../types/uziemienie';
-import type { DanaPrzyjeta } from '../../../ui2/wyniki/wzorzec/werdykt';
+import type {
+  DanaPrzyjeta,
+  OcenaKryterium,
+  StatusWerdyktu,
+  WynikWymagania,
+} from '../../../ui2/wyniki/wzorzec/werdykt';
 import type { DoziemienieSieci } from '../../results-inspector/types';
 
 /**
@@ -219,26 +224,35 @@ export async function fetchDeviceWithstandCatalog(): Promise<
   return getJson<readonly DeviceWithstandCatalogItem[]>(`${BASE}/device-withstand`);
 }
 
+/**
+ * Walidacja VT wobec uziemienia sieci — rekord K werdyktu wyjaśnialnego (`ocena`) i jego
+ * zdanie (`message_pl`). Karta WERDYKT-MIGRACJA-190: dawna flaga `ok` usunięta — ekran
+ * pokazuje etykietę rekordu (`EtykietaWerdyktu`), nigdy własnego „OK”.
+ */
 export interface VtGroundingValidationResponse {
-  readonly ok: boolean;
+  readonly ocena: OcenaKryterium;
   readonly message_pl: string;
 }
 
 /** Naprawa eng.20: walidacja VT vs typ uziemienia (backend). */
 export async function validateVtGroundingApi(args: {
-  readonly voltage_factor: number;
+  /** `null` — karta typu nie podaje współczynnika (backend: rekord „ocena niewykonana"). */
+  readonly voltage_factor: number | null;
   readonly grounding_type: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
 }): Promise<VtGroundingValidationResponse> {
   return postJson<VtGroundingValidationResponse>(`${BASE}/validate-vt-grounding`, args);
 }
 
+/**
+ * Walidacja wytrzymałości aparatu — rekord W (`wymaganie`, składowe K: dynamiczna i cieplna)
+ * i jego zdanie. Dawne flagi `ok` / `i_dyn_ok` / `i_th_ok` usunięte (WERDYKT-MIGRACJA-190).
+ */
 export interface DeviceWithstandValidationResponse {
-  readonly ok: boolean;
-  readonly i_dyn_ok: boolean;
-  readonly i_th_ok: boolean;
+  readonly wymaganie: WynikWymagania;
   readonly message_pl: string;
-  readonly utilization_dyn_percent: number;
-  readonly utilization_th_percent: number;
+  readonly i_th_effective_ka: number | null;
+  readonly utilization_dyn_percent: number | null;
+  readonly utilization_th_percent: number | null;
 }
 
 /** Naprawa eng.18: walidacja I_dyn / I_th aparatury (backend, IEC 60909). */
@@ -251,28 +265,17 @@ export async function validateDeviceWithstandApi(args: {
   return postJson<DeviceWithstandValidationResponse>(`${BASE}/validate-device-withstand`, args);
 }
 
-export interface HostingCapacityExportResponse {
+/** Szczegóły dowodu bilansu eksportu stacji (`details` rodzaju AUDIT2_HOSTING_CAPACITY_EXPORT). */
+export interface SzczegolyDowoduEksportu {
   readonly station_id: string;
   readonly p_export_kw: number;
   readonly p_import_kw: number;
   readonly p_net_export_kw: number;
-  /** `null` przy imporcie zerowym — stosunek nie istnieje (karta PROOFPACK-KONTRAKT). */
-  readonly export_to_import_ratio: number | null;
-  readonly status: 'no_export' | 'normal_export' | 'high_export_warning' | 'requires_ramp_down';
-  readonly message_pl: string;
 }
 
-/** Naprawa eng.15: walidacja eksportu vs import (backend). */
-export async function validateHostingCapacityExportApi(args: {
-  readonly station_id: string;
-  readonly p_export_kw: number;
-  readonly p_import_kw: number;
-}): Promise<HostingCapacityExportResponse> {
-  return postJson<HostingCapacityExportResponse>(
-    `${BASE}/validate-hosting-capacity-export`,
-    args,
-  );
-}
+// Klient `validateHostingCapacityExportApi` usunięty (WERDYKT-MIGRACJA-190): nie miał
+// konsumenta w ścieżce użytkownika — bilans eksportu stacji niesie pakiet dowodów projektu
+// (`generateProjectAudit2ProofPack`, rodzaj AUDIT2_HOSTING_CAPACITY_EXPORT).
 
 // =============================================================================
 // Station config persistence (Punkt 3 Phase 2)
@@ -463,7 +466,9 @@ export interface Audit2Proof {
   readonly proof_type: Audit2ProofType;
   /** Polska nazwa rodzaju dowodu (backend, jedno źródło etykiet). */
   readonly rodzaj_pl: string;
-  readonly pass_status: boolean;
+  /** Rekord W dowodu (status, etykieta, składowe K i wyjaśnienie) — jedyny nośnik oceny. */
+  readonly wymaganie: WynikWymagania;
+  /** Zdanie rekordu W. */
   readonly summary_pl: string;
   readonly details: Record<string, unknown>;
   readonly formulas_latex: readonly string[];
@@ -482,8 +487,8 @@ export interface Audit2ProofPackResponse {
   readonly station_id: string;
   /** Nazwa stacji z modelu (albo „Stacja spoza modelu") — ekran nigdy nie pokazuje id. */
   readonly station_nazwa: string;
-  readonly all_pass: boolean;
-  readonly fail_count: number;
+  /** Liczba dowodów według statusu rekordu W — zestawienie, nie werdykt pakietu. */
+  readonly liczby_statusow: Readonly<Partial<Record<StatusWerdyktu, number>>>;
   readonly proof_count: number;
   readonly proofs: readonly Audit2Proof[];
   readonly braki_danych: readonly Audit2BrakDanych[];
@@ -493,7 +498,8 @@ export interface Audit2ProofPackResponse {
 /** Pakiety dowodów KAŻDEJ stacji z zapisaną konfiguracją projektu. */
 export interface Audit2ProjectProofPackResponse {
   readonly project_id: string;
-  readonly all_pass: boolean;
+  /** Suma zestawień statusów stacji — zestawienie, nie werdykt projektu. */
+  readonly liczby_statusow: Readonly<Partial<Record<StatusWerdyktu, number>>>;
   readonly station_count: number;
   readonly per_station: readonly Audit2ProofPackResponse[];
 }

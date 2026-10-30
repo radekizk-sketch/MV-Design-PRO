@@ -20,7 +20,13 @@ Wartosci ponizej sa TWARDYMI literalami; nie sa liczone w tescie ta sama formula
 (to byloby kolem w argumentacji). Zmiana implementacji backendu zapala ten test.
 
 USUNIECIE TORU BACKENDU (bramka 3 karty K7-B) — skasowanie / zmiana
-`validate_device_withstand` natychmiast czyni ten test czerwonym.
+`ocen_aparat_katalogu_wytrzymalosci` natychmiast czyni ten test czerwonym.
+
+REKORDY ZAMIAST FLAG (karta WERDYKT-MIGRACJA-190, 2026-10). Dawny slownik
+`ok` / `i_dyn_ok` / `i_th_ok` / `message_pl: "OK: …"` zastapily rekordy werdyktu
+wyjasnialnego: K dynamiczny, K cieplny i W nad nimi (`network_model/catalog/
+audit2_oceny.py`). Parytet liczbowy pozostal ten sam: kolumny `i_dyn_ok` / `i_th_ok`
+sa teraz statusami rekordow K (SPELNIA / NIE_SPELNIA), wykorzystanie — te same liczby.
 
 AKTUALIZACJA WARTOSCI I_dyn (karta K-Q, 2026-08-14) — UCZCIWIE O ZMIANIE.
 Do karty K-Q ten plik deklarowal, ze przeniesienie rachunku „nie moze zmienic ANI
@@ -51,8 +57,13 @@ import pytest
 from network_model.catalog.audit2_catalogs import (
     DEVICE_WITHSTAND_CATALOG,
     get_device_withstand,
-    validate_device_withstand,
 )
+from network_model.catalog.audit2_oceny import ocen_aparat_katalogu_wytrzymalosci
+
+
+def _status(spelniony: bool) -> str:
+    return "SPELNIA" if spelniony else "NIE_SPELNIA"
+
 
 # (opis, device_id, I_peak [kA], I_th obl [kA], t_clearing [s],
 #  ok, i_dyn_ok, i_th_ok, wykorzystanie I_dyn [%], wykorzystanie I_th [%])
@@ -161,17 +172,24 @@ def test_parytet_z_rachunkiem_ktory_byl_w_ui(
     util_dyn: float,
     util_th: float,
 ) -> None:
-    result = validate_device_withstand(
+    ocena = ocen_aparat_katalogu_wytrzymalosci(
         device_id=device_id,
         i_peak_calculated_ka=i_peak,
         i_thermal_calculated_ka=i_th,
         t_clearing_s=t_clearing,
     )
-    assert result["ok"] is ok, opis
-    assert result["i_dyn_ok"] is i_dyn_ok, opis
-    assert result["i_th_ok"] is i_th_ok, opis
-    assert result["utilization_dyn_percent"] == pytest.approx(util_dyn, rel=0, abs=1e-9), opis
-    assert result["utilization_th_percent"] == pytest.approx(util_th, rel=0, abs=1e-9), opis
+    assert ocena is not None, opis
+    assert ocena.dynamiczna.status_maszynowy == _status(i_dyn_ok), opis
+    assert ocena.cieplna.status_maszynowy == _status(i_th_ok), opis
+    # Rekord W: naruszenie którejkolwiek składowej ⇒ NIE_SPELNIA; obie spełnione na liczbach
+    # ⇒ rozstrzygnięcie pozytywne z dowodem niepełnym (zdolność UNVALIDATED_MODEL), nigdy
+    # „spełnia” bez zastrzeżenia.
+    if ok:
+        assert ocena.wymaganie.status_maszynowy == "BRAK_DOWODU", opis
+    else:
+        assert ocena.wymaganie.status_maszynowy == "NIE_SPELNIA", opis
+    assert ocena.utilization_dyn_percent == pytest.approx(util_dyn, rel=0, abs=1e-9), opis
+    assert ocena.utilization_th_percent == pytest.approx(util_th, rel=0, abs=1e-9), opis
 
 
 def test_katalog_ma_te_same_identyfikatory_co_zniesiona_kopia_w_ui() -> None:
@@ -212,36 +230,40 @@ def test_dane_znamionowe_zgodne_z_kopia_z_ui() -> None:
 
 
 def test_brak_aparatu_w_katalogu_daje_uczciwy_brak_a_nie_zgodnosc() -> None:
-    result = validate_device_withstand(
-        device_id="wstd_nie_istnieje",
+    """Pozycji spoza katalogu nie da się ocenić — funkcja mówi to jawnie (``None``), a nie
+    oceną; końcówka HTTP odpowiada 404 z opisem, pakiet dowodów — brakiem danych."""
+    assert (
+        ocen_aparat_katalogu_wytrzymalosci(
+            device_id="wstd_nie_istnieje",
+            i_peak_calculated_ka=50.0,
+            i_thermal_calculated_ka=20.0,
+            t_clearing_s=1.0,
+        )
+        is None
+    )
+
+
+def test_komunikat_jest_zdaniem_rekordu_po_polsku() -> None:
+    """`message_pl` pokazywany na karcie zabezpieczeń to zdanie rekordu W — z liczbami,
+    limitem i podstawą, bez słów „OK” / „BLOKER” (karta WERDYKT-MIGRACJA-190)."""
+    zgodny = ocen_aparat_katalogu_wytrzymalosci(
+        device_id="wstd_breaker_vacuum_15_25",
         i_peak_calculated_ka=50.0,
         i_thermal_calculated_ka=20.0,
         t_clearing_s=1.0,
     )
-    assert result["ok"] is False
-    assert "Brak aparatury w katalogu" in result["message_pl"]
-    # Karta PROOFPACK-KONTRAKT: zdanie dla człowieka nie powtarza identyfikatora pozycji.
-    assert "wstd_nie_istnieje" not in result["message_pl"]
-
-
-def test_komunikat_jest_po_polsku_z_diakrytykami() -> None:
-    """`message_pl` jest tekstem POKAZYWANYM na karcie zabezpieczen — od K7-B
-    ekran nie sklada juz wlasnego zdania, tylko wyswietla odpowiedz backendu."""
-    ok_msg = validate_device_withstand(
-        device_id="wstd_breaker_vacuum_15_25",
-        i_peak_calculated_ka=50.0,
-        i_thermal_calculated_ka=20.0,
-        t_clearing_s=1.0,
-    )["message_pl"]
-    assert "wytrzymała" in ok_msg
-    assert "wykorzystanie I_dyn 80%" in ok_msg
-
-    bloker_msg = validate_device_withstand(
+    naruszony = ocen_aparat_katalogu_wytrzymalosci(
         device_id="wstd_breaker_vacuum_15_25",
         i_peak_calculated_ka=70.0,
         i_thermal_calculated_ka=60.0,
         t_clearing_s=1.0,
-    )["message_pl"]
-    assert bloker_msg.startswith("BLOKER:")
-    assert "przekroczenie wytrzymałości dynamicznej" in bloker_msg
-    assert "przekroczenie wytrzymałości cieplnej" in bloker_msg
+    )
+    assert zgodny is not None and naruszony is not None
+    for ocena in (zgodny, naruszony):
+        slownik = ocena.to_dict()
+        assert slownik["message_pl"] == ocena.wymaganie.wyjasnienie.zdanie_pl
+        assert not slownik["message_pl"].startswith(("OK", "BLOKER"))
+        assert "IEC 62271-1" in slownik["message_pl"]
+    assert "62,5 kA" in zgodny.dynamiczna.wyjasnienie.zdanie_pl
+    assert "nie jest spełnione" in naruszony.wymaganie.wyjasnienie.zdanie_pl
+    assert {o.status_maszynowy for o in naruszony.wymaganie.oceny_skladowe} == {"NIE_SPELNIA"}

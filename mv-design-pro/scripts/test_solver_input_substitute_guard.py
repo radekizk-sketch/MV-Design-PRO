@@ -2117,7 +2117,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zdan zdolnosci wylaczania) i `swz_wymaganie` (rekord W SWZ w wejsciu dowodu obwodu nN);
     # -5: `kombinacja_status`, `goly_aparat_status`, `zdanie_kombinacja_pl`,
     # `zdanie_goly_aparat_pl` (zdania i statusy czytane z rekordow) oraz `swz_status`.
-    assert "Pol kontraktow wejsciowych: 4508." in wyjscie, wyjscie
+    # Ta sama karta, domena 8 (audyt 2): 4508 -> 4512 — POMIAR `contract_fields()` na
+    # `79a9aa475` (4508) i na drzewie karty (4512). +5: `dynamiczna`, `cieplna` (rekordy K
+    # wytrzymalosci aparatu w `network_model/catalog/audit2_oceny.py`), `i_th_effective_ka`,
+    # `utilization_dyn_percent`, `utilization_th_percent` (liczby walidatora wytrzymalosci
+    # podawane obok rekordu W); -1: `pass_status` (dowod audytu 2 niesie rekord W `wymaganie`).
+    assert "Pol kontraktow wejsciowych: 4512." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2444,7 +2449,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `network_model/solvers/equipment_checks/oceny.py`, +1
         # `application/reference_patterns/oceny.py` — budowniczowie rekordow K werdyktu
         # wyjasnialnego). POMIAR guardem na `b1e677ced` (604) i na drzewie karty (606).
-        "Przeskanowano 606 plikow w zakresie: network_model, solver_input, enm, "
+        # Ta sama karta, domena 8 (audyt 2): 606 -> 607 (+1 `network_model/catalog/
+        # audit2_oceny.py` — rekordy K/W audytu 2). POMIAR guardem na drzewie karty (607).
+        "Przeskanowano 607 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2673,7 +2680,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # 10/67 -> 10/65 (dwa wpisy koordynacji izolacji `v126_academic.py` zdjete). POMIAR.
         # Karta WERDYKT-MIGRACJA-190 (2026-10-30): 196 -> 197 (+1
         # `solvers/equipment_checks/oceny.py`); dlug BEZ ZMIAN. POMIAR guardem.
-        "  network_model: pliki_skanowane=197, dlug=10 plikow/suma 65, "
+        # Ta sama karta, domena 8: 197 -> 198 (+1 `catalog/audit2_oceny.py`); dlug BEZ ZMIAN.
+        "  network_model: pliki_skanowane=198, dlug=10 plikow/suma 65, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

@@ -11,22 +11,24 @@ import type {
   Audit2ProjectProofPackResponse,
   Audit2ProofPackResponse,
 } from '../network-build/station-der';
-import { auditProofPackStatus } from './routerPureHelpers';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../ui2/wyniki/wzorzec/KartaWerdyktu';
 
+/**
+ * Pakiet jednej stacji. Karta WERDYKT-MIGRACJA-190: ekran nie wydaje własnego werdyktu
+ * pakietu („Weryfikacja pozytywna” / „Wymaga sprawdzenia” z flagi `all_pass`) i nie koloruje
+ * dowodu z flagi `pass_status` — każdy dowód pokazuje etykietę SWOJEGO rekordu W
+ * (`EtykietaWerdyktu`), zdanie rekordu i pełny rekord do rozwinięcia (`KartaWerdyktu`).
+ * Agregat nie zastępuje składników; brak danych jest osobną pozycją, nigdy zgodnością.
+ */
 function PakietStacji({ pakiet }: { pakiet: Audit2ProofPackResponse }): JSX.Element {
-  const status = auditProofPackStatus(pakiet);
   return (
     <div
       data-testid="audit2-pakiet-stacji"
       data-station-name={pakiet.station_nazwa}
       className="space-y-1 rounded border border-slate-200 bg-white p-2"
     >
-      <div className="text-xs">
-        <strong>{pakiet.station_nazwa}</strong>{' '}
-        <span data-testid="audit2-pakiet-status" className={status.className}>
-          {status.label}
-        </span>{' '}
-        · {pakiet.proof_count} dowodów, {pakiet.fail_count} pozycji kontroli,{' '}
+      <div className="text-xs" data-testid="audit2-pakiet-naglowek">
+        <strong>{pakiet.station_nazwa}</strong> · {pakiet.proof_count} dowodów,{' '}
         {pakiet.braki_danych.length} braków danych.
       </div>
       {pakiet.proofs.map((dowod) => (
@@ -34,14 +36,25 @@ function PakietStacji({ pakiet }: { pakiet: Audit2ProofPackResponse }): JSX.Elem
           key={dowod.proof_id}
           data-testid="audit2-proof"
           data-proof-type={dowod.proof_type}
-          className={
-            'rounded border px-2 py-1 text-[11px] '
-            + (dowod.pass_status
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-              : 'border-rose-300 bg-rose-50 text-rose-800')
-          }
+          data-status={dowod.wymaganie.status_maszynowy}
+          className="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-800"
         >
-          <span className="font-medium">{dowod.rodzaj_pl}</span>: {dowod.summary_pl}
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium">{dowod.rodzaj_pl}</span>
+            <EtykietaWerdyktu
+              etykieta={dowod.wymaganie.etykieta}
+              status={dowod.wymaganie.status_maszynowy}
+              testid="audit2-proof-etykieta"
+              zwarta
+            />
+          </div>
+          <div className="mt-0.5">{dowod.wymaganie.wyjasnienie.zdanie_pl}</div>
+          <details data-testid="audit2-proof-rekord" className="mt-1">
+            <summary className="cursor-pointer text-slate-600">Pełny rekord dowodu</summary>
+            <div className="mt-1">
+              <KartaWerdyktu rekord={dowod.wymaganie} naglowek={dowod.rodzaj_pl} />
+            </div>
+          </details>
         </div>
       ))}
       {pakiet.braki_danych.map((brak, indeks) => (

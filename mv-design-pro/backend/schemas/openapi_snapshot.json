@@ -16360,8 +16360,15 @@
       "type": "string"
      },
      "voltage_factor": {
-      "title": "Voltage Factor",
-      "type": "number"
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Voltage Factor"
      }
     },
     "required": [
@@ -33014,7 +33021,7 @@
   },
   "/api/v1/catalog/audit2/validate-device-withstand": {
    "post": {
-    "description": "Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909).",
+    "description": "Naprawa eng.18: wytrzymałość I_dyn / I_th aparatury z katalogu (rekordy K i W).",
     "operationId": "validate_device_withstand_endpoint_api_v1_catalog_audit2_validate_device_withstand_post",
     "requestBody": {
      "content": {
@@ -33058,7 +33065,7 @@
   },
   "/api/v1/catalog/audit2/validate-hosting-capacity-export": {
    "post": {
-    "description": "Naprawa eng.15: walidacja eksportu vs import dla stacji.",
+    "description": "Naprawa eng.15: eksport netto stacji wobec granicy zdolności przyłączeniowej (rekord K).\n\nGranica eksportu wynika z warunków przyłączenia OSD, których model nie niesie — eksport\nnetto daje ``BRAK_PODSTAWY`` z wynikiem informacyjnym, brak eksportu — ``NIE_DOTYCZY``.",
     "operationId": "validate_hosting_capacity_export_endpoint_api_v1_catalog_audit2_validate_hosting_capacity_export_post",
     "requestBody": {
      "content": {
@@ -33102,7 +33109,7 @@
   },
   "/api/v1/catalog/audit2/validate-vt-grounding": {
    "post": {
-    "description": "Naprawa eng.20: walidacja VT voltage_factor vs typ uziemienia.",
+    "description": "Naprawa eng.20: współczynnik napięciowy VT wobec sposobu uziemienia sieci (rekord K).",
     "operationId": "validate_vt_grounding_api_v1_catalog_audit2_validate_vt_grounding_post",
     "requestBody": {
      "content": {

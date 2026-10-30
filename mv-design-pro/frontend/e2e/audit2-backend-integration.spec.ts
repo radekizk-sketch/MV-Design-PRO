@@ -14,12 +14,14 @@
  *   G. GET block-transformers: 5 pozycji (PV/BESS/FW)
  *   H. (usuniety — dawny katalog „MV neutral groundings" skasowany kartą UX-04/POLE-ZU-
  *      SKLADOWA-ZEROWA; uziemienie sieci SN opisuje zespół uziemiający sekcji)
- *   I. POST validate-vt-grounding: petersen 1.5 -> FAIL
- *   J. POST validate-vt-grounding: petersen 1.9 -> OK
- *   K. POST validate-device-withstand: I_dyn 50 ka -> OK
- *   L. POST validate-device-withstand: I_dyn 70 kA -> FAIL
- *   M. POST validate-hosting-capacity-export: ratio 1.2 -> normal
- *   N. POST validate-hosting-capacity-export: ratio 5 -> requires_ramp_down
+ *   I. POST validate-vt-grounding: petersen 1.5 -> rekord K NIE_SPELNIA
+ *   J. POST validate-vt-grounding: petersen 1.9 -> rekord K SPELNIA
+ *   K. POST validate-device-withstand: I_dyn 50 kA -> rekord W BRAK_DOWODU (K spełnione)
+ *   L. POST validate-device-withstand: I_dyn 70 kA -> rekord W NIE_SPELNIA
+ *   M. POST validate-hosting-capacity-export: eksport netto -> rekord BRAK_PODSTAWY
+ *      (granica z warunków OSD nie jest w modelu; dawne progi 0,8/1,5/3,0 usunięte)
+ *   N. POST validate-hosting-capacity-export: brak eksportu -> rekord NIE_DOTYCZY
+ *   (karta WERDYKT-MIGRACJA-190: rekordy werdyktu wyjaśnialnego zamiast flag `ok`/`status`)
  *   O. POST build-station-payload: deterministic z DERs
  *   P. Pakiet dowodow walidacji rozszerzen na sciezce PRODUKTU: projekt + model sieci
  *      (operacje domenowe + zrodlo BESS) + konfiguracja stacji przez API + bieg rozplywu
@@ -168,25 +170,26 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(mvToMv).toEqual([]);
   });
 
-  test('I. validate-vt-grounding petersen 1.5 -> FAIL', async ({ request }) => {
+  test('I. validate-vt-grounding petersen 1.5 -> NIE_SPELNIA', async ({ request }) => {
     const res = await request.post(
       `${BACKEND_BASE}/api/v1/catalog/audit2/validate-vt-grounding`,
       { data: { voltage_factor: 1.5, grounding_type: 'petersen_coil' } },
     );
     const body = await res.json();
-    expect(body.ok).toBeFalsy();
+    expect(body.ocena.status_maszynowy).toBe('NIE_SPELNIA');
+    expect(body.message_pl).toBe(body.ocena.wyjasnienie.zdanie_pl);
   });
 
-  test('J. validate-vt-grounding petersen 1.9 -> OK', async ({ request }) => {
+  test('J. validate-vt-grounding petersen 1.9 -> SPELNIA', async ({ request }) => {
     const res = await request.post(
       `${BACKEND_BASE}/api/v1/catalog/audit2/validate-vt-grounding`,
       { data: { voltage_factor: 1.9, grounding_type: 'petersen_coil' } },
     );
     const body = await res.json();
-    expect(body.ok).toBeTruthy();
+    expect(body.ocena.status_maszynowy).toBe('SPELNIA');
   });
 
-  test('K. validate-device-withstand 50 kA peak -> OK', async ({ request }) => {
+  test('K. validate-device-withstand 50 kA peak -> kryteria spełnione', async ({ request }) => {
     const res = await request.post(
       `${BACKEND_BASE}/api/v1/catalog/audit2/validate-device-withstand`,
       {
@@ -199,12 +202,15 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
       },
     );
     const body = await res.json();
-    expect(body.ok).toBeTruthy();
-    expect(body.i_dyn_ok).toBeTruthy();
-    expect(body.i_th_ok).toBeTruthy();
+    const statusy = body.wymaganie.oceny_skladowe.map(
+      (o: { status_maszynowy: string }) => o.status_maszynowy,
+    );
+    expect(statusy).toEqual(['SPELNIA', 'SPELNIA']);
+    // Zdolność bez walidacji: kryteria spełnione na liczbach, dowód niepełny.
+    expect(body.wymaganie.status_maszynowy).toBe('BRAK_DOWODU');
   });
 
-  test('L. validate-device-withstand 70 kA peak -> FAIL', async ({ request }) => {
+  test('L. validate-device-withstand 70 kA peak -> NIE_SPELNIA', async ({ request }) => {
     const res = await request.post(
       `${BACKEND_BASE}/api/v1/catalog/audit2/validate-device-withstand`,
       {
@@ -217,27 +223,28 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
       },
     );
     const body = await res.json();
-    expect(body.ok).toBeFalsy();
-    expect(body.i_dyn_ok).toBeFalsy();
+    expect(body.wymaganie.status_maszynowy).toBe('NIE_SPELNIA');
+    expect(body.wymaganie.oceny_skladowe[0].status_maszynowy).toBe('NIE_SPELNIA');
   });
 
-  test('M. validate-hosting-capacity ratio 1.2 -> normal_export', async ({ request }) => {
+  test('M. validate-hosting-capacity eksport netto -> BRAK_PODSTAWY', async ({ request }) => {
     const res = await request.post(
       `${BACKEND_BASE}/api/v1/catalog/audit2/validate-hosting-capacity-export`,
       { data: { station_id: 's1', p_export_kw: 1200, p_import_kw: 1000 } },
     );
     const body = await res.json();
-    expect(body.status).toBe('normal_export');
+    expect(body.ocena.status_maszynowy).toBe('BRAK_PODSTAWY');
+    expect(body.p_net_export_kw).toBe(200);
   });
 
-  test('N. validate-hosting-capacity ratio 5 -> requires_ramp_down', async ({ request }) => {
+  test('N. validate-hosting-capacity brak eksportu -> NIE_DOTYCZY', async ({ request }) => {
     const res = await request.post(
       `${BACKEND_BASE}/api/v1/catalog/audit2/validate-hosting-capacity-export`,
-      { data: { station_id: 's2', p_export_kw: 5000, p_import_kw: 1000 } },
+      { data: { station_id: 's2', p_export_kw: 500, p_import_kw: 1000 } },
     );
     const body = await res.json();
-    expect(body.status).toBe('requires_ramp_down');
-    expect(body.message_pl).toContain('ramp-down');
+    expect(body.ocena.status_maszynowy).toBe('NIE_DOTYCZY');
+    expect(body.message_pl).not.toContain('ramp-down');
   });
 
   test('O. build-station-payload deterministic z DERs', async ({ request }) => {
@@ -370,7 +377,7 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
       per_station: Array<{
         station_id: string;
         station_nazwa: string;
-        all_pass: boolean;
+        liczby_statusow: Record<string, number>;
         proofs: Array<{ proof_type: string; summary_pl: string }>;
         braki_danych: unknown[];
       }>;
@@ -386,7 +393,8 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
       ]),
     );
     expect(pakietStacji.braki_danych).toEqual([]);
-    expect(pakietStacji.all_pass).toBeTruthy();
+    // Zestawienie statusów rekordów W (nie werdykt zbiorczy): nic niespełnionego.
+    expect(pakietStacji.liczby_statusow.NIE_SPELNIA ?? 0).toBe(0);
     expect(pakietStacji.station_nazwa).toBe(stacja!.name);
 
     // Bieg rozpływu — karta „Pakiet dowodowy" huba Dokumentacji wymaga przebiegu.
@@ -406,7 +414,11 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     await expect(sekcjaStacji).toBeVisible({ timeout: 30000 });
     await expect(sekcjaStacji.getByTestId('audit2-proof')).toHaveCount(5);
     await expect(sekcjaStacji.getByTestId('audit2-brak-danych')).toHaveCount(0);
-    await expect(sekcjaStacji.getByTestId('audit2-pakiet-status')).toHaveText('Weryfikacja pozytywna');
+    // Każdy dowód pokazuje etykietę SWOJEGO rekordu W (status z pakietu backendu), bez
+    // werdyktu zbiorczego pakietu (karta WERDYKT-MIGRACJA-190).
+    await expect(sekcjaStacji.getByTestId('audit2-proof-etykieta')).toHaveCount(5);
+    await expect(sekcjaStacji.getByTestId('audit2-pakiet-status')).toHaveCount(0);
+    await expect(sekcjaStacji.locator('[data-testid="audit2-proof"][data-status="NIE_SPELNIA"]')).toHaveCount(0);
     const tekst = (await page.getByTestId('audit2-proof-result').textContent()) ?? '';
     expect(tekst).toContain('Magazyn E2E');
     expect(tekst).toContain('Tryby pracy magazynu energii');

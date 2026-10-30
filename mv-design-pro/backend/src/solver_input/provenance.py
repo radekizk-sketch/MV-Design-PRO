@@ -415,6 +415,46 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             ),
             audit_ref="karta E21-4; karta WERDYKT-MIGRACJA-190",
         ),
+        # Kontrole konfiguracji stacji audytu 2 (karta WERDYKT-MIGRACJA-190): rekordy werdyktu
+        # wyjaśnialnego składane w `network_model/catalog/audit2_oceny.py`.
+        CapabilityEvidence(
+            capability_id="audyt2.tryby_pracy_magazynu",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Tryby pracy magazynu energii wobec zdolności przekształtnika: porównanie "
+                "wymagań usługi z katalogu trybów (praca czterokwadrantowa, tworzenie "
+                "napięcia) z deklaracją zdolności z karty przekształtnika "
+                "(network_model/catalog/audit2_oceny.py). Deklaracja producenta nie jest "
+                "badaniem typu — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta AUDYT-2 A36; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="audyt2.plan_zaczepow",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Plan zaczepów transformatora: przeznaczenie przełącznika z katalogu wobec "
+                "klasy transformatora wyznaczonej z napięć modelu i wymóg regulacji "
+                "automatycznej z konfiguracji stacji (network_model/catalog/audit2_oceny.py). "
+                "Zakres i krok regulacji wobec profilu napięć nie są tu oceniane — wynik nie "
+                "jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta AUDYT-2 A36; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="audyt2.bilans_eksportu_stacji",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Bilans eksportu stacji: suma mocy znamionowych źródeł z konfiguracji stacji "
+                "minus moc odbiorów z modelu (stan pełnej generacji, bez profilu dobowego) "
+                "(network_model/catalog/audit2_oceny.py). Granicy eksportu z warunków "
+                "przyłączenia model nie niesie — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta AUDYT-2 A37; karta WERDYKT-MIGRACJA-190",
+        ),
         CapabilityEvidence(
             capability_id="przewod.wytrzymalosc_cieplna_zwarciowa",
             tier=EvidenceTier.UNVALIDATED_MODEL,

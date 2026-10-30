@@ -20,7 +20,7 @@
  */
 
 import type { PropozycjaWartosciRoboczej } from '../../../../ui/catalog/types';
-import type { OcenaKryterium } from '../../wzorzec/werdykt';
+import type { OcenaKryterium, WynikWymagania } from '../../wzorzec/werdykt';
 
 /** Pochodzenie wartości parametru aparatu — pierwszeństwo rozstrzyga backend (V12K-351). */
 export type PochodzenieWartosci = 'KATALOG' | 'PROJEKTANT' | 'PROPOZYCJA';
@@ -99,17 +99,6 @@ export interface PradyPola {
   readonly powod_pl: string | null;
 }
 
-/** Werdykt jądra K7-B. `null` w kryterium = brak podstawy, NIE ocena negatywna. */
-export interface WerdyktWytrzymalosci {
-  readonly ok: boolean;
-  readonly i_dyn_ok: boolean | null;
-  readonly i_th_ok: boolean | null;
-  readonly message_pl: string;
-  readonly utilization_dyn_percent: number | null;
-  readonly utilization_th_percent: number | null;
-  readonly i_th_effective_ka: number | null;
-}
-
 /** Jeden wiersz werdyktu: pole stacji + aparat + skąd ten aparat pochodzi. */
 export interface PoleWytrzymalosci {
   readonly pole: string;
@@ -125,7 +114,13 @@ export interface PoleWytrzymalosci {
   readonly znamiona: ZnamionaWytrzymalosci | null;
   readonly prady_pola: PradyPola;
   readonly czas_wylaczenia: CzasWylaczeniaPola;
-  readonly werdykt: WerdyktWytrzymalosci | null;
+  /**
+   * Rekord W wymagania wytrzymałości i zdolności wyłączania aparatu (składowe: rekordy K
+   * z `oceny`); `null` — aparat spoza katalogu albo brak prądu pola (przyczyna w
+   * `komunikat_pl`). Karta WERDYKT-MIGRACJA-190: dawny „werdykt jądra" z flagami
+   * `ok`/`i_dyn_ok`/`i_th_ok` usunięty — status i etykietę niesie rekord.
+   */
+  readonly wymaganie: WynikWymagania | null;
   /**
    * Rekordy K: kryterium dynamiczne, cieplne i zdolności wyłączania (puste dla aparatu spoza
    * katalogu). Rekord wyłączania nazywa porównaną wielkość (Ib albo I″k) i jej normę.
@@ -170,23 +165,4 @@ export async function pobierzWytrzymaloscAparatury(
     );
   }
   return (await response.json()) as WidokWytrzymalosciAparatury;
-}
-
-/**
- * Znacznik maszynowy werdyktu: `true` / `false` / `nieustalone`.
- *
- * „Nieustalone" to NIE jest ocena negatywna — dostaje je wiersz bez werdyktu
- * (aparat spoza katalogu) oraz taki, w którym choć jedno kryterium zostało
- * nierozstrzygnięte (brak znamion albo brak czasu wyłączenia).
- *
- * Znacznik dotyczy WYTRZYMAŁOŚCI (I_dyn, I_th — werdykt jądra backendu). Zdolność wyłączania
- * (karta SC-IB-ITH-ZRODLA) jest osobnym rekordem K pokazanym kartą werdyktu: prezentacja nie
- * składa agregatu ze statusów maszynowych (kontrakt werdyktu wyjaśnialnego — agregat nie
- * zastępuje kryteriów składowych, a status nie steruje prezentacją).
- */
-export function znacznikWerdyktu(pole: PoleWytrzymalosci): string {
-  const werdykt = pole.werdykt;
-  if (werdykt === null) return 'nieustalone';
-  if (werdykt.i_dyn_ok === null || werdykt.i_th_ok === null) return 'nieustalone';
-  return String(werdykt.ok);
 }

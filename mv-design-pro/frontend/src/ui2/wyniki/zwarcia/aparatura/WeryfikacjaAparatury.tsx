@@ -38,10 +38,10 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { KartaWerdyktu } from '../../wzorzec';
+import { EtykietaWerdyktu } from '../../wzorzec/KartaWerdyktu';
 import { fmtCzas, fmtKA, fmtLiczba } from '../strings';
 import {
   pobierzWytrzymaloscAparatury,
-  znacznikWerdyktu,
   type PoleWytrzymalosci,
   type WartoscParametruAparatu,
 } from './api';
@@ -401,11 +401,20 @@ export function WeryfikacjaAparatury({
               key={`${w.pole_ref ?? w.pole}::${w.aparat_ref ?? w.aparat_catalog_ref}`}
               className="mvd-apar-werdykt"
               data-testid={`mvd-zwarcia-aparatura-pole-${w.pole}`}
-              // Znacznik maszynowy werdyktu: 'true' / 'false' / 'nieustalone'.
-              data-withstand-ok={znacznikWerdyktu(w)}
+              // Status maszynowy rekordu W albo `brak-danych` (aparat spoza katalogu, brak
+              // prądu pola) — kolor niesie etykieta rekordu, nie znacznik prezentacji.
+              data-status={w.wymaganie?.status_maszynowy ?? 'brak-danych'}
               data-zrodlo={w.zrodlo}
             >
               <span className="mvd-apar-pole mvd-num">{w.pole}</span>
+              {w.wymaganie !== null && (
+                <EtykietaWerdyktu
+                  etykieta={w.wymaganie.etykieta}
+                  status={w.wymaganie.status_maszynowy}
+                  testid={`mvd-zwarcia-aparatura-etykieta-${w.pole}`}
+                  zwarta
+                />
+              )}
               <span className="mvd-apar-komunikat">{w.komunikat_pl}</span>
               <span
                 className="mvd-apar-zrodlo"

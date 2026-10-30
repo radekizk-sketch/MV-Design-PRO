@@ -13,8 +13,8 @@ import {
   getStationAudit2Config,
   validateVtGroundingApi,
   validateDeviceWithstandApi,
-  validateHostingCapacityExportApi,
 } from '../audit2-api';
+import rekordyAudytu2 from './rekordyAudytu2.json';
 
 const originalFetch = global.fetch;
 
@@ -51,15 +51,17 @@ describe('audit2 API client', () => {
   it('validateVtGroundingApi POST z payload', async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ ok: false, message_pl: 'Wymaga U_th = 1.9' }),
+      json: async () => rekordyAudytu2.vt.nie_spelnia,
     });
 
     const res = await validateVtGroundingApi({
       voltage_factor: 1.5,
       grounding_type: 'isolated',
     });
-    expect(res.ok).toBe(false);
-    expect(res.message_pl).toContain('1.9');
+    // Rekord K z backendu (karta WERDYKT-MIGRACJA-190) — nie flaga `ok`.
+    expect(res.ocena.status_maszynowy).toBe('NIE_SPELNIA');
+    expect(res.message_pl).toBe(res.ocena.wyjasnienie.zdanie_pl);
+    expect(res.message_pl).toContain('1,9');
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/v1/catalog/audit2/validate-vt-grounding',
       expect.objectContaining({
@@ -100,28 +102,5 @@ describe('audit2 API client', () => {
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/v1/projects/project-1/audit2-station-config/stn%2Fe7ac9af3834811e633a6a98f1d3d4112%2Fstation',
     );
-  });
-
-  it('validateHostingCapacityExportApi parsuje wynik no_export', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        station_id: 's1',
-        p_export_kw: 500,
-        p_import_kw: 1000,
-        p_net_export_kw: -500,
-        export_to_import_ratio: 0.5,
-        status: 'no_export',
-        message_pl: 'Lokalna autokonsumpcja',
-      }),
-    });
-
-    const res = await validateHostingCapacityExportApi({
-      station_id: 's1',
-      p_export_kw: 500,
-      p_import_kw: 1000,
-    });
-    expect(res.status).toBe('no_export');
-    expect(res.p_net_export_kw).toBe(-500);
   });
 });

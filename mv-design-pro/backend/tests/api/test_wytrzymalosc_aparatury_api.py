@@ -223,7 +223,6 @@ def test_werdykty_powstaja_z_modelu_i_pradow_pola_z_biegu(klient: TestClient):
         wiersz = wiersze[pole["prady_pola"]["punkt_ref"]]
         assert pole["prady_pola"]["ip_ka"] == wiersz["ip_ka"]
         assert pole["prady_pola"]["ith_ka"] == wiersz["ith_ka"]
-        assert pole["werdykt"]["i_dyn_ok"] is True
         dynamiczna = _ocena(pole, "dynamiczna")
         assert dynamiczna["status_maszynowy"] == "SPELNIA"
         assert dynamiczna["kompletnosc_dowodu"] == "NIEPELNY"
@@ -410,8 +409,14 @@ def test_czas_z_nastaw_pola_z_czasem_wlasnym_roboczym(klient: TestClient):
     assert czas["czas_wlasny"]["pochodzenie"] == "PROPOZYCJA"
     assert czas["czas_wlasny"]["propozycja"]["rodzaj_zrodla"] == "PROFIL_URZADZENIA"
     assert "aparatura.brak_czasu_wlasnego_wylacznika" not in pole["kody_gotowosci"]
-    assert pole["werdykt"]["i_th_ok"] is True
-    assert "wartościach roboczych" in pole["komunikat_pl"]
+    assert _ocena(pole, "cieplna")["status_maszynowy"] == "SPELNIA"
+    # Ocena na wartościach roboczych nie udaje potwierdzonego dowodu: komunikat to zdanie
+    # rekordu W, którego status mówi „brak wystarczającego dowodu” (nie „spełnia”), a wartości
+    # robocze są w `dane_przyjete` rekordów K (zasada nr 4; karta WERDYKT-MIGRACJA-190 zastąpiła
+    # tym dawny dopisek do komunikatu „OK”).
+    assert pole["komunikat_pl"] == pole["wymaganie"]["wyjasnienie"]["zdanie_pl"]
+    assert pole["wymaganie"]["status_maszynowy"] == "BRAK_DOWODU"
+    assert "dowód jest niepełny" in pole["komunikat_pl"]
     cieplna = _ocena(pole, "cieplna")
     assert cieplna["status_maszynowy"] == "SPELNIA"
     assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
@@ -483,7 +488,7 @@ def test_wartosc_projektanta_zmienia_wynik_po_przeliczeniu(klient: TestClient):
     assert "aparat istniejący, tabliczka 5 kA" in (
         dane["prąd krótkotrwały wytrzymywany"]["powod_pl"]
     )
-    assert po["werdykt"]["i_th_ok"] is False
+    assert _ocena(po, "cieplna")["status_maszynowy"] == "NIE_SPELNIA"
 
     # Zdjęcie wartości projektanta: karta i propozycja wracają, wiązanie katalogowe też.
     galaz = _nadaj_wartosci(klient, case_id, aparat_ref, [])
@@ -628,6 +633,5 @@ def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient:
         assert pole["czas_wylaczenia"]["t_clearing_s"] is None
         assert "aparatura.czas_wylaczenia_nieustalony" in pole["kody_gotowosci"]
         # Kryterium dynamiczne rozstrzygnięte MIMO braku czasu.
-        assert pole["werdykt"]["i_dyn_ok"] is True
-        assert pole["werdykt"]["i_th_ok"] is None
+        assert _ocena(pole, "dynamiczna")["status_maszynowy"] == "SPELNIA"
         assert _ocena(pole, "cieplna")["status_maszynowy"] == "BRAK_PODSTAWY"

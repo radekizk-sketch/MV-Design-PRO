@@ -11,10 +11,12 @@
  * (IEC 60909) — czyli dokładnie ten sam układ, który przy przekładnikach
  * napięciowych dał ekran mówiący „zgodne” tam, gdzie backend mówił „niezgodne”.
  *
- * ZERO FIZYKI I ZERO KATALOGU W PREZENTACJI: werdykt pochodzi z
- * `POST /api/v1/catalog/audit2/validate-device-withstand`, komunikat jest
- * tekstem backendu. Ten plik nic nie liczy — pokazuje odpowiedź i uczciwie
- * nazywa stany, w których odpowiedzi nie ma.
+ * ZERO FIZYKI I ZERO KATALOGU W PREZENTACJI: ocena pochodzi z
+ * `POST /api/v1/catalog/audit2/validate-device-withstand` — rekord W werdyktu
+ * wyjaśnialnego (składowe K: dynamiczna i cieplna), pokazany etykietą rekordu
+ * (`EtykietaWerdyktu`) i jego zdaniem; kolor wiersza nie pochodzi już z flagi `ok`
+ * (karta WERDYKT-MIGRACJA-190). Ten plik nic nie liczy — pokazuje odpowiedź
+ * i uczciwie nazywa stany, w których odpowiedzi nie ma.
  */
 
 import { useEffect, useState } from 'react';
@@ -24,6 +26,7 @@ import {
   validateDeviceWithstandApi,
   type DeviceWithstandValidationResponse,
 } from '../../station-der/audit2-api';
+import { EtykietaWerdyktu } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 
 /** Dane pola potrzebne do sprawdzenia wytrzymałości (z konfiguracji stacji). */
 export interface PoleZAparatura {
@@ -135,7 +138,7 @@ export function WalidacjaWytrzymalosciAparaturySekcja({
           className="text-[11px] text-scada-alarm"
           data-testid="device-withstand-blad"
         >
-          {blad} Werdykt pochodzi z backendu — bez odpowiedzi nie ma podstawy do oceny.
+          {blad} Ocena pochodzi z backendu — bez odpowiedzi nie ma podstawy do oceny.
         </p>
       )}
       {blad === null && wiersze === null && (
@@ -148,20 +151,21 @@ export function WalidacjaWytrzymalosciAparaturySekcja({
           <div
             key={wiersz.bayDesignation}
             data-testid={`withstand-${wiersz.bayDesignation}`}
-            // Znacznik maszynowy werdyktu: `true` / `false` / `nieustalone`.
-            data-withstand-ok={
-              wiersz.odpowiedz === null ? 'nieustalone' : String(wiersz.odpowiedz.ok)
-            }
-            className={
-              'rounded border px-2 py-1 text-[11px] '
-              + (wiersz.odpowiedz === null
-                ? 'border-scada-border bg-scada-panel/40 text-scada-muted'
-                : wiersz.odpowiedz.ok
-                  ? 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz'
-                  : 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz')
-            }
+            // Status maszynowy rekordu W albo `brak-danych` (aparat spoza katalogu).
+            data-status={wiersz.odpowiedz?.wymaganie.status_maszynowy ?? 'brak-danych'}
+            className="rounded border border-scada-border px-2 py-1 text-[11px] text-scada-text"
           >
-            <span className="font-mono">{wiersz.bayDesignation}</span>
+            <span className="font-mono">{wiersz.bayDesignation}</span>{' '}
+            {wiersz.odpowiedz !== null ? (
+              <EtykietaWerdyktu
+                etykieta={wiersz.odpowiedz.wymaganie.etykieta}
+                status={wiersz.odpowiedz.wymaganie.status_maszynowy}
+                testid={`withstand-etykieta-${wiersz.bayDesignation}`}
+                zwarta
+              />
+            ) : (
+              <span className="text-scada-muted">brak danych</span>
+            )}
             {': '}
             {wiersz.komunikat}
           </div>

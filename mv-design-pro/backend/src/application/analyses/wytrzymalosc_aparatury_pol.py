@@ -14,8 +14,9 @@ konfiguracji. Zapisana konfiguracja pozostaje NADRZĘDNA tam, gdzie istnieje
 ``zrodlo``: ``model`` albo ``konfiguracja``.
 
 WARSTWA APLIKACJI — ZERO FIZYKI WŁASNEJ:
-  - porównanie I_dyn / I_th robi ``network_model.catalog.audit2_catalogs.
-    ocen_wytrzymalosc_aparatu`` (jądro werdyktu K7-B),
+  - definicje kryteriów I_dyn / I_th (norma, podstawa, opis, warunek) i reguła limitu
+    cieplnego pochodzą z ``network_model.catalog.audit2_oceny`` — jedne na system, wspólne
+    z oceną aparatu z katalogu wytrzymałości (karta WERDYKT-MIGRACJA-190),
   - znamiona pochodzą z katalogu (APARAT_SN albo katalog wytrzymałości),
   - prądy pochodzą z WYNIKU zapisanego biegu zwarciowego, PER POLE: wiersz zwarcia
     trójfazowego w punkcie zabudowy pola (szyna pola, przez ``enm.tor_pola.
@@ -33,7 +34,8 @@ predykat (``application.equipment_proof.wielkosc_wylaczania``), wspólny z dowod
 aparatury (karta SC-IB-ITH-ZRODLA); rekord nazywa porównaną wielkość i jej normę. Brak czasu
 wyłączenia z powodu braku MODELU (brak nastaw, wyłącznik poza polem) daje ``BRAK_PODSTAWY``
 kryterium cieplnego z nazwaną przyczyną, nigdy ``SPELNIA``; brak prądu pola w biegu daje
-``NIE_OCENIONO``.
+``NIE_OCENIONO``. Nad trzema rekordami K wiersz niesie rekord W (``wymaganie``) — jedyny
+nośnik statusu wiersza; ``komunikat_pl`` to zdanie tego rekordu.
 
 WARTOŚCI ROBOCZE (zasada nr 4, kontrakt werdyktu §3c, V12K-351). Brak parametru URZĄDZENIA w
 karcie (czas własny wyłącznika, I_k, t_k, I_p) nie blokuje oceny: znamiona i czas własny
@@ -47,7 +49,7 @@ daną przyjętą każdego kryterium, które go porównuje.
 
 ZERO FABRYKACJI: parametr, dla którego rejestr nie zna uzasadnionej propozycji (np. prąd
 krótkotrwały rozłącznika bezpiecznikowego — wytrzymałość zestawu wyznacza wkładka), daje
-„NIEUSTALONE" z kodem gotowości — nigdy werdykt negatywny. Brak danej to inny stan niż
+rekord nierozstrzygnięty z kodem gotowości — nigdy werdykt negatywny. Brak danej to inny stan niż
 „nie wytrzymuje".
 
 DETERMINIZM: pola sortowane po (oznaczenie, referencja aparatu); wiersze z
@@ -82,9 +84,20 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.pola import pola_stacji as pola_stacji_modelu
 from enm.rola_pola_sn import nazwa_roli_pola_sn
 from enm.tor_pola import szyna_raportowa
-from network_model.catalog.audit2_catalogs import (
-    get_device_withstand,
-    ocen_wytrzymalosc_aparatu,
+from network_model.catalog.audit2_catalogs import get_device_withstand
+from network_model.catalog.audit2_oceny import (
+    IEC_62271_1,
+    IEC_62271_1_WYDANIE,
+    OPIS_WYTRZYMALOSCI_CIEPLNEJ_PL,
+    OPIS_WYTRZYMALOSCI_DYNAMICZNEJ_PL,
+    PARAGRAF_ZNAMIENIA,
+    PODSTAWA_WYTRZYMALOSCI_CIEPLNEJ,
+    PODSTAWA_WYTRZYMALOSCI_DYNAMICZNEJ,
+    WARUNEK_WYTRZYMALOSCI_CIEPLNEJ_LATEX,
+    WARUNEK_WYTRZYMALOSCI_DYNAMICZNEJ_LATEX,
+    ZDOLNOSC_WYTRZYMALOSCI,
+    limit_cieplny_aparatu_ka,
+    wymaganie_wytrzymalosci_aparatu,
 )
 from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
 from network_model.catalog.wartosci_robocze import (
@@ -152,8 +165,6 @@ RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI: dict[str, bool] = {
 ZRODLO_MODEL = "model"
 ZRODLO_KONFIGURACJA = "konfiguracja"
 
-#: Zdolność w rejestrze dowodowym (``solver_input.provenance``).
-ZDOLNOSC_WYTRZYMALOSCI = "aparatura.wytrzymalosc_zwarciowa_pola"
 
 #: Rodzaj zwarcia, którego wiersz zasila ocenę wytrzymałości (największy prąd w sieci SN
 #: z punktem neutralnym izolowanym albo uziemionym przez impedancję — IEC 60909-0 § 1).
@@ -447,48 +458,9 @@ def _znamiona_z_katalogu_wytrzymalosci(device_id: str) -> tuple[dict[str, Any] |
 # Rekordy K werdyktu wyjaśnialnego (kontrakt: docs/domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md)
 # ---------------------------------------------------------------------------
 
-_IEC_62271_1 = "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza"
-_IEC_62271_1_WYDANIE = "2007"
-_IEC_60865_1 = "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków"
-_IEC_60865_1_WYDANIE = "2011"
-
-#: Jednostka redakcyjna normy aparatury dla każdej wielkości znamionowej.
-_PARAGRAF_ZNAMIENIA = {
-    "i_dyn": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
-    "i_th": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
-    "i_cu": (
-        "znamionowa zdolność wyłączania zwarciowa I_cu (wyłącznik SN: IEC 62271-100 § 4.101 "
-        "znamionowy prąd wyłączalny zwarciowy I_sc)"
-    ),
-}
-
-_PODSTAWA_DYNAMICZNA = PodstawaWymagania(
-    rodzaj="NORMA",
-    dokument=_IEC_62271_1,
-    wydanie=_IEC_62271_1_WYDANIE,
-    jednostka_redakcyjna=_PARAGRAF_ZNAMIENIA["i_dyn"],
-    status="WSKAZANE",
-    uwagi_pl=(
-        "aparat wytrzymuje dynamicznie zwarcie, gdy prąd udarowy w miejscu zabudowy nie "
-        "przekracza jego znamionowego prądu szczytowego wytrzymywanego"
-    ),
-)
-
-_PODSTAWA_CIEPLNA = PodstawaWymagania(
-    rodzaj="NORMA",
-    dokument=_IEC_60865_1,
-    wydanie=_IEC_60865_1_WYDANIE,
-    jednostka_redakcyjna=(
-        "wytrzymałość cieplna urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr oraz "
-        "I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr"
-    ),
-    status="WSKAZANE",
-    uwagi_pl=(
-        "prąd cieplny zastępczy zwarcia porównany z prądem krótkotrwałym aparatu "
-        "przeliczonym na czas wyłączenia; przy czasie krótszym od znamionowego limitem jest "
-        "sam prąd znamionowy (bez przeliczenia w górę)"
-    ),
-)
+# Definicje kryteriów wytrzymałości (norma, jednostki redakcyjne, podstawy, opisy, warunki) i
+# reguła limitu cieplnego są JEDNE na system — `network_model/catalog/audit2_oceny.py`, wspólne
+# z oceną aparatu z katalogu wytrzymałości (karta zabezpieczeń, pakiet dowodów audytu 2).
 
 _NIEPEWNOSC_POROWNANIA = Niepewnosc(
     nie_dotyczy=True,
@@ -513,7 +485,7 @@ def _podstawa_wartosci_roboczej(
         if propozycja["rodzaj_zrodla"] == "NORMA":
             return PodstawaWymagania(
                 rodzaj="NORMA",
-                dokument=_IEC_62271_1,
+                dokument=IEC_62271_1,
                 wydanie="2017",
                 jednostka_redakcyjna=str(propozycja["odniesienie"]),
                 status="WSKAZANE",
@@ -537,7 +509,7 @@ def _podstawa_wartosci_roboczej(
         rodzaj="ZALOZENIE_PROJEKTOWE",
         dokument=f"wartość nadana przez projektanta na elemencie modelu (aparat „{etykieta}”)",
         wydanie="bieżący stan modelu sieci",
-        jednostka_redakcyjna=f"{zapis['nazwa_pl']} — {_PARAGRAF_ZNAMIENIA[wielkosc]}",
+        jednostka_redakcyjna=f"{zapis['nazwa_pl']} — {PARAGRAF_ZNAMIENIA[wielkosc]}",
         status="WSKAZANE",
         uwagi_pl=zapis.get("powod_projektanta_pl") or "wartość robocza projektanta bez dokumentu",
     )
@@ -557,15 +529,15 @@ def _podstawa_znamienia(
             rodzaj="KATALOG_PRODUCENTA",
             dokument=f"karta katalogowa producenta pozycji „{etykieta}”",
             wydanie="pozycja katalogu aparatów SN programu",
-            jednostka_redakcyjna=_PARAGRAF_ZNAMIENIA[wielkosc],
+            jednostka_redakcyjna=PARAGRAF_ZNAMIENIA[wielkosc],
             status="WSKAZANE",
         )
     if pochodzenie == "referencyjny":
         return PodstawaWymagania(
             rodzaj="NORMA",
-            dokument=_IEC_62271_1,
-            wydanie=_IEC_62271_1_WYDANIE,
-            jednostka_redakcyjna=_PARAGRAF_ZNAMIENIA[wielkosc],
+            dokument=IEC_62271_1,
+            wydanie=IEC_62271_1_WYDANIE,
+            jednostka_redakcyjna=PARAGRAF_ZNAMIENIA[wielkosc],
             status="WSKAZANE",
             uwagi_pl=(
                 f"pozycja generyczna „{etykieta}” bez producenta — wartość z szeregu "
@@ -744,14 +716,11 @@ def _ocena_dynamiczna(
         kryterium_id=f"{kryterium_id}.dynamiczna",
         przedmiot=przedmiot,
         kryterium=Kryterium(
-            opis_pl=(
-                "Prąd udarowy zwarcia w punkcie zabudowy pola nie przekracza znamionowego "
-                "prądu szczytowego wytrzymywanego aparatu"
-            ),
-            warunek_latex=r"i_p \le I_{dyn}",
+            opis_pl=OPIS_WYTRZYMALOSCI_DYNAMICZNEJ_PL,
+            warunek_latex=WARUNEK_WYTRZYMALOSCI_DYNAMICZNEJ_LATEX,
             relacja="NIE_WIECEJ",
         ),
-        podstawa=_PODSTAWA_DYNAMICZNA,
+        podstawa=PODSTAWA_WYTRZYMALOSCI_DYNAMICZNEJ,
         stosowalnosc=_stosowalnosc_wytrzymalosci(
             znamiona, "aparat pola przewodzi prąd zwarcia w punkcie zabudowy pola"
         ),
@@ -838,14 +807,11 @@ def _ocena_cieplna(
         kryterium_id=f"{kryterium_id}.cieplna",
         przedmiot=przedmiot,
         kryterium=Kryterium(
-            opis_pl=(
-                "Prąd cieplny zastępczy zwarcia w punkcie zabudowy pola nie przekracza prądu "
-                "krótkotrwałego aparatu przeliczonego na czas wyłączenia zwarcia"
-            ),
-            warunek_latex=(r"I_{th} \le I_{thr}\sqrt{\min\left(1,\ \frac{T_{kr}}{T_k}\right)}"),
+            opis_pl=OPIS_WYTRZYMALOSCI_CIEPLNEJ_PL,
+            warunek_latex=WARUNEK_WYTRZYMALOSCI_CIEPLNEJ_LATEX,
             relacja="NIE_WIECEJ",
         ),
-        podstawa=_PODSTAWA_CIEPLNA,
+        podstawa=PODSTAWA_WYTRZYMALOSCI_CIEPLNEJ,
         stosowalnosc=_stosowalnosc_wytrzymalosci(
             znamiona, "aparat pola nagrzewa się prądem zwarcia do chwili jego wyłączenia"
         ),
@@ -1075,28 +1041,6 @@ def _dane_przyjete_czasu_tb(
     )
 
 
-def _dopisek_wartosci_roboczych(znamiona: dict[str, Any], czas: dict[str, Any]) -> str:
-    """Jedno zdanie komunikatu, gdy ocena stoi na wartościach roboczych (bez banera).
-
-    Werdykt jądra mówi „OK”/„BLOKER” z liczb; dopisek mówi, że liczby aparatu nie pochodzą
-    w całości z karty producenta — ocena jest obliczeniowa, nie potwierdzonym dowodem.
-    """
-    nazwy = [
-        str(zapis["nazwa_pl"])
-        for zapis in (
-            *(znamiona.get("wartosci") or {}).values(),
-            czas.get("czas_wlasny") if czas.get("t_clearing_s") is not None else None,
-        )
-        if isinstance(zapis, dict) and zapis.get("wartosc_robocza")
-    ]
-    if not nazwy:
-        return ""
-    return (
-        f" Ocena na wartościach roboczych ({', '.join(nazwy)}) — wynik obliczeniowy, nie "
-        "potwierdzony dowód zgodności."
-    )
-
-
 def _wiersz(
     *,
     oznaczenie: str,
@@ -1113,8 +1057,8 @@ def _wiersz(
     run_id: str,
 ) -> dict[str, Any]:
     kody: list[str] = list(prady.kody_gotowosci)
-    werdykt: dict[str, Any] | None = None
     oceny: list[dict[str, Any]] = []
+    wymaganie: dict[str, Any] | None = None
     komunikat: str
 
     if znamiona is None:
@@ -1136,23 +1080,15 @@ def _wiersz(
         if not znamiona["i_cu_nie_dotyczy"] and znamiona["i_cu_ka"] is None:
             kody.append(READINESS_BRAK_ZDOLNOSCI_WYLACZANIA)
         nazwa = etykieta or "pozycja katalogu aparatów bez nazwy"
-        limit_cieplny_ka: float | None = None
-        if znamiona.get("i_th_nie_dotyczy"):
-            komunikat = f"NIE DOTYCZY: aparatura „{nazwa}” — {_POWOD_WYTRZYMALOSC_NIE_DOTYCZY_PL}."
-        elif prady.ip_ka is not None and prady.ith_ka is not None:
-            werdykt = ocen_wytrzymalosc_aparatu(
-                etykieta_pl=nazwa,
-                i_dyn_ka=znamiona["i_dyn_ka"],
-                i_th_ka=znamiona["i_th_ka"],
-                i_th_duration_s=znamiona["i_th_duration_s"],
-                i_peak_calculated_ka=prady.ip_ka,
-                i_thermal_calculated_ka=prady.ith_ka,
-                t_clearing_s=czas.get("t_clearing_s"),
+        # Limit cieplny z JEDNEJ reguły (`audit2_oceny.limit_cieplny_aparatu_ka`) — ta sama,
+        # której używa ocena aparatu z katalogu wytrzymałości.
+        limit_cieplny_ka = (
+            None
+            if znamiona.get("i_th_nie_dotyczy")
+            else limit_cieplny_aparatu_ka(
+                znamiona["i_th_ka"], znamiona["i_th_duration_s"], czas.get("t_clearing_s")
             )
-            limit_cieplny_ka = werdykt["i_th_effective_ka"]
-            komunikat = str(werdykt["message_pl"]) + _dopisek_wartosci_roboczych(znamiona, czas)
-        else:
-            komunikat = f"NIEUSTALONE: aparatura „{nazwa}” — {prady.powod_pl or 'brak prądu pola'}"
+        )
         kryterium_id = f"aparatura.{pole_ref or oznaczenie}.{aparat_ref or catalog_ref}"
         przedmiot = _przedmiot(
             oznaczenie=oznaczenie,
@@ -1160,7 +1096,7 @@ def _wiersz(
             aparat_ref=aparat_ref,
             nazwa=aparat_nazwa or nazwa,
         )
-        oceny = [
+        rekordy = (
             _ocena_dynamiczna(
                 kryterium_id=kryterium_id,
                 przedmiot=przedmiot,
@@ -1168,7 +1104,7 @@ def _wiersz(
                 etykieta=nazwa,
                 prady=prady,
                 run_id=run_id,
-            ).model_dump(mode="json"),
+            ),
             _ocena_cieplna(
                 kryterium_id=kryterium_id,
                 przedmiot=przedmiot,
@@ -1178,7 +1114,7 @@ def _wiersz(
                 czas=czas,
                 limit_ka=limit_cieplny_ka,
                 run_id=run_id,
-            ).model_dump(mode="json"),
+            ),
             _ocena_wylaczania(
                 kryterium_id=kryterium_id,
                 przedmiot=przedmiot,
@@ -1186,8 +1122,21 @@ def _wiersz(
                 etykieta=nazwa,
                 prady=prady,
                 run_id=run_id,
-            ).model_dump(mode="json"),
-        ]
+            ),
+        )
+        # Rekord W pola nad trzema rekordami K — jedyny nośnik statusu wiersza; komunikat
+        # wiersza to jego zdanie (dawny słownik jądra `ok`/`message_pl: "OK: …"` usunięty,
+        # karta WERDYKT-MIGRACJA-190). Wartości robocze niesie rekord (dane przyjęte,
+        # kompletność NIEPELNY), nie dopisek tekstowy.
+        rekord_w = wymaganie_wytrzymalosci_aparatu(
+            wymaganie_id=kryterium_id,
+            nazwa_pl=f"Wytrzymałość zwarciowa i zdolność wyłączania aparatu „{przedmiot.nazwa_pl}”",
+            oceny=rekordy,
+            zakres=_zakres(prady),
+        )
+        oceny = [rekord.model_dump(mode="json") for rekord in rekordy]
+        wymaganie = rekord_w.model_dump(mode="json")
+        komunikat = rekord_w.wyjasnienie.zdanie_pl
 
     return {
         "pole": oznaczenie,
@@ -1204,7 +1153,7 @@ def _wiersz(
         "znamiona": znamiona,
         "prady_pola": prady.to_dict(),
         "czas_wylaczenia": czas,
-        "werdykt": werdykt,
+        "wymaganie": wymaganie,
         "oceny": oceny,
         "komunikat_pl": komunikat,
         "kody_gotowosci": kody,
@@ -1402,7 +1351,7 @@ def widok_wytrzymalosci_z_biegu(
 
     Prąd każdego pola z wiersza biegu dla jego punktu zabudowy; czas wyłączenia pola
     z nastaw jego zabezpieczenia przy TYM prądzie (``czasy_wylaczenia_pol_stacji``);
-    werdykty z jądra K7-B. Końcówka HTTP i testy wołają to samo złożenie.
+    rekordy K i W werdyktu wyjaśnialnego. Końcówka HTTP i testy wołają to samo złożenie.
     """
     prady = prady_pol_z_biegu(enm=enm, station_ref=station_ref, wiersze_biegu=wiersze_biegu)
     czasy = czasy_wylaczenia_pol_stacji(
