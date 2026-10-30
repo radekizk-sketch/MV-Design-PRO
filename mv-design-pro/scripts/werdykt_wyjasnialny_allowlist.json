@@ -159,21 +159,21 @@
    "sprawdzenie": "1_backend",
    "tozsamosc": "diagnostics.models:DiagnosticReport.status",
    "klasa": "ENUM_WEWNETRZNY",
-   "uzasadnienie_pl": "Inwentarz B20: 20. `diagnostics/models.py:23,40,77`, `engine.py:88-93`, `preflight.py:44-61,118`, `rules.py:386-399` — `DiagnosticStatus` {OK, WARN, FAIL}; `PreflightReport.ready`/`overall_status`; `AnalysisAvailability`; rule I-D01 \"model jest kompletny\". Issues carry code, message, refs, hints. Model-readiness gate. Reach: `/api/cases/{id}/diagnostics`, `/diagnostics/preflight`, `/execution/runs/{id}/diagnostics`; FE `ui/enm-inspector/DiagnosticsPanel` (OK/WARN/FAIL directly), `ui2/.../PanelDiagnozy`. Class: ENUM_WEWNETRZNY.",
+   "uzasadnienie_pl": "Inwentarz B20: `diagnostics/models.py:23`, `engine.py` krok 7 — `DiagnosticStatus` {OK, WARN, FAIL} to agregat wag zgłoszeń reguł diagnostyki modelu (jest blokada / jest ostrzeżenie / brak zgłoszeń), nie werdykt zgodności. Raport niesie obok wyjaśnienie: listę zgłoszeń (kod, waga, komunikat, elementy, wskazówki), liczniki i macierz dostępności analiz. Front nie tłumaczy już statusu na „Model poprawny” — nagłówek `ui/enm-inspector/naglowekDiagnostyki.ts` mówi, co wskazały reguły, a brak zgłoszeń ma ton neutralny (karta WERDYKT-MIGRACJA-190, E62). Klasa: ENUM_WEWNETRZNY.",
    "wiersz_inwentarza": "B20"
   },
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "diagnostics.preflight:PreflightCheckEntry.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B20 opisuje ten plik, nie ten symbol.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Dostępność analizy w macierzy pre-flight (AVAILABLE/BLOCKED), nie werdykt zgodności: bramka uruchomienia biegu wyprowadzona z kodów reguł diagnostyki. Wpis niesie wyjaśnienie obok statusu — `reason_pl` (zdanie z kodami) i `blocking_codes` (każdy kod tłumaczony na zdanie inżynierskie w `ui2/spaces/obliczenia/diagnoza/kodyDiagnozy.ts`); front renderuje etykietę dostępności z powodem, nigdy samego kodu. Karta WERDYKT-MIGRACJA-190 usunęła zbiorczą flagę `PreflightReport.ready` (mówiła „gotowy” przy zwarciu 1F zablokowanym E-D06) i związała regułę I-D01 z tą samą macierzą (test `TestInfoRules` w `tests/test_diagnostics_engine.py`). Klasa: ENUM_WEWNETRZNY.",
    "wiersz_inwentarza": "B20 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "diagnostics.preflight:PreflightReport.overall_status",
    "klasa": "ENUM_WEWNETRZNY",
-   "uzasadnienie_pl": "Inwentarz B20: 20. `diagnostics/models.py:23,40,77`, `engine.py:88-93`, `preflight.py:44-61,118`, `rules.py:386-399` — `DiagnosticStatus` {OK, WARN, FAIL}; `PreflightReport.ready`/`overall_status`; `AnalysisAvailability`; rule I-D01 \"model jest kompletny\". Issues carry code, message, refs, hints. Model-readiness gate. Reach: `/api/cases/{id}/diagnostics`, `/diagnostics/preflight`, `/execution/runs/{id}/diagnostics`; FE `ui/enm-inspector/DiagnosticsPanel` (OK/WARN/FAIL directly), `ui2/.../PanelDiagnozy`. Class: ENUM_WEWNETRZNY.",
+   "uzasadnienie_pl": "Inwentarz B20: `diagnostics/preflight.py` — kopia agregatu `DiagnosticReport.status` w odpowiedzi pre-flight, obok listy `checks` z dostępnością każdej analizy, powodem i kodami blokad oraz liczników. Zbiorcza flaga `ready` usunięta w karcie WERDYKT-MIGRACJA-190 (mówiła „gotowy” przy zablokowanym zwarciu 1F); żaden ekran nie renderuje `overall_status` (nagłówek macierzy liczy dostępne analizy z `checks`). Klasa: ENUM_WEWNETRZNY.",
    "wiersz_inwentarza": "B20"
   },
   {
@@ -308,13 +308,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Migawka OpenAPI pola stanu rachunku strat transformatora — enum wykonania rachunku bez kryterium (patrz api.equipment_checks:TransformerLossesResponse.status). Karta WERDYKT-MIGRACJA-190.",
    "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/enm-inspector/types.ts:STATUS_LABELS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E62 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E62"
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
@@ -546,13 +539,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz C26 (ENUM_WEWNETRZNY): koperta widoku łańcucha nN `status: \"OK\" / \"brak danych\" / \"nie dotyczy\"` to flaga dostępności danych (widok policzony albo czego brakuje — `missing_data`), nie ocena wobec kryterium; plan AB §8 F21.",
    "wiersz_inwentarza": "C26"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/enm-inspector/DiagnosticsPanel.tsx:StatusHeader.statusColor",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E62 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E62"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

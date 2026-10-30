@@ -52,7 +52,6 @@ export interface PreflightCheckEntry {
 }
 
 export interface PreflightReport {
-  ready: boolean;
   overall_status: string;
   checks: PreflightCheckEntry[];
   blocker_count: number;
@@ -109,12 +108,6 @@ export const SEVERITY_BG_COLORS: Record<DiagnosticSeverity, string> = {
   BLOCKER: 'bg-rose-50 border-rose-200',
   WARN: 'bg-amber-50 border-amber-200',
   INFO: 'bg-blue-50 border-blue-200',
-};
-
-export const STATUS_LABELS_PL: Record<DiagnosticStatus, string> = {
-  OK: 'Model poprawny',
-  WARN: 'Ostrzeżenia',
-  FAIL: 'Błędy blokujące',
 };
 
 export const ANALYSIS_LABELS_PL: Record<AnalysisType, string> = {

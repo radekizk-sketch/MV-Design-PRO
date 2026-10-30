@@ -22,7 +22,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .models import DiagnosticIssue, DiagnosticSeverity
+from .models import (
+    AnalysisAvailability,
+    AnalysisMatrix,
+    DiagnosticIssue,
+    DiagnosticSeverity,
+)
 
 if TYPE_CHECKING:
     from network_model.core.graph import NetworkGraph
@@ -384,15 +389,27 @@ def rule_w_d03_multiple_sources(graph: NetworkGraph) -> list[DiagnosticIssue]:
 
 
 def rule_i_d01_full_analysis_available(
-    blockers: list[DiagnosticIssue],
+    matrix: AnalysisMatrix,
 ) -> list[DiagnosticIssue]:
-    """I-D01: Analizy dostępne w pełnym zakresie."""
-    if not blockers:
+    """I-D01: macierz dostępności nie blokuje żadnej analizy.
+
+    Jedno źródło prawdy z macierzą (karta WERDYKT-MIGRACJA-190): dawniej reguła czytała same
+    blokady, a macierz blokowała zwarcie 1F także ostrzeżeniem E-D06 (brak Z0), więc raport
+    mówił „wszystkie analizy dostępne” obok zablokowanego zwarcia 1F. Komunikat nie twierdzi
+    też, że model jest kompletny — diagnostyka sprawdza tylko swoje reguły E-D/W-D.
+    """
+    if matrix.entries and all(
+        e.availability == AnalysisAvailability.AVAILABLE for e in matrix.entries
+    ):
         return [
             DiagnosticIssue(
                 code="I-D01",
                 severity=DiagnosticSeverity.INFO,
-                message_pl="Wszystkie analizy dostępne — model jest kompletny",
+                message_pl=(
+                    "Diagnostyka modelu nie blokuje żadnej analizy (zwarcie trójfazowe, "
+                    "zwarcie jednofazowe, rozpływ mocy, koordynacja zabezpieczeń); nie jest "
+                    "to ocena kompletności danych ani poprawności wyników"
+                ),
             )
         ]
     return []

@@ -11,9 +11,12 @@ Testy integracyjne: ENM → diagnostics → preflight
 
 from __future__ import annotations
 
+import pytest
 from diagnostics.engine import DiagnosticEngine
 from diagnostics.models import (
     AnalysisAvailability,
+    AnalysisMatrix,
+    AnalysisMatrixEntry,
     AnalysisType,
     DiagnosticSeverity,
     DiagnosticStatus,
@@ -83,6 +86,28 @@ def _make_valid_graph() -> NetworkGraph:
             x_ohm_per_km=0.39,
             length_km=10.0,
             rated_current_a=400.0,
+        )
+    )
+    return g
+
+
+def _make_graph_typed_lines() -> NetworkGraph:
+    """Graf poprawny z linią przypisaną do typu katalogowego (E-D06 milczy)."""
+    g = _make_valid_graph()
+    linia = g.branches["line-1"]
+    g.remove_branch("line-1")
+    g.add_branch(
+        LineBranch(
+            id=linia.id,
+            name=linia.name,
+            branch_type=BranchType.LINE,
+            from_node_id=linia.from_node_id,
+            to_node_id=linia.to_node_id,
+            r_ohm_per_km=0.12,
+            x_ohm_per_km=0.39,
+            length_km=10.0,
+            rated_current_a=400.0,
+            type_ref="YAKY-240",
         )
     )
     return g
@@ -622,23 +647,77 @@ class TestWarningRules:
 
 
 class TestInfoRules:
-    def test_i_d01_full_analysis_no_blockers(self):
-        issues = rule_i_d01_full_analysis_available([])
-        assert len(issues) == 1
-        assert issues[0].code == "I-D01"
+    """I-D01 czyta macierz dostępności — jedno źródło prawdy (karta WERDYKT-MIGRACJA-190).
 
-    def test_i_d01_no_info_with_blockers(self):
-        from diagnostics.models import DiagnosticIssue
+    Dawniej reguła czytała same blokady, a macierz blokowała zwarcie 1F także ostrzeżeniem E-D06,
+    więc raport sieci z liniami bez Z0 mówił „wszystkie analizy dostępne — model jest kompletny”.
+    Iloczyn: która analiza zablokowana (żadna, każda z czterech) × macierz pusta.
+    """
 
-        blockers = [
-            DiagnosticIssue(
-                code="E-D01",
-                severity=DiagnosticSeverity.BLOCKER,
-                message_pl="test",
+    @staticmethod
+    def _macierz(zablokowana: AnalysisType | None) -> AnalysisMatrix:
+        return AnalysisMatrix(
+            entries=tuple(
+                AnalysisMatrixEntry(
+                    analysis_type=t,
+                    availability=(
+                        AnalysisAvailability.BLOCKED
+                        if t == zablokowana
+                        else AnalysisAvailability.AVAILABLE
+                    ),
+                )
+                for t in AnalysisType
             )
-        ]
-        issues = rule_i_d01_full_analysis_available(blockers)
-        assert len(issues) == 0
+        )
+
+    def test_i_d01_gdy_zadna_analiza_nie_jest_zablokowana(self):
+        issues = rule_i_d01_full_analysis_available(self._macierz(None))
+        assert [i.code for i in issues] == ["I-D01"]
+        assert issues[0].severity == DiagnosticSeverity.INFO
+        # Komunikat nie twierdzi, że model jest kompletny ani poprawny.
+        assert "kompletny" not in issues[0].message_pl
+        assert "nie jest to ocena kompletności" in issues[0].message_pl
+
+    @pytest.mark.parametrize("zablokowana", list(AnalysisType))
+    def test_i_d01_brak_gdy_choc_jedna_analiza_zablokowana(self, zablokowana):
+        assert rule_i_d01_full_analysis_available(self._macierz(zablokowana)) == []
+
+    def test_i_d01_brak_dla_pustej_macierzy(self):
+        assert rule_i_d01_full_analysis_available(AnalysisMatrix()) == []
+
+    @pytest.mark.parametrize(
+        "budowniczy",
+        [
+            _make_empty_graph,
+            _make_valid_graph,
+            _make_graph_no_source,
+            _make_graph_voltage_mismatch,
+            _make_disconnected_graph,
+            _make_graph_zero_impedance,
+            _make_graph_with_transformer,
+            _make_graph_with_open_switch,
+            _make_graph_typed_lines,
+        ],
+    )
+    def test_i_d01_w_raporcie_wtedy_i_tylko_wtedy_gdy_macierz_nic_nie_blokuje(self, budowniczy):
+        raport = DiagnosticEngine().run(budowniczy())
+        wszystkie_dostepne = all(
+            e.availability == AnalysisAvailability.AVAILABLE for e in raport.analysis_matrix.entries
+        )
+        assert ("I-D01" in {i.code for i in raport.issues}) is wszystkie_dostepne
+
+    def test_siec_z_liniami_bez_z0_nie_melduje_wszystkich_analiz(self):
+        """Regresja: E-D06 (ostrzeżenie) blokuje zwarcie 1F — I-D01 nie może się pojawić."""
+        raport = DiagnosticEngine().run(_make_valid_graph())
+        assert "E-D06" in {i.code for i in raport.issues}
+        assert raport.analysis_matrix.get(AnalysisType.SC_1F).availability == (
+            AnalysisAvailability.BLOCKED
+        )
+        assert "I-D01" not in {i.code for i in raport.issues}
+
+    def test_siec_z_liniami_typowymi_melduje_brak_blokad(self):
+        raport = DiagnosticEngine().run(_make_graph_typed_lines())
+        assert "I-D01" in {i.code for i in raport.issues}
 
     def test_i_d02_radial_topology(self):
         g = _make_valid_graph()
@@ -811,14 +890,15 @@ class TestPreflight:
     def test_preflight_valid_graph(self):
         g = _make_valid_graph()
         pf = run_preflight(g)
-        assert pf.ready is True or pf.overall_status in ("OK", "WARN")
+        assert pf.overall_status in ("OK", "WARN")
+        assert "ready" not in pf.to_dict()
         assert len(pf.checks) == 4
 
     def test_preflight_blocked_graph(self):
         g = _make_graph_no_source()
         pf = run_preflight(g)
-        assert pf.ready is False
         assert pf.overall_status == "FAIL"
+        assert all(c.status == "BLOCKED" for c in pf.checks)
         assert pf.blocker_count > 0
 
     def test_preflight_from_report(self):
@@ -832,7 +912,7 @@ class TestPreflight:
         g = _make_valid_graph()
         pf = run_preflight(g)
         d = pf.to_dict()
-        assert "ready" in d
+        assert "ready" not in d  # karta WERDYKT-MIGRACJA-190: bez zbiorczej flagi gotowości
         assert "checks" in d
         assert isinstance(d["checks"], list)
         for check in d["checks"]:

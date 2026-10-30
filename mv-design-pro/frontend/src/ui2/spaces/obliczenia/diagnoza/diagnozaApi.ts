@@ -6,7 +6,7 @@
  *
  * - `GET /api/cases/{case_id}/diagnostics/preflight`
  *   `backend/src/api/diagnostics.py::get_preflight` →
- *   `diagnostics/preflight.py::PreflightReport.to_dict` (ready, overall_status,
+ *   `diagnostics/preflight.py::PreflightReport.to_dict` (overall_status,
  *   checks[analysis_type, analysis_label_pl, status, reason_pl, blocking_codes],
  *   blocker_count, warning_count).
  * - `GET /api/cases/{case_id}/diagnostics`
@@ -42,7 +42,6 @@ export interface KontrolaPrzedObliczeniem {
 
 /** Odpowiedź `GET /api/cases/{case_id}/diagnostics/preflight`. */
 export interface PreflightOdpowiedz {
-  readonly ready: boolean;
   readonly overall_status: string;
   readonly checks: readonly KontrolaPrzedObliczeniem[];
   readonly blocker_count: number;

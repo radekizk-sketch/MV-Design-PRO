@@ -19,7 +19,6 @@ export function preflightFixture(
   nadpisania: Partial<PreflightOdpowiedz> = {},
 ): PreflightOdpowiedz {
   return {
-    ready: true,
     overall_status: 'OK',
     checks: [
       {
@@ -46,7 +45,6 @@ export function preflightFixture(
 /** Pre-flight z blokadą — `reason_pl` WKLEJA kody, jak robi to backend. */
 export function preflightZablokowanyFixture(): PreflightOdpowiedz {
   return preflightFixture({
-    ready: false,
     overall_status: 'FAIL',
     blocker_count: 2,
     checks: [

@@ -7,17 +7,9 @@
 
 import { useMemo } from 'react';
 import { useEnmInspectorStore } from './store';
-import type {
-  DiagnosticIssue,
-  DiagnosticReport,
-  DiagnosticStatus,
-} from './types';
-import {
-  SEVERITY_LABELS_PL,
-  SEVERITY_COLORS,
-  SEVERITY_BG_COLORS,
-  STATUS_LABELS_PL,
-} from './types';
+import type { DiagnosticIssue, DiagnosticReport } from './types';
+import { SEVERITY_LABELS_PL, SEVERITY_COLORS, SEVERITY_BG_COLORS } from './types';
+import { KLASY_TONU_NAGLOWKA, naglowekDiagnostyki } from './naglowekDiagnostyki';
 
 interface DiagnosticsPanelProps {
   report: DiagnosticReport | null;
@@ -57,7 +49,7 @@ export function DiagnosticsPanel({
   return (
     <div className="flex flex-col h-full" data-testid="diagnostics-panel">
       {/* Status header */}
-      <StatusHeader status={report.status} report={report} />
+      <StatusHeader report={report} />
 
       {/* Severity filters */}
       <div className="flex gap-1 px-3 py-2 border-b border-slate-100">
@@ -118,29 +110,17 @@ export function DiagnosticsPanel({
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function StatusHeader({
-  status,
-  report,
-}: {
-  status: DiagnosticStatus;
-  report: DiagnosticReport;
-}) {
-  const statusColor =
-    status === 'FAIL'
-      ? 'bg-rose-50 border-rose-200 text-rose-700'
-      : status === 'WARN'
-        ? 'bg-amber-50 border-amber-200 text-amber-700'
-        : 'bg-green-50 border-green-200 text-green-700';
+function StatusHeader({ report }: { report: DiagnosticReport }) {
+  const naglowek = naglowekDiagnostyki(report);
 
   return (
     <div
-      className={`px-3 py-2 border-b ${statusColor}`}
+      className={`px-3 py-2 border-b ${KLASY_TONU_NAGLOWKA[naglowek.ton]}`}
       data-testid="diagnostics-status"
+      data-ton={naglowek.ton}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold">
-          {STATUS_LABELS_PL[status]}
-        </span>
+        <span className="text-xs font-semibold">{naglowek.tekst}</span>
         <div className="flex gap-2 text-xs">
           {report.blocker_count > 0 && (
             <span className="text-rose-600">

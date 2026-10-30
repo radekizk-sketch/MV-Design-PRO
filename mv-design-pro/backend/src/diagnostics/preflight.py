@@ -14,7 +14,6 @@ from .engine import DiagnosticEngine
 from .models import (
     AnalysisType,
     DiagnosticReport,
-    DiagnosticStatus,
 )
 
 if TYPE_CHECKING:
@@ -43,9 +42,14 @@ class PreflightCheckEntry:
 
 @dataclass(frozen=True)
 class PreflightReport:
-    """Raport pre-flight — gotowość do RUN."""
+    """Raport pre-flight — dostępność analiz przed RUN.
 
-    ready: bool
+    Bez zbiorczej flagi gotowości (karta WERDYKT-MIGRACJA-190): dawne ``ready = status != FAIL``
+    mówiło „gotowy” przy zwarciu 1F zablokowanym ostrzeżeniem E-D06 i „zablokowany” przy
+    zwarciach dostępnych mimo blokady samego rozpływu. Dostępność niesie każdy wpis ``checks``
+    z powodem i kodami blokad.
+    """
+
     overall_status: str  # "OK" | "WARN" | "FAIL"
     checks: tuple[PreflightCheckEntry, ...] = field(default_factory=tuple)
     blocker_count: int = 0
@@ -53,7 +57,6 @@ class PreflightReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "ready": self.ready,
             "overall_status": self.overall_status,
             "checks": [c.to_dict() for c in self.checks],
             "blocker_count": self.blocker_count,
@@ -115,7 +118,6 @@ def _build_preflight_from_report(report: DiagnosticReport) -> PreflightReport:
         )
 
     return PreflightReport(
-        ready=report.status != DiagnosticStatus.FAIL,
         overall_status=report.status.value,
         checks=tuple(checks),
         blocker_count=len(report.blockers),

@@ -30,7 +30,7 @@
     ]
   },
   "blocker_count": 0,
-  "info_count": 2,
+  "info_count": 1,
   "issues": [
     {
       "affected_refs": [
@@ -56,13 +56,6 @@
       ],
       "message_pl": "2 gałęzi bez danych impedancji zerowej (Z0). Analiza zwarcia jednofazowego może być niedostępna",
       "severity": "WARN"
-    },
-    {
-      "affected_refs": [],
-      "code": "I-D01",
-      "hints": [],
-      "message_pl": "Wszystkie analizy dostępne — model jest kompletny",
-      "severity": "INFO"
     },
     {
       "affected_refs": [],

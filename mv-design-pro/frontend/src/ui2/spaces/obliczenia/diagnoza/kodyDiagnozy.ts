@@ -48,7 +48,7 @@ export const ZDANIA_REGUL: Readonly<Record<string, string>> = {
   'W-D01': 'Część gałęzi nie ma danych składowej zerowej — analizy niesymetryczne będą ograniczone.',
   'W-D02': 'Parametry elementu wykraczają poza typowe zakresy sieci SN — warto sprawdzić dane wejściowe.',
   'W-D03': 'Układ ma wiele źródeł zasilania — sprawdź koordynację zabezpieczeń i punkt bilansujący.',
-  'I-D01': 'Model jest kompletny — wszystkie analizy są dostępne.',
+  'I-D01': 'Diagnostyka modelu nie blokuje żadnej analizy — to nie jest ocena kompletności danych ani poprawności wyników.',
   'I-D02': 'Rozpoznano rodzaj topologii układu (radialna albo oczkowa) wraz z liczbą szyn i połączeń.',
 };
 

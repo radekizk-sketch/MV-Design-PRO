@@ -69,20 +69,20 @@ class DiagnosticEngine:
         for rule_fn in ALL_INFO_GRAPH_RULES:
             all_issues.extend(rule_fn(graph))
 
-        # 4. Run I-D01 (conditional on blockers)
+        # 4. Compute analysis matrix (I-D01 below reads it — one source of truth)
         blockers = [i for i in all_issues if i.severity == DiagnosticSeverity.BLOCKER]
-        all_issues.extend(rule_i_d01_full_analysis_available(blockers))
+        analysis_matrix = self._compute_analysis_matrix(graph, blockers, all_issues)
 
-        # 5. Sort deterministically: severity order then by code
+        # 5. Run I-D01 (conditional on the matrix, not on blockers alone)
+        all_issues.extend(rule_i_d01_full_analysis_available(analysis_matrix))
+
+        # 6. Sort deterministically: severity order then by code
         severity_order = {
             DiagnosticSeverity.BLOCKER: 0,
             DiagnosticSeverity.WARN: 1,
             DiagnosticSeverity.INFO: 2,
         }
         all_issues.sort(key=lambda i: (severity_order[i.severity], i.code))
-
-        # 6. Compute analysis matrix
-        analysis_matrix = self._compute_analysis_matrix(graph, blockers, all_issues)
 
         # 7. Determine overall status
         if blockers:

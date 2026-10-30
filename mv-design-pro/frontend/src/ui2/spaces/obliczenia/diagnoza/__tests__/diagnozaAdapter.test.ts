@@ -49,7 +49,6 @@ const POLA_WYSTAWIANE_DIAGNOZA = [
 
 /** Pola wystawiane przez `PreflightReport.to_dict`. */
 const POLA_WYSTAWIANE_PREFLIGHT = [
-  'ready',
   'overall_status',
   'checks',
   'blocker_count',

@@ -12,6 +12,7 @@
  */
 
 import type { PreflightReport, PreflightCheckEntry } from './types';
+import { KLASY_TONU_NAGLOWKA, naglowekPreflight } from './naglowekDiagnostyki';
 
 interface PreflightMatrixProps {
   report: PreflightReport | null;
@@ -35,25 +36,18 @@ export function PreflightMatrix({ report, loading = false }: PreflightMatrixProp
     );
   }
 
+  const naglowek = naglowekPreflight(report.checks);
+
   return (
     <div className="flex flex-col h-full" data-testid="preflight-matrix">
-      {/* Readiness header */}
+      {/* Nagłówek: liczba analiz dopuszczonych przez macierz (bez zbiorczej flagi gotowości) */}
       <div
-        className={`px-3 py-2 border-b ${
-          report.ready
-            ? 'bg-green-50 border-green-200'
-            : 'bg-rose-50 border-rose-200'
-        }`}
+        className={`px-3 py-2 border-b ${KLASY_TONU_NAGLOWKA[naglowek.ton]}`}
         data-testid="preflight-readiness"
+        data-ton={naglowek.ton}
       >
         <div className="flex items-center justify-between">
-          <span
-            className={`text-xs font-semibold ${
-              report.ready ? 'text-green-700' : 'text-rose-700'
-            }`}
-          >
-            {report.ready ? 'Gotowy do analizy' : 'Analiza zablokowana'}
-          </span>
+          <span className="text-xs font-semibold">{naglowek.tekst}</span>
           <div className="flex gap-2 text-xs">
             {report.blocker_count > 0 && (
               <span className="text-rose-600">
@@ -88,14 +82,6 @@ export function PreflightMatrix({ report, loading = false }: PreflightMatrixProp
             ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Summary */}
-      <div className="px-3 py-2 border-t border-slate-100 bg-slate-50">
-        <p className="text-xs text-slate-500">
-          {report.checks.filter((c) => c.status === 'AVAILABLE').length} z{' '}
-          {report.checks.length} analiz dostępnych
-        </p>
       </div>
     </div>
   );

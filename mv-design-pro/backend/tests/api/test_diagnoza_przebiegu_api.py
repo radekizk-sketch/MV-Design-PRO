@@ -115,7 +115,8 @@ def test_preflight_zwraca_tabele_analiz_dla_istniejacego_przypadku(app_client):
 
     assert odpowiedz.status_code == 200, odpowiedz.text
     ciało = odpowiedz.json()
-    assert isinstance(ciało["ready"], bool)
+    # Bez zbiorczej flagi gotowości (karta WERDYKT-MIGRACJA-190): dostępność niesie każda kontrola.
+    assert "ready" not in ciało
     assert ciało["overall_status"] in ("OK", "WARN", "FAIL")
     kontrole = ciało["checks"]
     assert kontrole, "pre-flight bez kontroli byłby pustym ekranem"
