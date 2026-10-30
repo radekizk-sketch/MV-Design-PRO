@@ -1081,7 +1081,7 @@ function rezerwyEtykietAparatowGpz(spec: readonly FieldApparatusSpec[]): { reado
     else lewa = Math.max(lewa, szerokosc);
   });
   return {
-    lewa: lewa > 0 ? snapUp(GRID + lewa) + pasmoZaciskowPrzekladnikaGpz(spec) : 0,
+    lewa: lewa > 0 ? snapUp(GRID + lewa) : 0,
     prawa: prawa > 0 ? snapUp(GRID + prawa) : 0,
   };
 }
@@ -1118,31 +1118,96 @@ function zaciskiPrzekladnikowPolaGpz(
   return wynik;
 }
 
-/** Odstęp tuszu oznaczeń zacisków od tuszu kolumny podpisów aparatów [px świata]. */
-const ODSTEP_ZACISKOW_OD_PODPISOW = GRID / 2;
+/** Prześwit oznaczenia zacisku przekładnika od przewodu (linia pomiarowa, odczep aparatu
+ *  bocznego, przewód toru) [j.św.] — pół oczka: doprowadzenie obwodu wtórnego
+ *  `qetCurrentTransformer` wznosi się na krawędzi kafla pół oczka nad linią pomiarową
+ *  (`doprowadzenia`: y 12 → 16), więc tusz oznaczenia nie dotyka ani linii, ani doprowadzenia. */
+const PRZESWIT_ZACISKU_OD_PRZEWODU = GRID / 2;
+
+/** Bryła odcinka przewodu poszerzona o `m` z każdej strony. */
+function brylaOdcinka(a: RouteVertex, b: RouteVertex, m: number): V3Rect {
+  return {
+    x: Math.min(a.x, b.x) - m,
+    y: Math.min(a.y, b.y) - m,
+    width: Math.abs(b.x - a.x) + 2 * m,
+    height: Math.abs(b.y - a.y) + 2 * m,
+  };
+}
 
 /**
- * Pasmo oznaczeń zacisków przekładnika w lewej rezerwie podpisów pola GPZ [px świata] — o tyle
- * kolumna podpisów aparatów odsuwa się w lewo od toru, żeby oznaczenia P1/P2 (prawa krawędź na
- * lewej krawędzi kafla przekładnika) nie wchodziły na podpisy sąsiednich aparatów. Zero, gdy
- * kafel przekładnika jest węższy od toru o tyle, że oznaczenia mieszczą się przed kolumną
- * (wzorce Z.10/Z.11/Z.11.1 z przekładnikiem Ferrantiego szerszym od pierścienia). Położenie
- * kafla względem lewej krawędzi toru — ta sama arytmetyka co stos (`snapToGrid` od osi pola na
- * siatce). JEDNA funkcja rezerwy (`rezerwyEtykietAparatowGpz`) i rysunku kolumny.
+ * Przeszkody oznaczeń zacisków przekładnika w polu GPZ: bryły symboli stosu, przewody stosu
+ * (tor, odczepy aparatów bocznych, odgałęzienia) i linie pomiarowe z zacisków wtórnych
+ * skierowanych na wschód — półprosta w prawo od zacisku (`width: +∞`: linia biegnie do
+ * przekaźnika po prawej, `gpzAdnotacje`), każdy przewód z prześwitem
+ * `PRZESWIT_ZACISKU_OD_PRZEWODU`, oraz prostokąty podpisów aparatów pola.
  */
-function pasmoZaciskowPrzekladnikaGpz(spec: readonly FieldApparatusSpec[]): number {
-  const zaciski = zaciskiPrzekladnikowPolaGpz(spec);
-  const szerokoscToru = gpzFieldPlanFootprint(spec).mainStack.width;
-  let potrzeba = 0;
-  zaciski.forEach((z, indeks) => {
-    if (z === null) return;
-    const odsuniecieKafla = snapToGrid(-SYMBOL_DEFS[spec[indeks].symbolId].width / 2) - snapToGrid(-szerokoscToru / 2);
-    const szerokoscOznaczen = Math.max(
-      ...[z.odSzyny, z.odOdplywu].map((t) => measureLabelWidth(t, KLASA_ZACISKU_PRZEKLADNIKA_GPZ)),
-    );
-    potrzeba = Math.max(potrzeba, szerokoscOznaczen + ODSTEP_ZACISKOW_OD_PODPISOW - GRID - odsuniecieKafla);
-  });
-  return potrzeba > 0 ? snapUp(potrzeba) : 0;
+function przeszkodyOznaczenZaciskow(stack: FieldStack, podpisy: readonly V3Rect[]): V3Rect[] {
+  const m = PRZESWIT_ZACISKU_OD_PRZEWODU;
+  const przeszkody: V3Rect[] = stack.instances.map((inst) => ({
+    x: inst.x,
+    y: inst.y,
+    width: SYMBOL_DEFS[inst.symbolId].width,
+    height: SYMBOL_DEFS[inst.symbolId].height,
+  }));
+  for (const odcinek of [...stack.wireSegments, ...stack.branchSegments]) {
+    for (let i = 1; i < odcinek.points.length; i++) przeszkody.push(brylaOdcinka(odcinek.points[i - 1], odcinek.points[i], m));
+  }
+  for (const inst of stack.instances) {
+    for (const port of SYMBOL_DEFS[inst.symbolId].secondaryPorts) {
+      if (port.dir !== 'E') continue;
+      przeszkody.push({ x: inst.x + port.x, y: inst.y + port.y - m, width: Number.POSITIVE_INFINITY, height: 2 * m });
+    }
+  }
+  return [...przeszkody, ...podpisy];
+}
+
+/**
+ * Oznaczenie zacisku pierwotnego przekładnika (P1/P2) przy zacisku `zaciskY` kafla `kafel`
+ * (karta UX-04/POLE-LINIOWE-WZORZEC, korekta 2026-10-30 po oględzinach zrzutów: „P1 przy
+ * górnym zacisku T1, P2 przy dolnym, oba po stronie przeciwnej do podpisu aparatu, bez kolizji
+ * z podpisami aparatów i symbolami").
+ *
+ * Kandydaci w stałej kolejności (determinizm): strona przeciwna do kolumny podpisów aparatów
+ * toru (prawa — zaczep lewą krawędzią na prawej krawędzi kafla), potem strona podpisów (lewa —
+ * zaczep prawą krawędzią na lewej krawędzi kafla); w każdej stronie wiersz siatki z oznaczeniem
+ * wyśrodkowanym na linii zacisku, potem wiersz o oczko dalej od pierścienia (`odPierscienia`)
+ * i o oczko bliżej. Pierwszy kandydat rozłączny z przeszkodami wygrywa. Dawniej oznaczenie stało
+ * zawsze po lewej w wierszu CAŁKIEM nad zaciskiem górnym i CAŁKIEM pod zaciskiem dolnym — na
+ * rysunku pola P1 wypadał przy dolnej krawędzi kafla wyłącznika, a P2 na wysokości wskaźnika
+ * napięcia (zrzuty Z.10 i Z.11.1, 2026-10-30). Linia pomiarowa z zacisku wtórnego wychodzi
+ * w prawo poniżej środka pierścienia, więc po prawej P1 staje wyśrodkowany na zacisku górnym,
+ * a P2 o oczko niżej, górną krawędzią na linii zacisku dolnego. Strona podpisów jest używana
+ * tylko wtedy, gdy przy zacisku po prawej biegnie przewód (odczep aparatu bocznego z węzła
+ * zacisku). Brak wolnego kandydata — pierwszy kandydat; kolizję rozstrzyga declutter sceny
+ * i melduje ją w `stopNotes` (`label.declutter`).
+ *
+ * Prostokąt każdego kandydata liczy `prostokatEtykietyZakotwiczonej` — ta sama funkcja, którą
+ * rozwiązywacz etykiet sceny liczy slot (predykat wyboru i rysunek z jednego źródła).
+ */
+function oznaczenieZaciskuPrzekladnika(
+  tekst: string,
+  zaciskY: number,
+  kafel: V3Rect,
+  odPierscienia: -1 | 1,
+  przeszkody: readonly V3Rect[],
+): { readonly anchor: { readonly x: number; readonly y: number }; readonly placement: 'left' | 'right'; readonly rect: V3Rect } {
+  const wysokosc = labelLineHeight(KLASA_ZACISKU_PRZEKLADNIKA_GPZ);
+  const gora = snapToGrid(zaciskY - wysokosc / 2);
+  const wiersze = [gora, gora + odPierscienia * GRID, gora - odPierscienia * GRID];
+  const kandydaci = (['right', 'left'] as const).flatMap((placement) =>
+    wiersze.map((y) => {
+      const anchor = { x: placement === 'right' ? kafel.x + kafel.width : kafel.x, y: y + wysokosc / 2 };
+      const rect = prostokatEtykietyZakotwiczonej({
+        text: tekst,
+        labelClass: KLASA_ZACISKU_PRZEKLADNIKA_GPZ,
+        anchor,
+        placement,
+        clearance: 0,
+      });
+      return { anchor, placement, rect };
+    }),
+  );
+  return kandydaci.find((k) => !przeszkody.some((p) => rectsOverlap(k.rect, p))) ?? kandydaci[0];
 }
 
 /** Zacisk obwodu wtórnego aparatu w świecie (`SymbolDef.secondaryPorts`). */
@@ -2490,8 +2555,6 @@ export function composeGpz(
       // UX-04/POLE-LINIOWE-WZORZEC: etykiety aparatów QET — samo oznaczenie (położenie niesie kafel).
       const tekstyEtykiet = tekstyEtykietAparatowGpz(spec);
       const lewaTorX = snapToGrid(field.centerX - footprint.mainStack.width / 2);
-      // Pasmo oznaczeń zacisków przekładnika między kolumną podpisów a torem (§11.7 pkt 6).
-      const pasmoZaciskow = pasmoZaciskowPrzekladnikaGpz(spec);
       // Podpisy odgałęzienia toru stoją w JEGO pasie podpisów — na prawo od CAŁEGO
       // podstosu odgałęzienia (kolumna + jej aparaty boczne), tam gdzie plan rezerwuje pas
       // (`GalazPlanu.rezerwaEtykiet`, doliczany za `sub.width`). Rezerwa i kotwica z jednej
@@ -2522,7 +2585,7 @@ export function composeGpz(
             ? { x: prawaKrawedzOdgalezienia.get(pozycja.odgalezienie)!, y: srodekY }
             : pozycja.boczny
               ? { x: pozycja.instance.x + def.width, y: srodekY }
-              : { x: lewaTorX - pasmoZaciskow, y: srodekY };
+              : { x: lewaTorX, y: srodekY };
         podpisyAparatow.push({
           ownerRef: `${field.bay.bayRef}#etykieta-aparatu-${pozycja.spec.device?.deviceRef ?? indeks}`,
           text: etykieta.tekst,
@@ -2541,10 +2604,14 @@ export function composeGpz(
           placement: podpis.placement,
         });
       }
-      // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6): zaciski pierwotne
-      // przekładnika prądowego toru głównego (PN-EN 61869-2) — P1 nad pierścieniem, P2 pod nim,
-      // po lewej toru, jak na rysunku ENEA Z.10 s.89 (`zaciskiPrzekladnikowPolaGpz`: ta sama
-      // reguła co rezerwa pasma zacisków w kolumnie podpisów).
+      // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6, korekta po oględzinach
+      // zrzutów 2026-10-30): zaciski pierwotne przekładnika prądowego toru głównego
+      // (PN-EN 61869-2) — P1 przy zacisku górnym (od szyny), P2 przy dolnym, po stronie
+      // przeciwnej do kolumny podpisów aparatów (`oznaczenieZaciskuPrzekladnika`).
+      const przeszkodyZaciskow = przeszkodyOznaczenZaciskow(
+        stack,
+        fieldDesignations.filter((d) => d.ownerRef.startsWith(`${field.bay.bayRef}#etykieta-aparatu-`)).map(prostokatEtykietyZakotwiczonej),
+      );
       zaciskiPrzekladnikowPolaGpz(spec).forEach((zaciski, indeks) => {
         if (zaciski === null) return;
         const pozycja = stack.pozycje.find((p) => p.spec === spec[indeks]);
@@ -2554,24 +2621,22 @@ export function composeGpz(
         const portGorny = def.ports.find((p) => p.dir === 'N');
         const portDolny = def.ports.find((p) => p.dir === 'S');
         if (!portGorny || !portDolny) return;
-        const wysokosc = labelLineHeight(KLASA_ZACISKU_PRZEKLADNIKA_GPZ);
+        const kafel: V3Rect = { x: instance.x, y: instance.y, width: def.width, height: def.height };
         const deviceRef = spec[indeks].device?.deviceRef ?? indeks;
-        for (const [oznaczenie, srodekY] of [
-          // Dolna krawędź wiersza P1 nie niżej niż zacisk górny, górna krawędź wiersza P2 nie
-          // wyżej niż zacisk dolny (wiersze siatki) — oznaczenie stoi przy wyprowadzeniu, nie
-          // na wysokości pierścienia, gdzie stoi podpis aparatu.
-          [zaciski.odSzyny, snapDown(instance.y + portGorny.y - wysokosc) + wysokosc / 2],
-          [zaciski.odOdplywu, snapUp(instance.y + portDolny.y) + wysokosc / 2],
+        for (const [oznaczenie, zaciskY, odPierscienia] of [
+          [zaciski.odSzyny, instance.y + portGorny.y, -1],
+          [zaciski.odOdplywu, instance.y + portDolny.y, 1],
         ] as const) {
+          const polozenie = oznaczenieZaciskuPrzekladnika(oznaczenie, zaciskY, kafel, odPierscienia, przeszkodyZaciskow);
+          // Oznaczenie P2 omija P1 tego samego przekładnika (i każde poprzednie).
+          przeszkodyZaciskow.push(polozenie.rect);
           fieldDesignations.push({
             ownerRef: `${field.bay.bayRef}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}${deviceRef}-${oznaczenie}`,
             ownerKind: 'apparatus',
             text: oznaczenie,
             labelClass: KLASA_ZACISKU_PRZEKLADNIKA_GPZ,
-            // Prawa krawędź na lewej krawędzi kafla symbolu (poza kaflem — kafel jest bryłą
-            // kolizji etykieta↔symbol sceny).
-            anchor: { x: instance.x, y: srodekY },
-            placement: 'left',
+            anchor: polozenie.anchor,
+            placement: polozenie.placement,
             clearance: 0,
           });
         }
