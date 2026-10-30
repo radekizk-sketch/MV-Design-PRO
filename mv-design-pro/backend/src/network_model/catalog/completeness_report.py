@@ -42,7 +42,7 @@ MINIMUM: dict[str, tuple[str, ...]] = {
     "source_system_types": ("voltage_rating_kv", "sk3_mva", "ik3_ka", "rx_ratio"),
     "ct_types": ("ratio_primary_a", "ratio_secondary_a", "accuracy_class"),
     "vt_types": ("ratio_primary_v", "ratio_secondary_v", "accuracy_class"),
-    "mv_apparatus_types": ("name",),
+    "mv_apparatus_types": ("name", "device_kind", "u_n_kv", "i_n_a"),
     "lv_apparatus_types": ("device_kind", "u_n_kv", "i_n_a"),
     "lv_breaker_mcb_types": ("in_a", "curve_class", "icn_ka"),
     "lv_fuse_link_types": ("in_a", "fuse_class", "size", "breaking_capacity_ka"),
@@ -63,10 +63,10 @@ MINIMUM: dict[str, tuple[str, ...]] = {
     "protection_curves": ("name_pl", "curve_kind"),
     "protection_setting_templates": ("name_pl",),
     "ptpiree_generator_certificates": ("manufacturer", "model"),
-    "lv_cable_types": ("r_ohm_per_km", "rated_current_a"),
-    "load_types": ("name",),
-    "pv_inverter_types": ("name",),
-    "bess_inverter_types": ("name",),
+    "lv_cable_types": ("u_n_kv", "r_ohm_per_km", "x_ohm_per_km", "i_max_a", "cross_section_mm2"),
+    "load_types": ("name", "p_kw", "q_kvar"),
+    "pv_inverter_types": ("name", "s_n_kva", "p_max_kw", "un_kv"),
+    "bess_inverter_types": ("name", "s_n_kva", "p_charge_kw", "p_discharge_kw", "e_kwh", "un_kv"),
     "karty_widmowe": ("urzadzenie_ref",),
 }
 
