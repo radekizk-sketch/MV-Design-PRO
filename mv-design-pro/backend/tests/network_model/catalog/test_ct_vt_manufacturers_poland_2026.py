@@ -60,7 +60,8 @@ def test_vts25_resztkowe_jest_opcja_a_nie_zawsze_obecna() -> None:
     families = get_all_instrument_transformer_manufacturer_families_pl()
     vt = next(x for x in families if x["manufacturer"] == "KPB Intra" and x["model_family"] == "VTS 25")
     assert vt["residual_capability"] is True
-    assert vt["core_count_max"] == 4
+    assert vt["secondary_windings_max"] == 4
+    assert "core_count_max" not in vt
     assert "secondary_windings" not in vt
     assert "has_residual_winding" not in vt
     assert vt["um_kv"] == 25.0
