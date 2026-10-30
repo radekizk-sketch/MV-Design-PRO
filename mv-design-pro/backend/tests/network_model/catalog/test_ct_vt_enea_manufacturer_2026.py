@@ -9,6 +9,7 @@ from network_model.catalog.mv_instrument_transformers_full import (
     get_all_enea_ct_profiles,
     get_all_enea_vt_profiles,
     get_all_abb_udz_vt_profiles,
+    get_abb_tpu_nameplate_example,
 )
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CTType, VTType
@@ -17,7 +18,7 @@ from network_model.catalog.types import CTType, VTType
 def test_enea_36_ct_wymagania_5a_5b_5c_5d_z_rdzeniami() -> None:
     items = get_all_enea_ct_profiles()
     assert len(items) == 36
-    assert len({x["id"] for x in items}) == 30
+    assert len({x["id"] for x in items}) == 36
     repo = get_default_mv_catalog()
     for item in items:
         p = item["params"]
@@ -129,9 +130,30 @@ def test_ferranti_ma_odrebne_api_bez_pozornej_przekladni_pradowej() -> None:
 
 def test_przekladniki_osobne_licznosci_bez_duplikatow() -> None:
     repo = get_default_mv_catalog()
-    # 14 CT na bazie PR #508 + 36 profili 5A-D.
+    # 14 CT na bazie PR #508 + 36 profili 5A-D + 1 tabliczka ABB.
     assert len(repo.ct_types) == 51
     # 13 VT dotychczasowych + 6 ENEA + 9 ABB.
     assert len(repo.vt_types) == 28
     assert len(set(repo.ct_types)) == 51
     assert len(set(repo.vt_types)) == 28
+
+
+def test_abb_tpu70_63_rzeczywista_tabliczka_z_czterema_rdzeniami() -> None:
+    """Dane z rysunku producenta, NIE wymyslony typ zamawialny."""
+    sample = get_abb_tpu_nameplate_example()
+    assert len(sample) == 1
+    row = sample[0]
+    p = row["params"]
+    assert p["manufacturer"] == "ABB"
+    assert p["core_count"] == 4
+    assert p["um_kv"] == 36.0
+    assert p["ith_ka_1s"] == 16.0
+    assert p["idyn_ka_peak"] == 40.0
+    assert [c["accuracy_class"] for c in p["secondary_cores"]] == [
+        "5P20", "0.2S", "5P40", "0.2S"
+    ]
+    assert [c["secondary_a"] for c in p["secondary_cores"]] == [1.0, 1.0, 1.0, 5.0]
+    assert [c.get("rct_max_ohm") for c in p["secondary_cores"]] == [1.0, None, 2.0, None]
+    assert p["catalog_status"] == "REFERENCYJNY_V1"
+    assert "1VLM000610" in p["source_reference"]
+    assert get_default_mv_catalog().ct_types[row["id"]].to_dict()["secondary_cores"] == p["secondary_cores"]
