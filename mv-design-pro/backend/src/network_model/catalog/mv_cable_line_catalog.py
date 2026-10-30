@@ -2025,23 +2025,37 @@ NKT_XRUHAKXS1_2026_SOURCE_REFERENCE = (
     + " || NKT, XRUHAKXS1 12/20 kV, CTL00109 rev. 4,"
     " s. 1-3 (dane wyrobu): " + NKT_XRUHAKXS1_KARTA_URL
 )
+NKT_XUHAKXS1_KARTA_URL = (
+    "https://sklep.enexon.pl/amfile/file/download/file/845270/product/236262/"
+)
+NKT_XUHAKXS1_2026_SOURCE_REFERENCE = (
+    ENEA_KABLE_SN_2026_SOURCE_REFERENCE
+    + " || NKT, XUHAKXS1 12/20 kV, CTL00352 rev. 1,"
+    " s. 1-2 (dane wyrobu): " + NKT_XUHAKXS1_KARTA_URL
+)
 
 
 def _kabel_nkt_zgodny_z_enea_2026(
     *, przekroj: int, r20: float, pojemnosc_uf: float, indukcyjnosc_mh: float,
     iz_ziemia_trojkat_a: float, ith_fazowy_ka: float,
+    rodzina: str = "XRUHAKXS1",
 ) -> dict[str, Any]:
     """Wariant z tab. 3 ENEA i karty NKT; reaktancja X=2*pi*50*L (uklad trojkat)."""
     import math
 
-    if przekroj not in (70, 150, 240):
-        raise ValueError("Przekrój nie występuje w tab. 3 ENEA 03.2026")
+    if przekroj not in (70, 150, 240) or rodzina not in ("XRUHAKXS1", "XUHAKXS1"):
+        raise ValueError("Typ/przekrój nie występuje w tab. 3 ENEA 03.2026")
+    nazwa_zrodla = (
+        NKT_XRUHAKXS1_2026_SOURCE_REFERENCE
+        if rodzina == "XRUHAKXS1"
+        else NKT_XUHAKXS1_2026_SOURCE_REFERENCE
+    )
     return {
-        "id": f"cable-enea-2026-nkt-xruhakxs1-{przekroj}-25",
-        "name": f"NKT XRUHAKXS1 1×{przekroj}/25 mm² 12/20 kV (ENEA 03.2026)",
+        "id": f"cable-enea-2026-nkt-{rodzina.lower()}-{przekroj}-25",
+        "name": f"NKT {rodzina} 1×{przekroj}/25 mm² 12/20 kV (ENEA 03.2026)",
         "params": {
             "manufacturer": "NKT",
-            "trade_name": f"XRUHAKXS1 1x{przekroj}/25",
+            "trade_name": f"{rodzina} 1x{przekroj}/25",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
             "return_conductor_material": "CU",
@@ -2060,7 +2074,7 @@ def _kabel_nkt_zgodny_z_enea_2026(
             "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "standard": "ENEA Operator SN 03.2026, tab. 3; PN-HD 620 10-R",
-            "source_reference": NKT_XRUHAKXS1_2026_SOURCE_REFERENCE,
+            "source_reference": nazwa_zrodla,
             "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
             "catalog_status": "PRODUKCYJNY_V1",
             "contract_version": CATALOG_CONTRACT_VERSION,
@@ -2093,6 +2107,22 @@ CABLE_ENEA_2026_NKT_TYPES: list[dict[str, Any]] = [
         przekroj=240, r20=0.125, pojemnosc_uf=0.29,
         indukcyjnosc_mh=0.35, iz_ziemia_trojkat_a=523,
         ith_fazowy_ka=22.7,
+    ),
+    # Bez uszczelnienia poprzecznego: osobna karta NKT CTL00352 rev. 1.
+    _kabel_nkt_zgodny_z_enea_2026(
+        przekroj=70, r20=0.443, pojemnosc_uf=0.19,
+        indukcyjnosc_mh=0.42, iz_ziemia_trojkat_a=260,
+        ith_fazowy_ka=6.6, rodzina="XUHAKXS1",
+    ),
+    _kabel_nkt_zgodny_z_enea_2026(
+        przekroj=150, r20=0.206, pojemnosc_uf=0.25,
+        indukcyjnosc_mh=0.37, iz_ziemia_trojkat_a=398,
+        ith_fazowy_ka=14.2, rodzina="XUHAKXS1",
+    ),
+    _kabel_nkt_zgodny_z_enea_2026(
+        przekroj=240, r20=0.125, pojemnosc_uf=0.29,
+        indukcyjnosc_mh=0.35, iz_ziemia_trojkat_a=523,
+        ith_fazowy_ka=22.7, rodzina="XUHAKXS1",
     ),
 ]
 
