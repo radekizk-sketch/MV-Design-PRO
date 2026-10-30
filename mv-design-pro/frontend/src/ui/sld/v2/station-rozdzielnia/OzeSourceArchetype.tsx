@@ -539,7 +539,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
             <>
               <line x1={connX} y1={busY} x2={connX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={busColor} strokeWidth={1.8} />
               <g data-testid="oze-conn-breaker" data-symbol-shape="square" data-state="closed">
-                <ApparatusCbSquare cx={connX} cy={breakerY} state="closed" energized />
+                <ApparatusCbSquare cx={connX} cy={breakerY} state="closed" />
               </g>
               {detail !== 'far' && <FlowArrow x={connX} topY={busY + 3} botY={busY + 18} direction={incomerDir} />}
               {/* Compact ZKSN boundary on the OSD cable, below the breaker. */}
@@ -662,7 +662,8 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
                 ) : (
                   <>
                     <line x1={trX} y1={busY} x2={trX} y2={breakerY - 7} stroke={busColor} strokeWidth={1.8} />
-                    <g data-symbol-shape="diamond" data-state="closed">
+                    {/* Archetyp nie niesie stanu rozłącznika — stan nieustalony (kolor i atrybut z jednej pary). */}
+                    <g data-symbol-shape="diamond" data-state="unknown" data-kafel="nieustalony">
                       <polygon points={`${trX},${breakerY - 6} ${trX + 6},${breakerY} ${trX},${breakerY + 6} ${trX - 6},${breakerY}`} fill="none" stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1.6} />
                       <line x1={trX} y1={breakerY - 4.5} x2={trX} y2={breakerY + 4.5} stroke={COLOR_DEVICE_UNKNOWN} strokeWidth={1.3} />
                     </g>
@@ -691,7 +692,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
                 style={{ cursor: onFieldClick ? 'pointer' : 'default' }}
               >
                 <g data-symbol-shape="square" data-state="closed">
-                  <ApparatusCbSquare cx={trX} cy={trMidY} state="closed" energized />
+                  <ApparatusCbSquare cx={trX} cy={trMidY} state="closed" />
                 </g>
                 {detail !== 'far' && (
                   <text x={trX + 11} y={trMidY + 2} textAnchor="start" fill="#5BE08A" fontFamily={FONT_MONO} fontSize={6.4} fontWeight={800}>Q1</text>
@@ -811,7 +812,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
         >
           <line x1={srcX} y1={busY} x2={srcX} y2={srcBreakerY - (detail === 'far' ? 6 : 8)} stroke={busColor} strokeWidth={1.8} />
           <g data-testid="oze-source-breaker" data-symbol-shape="square" data-state="closed">
-            <ApparatusCbSquare cx={srcX} cy={srcBreakerY} state="closed" energized />
+            <ApparatusCbSquare cx={srcX} cy={srcBreakerY} state="closed" />
           </g>
           <line x1={srcX} y1={srcBreakerY + (detail === 'far' ? 6 : 8)} x2={srcX} y2={srcSymY - 8} stroke={busColor} strokeWidth={1.8} />
           {detail !== 'far' && <PvInverterSymbol cx={srcX} cy={srcSymY} r={detail === 'close' ? 8 : 7} />}

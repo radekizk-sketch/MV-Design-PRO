@@ -21,11 +21,8 @@
  */
 
 import {
-  COLOR_DEVICE_CLOSED,
-  COLOR_DEVICE_CLOSED_BORDER,
   COLOR_DEVICE_FAULT,
   COLOR_DEVICE_OPEN,
-  COLOR_DEVICE_OPEN_BORDER,
   COLOR_DEVICE_UNKNOWN,
   COLOR_LIVE,
   COLOR_FIELD_TRUNK_ENERGIZED,
@@ -37,7 +34,7 @@ import {
   FONT_MONO,
   FONT_SANS,
 } from '../theme/tokens';
-import { ApparatusCableHead, ApparatusCbSquare, ApparatusEarthingSwitch, ApparatusFuse, ApparatusThreePositionSwitch, ApparatusTransformerSymbol, ApparatusVtThreePhase, CtPrimary } from './GpzApparatusSymbols';
+import { ApparatusCableHead, ApparatusCbSquare, ApparatusEarthingSwitch, ApparatusFuse, ApparatusThreePositionSwitch, ApparatusTransformerSymbol, ApparatusVtThreePhase, CtPrimary, barwaLacznika } from './GpzApparatusSymbols';
 import type { MouseEvent } from 'react';
 import {
   buildPowerFlowIndex,
@@ -136,10 +133,10 @@ function fieldSwitchState(field: StationFieldDescriptor): StationApparatus['swit
   return rep?.switchState ?? 'unknown';
 }
 
-function stateColor(state: StationApparatus['switchState']): string {
-  if (state === 'open') return COLOR_DEVICE_OPEN_BORDER;
-  if (state === 'unknown') return COLOR_DEVICE_UNKNOWN;
-  return COLOR_DEVICE_CLOSED_BORDER;
+/** Aparaty rysowane w tym katalogu łącznikiem trójpołożeniowym (sygnatura ABB UniSwitch:
+ *  rozłącznik i odłącznik, `ApparatusSymbol`) — mają zestyk uziemiający. */
+function maZestykUziemiajacy(kind: StationApparatus['kind'] | undefined): boolean {
+  return kind === 'LOAD_SWITCH' || kind === 'DS';
 }
 
 /** Format a solver MW value as a compact SCADA label (kW under 1 MW). */
@@ -254,14 +251,13 @@ function ApparatusSymbol(props: {
   let symbol: JSX.Element;
   switch (kind) {
     case 'CB':
-      symbol = <ApparatusCbSquare cx={cx} cy={cy} state={switchState} energized={energized} />;
+      symbol = <ApparatusCbSquare cx={cx} cy={cy} state={switchState} />;
       break;
     case 'LOAD_SWITCH':
     case 'DS': {
-      // The ABB UniSwitch signature: rozłącznik trzypołożeniowy (integral earthing).
-      const position =
-        switchState === 'closed' ? 'closed' : switchState === 'open' ? 'open' : 'unknown';
-      symbol = <ApparatusThreePositionSwitch cx={cx} cy={cy} position={position} />;
+      // The ABB UniSwitch signature: rozłącznik trzypołożeniowy (integral earthing); kolor
+      // i położenie noża ze stanu modelu (`barwaLacznika`, jedno źródło z kaflem v3).
+      symbol = <ApparatusThreePositionSwitch cx={cx} cy={cy} position={apparatus.switchState} />;
       break;
     }
     case 'FUSE':
@@ -458,14 +454,17 @@ function FieldColumn(props: {
         const rep = representativeApparatus(field);
         const shape = rep ? canonicalShapeForKind(rep.kind) : null;
         const cy = geom.busY + 15;
-        const fillColor = isOpen ? 'none' : state === 'unknown' ? COLOR_DEVICE_UNKNOWN : COLOR_DEVICE_CLOSED;
-        const strokeColor = stateColor(state);
-        const sw = isOpen ? 1.8 : 1.4;
+        // Obrys i wypełnienie z JEDNEJ pary (`barwaLacznika`, jedno źródło z kaflem v3):
+        // wypełnienie tylko przy torze zamkniętym, kolor obrysu = kolor stanu.
+        const { polozenie, kolor: strokeColor } = barwaLacznika(state, maZestykUziemiajacy(rep?.kind));
+        const fillColor = polozenie.geometria === 'closed' ? strokeColor : 'none';
+        const sw = polozenie.geometria === 'open' ? 1.8 : 1.4;
         const common = {
           'data-testid': `sr-field-rep-symbol-${field.fieldId}`,
           'data-apparatus-kind': rep?.kind ?? 'none',
           'data-symbol-shape': shape ?? 'none',
           'data-state': state ?? 'unknown',
+          'data-kafel': polozenie.kafel,
         } as const;
         if (shape === 'square') {
           return <rect {...common} x={x - 7} y={cy - 7} width={14} height={14} rx={1} fill={fillColor} stroke={strokeColor} strokeWidth={sw} />;
@@ -764,16 +763,24 @@ function NNTier(props: {
 /**
  * Upright rozłącznik diamond for the coupler (◇) — the canonical disconnector
  * shape, drawn UPRIGHT with a VERTICAL contact line. State is shown by COLOUR
- * only (green=closed, red=open); there is NO tilted blade and NO diagonal
+ * only — `barwaLacznika` (jedno źródło z kaflem łącznika v3: czerwony = zamknięty,
+ * zielony = otwarty, szary = nieustalony / brak danej, fioletowy = awaria); stan
+ * pochodzi z rekordu aparatu, nigdy z domysłu (np. ze stanu wyłącznika sprzęgła).
+ * Wypełnienie tylko przy torze zamkniętym. There is NO tilted blade and NO diagonal
  * segment. The diamond outline is a <polygon> (a symbol, not routing); the only
  * <line> is the vertical contact — so the coupler has zero diagonal segments.
  */
-function CouplerDisconnectorDiamond(props: { cx: number; cy: number; h: number; open: boolean }): JSX.Element {
-  const { cx, cy, h, open } = props;
-  const color = open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
-  const fill = open ? 'none' : COLOR_DEVICE_CLOSED;
+function CouplerDisconnectorDiamond(props: { cx: number; cy: number; h: number; state: StationApparatus['switchState'] }): JSX.Element {
+  const { cx, cy, h, state } = props;
+  const { polozenie, kolor: color } = barwaLacznika(state, true);
+  const fill = polozenie.geometria === 'closed' ? color : 'none';
   return (
-    <g data-apparatus-kind="three_position_switch" data-symbol-shape="diamond" data-state={open ? 'open' : 'closed'}>
+    <g
+      data-apparatus-kind="three_position_switch"
+      data-symbol-shape="diamond"
+      data-state={state ?? 'unknown'}
+      data-kafel={polozenie.kafel}
+    >
       <polygon
         points={`${cx},${cy - h} ${cx + h},${cy} ${cx},${cy + h} ${cx - h},${cy}`}
         fill={fill}
@@ -810,10 +817,8 @@ function SmcCoupler(props: {
   const lineColor = breakerOpen ? COLOR_DEVICE_OPEN : COLOR_FIELD_TRUNK_ENERGIZED;
   const dash = breakerOpen ? '3 3' : undefined;
   const breakerState = breakerOpen ? 'open' : 'closed';
-  // The section isolators are open iff their own switch is open OR the coupler is
-  // open (NOP) — shown by COLOUR, never by a tilted blade.
-  const aOpen = swA?.switchState === 'open' || breakerOpen;
-  const bOpen = swB?.switchState === 'open' || breakerOpen;
+  // The section isolators show THEIR OWN state from the model record (Q1 / Q2) — never
+  // the coupler breaker's (NOP) state; shown by COLOUR, never by a tilted blade.
   const handle = (id: string) => (onFieldClick ? (e: MouseEvent) => { e.stopPropagation(); onFieldClick(id); } : undefined);
 
   return (
@@ -832,13 +837,13 @@ function SmcCoupler(props: {
         <line data-routing="orthogonal" x1={aEnd} y1={busY} x2={aX} y2={busY} stroke={lineColor} strokeWidth={1.8} />
         {/* vertical drop bus → switch */}
         <line data-routing="orthogonal" x1={aX} y1={busY} x2={aX} y2={swY - swH - 1} stroke={lineColor} strokeWidth={1.8} />
-        <CouplerDisconnectorDiamond cx={aX} cy={swY} h={swH} open={aOpen} />
+        <CouplerDisconnectorDiamond cx={aX} cy={swY} h={swH} state={swA?.switchState} />
         {detail !== 'far' && <text x={aX - 12} y={swY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q1</text>}
         {/* vertical connector switch → breaker */}
         <line data-routing="orthogonal" x1={aX} y1={swY + swH + 1} x2={aX} y2={breakerY - (detail === 'far' ? 6 : 8)} stroke={lineColor} strokeWidth={1.8} />
         {/* WYŁĄCZNIK sprzęgła — square, UPRIGHT, state by COLOUR. */}
         <g data-testid="sr-coupler-breaker" data-apparatus-kind="circuit_breaker" data-symbol-shape="square" data-state={breakerState} onClick={handle(`${field.fieldId}/q0`)}>
-          <ApparatusCbSquare cx={aX} cy={breakerY} state={breakerState} energized={!breakerOpen} />
+          <ApparatusCbSquare cx={aX} cy={breakerY} state={breakerState} />
         </g>
         {detail !== 'far' && <text x={aX - 12} y={breakerY + 2} textAnchor="end" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q0</text>}
         {/* NOP tag — text, NOT a ⊘ glyph; the red open □ already shows the state. */}
@@ -856,7 +861,7 @@ function SmcCoupler(props: {
       <g data-testid="sr-coupler-cell-b" onClick={handle(`${field.fieldId}/q2`)} style={{ cursor: onFieldClick ? 'pointer' : 'default' }}>
         <line data-routing="orthogonal" x1={bStart} y1={busY} x2={bX} y2={busY} stroke={lineColor} strokeWidth={1.8} />
         <line data-routing="orthogonal" x1={bX} y1={busY} x2={bX} y2={swY - swH - 1} stroke={lineColor} strokeWidth={1.8} />
-        <CouplerDisconnectorDiamond cx={bX} cy={swY} h={swH} open={bOpen} />
+        <CouplerDisconnectorDiamond cx={bX} cy={swY} h={swH} state={swB?.switchState} />
         {detail !== 'far' && <text x={bX + 12} y={swY + 2} textAnchor="start" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>Q2</text>}
         <line data-routing="orthogonal" x1={bX} y1={swY + swH + 1} x2={bX} y2={tieY} stroke={lineColor} strokeWidth={1.8} strokeDasharray={dash} />
       </g>

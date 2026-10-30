@@ -1704,6 +1704,27 @@ CORE_BALANCE_CT, CABLE_HEAD}; `tests/reference_engine/test_reference_packs.py::t
 wykonanie × napęd; `field/__tests__/EdytorWyposazeniaPola.test.tsx` — ładunek operacji (iniekcja: wiersz bez
 wykonania — czerwony).
 
+**v2 i sprzęgło — wykonanie (rozstrzygnięcie 5).** Wszystkie symbole łączników katalogu
+`frontend/src/ui/sld/v2/station-rozdzielnia/` (harnessy rozdzielni stacji, OZE i galerii) biorą kolor
+i geometrię z `GpzApparatusSymbols.tsx::barwaLacznika` → `v3/symbols/glyphs.tsx::polozenieZeStanu` →
+`v3/theme/colorTokens.ts::STATE_COLOR` — tej samej tabeli co kafel łącznika v3 (§11.13). Inwentarz klasy
+(miejsca, które miały własną regułę koloru, i co zrobiono):
+
+| Miejsce | Było | Jest |
+|---|---|---|
+| `GpzApparatusSymbols.tsx::ApparatusThreePositionSwitch` | uziemiony = czerwony; brak danej i awaria zwinięte do „unknown" przez wołającego | uziemiony = zielony (tor główny otwarty), nóż na zestyku uziemiającym; nieustalony / brak danej — szary, nóż kreskowany; awaria — fioletowy |
+| `StationRozdzielniaSN.tsx::CouplerDisconnectorDiamond` (romb sprzęgła) | `open` = stan własny LUB wyłącznik sprzęgła otwarty (NOP); brak danej rysowany jako zamknięty | stan wyłącznie z rekordu Q1 / Q2; brak danej — nieustalony; wypełnienie tylko przy torze zamkniętym |
+| `GpzApparatusSymbols.tsx::ApparatusCbSquare` | wypełnienie zależne od napięcia (`energized`), nieustalony = kolor wyciszonego tekstu | kolor = położenie toru głównego (napięcie niesie kolor linii pola); prop `energized` usunięty u 5 wołających |
+| `GpzApparatusSymbols.tsx::ApparatusEarthingSwitch` | otwarty = kolor wyciszonego tekstu | otwarty = zielony, zamknięty = czerwony, nieustalony = szary |
+| `StationRozdzielniaSN.tsx` — symbol reprezentatywny pola na „far" (`stateColor`) | obrys ze stanu, wypełnienie z „stan otwarty LUB pole NOP" — dwa niezależne predykaty | obrys i wypełnienie z jednej pary `barwaLacznika` |
+| `OzeSourceArchetype.tsx` — romb pola transformatorowego | `data-state="closed"` przy kolorze nieustalonym (archetyp nie niesie stanu) | `data-state="unknown"`, `data-kafel="nieustalony"` |
+
+Test: `v2/station-rozdzielnia/__tests__/barwaLacznikaJednoZrodlo.test.tsx` — iloczyn symbol × stan
+{zamknięty, otwarty, uziemiony, nieustalony, awaria, brak danej} oraz romb sprzęgła × stan Q1 × poziom
+szczegółu {far, closer, close} przy wyłączniku sprzęgła otwartym (NOP), symbol reprezentatywny × stan;
+wyrocznia — jawna tabela literałów kolorów. Iniekcje: „NOP otwiera romb" i „uziemiony = czerwony" — czerwone
+(13 z 35 przypadków; po naprawie 35/35 zielonych).
+
 **Do decyzji architekta (z pomiarem) — stan sprzed rozstrzygnięcia 2026-10-30.**
 
 - **Podłoga 8 px na całym LOD1.** Na zejściu LOD1 → LOD0 (skala 0,51) znacznik 12 j.św. ma 6,1 px.
