@@ -11,13 +11,13 @@
 - Szablony: 8 rekordów
 
 ## Status danych
-- Urządzenia ochrony: `ANALITYCZNY_V1`
+- Urządzenia ochrony: `ANALITYCZNY_V1` (historyczne), `REFERENCYJNY_V1` (5 profili bez marki oraz 2 rodziny producenta o ograniczonym zakresie weryfikacji)
 - Krzywe: `REFERENCYJNY_V1`
 - Szablony: `REFERENCYJNY_V1`
 
 ## Weryfikacja
 - ABB: rekordy częściowo zweryfikowane
-- Elektrometal e2TANGO: rekordy nieweryfikowane
+- Elektrometal e2TANGO: 7 rekordów historycznych nieweryfikowanych; e²TANGO-250 i -450 częściowo zweryfikowane co do istnienia modelu i wejść pomiarowych
 - Krzywe i szablony: rekordy referencyjne, bez deklaracji pełnej weryfikacji produkcyjnej
 
 ## Kontrakt
