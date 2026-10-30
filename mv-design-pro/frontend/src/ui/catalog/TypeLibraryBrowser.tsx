@@ -107,6 +107,7 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   primary_a_max: 'Maksymalny prąd pierwotny rodziny [A]',
   secondary_current_options_a: 'Dostępne prądy wtórne [A]',
   core_count_max: 'Maks. liczba rdzeni w rodzinie',
+  secondary_windings_max: 'Maks. liczba uzwojeń wtórnych VT',
   accuracy_options: 'Dostępne klasy w rodzinie',
   burden_options_va: 'Opcje mocy [VA]',
   ith_range_ka: 'Zakres dostępnego Ith [kA]',
