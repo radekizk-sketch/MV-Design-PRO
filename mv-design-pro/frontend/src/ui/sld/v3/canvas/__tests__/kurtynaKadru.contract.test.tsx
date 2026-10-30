@@ -111,18 +111,26 @@ describe('komunikat ukrytych opisów w kadrze celu', () => {
    * NARYSOWANY poniżej podłogi. Wariant „opisy celu widoczne w całości" wolno
    * wybrać WYŁĄCZNIE, gdy oba są zerowe — deklaracja komunikatu przypięta do
    * kanału audytu (`data-min-opis-celu-px`). Iloczyn: LOD {1, 2} × cel {stacja,
-   * magistrala — rozległa, pismo poniżej podłogi występuje}.
+   * magistrala — rozległa} × kanwa {1440 × 900, 1024 × 640}. Od tabeli posuwów kroju
+   * (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 7 — cyfry węższe niż szacunek 0,62 em) opisy
+   * celu mieszczą się w podłodze na kanwie 1440 × 900 (sonda 2026-10-30: poniżej = 0 we
+   * wszystkich czterech przypadkach); na kanwie 1024 × 640 pismo poniżej podłogi występuje
+   * dla obu celów (stacja: 1, magistrala: 13 opisów, najmniejsze pismo 9 px).
    */
   const zakresMagistrali = zakresCelu('magistrala', enm, [], scena);
   if (!zakresMagistrali.dostepny) throw new Error(zakresMagistrali.przyczyna);
   const ponizejWDomu: number[] = [];
-  it.each([
-    [1, 'stacja', refy],
-    [2, 'stacja', refy],
-    [1, 'magistrala', zakresMagistrali.zakres.refy],
-    [2, 'magistrala', zakresMagistrali.zakres.refy],
-  ] as const)('L%i, kadr „%s": wariant „celu kadru" ⇔ opis celu ukryty albo poniżej podłogi, inaczej „poza celem kadru"', (lod, _cel, refyCelu) => {
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} lodOverride={lod} refyKadru={refyCelu} />);
+  it.each(
+    ([[1440, 900], [1024, 640]] as const).flatMap(([szer, wys]) =>
+      ([
+        [1, 'stacja', refy],
+        [2, 'stacja', refy],
+        [1, 'magistrala', zakresMagistrali.zakres.refy],
+        [2, 'magistrala', zakresMagistrali.zakres.refy],
+      ] as const).map(([lod, cel, refyCelu]) => [lod, cel, szer, wys, refyCelu] as const),
+    ),
+  )('L%i, kadr „%s", kanwa %i × %i: wariant „celu kadru" ⇔ opis celu ukryty albo poniżej podłogi, inaczej „poza celem kadru"', (lod, _cel, szer, wys, refyCelu) => {
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={szer} height={wys} lodOverride={lod} refyKadru={refyCelu} />);
     const svg = container.querySelector('svg[data-kadr-aktywny="true"]')!;
     const ukryteCelu = Number(svg.getAttribute('data-ukryte-opisy-celu'));
     const ponizej = Number(svg.getAttribute('data-opisy-celu-ponizej-podlogi'));

@@ -186,6 +186,18 @@ describe('Karty obiektów - aktywne wejścia do edycji', () => {
     });
   });
 
+  // Port startu odgałęzienia w jedynej postaci (backend `_rozwiaz_port_startu`): zacisk portu
+  // odgałęźnego punktu — iloczyn {słup rozgałęźny, ZK SN} × wyprowadzenie odgałęzienia z karty.
+  it('BranchPoleCard i ZksnCard startują odgałęzienie z zacisku portu odgałęźnego', () => {
+    render(<BranchPoleCard elementId="bp-pole" onClose={closeObjectCard} />);
+    getAction('start_branch_segment_sn').onClick();
+    expect(openOperationForm).toHaveBeenLastCalledWith('start_branch_segment_sn', { from_ref: 'bus/c' });
+
+    render(<ZksnCard elementId="bp-zksn" onClose={closeObjectCard} />);
+    getAction('add_branch_BRANCH').onClick(); // ui-terminology-ignore
+    expect(openOperationForm).toHaveBeenLastCalledWith('start_branch_segment_sn', { from_ref: 'bus/c' });
+  });
+
   it('RenewableSourceCard zachowuje jawną edycję źródła przez update_element_parameters', () => {
     render(<RenewableSourceCard elementId="gen-1" />);
 

@@ -44,14 +44,14 @@ import { buildCanonicalGpzProps } from '../../../v2/canvas/enmToCanonicalGpzAdap
 import { allGpzSymbolsOnGrid, composeGpz, gpzInternalSegmentsEndAtPortsOrBus, noGpzSymbolOverlaps } from '../../compose/gpz';
 import { daneGlifuSymbolu, type PreviewSymbol } from '../../compose/preview';
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
-import { obrysSymbolu, SYMBOL_DEFS } from '../../symbols/defs';
+import { obrysSymbolu, rodzajSymbolu, SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
 import { prostokatKaflaStanu, SYMBOL_GLYPHS, type SwitchState } from '../../symbols/glyphs';
 import { DARK_SCADA_SLD_PALETTE, type StanKafla } from '../../theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { GRID } from '../../core/grid';
 import { zaczepTekstuEtykiety, type OwnedLabel } from '../../layout/labels';
 import { buildSceneV3, labelCollisions, labelWireCollisions, noSceneSymbolOverlaps, symbolWireCollisions, type SceneLod, type SceneV3 } from '../buildScene';
-import { interiorCrossings } from '../crossings';
+import { interiorCrossings, junctionDotGaps, wezlyModeluEnm } from '../crossings';
 
 type WykonaniePola = 'Z10' | 'Z11_1' | 'Z11';
 type Laczniki = 'TROJPOLOZENIOWY' | 'STALY';
@@ -74,11 +74,14 @@ const FIKSTURY: ReadonlyArray<readonly [string, EnergyNetworkModel]> = [
  *  wykonania stałego jest aparatem bocznym, odgałęzienie przekładnika — osobną kolumną).
  *  Wyłącznik Q0 rysunków Z.10/Z.11.1/Z.11 ma napęd silnikowy „M" (wymaganie właściciela
  *  2026-10-29 pkt 4) — symbol złożony `qetBreakerZNapedem`; dobór symbolu idzie z rekordu
- *  modelu (`BayPrimaryDevice.naped`), co przypina iniekcja zdjęcia napędu niżej. */
+ *  modelu (`BayPrimaryDevice.naped`), co przypina iniekcja zdjęcia napędu niżej. Łącznik
+ *  trójpołożeniowy Q1 ma napęd zasobnikowy ręczny (rysunki s.89/s.91 w 400 dpi, decyzja
+ *  architekta 2026-10-30: atrybut łącznika, nie nowy aparat) — `qetThreePositionSwitchZNapedem`;
+ *  łącznik Q5 odgałęzienia rysunek s.91 rysuje bez napędu. */
 function torOczekiwany(pole: WykonaniePola, laczniki: Laczniki): ReadonlyArray<readonly [string, string]> {
   return [
     ...(pole === 'Z10' ? [] : ([['PF0', 'qetVoltageIndicator']] as const)),
-    ['Q1', laczniki === 'TROJPOLOZENIOWY' ? 'qetThreePositionSwitch' : 'qetDisconnector'],
+    ['Q1', laczniki === 'TROJPOLOZENIOWY' ? 'qetThreePositionSwitchZNapedem' : 'qetDisconnector'],
     ['Q0', 'qetBreakerZNapedem'],
     ['T1', 'qetCurrentTransformer'],
     ['PF1', 'qetVoltageIndicator'],
@@ -144,7 +147,8 @@ const RYSUNEK_Q0: Readonly<Record<StanQ0, SwitchState>> = { zamkniety: 'closed',
 function kafelOczekiwany(symbolId: string, state: SwitchState | undefined): StanKafla {
   if (state === 'closed') return 'zamkniety';
   if (state === 'open') return 'otwarty';
-  if (state === 'earthed' && symbolId === 'qetThreePositionSwitch') return 'zamkniety';
+  // Rodzaj SEMANTYCZNY rysunku (znak napędu nie zmienia rodzaju łącznika).
+  if (state === 'earthed' && rodzajSymbolu(symbolId as SymbolId) === 'qetThreePositionSwitch') return 'zamkniety';
   return 'nieustalony';
 }
 const BARWA_KAFLA: Readonly<Record<StanKafla, string>> = {
@@ -549,9 +553,9 @@ describe('UX-04 — cała scena GPZ bez kolizji i z kompozycją na siatce', () =
 });
 
 /** Kable na scenie: odcinki, których właściciel jest gałęzią typu kabel w MODELU (wyrocznia
- *  z modelu, nie z rodzaju odcinka sceny); kawałki rysunkowe za węzłem T (`#tee-N`) należą do
- *  tego samego kabla. */
-const wlascicielKabla = (s: SceneV3['segments'][number]): string => (s.meta?.ownerRef ?? '').replace(/#tee-\d+$/, '');
+ *  z modelu, nie z rodzaju odcinka sceny). Kabel jest jedną polilinią — scena nie rozcina go
+ *  w punktach przecięć (rozstrzygnięcie S7-P2: przecięcie bez węzła modelu = mostek). */
+const wlascicielKabla = (s: SceneV3['segments'][number]): string => s.meta?.ownerRef ?? '';
 const refyKabliModelu = (enm: EnergyNetworkModel): ReadonlySet<string> =>
   new Set((enm.branches ?? []).filter((g) => g.type === 'cable').map((g) => g.ref_id));
 const kableSceny = (enm: EnergyNetworkModel, scena: SceneV3): SceneV3['segments'] => {
@@ -625,12 +629,12 @@ function nakladaniaKabli(enm: EnergyNetworkModel, scena: SceneV3): string[] {
   return wynik;
 }
 
-/** Kropki węzła T (`sld-v3-wezel-t-…`): w modelu fikstur pól liniowych nie ma ani jednego
- *  rozgałęzienia kabla, więc każda taka kropka jest połączeniem bez odpowiednika w modelu. */
-const kropkiWezlaT = (scena: SceneV3): string[] =>
-  scena.symbols
-    .filter((s) => s.symbolId === 'junction' && (s.meta?.testId ?? '').startsWith('sld-v3-wezel-t-'))
-    .map((s) => s.meta!.testId!);
+/** Kropki bez węzła modelu: kropka węzłowa, której `wezelModelu` nie jest szyną, polem ani
+ *  transformatorem modelu (`wezlyModeluEnm`) — połączenie narysowane bez odpowiednika w sieci. */
+const kropkiBezWezlaModelu = (enm: EnergyNetworkModel, scena: SceneV3): string[] =>
+  junctionDotGaps(scena, SYMBOL_DEFS, wezlyModeluEnm(enm))
+    .filter((g) => g.reason === 'kropka-bez-wezla-modelu')
+    .map((g) => g.testId ?? `${g.x},${g.y}`);
 
 /** Iniekcja „stara postać modelu" (defekt ciągłości magistrali naprawiony w backendzie, karta
  *  UX-04): odcinek pola 2.1 doklejony do ciągu pola 1.1 zamiast własnego ciągu z pola 2.1. */
@@ -667,12 +671,12 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
     });
 
     for (const lod of LODY) {
-      it(`${nazwaFx} · L${lod}: kable różnych pól bez nakładań, bez przecięć i bez kropek węzła T`, () => {
+      it(`${nazwaFx} · L${lod}: kable różnych pól bez nakładań, bez przecięć i bez kropek bez węzła modelu`, () => {
         const scena = buildSceneV3(enm, lod);
         expect(nakladaniaKabli(enm, scena)).toEqual([]);
         const przecieciaKabli = interiorCrossings(kableSceny(enm, scena));
         expect(przecieciaKabli).toEqual([]);
-        expect(kropkiWezlaT(scena)).toEqual([]);
+        expect(kropkiBezWezlaModelu(enm, scena)).toEqual([]);
       });
     }
   }
@@ -699,7 +703,7 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
     expect(naruszeniaKablaOdejscia(enm, przesuniety).length).toBeGreaterThan(0);
   });
 
-  it('iniekcje wyroczni rozłączności: dwa kable jedną kreską i kropka T — czerwień', () => {
+  it('iniekcje wyroczni rozłączności: dwa kable jedną kreską i kropka bez węzła modelu — czerwień', () => {
     const [, enm] = FIKSTURY[0];
     const scena = buildSceneV3(enm, 2);
     const [k1, k2] = polaLiniowe(enm)
@@ -713,9 +717,15 @@ describe('UX-04 — kabel odejścia pola jako gałąź modelu i rozłączność 
     expect(nakladaniaKabli(enm, nakladka).length).toBeGreaterThan(0);
     const zKropka: SceneV3 = {
       ...scena,
-      symbols: [...scena.symbols, { symbolId: 'junction', x: 0, y: 0, meta: { elementKind: 'apparatus', testId: 'sld-v3-wezel-t-4-4' } }],
+      symbols: [...scena.symbols, { symbolId: 'junction', x: 0, y: 0, meta: { elementKind: 'apparatus', testId: 'sld-v3-wezel-wstrzykniety' } }],
     };
-    expect(kropkiWezlaT(zKropka)).toEqual(['sld-v3-wezel-t-4-4']);
+    expect(kropkiBezWezlaModelu(enm, zKropka)).toEqual(['sld-v3-wezel-wstrzykniety']);
+    // Kropka z odwołaniem do węzła, którego w modelu NIE ma — też czerwień (nazwa ≠ węzeł).
+    const zFikcyjnymWezlem: SceneV3 = {
+      ...scena,
+      symbols: [...scena.symbols, { symbolId: 'junction', x: 0, y: 0, meta: { elementKind: 'apparatus', testId: 'sld-v3-wezel-fikcja', wezelModelu: 'bus/nie-istnieje' } }],
+    };
+    expect(kropkiBezWezlaModelu(enm, zFikcyjnymWezlem)).toEqual(['sld-v3-wezel-fikcja']);
   });
 });
 
@@ -730,8 +740,11 @@ describe('UX-04 — przekaźnik pola obok pola (wymaganie właściciela 2026-10-
           const o = obrysSymbolu(s.symbolId);
           return s.x + o.x + o.width;
         });
+        // Plan pola = aparaty, ich podpisy i pasmo adnotacji CT/VT (tabliczka przekładnika
+        // z rdzeni modelu, decyzja architekta §11.7 pkt 6 — `polozenieOkreguPrzekaznika` stawia
+        // okrąg ZA tym pasmem): przekaźnik stoi obok tak rozumianego planu.
         const podpisy = scena.labels
-          .filter((l) => (l.ownerRef ?? '').startsWith(`${pole.ref}#etykieta-aparatu-`))
+          .filter((l) => /#(etykieta-aparatu-|ct-rating-|vt-mounting-)/.test(l.ownerRef ?? '') && (l.ownerRef ?? '').startsWith(`${pole.ref}#`))
           .map((l) => l.rect.x + l.rect.width);
         const prawaPlanu = Math.max(...aparaty, ...podpisy);
         const lewaPrzekaznika = przekaznik!.x + obrysSymbolu(przekaznik!.symbolId).x;
@@ -1001,7 +1014,9 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
 describe('UX-04 — tło pola obejmuje podpis pola i opisy jego zabezpieczeń (przekaźnik obok pola)', () => {
   const zawiera = (a: Rect, b: Rect): boolean =>
     b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width && b.y + b.height <= a.y + a.height;
-  const ETYKIETY_POLA = /#(designation|protection-codes-full(-\d+)?|zrodlo-u0(-\d+)?|device-number)$/;
+  // Etykiety pola w tle: podpis pola, opisy zabezpieczeń i tabliczki przekładników z pasma
+  // adnotacji CT/VT (pasmo leży między torem a przekaźnikiem — wewnątrz pola).
+  const ETYKIETY_POLA = /#(designation|protection-codes-full(-\d+)?|zrodlo-u0(-\d+)?|device-number|ct-rating-.+|vt-mounting-.+)$/;
   for (const [nazwaFx, enm] of FIKSTURY) {
     it(`${nazwaFx} · L2: podpis pola i kody funkcji w całości w tle pola; tła rozłączne parami`, () => {
       const scena = buildSceneV3(enm, 2);
@@ -1013,17 +1028,17 @@ describe('UX-04 — tło pola obejmuje podpis pola i opisy jego zabezpieczeń (p
         const etykiety = scena.labels.filter((l) => (l.ownerRef ?? '').startsWith(`${pole.ref}#`) && ETYKIETY_POLA.test(l.ownerRef ?? ''));
         expect(etykiety.some((l) => l.ownerRef === `${pole.ref}#designation`), `${pole.ref}: podpis pola`).toBe(true);
         for (const l of etykiety) expect(zawiera(panel!.rect, l.rect), `${l.ownerRef} w tle pola`).toBe(true);
-        // Warunek wstępny (nie pusta wyrocznia): podpis pola sięga za obrys samych symboli pola
-        // i przekaźnika — tło liczone bez etykiet przecinałoby tekst (stan przed naprawą).
+        // Warunek wstępny (nie pusta wyrocznia): etykieta pola (podpis albo wiersz kodów
+        // funkcji) sięga za obrys samych symboli pola i przekaźnika — tło liczone bez etykiet
+        // przecinałoby tekst (stan przed naprawą).
         const prawaSymboli = Math.max(
           ...scena.symbols
             .filter((s) => s.meta?.ownerRef === pole.ref)
             .map((s) => s.x + obrysSymbolu(s.symbolId).x + obrysSymbolu(s.symbolId).width),
         );
-        const podpis = etykiety.find((l) => l.ownerRef === `${pole.ref}#designation`)!;
-        if (podpis.rect.x + podpis.rect.width > prawaSymboli) poza += 1;
+        if (etykiety.some((l) => l.rect.x + l.rect.width > prawaSymboli)) poza += 1;
       }
-      expect(poza, 'pola z podpisem dłuższym niż obrys symboli').toBeGreaterThan(0);
+      expect(poza, 'pola z etykietą dłuższą niż obrys symboli').toBeGreaterThan(0);
       panele.forEach((a, i) => panele.slice(i + 1).forEach((b) => expect(zachodzi(a.rect, b.rect), `${a.bayRef} × ${b.bayRef}`).toBe(false)));
     });
   }
@@ -1125,7 +1140,7 @@ function rysunekRekordu(d: BayPrimaryDevice): string {
     VT: liczbaUzwojen === 3 ? 'qetVoltageTransformer3' : liczbaUzwojen === 2 ? 'qetVoltageTransformer2' : 'qetVoltageTransformer',
     DS: 'qetDisconnector',
     ES: 'qetEarthSwitch',
-    THREE_POSITION_SWITCH: 'qetThreePositionSwitch',
+    THREE_POSITION_SWITCH: d.naped === 'ZASOBNIKOWY_RECZNY' ? 'qetThreePositionSwitchZNapedem' : 'qetThreePositionSwitch',
     CT: 'qetCurrentTransformer',
     CORE_BALANCE_CT: 'qetCoreBalanceCt',
     CABLE_HEAD: 'qetCableHead',
@@ -1252,6 +1267,12 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
       for (const pole of polaLiniowe(enm)) {
         const rekordy = rekordyPola(enm, pole.ref);
         expect(rekordy.find((d) => d.designation === 'Q0')?.naped, pole.ref).toBe('SILNIKOWY');
+        // Łącznik trójpołożeniowy Q1 — napęd zasobnikowy ręczny; Q5 odgałęzienia i odłącznik
+        // wykonania stałego — bez napędu (rysunki s.89/s.91).
+        const q1 = rekordy.find((d) => d.designation === 'Q1')!;
+        expect(q1.naped ?? null, pole.ref).toBe(q1.kind === 'THREE_POSITION_SWITCH' ? 'ZASOBNIKOWY_RECZNY' : null);
+        const q5 = rekordy.find((d) => d.designation === 'Q5');
+        if (q5) expect(q5.naped ?? null, pole.ref).toBeNull();
         if (pole.pole !== 'Z11_1') continue;
         z111 += 1;
         const t3 = rekordy.find((d) => d.designation === 'T3')!;
@@ -1323,22 +1344,32 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
     expect(polaczeniaBezOdpowiednika(fxZ11Model, dorysowany).some((n) => n.includes('bez wspólnego węzła w modelu'))).toBe(true);
   });
 
-  it('iniekcja: napęd zdjęty z rekordu Q0 — wyłącznik bez znaku napędu; z napędem — ze znakiem (symbol z modelu)', () => {
+  it('iniekcja: napęd zdjęty z rekordów Q0 i Q1 — łączniki bez znaku napędu; z napędem — ze znakiem (symbol z modelu)', () => {
+    let trojpolozeniowe = 0;
     for (const [nazwaFx, enm] of FIKSTURY) {
       const model = structuredClone(enm) as EnergyNetworkModel;
       for (const bay of model.bays ?? []) {
-        for (const d of bay.primary_devices ?? []) if (d.kind === 'CB' && (bay.tags ?? []).includes('gpz_line_field')) d.naped = null;
+        if (!(bay.tags ?? []).includes('gpz_line_field')) continue;
+        for (const d of bay.primary_devices ?? []) if (d.kind === 'CB' || d.kind === 'THREE_POSITION_SWITCH') d.naped = null;
       }
       const scena = buildSceneV3(model, 2);
       for (const pole of polaLiniowe(model)) {
         const mapa = oznaczenia(model, pole.ref);
-        const q0 = torGlowny(scena, pole.ref).find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q0')!;
+        const tor = torGlowny(scena, pole.ref);
+        const q0 = tor.find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q0')!;
         expect(q0.symbolId, `${nazwaFx} ${pole.ref}`).toBe('qetBreaker');
+        const q1 = tor.find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q1')!;
+        if (rodzajSymbolu(q1.symbolId) !== 'qetThreePositionSwitch') continue;
+        trojpolozeniowe += 1;
+        expect(q1.symbolId, `${nazwaFx} ${pole.ref}`).toBe('qetThreePositionSwitch');
       }
       expect(aparatyBezOdpowiednika(model, scena), nazwaFx).toEqual([]);
       // Rysunek z napędem przy rekordzie bez napędu — wyrocznia aparatów czerwona.
-      expect(aparatyBezOdpowiednika(model, buildSceneV3(enm, 2)).some((n) => n.includes('qetBreakerZNapedem')), nazwaFx).toBe(true);
+      const naruszenia = aparatyBezOdpowiednika(model, buildSceneV3(enm, 2));
+      expect(naruszenia.some((n) => n.includes('qetBreakerZNapedem')), nazwaFx).toBe(true);
+      expect(naruszenia.some((n) => n.includes('qetThreePositionSwitchZNapedem')), nazwaFx).toBe(true);
     }
+    expect(trojpolozeniowe).toBeGreaterThan(0);
   });
 
   it('iniekcja: liczba uzwojeń wtórnych T3 z rekordu {3, 2, 1, 0} → rysunek {3, 2, 1, 1} okręgów wtórnych', () => {

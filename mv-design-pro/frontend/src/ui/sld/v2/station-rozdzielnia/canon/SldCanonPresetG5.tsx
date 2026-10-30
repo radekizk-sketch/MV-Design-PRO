@@ -50,6 +50,10 @@ export function SldCanonPresetG5({ companion }: { companion: SldOzeArchetypeComp
   const snGridShare = Math.max(0, snSc.max.ikss_ka - faln);
   const lvTrShare = Math.max(0, lvSc.max.ikss_ka - faln);
   const earthing = companion.source.grid_earthing;
+  // Zabezpieczenia interfejsu z towarzysza (jak G6–G9) — każda funkcja raz, kody słownika EAZ;
+  // dawny zapis na sztywno „67/67N·81·27/59·df/dt·AI" mieszał nomenklatury i dublował kryteria
+  // LoM agregatem „AI" (decyzja architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC).
+  const ifaceCodes = (companion.fields.find((f) => f.interface_protection)?.protection_codes ?? []).join('·');
   const metering = companion.source.metering;
   const col = companion.source.collector;
   const snIk1f = earthing ? `${fmt(earthing.ik_1f_ka)} kA · ${earthing.neutral_point}` : '—';
@@ -88,7 +92,7 @@ export function SldCanonPresetG5({ companion }: { companion: SldOzeArchetypeComp
       <RelayBox x={X.lin - 99} y={300} />
       <line x1={X.lin - 87} y1={300} x2={X.lin - 9} y2={300} stroke={CYAN} strokeWidth={1.3} strokeDasharray="3 3" />
       {lbl(X.lin - 180, 333, 'zab. interfejsowe (NC RfG)', CYAN, 10, 700)}
-      {lbl(X.lin - 180, 346, '67/67N·81·27/59·df/dt·AI', TXT_MUTED, 9, 600)}
+      {lbl(X.lin - 180, 346, ifaceCodes, TXT_MUTED, 9, 600)}
       <UziemnikIEC x={X.lin} y={362} />
       {lbl(X.lin + 40, 380, 'uziemnik (IEC)', TXT_MUTED, 9.5, 600)}
       <Glowica x={X.lin} y={402} />

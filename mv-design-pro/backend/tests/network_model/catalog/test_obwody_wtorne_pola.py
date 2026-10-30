@@ -22,6 +22,7 @@ klasa pola dopuszczająca wykonanie.
 from __future__ import annotations
 
 import itertools
+from typing import get_args
 
 import pytest
 from enm.models import BayPrimaryDevice
@@ -40,11 +41,15 @@ from network_model.catalog.bay_templates import (
     template_primary_devices,
 )
 from network_model.catalog.obwody_wtorne_pola import (
+    NAPEDY_RODZAJU_APARATU,
     OBWODY_WTORNE_WYKONANIA_POLA,
+    OPIS_NAPEDU_PL,
+    NapedAparatuPola,
     ObwodyWtornePola,
     PowiazanieFunkcjiEaz,
     SygnalPola,
     WejscieFunkcjiEaz,
+    powiazania_aparatow_pola,
 )
 
 SZABLONY = list(itertools.product(WYKONANIA_POLA_LINIOWEGO_GPZ, WYKONANIA_LACZNIKOW_POLA))
@@ -67,8 +72,12 @@ RYSUNEK: dict[str, dict[str, tuple[tuple[object, ...], tuple[str, ...]]]] = {
         "ZS": ((_CT1,), ("Blokowanie ZS",)),
         "50BF": ((_CT1,), ("OW1", "OW2", "Pobudzenie LRW")),
         "79": ((("SYGNAL", "Odstawienie SPZ"),), ("ZW",)),
-        "SCO": ((("SYGNAL", "SCO1"), ("SYGNAL", "SCO2")), ("OW1", "OW2")),
-        "SPZ/SCO": ((("SYGNAL", "SCO/SPZ"),), ("ZW",)),
+        # Jedna funkcja SCO: obwody okrężne SCO1, SCO2 (wyłączenie) i SCO/SPZ (załączenie po SCO)
+        # do jednego sterownika pola — rysunek nie ma osobnego bloku „SPZ po SCO”.
+        "SCO": (
+            (("SYGNAL", "SCO1"), ("SYGNAL", "SCO2"), ("SYGNAL", "SCO/SPZ")),
+            ("OW1", "OW2", "ZW"),
+        ),
     },
 }
 for _wyk, _ct in (("Z11_1", _CT1), ("Z11", _CT3)):
@@ -89,8 +98,7 @@ for _wyk, _ct in (("Z11_1", _CT1), ("Z11", _CT3)):
         "SPZE": ((("SYGNAL", "Wył. od zab. TR"),), ("ZW",)),
         "OWG": ((("SYGNAL", "Wył. od zab. TR"),), ("OW1",)),
         "NZ": ((_VT3,), ("Blok. ZW",)),
-        "SCO": ((("SYGNAL", "SCO1"), ("SYGNAL", "SCO2")), ("OW1",)),
-        "SPZ/SCO": ((("SYGNAL", "SCO/SPZ"),), ("ZW",)),
+        "SCO": ((("SYGNAL", "SCO1"), ("SYGNAL", "SCO2"), ("SYGNAL", "SCO/SPZ")), ("OW1", "ZW")),
     }
 #: Rdzenie i uzwojenia POZA EAZ (Z.11: rozliczenie i regulacja; Z.11.1: niepodłączone).
 POZA_EAZ: dict[str, dict[tuple[str, int], str | None]] = {
@@ -133,7 +141,13 @@ def test_powiazania_zgodne_z_wyrocznia_rysunku(wykonanie: str, laczniki: str) ->
         assert (p.wylacznik == wylacznik.designation_q) == bool(set(p.wyjscia) & do_wylacznika)
     poza = {(o.aparat, o.numer): o.odbiornik_pl for o in obwody.obwody_przekladnikow}
     assert poza == POZA_EAZ[wykonanie]
-    assert obwody.naped_wylacznika == "SILNIKOWY"
+    # Napędy łączników rysunku (s.89, s.90, s.91 w 400 dpi): Q0 silnikowy „M", Q1 łącznik
+    # trójpołożeniowy — kwadrat na sprzężeniu z obsługą ręczną; Q5 bez znaku napędu.
+    assert [(n.aparat, n.rodzaj_aparatu, n.naped) for n in obwody.napedy] == [
+        ("Q0", "CB", "SILNIKOWY"),
+        ("Q1", "THREE_POSITION_SWITCH", "ZASOBNIKOWY_RECZNY"),
+    ]
+    assert all(n.naped_pl == OPIS_NAPEDU_PL[n.naped] for n in obwody.napedy)
 
 
 @pytest.mark.parametrize("wykonanie,laczniki", SZABLONY)
@@ -285,6 +299,90 @@ def test_iniekcja_interpretacja_bez_uzasadnienia() -> None:
         ObwodyWtornePola.model_validate(obwody)
 
 
+# --- napęd łącznika (decyzja architekta 2026-10-30: atrybut łącznika, nie nowy aparat) ----------
+# Iloczyn: rodzaj aparatu (każdy z `BayPrimaryDevice.kind`) × rodzaj napędu (każdy z
+# `RodzajNapedu` + brak) × miejsce walidacji {wzorzec `NapedAparatuPola`, rekord ENM
+# `BayPrimaryDevice`} — oba z JEDNEGO słownika `NAPEDY_RODZAJU_APARATU` (predykat parami).
+
+_RODZAJE_APARATU = get_args(BayPrimaryDevice.model_fields["kind"].annotation)
+_NAPEDY = get_args(BayPrimaryDevice.model_fields["naped"].annotation)[0]
+
+
+def test_slownik_napedow_obejmuje_wylacznie_rodzaje_modelu() -> None:
+    assert set(NAPEDY_RODZAJU_APARATU) <= set(_RODZAJE_APARATU)
+    assert {n for napedy in NAPEDY_RODZAJU_APARATU.values() for n in napedy} == set(
+        get_args(_NAPEDY)
+    )
+    assert set(OPIS_NAPEDU_PL) == set(get_args(_NAPEDY))
+
+
+@pytest.mark.parametrize("rodzaj", _RODZAJE_APARATU)
+@pytest.mark.parametrize("naped", [None, *get_args(_NAPEDY)])
+def test_naped_wylacznie_na_rodzaju_ze_slownika(rodzaj: str, naped: str | None) -> None:
+    dopuszczalny = naped is None or naped in NAPEDY_RODZAJU_APARATU.get(rodzaj, ())
+    rekord = {
+        "device_ref": "pole::dev::1",
+        "symbol_ref": "symbol:x",
+        "kind": rodzaj,
+        "placement": "MIDSTREAM",
+        "naped": naped,
+    }
+    if dopuszczalny:
+        assert BayPrimaryDevice.model_validate(rekord).naped == naped
+    else:
+        with pytest.raises(ValueError, match="nie dotyczy"):
+            BayPrimaryDevice.model_validate(rekord)
+    if naped is None:
+        return
+    wzor = {
+        "aparat": "Q9",
+        "rodzaj_aparatu": rodzaj,
+        "naped": naped,
+        "weryfikacja": "ODCZYT_TEKSTU",
+    }
+    if dopuszczalny:
+        assert NapedAparatuPola.model_validate(wzor).naped_pl == OPIS_NAPEDU_PL[naped]
+    else:
+        with pytest.raises(ValueError, match="nie dotyczy"):
+            NapedAparatuPola.model_validate(wzor)
+
+
+def test_iniekcja_napedy_wzorca() -> None:
+    with pytest.raises(ValueError, match="uzasadnienia"):
+        NapedAparatuPola(
+            aparat="Q1",
+            rodzaj_aparatu="THREE_POSITION_SWITCH",
+            naped="ZASOBNIKOWY_RECZNY",
+            weryfikacja="INTERPRETACJA",
+        )
+    obwody = _obwody()
+    obwody["napedy"] = [obwody["napedy"][0], obwody["napedy"][0]]  # type: ignore[index]
+    with pytest.raises(ValueError, match="więcej niż jednym napędem"):
+        ObwodyWtornePola.model_validate(obwody)
+
+
+@pytest.mark.parametrize("wykonanie,laczniki", SZABLONY)
+def test_naped_z_szablonu_na_lacznikach_pola(wykonanie: str, laczniki: str) -> None:
+    """Każdy szablon pola liniowego GPZ: napęd dostaje WYŁĄCZNIE łącznik o oznaczeniu i rodzaju
+    z rysunku — Q0 (CB) zawsze, Q1 tylko jako łącznik trójpołożeniowy (wariant z odłącznikiem
+    szynowym i wózek wysuwny rysunkiem nie są — bez znaku napędu), Q5 nigdy."""
+    szablon = szablon_pola_liniowego_gpz(wykonanie, laczniki)
+    obwody = szablon.obwody_wtorne
+    assert obwody is not None
+    aparaty = powiazania_aparatow_pola(
+        template_primary_devices(szablon.template_id, field_ref="pole-test"),
+        obwody,
+        szablon.funkcje_eaz,
+    )
+    z_napedem = {(a.get("designation"), a["kind"], a["naped"]) for a in aparaty if a.get("naped")}
+    oczekiwane = {("Q0", "CB", "SILNIKOWY")}
+    if laczniki == "TROJPOLOZENIOWY":
+        oczekiwane.add(("Q1", "THREE_POSITION_SWITCH", "ZASOBNIKOWY_RECZNY"))
+    assert z_napedem == oczekiwane
+    for a in aparaty:
+        BayPrimaryDevice.model_validate(a)
+
+
 # --- przekładnia przekładnika Ferrantiego ------------------------------------------------------
 
 
@@ -339,7 +437,6 @@ PROFIL: dict[str, dict[str, str]] = {
         "50BF": "OBOWIAZKOWA",
         "79": "WARIANTOWA",
         "SCO": "OPCJONALNA",
-        "SPZ/SCO": "OPCJONALNA",
         "81U": "OBOWIAZKOWA",
         "59N": "OPCJONALNA",
         "Yo>": "OPCJONALNA",
@@ -364,7 +461,6 @@ PROFIL["Z11_1"] = PROFIL["Z11"] = {
     "OWG": "OBOWIAZKOWA",
     "NZ": "WARIANTOWA",
     "SCO": "WARIANTOWA",
-    "SPZ/SCO": "WARIANTOWA",
     "59N": "OPCJONALNA",
     "Yo>": "OPCJONALNA",
     "Go>": "OPCJONALNA",

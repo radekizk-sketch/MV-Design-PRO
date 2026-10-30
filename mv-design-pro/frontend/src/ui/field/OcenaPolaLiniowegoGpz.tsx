@@ -253,9 +253,15 @@ function SygnalyPola({ obwody }: { readonly obwody: ObwodyWtornePola }): JSX.Ele
   return (
     <div className="mt-2">
       <h4 className="font-semibold">Sygnały pola wg wzorca</h4>
-      <p data-testid="ocena-pola-liniowego-naped" className="mt-1 text-scada-muted">
-        {obwody.podstawa}. Napęd wyłącznika: silnikowy (M) — {NAZWA_WERYFIKACJI_PL[obwody.naped_weryfikacja]}.
-      </p>
+      <p className="mt-1 text-scada-muted">{obwody.podstawa}.</p>
+      <ul data-testid="ocena-pola-liniowego-napedy" className="mt-1 text-scada-muted">
+        {obwody.napedy.map((n) => (
+          <li key={n.aparat} data-testid="ocena-pola-liniowego-naped" data-aparat={n.aparat} data-naped={n.naped}>
+            Napęd {n.aparat}: {n.naped_pl} — {NAZWA_WERYFIKACJI_PL[n.weryfikacja]}
+            {n.uwaga ? <span className="block">{n.uwaga}</span> : null}
+          </li>
+        ))}
+      </ul>
       <table
         role="table"
         data-testid="ocena-pola-liniowego-sygnaly"

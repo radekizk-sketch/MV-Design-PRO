@@ -310,9 +310,19 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // sygnatura `sceneSignature` element po elemencie): na L1 i L2 różni się WYŁĄCZNIE jeden
   // odcinek `…/substation#hv-bus-source-extension` — `200,320;240,320` → `200,320;232,320`;
   // symbole, pozostałe odcinki, etykiety i skrzyżowania identyczne (49 / 57 pozycji).
+  // AKTUALIZACJA ŚWIADOMA (UX-04/POLE-LINIOWE-WZORZEC, decyzje architekta §11.7, 2026-10-30):
+  // odcisk niezależny od regeneracji fikstur (sonda: kod karty na fiksturze sprzed i po
+  // regeneracji daje ten sam odcisk). Zmiana wyłącznie z kodu, trzy przyczyny rozdzielone sondą
+  // sygnatury:
+  //  · tablica szerokości znaków kroju zamiast 0,62 em (decyzja 7) — węższe etykiety
+  //    („Pole liniowe GPZ 1.1" 112 → 89, „Sekcja 1 · 15 kV" 110 → 83), więc węższy GPZ (szyna WN
+  //    128–200 → 112–176, źródło x 224 → 200) i stacja przesunięta w lewo (528 → 440);
+  //  · szerokości kolumn pola zaokrąglane w górę do rastru (`snapUp` w `layout/measure.ts`,
+  //    +8/+16 — widoczne także w wariancie z dawną szerokością 0,62 em);
+  //  · etykiety po lewej kotwiczone prawą krawędzią (decyzja 8): podpis łącznika Q1 o 2 w lewo.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '6504580c817a37b3c9451ac234a01cd0',
-    2: '9aa6d886369fab151250cbe97423bf3f',
+    1: '5320dc6486437d8375747cd5de3a657e',
+    2: '0cc819141ed93063401020389247859a',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

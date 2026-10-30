@@ -1,12 +1,20 @@
 /**
  * SLD V3 — typografia i deterministyczny pomiar tekstu (SLD_CAD_SPEC_V3 §2, P7).
  *
- * Layout NIE mierzy tekstu w DOM — używa deterministycznej formuły (jedna
+ * Layout NIE mierzy tekstu w DOM — liczy szerokość deterministycznie (jedna
  * prawda dla buildu, testów node'owych i renderu), żeby ten sam ENM dawał
- * identyczną geometrię wszędzie. Formuła skalibrowana dla sans-serif
- * (średnia szerokość glifu ≈ 0.62 × fontSize; cyfry/wielkie litery szersze —
- * współczynnik obejmuje typowe etykiety energetyczne PL).
+ * identyczną geometrię wszędzie. Szerokość = suma POSUWÓW znaków kroju schematu
+ * z tabeli `metrykiKroju.json` (Liberation Sans, zgodny metrycznie z Arial;
+ * odmiany 400 i 700; wartości liczbowe widoku domeny nN — Liberation Mono) — tabela
+ * wspólna z zawijaniem etykiet domeny nN i z importerem symboli QET
+ * (`scripts/import_qet_pole_sn.py`), generowana z plików kroju przez
+ * `scripts/metryki_kroju_sld.py` (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja
+ * architekta §11.7 pkt 7: dawny szacunek „0,62 em na znak” zawyżał cyfry
+ * i zaniżał wielkie litery, więc ramka bloku przekaźnika miała zapas do tuszu
+ * zależny od treści). Kanwa rysuje tekst TYM krojem (`SLD_FONT_FAMILY`) bez
+ * kerningu (`SLD_TEXT_STYLE`), więc posuw z tabeli jest szerokością na ekranie.
  */
+import metrykiKroju from './metrykiKroju.json';
 
 export type LabelClass = 't1' | 't2' | 't3' | 't4';
 
@@ -395,12 +403,12 @@ const CZLON_SEPARATOR = ' · ';
  * etykiety.
  *
  * Niezmiennik (przypięty testem `core/__tests__/typografiaEkranowa.test.ts`):
- * `measureTextWidth(wynik, fontSize) ≤ maxWidth` ORAZ każdy wynik różny od
+ * `measureTextWidth(wynik, fontSize, fontWeight) ≤ maxWidth` ORAZ każdy wynik różny od
  * tekstu pełnego NIESIE znak skrócenia „…" (nigdy fragment udający całość).
  */
-export function shortenPreservingIdentity(text: string, fontSize: number, maxWidth: number): string {
+export function shortenPreservingIdentity(text: string, fontSize: number, fontWeight: number, maxWidth: number): string {
   if (!Number.isFinite(maxWidth) || maxWidth <= 0 || fontSize <= 0) return text;
-  const miesciSie = (kandydat: string): boolean => measureTextWidth(kandydat, fontSize) <= maxWidth;
+  const miesciSie = (kandydat: string): boolean => measureTextWidth(kandydat, fontSize, fontWeight) <= maxWidth;
   if (miesciSie(text)) return text;
 
   const czlony = text.split(CZLON_SEPARATOR);
@@ -507,18 +515,117 @@ export function liczbaRysunkuPl(value: number): string {
   return dwaMiejsca.replace('.', ',');
 }
 
-const AVG_GLYPH_WIDTH_FACTOR = 0.62;
+/** Krój pisma schematu SLD v3 — ten, którego posuwy niesie `metrykiKroju.json`;
+ *  Arial jako zamiennik ma te same posuwy znaków (zgodność metryczna kroju). JEDNA
+ *  stała dla każdego tekstu kanwy, arkusza i glifów symboli. */
+export const SLD_FONT_FAMILY = "'Liberation Sans', Arial, sans-serif";
+
+/** Krój wartości liczbowych widoku domeny nN (`lv-domain`): Liberation Mono, zgodny
+ *  metrycznie z Courier New — posuwy z tabeli `metrykiKroju.json` (krój `mono`). */
+export const SLD_FONT_FAMILY_MONO = "'Liberation Mono', 'Courier New', monospace";
+
+/** Krój tabeli posuwów: `sans` — tekst schematu (`SLD_FONT_FAMILY`), `mono` — wartości
+ *  liczbowe widoku domeny nN (`SLD_FONT_FAMILY_MONO`). */
+export type KrojSchematu = 'sans' | 'mono';
+
+/** Styl tekstu schematu: bez kerningu — szerokość tekstu na ekranie = suma posuwów
+ *  znaków z tabeli (`measureTextWidth`), bez par kerningowych kroju. */
+export const SLD_TEXT_STYLE: Readonly<{ fontKerning: 'none' }> = { fontKerning: 'none' };
+
+/** Odmiany kroju w tabeli posuwów (CSS font-weight). Waga > 500 dobiera odmianę 700
+ *  (CSS Fonts 4 §5.2 — dla wag powyżej 500 najpierw cięższe odmiany), waga ≤ 500 — 400. */
+function odmianaKroju(fontWeight: number): '400' | '700' {
+  return fontWeight > 500 ? '700' : '400';
+}
+
+type PosuwyKroju = Readonly<Record<'400' | '700', ReadonlyMap<string, number>>>;
+
+const POSUWY_ZNAKOW: Readonly<Record<KrojSchematu, PosuwyKroju>> = (() => {
+  const kroj = (dane: { readonly znaki: string; readonly posuwy: Readonly<Record<'400' | '700', readonly number[]>> }): PosuwyKroju => {
+    const znaki = Array.from(dane.znaki);
+    const mapa = (posuwy: readonly number[]): ReadonlyMap<string, number> =>
+      new Map(znaki.map((znak, i) => [znak, posuwy[i] / metrykiKroju.jednostkiEm]));
+    return { '400': mapa(dane.posuwy['400']), '700': mapa(dane.posuwy['700']) };
+  };
+  return { sans: kroj(metrykiKroju.kroje.sans), mono: kroj(metrykiKroju.kroje.mono) };
+})();
+
+/** Posuw znaku [em] w odmianie kroju; znak spoza tabeli — `posuwSpozaTabeliEm` (1 em,
+ *  zachowawczo: szerokość górna, nigdy niedoszacowana). */
+export function posuwZnakuEm(znak: string, fontWeight: number, kroj: KrojSchematu = 'sans'): number {
+  return POSUWY_ZNAKOW[kroj][odmianaKroju(fontWeight)].get(znak) ?? metrykiKroju.posuwSpozaTabeliEm;
+}
+
+/** Pionowe metryki odmiany kroju [em]: wznoszenie i zejście z `hhea` oraz zasięg tuszu
+ *  znaku (yMin, yMax — oś y w GÓRĘ od linii bazowej, jak w pliku kroju). */
+interface PionKroju {
+  readonly wznoszenie: number;
+  readonly zejscie: number;
+  readonly tusz: ReadonlyMap<string, readonly [number, number]>;
+}
+
+const PION_ZNAKOW: Readonly<Record<KrojSchematu, Readonly<Record<'400' | '700', PionKroju>>>> = (() => {
+  type DanePionowe = { readonly wznoszenie: number; readonly zejscie: number; readonly tuszDol: readonly number[]; readonly tuszGora: readonly number[] };
+  const kroj = (dane: { readonly znaki: string; readonly pionowe: Readonly<Record<'400' | '700', DanePionowe>> }): Readonly<Record<'400' | '700', PionKroju>> => {
+    const znaki = Array.from(dane.znaki);
+    const em = metrykiKroju.jednostkiEm;
+    const odmiana = (p: DanePionowe): PionKroju => ({
+      wznoszenie: p.wznoszenie / em,
+      zejscie: p.zejscie / em,
+      tusz: new Map(znaki.map((znak, i) => [znak, [p.tuszDol[i] / em, p.tuszGora[i] / em] as const])),
+    });
+    return { '400': odmiana(dane.pionowe['400']), '700': odmiana(dane.pionowe['700']) };
+  };
+  return { sans: kroj(metrykiKroju.kroje.sans), mono: kroj(metrykiKroju.kroje.mono) };
+})();
+
+/** Pionowy zasięg TUSZU tekstu względem jego linii bazowej [px świata, oś y w DÓŁ jak na
+ *  kanwie]: `gora` — wierzchołek najwyższego znaku (ujemny nad linią bazową), `dol` —
+ *  najniższy punkt (dodatni pod linią bazową). Zasięg z nagłówków glifów kroju
+ *  (`metrykiKroju.json`, `pionowe`); znak spoza tabeli liczony pełnym wznoszeniem i zejściem
+ *  kroju (zasięg górny, nigdy niedoszacowany); tekst bez tuszu (pusty, spacje) — {0, 0}.
+ *  Służy rozstrzygnięciu, czy litera mieści się w obrysie symbolu bez nakładania na kreskę
+ *  (okrąg przekaźnika, pierścień przekładnika, test podłogi liter symboli). */
+export function zasiegPionowyTuszu(
+  text: string,
+  fontSize: number,
+  fontWeight: number,
+  kroj: KrojSchematu = 'sans',
+): { readonly gora: number; readonly dol: number } {
+  const pion = PION_ZNAKOW[kroj][odmianaKroju(fontWeight)];
+  let yMin = 0;
+  let yMax = 0;
+  for (const znak of text) {
+    const [dol, gora] = pion.tusz.get(znak) ?? [-pion.zejscie, pion.wznoszenie];
+    yMin = Math.min(yMin, dol);
+    yMax = Math.max(yMax, gora);
+  }
+  return { gora: -yMax * fontSize, dol: -yMin * fontSize };
+}
+
+/** Odległość [px świata] linii bazowej POD współrzędną `y` tekstu rysowanego z
+ *  `dominant-baseline: central` (litery symboli CAD i QET): linia centralna kroju leży w
+ *  połowie między wznoszeniem a zejściem z `hhea`, czyli (wznoszenie − zejście)/2 nad linią
+ *  bazową (CSS Inline Layout 3 §4.2, linia „central"). */
+export function przesuniecieBazyCentralnej(fontSize: number, kroj: KrojSchematu = 'sans'): number {
+  const pion = PION_ZNAKOW[kroj]['400'];
+  return ((pion.wznoszenie - pion.zejscie) / 2) * fontSize;
+}
 
 /** Deterministyczna szerokość tekstu [px świata] przy DOWOLNYM rozmiarze pisma
- *  — jedna formuła dla klas typograficznych (`measureLabelWidth` niżej) i dla
- *  pisma przeskalowanego do rozmiaru minimalnego (KD-11, `minReadableFontSize`). */
-export function measureTextWidth(text: string, fontSize: number): number {
-  return Math.ceil(text.length * fontSize * AVG_GLYPH_WIDTH_FACTOR);
+ *  — suma posuwów znaków kroju schematu (`metrykiKroju.json`) w odmianie `fontWeight`;
+ *  jedna formuła dla klas typograficznych (`measureLabelWidth` niżej) i dla pisma
+ *  przeskalowanego do rozmiaru minimalnego (KD-11, `minReadableFontSize`). Zaokrąglenie
+ *  w górę do pełnej jednostki świata — ramka/prostokąt kolizji nigdy węższy od tuszu. */
+export function measureTextWidth(text: string, fontSize: number, fontWeight: number, kroj: KrojSchematu = 'sans'): number {
+  let em = 0;
+  for (const znak of text) em += posuwZnakuEm(znak, fontWeight, kroj);
+  return Math.ceil(em * fontSize - 1e-9);
 }
 
 /** Deterministyczna szerokość etykiety [px świata]. */
 export function measureLabelWidth(text: string, cls: LabelClass): number {
-  return measureTextWidth(text, LABEL_TYPOGRAPHY[cls].fontSize);
+  return measureTextWidth(text, LABEL_TYPOGRAPHY[cls].fontSize, LABEL_TYPOGRAPHY[cls].fontWeight);
 }
 
 /** Wysokość wiersza etykiety [px świata] (fontSize + interlinia). */

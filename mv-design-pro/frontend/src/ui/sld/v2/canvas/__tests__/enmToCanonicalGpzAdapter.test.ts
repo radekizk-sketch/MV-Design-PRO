@@ -376,7 +376,10 @@ describe('buildCanonicalGpzProps — pole źródłowe OZE z rodzajem źródła z
 
 describe('buildCanonicalGpzProps — protection_codes pola', () => {
   it('Bay.protection_codes → CanonicalGpzBay.protectionCodes (pole TR)', () => {
-    const codes = ['87T', '51', '50', '51N', 'Buchholz', 'temp', 'ciśnienie'];
+    // Zestaw szablonu pola transformatorowego (backend `bay_templates`): zabezpieczenia
+    // technologiczne pod numerami IEEE C37.2 — 63 Buchholz, 26 temperatura, 63P ciśnienie
+    // (decyzja architekta 2026-10-30: dawne klucze-nazwy skasowane, `funkcje_eaz`).
+    const codes = ['87T', '51', '50', '51N', '63', '26', '63P'];
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', {
@@ -1118,7 +1121,7 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
 describe('buildCanonicalGpzProps — plakietki automatyki z kodów funkcji EAZ pola', () => {
   // Rozszerzenie 5 karty UX-04: jeden kod słownika EAZ na plakietkę (SPZ⇔79, SCO⇔SCO,
   // LRW⇔50BF, NZ⇔NZ, OWG⇔OWG). Wyrocznia NIEZALEŻNA od `KOD_FUNKCJI_PLAKIETKI`. Iniekcja:
-  // przywrócenie „SCO ⇔ 81U poza polem OZE" — kody „81U" i „Z11_1" (81U bez SCO) czerwone.
+  // przywrócenie „SCO ⇔ 81U poza polem OZE" — kod „81U" (81U bez SCO) czerwony.
   const WYROCZNIA: ReadonlyArray<readonly [string, string]> = [
     ['SPZ', '79'],
     ['SCO', 'SCO'],
@@ -1131,9 +1134,12 @@ describe('buildCanonicalGpzProps — plakietki automatyki z kodów funkcji EAZ p
     ['79', ['79']],
     ['81U (f<, nie SCO)', ['81U']],
     ['SCO', ['SCO']],
-    ['SPZ po SCO bez SCO', ['SPZ/SCO']],
-    ['Z10', ['51', '50', '67N', 'ZS', '50BF', '79', 'SCO', 'SPZ/SCO']],
-    ['Z11_1', ['51', '50', '67', '67N', '27', '59', '81U', '81O', '81R', 'ZS', '50BF', '79', 'SPZE', 'OWG', 'NZ']],
+    // Kod spoza słownika EAZ (dawny złożony „SPZ/SCO", skasowany decyzją architekta 2026-10-30)
+    // nie jest żadną z funkcji plakietek — plakietka powstaje wyłącznie z kodu słownika.
+    ['kod spoza słownika (dawne SPZ/SCO)', ['SPZ/SCO']],
+    // Zestawy szablonów Z.10 i Z.11.1 backendu (`bay_templates`, każda funkcja raz).
+    ['Z10', ['51', '50', '51N', '67N', 'ZS', '50BF', '79', 'SCO']],
+    ['Z11_1', ['51', '50', '67', '51N', '67N', '27', '59', '81U', '81O', '81R', 'ZS', '50BF', '79', 'SPZE', 'OWG', 'NZ', 'SCO']],
     ['zapis małymi literami ze spacją', [' 79 ', 'sco', ' 50bf', 'nz ', 'owg']],
   ];
   for (const rola of ROLE_ENM) {

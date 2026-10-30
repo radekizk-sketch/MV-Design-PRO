@@ -181,9 +181,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/002",
@@ -305,7 +305,7 @@
         "klasa_pola": null,
         "manufacturer_ref": null,
         "meta": {
-          "assigned_corridor_ref": "corridor/650bdaaa0f6795eb00242473770c72a0/branch",
+          "assigned_corridor_ref": "corridor/af1886917282535b0a55da3587c8b3b6/branch",
           "field_status": "READY_FOR_TRUNK",
           "gpz_line_field_index": 1,
           "gpz_line_fields_count": 2,
@@ -466,9 +466,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/002",
@@ -1561,7 +1561,7 @@
       },
       {
         "corridor_type": "radial",
-        "id": "0eec9f8b-ff90-5abb-a175-ee70273ce9cc",
+        "id": "6bb3fedc-6147-5a13-9be2-30e820b5108c",
         "meta": {
           "gpz_field_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002"
         },
@@ -1570,7 +1570,7 @@
           "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_L",
           "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_R"
         ],
-        "ref_id": "corridor/650bdaaa0f6795eb00242473770c72a0/branch",
+        "ref_id": "corridor/af1886917282535b0a55da3587c8b3b6/branch",
         "tags": []
       }
     ],
@@ -1585,7 +1585,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "0f1fa476adf6840372c58e13fdcab19cc78a599faf94e143d671d844b82061ee",
+      "hash_sha256": "8d838a6f729dd715fee4521a06dee5be16117905e05008dbe42148ce6beede44",
       "name": "GPZ z magistralą i odgałęzieniem",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1614,8 +1614,8 @@
         "stations": []
       },
       {
-        "branch_origin_station_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
-        "id": "corridor/650bdaaa0f6795eb00242473770c72a0/branch",
+        "branch_origin_station_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002",
+        "id": "corridor/af1886917282535b0a55da3587c8b3b6/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": null,
         "run_kind": "branch",
@@ -1629,8 +1629,8 @@
             "segment_ref": "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_R"
           }
         ],
-        "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
-        "starting_port_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001.BRANCH",
+        "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002",
+        "starting_port_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002",
         "stations": []
       }
     ],

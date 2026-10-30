@@ -34,7 +34,7 @@
           "akcja_pl": "ustaw klasę pola z generacją — zestaw funkcji zostanie przeliczony bez SCO",
           "bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
           "kod": "pole.sco_w_polu_z_generacja",
-          "komunikat_pl": "Pola „Pole liniowe GPZ 1.1” (pole linii mieszanej (moduły wytwarzania i odbiorcy)) ma samoczynne częstotliwościowe odciążenie (SCO, SPZ/SCO) — IRiESD ENEA Operator (wersja 2.3) II.4.5.4.7.1 pkt 1: SCO nie należy uruchamiać w liniach z jednostkami wytwórczymi."
+          "komunikat_pl": "Pola „Pole liniowe GPZ 1.1” (pole linii mieszanej (moduły wytwarzania i odbiorcy)) ma samoczynne częstotliwościowe odciążenie (SCO) — IRiESD ENEA Operator (wersja 2.3) II.4.5.4.7.1 pkt 1: SCO nie należy uruchamiać w liniach z jednostkami wytwórczymi."
         }
       ],
       "obwody_funkcji": [
@@ -221,28 +221,17 @@
         },
         {
           "blok_rysunku": "Sterownik pola",
-          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
           "kod": "SCO",
           "obecna": true,
           "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
           "wejscia_pl": [
             "sygnał „SCO1”",
-            "sygnał „SCO2”"
-          ],
-          "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "OW1 → wyłącznik Q0"
-        },
-        {
-          "blok_rysunku": "Sterownik pola",
-          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-          "kod": "SPZ/SCO",
-          "obecna": true,
-          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
-          "wejscia_pl": [
+            "sygnał „SCO2”",
             "sygnał „SCO/SPZ”"
           ],
           "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "ZW → wyłącznik Q0"
+          "wyjscia_pl": "OW1, ZW → wyłącznik Q0"
         },
         {
           "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
@@ -259,8 +248,24 @@
         }
       ],
       "obwody_wtorne": {
-        "naped_weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
-        "naped_wylacznika": "SILNIKOWY",
+        "napedy": [
+          {
+            "aparat": "Q0",
+            "naped": "SILNIKOWY",
+            "naped_pl": "napęd silnikowy (M, EN 60617 02-13-26)",
+            "rodzaj_aparatu": "CB",
+            "uwaga": "okrąg z literą M na kreskowanym sprzężeniu mechanicznym przy wyłączniku",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "Q1",
+            "naped": "ZASOBNIKOWY_RECZNY",
+            "naped_pl": "napęd zasobnikowy — energia zmagazynowana (EN 60617 02-13-20), z obsługą ręczną (EN 60617 02-13-01)",
+            "rodzaj_aparatu": "THREE_POSITION_SWITCH",
+            "uwaga": "przy łączniku trójpołożeniowym kwadrat na kreskowanym sprzężeniu mechanicznym z nożem (kształt EN 60617 02-13-20 — napęd energią zmagazynowaną), od kwadratu w dół kreskowany odcinek zakończony poprzeczką (kształt EN 60617 02-13-01 — napęd ręczny, symbol ogólny); rodzaj napędu odczytany z kształtu znaku wg EN 60617, rysunek go nie opisuje słownie",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          }
+        ],
         "obwody_przekladnikow": [
           {
             "aparat": "T1",
@@ -458,19 +463,7 @@
                 "sygnal": "SCO2",
                 "uwaga": null,
                 "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
-              }
-            ],
-            "weryfikacja": "INTERPRETACJA",
-            "wyjscia": [
-              "OW1"
-            ],
-            "wylacznik": "Q0"
-          },
-          {
-            "blok_rysunku": "Sterownik pola",
-            "funkcja": "SPZ/SCO",
-            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
-            "wejscia": [
+              },
               {
                 "aparat": null,
                 "numer": null,
@@ -482,6 +475,7 @@
             ],
             "weryfikacja": "INTERPRETACJA",
             "wyjscia": [
+              "OW1",
               "ZW"
             ],
             "wylacznik": "Q0"
@@ -1214,13 +1208,13 @@
           "wymog": "NA_ZADANIE_OSD"
         },
         {
-          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie w polu",
+          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) w polu",
           "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
           "etykieta": {
             "etykieta_pl": "Kryterium naruszone",
             "semantyka": "negatywna"
           },
-          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
           "kod": "SCO",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
@@ -1233,31 +1227,7 @@
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium naruszone"
-          },
-          "wymog": "ZAKAZANA"
-        },
-        {
-          "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
-          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
-          "etykieta": {
-            "etykieta_pl": "Kryterium naruszone",
-            "semantyka": "negatywna"
-          },
-          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-          "kod": "SPZ/SCO",
-          "kompletnosc_dowodu": "NIEPELNY",
-          "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
-          "obecna": true,
-          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6; II.4.5.4.7.1 pkt 1",
-          "status": "NIE_SPELNIA",
-          "wyjasnienie": {
-            "czego_brakuje": [],
-            "przyczyna_pl": "funkcja niedopuszczalna w tej klasie pola jest zadeklarowana",
-            "zastrzezenia": [
-              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
-            ],
-            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium naruszone"
+            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium naruszone"
           },
           "wymog": "ZAKAZANA"
         },
@@ -1558,28 +1528,17 @@
         },
         {
           "blok_rysunku": "Sterownik pola",
-          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
           "kod": "SCO",
           "obecna": false,
           "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
           "wejscia_pl": [
             "sygnał „SCO1”",
-            "sygnał „SCO2”"
-          ],
-          "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "OW1 → wyłącznik Q0"
-        },
-        {
-          "blok_rysunku": "Sterownik pola",
-          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-          "kod": "SPZ/SCO",
-          "obecna": false,
-          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
-          "wejscia_pl": [
+            "sygnał „SCO2”",
             "sygnał „SCO/SPZ”"
           ],
           "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "ZW → wyłącznik Q0"
+          "wyjscia_pl": "OW1, ZW → wyłącznik Q0"
         },
         {
           "blok_rysunku": "ZS (kierunkowe I>)",
@@ -1608,8 +1567,24 @@
         }
       ],
       "obwody_wtorne": {
-        "naped_weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
-        "naped_wylacznika": "SILNIKOWY",
+        "napedy": [
+          {
+            "aparat": "Q0",
+            "naped": "SILNIKOWY",
+            "naped_pl": "napęd silnikowy (M, EN 60617 02-13-26)",
+            "rodzaj_aparatu": "CB",
+            "uwaga": "okrąg z literą M na kreskowanym sprzężeniu mechanicznym przy wyłączniku",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "Q1",
+            "naped": "ZASOBNIKOWY_RECZNY",
+            "naped_pl": "napęd zasobnikowy — energia zmagazynowana (EN 60617 02-13-20), z obsługą ręczną (EN 60617 02-13-01)",
+            "rodzaj_aparatu": "THREE_POSITION_SWITCH",
+            "uwaga": "przy łączniku trójpołożeniowym kwadrat na kreskowanym sprzężeniu mechanicznym z nożem (kształt EN 60617 02-13-20 — napęd energią zmagazynowaną), od kwadratu w dół kreskowany odcinek zakończony poprzeczką (kształt EN 60617 02-13-01 — napęd ręczny, symbol ogólny); rodzaj napędu odczytany z kształtu znaku wg EN 60617, rysunek go nie opisuje słownie",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          }
+        ],
         "obwody_przekladnikow": [
           {
             "aparat": "T3",
@@ -1795,19 +1770,7 @@
                 "sygnal": "SCO2",
                 "uwaga": null,
                 "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
-              }
-            ],
-            "weryfikacja": "INTERPRETACJA",
-            "wyjscia": [
-              "OW1"
-            ],
-            "wylacznik": "Q0"
-          },
-          {
-            "blok_rysunku": "Sterownik pola",
-            "funkcja": "SPZ/SCO",
-            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
-            "wejscia": [
+              },
               {
                 "aparat": null,
                 "numer": null,
@@ -1819,6 +1782,7 @@
             ],
             "weryfikacja": "INTERPRETACJA",
             "wyjscia": [
+              "OW1",
               "ZW"
             ],
             "wylacznik": "Q0"
@@ -2549,13 +2513,13 @@
           "wymog": "ZAKAZANA"
         },
         {
-          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie w polu",
+          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) w polu",
           "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
           "etykieta": {
             "etykieta_pl": "Kryterium spełnione — dowód niepełny",
             "semantyka": "ostrzegawcza"
           },
-          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
           "kod": "SCO",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania",
@@ -2568,31 +2532,7 @@
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
-          },
-          "wymog": "ZAKAZANA"
-        },
-        {
-          "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
-          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
-          "etykieta": {
-            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
-            "semantyka": "ostrzegawcza"
-          },
-          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-          "kod": "SPZ/SCO",
-          "kompletnosc_dowodu": "NIEPELNY",
-          "kryterium": "funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania",
-          "obecna": false,
-          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.3 II.4.5.4.7.1 pkt 1",
-          "status": "SPELNIA",
-          "wyjasnienie": {
-            "czego_brakuje": [],
-            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
-            "zastrzezenia": [
-              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
-            ],
-            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
+            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) — funkcja niedopuszczalna w klasie: pole dedykowane modułom wytwarzania: kryterium spełnione — dowód niepełny"
           },
           "wymog": "ZAKAZANA"
         },
@@ -2794,28 +2734,17 @@
         },
         {
           "blok_rysunku": "Sterownik pola",
-          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
           "kod": "SCO",
           "obecna": true,
           "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
           "wejscia_pl": [
             "sygnał „SCO1”",
-            "sygnał „SCO2”"
-          ],
-          "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "OW1, OW2 → wyłącznik Q0"
-        },
-        {
-          "blok_rysunku": "Sterownik pola",
-          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-          "kod": "SPZ/SCO",
-          "obecna": true,
-          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
-          "wejscia_pl": [
+            "sygnał „SCO2”",
             "sygnał „SCO/SPZ”"
           ],
           "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "ZW → wyłącznik Q0"
+          "wyjscia_pl": "OW1, OW2, ZW → wyłącznik Q0"
         },
         {
           "blok_rysunku": "Zab. ziemnozwarciowe (kierunkowe) t1, t2",
@@ -2832,8 +2761,24 @@
         }
       ],
       "obwody_wtorne": {
-        "naped_weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
-        "naped_wylacznika": "SILNIKOWY",
+        "napedy": [
+          {
+            "aparat": "Q0",
+            "naped": "SILNIKOWY",
+            "naped_pl": "napęd silnikowy (M, EN 60617 02-13-26)",
+            "rodzaj_aparatu": "CB",
+            "uwaga": "okrąg z literą M na kreskowanym sprzężeniu mechanicznym przy wyłączniku",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "Q1",
+            "naped": "ZASOBNIKOWY_RECZNY",
+            "naped_pl": "napęd zasobnikowy — energia zmagazynowana (EN 60617 02-13-20), z obsługą ręczną (EN 60617 02-13-01)",
+            "rodzaj_aparatu": "THREE_POSITION_SWITCH",
+            "uwaga": "przy łączniku trójpołożeniowym kwadrat na kreskowanym sprzężeniu mechanicznym z nożem (kształt EN 60617 02-13-20 — napęd energią zmagazynowaną), od kwadratu w dół kreskowany odcinek zakończony poprzeczką (kształt EN 60617 02-13-01 — napęd ręczny, symbol ogólny); rodzaj napędu odczytany z kształtu znaku wg EN 60617, rysunek go nie opisuje słownie",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          }
+        ],
         "obwody_przekladnikow": [],
         "podstawa": "ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 s.89",
         "powiazania": [
@@ -3012,20 +2957,7 @@
                 "sygnal": "SCO2",
                 "uwaga": null,
                 "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
-              }
-            ],
-            "weryfikacja": "INTERPRETACJA",
-            "wyjscia": [
-              "OW1",
-              "OW2"
-            ],
-            "wylacznik": "Q0"
-          },
-          {
-            "blok_rysunku": "Sterownik pola",
-            "funkcja": "SPZ/SCO",
-            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
-            "wejscia": [
+              },
               {
                 "aparat": null,
                 "numer": null,
@@ -3037,6 +2969,8 @@
             ],
             "weryfikacja": "INTERPRETACJA",
             "wyjscia": [
+              "OW1",
+              "OW2",
               "ZW"
             ],
             "wylacznik": "Q0"
@@ -3397,42 +3331,18 @@
           "wymog": "OBOWIAZKOWA"
         },
         {
-          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie w polu",
-          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
-          "etykieta": {
-            "etykieta_pl": "Nie dotyczy",
-            "semantyka": "neutralna"
-          },
-          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
-          "kod": "SCO",
-          "kompletnosc_dowodu": "NIEPELNY",
-          "kryterium": "funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania)",
-          "obecna": true,
-          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 6",
-          "status": "NIE_DOTYCZY",
-          "wyjasnienie": {
-            "czego_brakuje": [],
-            "przyczyna_pl": "funkcja dopuszczalna, niewymagana",
-            "zastrzezenia": [
-              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
-            ],
-            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — funkcja dopuszczalna, niewymagana w klasie: pole odbiorcze (bez modułów wytwarzania): nie dotyczy"
-          },
-          "wymog": "DOPUSZCZALNA"
-        },
-        {
-          "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
+          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) w polu",
           "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
           "etykieta": {
             "etykieta_pl": "Brak wystarczającego dowodu",
             "semantyka": "ostrzegawcza"
           },
-          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-          "kod": "SPZ/SCO",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
+          "kod": "SCO",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole odbiorcze (bez modułów wytwarzania)",
           "obecna": true,
-          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 6",
+          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.1 pkt 6; II.4.5.4.7.1 pkt 1–2",
           "status": "BRAK_DOWODU",
           "wyjasnienie": {
             "czego_brakuje": [
@@ -3442,7 +3352,7 @@
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole odbiorcze (bez modułów wytwarzania): brak wystarczającego dowodu"
+            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) — funkcja wymagana, jeżeli zażąda jej operator systemu dystrybucyjnego w klasie: pole odbiorcze (bez modułów wytwarzania): brak wystarczającego dowodu"
           },
           "wymog": "NA_ZADANIE_OSD"
         },
@@ -3750,33 +3660,38 @@
         },
         {
           "blok_rysunku": "Sterownik pola",
-          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
           "kod": "SCO",
           "obecna": false,
           "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
           "wejscia_pl": [
             "sygnał „SCO1”",
-            "sygnał „SCO2”"
-          ],
-          "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "OW1 → wyłącznik Q0"
-        },
-        {
-          "blok_rysunku": "Sterownik pola",
-          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-          "kod": "SPZ/SCO",
-          "obecna": false,
-          "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
-          "wejscia_pl": [
+            "sygnał „SCO2”",
             "sygnał „SCO/SPZ”"
           ],
           "weryfikacja": "INTERPRETACJA",
-          "wyjscia_pl": "ZW → wyłącznik Q0"
+          "wyjscia_pl": "OW1, ZW → wyłącznik Q0"
         }
       ],
       "obwody_wtorne": {
-        "naped_weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU",
-        "naped_wylacznika": "SILNIKOWY",
+        "napedy": [
+          {
+            "aparat": "Q0",
+            "naped": "SILNIKOWY",
+            "naped_pl": "napęd silnikowy (M, EN 60617 02-13-26)",
+            "rodzaj_aparatu": "CB",
+            "uwaga": "okrąg z literą M na kreskowanym sprzężeniu mechanicznym przy wyłączniku",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          },
+          {
+            "aparat": "Q1",
+            "naped": "ZASOBNIKOWY_RECZNY",
+            "naped_pl": "napęd zasobnikowy — energia zmagazynowana (EN 60617 02-13-20), z obsługą ręczną (EN 60617 02-13-01)",
+            "rodzaj_aparatu": "THREE_POSITION_SWITCH",
+            "uwaga": "przy łączniku trójpołożeniowym kwadrat na kreskowanym sprzężeniu mechanicznym z nożem (kształt EN 60617 02-13-20 — napęd energią zmagazynowaną), od kwadratu w dół kreskowany odcinek zakończony poprzeczką (kształt EN 60617 02-13-01 — napęd ręczny, symbol ogólny); rodzaj napędu odczytany z kształtu znaku wg EN 60617, rysunek go nie opisuje słownie",
+            "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
+          }
+        ],
         "obwody_przekladnikow": [
           {
             "aparat": "T1",
@@ -3974,19 +3889,7 @@
                 "sygnal": "SCO2",
                 "uwaga": null,
                 "weryfikacja": "ZWERYFIKOWANE_NA_RYSUNKU"
-              }
-            ],
-            "weryfikacja": "INTERPRETACJA",
-            "wyjscia": [
-              "OW1"
-            ],
-            "wylacznik": "Q0"
-          },
-          {
-            "blok_rysunku": "Sterownik pola",
-            "funkcja": "SPZ/SCO",
-            "uwaga": "rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku",
-            "wejscia": [
+              },
               {
                 "aparat": null,
                 "numer": null,
@@ -3998,6 +3901,7 @@
             ],
             "weryfikacja": "INTERPRETACJA",
             "wyjscia": [
+              "OW1",
               "ZW"
             ],
             "wylacznik": "Q0"
@@ -4730,13 +4634,13 @@
           "wymog": "NA_ZADANIE_OSD"
         },
         {
-          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie w polu",
+          "co_oceniono": "obecność funkcji SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) w polu",
           "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
           "etykieta": {
             "etykieta_pl": "Kryterium spełnione — dowód niepełny",
             "semantyka": "ostrzegawcza"
           },
-          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie",
+          "funkcja_pl": "SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO)",
           "kod": "SCO",
           "kompletnosc_dowodu": "NIEPELNY",
           "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
@@ -4749,31 +4653,7 @@
             "zastrzezenia": [
               "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
             ],
-            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
-          },
-          "wymog": "ZAKAZANA"
-        },
-        {
-          "co_oceniono": "obecność funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym w polu",
-          "dowod": "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)",
-          "etykieta": {
-            "etykieta_pl": "Kryterium spełnione — dowód niepełny",
-            "semantyka": "ostrzegawcza"
-          },
-          "funkcja_pl": "SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-          "kod": "SPZ/SCO",
-          "kompletnosc_dowodu": "NIEPELNY",
-          "kryterium": "funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy)",
-          "obecna": false,
-          "podstawa": "IRiESD ENEA Operator (wersja 2.3) II.4.5.4.2.2 pkt 6; II.4.5.4.7.1 pkt 1",
-          "status": "SPELNIA",
-          "wyjasnienie": {
-            "czego_brakuje": [],
-            "przyczyna_pl": "funkcji niedopuszczalnej nie ma w zestawie funkcji pola",
-            "zastrzezenia": [
-              "dowodem jest deklaracja funkcji pola, nie nastawy przekaźnika — kompletność dowodu niepełna"
-            ],
-            "zdanie_pl": "Ocena obecności funkcji SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
+            "zdanie_pl": "Ocena obecności funkcji SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) — funkcja niedopuszczalna w klasie: pole linii mieszanej (moduły wytwarzania i odbiorcy): kryterium spełnione — dowód niepełny"
           },
           "wymog": "ZAKAZANA"
         },

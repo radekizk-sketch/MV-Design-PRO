@@ -121,15 +121,23 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     fluorowanych w nowych polach) na `SwitchBranch`, `Bay`, `BayPrimaryDevice`
     i `BayBaseModel` oraz `Bay.klasa_pola` (`'ODBIORCZE' | 'MIESZANE' | 'DEDYKOWANE_WYTWORCY'`,
     IRiESD ENEA II.4.5.4.2.1–2.3). Po scaleniu obu kart: 125 + 1 + 5 = 131 (pomiar
-    guardem na drzewie scalonym)."""
+    guardem na drzewie scalonym).
+
+    Ta sama karta, korekta po odrzuceniu B-02 (`e41837b4e`), dodała pole Literal
+    `BayPrimaryDevice.naped` z lustrem w `types/enm.ts`, ale pinu nie podniosła — test był
+    czerwony na `e41837b4e` (pomiar guardem na drzewie `git archive e41837b4e`: 132).
+    Decyzja architekta 2026-10-30 (napęd jest atrybutem łącznika) rozszerza zbiór wartości
+    tego SAMEGO pola do `RodzajNapedu` = SILNIKOWY | ZASOBNIKOWY_RECZNY (lustro
+    `RodzajNapeduLacznika`, parytet zbioru wartości zachowany) — bez nowego pola. Pomiar
+    guardem na drzewie karty: 132, lista sprawdzonych pól identyczna z `e41837b4e`."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 131, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 131 — "
+    assert int(dopasowanie.group(1)) == 132, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 132 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

@@ -29,6 +29,7 @@ import {
   buildSceneV3,
   noSceneSymbolOverlaps,
 } from '../buildScene';
+import { odczepZaczynaSieNaWezlePola } from './wezelOdczepu';
 import {
   buildW1cCases,
   buildW1cMatrixFixture,
@@ -248,9 +249,14 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
           String(s.meta?.ownerRef ?? '').startsWith(`${target.fieldRef}#lateral-${symId}-`),
         );
         expect(laterals.length, `${target.case.configId}: odczep ${symId}`).toBeGreaterThan(0);
+        const odczepyPola = segs.filter((s) => String(s.meta?.ownerRef ?? '').startsWith(`${target.fieldRef}#lateral-`));
         for (const seg of laterals) {
-          // Węzeł przyłączenia leży NA osi toru głównego (odczep od toru).
-          expect(seg.points[0].x, `${target.case.configId}: węzeł ${symId} na osi`).toBe(axisX);
+          // Węzeł przyłączenia leży na WĘŹLE POLA (odczep od toru): oś toru albo port bliższego
+          // aparatu bocznego tej samej kotwicy (łańcuch KD-5 bez nakładania).
+          expect(
+            odczepZaczynaSieNaWezlePola(seg, odczepyPola, axisX),
+            `${target.case.configId}: węzeł ${symId} na węźle pola`,
+          ).toBe(true);
         }
       }
     }

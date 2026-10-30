@@ -61,11 +61,10 @@ describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)
   it('każda etykieta segment-span leży bliżej SWOJEGO kabla niż kabla każdego innego przęsła tego wiersza opisów (L2)', () => {
     const scene = buildSceneV3(enm, 2);
 
-    /** Zakres X polilinii niosącej `ref` — z kawałkami `#tee-N`, bo to ten sam
-     *  kabel ENM za kropką węzła T (`resolveTeeJunctions`). */
+    /** Zakres X polilinii niosącej `ref` (kabel ENM jest jedną polilinią sceny). */
     const zakresKabla = new Map<string, { min: number; max: number }>();
     for (const g of scene.segments) {
-      const owner = g.meta?.ownerRef?.replace(/#tee-\d+$/, '');
+      const owner = g.meta?.ownerRef;
       if (!owner) continue;
       const xs = g.points.map((p) => p.x);
       const biezacy = zakresKabla.get(owner);

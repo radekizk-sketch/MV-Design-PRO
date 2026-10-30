@@ -316,9 +316,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field/003",
@@ -1255,7 +1255,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "7eed13054634ea50f8445ebd3b29d36bb3342bf00c5a7b471d08227dfe2a5c02",
+    "hash_sha256": "c9a37d8f4057e9d3672dd55882c7b08b93a312f9cfc3c1b5f67203e9432cc831",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

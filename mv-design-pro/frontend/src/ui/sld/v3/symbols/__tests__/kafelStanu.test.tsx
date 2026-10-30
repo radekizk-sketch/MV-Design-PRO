@@ -61,6 +61,11 @@ const MOTYWY = [
 
 const STANY: readonly (SwitchState | undefined)[] = ['closed', 'open', 'earthed', 'unknown', 'bad', undefined];
 
+/** Rysunki łącznika trójpołożeniowego — bez i ze znakiem napędu z modelu (decyzja architekta
+ *  2026-10-30: napęd jest atrybutem łącznika). Lista jawna (wyrocznia niezależna od
+ *  `rodzajSymbolu`). */
+const TROJPOLOZENIOWE: ReadonlySet<SymbolId> = new Set<SymbolId>(['qetThreePositionSwitch', 'qetThreePositionSwitchZNapedem']);
+
 /** Wyrocznia NIEZALEŻNA od `stanKaflaLacznika`: tabela kontraktu z karty. */
 function oczekiwanyKafel(id: SymbolId, state: SwitchState | undefined): StanKafla | null {
   if (id === 'noPoint' && state === undefined) return null; // NOP bez łącznika — sam znacznik
@@ -69,14 +74,14 @@ function oczekiwanyKafel(id: SymbolId, state: SwitchState | undefined): StanKafl
   if (state === 'bad') return 'bledny';
   // Uziemiony: tylko łącznik trójpołożeniowy (dwa XSWI wg IEC 61850-7-4 — zestyk uziemiający
   // ZAMKNIĘTY); na każdym innym symbolu to stan bez znaczenia → nieustalony.
-  if (state === 'earthed') return id === 'qetThreePositionSwitch' ? 'zamkniety' : 'nieustalony';
+  if (state === 'earthed') return TROJPOLOZENIOWE.has(id) ? 'zamkniety' : 'nieustalony';
   return 'nieustalony';
 }
 
 /** Oczekiwane położenie geometrii styku (wyrocznia z karty). */
 function oczekiwanaGeometria(id: SymbolId, state: SwitchState | undefined): string {
   if (state === 'closed' || state === 'open') return state;
-  if (state === 'earthed' && id === 'qetThreePositionSwitch') return 'earthed';
+  if (state === 'earthed' && TROJPOLOZENIOWE.has(id)) return 'earthed';
   return 'unknown';
 }
 
@@ -111,8 +116,11 @@ function oczekiwanyProstokat(id: SymbolId): { x: number; y: number; width: numbe
 describe('kafel stanu — parytet: każdy łącznik pola rysuje położenie', () => {
   it('symbol każdego rodzaju łącznika pola (oba warianty) należy do SYMBOLE_LACZNIKOW_Z_POLOZENIEM', () => {
     expect(RODZAJE_SYMBOLE.length).toBeGreaterThanOrEqual(2 * 5);
-    // Wariant z napędem silnikowym wyłącznika jest w iloczynie (nie tylko symbol podstawowy).
-    expect(RODZAJE_SYMBOLE.map(([, , id]) => id)).toContain('qetBreakerZNapedem');
+    // Warianty z napędem (wyłącznik — silnikowy, łącznik trójpołożeniowy — zasobnikowy z obsługą
+    // ręczną) są w iloczynie (nie tylko symbole podstawowe).
+    expect(RODZAJE_SYMBOLE.map(([, , id]) => id)).toEqual(
+      expect.arrayContaining(['qetBreakerZNapedem', 'qetThreePositionSwitchZNapedem']),
+    );
     expect(symbolIdForPrimaryDeviceKind('CB', null)).toBe('breaker');
     for (const [kind, wariant, id] of RODZAJE_SYMBOLE) {
       expect(czyLacznikZPolozeniem(id), `${kind} (${wariant}) → ${id}`).toBe(true);
@@ -231,12 +239,29 @@ describe('kafel stanu — geometria i sąsiedztwo', () => {
     }
   });
 
-  it('łącznik trójpołożeniowy: trzy różne położenia noża; „uziemiony" = kafel zamknięty (zestyk uziemiający)', () => {
-    const katy = QET_SYMBOLE_POLA_SN.qetThreePositionSwitch.noz!.katy;
-    expect(new Set([katy.closed, katy.open, katy.earthed]).size).toBe(3);
-    const doc = rysuj('qetThreePositionSwitch', 'earthed');
-    expect(doc.querySelector('[data-qet-polozenie]')!.getAttribute('data-qet-polozenie')).toBe('earthed');
-    expect(doc.querySelector('[data-kafel-stanu]')!.getAttribute('data-kafel-stanu')).toBe('zamkniety');
+  for (const id of ['qetThreePositionSwitch', 'qetThreePositionSwitchZNapedem'] as const) {
+    it(`${id}: trzy różne położenia noża; „uziemiony" = kafel zamknięty (zestyk uziemiający)`, () => {
+      const katy = QET_SYMBOLE_POLA_SN[id].noz!.katy;
+      expect(new Set([katy.closed, katy.open, katy.earthed]).size).toBe(3);
+      const doc = rysuj(id, 'earthed');
+      expect(doc.querySelector('[data-qet-polozenie]')!.getAttribute('data-qet-polozenie')).toBe('earthed');
+      expect(doc.querySelector('[data-kafel-stanu]')!.getAttribute('data-kafel-stanu')).toBe('zamkniety');
+    });
+  }
+
+  it('łącznik trójpołożeniowy ze znakiem napędu = ten sam łącznik: nóż, położenia i zestyki jak bez napędu', () => {
+    const a = QET_SYMBOLE_POLA_SN.qetThreePositionSwitch;
+    const b = QET_SYMBOLE_POLA_SN.qetThreePositionSwitchZNapedem;
+    expect(b.noz!.katy).toEqual(a.noz!.katy);
+    expect(b.noz!.zasiegi).toEqual(a.noz!.zasiegi);
+    // Rysunek łącznika przesunięty jako całość (kafel wyśrodkowany na treści ze znakiem napędu).
+    const dy = b.noz!.cy - a.noz!.cy;
+    expect(b.noz!.cx).toBe(a.noz!.cx);
+    const przesun = (p: CadPrimitive): CadPrimitive =>
+      p.k === 'line' ? { ...p, y1: p.y1 + dy, y2: p.y2 + dy } : p.k === 'circle' ? { ...p, cy: p.cy + dy } : p;
+    expect(b.stale).toEqual(a.stale.map(przesun));
+    expect(b.porty).toEqual(a.porty);
+    expect(a.osprzet).toEqual([]);
   });
 
   it('bez tabeli kafli (miniatury, harness mono) symbol rysuje się bez kafla', () => {
@@ -307,6 +332,63 @@ describe('kafel stanu — litera na kaflu czytelna w całym zakresie LOD2', () =
     expect(Math.min(l.x1, l.x2)).toBeCloseTo(o.cx + o.r, 6);
   });
 
+  it('napęd zasobnikowy łącznika trójpołożeniowego (osprzęt kafla): kwadrat na sprzężeniu od przegubu, znak obsługi ręcznej pod kwadratem, całość w kaflu z marginesem, nóż w żadnym położeniu nie wchodzi na kwadrat', () => {
+    const s = QET_SYMBOLE_POLA_SN.qetThreePositionSwitchZNapedem;
+    const noz = s.noz!;
+    const margines = QET_KRESKA_GLIFU; // margines kafla 5 jednostek QET × 0,4 = kreska glifu
+    const sciezki = s.osprzet.filter((p): p is Extract<CadPrimitive, { k: 'path' }> => p.k === 'path');
+    expect(sciezki).toHaveLength(1);
+    const liczby = (sciezki[0].d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+    const xs = liczby.filter((_, i) => i % 2 === 0);
+    const ys = liczby.filter((_, i) => i % 2 === 1);
+    const kw = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+    // Kwadrat (EN 60617 02-13-20): bok ≥ podłoga 8 px przy wejściu w LOD2, po prawej osi,
+    // w kaflu z marginesem, środek na wysokości przegubu.
+    expect(kw.x1 - kw.x0).toBeCloseTo(kw.y1 - kw.y0, 6);
+    expect((kw.x1 - kw.x0) * SKALA_MIN_L2).toBeGreaterThanOrEqual(MIN_TEXT_SCREEN_PX);
+    expect(kw.x0).toBeGreaterThan(noz.cx);
+    expect(kw.x1).toBeLessThanOrEqual(QET_BOK_KAFLA_STANU - margines);
+    expect((kw.y0 + kw.y1) / 2).toBeCloseTo(noz.cy, 6);
+    const linie = s.osprzet.filter((p): p is Extract<CadPrimitive, { k: 'line' }> => p.k === 'line');
+    const kreskowane = linie.filter((l) => l.kreskowana);
+    expect(kreskowane).toHaveLength(2);
+    // Sprzężenie mechaniczne: poziomo od okręgu przegubu (styk odłączający ○) do kwadratu.
+    const przegub = s.stale.find((p): p is Extract<CadPrimitive, { k: 'circle' }> => p.k === 'circle' && p.cx === noz.cx && p.cy === noz.cy)!;
+    expect(przegub).toBeDefined();
+    const sprzezenie = kreskowane.find((l) => l.y1 === l.y2)!;
+    expect([sprzezenie.y1, Math.min(sprzezenie.x1, sprzezenie.x2), Math.max(sprzezenie.x1, sprzezenie.x2)]).toEqual([
+      noz.cy,
+      noz.cx + przegub.r,
+      kw.x0,
+    ]);
+    // Obsługa ręczna (EN 60617 02-13-01): kreskowany pion ze środka dolnego boku kwadratu
+    // zakończony poprzeczką, w kaflu z marginesem.
+    const pion = kreskowane.find((l) => l.x1 === l.x2)!;
+    expect(pion.x1).toBeCloseTo((kw.x0 + kw.x1) / 2, 6);
+    expect(Math.min(pion.y1, pion.y2)).toBeCloseTo(kw.y1, 6);
+    const dol = Math.max(pion.y1, pion.y2);
+    const poprzeczki = linie.filter((l) => !l.kreskowana);
+    expect(poprzeczki).toHaveLength(1);
+    const [poprzeczka] = poprzeczki;
+    expect([poprzeczka.y1, poprzeczka.y2]).toEqual([dol, dol]);
+    expect((poprzeczka.x1 + poprzeczka.x2) / 2).toBeCloseTo(pion.x1, 6);
+    expect(dol).toBeLessThanOrEqual(QET_BOK_KAFLA_STANU - margines);
+    // Nóż w każdym położeniu (obrót wokół przegubu, zasięg położenia) nie wchodzi na kwadrat.
+    const [n] = noz.prymitywy.filter((p): p is Extract<CadPrimitive, { k: 'line' }> => p.k === 'line');
+    for (const [polozenie, kat] of Object.entries(noz.katy)) {
+      const r = ((kat ?? 0) * Math.PI) / 180;
+      const zasieg = noz.zasiegi[polozenie as keyof typeof noz.zasiegi] ?? 1;
+      for (let i = 0; i <= 20; i += 1) {
+        const px = n.x1 + ((n.x2 - n.x1) * zasieg * i) / 20 - noz.cx;
+        const py = n.y1 + ((n.y2 - n.y1) * zasieg * i) / 20 - noz.cy;
+        const x = noz.cx + px * Math.cos(r) - py * Math.sin(r);
+        const y = noz.cy + px * Math.sin(r) + py * Math.cos(r);
+        const wKwadracie = x >= kw.x0 - margines && x <= kw.x1 + margines && y >= kw.y0 - margines && y <= kw.y1 + margines;
+        expect(wKwadracie, `${polozenie}: punkt noża (${x.toFixed(2)}, ${y.toFixed(2)})`).toBe(false);
+      }
+    }
+  });
+
   for (const [motyw, kafle] of MOTYWY) {
     for (const state of STANY) {
       it(`${motyw} · napęd M · ${state ?? 'brak stanu'}: litera rysowana na kaflu`, () => {
@@ -356,8 +438,8 @@ describe('kafel stanu — stopień glifu i kreska proporcjonalna do kafla', () =
     return [lo, hi];
   }
 
-  it('warunek wstępny: siedem łączników z kaflem, kreska glifu = bok/24 i grubsza od kreski przewodu', () => {
-    expect(KAFLOWE).toHaveLength(7);
+  it('warunek wstępny: osiem rysunków łączników z kaflem, kreska glifu = bok/24 i grubsza od kreski przewodu', () => {
+    expect(KAFLOWE).toHaveLength(8);
     expect(QET_KRESKA_GLIFU).toBeCloseTo(QET_BOK_KAFLA_STANU / 24, 9);
     expect(QET_KRESKA_GLIFU).toBeGreaterThan(V3_STROKE_APPARATUS);
   });

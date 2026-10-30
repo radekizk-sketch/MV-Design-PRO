@@ -37,6 +37,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import {
   enlargedFontSizeWithinProportion,
   LABEL_TYPOGRAPHY,
+  measureLabelWidth,
   MIN_READABLE_LABEL_SCREEN_PX,
   proportionCutoffScale,
   type LabelClass,
@@ -455,7 +456,9 @@ describe('PROPORCJE §3/§4 — tożsamość stacji i oznaczenie pola', () => {
       const szerokosc = bayColumnRequiredWidth(pola, i, undefined, null);
       const podpis = fieldCaptionAt(pola, i);
       const gabaryt = SYMBOL_DEFS.loadBreakSwitch.width;
-      expect(szerokosc, `pole ${i} („${podpis}")`).toBeGreaterThan(gabaryt + podpis.length * 9 * 0.62);
+      // Miara podpisu z TEJ SAMEJ tabeli posuwów kroju co rysunek (`measureLabelWidth`, klasa
+      // t3 podpisu pola) — test nie powiela własnego szacunku szerokości znaku.
+      expect(szerokosc, `pole ${i} („${podpis}")`).toBeGreaterThan(gabaryt + measureLabelWidth(podpis, 't3'));
     }
   });
 });

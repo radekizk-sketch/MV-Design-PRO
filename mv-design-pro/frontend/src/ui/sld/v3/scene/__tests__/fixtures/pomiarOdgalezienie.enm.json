@@ -180,9 +180,9 @@
      "51",
      "50",
      "51N",
-     "Buchholz",
-     "temp",
-     "ciśnienie"
+     "63",
+     "26",
+     "63P"
     ],
     "protection_ref": null,
     "ref_id": "stn/60906c356e0f9a3e6946ccbf17a52c29/sn_field/002",
@@ -568,9 +568,9 @@
      "51",
      "50",
      "51N",
-     "Buchholz",
-     "temp",
-     "ciśnienie"
+     "63",
+     "26",
+     "63P"
     ],
     "protection_ref": null,
     "ref_id": "stn/c16428a6c5b18ea62371d813e0a3d084/sn_field/002",
@@ -908,9 +908,9 @@
      "51",
      "50",
      "51N",
-     "Buchholz",
-     "temp",
-     "ciśnienie"
+     "63",
+     "26",
+     "63P"
     ],
     "protection_ref": null,
     "ref_id": "stn/b90fe112224f1de151746da1e8b35949/sn_field/002",
@@ -1548,9 +1548,9 @@
      "51",
      "50",
      "51N",
-     "Buchholz",
-     "temp",
-     "ciśnienie"
+     "63",
+     "26",
+     "63P"
     ],
     "protection_ref": null,
     "ref_id": "field/ed9391b0cd05c80ed6631c0043c6b682/3",
@@ -1926,9 +1926,9 @@
      "51",
      "50",
      "51N",
-     "Buchholz",
-     "temp",
-     "ciśnienie"
+     "63",
+     "26",
+     "63P"
     ],
     "protection_ref": null,
     "ref_id": "field/ac04375d68166f4e570661e425317f57/3",
@@ -6283,24 +6283,24 @@
    },
    {
     "corridor_type": "radial",
-    "id": "d5880924-f050-5b21-b15a-b81a7bd76216",
+    "id": "f8dfb83d-96df-5ed0-9101-1d7f343df959",
     "meta": {},
     "name": "Odgałęzienie SN kablowe",
     "ordered_segment_refs": [
      "seg/5cd9f05534de8c7d86e3ee8f6938aa28/branch_segment"
     ],
-    "ref_id": "corridor/d96a5487e3718d286c841c8ceb4613ef/branch",
+    "ref_id": "corridor/54093d21c00150171766608ea659cb92/branch",
     "tags": []
    },
    {
     "corridor_type": "radial",
-    "id": "333dcce7-03e9-5647-9b46-e3f413320ad9",
+    "id": "c1a36f05-38e1-5dd4-84ca-0cacc18392ec",
     "meta": {},
     "name": "Odgałęzienie SN napowietrzne",
     "ordered_segment_refs": [
      "seg/5975cf96fdeff556ceb7cd0cf7207178/branch_segment"
     ],
-    "ref_id": "corridor/e1452ed31618e86df2512de14682411a/branch",
+    "ref_id": "corridor/53abb57981dfdaf55899d381e9c9a5bd/branch",
     "tags": []
    }
   ],
@@ -6315,7 +6315,7 @@
    },
    "description": null,
    "enm_version": "1.0",
-   "hash_sha256": "93922df6d978c73d3ff81b67b3a626bf5b60a9a5f7cd81ce03cd892137549bc8",
+   "hash_sha256": "aa36ca8c5c446bdf6df44e98d74c142ceeaf5618e49faca2295ae3d1df085870",
    "name": "Sieć pokazowa — pomiar w odgałęzieniu",
    "revision": 16,
    "updated_at": "2026-08-06T00:00:00Z"
@@ -6373,7 +6373,7 @@
    },
    {
     "branch_origin_station_ref": "bp/f34f1e61877283e7534184a0647a6f99/zksn",
-    "id": "corridor/d96a5487e3718d286c841c8ceb4613ef/branch",
+    "id": "corridor/54093d21c00150171766608ea659cb92/branch",
     "name": "Odgałęzienie SN kablowe",
     "parent_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
     "run_kind": "branch",
@@ -6384,12 +6384,12 @@
      }
     ],
     "starting_bay_ref": "bp/f34f1e61877283e7534184a0647a6f99/zksn",
-    "starting_port_ref": "bp/f34f1e61877283e7534184a0647a6f99/zksn.BRANCH_1",
+    "starting_port_ref": "bp/f34f1e61877283e7534184a0647a6f99/branch_bus_1",
     "stations": []
    },
    {
     "branch_origin_station_ref": "bp/830947bd1a7a197126dce059a393aad4/branch_pole",
-    "id": "corridor/e1452ed31618e86df2512de14682411a/branch",
+    "id": "corridor/53abb57981dfdaf55899d381e9c9a5bd/branch",
     "name": "Odgałęzienie SN napowietrzne",
     "parent_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
     "run_kind": "branch",
@@ -6400,7 +6400,7 @@
      }
     ],
     "starting_bay_ref": "bp/830947bd1a7a197126dce059a393aad4/branch_pole",
-    "starting_port_ref": "bp/830947bd1a7a197126dce059a393aad4/branch_pole.BRANCH",
+    "starting_port_ref": "bp/830947bd1a7a197126dce059a393aad4/branch_bus_1",
     "stations": []
    }
   ],

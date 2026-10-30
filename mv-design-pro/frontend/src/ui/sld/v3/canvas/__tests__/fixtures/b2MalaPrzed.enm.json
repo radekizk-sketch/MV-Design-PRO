@@ -233,9 +233,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/15ec590199593aedd97bb7794dd02000/sn_field/003",
@@ -524,9 +524,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/5a5162352a7a96891da4bfaa813076c8/sn_field/003",
@@ -1954,7 +1954,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "d3bee336674c0207853f7d34bfde69436f719ecab9abd6a68dc5d2f5ae8fe935",
+      "hash_sha256": "92ebbaa840f787a67daf5b1a476459fedd67448d971ed2e3a0e887812f91c3ee",
       "name": "Sieć Mala — przed",
       "revision": 10,
       "updated_at": "2026-09-25T00:00:00Z"

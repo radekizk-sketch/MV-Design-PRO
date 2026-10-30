@@ -71,7 +71,9 @@ import { overlapProbe } from '../../layout/labels';
 import { sheetRowStationIds, trunkThicknessGaps } from '../buildScene';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
-import { SYMBOL_DEFS } from '../../symbols/defs';
+import { rodzajSymbolu, SYMBOL_DEFS } from '../../symbols/defs';
+import { symboleRodzajuAparatu } from '../../compose/apparatusSequence';
+import { RODZAJE_LACZNIKOW_TORU } from '../../compose/rodzajeAparatuPola';
 import { GRID, type V3Rect } from '../../core/grid';
 import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
@@ -1249,9 +1251,34 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // z SAMYMI nowymi identyfikatorami (odwzorowanie 1:1 po pozycji, 487 ziaren, 0 konfliktów)
     // — 23168/46400/46400 = fikstura nowa. Całe +416 to inna kolejność remisu
     // `id.localeCompare`, nie trasowanie.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23168);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46400);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46400);
+    // AKTUALIZACJA ŚWIADOMA — karta UX-04/POLE-LINIOWE-WZORZEC (decyzje architekta §11.7,
+    // 2026-10-30): 23168/46400/46400 → 21608/45128/45128, spadek miary „nie-rosnącej" §15.1.
+    // DOWÓD 2×2 (sonda karty): kod HEAD + fikstura zregenerowana = 22728/45960/45960 (−440
+    // jednolicie, WYŁĄCZNIE identyfikatory: jedna forma `starting_port_ref` z decyzji 3 i słownik
+    // kodów EAZ zmieniają treść rekordów, a z nią skróty `ref_id`; hybryda „treść starej fikstury
+    // z nowymi identyfikatorami" = 22728, „stare identyfikatory z nowymi portami" = 23168, kody
+    // EAZ bez wpływu — inna kolejność remisu `id.localeCompare`, jak w precedensach wyżej);
+    // kod karty + fikstura sprzed regeneracji = 22048/45568/45568. Efekt kodu na fiksturze
+    // zregenerowanej, rozbity po właścicielu odcinka:
+    //  - L1/L2 −832 = 12 zejść odgałęzień (`…/branch_segment_L`) × −64 i człon ciągu
+    //    `…/segment_L_R` −64. Wiersze lateralne stacji podnoszą się o 64…192 px (pomiar per
+    //    stacja, 11 wierszy pod magistralą; magistrala bez zmian) i jest to w CAŁOŚCI skutek
+    //    tablicy szerokości znaków kroju (decyzja 7: 519 z 520 etykiet sceny węższych, wysokości
+    //    bez zmian) — wariant kodu karty z dawną szerokością 0,62 em daje położenia wszystkich
+    //    wierszy identyczne z kodem HEAD. Dawne kawałki `#tee-N` (rozcinanie kabla w punkcie
+    //    przecięcia, skasowane rozstrzygnięciem S7-P2) wróciły do całych odcinków — suma pionów
+    //    ta sama co do piksela;
+    //  - L0 −1120 = 12 × (−64 − 24) − 64: te same zejścia i człon ciągu, a do tego KD-5 — port
+    //    odejścia odgałęzienia z symbolu zbiorczego stacji stoi na jego DOLNEJ krawędzi zamiast
+    //    w środku (środkiem przechodzi kabel ciągu: początek kabla odgałęzienia leżał na wnętrzu
+    //    kabla ciągu, styk dwóch kabli bez węzła modelu), −24 px na zejście (połowa wysokości
+    //    symbolu zbiorczego).
+    // Przesunięcie styku członów z obcego przewodu i usunięcie wierzchołków współliniowych
+    // (`scene/stykiCzlonow.ts`, `dedupeVertices`) nie zmieniają sumy pionów (suma geometryczna
+    // toru ta sama).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21608);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45128);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45128);
   });
 });
 
@@ -1427,6 +1454,39 @@ describe('buildSceneV3 — F10.3: switch_symbol_unambiguity_probe (spec §18.5) 
     // legalne per Invariant 9).
     const undefinedStateGaps = switchSymbolUnambiguityGaps(scene).filter((g) => g.reason === 'main-path-switch-invalid-state');
     expect(undefinedStateGaps).toHaveLength(0);
+  });
+
+  // Iloczyn: KAŻDY rysunek łącznika toru (wszystkie rodzaje `RODZAJE_LACZNIKOW_TORU` × warianty
+  // rysunku × cechy rekordu, w tym znak napędu z modelu — `symboleRodzajuAparatu`) × stan
+  // {closed, open, unknown, earthed, energized}. Położenie „uziemiony" jest legalne wyłącznie dla
+  // RODZAJU łącznika trójpołożeniowego — także jego rysunku ze znakiem napędu (karta
+  // UX-04/POLE-LINIOWE-WZORZEC: napęd to atrybut łącznika, nie inny aparat; sonda pyta
+  // o `rodzajSymbolu`, nie o tożsamość rysunku).
+  describe('stan × rysunek łącznika toru (w tym znak napędu)', () => {
+    const scena = buildSceneV3(enm, 2);
+    const ofiara = scena.symbols.find((s) => s.symbolId === 'breaker' || s.symbolId === 'disconnector')!;
+    const rysunki = [...new Set([...RODZAJE_LACZNIKOW_TORU].flatMap((k) => symboleRodzajuAparatu(k)))];
+    it('warunek wstępny: rysunki obejmują oba łączniki ze znakiem napędu', () => {
+      expect(ofiara).toBeDefined();
+      expect(rysunki).toEqual(expect.arrayContaining(['qetBreakerZNapedem', 'qetThreePositionSwitchZNapedem']));
+    });
+    for (const symbolId of rysunki) {
+      for (const stan of ['closed', 'open', 'unknown', 'earthed', 'energized'] as const) {
+        it(`${symbolId} × ${stan}`, () => {
+          const sabotaz = {
+            ...scena,
+            symbols: scena.symbols.map((s) => (s === ofiara ? { ...s, symbolId, state: stan as never } : s)),
+          };
+          const luka = switchSymbolUnambiguityGaps(sabotaz).some(
+            (g) => g.reason === 'main-path-switch-invalid-state' && g.symbolId === symbolId,
+          );
+          const legalny =
+            stan === 'closed' || stan === 'open' || stan === 'unknown'
+            || (stan === 'earthed' && rodzajSymbolu(symbolId) === 'qetThreePositionSwitch');
+          expect(luka).toBe(!legalny);
+        });
+      }
+    }
   });
 
   it('(test negatywny c): „52" w protectionCodes okręgu przekaźnika ⇒ device-number-52-in-protection-codes zgłoszony', () => {

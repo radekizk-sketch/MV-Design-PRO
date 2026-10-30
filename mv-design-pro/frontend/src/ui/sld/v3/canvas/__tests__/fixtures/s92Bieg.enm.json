@@ -179,9 +179,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "stn/e175ec51477c27677da547384cfababc/sn_field/002",
@@ -1634,7 +1634,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "33665ab849cf7f5fc32498e6bae0ba4d32d5f38d85aae6bef2c327b246749153",
+    "hash_sha256": "9533e06a01432612f03b37887d28d48021044aad71d31988690061e4635a085b",
     "name": "Bieg na schemacie",
     "revision": 6,
     "updated_at": "2026-09-25T00:00:00Z"

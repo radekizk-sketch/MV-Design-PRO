@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { buildOperationContext } from '../operationContext';
 import { pole } from '../../../test/pola';
 import {
+  portStartuPunktu,
+  resolveBranchSourceContext,
   resolveBranchSourceContextFromOperation,
   resolveElementNetworkContext,
 } from '../operationContextResolvers';
@@ -381,13 +383,14 @@ describe('buildOperationContext', () => {
     });
 
     expect(context.station_ref).toBe('st-1');
-    expect(context.from_ref).toBe('bay-feeder-1.BRANCH');
+    // Port startu w jedynej postaci (backend `_rozwiaz_port_startu`): `ref_id` pola liniowego.
+    expect(context.from_ref).toBe('bay-feeder-1');
     expect(context.source_type_label).toBe('Pole liniowe SN');
     expect(context.source_name).toBe('ST-1 · Pole odgałęźne');
     // Odcinek odgałęzienia przyłącza się w zacisku pola (POLA-W-TORZE), nie na szynie stacji.
     expect(context.source_bus_ref).toBe('bus-st-field-branch');
     expect(context.from_bus_ref).toBe('bus-st-field-branch');
-    expect(context.source_port_label).toBe('BRANCH');
+    expect(context.source_port_label).toBe('zacisk pola liniowego');
   });
 
   it('NEGATYW: to samo pole bez wiersza zajętości w modelu odczytu nie daje from_ref (jeden predykat startu)', () => {
@@ -451,7 +454,7 @@ describe('buildOperationContext', () => {
     });
 
     expect(context.station_ref).toBe('st-field-1');
-    expect(context.from_ref).toBe('field-branch-1.BRANCH');
+    expect(context.from_ref).toBe('field-branch-1');
     expect(context.source_type_label).toBe('Pole liniowe SN');
     expect(context.source_name).toBe('ST-FIELD-1 · Pole odgałęźne');
     expect(context.source_bus_ref).toBe('bus-field-branch-terminal');
@@ -566,7 +569,7 @@ describe('buildOperationContext', () => {
         { field_ref: 'field-branch-used', station_ref: 'st-branch-used', bay_role: 'FEEDER', occupied: false },
       ]),
     });
-    expect(fieldContextWolne.from_ref).toBe('field-branch-used.BRANCH');
+    expect(fieldContextWolne.from_ref).toBe('field-branch-used');
 
     expect(stationContext.from_ref).toBeUndefined();
     expect(stationContext.from_bus_ref).toBeUndefined();
@@ -753,7 +756,7 @@ describe('buildOperationContext', () => {
     expect(displayContext.sourceType).toBe('Nie ustalono');
   });
 
-  it('wybiera wolny port BRANCH dla ZKSN i zachowuje from_bus_ref', () => {
+  it('wybiera wolny port odgałęźny ZKSN — from_ref = zacisk portu — i zachowuje from_bus_ref', () => {
     const context = buildOperationContext({
       canonicalOp: 'start_branch_segment_sn',
       elementId: 'bus-zksn-main',
@@ -762,11 +765,11 @@ describe('buildOperationContext', () => {
       logicalViews,
     });
 
-    expect(context.from_ref).toBe('zksn-1.BRANCH_2');
+    expect(context.from_ref).toBe('bus-zksn-branch-2');
     expect(context.from_bus_ref).toBe('bus-zksn-branch-2');
     expect(context.source_type_label).toBe('ZKSN');
     expect(context.source_bus_ref).toBe('bus-zksn-branch-2');
-    expect(context.source_port_label).toBe('BRANCH_2');
+    expect(context.source_port_label).toBe('port odgałęźny 2 z 2');
   });
 
   it('buduje pare pierscienia z biezacego terminala i partnera', () => {
@@ -856,5 +859,63 @@ describe('buildOperationContext', () => {
     expect(context.lv_bus_ref).toBeUndefined();
     expect(context.transformer_context_valid).toBe(false);
     expect(context.transformer_block_reason).toBe('Transformator SN/nN nie należy do układu GPZ ani źródła systemowego.');
+  });
+});
+
+// Port startu odgałęzienia w JEDYNEJ postaci (rozstrzygnięcie architekta 2026-10-30, karta
+// UX-04/POLE-LINIOWE-WZORZEC; backend `_rozwiaz_port_startu`). Iloczyn cech: rodzaj źródła
+// {pole liniowe stacji, port ZKSN 1 z 2, port ZKSN 2 z 2, port słupa rozgałęźnego, szyna końca
+// ciągu} × postać {jedyna — rozpoznana; dawna `⟨element⟩.BRANCH[_n]` — nieustalona}.
+describe('port startu odgałęzienia — jedna postać', () => {
+  const model = {
+    substations: [{ id: 'st-p', ref_id: 'st-p', name: 'ST-P', station_type: 'mv_lv', bus_refs: ['bus-p'], transformer_refs: [] }],
+    buses: [
+      { id: 'bus-p', ref_id: 'bus-p', name: 'Szyna ST-P', voltage_kv: 15 },
+      { id: 'bus-p-zacisk', ref_id: 'bus-p-zacisk', name: 'Zacisk pola', voltage_kv: 15 },
+      { id: 'bus-z1', ref_id: 'bus-z1', name: 'Port 1', voltage_kv: 15 },
+      { id: 'bus-z2', ref_id: 'bus-z2', name: 'Port 2', voltage_kv: 15 },
+      { id: 'bus-s1', ref_id: 'bus-s1', name: 'Port słupa', voltage_kv: 15 },
+      { id: 'bus-koniec', ref_id: 'bus-koniec', name: 'Koniec ciągu', voltage_kv: 15, tags: ['topology_terminal'] },
+    ],
+    bays: [pole({ ref_id: 'pole-p', substation_ref: 'st-p', bus_ref: 'bus-p', bay_role: 'FEEDER', name: 'Pole odgałęźne', terminal_bus_ref: 'bus-p-zacisk' })],
+    branch_points: [
+      {
+        id: 'zk-p', ref_id: 'zk-p', name: 'ZK P', branch_point_type: 'zksn', bus_ref: 'bus-x',
+        ports: { MAIN_IN: 'bus-a', MAIN_OUT: 'bus-b', BRANCH: ['bus-z1', 'bus-z2'] }, // ui-terminology-ignore
+        branch_occupied: {},
+      },
+      {
+        id: 'slup-p', ref_id: 'slup-p', name: 'Słup P', branch_point_type: 'branch_pole', bus_ref: 'bus-y',
+        ports: { MAIN_IN: 'bus-c', MAIN_OUT: 'bus-d', BRANCH: ['bus-s1'] }, // ui-terminology-ignore
+        branch_occupied: {},
+      },
+    ],
+    branches: [],
+  } as never;
+  const przypadki: [string, string, string, string, string][] = [
+    ['pole liniowe stacji', 'pole-p', 'Pole liniowe SN', 'bus-p-zacisk', 'zacisk pola liniowego'],
+    ['port ZKSN 1 z 2', 'bus-z1', 'ZKSN', 'bus-z1', 'port odgałęźny 1 z 2'],
+    ['port ZKSN 2 z 2', 'bus-z2', 'ZKSN', 'bus-z2', 'port odgałęźny 2 z 2'],
+    ['port słupa rozgałęźnego', 'bus-s1', 'Słup rozgałęźny', 'bus-s1', 'port boczny słupa rozgałęźnego'],
+    ['szyna końca ciągu', 'bus-koniec', 'Szyna SN', 'bus-koniec', 'zacisk końca ciągu'],
+  ];
+  it.each(przypadki)('%s: from_ref %s rozpoznany', (_nazwa, fromRef, typ, szyna, port) => {
+    expect(resolveBranchSourceContext(model, fromRef)).toEqual(
+      expect.objectContaining({ fromRef, sourceType: typ, sourceBusRef: szyna, portLabel: port }),
+    );
+  });
+  it.each(['pole-p.BRANCH', 'zk-p.BRANCH_1', 'zk-p.BRANCH_2', 'slup-p.BRANCH'])( // ui-terminology-ignore
+    'dawna postać %s jest nieustalona (bez warstwy zgodności)',
+    (fromRef) => {
+      expect(resolveBranchSourceContext(model, fromRef)).toEqual(
+        expect.objectContaining({ sourceType: 'Nie ustalono', sourceBusRef: '', portLabel: '' }),
+      );
+    },
+  );
+  it('portStartuPunktu: zacisk portu, a punkt bez portu — własny ref (nazwana odmowa domeny)', () => {
+    const [zk, slup] = (model as { branch_points: never[] }).branch_points;
+    expect(portStartuPunktu(zk, 1)).toBe('bus-z2');
+    expect(portStartuPunktu(slup, 0)).toBe('bus-s1');
+    expect(portStartuPunktu({ ...(slup as object), ports: { MAIN_IN: 'a', MAIN_OUT: 'b', BRANCH: [] } } as never, 0)).toBe('slup-p'); // ui-terminology-ignore
   });
 });

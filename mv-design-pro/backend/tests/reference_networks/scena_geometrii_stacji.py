@@ -135,7 +135,7 @@ def zbuduj_siec() -> dict[str, Any]:
         op(
             enm,
             "start_branch_segment_sn",
-            {"from_ref": f"{pola_odgalezne[1]}.BRANCH", "segment": odcinek(400, "Odgałęzienie 1")},
+            {"from_ref": pola_odgalezne[1], "segment": odcinek(400, "Odgałęzienie 1")},
         )
     )
     koniec_odgalezienia = str(_kabel(enm, "Odgałęzienie 1")["to_bus_ref"])

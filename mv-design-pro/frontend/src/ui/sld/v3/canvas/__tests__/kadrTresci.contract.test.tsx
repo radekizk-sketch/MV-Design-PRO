@@ -31,7 +31,7 @@
  *    42,5/37,5 (dryf o `FRAME_MARGIN`).
  *
  * Ekstenty tekstu są DETERMINISTYCZNE (`core/text.ts` — `measureLabelWidth`
- * ze stałą `AVG_GLYPH_WIDTH_FACTOR`), więc kontrakt nie zależy od renderu
+ * z tabelą posuwów kroju `core/metrykiKroju.json`), więc kontrakt nie zależy od renderu
  * czcionki w przeglądarce (P7).
  */
 import { readFileSync } from 'node:fs';

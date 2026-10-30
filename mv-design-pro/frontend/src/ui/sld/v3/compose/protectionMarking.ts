@@ -45,6 +45,7 @@
 import { GRID, snapUp } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import { kodyPozaOkregiemPrzekaznika, kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
 import type { CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../../v2/model/widokPolStacji';
 import { tekstOdniesieniaZrodlaU0 } from '../../v2/model/zrodloNapieciaZerowego';
 
@@ -73,7 +74,7 @@ export function protectionAnnotationDetailForLod(lod: 0 | 1 | 2): ProtectionAnno
 /**
  * Tekst PEŁNEJ listy kodów (spec §17.3 zdanie 2: „większa liczba funkcji →
  * w okręgu dwie najważniejsze..., pełna lista w etykiecie slotu pola") —
- * `null` gdy kodów ≤2 (okrąg niesie je w całości, slot zbędny — R-2
+ * `null` gdy okrąg niesie wszystkie kody (slot zbędny — R-2
  * rozstrzygnięcia recenzji F9.9). Separator „·" jak w etykietach przepływu
  * F9.5 (spójna typografia adnotacji).
  */
@@ -85,20 +86,28 @@ export function fullCodesListText(codes: readonly string[]): string | null {
 /** Liczba kodów w jednym wierszu pełnej listy funkcji EAZ. */
 export const KODY_EAZ_W_WIERSZU = 5;
 
-/**
- * Wiersze PEŁNEJ listy kodów funkcji (spec §17.3 zd. 2) — po `KODY_EAZ_W_WIERSZU` kodów
- * w wierszu, w kolejności danych; puste, gdy kodów ≤2 (okrąg niesie je w całości). Karta
- * UX-04/POLE-LINIOWE-WZORZEC (korekta P0 pkt 6): profil EAZ pola liniowego ENEA (15 funkcji
- * Z.11.1) w JEDNYM wierszu odsuwał przekaźnik o szerokość listy od pola — lista w wierszach
- * stoi zwarcie przy przekaźniku. JEDNA funkcja rezerwacji szerokości i rysunku (stacja, GPZ).
- */
-export function fullCodesListLines(codes: readonly string[]): readonly string[] {
-  if (codes.length <= 2) return [];
+/** Kody po `KODY_EAZ_W_WIERSZU` w wierszu, w kolejności danych, separator „·". */
+function wierszeKodow(codes: readonly string[]): readonly string[] {
   const wiersze: string[] = [];
   for (let i = 0; i < codes.length; i += KODY_EAZ_W_WIERSZU) {
     wiersze.push(codes.slice(i, i + KODY_EAZ_W_WIERSZU).join(' · '));
   }
   return wiersze;
+}
+
+/**
+ * Wiersze PEŁNEJ listy kodów funkcji (spec §17.3 zd. 2) — po `KODY_EAZ_W_WIERSZU` kodów
+ * w wierszu, w kolejności danych; puste, gdy okrąg niesie WSZYSTKIE kody pola
+ * (`kodyWOkreguPrzekaznika`, `symbols/okragPrzekaznika.ts` — kod, którego tusz pismem 8 px nie
+ * mieści się w okręgu, nie trafia do okręgu, więc pełna lista pojawia się także przy ≤ 2
+ * kodach). Karta UX-04/POLE-LINIOWE-WZORZEC (korekta P0 pkt 6): profil EAZ pola liniowego ENEA
+ * (15 funkcji Z.11.1) w JEDNYM wierszu odsuwał przekaźnik o szerokość listy od pola — lista
+ * w wierszach stoi zwarcie przy przekaźniku. JEDNA funkcja rezerwacji szerokości i rysunku
+ * (stacja, GPZ).
+ */
+export function fullCodesListLines(codes: readonly string[]): readonly string[] {
+  if (kodyWOkreguPrzekaznika(codes).length === codes.length) return [];
+  return wierszeKodow(codes);
 }
 
 /** Odstęp kolejnych wierszy pełnej listy kodów [px świata] — dwa rastry: wiersze t4
@@ -128,19 +137,15 @@ export function odniesieniaPrzekaznikaPola(
 
 /**
  * Wiersze kodów funkcji POZA okręgiem przekaźnika w układzie powiązań obwodów wtórnych pola
- * GPZ: okrąg niesie dwa pierwsze kody (§17.3), wiersze — WYŁĄCZNIE pozostałe, po
+ * GPZ: okrąg niesie prefiks listy, który mieści się w nim pismem 8 px (co najwyżej dwa kody,
+ * §17.3; `kodyWOkreguPrzekaznika`), wiersze — WYŁĄCZNIE pozostałe, po
  * `KODY_EAZ_W_WIERSZU` w wierszu. Uwaga właściciela 2026-10-29 pkt 5: okrąg „51 50" powtarzał
  * część pełnej listy stojącej obok — blok przekaźnika ma JEDNĄ reprezentację każdej funkcji
  * (okrąg ∪ wiersze, w ramce bloku). Układ stacji (R-2 §17.3) zostaje przy pełnej liście
  * (`fullCodesListLines`).
  */
 export function wierszeKodowPozaOkregiem(codes: readonly string[]): readonly string[] {
-  const reszta = codes.slice(2);
-  const wiersze: string[] = [];
-  for (let i = 0; i < reszta.length; i += KODY_EAZ_W_WIERSZU) {
-    wiersze.push(reszta.slice(i, i + KODY_EAZ_W_WIERSZU).join(' · '));
-  }
-  return wiersze;
+  return wierszeKodow(kodyPozaOkregiemPrzekaznika(codes));
 }
 
 /** Wiersze tekstu w bloku przekaźnika układu powiązań: kody poza okręgiem i po nich
@@ -221,13 +226,17 @@ export function ctCoresLabelText(cores: number | null | undefined): string | nul
  * niżej) — zero rozjazdu tekst↔szerokość.
  */
 export function ctRatingLabelText(
-  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement' | 'cores'>,
+  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement' | 'cores' | 'klasy'>,
 ): string {
-  const members = [`${entry.identifier} · ${entry.ratioText}`];
+  // Karta UX-04/POLE-LINIOWE-WZORZEC (§11.7 pkt 6): adnotacja z tabliczki aparatu nie ma
+  // identyfikatora (tożsamość niesie narysowany aparat) — tekst to przekładnia i klasy rdzeni
+  // („200-400/5 A · 5P20", zapis rysunku ENEA Z.10).
+  const members = [entry.identifier ? `${entry.identifier} · ${entry.ratioText}` : entry.ratioText];
   const arrangementLabel = ctArrangementLabelText(entry.arrangement);
   if (arrangementLabel) members.push(arrangementLabel);
   const coresLabel = ctCoresLabelText(entry.cores);
   if (coresLabel) members.push(coresLabel);
+  if (entry.klasy) members.push(entry.klasy);
   return members.join(' · ');
 }
 
@@ -515,9 +524,11 @@ export interface ResolvedCtRatingAnnotation {
 
 /**
  * Rozstrzyga adnotacje przekładni CT (§18.3, F10.4) na już zbudowanym stosie —
- * dopasowanie KAŻDEJ pozycji `ctRatingAnnotations` na aparat
- * `symbolId==='currentTransformer'` przez `measurementRef === linked_ref`
- * (TA SAMA reguła co `resolveMeterAnchor`). Pozycje bez dopasowania w stosie
+ * dopasowanie KAŻDEJ pozycji `ctRatingAnnotations` na aparat rodzaju
+ * `currentTransformer`: adnotacja z pomiaru przez `measurementRef === linked_ref`
+ * (TA SAMA reguła co `resolveMeterAnchor`), adnotacja z tabliczki aparatu (karta
+ * UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6) przez `deviceRef` tego aparatu; pozycja bez
+ * żadnego z dwóch kluczy nie dopasowuje się nigdzie. Pozycje bez dopasowania w stosie
  * są POMIJANE (zero zgadywania — adnotacja NIE jest rysowana bez
  * jednoznacznej kotwicy geometrycznej; symetryczne do `resolveMeterAnchor`
  * zwracającego `null`, tu zbiorczo przez filtrację).
@@ -529,8 +540,14 @@ export function resolveCtRatingAnnotations(
   if (!ctRatingAnnotations || ctRatingAnnotations.length === 0) return [];
   const result: ResolvedCtRatingAnnotation[] = [];
   for (const entry of ctRatingAnnotations) {
+    // Adnotacja z tabliczki aparatu (§11.7 pkt 6) kotwiczy na TYM aparacie (`deviceRef`),
+    // adnotacja z pomiaru — na aparacie wskazującym pomiar (`linked_ref`).
     const device = stack.find(
-      (d) => rodzajSymbolu(d.symbolId) === 'currentTransformer' && d.linkedRef === entry.measurementRef,
+      (d) =>
+        rodzajSymbolu(d.symbolId) === 'currentTransformer' &&
+        (entry.deviceRef !== undefined
+          ? d.deviceRef === entry.deviceRef
+          : entry.measurementRef !== null && d.linkedRef === entry.measurementRef),
     );
     if (!device) continue;
     result.push({ device, text: ctRatingLabelText(entry), purpose: entry.purpose });

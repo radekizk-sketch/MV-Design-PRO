@@ -31,13 +31,16 @@ from collections.abc import Collection, Mapping, Sequence
 from typing import Any, Literal
 
 from network_model.catalog.funkcje_eaz import kody_spoza_slownika
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 __all__ = [
+    "NAPEDY_RODZAJU_APARATU",
     "OBWODY_WTORNE_WYKONANIA_POLA",
+    "OPIS_NAPEDU_PL",
     "POLA_POWIAZAN_APARATU",
     "RODZAJ_APARATU_WEJSCIA",
-    "RodzajNapeduWylacznika",
+    "NapedAparatuPola",
+    "RodzajNapedu",
     "ObwodyWtornePola",
     "PowiazanieFunkcjiEaz",
     "PrzypisanieObwoduPrzekladnika",
@@ -49,10 +52,35 @@ __all__ = [
 
 StatusWeryfikacji = Literal["ZWERYFIKOWANE_NA_RYSUNKU", "ODCZYT_TEKSTU", "INTERPRETACJA"]
 
-#: Rodzaj napędu wyłącznika wzorca (ENEA Z.10/Z.11/Z.11.1 rysują silnik „M" przy wyłączniku).
-#: Jeden słownik dla szablonu (`ObwodyWtornePola.naped_wylacznika`) i rekordu aparatu ENM
-#: (`BayPrimaryDevice.naped`).
-RodzajNapeduWylacznika = Literal["SILNIKOWY"]
+#: Rodzaj napędu łącznika pola — znak napędu, który rysunek wzorca stawia przy łączniku (ENEA
+#: Zeszyt 1, Z.10 s.89, Z.11 s.90, Z.11.1 s.91). Jeden słownik dla wzorca
+#: (`NapedAparatuPola.naped`) i rekordu aparatu ENM (`BayPrimaryDevice.naped`); napęd jest
+#: ATRYBUTEM łącznika, nie osobnym aparatem pola:
+#:
+#: * ``SILNIKOWY`` — okrąg z literą M na kreskowanym sprzężeniu mechanicznym (EN 60617
+#:   02-13-26), przy wyłączniku Q0;
+#: * ``ZASOBNIKOWY_RECZNY`` — kwadrat na kreskowanym sprzężeniu mechanicznym (EN 60617 02-13-20,
+#:   napęd energią zmagazynowaną) z kreskowanym odcinkiem zakończonym poprzeczką (EN 60617
+#:   02-13-01, napęd ręczny — symbol ogólny), przy łączniku trójpołożeniowym Q1.
+RodzajNapedu = Literal["SILNIKOWY", "ZASOBNIKOWY_RECZNY"]
+
+#: Napędy dopuszczalne wg rodzaju aparatu (`BayPrimaryDevice.kind`) — jedno źródło dla
+#: walidatora wzorca (`NapedAparatuPola`), walidatora rekordu ENM (`BayPrimaryDevice`)
+#: i symbolu łącznika na schemacie (frontend `apparatusSequence.SYMBOL_LACZNIKA_Z_NAPEDEM`,
+#: parytet przypina test). Rodzaj spoza słownika napędu nie ma.
+NAPEDY_RODZAJU_APARATU: dict[str, tuple[RodzajNapedu, ...]] = {
+    "CB": ("SILNIKOWY",),
+    "THREE_POSITION_SWITCH": ("ZASOBNIKOWY_RECZNY",),
+}
+
+#: Opis napędu dla karty pola i raportu (symbol normy w opisie, bez skrótów projektu).
+OPIS_NAPEDU_PL: dict[RodzajNapedu, str] = {
+    "SILNIKOWY": "napęd silnikowy (M, EN 60617 02-13-26)",
+    "ZASOBNIKOWY_RECZNY": (
+        "napęd zasobnikowy — energia zmagazynowana (EN 60617 02-13-20), z obsługą ręczną "
+        "(EN 60617 02-13-01)"
+    ),
+}
 
 #: Rodzaj aparatu pola (`BayPrimaryDevice.kind`), z którego mierzy wejście funkcji EAZ — jedno
 #: źródło dla walidatora szablonu (`bay_templates._sprawdz_obwody_wtorne`), odczytu pola
@@ -139,12 +167,42 @@ class PrzypisanieObwoduPrzekladnika(BaseModel):
     weryfikacja: StatusWeryfikacji
 
 
+class NapedAparatuPola(BaseModel):
+    """Napęd łącznika wzorca pola: oznaczenie i rodzaj aparatu, przy którym rysunek stawia znak
+    napędu, oraz rodzaj napędu. Aparat pola dostaje napęd po OZNACZENIU i RODZAJU
+    (`powiazania_aparatow_pola`) — łącznik innego rodzaju o tym samym oznaczeniu (wariant
+    wykonania łączników, którego rysunek nie przedstawia) napędu nie dostaje."""
+
+    aparat: str  # oznaczenie aparatu na rysunku (np. „Q0", „Q1")
+    rodzaj_aparatu: str  # `BayPrimaryDevice.kind`
+    naped: RodzajNapedu
+    weryfikacja: StatusWeryfikacji
+    uwaga: str | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def naped_pl(self) -> str:
+        """Opis napędu (`OPIS_NAPEDU_PL`) — jedno źródło tekstu karty pola."""
+        return OPIS_NAPEDU_PL[self.naped]
+
+    @model_validator(mode="after")
+    def _rodzaj_i_uzasadnienie(self) -> NapedAparatuPola:
+        if self.naped not in NAPEDY_RODZAJU_APARATU.get(self.rodzaj_aparatu, ()):
+            raise ValueError(
+                f"Napęd {self.aparat}: napęd {self.naped} nie dotyczy aparatu rodzaju "
+                f"{self.rodzaj_aparatu}."
+            )
+        if self.weryfikacja == _IN and not self.uwaga:
+            raise ValueError(f"Napęd {self.aparat}: interpretacja wymaga uzasadnienia.")
+        return self
+
+
 class ObwodyWtornePola(BaseModel):
     """Obwody wtórne wzorca pola — jedno źródło relacji rysunku dla API szablonów i karty pola."""
 
     podstawa: str
-    naped_wylacznika: RodzajNapeduWylacznika
-    naped_weryfikacja: StatusWeryfikacji
+    # Napędy łączników rysunku (wyłącznik Q0, łącznik trójpołożeniowy Q1) — atrybuty aparatów.
+    napedy: list[NapedAparatuPola] = Field(default_factory=list)
     powiazania: list[PowiazanieFunkcjiEaz]
     sygnaly: list[SygnalPola]
     obwody_przekladnikow: list[PrzypisanieObwoduPrzekladnika] = Field(default_factory=list)
@@ -154,6 +212,9 @@ class ObwodyWtornePola(BaseModel):
         nieznane = kody_spoza_slownika([p.funkcja for p in self.powiazania])
         if nieznane:
             raise ValueError(f"Obwody wtórne: kody funkcji spoza słownika EAZ: {nieznane}.")
+        z_napedem = [n.aparat for n in self.napedy]
+        if len(set(z_napedem)) != len(z_napedem):
+            raise ValueError("Obwody wtórne: aparat z więcej niż jednym napędem.")
         kody = [p.funkcja for p in self.powiazania]
         if len(set(kody)) != len(kody):
             raise ValueError("Obwody wtórne: funkcja EAZ powiązana więcej niż raz.")
@@ -477,20 +538,14 @@ def _powiazania_wspolne(
             wylacznik="Q0",
             weryfikacja=_ZW,
         ),
+        # Jedna funkcja SCO pola: stopnie SCO1, SCO2 wyłączają, obwód „SCO/SPZ" załącza po SCO
+        # — trzy obwody okrężne do jednego sterownika pola (rysunek nie ma osobnego bloku
+        # „SPZ po SCO"; `funkcje_eaz` — wpis SCO).
         PowiazanieFunkcjiEaz(
             funkcja="SCO",
             blok_rysunku="Sterownik pola",
-            wejscia=[_sygnal("SCO1"), _sygnal("SCO2")],
-            wyjscia=list(wyjscia_wylacznika),
-            wylacznik="Q0",
-            weryfikacja=_IN,
-            uwaga=_UWAGA_STEROWNIK,
-        ),
-        PowiazanieFunkcjiEaz(
-            funkcja="SPZ/SCO",
-            blok_rysunku="Sterownik pola",
-            wejscia=[_sygnal("SCO/SPZ")],
-            wyjscia=["ZW"],
+            wejscia=[_sygnal("SCO1"), _sygnal("SCO2"), _sygnal("SCO/SPZ")],
+            wyjscia=[*wyjscia_wylacznika, "ZW"],
             wylacznik="Q0",
             weryfikacja=_IN,
             uwaga=_UWAGA_STEROWNIK,
@@ -574,13 +629,39 @@ def _powiazania_napieciowe(rdzen: int) -> list[PowiazanieFunkcjiEaz]:
     ]
 
 
+#: Napędy łączników rysunku — te same na Z.10 (s.89), Z.11 (s.90) i Z.11.1 (s.91), odczyt
+#: obrazów stron w 400 dpi 2026-10-30. Odłącznik z uziemieniem Q5 odgałęzienia przekładnika
+#: napięciowego (Z.11, Z.11.1) znaku napędu na rysunku nie ma — napędu nie dostaje.
+_NAPEDY_LACZNIKOW = [
+    NapedAparatuPola(
+        aparat="Q0",
+        rodzaj_aparatu="CB",
+        naped="SILNIKOWY",
+        weryfikacja=_ZW,
+        uwaga="okrąg z literą M na kreskowanym sprzężeniu mechanicznym przy wyłączniku",
+    ),
+    NapedAparatuPola(
+        aparat="Q1",
+        rodzaj_aparatu="THREE_POSITION_SWITCH",
+        naped="ZASOBNIKOWY_RECZNY",
+        weryfikacja=_ZW,
+        uwaga=(
+            "przy łączniku trójpołożeniowym kwadrat na kreskowanym sprzężeniu mechanicznym "
+            "z nożem (kształt EN 60617 02-13-20 — napęd energią zmagazynowaną), od kwadratu "
+            "w dół kreskowany odcinek zakończony poprzeczką (kształt EN 60617 02-13-01 — napęd "
+            "ręczny, symbol ogólny); rodzaj napędu odczytany z kształtu znaku wg EN 60617, "
+            "rysunek go nie opisuje słownie"
+        ),
+    ),
+]
+
+
 def _obwody_wykonania(wykonanie_pola: str) -> ObwodyWtornePola:
     if wykonanie_pola == "Z10":
         wyjscia = ["OW1", "OW2"]
         return ObwodyWtornePola(
             podstawa=f"{_Z1}, Z.10 s.89",
-            naped_wylacznika="SILNIKOWY",
-            naped_weryfikacja=_ZW,
+            napedy=_NAPEDY_LACZNIKOW,
             powiazania=_powiazania_wspolne(1, wyjscia, z_vt=False),
             sygnaly=_sygnaly(False, tuple(wyjscia)),
         )
@@ -615,8 +696,7 @@ def _obwody_wykonania(wykonanie_pola: str) -> ObwodyWtornePola:
     strona = "Z.11 s.90" if wykonanie_pola == "Z11" else "Z.11.1 s.91"
     return ObwodyWtornePola(
         podstawa=f"{_Z1}, {strona}",
-        naped_wylacznika="SILNIKOWY",
-        naped_weryfikacja=_ZW,
+        napedy=_NAPEDY_LACZNIKOW,
         powiazania=_powiazania_wspolne(rdzen, wyjscia, z_vt=True) + _powiazania_napieciowe(rdzen),
         sygnaly=_sygnaly(True, tuple(wyjscia)),
         obwody_przekladnikow=przypisania,
@@ -647,9 +727,11 @@ def powiazania_aparatow_pola(
     * ``funkcje_eaz_zasilane`` — przekładnik (CT, VT, Ferrantiego): kody funkcji, które z niego
       mierzą (kolejność powiązań wzorca, bez powtórzeń);
     * ``funkcje_eaz_wylaczajace`` — wyłącznik: kody funkcji, które na niego działają;
-    * ``naped`` — wyłącznik wykonawczy: napęd wzorca (`ObwodyWtornePola.naped_wylacznika`).
+    * ``naped`` — łącznik, przy którym rysunek stawia znak napędu (`ObwodyWtornePola.napedy`),
+      po oznaczeniu i rodzaju aparatu — niezależnie od zestawu funkcji pola (napęd jest
+      atrybutem łącznika, nie powiązaniem funkcji).
 
-    Przenoszone są WYŁĄCZNIE powiązania funkcji, które pole ma (`funkcje_pola` =
+    Funkcje przenoszone są WYŁĄCZNIE dla powiązań funkcji, które pole ma (`funkcje_pola` =
     `Bay.protection_codes`): zestaw pola liniowego jest korygowany klasą pola (IRiESD
     II.4.5.4.2 — bez SCO w polu z generacją, bez SPZ w polu dedykowanym wytwórcy,
     `bay_templates.funkcje_eaz_pola_liniowego`), a funkcja, której pole nie ma, nie mierzy
@@ -673,6 +755,10 @@ def powiazania_aparatow_pola(
         if kod not in lista:
             lista.append(kod)
 
+    for naped in obwody.napedy:
+        for aparat in po_oznaczeniu.get(naped.aparat, []):
+            if aparat.get("kind") == naped.rodzaj_aparatu:
+                aparat["naped"] = naped.naped
     obecne = set(funkcje_pola)
     for p in obwody.powiazania:
         if p.funkcja not in obecne:
@@ -681,7 +767,6 @@ def powiazania_aparatow_pola(
             for aparat in po_oznaczeniu.get(p.wylacznik, []):
                 if aparat.get("kind") == "CB":
                     _dopisz(aparat, "funkcje_eaz_wylaczajace", p.funkcja)
-                    aparat["naped"] = obwody.naped_wylacznika
         for w in p.wejscia:
             if w.aparat is None:
                 continue

@@ -1407,6 +1407,10 @@ export type BayPrimaryPlacement =
 /** Klasa pola liniowego SN — lustro `network_model.catalog.bay_templates.KlasaPolaLiniowego`. */
 export type KlasaPolaLiniowego = 'ODBIORCZE' | 'MIESZANE' | 'DEDYKOWANE_WYTWORCY';
 
+/** Rodzaj napędu łącznika pola — lustro backendu `obwody_wtorne_pola.RodzajNapedu` (parytet
+ *  przypina `ui/sld/v3/compose/__tests__/symbolNapeduLacznika.test.ts`). */
+export type RodzajNapeduLacznika = 'SILNIKOWY' | 'ZASOBNIKOWY_RECZNY';
+
 export interface BayPrimaryDevice {
   device_ref: string;
   /** Stan obiektu instancji aparatu (lustro `enm.models.BayPrimaryDevice.stan_obiektu`): aparat
@@ -1447,9 +1451,10 @@ export interface BayPrimaryDevice {
   /** Odgałęzienie toru, w którym leży aparat (np. 'pn' — odgałęzienie przekładnika napięciowego
    *  Z.11.1/Z.11); lustro `BayPrimaryDevice.odgalezienie`. `null`/brak = aparat toru głównego. */
   odgalezienie?: string | null;
-  /** Napęd wyłącznika kind='CB' (lustro `BayPrimaryDevice.naped`): `'SILNIKOWY'` = napęd
-   *  silnikowy ze schematu obwodów wtórnych pola; `null`/brak = napęd niepodany. */
-  naped?: 'SILNIKOWY' | null;
+  /** Napęd łącznika (lustro `BayPrimaryDevice.naped`, rodzaje dopuszczalne wg rodzaju aparatu —
+   *  backend `NAPEDY_RODZAJU_APARATU`): `'SILNIKOWY'` przy wyłączniku kind='CB',
+   *  `'ZASOBNIKOWY_RECZNY'` przy łączniku trójpołożeniowym; `null`/brak = napęd niepodany. */
+  naped?: RodzajNapeduLacznika | null;
   /** Kody funkcji EAZ zasilanych z tego aparatu (rdzeń CT, uzwojenie VT, przekładnik
    *  Ferrantiego) — lustro `BayPrimaryDevice.funkcje_eaz_zasilane`, materializowane przez
    *  `dodaj_pole`/`zmien_pole` z obwodów wtórnych szablonu. */

@@ -327,9 +327,9 @@ export interface LvTerminalPlan {
   readonly loadDropX: number | null;
   /** X pionu trunku rzędu DER strony nN — ZA portalem i ZA strzałką odbioru
    *  (prawy koniec zacisku, gdy stacja ma DER): pion NIGDY nie przecina
-   *  portalu, strzałki ani szyny rzędu DER (przecięcie dwóch odcinków
-   *  nie-szynowych `resolveTeeJunctions` czyta jako węzeł T — fałszywe
-   *  połączenie elektryczne). */
+   *  portalu, strzałki ani szyny rzędu DER (przecięcie toru wewnętrznego
+   *  stacji wymagałoby mostka we wnętrzu stacji, a tam węzły i skrzyżowania
+   *  wynikają wyłącznie z geometrii stacji). */
   readonly derTrunkX: number;
   /** X początku rzędu DER strony nN — flush-right ZA blokiem kolumn
    *  (`derRowFlushX`, jak przed portalem) i nie przed trunkiem. */
@@ -443,8 +443,9 @@ function zarezerwujGrupeNn(
     lv.loadDropX != null ? lv.loadDropX + LV_LOAD_ARROW_WIDTH / 2 : 0,
     nnDer.length > 0 ? lv.derRowStartX + derRowFootprint(nnDer).width : 0,
   );
-  // Krok przesunięcia to wielokrotność siatki: `leftX` kolumn planu nie musi leżeć na
-  // siatce (szerokości z pomiaru tekstu), ale osie (`centerX`) leżą — i muszą zostać.
+  // Krok przesunięcia to wielokrotność siatki: krawędzie (`leftX`) i osie (`centerX`)
+  // kolumn planu leżą na siatce (szerokości kolumn — wielokrotności GRID,
+  // `bayColumnRequiredWidth` / `derColumnRequiredWidth`) i muszą na niej zostać.
   const delta = snapUp(Math.max(0, groupRight + MIN_GLYPH_CLEARANCE - plan[lastLv + 1].leftX));
   if (delta === 0) return plan;
   return plan.map((p, i) => (i > lastLv ? { ...p, leftX: p.leftX + delta, centerX: p.centerX + delta } : p));
@@ -1116,7 +1117,16 @@ export function bayColumnRequiredWidth(
   // zwyciężyła, bo stos ZAWSZE zaczyna się `leftReserve` od lewej krawędzi
   // kolumny (`compose/station.ts` `stackLeftX`).
   const leftReserve = apparatusIdentifierLeftReserve(bay);
-  return leftReserve + Math.max(widthWithSidecar, captionWidth) + annotationWidth;
+  // `snapUp` całej rezerwacji: plan kolumn bloku (`planKolumnBezGrupyNn`,
+  // `multiSectionColumnLayout`) jest sumą prefiksową szerokości kolumn, więc lewa krawędź
+  // KAŻDEJ kolumny leży na siatce tylko wtedy, gdy każda szerokość jest wielokrotnością
+  // GRID (spec §2). Szerokości z pomiaru tekstu (`measureLabelWidth` — oznaczenie pola,
+  // podpis kierunku) mają dowolną resztę; przed 2026-10-30 kolumna za takim polem zaczynała
+  // się poza siatką, a `snapToGrid` osi kolumny transformatora bez pola i okręgu adnotacji
+  // zabezpieczeń (`compose/station.ts`) przesuwało symbol do 4 jednostek POZA jego kolumnę
+  // (portal domeny nN wystawał za blok — `station.tr2wBezPola.test.ts`). Nadmiar trafia na
+  // prawą krawędź kolumny (stos stoi od lewej, okrąg adnotacji prawo-wyrównany).
+  return snapUp(leftReserve + Math.max(widthWithSidecar, captionWidth) + annotationWidth);
 }
 
 /**
@@ -1173,7 +1183,8 @@ const DER_ROW_BOTTOM_BUFFER = GRID;
  * rezerwacja↔rysunek (wzór `bayColumnRequiredWidth`).
  */
 export function derColumnRequiredWidth(source: StationDerSourceInput): number {
-  return Math.max(derSymbolSize(source.kind).width, measureLabelWidth(derLabelText(source), 't2'));
+  // `snapUp` — kolumna planu na siatce (ta sama przyczyna co `bayColumnRequiredWidth`).
+  return snapUp(Math.max(derSymbolSize(source.kind).width, measureLabelWidth(derLabelText(source), 't2')));
 }
 
 /**

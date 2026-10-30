@@ -340,7 +340,7 @@ def test_zestaw_eaz_szablonu_ze_slownika_i_wg_klasy(pole: str, laczniki: str, kl
         for kod in wariant:
             assert opis_funkcji_eaz_pl(kod), kod  # każdy kod ma nazwę PL w słowniku
         if klasa in {"MIESZANE", "DEDYKOWANE_WYTWORCY"}:
-            assert not {"SCO", "SPZ/SCO"} & set(wariant)
+            assert "SCO" not in wariant
         if klasa == "DEDYKOWANE_WYTWORCY":
             assert not {"79", "SPZE", "67"} & set(wariant)
         if klasa == "MIESZANE":
@@ -573,7 +573,7 @@ def test_przydzial_pola_przy_odgalezieniu_tym_samym_wzorcem():
         op(
             enm,
             "start_branch_segment_sn",
-            {"from_ref": f"{pierwsze['ref_id']}.BRANCH", "segment": kabel},
+            {"from_ref": pierwsze["ref_id"], "segment": kabel},
         )
     )
     pola = _pola_liniowe(enm)

@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "builder_snapshot_hash": "d76a3f23d5bc9bdd02006c502872590a0221694938b37148d3ca533ee1aa4b2d",
+    "builder_snapshot_hash": "2fe64e487b6c8c8462589207b2e1fb15528b04736d6648081886ab2393b4c01d",
     "config_count": 12,
     "der_count": 15,
     "der_types": [
@@ -525,9 +525,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/e4c9614abf6ae9acaaaad4c03a97a97b/sn_field/003",
@@ -854,9 +854,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/7350682d9a38bd995d010426b65f26c3/sn_field/003",
@@ -1183,9 +1183,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/2e9ad8cea5ffb5dae61d214086d2aa29/sn_field/003",
@@ -1512,9 +1512,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/ce3997cba090f71f3bc7c1f4f9a6b37a/sn_field/003",
@@ -1841,9 +1841,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/82b9a808f5d77984e6d154f129a6d9b3/sn_field/003",
@@ -2170,9 +2170,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/500c9efcafdd0c69e4239e5121213746/sn_field/003",
@@ -2499,9 +2499,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/a26cadf3ca1bd98813bc785b57dde1e1/sn_field/003",
@@ -2828,9 +2828,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/7cd8ca21c71720eaf0f15a13595ca317/sn_field/003",
@@ -3157,9 +3157,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/8fe0aa17d4cd16535a3ade643399d75d/sn_field/003",
@@ -3486,9 +3486,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/70b011920dfa74cdb26036fe27cc7f31/sn_field/003",
@@ -3815,9 +3815,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/afb4bbd51ef7f159768c15d69ddc97b5/sn_field/003",
@@ -4144,9 +4144,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/44385fc6f27c4dbd058bb54e616bb949/sn_field/003",
@@ -5156,8 +5156,7 @@
           "59",
           "81U",
           "81O",
-          "81R",
-          "anti-islanding"
+          "81R"
         ],
         "protection_ref": null,
         "ref_id": "sn/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/source_field",
@@ -5517,8 +5516,7 @@
           "59",
           "81U",
           "81O",
-          "81R",
-          "anti-islanding"
+          "81R"
         ],
         "protection_ref": null,
         "ref_id": "sn/856cc4b6e0d379b5b28aa4ae75cb45ee/der/source_field",
@@ -15357,7 +15355,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "d76a3f23d5bc9bdd02006c502872590a0221694938b37148d3ca533ee1aa4b2d",
+      "hash_sha256": "2fe64e487b6c8c8462589207b2e1fb15528b04736d6648081886ab2393b4c01d",
       "name": "Sieć demonstracyjna OZE + zwarcia",
       "revision": 0,
       "updated_at": "2026-07-24T00:00:00Z"

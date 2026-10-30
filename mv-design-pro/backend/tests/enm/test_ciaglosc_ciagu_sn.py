@@ -31,6 +31,7 @@ from typing import Any
 
 import pytest
 from enm import domain_operations
+from enm.zajetosc_pol import pole_dla_zacisku
 
 from tests.reference_networks.sceny_zajetosci_pol import (
     APARAT,
@@ -272,7 +273,9 @@ def test_start_x_wskazanie_ciagu(start: Start, wskazanie: str) -> None:
         assert {c["ref_id"] for c in po["corridors"]} == przed_ids
         return
     # Nowy ciąg z portu startu: jeden odcinek, identyfikator deterministyczny, pierwsza
-    # magistrala bez zmian, ciąg liniowy rodzaju `branch` z portem startu = zacisk odcinka.
+    # magistrala bez zmian, ciąg liniowy rodzaju `branch` z portem startu w JEDNEJ postaci
+    # (rozstrzygnięcie architekta 2026-10-30, `_rozwiaz_port_startu`): `ref_id` pola, z którego
+    # odcinek wychodzi, a bez pola — zacisk odcinka.
     assert WZORZEC_NOWEGO_CIAGU.match(ciag["ref_id"]), ciag["ref_id"]
     assert ciag["ref_id"] not in przed_ids
     assert ciag["ordered_segment_refs"] == [segment_ref]
@@ -280,7 +283,10 @@ def test_start_x_wskazanie_ciagu(start: Start, wskazanie: str) -> None:
     run = next(r for r in po["line_runs"] if r["id"] == ciag["ref_id"])
     nowy_kabel = next(b for b in po["branches"] if b["ref_id"] == segment_ref)
     assert run["run_kind"] == "branch"
-    assert run["starting_port_ref"] == nowy_kabel["from_bus_ref"]
+    pole_startu = pole_dla_zacisku(po, nowy_kabel["from_bus_ref"])
+    assert run["starting_port_ref"] == (pole_startu or nowy_kabel["from_bus_ref"])
+    if start.pole_gpz is not None:
+        assert run["starting_port_ref"] == start.pole_gpz
     assert [s["segment_ref"] for s in run["segments"]] == [segment_ref]
     pole_meta = {b["ref_id"]: b.get("meta") or {} for b in po["bays"]}
     if start.pole_gpz is not None:
@@ -345,7 +351,7 @@ def test_przydzial_pierwszego_pola_sekcji_2_nie_przejmuje_magistrali_pola_1_1() 
         op(
             enm,
             "start_branch_segment_sn",
-            {"from_ref": f"{pola[2]}.BRANCH", "segment": odcinek(250)},
+            {"from_ref": pola[2], "segment": odcinek(250)},
         )
     )
     meta = {b["ref_id"]: b.get("meta") or {} for b in po["bays"]}

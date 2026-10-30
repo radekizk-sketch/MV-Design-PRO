@@ -217,8 +217,7 @@ describe('KD-5 — zwinięcie NIE przemeblowuje świata (jedna kotwica) i nie ł
     expect(zaczep(sceneL0)).toBe(zaczep(sceneL2));
     expect(zaczep(sceneL0)).toBe(zaczep(sceneL1));
     // Zbiór przęseł magistrali na L0 jest PODZBIOREM L2 (nic nie ginie przez
-    // zwinięcie; L2 ma dodatkowo mostki przecięć `#tee-*`, których liczba
-    // zależy od poziomu szczegółu — reguła sprzed KD-5).
+    // zwinięcie; L2 może mieć przęsła odczepów, których L0 nie rysuje).
     const owners = (s: SceneV3) =>
       new Set(s.segments.filter((g) => g.meta?.kind === 'snTrunk').map((g) => String(g.meta?.ownerRef)));
     const l0 = owners(sceneL0);

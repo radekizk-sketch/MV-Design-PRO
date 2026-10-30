@@ -196,11 +196,11 @@ def _try_op(
 
 
 def _feeder_port_ref(enm: dict[str, Any], station_ref: str) -> str | None:
-    """Return the BRANCH port ref for the FEEDER (LINIA_ODG) bay."""
+    """Port startu odgałęzienia z pola odgałęźnego (LINIA_ODG): ``ref_id`` pola."""
     for spec in pola_sn_stacji(enm, station_ref):
         role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
         if role in ("LINIA_ODG", "FEEDER"):
-            return f"{spec['ref_id']}.BRANCH"
+            return str(spec["ref_id"])
     return None
 
 

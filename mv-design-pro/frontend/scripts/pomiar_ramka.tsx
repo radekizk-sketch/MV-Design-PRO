@@ -42,7 +42,7 @@ const f = (v: number, n = 2): string => (Number.isFinite(v) ? v.toFixed(n) : '  
 function tuszMalowany(p: PlannedLabel) {
   const cx = p.rect.x + p.rect.width / 2;
   const cy = p.rect.y + p.rect.height / 2;
-  const dlugosc = measureTextWidth(p.text, p.fontSize);
+  const dlugosc = measureTextWidth(p.text, p.fontSize, LABEL_TYPOGRAPHY[p.label.labelClass].fontWeight);
   const wysokosc = p.fontSize + 6;
   const w = p.label.rotated ? wysokosc : dlugosc;
   const h = p.label.rotated ? dlugosc : wysokosc;

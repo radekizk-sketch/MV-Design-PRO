@@ -22,8 +22,12 @@ Zasady (fail-closed — każde odstępstwo przerywa import z komunikatem):
   pierwotnego zadeklarowanym z powodem (``zaciskiPozaTorem``, np. uzwojenie wtórne
   przekładnika napięciowego); zaciski wewnętrzne muszą się pokrywać po złożeniu;
 * położenia łącznika: rysunek źródła = OTWARTY; ZAMKNIĘTY/UZIEMIONY = obrót prymitywów noża
-  wokół przegubu na kierunek styku stałego; NIEZNANY = połowa kąta zamknięcia (łącznik
-  dwupołożeniowy) albo położenie źródła (łącznik trójpołożeniowy, ``nieznanyJakOtwarty``);
+  wokół przegubu na kierunek styku stałego i ZASIĘG noża równy odległości przegub–styk (koniec
+  noża leży na styku stałym: nóż źródła odłącznika jest dłuższy od odległości do styku, więc
+  obrócony sztywno przechodził przez kreskę styku i odłącznik zamknięty czytał się jak krzyżyk
+  „+” — decyzja architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC); NIEZNANY = połowa
+  kąta zamknięcia (łącznik dwupołożeniowy) albo położenie źródła (łącznik trójpołożeniowy,
+  ``nieznanyJakOtwarty``), z zasięgiem źródła;
 * jednokładność rysunku (``skalaRysunku``: skala k ∈ (1; 4] wokół punktu, z powodem) i skala
   lokalna prymitywów (``skalaLokalna``: znak rodzaju aparatu, doprowadzenie obwodu wtórnego)
   przenoszą kształt źródła bez zmian; stopień glifu (wysokość rysunku aparatu / bok kafla
@@ -75,14 +79,58 @@ OBROT_KIERUNKU = {
 }
 POLOZENIA = ("open", "closed", "earthed", "unknown")
 #: Metryka tekstu źródła (QET zapisuje punkt bazowy lewego dolnego rogu, nie obrys):
-#: szerokość znaku = szerokość posuwu kroju źródła (Liberation Sans, metrycznie zgodny
-#: z Arial; jednostki em = 2048) — „M" 1706/2048, „3" 1139/2048; wysokość 0,7 em. Używane
-#: WYŁĄCZNIE do obwiedni i środka znaku (litera rysuje się wyśrodkowana w tym punkcie). Znak
-#: spoza tabeli przerywa import — przybliżenie jednej szerokości dla wszystkich znaków
-#: przesuwało środek litery „M" napędu o 0,12 em w bok (po powiększeniu napędu — 1 jednostkę
-#: świata).
-SZEROKOSC_ZNAKU_EM: dict[str, float] = {"M": 1706 / 2048, "3": 1139 / 2048}
-EM_WYSOKOSC = 0.7
+#: szerokość znaku = posuw znaku kroju schematu (Liberation Sans, odmiana rysowana na ekranie —
+#: ``WAGA_TEKSTU_QET`` niżej) z TABELI POSUWÓW KROJU schematu (`metrykiKroju.json`, generator
+#: `scripts/metryki_kroju_sld.py`) — JEDNO źródło metryk z pomiarem etykiet kanwy
+#: (`frontend/src/ui/sld/v3/core/text.ts`, decyzja architekta §11.7 pkt 7 karty UX-04/
+#: POLE-LINIOWE-WZORZEC). Pion z tej samej tabeli (``pionowe``): litera rysuje się z
+#: ``dominant-baseline: central``, a linia centralna kroju leży (wznoszenie − zejście)/2 nad linią
+#: bazową (CSS Inline Layout 3 §4.2) — punkt bazowy źródła przesuwa się o tyle w górę do środka
+#: znaku; obwiednia znaku to zasięg TUSZU jego glifów (nagłówki ``glyf``), nie szacunek wysokości
+#: (decyzja §11.7 pkt 5: litera ≥ 8 px bez nakładania na kreskę wymaga rzeczywistego tuszu). Znak
+#: spoza tabeli przerywa import — przybliżenie jednej szerokości dla wszystkich znaków przesuwało
+#: środek litery „M" napędu o 0,12 em w bok.
+TABELA_KROJU = KORZEN / "frontend" / "src" / "ui" / "sld" / "v3" / "core" / "metrykiKroju.json"
+KROJ_TEKSTU_QET = "sans"
+#: Odmiana kroju liter symboli: renderer rysuje litery symboli wagą CSS 600
+#: (``frontend/src/ui/sld/v3/cad/CadSymbol.tsx``, ``WAGA_LITERY_SYMBOLU``), a waga > 500 dobiera
+#: odmianę 700 (CSS Fonts 4 §5.2, ta sama reguła co ``core/text.ts``) — obwiednia i środek
+#: litery liczone metrykami odmiany, którą widać na ekranie, nie odmianą zwykłą źródła QET.
+#: Wartość trafia do pliku TS (``QET_ODMIANA_KROJU_LITER``), test frontendu przypina zgodność
+#: z wagą renderera.
+WAGA_TEKSTU_QET = "700"
+
+
+def szerokosci_znakow_em(tabela: Path = TABELA_KROJU) -> dict[str, float]:
+    """Posuw znaku [em] odmiany tekstu QET z tabeli posuwów kroju schematu (krój ``sans``)."""
+    dane = json.loads(tabela.read_text(encoding="utf-8"))
+    jednostki = float(dane["jednostkiEm"])
+    kroj = dane["kroje"][KROJ_TEKSTU_QET]
+    posuwy = kroj["posuwy"][WAGA_TEKSTU_QET]
+    return {znak: posuw / jednostki for znak, posuw in zip(kroj["znaki"], posuwy, strict=True)}
+
+
+SZEROKOSC_ZNAKU_EM: dict[str, float] = szerokosci_znakow_em()
+
+
+def metryki_pionowe_em(
+    tabela: Path = TABELA_KROJU,
+) -> tuple[float, dict[str, tuple[float, float]]]:
+    """(przesunięcie linii centralnej nad linią bazową [em], znak → (yMin, yMax) tuszu [em,
+    y w górę od linii bazowej]) odmiany tekstu QET z tabeli kroju schematu."""
+    dane = json.loads(tabela.read_text(encoding="utf-8"))
+    jednostki = float(dane["jednostkiEm"])
+    kroj = dane["kroje"][KROJ_TEKSTU_QET]
+    pion = kroj["pionowe"][WAGA_TEKSTU_QET]
+    centralna = (pion["wznoszenie"] - pion["zejscie"]) / 2 / jednostki
+    tusz = {
+        znak: (dol / jednostki, gora / jednostki)
+        for znak, dol, gora in zip(kroj["znaki"], pion["tuszDol"], pion["tuszGora"], strict=True)
+    }
+    return centralna, tusz
+
+
+LINIA_CENTRALNA_EM, TUSZ_ZNAKU_EM = metryki_pionowe_em()
 
 
 class BladImportu(ValueError):
@@ -95,6 +143,17 @@ def szerokosc_tekstu(tekst: str, rozmiar: float) -> float:
     if brak:
         raise BladImportu(f"tekst {tekst!r}: brak szerokości znaków {brak} w SZEROKOSC_ZNAKU_EM")
     return rozmiar * sum(SZEROKOSC_ZNAKU_EM[z] for z in tekst)
+
+
+def zasieg_tuszu_wzgledem_srodka(tekst: str, rozmiar: float) -> tuple[float, float]:
+    """(góra, dół) tuszu tekstu względem środka znaku (punktu ``dominant-baseline: central``)
+    w osi y skierowanej w DÓŁ — linia bazowa leży ``LINIA_CENTRALNA_EM`` pod środkiem."""
+    brak = sorted({z for z in tekst if z not in TUSZ_ZNAKU_EM})
+    if brak:
+        raise BladImportu(f"tekst {tekst!r}: brak zasięgu tuszu znaków {brak} w tabeli kroju")
+    y_min = min(0.0, *(TUSZ_ZNAKU_EM[z][0] for z in tekst))
+    y_max = max(0.0, *(TUSZ_ZNAKU_EM[z][1] for z in tekst))
+    return ((LINIA_CENTRALNA_EM - y_max) * rozmiar, (LINIA_CENTRALNA_EM - y_min) * rozmiar)
 
 
 # ---------------------------------------------------------------------------
@@ -426,7 +485,7 @@ def zloz_prymityw(p: Prymityw, s: Skladnik, rola: str) -> Rysunek | None:
     if p.rodzaj == "letter":
         (x, y) = p.punkty[0]
         szer = szerokosc_tekstu(p.tekst, p.rozmiar)
-        srodek = (x + szer / 2, y - EM_WYSOKOSC * p.rozmiar / 2)
+        srodek = (x + szer / 2, y - LINIA_CENTRALNA_EM * p.rozmiar)
         # Znak w składniku obróconym: obrót przenosi ŚRODEK znaku, a sam znak zostaje poziomy
         # (litera kodu „M" napędu czytana jak na rysunku, nie do góry nogami).
         return Rysunek(
@@ -445,6 +504,21 @@ def zloz_prymityw(p: Prymityw, s: Skladnik, rola: str) -> Rysunek | None:
         kreskowana=p.kreskowana,
         rola=rola,
     )
+
+
+def noz_w_zasiegu(r: Rysunek, zasieg: float, przegub: tuple[float, float]) -> Rysunek:
+    """Linia noża z końcem dalszym od przegubu przesuniętym wzdłuż noża do ``zasieg`` × długości
+    (koniec bliższy przegubowi bez zmian) — ta sama reguła co renderer
+    (``frontend/src/ui/sld/v3/symbols/glyphs.tsx::prymitywyNozaQet``)."""
+    if zasieg == 1.0:
+        return r
+    (a, b) = r.punkty
+    (blizszy, dalszy) = (a, b) if math.dist(a, przegub) <= math.dist(b, przegub) else (b, a)
+    nowy = (
+        przegub[0] + (dalszy[0] - przegub[0]) * zasieg,
+        przegub[1] + (dalszy[1] - przegub[1]) * zasieg,
+    )
+    return replace(r, punkty=[blizszy, nowy] if blizszy is a else [nowy, blizszy])
 
 
 def obroc_rysunek(r: Rysunek, stopnie: float, wokol: tuple[float, float]) -> Rysunek:
@@ -466,8 +540,8 @@ def obwiednia(rysunki: Iterable[Rysunek]) -> list[tuple[float, float]]:
         elif r.rodzaj == "letter":
             (cx, cy) = r.punkty[0]
             pol_s = szerokosc_tekstu(r.tekst, r.rozmiar) / 2
-            pol_w = EM_WYSOKOSC * r.rozmiar / 2
-            punkty += [(cx - pol_s, cy - pol_w), (cx + pol_s, cy + pol_w)]
+            (gora, dol) = zasieg_tuszu_wzgledem_srodka(r.tekst, r.rozmiar)
+            punkty += [(cx - pol_s, cy + gora), (cx + pol_s, cy + dol)]
         else:
             punkty += r.punkty
     return punkty
@@ -681,6 +755,7 @@ def zloz_symbol(
         raise BladImportu(f"{ident}: indeks prymitywu noża poza źródłem")
 
     katy: dict[str, float] = {}
+    zasiegi: dict[str, float] = {}
     przegub: tuple[float, float] | None = None
     if noz_wpis:
         s_noza = skladniki[int(noz_wpis["skladnik"])]
@@ -688,6 +763,7 @@ def zloz_symbol(
         ostrze = noz[0]
         koniec = max(ostrze.punkty, key=lambda q: math.dist(q, przegub))
         katy["open"] = 0.0
+        zasiegi["open"] = 1.0
         for polozenie, cel in sorted(noz_wpis["cele"].items()):
             if polozenie not in ("closed", "earthed"):
                 raise BladImportu(f"{ident}: położenie {polozenie!r} nieznane")
@@ -695,9 +771,12 @@ def zloz_symbol(
             katy[polozenie] = normalizuj_kat(
                 kat_kierunku(przegub, cel_zl) - kat_kierunku(przegub, koniec)
             )
+            # Koniec noża NA styku stałym: zasięg = |przegub → styk| / |przegub → koniec noża|.
+            zasiegi[polozenie] = math.dist(przegub, cel_zl) / math.dist(przegub, koniec)
         if "closed" not in katy:
             raise BladImportu(f"{ident}: brak położenia zamkniętego noża")
         katy["unknown"] = 0.0 if noz_wpis.get("nieznanyJakOtwarty") else katy["closed"] / 2
+        zasiegi["unknown"] = 1.0
     if kafel is not None and przegub is None:
         raise BladImportu(f"{ident}: kafel stanu wyłącznie dla łącznika z nożem")
 
@@ -819,7 +898,10 @@ def zloz_symbol(
 
     polozenia_noza = (
         {
-            pol: [obroc_rysunek(r, katy[pol], przegub) for r in noz]
+            pol: [
+                obroc_rysunek(noz_w_zasiegu(r, zasiegi[pol], przegub), katy[pol], przegub)
+                for r in noz
+            ]
             for pol in POLOZENIA
             if pol in katy
         }
@@ -1090,6 +1172,7 @@ def zloz_symbol(
             "cx": zaokr(c[0]),
             "cy": zaokr(c[1]),
             "katy": {k: zaokr(katy[k]) for k in POLOZENIA if k in katy},
+            "zasiegi": {k: zaokr(zasiegi[k]) for k in POLOZENIA if k in zasiegi},
             "prymitywy": [prymityw_ts(r, noz_stanu=True) for r in noz],
         }
     wynik["_udzialy"] = udzialy
@@ -1186,8 +1269,9 @@ NAGLOWEK = """/**
  * https://creativecommons.org/licenses/by/3.0/). Współrzędne w jednostkach świata
  * schematu SLD v3 względem lewego górnego rogu gabarytu (skala 0,4 jednostki QET).
  * Rysunek źródła = położenie OTWARTE; pozostałe położenia — kąty obrotu noża (`noz.katy`,
- * stopnie, konwencja SVG `rotate`) wokół przegubu (`noz.cx`, `noz.cy`). Jednokładność rysunku
- * (`skalaRysunku` manifestu) przenosi kształt elementu bez zmian; role prymitywów: `przewody`
+ * stopnie, konwencja SVG `rotate`) wokół przegubu (`noz.cx`, `noz.cy`) i zasięg noża
+ * (`noz.zasiegi`: w położeniu zamkniętym i uziemionym koniec noża leży na styku stałym).
+ * Jednokładność rysunku (`skalaRysunku` manifestu) przenosi kształt elementu bez zmian; role prymitywów: `przewody`
  * (kreska przewodu toru), `stale` i `noz` (rysunek aparatu — kreska glifu `QET_KRESKA_GLIFU`),
  * `osprzet` (napęd, cewka wyłączająca — kreska glifu).
  */
@@ -1209,6 +1293,9 @@ export interface QetNozSymbolu {
   readonly cx: number;
   readonly cy: number;
   readonly katy: Readonly<Partial<Record<QetPolozenieNoza, number>>>;
+  /** Zasięg noża w położeniu — ułamek długości noża źródła: koniec dalszy od przegubu leży
+   *  w odległości `zasieg` × długość (ZAMKNIĘTY/UZIEMIONY — dokładnie na styku stałym). */
+  readonly zasiegi: Readonly<Partial<Record<QetPolozenieNoza, number>>>;
   readonly prymitywy: readonly CadPrimitive[];
 }
 
@@ -1268,6 +1355,10 @@ export const QET_BOK_KAFLA_STANU = {bokKafla};
 /** Kreska glifu aparatu [jednostki świata, skala bazowa LOD2] — `kafelStanu.kreskaGlifuQet`
  *  × skala, proporcjonalna do boku kafla stanu (bok/24); przewody mają kreskę przewodu. */
 export const QET_KRESKA_GLIFU = {kreskaGlifu};
+
+/** Odmiana kroju, której metrykami importer liczy obwiednię i środek liter symboli — odmiana
+ *  rysowana przez `CadPrimitiveLayer` (waga `WAGA_LITERY_SYMBOLU`, `cad/CadSymbol.tsx`). */
+export const QET_ODMIANA_KROJU_LITER = '{odmianaLiter}';
 
 export const QET_POCHODZENIE = {pochodzenie} as const;
 
@@ -1349,6 +1440,7 @@ def generuj() -> str:
     tresc = tresc.replace(
         "{bokKafla}", liczba_ts(kafel.wysokosc * skala) if kafel is not None else "null"
     ).replace("{kreskaGlifu}", liczba_ts(kafel.kreska * skala) if kafel is not None else "null")
+    tresc = tresc.replace("{odmianaLiter}", WAGA_TEKSTU_QET)
     tresc = tresc.replace("{symbole}", "".join(f"  {s['id']}: {ts(s, 1)},\n" for s in symbole))
     return tresc
 

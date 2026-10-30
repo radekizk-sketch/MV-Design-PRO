@@ -288,22 +288,33 @@ function znakDc(cx: number, cy: number): readonly CadPrimitive[] {
     { k: 'line', x1: cx - 2, y1: cy + 1, x2: cx + 2, y2: cy + 1 },
   ];
 }
-function znakAc(cx: number, cy: number): readonly CadPrimitive[] {
-  return [{ k: 'arc', d: `M ${cx - 2.4} ${cy} q 1.2 -2.2 2.4 0 t 2.4 0` }];
+/** „~" o połowie szerokości `pol` [u]: dwa łuki kwadratowe, punkt kontrolny `wys` nad osią
+ *  (wychylenie łuku = `wys`/2). Domyślnie znak maszyny i przekształtnika z pierwowzoru. */
+function znakAc(cx: number, cy: number, pol = 2.4, wys = 2.2): readonly CadPrimitive[] {
+  return [{ k: 'arc', d: `M ${cx - pol} ${cy} q ${pol / 2} ${-wys} ${pol} 0 t ${pol} 0` }];
 }
+
+/** Rozmiar pisma liter symboli CAD [u]: podłoga S9-7 (8 px ekranu) przy skali biblioteki
+ *  `CAD_U_PX` = 2 px/u (`lv-domain/visualGrammar.ts`) — 4 u (karta UX-04/POLE-LINIOWE-WZORZEC,
+ *  decyzja architekta §11.7 pkt 5; przypina `cad/__tests__/literySymboli.test.ts`). */
+export const CAD_LITERA_MIN_U = 4;
 
 /** Przekształtnik (S00213/S00896) jak w pierwowzorze: kwadrat z przekątną od
  *  lewego DOLNEGO do prawego GÓRNEGO rogu, „3~" po stronie AC (górny lewy
  *  trójkąt — ku szynie), „=" po stronie DC (dolny prawy — ku źródłu).
- *  Kwadrat 12×12 w polu 16×16 od `y0`. */
+ *  Kwadrat 12×12 w polu 16×16 od `y0`. „3" pismem `CAD_LITERA_MIN_U` (8 px; przed
+ *  2026-10-30 3,6 u = 7,2 px), „~" o połowie szerokości 1,8 u tuż za cyfrą — cały znak
+ *  „3~" w górnym lewym trójkącie, prześwit tuszu od kreski przekątnej ≥ 0,5 u (1 px ekranu;
+ *  przypina `cad/__tests__/literySymboli.test.tsx`; dawny „~" o połowie 2,4 u wokół x0 + 6,6
+ *  kończył się w (x0 + 9; y0 + 3,4), czyli NA przekątnej). */
 function przeksztaltnik(y0: number): readonly CadPrimitive[] {
   const x0 = 2;
   const s = 12;
   return [
     { k: 'path', d: `M ${x0} ${y0} h ${s} v ${s} h ${-s} Z`, fill: 'none' },
     { k: 'line', x1: x0, y1: y0 + s, x2: x0 + s, y2: y0 },
-    { k: 'letter', x: x0 + 2.6, y: y0 + 3.3, t: '3', size: 3.6 },
-    ...znakAc(x0 + 6.6, y0 + 3.4),
+    { k: 'letter', x: x0 + 2.4, y: y0 + 2.3, t: '3', size: CAD_LITERA_MIN_U },
+    ...znakAc(x0 + 5.9, y0 + 2.3, 1.8, 1.65),
     ...znakDc(x0 + 8.5, y0 + 9),
   ];
 }

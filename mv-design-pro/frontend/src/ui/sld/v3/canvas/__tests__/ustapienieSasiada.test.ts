@@ -8,8 +8,13 @@
  * pola GPZ, a trzy pozostałe strony zajmował symbol wyłącznika. Plan zachłanny
  * gubił tożsamość od kolizji, choć sąsiad mógł się skrócić.
  *
- * Geometria syntetyczna odtwarza tamten układ 1:1 (sloty i symbol z pomiaru
- * sceny). Iloczyn cech:
+ * Geometria syntetyczna odtwarza tamten układ (symbol i kotwice z pomiaru sceny). Szerokości
+ * slotów liczy `measureLabelWidth` — ten sam pomiar co scena i plan (od 2026-10-30 tabela
+ * posuwów kroju, karta UX-04/POLE-LINIOWE-WZORZEC §11.7 pkt 7; szacunek 0,62 em dawał
+ * „Pole liniowe GPZ 1.2" 112 jednostek, tabela 89). Węższy pomiar skrócił powiększony pełny
+ * tekst oznaczenia GPZ o ~60 jednostek, więc slot oznaczenia stoi bliżej Q1 (x = 320 zamiast
+ * 248) — tak, by powiększony pełny tekst po prawej znów zakrywał jedyną wolną stronę Q1
+ * (warunek układu z pomiaru), a lewa strona slotu mieściła pełny tekst. Iloczyn cech:
  *   sąsiad powiększony skracalny × druga strona sąsiada wolna albo zajęta rysunkiem
  *   (reguła W2C: pełny tekst po każdej stronie przed skrótem) × sąsiad w piśmie
  *   naturalnym × sąsiad, który po odsunięciu nie ma gdzie wrócić × strona zajęta
@@ -20,7 +25,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { V3Rect } from '../../core/grid';
-import type { LabelClass } from '../../core/text';
+import { measureLabelWidth, type LabelClass } from '../../core/text';
 import type { OwnedLabel, OwnerKind, SimpleAnchorPlacement } from '../../layout/labels';
 import type { SheetOutline } from '../../sheet/outline';
 import {
@@ -60,14 +65,15 @@ const Q1 = etykieta({
   ownerRef: 'stn/s01/sn_field/000#apparatus-id-breaker-0',
   labelClass: 't4',
   text: 'Q1',
-  rect: { x: 536, y: 592, width: 10, height: 14 },
+  // Strona „z lewej": prawa krawędź slotu (krawędź zaczepu) przy x = 546, przed wyłącznikiem.
+  rect: { x: 546 - measureLabelWidth('Q1', 't4'), y: 592, width: measureLabelWidth('Q1', 't4'), height: 14 },
   placement: 'left',
 });
 const OZNACZENIE_GPZ = etykieta({
   ownerRef: 'gpz/x/bay/001/002#designation',
   labelClass: 't3',
   text: 'Pole liniowe GPZ 1.2',
-  rect: { x: 248, y: 568, width: 112, height: 15 },
+  rect: { x: 320, y: 568, width: measureLabelWidth('Pole liniowe GPZ 1.2', 't3'), height: 15 },
   placement: 'right',
 });
 
@@ -111,8 +117,10 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
 
   it('sąsiad POWIĘKSZONY i skracalny ustępuje: obie tożsamości narysowane, sąsiad skrócony z członem rozróżniającym', () => {
     // Lewą stronę slotu oznaczenia GPZ zajmuje rysunek, więc pełny tekst nie ma drugiej
-    // strony (reguła W2C nie pomaga) i dopiero ustąpienie (f) ratuje tożsamość Q1.
-    const rysunekZLewej: V3Rect = { x: 150, y: 555, width: 90, height: 40 };
+    // strony (reguła W2C nie pomaga) i dopiero ustąpienie (f) ratuje tożsamość Q1. Rysunek
+    // sięga też pod lewą część stron „nad" i „pod" slotu (x 150…310): przy węższym pomiarze
+    // tabelą kroju pełny tekst mieścił się nad slotem, co omijało mechanizm (f).
+    const rysunekZLewej: V3Rect = { x: 150, y: 540, width: 160, height: 80 };
     const przeszkody = [WYLACZNIK, rysunekZLewej];
     const samoQ1 = planSceneLabels([Q1], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
     expect(narysowana(samoQ1, Q1.ownerRef)?.text).toBe('Q1');
@@ -154,7 +162,8 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
       ownerRef: 'gpz/x/bay/001/002#designation',
       labelClass: 't3',
       text: 'Pole liniowe GPZ 1.2',
-      rect: { x: 432, y: 592, width: 112, height: 15 },
+      // Prawa krawędź slotu przy x = 544 (tuż przed symbolem) — zajmuje lewą stronę Q1.
+      rect: { x: 544 - measureLabelWidth('Pole liniowe GPZ 1.2', 't3'), y: 592, width: measureLabelWidth('Pole liniowe GPZ 1.2', 't3'), height: 15 },
       placement: 'right',
     });
     const symbolBlisko: V3Rect = { x: 546, y: 588, width: 16, height: 22 };
@@ -176,7 +185,7 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
       ownerRef: 'stn/s01/sn_field/000#apparatus-id-disconnector-0',
       labelClass: 't4',
       text: 'Q2',
-      rect: { x: 500, y: 590, width: 10, height: 14 },
+      rect: { x: 500, y: 590, width: measureLabelWidth('Q2', 't4'), height: 14 },
       placement: 'right',
     });
     const slupek: V3Rect = { x: 490, y: 560, width: 6, height: 70 };

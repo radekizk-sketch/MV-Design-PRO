@@ -169,19 +169,23 @@ function stabilityMetrics(before: SceneV3, after: SceneV3, stationIds: readonly 
 }
 
 describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE §3/§12)', () => {
-  it('§12 (zero-defekty na WIELU fixturach): 0 kolizji/przecięć/nieortog./niejedn./crossing — każda klasa, każdy LOD', () => {
+  it('§12 (zero-defekty na WIELU fixturach): 0 kolizji/przecięć/nieortog./niejedn./przecięć bez mostka — każda klasa, każdy LOD', () => {
     const rows: string[] = [];
     for (const fx of FIXTURES) {
       for (const lod of [0, 1, 2] as const) {
         const m = layoutMetricsReport(buildSceneV3(fx.enm, lod));
         rows.push(
-          `${fx.klasa} ${fx.nazwa} L${lod}: subs=${fx.enm.substations.length} kol=${m.labelCollisionCount} przec=${m.subtreeIntersectionCount} nieort=${m.nonOrthogonalSegmentCount} niejedn=${m.ambiguousConnectionCount} cross=${m.crossingCount}`,
+          `${fx.klasa} ${fx.nazwa} L${lod}: subs=${fx.enm.substations.length} kol=${m.labelCollisionCount} przec=${m.subtreeIntersectionCount} nieort=${m.nonOrthogonalSegmentCount} niejedn=${m.ambiguousConnectionCount} cross=${m.crossingCount} bezMostka=${m.crossingWithoutBridgeCount} kropkiBezWezla=${m.junctionDotGapCount}`,
         );
         expect(m.labelCollisionCount, `${fx.nazwa} L${lod} kolizje etykiet`).toBe(0);
         expect(m.subtreeIntersectionCount, `${fx.nazwa} L${lod} przecięcia poddrzew`).toBe(0);
         expect(m.nonOrthogonalSegmentCount, `${fx.nazwa} L${lod} nieortogonalne`).toBe(0);
         expect(m.ambiguousConnectionCount, `${fx.nazwa} L${lod} niejednoznaczne`).toBe(0);
-        expect(m.crossingCount, `${fx.nazwa} L${lod} skrzyżowania`).toBe(0);
+        // Rozstrzygnięcie S7-P2 (2026-10-30): skrzyżowanie kabli bez węzła modelu jest
+        // dopuszczalne z mostkiem §22.1 — warunkiem jest mostek na każdym przecięciu
+        // i zero kropek bez węzła modelu (liczba skrzyżowań idzie do wiersza dowodu).
+        expect(m.crossingWithoutBridgeCount, `${fx.nazwa} L${lod} przecięcia bez mostka`).toBe(0);
+        expect(m.junctionDotGapCount, `${fx.nazwa} L${lod} kropki bez węzła modelu`).toBe(0);
       }
     }
     console.log('[S7 etap 3 §12 dowód generalizacji]\n' + rows.join('\n'));

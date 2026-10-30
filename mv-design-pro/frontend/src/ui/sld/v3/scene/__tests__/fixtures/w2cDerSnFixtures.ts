@@ -223,7 +223,10 @@ export function injectDerSnChain(
     equipment_refs: [`${ozeFieldRef}/cb`],
     protection_ref: null,
     primary_devices: [...ozePrimaryDevices(ozeFieldRef, opts.withVt ?? true, opts.withSa ?? true)],
-    protection_codes: ['anti-islanding'],
+    // Zestaw interfejsu pola źródłowego SN = szablon backendu (`bay_templates`
+    // `_FUNKCJE_EAZ_INTERFEJSU_OZE`): każda funkcja raz, kody słownika EAZ; dawny kod-agregat
+    // „anti-islanding" skasowany (decyzja architekta 2026-10-30, `funkcje_eaz`).
+    protection_codes: ['67', '67N', '27', '59', '81U', '81O', '81R'],
   }));
 
   (enm.generators ??= []).push({

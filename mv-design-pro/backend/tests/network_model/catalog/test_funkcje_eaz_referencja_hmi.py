@@ -76,5 +76,5 @@ def test_sco_wykluczone_z_generacja(wykonanie: str, klasa: str):
     usunięcie wpisu SCO „ZAKAZANA" z klasy mieszanej zostawia SCO w zestawie Z.11.1 (rysunek
     go niesie) — test czerwony."""
     zestaw = funkcje_eaz_pola_liniowego(wykonanie, klasa)
-    assert not {"SCO", "SPZ/SCO"} & set(zestaw)
+    assert "SCO" not in zestaw
     assert _wymogi(klasa)["SCO"][0] == "ZAKAZANA"

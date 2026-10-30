@@ -20,6 +20,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { publicTechnicalLabel, segmentPublicIdentity } from '../../shared/publicTechnicalLabels';
 import type { Branch, BranchPointSN } from '../../../types/enm';
+import { portStartuPunktu } from '../operationContextResolvers';
 
 // =============================================================================
 // Helpers
@@ -163,8 +164,9 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
 
   const handleAddBranch = useCallback(() => {
     if (!branchPoint) return;
+    // Port startu w jedynej postaci: zacisk portu bocznego słupa (backend `_rozwiaz_port_startu`).
     openOperationForm('start_branch_segment_sn', {
-      from_ref: `${branchPoint.ref_id}.BRANCH`,
+      from_ref: portStartuPunktu(branchPoint, 0),
     });
   }, [branchPoint, openOperationForm]);
 

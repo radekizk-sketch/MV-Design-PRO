@@ -86,7 +86,6 @@ export interface RingOperationContext {
 
 const FALLBACK_LABEL = '—';
 const UNKNOWN_SOURCE_TYPE_LABEL = 'Nie ustalono';
-const STATION_SOURCE_TYPE_LABEL = 'Stacja SN/nN';
 const SN_BUS_SOURCE_TYPE_LABEL = 'Szyna SN';
 const LINE_BAY_SOURCE_TYPE_LABEL = 'Pole liniowe SN';
 const ZKSN_SOURCE_TYPE_LABEL = 'ZKSN';
@@ -100,12 +99,23 @@ export function resolveBranchPointBranchPortId(portCount: number, index: number)
   return portCount > 1 ? `BRANCH_${index + 1}` : 'BRANCH'; // ui-terminology-ignore
 }
 
-export function resolveBranchPointBranchPortIndex(portCount: number, portId: string): number {
-  if (portId === 'BRANCH') return 0; // ui-terminology-ignore
-  if (!portId.startsWith('BRANCH_')) return -1; // ui-terminology-ignore
-  const parsed = Number(portId.split('_')[1]);
-  const index = Number.isFinite(parsed) ? parsed - 1 : -1;
-  return index >= 0 && index < portCount ? index : -1;
+/**
+ * Port startu odgałęzienia z punktu odgałęźnego w JEDYNEJ postaci (rozstrzygnięcie architekta
+ * 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC; backend `_rozwiaz_port_startu`): zacisk
+ * `index`-tego portu odgałęźnego (`ports.BRANCH[index]`). Punkt bez tego portu daje własny
+ * `ref_id` — domena odmawia nazwanym kodem (`branch_point.required_port_missing`), zamiast
+ * domysłu portu po stronie UI.
+ */
+export function portStartuPunktu(branchPoint: BranchPointSN, index: number): string {
+  const porty = Array.isArray(branchPoint.ports?.BRANCH) ? branchPoint.ports.BRANCH : []; // ui-terminology-ignore
+  return porty[index] ?? branchPoint.ref_id;
+}
+
+/** Etykieta portu odgałęźnego punktu dla projektanta (bez identyfikatorów portów modelu). */
+function etykietaPortuPunktu(branchPoint: BranchPointSN, index: number): string {
+  const porty = Array.isArray(branchPoint.ports?.BRANCH) ? branchPoint.ports.BRANCH : []; // ui-terminology-ignore
+  if (branchPoint.branch_point_type === 'branch_pole') return 'port boczny słupa rozgałęźnego';
+  return porty.length > 1 ? `port odgałęźny ${index + 1} z ${porty.length}` : 'port odgałęźny';
 }
 
 export function resolveBranchPointBranchPortOccupancy(
@@ -614,8 +624,10 @@ export function resolveBranchSourceRef(
     || polaModelu.find((candidate) => candidate.bus_ref === busRef)?.substation_ref
     || null;
 
+  // Port startu w JEDYNEJ postaci (backend `_rozwiaz_port_startu`): `ref_id` pola liniowego,
+  // gdy ciąg startuje z pola; inaczej zacisk portu odgałęźnego punktu.
   if (branchPoint?.branch_point_type === 'branch_pole') {
-    return `${branchPoint.ref_id}.BRANCH`; // ui-terminology-ignore
+    return portStartuPunktu(branchPoint, 0);
   }
 
   if (branchPoint?.branch_point_type === 'zksn') {
@@ -624,28 +636,24 @@ export function resolveBranchSourceRef(
       return null;
     }
 
-    if (busRef) {
-      const matchedPortIndex = branchPorts.findIndex((candidateBusRef) => candidateBusRef === busRef);
-      if (matchedPortIndex >= 0) {
-        return `${branchPoint.ref_id}.${resolveBranchPointBranchPortId(branchPorts.length, matchedPortIndex)}`;
-      }
+    if (busRef && branchPorts.includes(busRef)) {
+      return busRef;
     }
 
     const freePortIndex = branchPorts.findIndex((_, index) => (
       !resolveBranchPointBranchPortOccupancy(branchPoint, index)
     ));
-    const selectedPortIndex = freePortIndex >= 0 ? freePortIndex : 0;
-    return `${branchPoint.ref_id}.${resolveBranchPointBranchPortId(branchPorts.length, selectedPortIndex)}`;
+    return portStartuPunktu(branchPoint, freePortIndex >= 0 ? freePortIndex : 0);
   }
 
   if (bay && poleZdolneDoOdgalezienia(bay, logicalViews)) {
-    return `${bay.ref_id}.BRANCH`; // ui-terminology-ignore
+    return bay.ref_id;
   }
 
   if (effectiveStationRef) {
     const stationField = findBranchCapableStationField(snapshot, logicalViews, effectiveStationRef, busRef);
     if (stationField) {
-      return `${stationField.ref_id}.BRANCH`; // ui-terminology-ignore
+      return stationField.ref_id;
     }
   }
 
@@ -656,19 +664,21 @@ export function resolveBranchSourceContext(
   snapshot: EnergyNetworkModel | null,
   fromRef: string,
 ): BranchSourceDisplayContext {
-  if (!snapshot || !fromRef || !fromRef.includes('.')) {
-    return {
-      fromRef,
-      sourceType: UNKNOWN_SOURCE_TYPE_LABEL,
-      sourceName: fromRef || FALLBACK_LABEL,
-      sourceBusRef: '',
-      voltageLabel: FALLBACK_LABEL,
-      portLabel: '',
-    };
+  const nieustalony: BranchSourceDisplayContext = {
+    fromRef,
+    sourceType: UNKNOWN_SOURCE_TYPE_LABEL,
+    sourceName: fromRef || FALLBACK_LABEL,
+    sourceBusRef: '',
+    voltageLabel: FALLBACK_LABEL,
+    portLabel: '',
+  };
+  if (!snapshot || !fromRef) {
+    return nieustalony;
   }
 
-  const [elementRef, portId] = fromRef.split('.', 2);
-  const bay = findBay(snapshot, elementRef);
+  // Port startu w JEDYNEJ postaci (backend `_rozwiaz_port_startu`): `ref_id` pola liniowego
+  // SN albo zacisk — szyna portu odgałęźnego punktu lub szyna końca ciągu.
+  const bay = findBay(snapshot, fromRef);
   if (bay && isLineContinuationBayRole(bay.bay_role)) {
     // Karta W5-B: jeden rekord pola. Odcinek przyłącza się w punkcie przyłączenia pola
     // (własny zacisk, a bez niego szyna pola — POLA-W-TORZE); nazwa: stacja i pole.
@@ -681,66 +691,39 @@ export function resolveBranchSourceContext(
       sourceName: stationOfBay?.name ? `${stationOfBay.name} · ${bay.name}` : bay.name,
       sourceBusRef,
       voltageLabel: sourceBus ? `${sourceBus.voltage_kv} kV` : FALLBACK_LABEL,
-      portLabel: portId,
+      portLabel: 'zacisk pola liniowego',
     };
   }
 
-  const station = findStation(snapshot, elementRef);
-  if (station) {
-    const feederBay = polaSnStacji(snapshot, station.ref_id).find((candidate) => candidate.bay_role === 'FEEDER');
-    const sourceBus = findBus(snapshot, feederBay?.bus_ref ?? null);
+  const branchPoint = snapshot.branch_points?.find((candidate) => (
+    Array.isArray(candidate.ports?.BRANCH) && candidate.ports.BRANCH.includes(fromRef) // ui-terminology-ignore
+  ));
+  if (branchPoint) {
+    const index = branchPoint.ports.BRANCH.indexOf(fromRef); // ui-terminology-ignore
+    const branchBus = findBus(snapshot, fromRef);
     return {
       fromRef,
-      sourceType: STATION_SOURCE_TYPE_LABEL,
-      sourceName: station.name ?? elementRef,
-      sourceBusRef: feederBay?.bus_ref ?? '',
-      voltageLabel: sourceBus ? `${sourceBus.voltage_kv} kV` : FALLBACK_LABEL,
-      portLabel: portId,
+      sourceType: branchPoint.branch_point_type === 'zksn' ? ZKSN_SOURCE_TYPE_LABEL : BRANCH_POLE_SOURCE_TYPE_LABEL,
+      sourceName: branchPoint.name,
+      sourceBusRef: fromRef,
+      voltageLabel: branchBus ? `${branchBus.voltage_kv} kV` : FALLBACK_LABEL,
+      portLabel: etykietaPortuPunktu(branchPoint, index),
     };
   }
 
-  const bus = findBus(snapshot, elementRef);
+  const bus = findBus(snapshot, fromRef);
   if (bus) {
     return {
       fromRef,
       sourceType: SN_BUS_SOURCE_TYPE_LABEL,
-      sourceName: bus.name ?? elementRef,
-      sourceBusRef: bus.ref_id ?? bus.id ?? elementRef,
+      sourceName: bus.name ?? fromRef,
+      sourceBusRef: bus.ref_id ?? bus.id ?? fromRef,
       voltageLabel: `${bus.voltage_kv} kV`,
-      portLabel: portId,
+      portLabel: 'zacisk końca ciągu',
     };
   }
 
-  const branchPoint = findBranchPoint(snapshot, elementRef);
-  if (!branchPoint) {
-    return {
-      fromRef,
-      sourceType: UNKNOWN_SOURCE_TYPE_LABEL,
-      sourceName: elementRef,
-      sourceBusRef: '',
-      voltageLabel: FALLBACK_LABEL,
-      portLabel: portId,
-    };
-  }
-
-  let sourceBusRef = '';
-  if (branchPoint.branch_point_type === 'branch_pole') {
-    sourceBusRef = branchPoint.ports.BRANCH[0] ?? ''; // ui-terminology-ignore
-  } else {
-    const branchPorts = Array.isArray(branchPoint.ports.BRANCH) ? branchPoint.ports.BRANCH : []; // ui-terminology-ignore
-    const index = resolveBranchPointBranchPortIndex(branchPorts.length, portId);
-    sourceBusRef = branchPoint.ports.BRANCH[index] ?? ''; // ui-terminology-ignore
-  }
-
-  const branchBus = findBus(snapshot, sourceBusRef);
-  return {
-    fromRef,
-    sourceType: branchPoint.branch_point_type === 'zksn' ? ZKSN_SOURCE_TYPE_LABEL : BRANCH_POLE_SOURCE_TYPE_LABEL,
-    sourceName: branchPoint.name,
-    sourceBusRef,
-    voltageLabel: branchBus ? `${branchBus.voltage_kv} kV` : FALLBACK_LABEL,
-    portLabel: portId,
-  };
+  return nieustalony;
 }
 
 export function resolveBranchStartOperationContext(

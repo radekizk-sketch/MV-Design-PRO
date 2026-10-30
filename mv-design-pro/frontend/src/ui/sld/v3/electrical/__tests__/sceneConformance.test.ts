@@ -184,10 +184,6 @@ describe('Check B — KOMPLETNOŚĆ: każda krawędź przewodząca sceny jest (a
       justification: 'zejście z magistrali/szyny do GÓRNEGO portu pierwszego aparatu stosu pola — compose/station.ts/gpz.ts (port, nie gałąź ENM).',
     },
     {
-      match: (r) => r.includes('#tee-'),
-      justification: 'punkt odgałęzienia NA JUŻ sklasyfikowanym odcinku szyny/magistrali (podział geometryczny tego samego toru, nie nowe połączenie) — compose/station.ts `#lv-bus#tee-N`, scene/buildScene.ts `#…#tee-N` dla segment_L/section#bus-primary.',
-    },
-    {
       match: (r) => r.endsWith('#hv-connector') || r.endsWith('#hv-field-to-tr') || r.endsWith('#field-anchor') || r.endsWith('#tr-field-to-bus') || /#tr-field-lateral-\d+$/.test(r),
       justification: 'łączniki WEWNĘTRZNE toru transformatora GPZ (port uzwojenia HV → pole → szyna) — compose/gpz.ts, transformator ma JEDEN hv_bus_ref/lv_bus_ref w ENM, nie osobne gałęzie dla każdego odcinka rysunku.',
     },

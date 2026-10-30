@@ -29,6 +29,7 @@ import { SLD_EXPORT_FORMATS, sldExportFormatDescriptor } from '../formats';
 import { svgMarkupToDrawing, parsePathData, geometryPrimitiveCount, type ExportDrawing } from '../svgPrimitives';
 import { buildSldExportFile, type SldExportContext } from '../sldExport';
 import { adresEksportuCgmes, pobierzEksportCgmes } from '../eksportCgmesApi';
+import { BRIDGE_RADIUS, polylinePathWithBridges } from '../../scene/crossings';
 
 // ---------------------------------------------------------------------------
 // Pomocnicze: markup arkusza „w miniaturze" — te same konstrukcje, które
@@ -220,6 +221,64 @@ describe('S9-6 · konwerter markupu na prymitywy', () => {
     const [krzywa] = parsePathData('M 8 8 q 5 2.5 0 5');
     expect(krzywa.points).toHaveLength(9); // punkt startowy + 8 odcinków
     expect(parsePathData('M 8 8 q 5 2.5 0 5')).toEqual(parsePathData('M 8 8 q 5 2.5 0 5'));
+  });
+
+  // Mostek §22.1 (rozstrzygnięcie S7-P2 2026-10-30): każde skrzyżowanie kabli bez węzła
+  // modelu rysuje się łukiem `A` na pionie (`polylinePathWithBridges`). Dawniej parser
+  // eksportu nie znał `A` — PDF i DXF schematu z mostkiem rzucały wyjątek. Iloczyn cech:
+  // {A bezwzględne, a względne} × {sweep 0, 1} × {flagi rozdzielone, zwarte} × {promień
+  // wystarczający, za mały (korekta F.6.6), zerowy (F.6.2)}.
+  const odleglosc = (a: { x: number; y: number }, b: { x: number; y: number }): number =>
+    Math.hypot(a.x - b.x, a.y - b.y);
+
+  it.each([
+    ['A bezwzględne, sweep 1, flagi rozdzielone', 'M 10 0 A 4,4 0 0,1 10 8', 1],
+    ['a względne, sweep 1, flagi zwarte', 'M 10 0 a4 4 0 01 0 8', 1],
+    ['A bezwzględne, sweep 0, flagi zwarte', 'M10,0A4,4 0 00 10,8', -1],
+    ['a względne, sweep 0, flagi rozdzielone', 'M 10 0 a 4 4 0 0 0 0 8', -1],
+  ] as const)('łuk półokręgu %s: koniec dokładny, każdy punkt na okręgu, wierzchołek po stronie sweep', (_opis, d, strona) => {
+    const [luk] = parsePathData(d);
+    expect(luk.points[0]).toEqual({ x: 10, y: 0 });
+    expect(luk.points[luk.points.length - 1]).toEqual({ x: 10, y: 8 });
+    expect(luk.points).toHaveLength(9); // punkt startowy + 8 odcinków na półokrąg
+    const srodek = { x: 10, y: 4 };
+    for (const punkt of luk.points) expect(odleglosc(punkt, srodek)).toBeCloseTo(4, 9);
+    // sweep 1 = kierunek kąta DODATNIEGO (SVG F.6.5); przy osi y w dół łuk z (10,0) do (10,8)
+    // idzie wtedy przez +x — ta sama matematyka, którą przeglądarka rysuje mostek na ekranie.
+    const wierzcholek = luk.points[4];
+    expect(wierzcholek.x).toBeCloseTo(10 + strona * 4, 9);
+    expect(wierzcholek.y).toBeCloseTo(4, 9);
+  });
+
+  it('łuk o promieniu za małym na cięciwę skaluje promień (F.6.6), zerowy promień = odcinek (F.6.2)', () => {
+    const [skalowany] = parsePathData('M 0 0 A 1 1 0 0 1 0 8');
+    const srodek = { x: 0, y: 4 };
+    for (const punkt of skalowany.points) expect(odleglosc(punkt, srodek)).toBeCloseTo(4, 9);
+    expect(skalowany.points[skalowany.points.length - 1]).toEqual({ x: 0, y: 8 });
+
+    const [prosty] = parsePathData('M 0 0 A 0 4 0 0 1 0 8');
+    expect(prosty.points).toEqual([{ x: 0, y: 0 }, { x: 0, y: 8 }]);
+  });
+
+  it('ścieżka mostka z `polylinePathWithBridges` przechodzi do eksportu: pion ciągły, łuk wokół przecięcia', () => {
+    const pion = [{ x: 40, y: 0 }, { x: 40, y: 80 }];
+    const d = polylinePathWithBridges(pion, new Map([[0, [32]]]));
+    expect(d).toContain(' A');
+    const [sciezka] = parsePathData(d);
+    expect(sciezka.points[0]).toEqual({ x: 40, y: 0 });
+    expect(sciezka.points[sciezka.points.length - 1]).toEqual({ x: 40, y: 80 });
+    const odejscie = sciezka.points.filter((p) => Math.abs(p.x - 40) > 1e-9);
+    expect(odejscie.length).toBeGreaterThan(0);
+    for (const punkt of odejscie) {
+      expect(odleglosc(punkt, { x: 40, y: 32 })).toBeCloseTo(BRIDGE_RADIUS, 9);
+    }
+    // Ten sam wejściowy pion ⇒ ten sam plik (determinizm spłaszczania).
+    expect(parsePathData(d)).toEqual(parsePathData(polylinePathWithBridges(pion, new Map([[0, [32]]]))));
+  });
+
+  it('komenda spoza zmierzonego słownika nadal RZUCA wyjątek (ciche pominięcie zakazane)', () => {
+    expect(() => parsePathData('M 0 0 S 1 1 2 2')).toThrow(/nieobsługiwana komenda/);
+    expect(() => parsePathData('M 0 0 A 4 4 0 2 1 0 8')).toThrow(/flaga łuku/);
   });
 });
 

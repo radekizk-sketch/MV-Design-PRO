@@ -437,6 +437,8 @@ const RODZAJ_SEMANTYCZNY_QET: Readonly<Record<QetSymbolPolaSnId, SymbolId>> = {
   qetFuseSwitch: 'fuseSwitch',
   qetEarthSwitch: 'earthSwitch',
   qetThreePositionSwitch: 'qetThreePositionSwitch',
+  // Ten sam łącznik trójpołożeniowy ze znakiem napędu z modelu (`BayPrimaryDevice.naped`).
+  qetThreePositionSwitchZNapedem: 'qetThreePositionSwitch',
   qetCurrentTransformer: 'currentTransformer',
   qetVoltageTransformer: 'voltageTransformer',
   qetVoltageTransformer2: 'voltageTransformer',
@@ -540,6 +542,7 @@ export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
   'fuseSwitch',
   'qetFuseSwitch',
   'qetThreePositionSwitch',
+  'qetThreePositionSwitchZNapedem',
   'noPoint',
   'lineSwitch',
   'lineBreaker',

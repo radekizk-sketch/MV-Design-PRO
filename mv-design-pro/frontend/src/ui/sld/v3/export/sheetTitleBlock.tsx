@@ -27,7 +27,7 @@
  * mówi to wprost zamiast podawać wymyśloną wartość w rodzaju „1:1000" (którą
  * wpisywał `SldTitleBlock` v2 jako `DEFAULTS.scale`).
  */
-import { LABEL_TYPOGRAPHY, labelLineHeight, liczbaRysunkuPl, measureTextWidth } from '../core/text';
+import { LABEL_TYPOGRAPHY, SLD_FONT_FAMILY, labelLineHeight, liczbaRysunkuPl, measureTextWidth } from '../core/text';
 import { GRID } from '../core/grid';
 import { useSldPalette } from '../theme/palette';
 
@@ -124,16 +124,18 @@ const TITLE_HEIGHT = labelLineHeight('t2') + 8;
 const LABEL_COLUMN_WIDTH = 132;
 /** Nagłówek tabliczki — nazwa rysunku, nie nazwa produktu (zero kodenamów). */
 const TYTUL_PL = 'SCHEMAT JEDNOKRESKOWY SIECI SN';
+/** Odmiana kroju nagłówka tabliczki — jedna dla renderu i pomiaru szerokości. */
+const TITLE_FONT_WEIGHT = 700;
 
 /** Wymiary tabliczki liczone z TREŚCI (ta sama metoda pomiaru tekstu co
  *  reszta arkusza — `measureTextWidth`, `core/text.ts`), więc dłuższa nazwa
  *  projektu poszerza ramkę zamiast wychodzić poza nią. */
 export function sheetTitleBlockSize(data: SheetTitleBlockData): { readonly width: number; readonly height: number } {
   const valueWidth = data.rows.reduce(
-    (max, row) => Math.max(max, measureTextWidth(row.value ?? BRAK_DANEJ, LABEL_TYPOGRAPHY.t3.fontSize)),
+    (max, row) => Math.max(max, measureTextWidth(row.value ?? BRAK_DANEJ, LABEL_TYPOGRAPHY.t3.fontSize, LABEL_TYPOGRAPHY.t3.fontWeight)),
     0,
   );
-  const titleWidth = measureTextWidth(TYTUL_PL, LABEL_TYPOGRAPHY.t2.fontSize);
+  const titleWidth = measureTextWidth(TYTUL_PL, LABEL_TYPOGRAPHY.t2.fontSize, TITLE_FONT_WEIGHT);
   const width = Math.max(LABEL_COLUMN_WIDTH + valueWidth + PADDING * 2, titleWidth + PADDING * 2);
   const height = TITLE_HEIGHT + data.rows.length * ROW_HEIGHT + PADDING;
   return { width, height };
@@ -174,9 +176,9 @@ export function SheetTitleBlock(props: {
         data-testid="sld-sheet-title-block-title"
         x={PADDING}
         y={TITLE_HEIGHT - 8}
-        fontFamily="sans-serif"
+        fontFamily={SLD_FONT_FAMILY}
         fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
-        fontWeight={700}
+        fontWeight={TITLE_FONT_WEIGHT}
         fill={palette.baseStroke}
       >
         {TYTUL_PL}
@@ -188,7 +190,7 @@ export function SheetTitleBlock(props: {
             <text
               x={PADDING}
               y={y}
-              fontFamily="sans-serif"
+              fontFamily={SLD_FONT_FAMILY}
               fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
               fontWeight={LABEL_TYPOGRAPHY.t3.fontWeight}
               fill={palette.baseStroke}
@@ -200,7 +202,7 @@ export function SheetTitleBlock(props: {
               data-brak-danej={row.value === null ? 'true' : undefined}
               x={LABEL_COLUMN_WIDTH}
               y={y}
-              fontFamily="sans-serif"
+              fontFamily={SLD_FONT_FAMILY}
               fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
               fontWeight={LABEL_TYPOGRAPHY.t3.fontWeight}
               fill={palette.baseStroke}

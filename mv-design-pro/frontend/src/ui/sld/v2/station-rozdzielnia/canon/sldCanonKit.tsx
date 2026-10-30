@@ -285,15 +285,35 @@ export function NodeReadout(props: {
   );
 }
 
+/** Górna granica posuwu znaku kroju o STAŁEJ szerokości (`MONO`): każdy krój tej rodziny
+ * (ui-monospace, SF Mono, JetBrains Mono, Menlo i zastępczy „monospace”: Liberation Mono,
+ * DejaVu Sans Mono) ma jeden posuw 0,600–0,602 em dla każdego znaku — stała jest tu
+ * WŁASNOŚCIĄ kroju, nie szacunkiem, a 0,62 em to granica z zapasem. */
+export const POSUW_MONO_GORNY_EM = 0.62;
+/** Górna granica posuwu znaku kroju PROPORCJONALNEGO (`SANS`): krój Inter/system-ui nie ma
+ * w repo tabeli posuwów, więc test kolizji przyjmuje pełny kwadrat em (najszersze znaki
+ * tekstu schematu — „W”, „M”, „—”, cyfry w kółku ①…⑨ — mieszczą się w 1 em w Inter, DejaVu
+ * Sans i Liberation Sans). Stały mnożnik 0,62 em zaniżał tu wielkie litery i znaki w kółku
+ * (ta sama klasa co decyzja architekta §11.7 pkt 7 w `v3/core/text.ts`), a test kolizji
+ * musi szacować z góry, nie ze średniej. */
+export const POSUW_PROPORCJONALNY_GORNY_EM = 1;
+
+/** Górna granica szerokości tekstu `<text>` wg rodziny kroju z atrybutu `font-family`. */
+function gornaSzerokoscTekstu(t: Element, size: number): number {
+  const rodzina = t.getAttribute('font-family') ?? '';
+  const posuw = /monospace/i.test(rodzina) ? POSUW_MONO_GORNY_EM : POSUW_PROPORCJONALNY_GORNY_EM;
+  return Array.from(t.textContent ?? '').length * size * posuw;
+}
+
 /** Bounding-box layout check (DoD §8.5 / §POZYCJE): every annotation text in the
  * schematic band must clear every canonical glyph's data-keepout box. Returns the
- * offenders (empty ⇒ clean). Shared by all preset tests so the rule holds family-wide. */
+ * offenders (empty ⇒ clean). Shared by all preset tests so the rule holds family-wide.
+ * Szerokość tekstu: górna granica wg rodziny kroju (`gornaSzerokoscTekstu`). */
 export function glyphTextCollisions(svg: SVGSVGElement, band: [number, number] = [130, 820]): string[] {
   const keepouts = Array.from(svg.querySelectorAll('[data-keepout]')).map((el) => {
     const [x, y, w, h] = (el.getAttribute('data-keepout') ?? '').split(',').map(Number);
     return { x0: x, y0: y, x1: x + w, y1: y + h };
   });
-  const CHAR = 0.62; // monospace advance ≈ 0.6·fontSize (slight over-estimate)
   const out: string[] = [];
   for (const t of Array.from(svg.querySelectorAll('text'))) {
     if (t.closest('[data-keepout]')) continue; // a glyph's own internal label
@@ -303,7 +323,7 @@ export function glyphTextCollisions(svg: SVGSVGElement, band: [number, number] =
     if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(size)) continue;
     if (y < band[0] || y > band[1]) continue;
     const anchor = t.getAttribute('text-anchor') ?? 'start';
-    const w = (t.textContent ?? '').length * size * CHAR;
+    const w = gornaSzerokoscTekstu(t, size);
     const tx0 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x;
     const box = { x0: tx0, x1: tx0 + w, y0: y - size, y1: y + 2 };
     for (const k of keepouts) {

@@ -15,7 +15,7 @@
  * tła pól i próbki ról) — jak etykiety rysunku, które poniżej progu są szumem.
  */
 import type { JSX } from 'react';
-import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX, labelLineHeight } from '../core/text';
+import { LABEL_TYPOGRAPHY, MIN_READABLE_LABEL_SCREEN_PX, SLD_FONT_FAMILY, labelLineHeight } from '../core/text';
 import {
   ETYKIETA_ROLI_POLA_PL,
   KLASA_DANYCH_GPZ,
@@ -84,7 +84,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
       textAnchor={wyrownanie}
       dominantBaseline="middle"
       fill={kolor}
-      fontFamily="sans-serif"
+      fontFamily={SLD_FONT_FAMILY}
       fontSize={typo.fontSize}
       fontWeight={typo.fontWeight}
     >
@@ -196,7 +196,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
                         textAnchor="middle"
                         dominantBaseline="middle"
                         fill={kolorTekstu}
-                        fontFamily="sans-serif"
+                        fontFamily={SLD_FONT_FAMILY}
                         fontSize={typo.fontSize}
                         fontWeight={typo.fontWeight}
                       >

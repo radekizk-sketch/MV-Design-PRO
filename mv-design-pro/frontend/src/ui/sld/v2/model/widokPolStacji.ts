@@ -9,7 +9,7 @@
  * zmian semantyki; to jest model danych, nie widok.
  */
 
-import type { BayPrimaryDeviceKind, BayPrimaryPlacement, StanObiektu } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, BayPrimaryPlacement, RodzajNapeduLacznika, StanObiektu } from '../../../../types/enm';
 import type { FieldRole } from '../domain/apparatusContracts';
 import type { BateriaPolaView } from './bateriaPola';
 import type { ZrodloU0PolaView } from './zrodloNapieciaZerowego';
@@ -64,10 +64,11 @@ export interface BayPrimaryDeviceView {
    *  nieustalony; `undefined` = projekcja bez stanu (sylwetka konwencji). Rysunek pokazuje go
    *  dyskretnie (podpowiedź na symbolu, atrybut `data-stan-obiektu`). */
   readonly stanObiektu?: StanObiektu | null;
-  /** Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): napęd wyłącznika z rekordu
-   *  (`BayPrimaryDevice.naped`) — `'SILNIKOWY'` rysuje znak napędu przy wyłączniku. Brak =
-   *  napęd niepodany (bez znaku). */
-  readonly naped?: 'SILNIKOWY';
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): napęd łącznika z rekordu
+   *  (`BayPrimaryDevice.naped`) — rysuje znak napędu przy wyłączniku (silnikowy „M") albo przy
+   *  łączniku trójpołożeniowym (zasobnikowy z obsługą ręczną). Brak = napęd niepodany (bez
+   *  znaku). */
+  readonly naped?: RodzajNapeduLacznika;
   /** Kody funkcji EAZ zasilanych z aparatu (`BayPrimaryDevice.funkcje_eaz_zasilane`) — źródła
    *  linii pomiarowych do przekaźnika pola. Brak = aparat nie zasila żadnej funkcji. */
   readonly funkcjeEazZasilane?: readonly string[];
@@ -123,9 +124,22 @@ export interface BayProtectionMarkingView {
  * `meteringMeasurementRef`/`resolveMeterAnchor`, `compose/protectionMarking.ts`).
  */
 export interface CtRatingAnnotationView {
-  readonly measurementRef: string;
-  readonly identifier: string;
+  /** Pomiar CT (`Measurement.ref_id`), z którego pochodzi adnotacja; `null` — adnotacja
+   *  z tabliczki aparatu pola (`deviceRef`). Dokładnie jedno z dwóch źródeł. */
+  readonly measurementRef: string | null;
+  /** Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6): aparat CT pola
+   *  (`BayPrimaryDevice.device_ref`), którego tabliczkę (`BayPrimaryDevice.rdzenie`) niesie
+   *  adnotacja — gdy pole nie ma pomiaru CT wskazanego przez ten aparat (`linked_ref`).
+   *  Dopasowanie na aparat NARYSOWANEGO stosu po `deviceRef`. */
+  readonly deviceRef?: string;
+  /** `Measurement.name`; `null` dla adnotacji z tabliczki aparatu — tożsamość niesie sam
+   *  narysowany aparat (podpis aparatu pola), a tekst adnotacji to tabliczka. */
+  readonly identifier: string | null;
   readonly ratioText: string;
+  /** Klasy dokładności rdzeni z tabliczki aparatu (`BayPrimaryDevice.rdzenie[].klasa`
+   *  z FS rdzenia pomiarowego, np. „5P20", „0,2S FS5 / 0,2 FS5 / 5P20"); `undefined` dla
+   *  adnotacji z pomiaru. */
+  readonly klasy?: string;
   /** F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy —
    *  `Measurement.ct_arrangement`. `undefined` gdy dana niedostarczona (WHITE
    *  BOX — adnotacja rysuje sam identyfikator+przekładnię bez członu układu,

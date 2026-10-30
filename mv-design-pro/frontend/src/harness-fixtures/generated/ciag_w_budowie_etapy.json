@@ -111,7 +111,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -156,8 +156,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -335,8 +334,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -404,7 +402,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -449,8 +447,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -628,8 +625,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -843,7 +839,7 @@
             "run_kind": "main_trunk",
             "segments": [],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -1108,7 +1104,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -1153,8 +1149,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -1332,8 +1327,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -1401,7 +1395,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -1446,8 +1440,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -1625,8 +1618,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -1824,9 +1816,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -2397,7 +2389,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -2776,7 +2768,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -2821,8 +2813,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -3000,8 +2991,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -3069,7 +3059,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -3114,8 +3104,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -3293,8 +3282,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -3492,9 +3480,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -3690,9 +3678,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -4620,7 +4608,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -5112,7 +5100,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -5157,8 +5145,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -5336,8 +5323,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -5405,7 +5391,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -5450,8 +5436,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -5629,8 +5614,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -5828,9 +5812,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -6026,9 +6010,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -6224,9 +6208,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -7511,7 +7495,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -8116,7 +8100,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -8161,8 +8145,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -8340,8 +8323,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -8409,7 +8391,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -8454,8 +8436,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -8633,8 +8614,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -8832,9 +8812,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -9030,9 +9010,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -9228,9 +9208,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -9426,9 +9406,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -11070,7 +11050,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -11788,7 +11768,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -11833,8 +11813,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -12012,8 +11991,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -12081,7 +12059,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -12126,8 +12104,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -12305,8 +12282,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -12504,9 +12480,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -12702,9 +12678,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -12900,9 +12876,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -13098,9 +13074,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -13296,9 +13272,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -15297,7 +15273,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -16128,7 +16104,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -16173,8 +16149,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -16352,8 +16327,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -16421,7 +16395,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -16466,8 +16440,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -16645,8 +16618,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -16844,9 +16816,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -17042,9 +17014,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -17240,9 +17212,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -17438,9 +17410,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -17636,9 +17608,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -17834,9 +17806,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -20192,7 +20164,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -21136,7 +21108,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -21181,8 +21153,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -21360,8 +21331,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -21429,7 +21399,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -21474,8 +21444,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -21653,8 +21622,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -21852,9 +21820,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -22050,9 +22018,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -22248,9 +22216,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -22446,9 +22414,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -22644,9 +22612,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -22842,9 +22810,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -23040,9 +23008,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -25755,7 +25723,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -26812,7 +26780,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -26857,8 +26825,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -27036,8 +27003,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -27105,7 +27071,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -27150,8 +27116,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -27329,8 +27294,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -27528,9 +27492,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -27726,9 +27690,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -27924,9 +27888,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -28122,9 +28086,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -28320,9 +28284,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -28518,9 +28482,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -28716,9 +28680,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -28914,9 +28878,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/7dd04f11e06c9125345ff379be7db59b/tr",
@@ -31986,7 +31950,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -33156,7 +33120,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -33201,8 +33165,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -33380,8 +33343,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -33449,7 +33411,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -33494,8 +33456,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -33673,8 +33634,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -33872,9 +33832,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -34070,9 +34030,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -34268,9 +34228,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -34466,9 +34426,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -34664,9 +34624,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -34862,9 +34822,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -35060,9 +35020,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -35258,9 +35218,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/7dd04f11e06c9125345ff379be7db59b/tr",
@@ -35456,9 +35416,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/0c763386fd41f1b04b908f6aa9942157/tr",
@@ -38885,7 +38845,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -40168,7 +40128,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -40213,8 +40173,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -40392,8 +40351,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -40461,7 +40419,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -40506,8 +40464,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -40685,8 +40642,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -40884,9 +40840,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -41082,9 +41038,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -41280,9 +41236,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -41478,9 +41434,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -41676,9 +41632,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -41874,9 +41830,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -42072,9 +42028,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -42270,9 +42226,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/7dd04f11e06c9125345ff379be7db59b/tr",
@@ -42468,9 +42424,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/0c763386fd41f1b04b908f6aa9942157/tr",
@@ -42666,9 +42622,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3bfb3e2dc89e69e3e43e759d4524aed9/tr",
@@ -46452,7 +46408,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -47848,7 +47804,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -47893,8 +47849,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -48072,8 +48027,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -48141,7 +48095,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -48186,8 +48140,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -48365,8 +48318,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -48564,9 +48516,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -48762,9 +48714,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -48960,9 +48912,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -49158,9 +49110,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -49356,9 +49308,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -49554,9 +49506,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -49752,9 +49704,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -49950,9 +49902,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/7dd04f11e06c9125345ff379be7db59b/tr",
@@ -50148,9 +50100,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/0c763386fd41f1b04b908f6aa9942157/tr",
@@ -50346,9 +50298,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3bfb3e2dc89e69e3e43e759d4524aed9/tr",
@@ -50544,9 +50496,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4dfd768e5d513ad5e6bfb11d5cedcfb6/tr",
@@ -54687,7 +54639,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -56196,7 +56148,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -56241,8 +56193,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -56420,8 +56371,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -56489,7 +56439,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -56534,8 +56484,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -56713,8 +56662,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -56912,9 +56860,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -57110,9 +57058,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -57308,9 +57256,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -57506,9 +57454,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -57704,9 +57652,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -57902,9 +57850,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -58100,9 +58048,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -58298,9 +58246,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/7dd04f11e06c9125345ff379be7db59b/tr",
@@ -58496,9 +58444,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/0c763386fd41f1b04b908f6aa9942157/tr",
@@ -58694,9 +58642,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3bfb3e2dc89e69e3e43e759d4524aed9/tr",
@@ -58892,9 +58840,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4dfd768e5d513ad5e6bfb11d5cedcfb6/tr",
@@ -59090,9 +59038,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/f6661810b1fd98f70fd09487cbe633a2/tr",
@@ -63590,7 +63538,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -65212,7 +65160,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -65257,8 +65205,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -65436,8 +65383,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -65505,7 +65451,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -65550,8 +65496,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -65729,8 +65674,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -65928,9 +65872,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -66126,9 +66070,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -66324,9 +66268,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -66522,9 +66466,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -66720,9 +66664,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -66918,9 +66862,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -67116,9 +67060,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -67314,9 +67258,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/7dd04f11e06c9125345ff379be7db59b/tr",
@@ -67512,9 +67456,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/0c763386fd41f1b04b908f6aa9942157/tr",
@@ -67710,9 +67654,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3bfb3e2dc89e69e3e43e759d4524aed9/tr",
@@ -67908,9 +67852,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4dfd768e5d513ad5e6bfb11d5cedcfb6/tr",
@@ -68106,9 +68050,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/f6661810b1fd98f70fd09487cbe633a2/tr",
@@ -68304,9 +68248,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4491acd3fff8fa1eb41aa0d35d2e1893/tr",
@@ -73161,7 +73105,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -74896,7 +74840,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -74941,8 +74885,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -75120,8 +75063,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -75189,7 +75131,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -75234,8 +75176,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -75413,8 +75354,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -75612,9 +75552,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -75810,9 +75750,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -76008,9 +75948,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -76206,9 +76146,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -76404,9 +76344,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -76602,9 +76542,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -76800,9 +76740,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -76998,9 +76938,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/7dd04f11e06c9125345ff379be7db59b/tr",
@@ -77196,9 +77136,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/0c763386fd41f1b04b908f6aa9942157/tr",
@@ -77394,9 +77334,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3bfb3e2dc89e69e3e43e759d4524aed9/tr",
@@ -77592,9 +77532,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4dfd768e5d513ad5e6bfb11d5cedcfb6/tr",
@@ -77790,9 +77730,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/f6661810b1fd98f70fd09487cbe633a2/tr",
@@ -77988,9 +77928,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4491acd3fff8fa1eb41aa0d35d2e1893/tr",
@@ -78186,9 +78126,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/924e48562a3d6053b7b20b3c35fcff3c/tr",
@@ -83400,7 +83340,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],
@@ -85248,7 +85188,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -85293,8 +85233,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -85472,8 +85411,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -85541,7 +85479,7 @@
                 "is_controllable": true,
                 "kind": "THREE_POSITION_SWITCH",
                 "linked_ref": null,
-                "naped": null,
+                "naped": "ZASOBNIKOWY_RECZNY",
                 "odgalezienie": null,
                 "operating_state": null,
                 "placement": "UPSTREAM",
@@ -85586,8 +85524,7 @@
                   "51N",
                   "50BF",
                   "79",
-                  "SCO",
-                  "SPZ/SCO"
+                  "SCO"
                 ],
                 "funkcje_eaz_zasilane": [],
                 "is_controllable": true,
@@ -85765,8 +85702,7 @@
               "ZS",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "protection_ref": null,
             "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -85964,9 +85900,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/98d4edad394b38ce1da666b9b3294dc4/tr",
@@ -86162,9 +86098,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d966b8bd7fe3ffc5813f6bc64f60bd96/tr",
@@ -86360,9 +86296,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/b661364fd4da5fcecca248ad1e785b53/tr",
@@ -86558,9 +86494,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/d01150d65d33c18ca656de9d793095c5/tr",
@@ -86756,9 +86692,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/87aa5de4a83ba5d1d202befb17353496/tr",
@@ -86954,9 +86890,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3001ef6e103b7f616cf913001186073d/tr",
@@ -87152,9 +87088,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3cbe69dd32e91d7f29264ae9da4967c8/tr",
@@ -87350,9 +87286,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/7dd04f11e06c9125345ff379be7db59b/tr",
@@ -87548,9 +87484,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/0c763386fd41f1b04b908f6aa9942157/tr",
@@ -87746,9 +87682,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/3bfb3e2dc89e69e3e43e759d4524aed9/tr",
@@ -87944,9 +87880,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4dfd768e5d513ad5e6bfb11d5cedcfb6/tr",
@@ -88142,9 +88078,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/f6661810b1fd98f70fd09487cbe633a2/tr",
@@ -88340,9 +88276,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4491acd3fff8fa1eb41aa0d35d2e1893/tr",
@@ -88538,9 +88474,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/924e48562a3d6053b7b20b3c35fcff3c/tr",
@@ -88736,9 +88672,9 @@
               "51",
               "50",
               "51N",
-              "Buchholz",
-              "temp",
-              "ciśnienie"
+              "63",
+              "26",
+              "63P"
             ],
             "protection_ref": null,
             "ref_id": "field/4b1d9dfb8345649346894380c5c3f2a4/tr",
@@ -94307,7 +94243,7 @@
               }
             ],
             "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+            "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
             "stations": []
           }
         ],

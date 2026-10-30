@@ -193,7 +193,7 @@ function findBranchCapableFieldPort(
     for (const pole of (enm.bays ?? []).filter((b) => b.substation_ref === substation.ref_id)) {
       const bayRole = String(pole.bay_role ?? '').toUpperCase();
       if (branchRoles.has(bayRole)) {
-        return `${pole.ref_id}.BRANCH`;
+        return pole.ref_id;
       }
     }
   }

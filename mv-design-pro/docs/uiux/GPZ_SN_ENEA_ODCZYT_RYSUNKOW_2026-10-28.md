@@ -144,6 +144,14 @@ Wykonanie łączników (§13, druk 23–25) jest drugą, niezależną osią: ł�
 | SCO, SPZ/SCO | SCO dopuszczalne, SPZ/SCO na żądanie OSD (pkt 6) | **niedopuszczalne** (II.4.5.4.7.1 pkt 1) | **niedopuszczalne** (II.4.5.4.7.1 pkt 1) |
 | przekładnik napięciowy od strony linii | niewymagany | wymagany → wyłącznie Z.11.1 albo Z.11 | wymagany → wyłącznie Z.11.1 albo Z.11 |
 
+Odwzorowanie w modelu (decyzja architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC §11.11
+pkt B): wiersz „SCO, SPZ/SCO" jest JEDNĄ funkcją pola `SCO` — wyłączenie od stopni SCO1, SCO2
+i ponowne załączenie po SCO (rysunki s.89, s.90, s.91 prowadzą obwody okrężne SCO1, SCO2
+i „SCO/SPZ" do jednego sterownika pola, bez osobnego bloku „SPZ po SCO"). O udziale pola
+w SCO z ponownym załączeniem decyduje operator (pkt 6: „SPZ/SCO — jeśli ENEA Operator tego
+wymaga"; II.4.5.4.7.1 pkt 1–2), więc w klasie odbiorczej funkcja ma wymóg „na żądanie OSD";
+w klasach z generacją pozostaje niedopuszczalna. Osobnego kodu „SPZ/SCO" słownik funkcji nie zna.
+
 Typ modułu wytwarzania za polem (IRiESD, słownik pojęć): A 0,8 kW–< 200 kW, B 200 kW–< 10 MW, C 10–< 75 MW, D ≥ 75 MW lub przyłączenie ≥ 110 kV. [INTERPRETACJA] Próg AJEE wytwórcy ≥ 200 kW z rysunku Z.11 jest zbieżny z dolną granicą typu B.
 
 Rozbieżności źródeł: (1) rysunek Z.10 nie wymienia zabezpieczenia podczęstotliwościowego, którego IRiESD II.4.5.4.2.1 pkt 5 wymaga w polu odbiorczym — model dopisuje 81U klasą odbiorczą; (2) Zeszyt 1 §26.9.3 i rysunki Z.11/Z.11.1 wymieniają SCO, a IRiESD II.4.5.4.7.1 pkt 1 zakazuje uruchamiania SCO w liniach z jednostkami wytwórczymi — model stosuje IRiESD (dokument nowszy i nadrzędny dla warunków przyłączenia) i usuwa SCO w klasach z generacją (opis: `docs/uiux/RAPORT_ROZBIEZNOSCI_GPT_GPZ_SN_2026-10-28.md` §13).

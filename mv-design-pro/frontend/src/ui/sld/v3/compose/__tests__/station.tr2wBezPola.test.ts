@@ -453,3 +453,70 @@ describe('GPZ-PARYTET cz. 2 (pkt 1): jawny brak grupy połączeń transformatora
     expect(wpisy).toEqual(wpis ? [wpis] : []);
   });
 });
+
+/**
+ * KOLUMNY PLANU NA SIATCE (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 7 — tabela posuwów
+ * kroju). Plan kolumn bloku to suma prefiksowa szerokości kolumn; szerokości z pomiaru tekstu
+ * (oznaczenie pola, podpis kierunku, etykieta źródła) mają dowolną resztę, więc przed
+ * 2026-10-30 kolumna za takim polem zaczynała się poza siatką, a `snapToGrid` osi kolumny
+ * transformatora bez pola przesuwało symbol i portal domeny nN do 4 jednostek poza kolumnę
+ * (przypadek wyżej: portal o 2 za blokiem po zmianie pomiaru). Iloczyn: rola pola × podpis
+ * kierunku (brak, krótki, długi z wielkimi literami i cyframi) × liczba pól × transformator
+ * bez pola × źródło SN bez toru × sekcje {jedna, dwie}. Dla każdej kombinacji: krawędź,
+ * szerokość i oś każdej kolumny na siatce; transformator bez pola wyśrodkowany w swojej
+ * kolumnie; portal domeny nN w obrysie planu.
+ */
+describe('plan kolumn bloku: krawędzie, szerokości i osie na siatce (iloczyn cech)', () => {
+  const ROLE: readonly FieldRole[] = [FIELD_ROLE.RMU_LINE, FIELD_ROLE.LINE_OUT, FIELD_ROLE.MEASUREMENT, FIELD_ROLE.RMU_TRANSFORMER];
+  const PODPISY: readonly (string | null)[] = [null, 'kier. S03', 'odg. WWM 0123 · Magistrala QG'];
+  it('każda kolumna na siatce, transformator i portal w obrysie', () => {
+    let przypadki = 0;
+    let portaleTr = 0;
+    for (const rola of ROLE) {
+      for (const podpis of PODPISY) {
+        for (const liczbaPol of [1, 2, 3]) {
+          for (const zTr of [false, true]) {
+            for (const zeZrodlem of [false, true]) {
+              for (const dwie of [false, true]) {
+                const bays = Array.from({ length: liczbaPol }, (_, i) =>
+                  makeBay(i === 0 ? rola : FIELD_ROLE.RMU_LINE, i, dwie && i === liczbaPol - 1 ? SEKCJA_B : SEKCJA_A),
+                );
+                const station = makeStation('s-siatka', bays, {
+                  bayDirectionCaptions: bays.map((_, i) => (i === 0 ? podpis : null)),
+                  ...(zTr ? { hasTransformer: true, transformerUnits: [trUnit('tr/1', SEKCJA_A, null)] } : {}),
+                  ...(zeZrodlem ? { derSources: [{ id: 'der/1', kind: 'pv' as const, ratedPower: 1.25, connectionSide: 'sn' as const }] } : {}),
+                  ...(dwie && liczbaPol > 1
+                    ? { snSections: [{ busRef: SEKCJA_A, ordinal: 1, voltageKv: 15 }, { busRef: SEKCJA_B, ordinal: 2, voltageKv: 15 }] }
+                    : {}),
+                });
+                const plan = stationSnColumnLayout(station, 0);
+                const opis = `${rola}/${podpis}/${liczbaPol}/${zTr}/${zeZrodlem}/${dwie}`;
+                for (const p of plan) {
+                  expect(Math.abs(p.leftX % GRID), `${opis}: ${p.kind} leftX ${p.leftX}`).toBe(0);
+                  expect(p.width % GRID, `${opis}: ${p.kind} width ${p.width}`).toBe(0);
+                  expect(Math.abs(p.centerX % GRID), `${opis}: ${p.kind} centerX ${p.centerX}`).toBe(0);
+                  expect(p.centerX, `${opis}: oś w kolumnie`).toBeGreaterThanOrEqual(p.leftX);
+                  expect(p.centerX, `${opis}: oś w kolumnie`).toBeLessThanOrEqual(p.leftX + p.width);
+                  if (p.kind === 'transformer') expect(p.centerX - p.leftX, `${opis}: TR wyśrodkowany`).toBe(p.width / 2);
+                }
+                // Portal domeny nN stacji z JEDYNYM portem LV w kolumnie transformatora bez pola
+                // (pole roli TR wchłania jednostkę transformatora — wtedy port niesie pole).
+                const porty = lvTerminalPortXs(station);
+                const tr = plan.find((p) => p.kind === 'transformer');
+                if (porty.length === 1 && tr !== undefined) {
+                  const lv = planLvTerminal(porty, { hasLoad: false, hasNnDer: false, derRowFlushX: GRID + stationBlockWidth(station) + GRID });
+                  expect(lv.portalCenterX - LV_PORTAL_WIDTH / 2, `${opis}: portal w kolumnie TR`).toBeGreaterThanOrEqual(tr.leftX);
+                  expect(lv.portalCenterX + LV_PORTAL_WIDTH / 2, `${opis}: portal w kolumnie TR`).toBeLessThanOrEqual(tr.leftX + tr.width);
+                  portaleTr += 1;
+                }
+                przypadki += 1;
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(przypadki).toBe(4 * 3 * 3 * 2 * 2 * 2);
+    expect(portaleTr, 'iloczyn obejmuje portal w kolumnie transformatora bez pola').toBeGreaterThan(0);
+  });
+});

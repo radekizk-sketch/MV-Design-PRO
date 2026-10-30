@@ -100,7 +100,8 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
     // jest aparatem ciągłości jak jego kanoniczny odpowiednik; uziemnik (poza torem)
     // ciągłości nie niesie. Wyłącznik z napędem silnikowym M (`qetBreakerZNapedem`, rekord
     // `naped`, korekta właściciela 2026-10-29 pkt 4) to TEN SAM wyłącznik toru ze znakiem
-    // napędu — aparat ciągłości jak `qetBreaker`.
+    // napędu — aparat ciągłości jak `qetBreaker`; tak samo łącznik trójpołożeniowy ze znakiem
+    // napędu zasobnikowego (`qetThreePositionSwitchZNapedem`, decyzja architekta 2026-10-30).
     expect([...CONTINUITY_APPARATUS_SYMBOL_IDS].sort()).toEqual([
       'breaker',
       'disconnector',
@@ -115,6 +116,7 @@ describe('K11-B — strażnik ciągłości toru energii: KAŻDY LOD niesie pełn
       'qetFuseSwitch',
       'qetLoadBreakSwitch',
       'qetThreePositionSwitch',
+      'qetThreePositionSwitchZNapedem',
     ]);
   });
 

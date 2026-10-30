@@ -16,6 +16,15 @@
  *    segment `kind==='bus'`/`'busGpz'`, jest LUKĄ (do naprawy routingiem,
  *    faza F13.3), nie kandydatem na mostek.
  *
+ * ROZSTRZYGNIĘCIE ARCHITEKTA S7-P2 (2026-10-30, `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`
+ * §12): przecięcie dwóch kabli BEZ węzła modelu jest skrzyżowaniem z mostkiem — KAŻDE,
+ * nie tylko kabla z pola GPZ. Kropka węzłowa stoi wyłącznie tam, gdzie w modelu istnieje
+ * węzeł (`PreviewElementMeta.wezelModelu`): węzeł nazwany toru albo węzeł pola, z którego
+ * odchodzi odczep. Dawne rozcinanie kabla poziomego w punkcie przecięcia z kropką
+ * „węzła T" rysowało połączenie, którego w sieci nie ma (92 kropki w 58 fiksturach, żadna
+ * z węzłem modelu) — skasowane. Warunek odbioru: zero kropek bez węzła modelu
+ * (`junctionDotGaps`) i każde przecięcie toru mocy z mostkiem (`przecieciaBezMostka`).
+ *
  * DECYZJA ARCHITEKTA (F13.2, zapis w planie §F13): mostki są POCHODNĄ RENDERU
  * (kanwa/preview liczą je z tych funkcji przy rysowaniu ścieżki pionu) — scena
  * (`buildSceneV3`: punkty/porty/bbox) pozostaje BAJT-W-BAJT niezmieniona,
@@ -25,6 +34,7 @@
  * SAMĄ funkcją), (b) zbiór przecięć z szyną = 0 (`crossingBusGaps`).
  */
 import { GRID } from '../core/grid';
+import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import type { RouteVertex } from '../layout/route';
 import type { PreviewSegment } from '../compose/preview';
 import { jestZnacznikiemToru } from './znacznikiToru';
@@ -36,8 +46,7 @@ export const BRIDGE_RADIUS = GRID / 2;
  *  wyroczni ciągłości — patrz `buildScene.ts` `isAnnotationSegment`). */
 // S9-1: `sheetContinuation` (kreski znaku ciągu dalszego na złamaniu arkusza)
 // leży NA torze, ale sama torem nie jest — bez tego wyjątku jej przecięcie z
-// pionem łącznika byłoby czytane jako węzeł T i dostawałoby kropkę węzłową
-// (`resolveTeeJunctions`), czyli rysunek KŁAMAŁBY o połączeniu elektrycznym.
+// pionem łącznika byłoby czytane jako skrzyżowanie toru mocy i dostawałoby mostek.
 const NON_POWER_KINDS: ReadonlySet<string> = new Set([
   'protectionTrip',
   'measurementLink',
@@ -151,6 +160,100 @@ export function bridgePointsForPolyline(
 }
 
 /**
+ * Wyrocznia odbioru §22.1 (rozstrzygnięcie S7-P2 z 2026-10-30): przecięcia toru mocy
+ * sn×sn, których NIE pokrywa mostek żadnego odcinka sceny — ta sama funkcja mostków
+ * (`bridgePointsForPolyline`), którą kanwa buduje ścieżkę pionu (`SldCanvasV3`), więc
+ * wynik niepusty znaczy: kanwa narysuje to przecięcie bez przeskoku (czytane jak
+ * połączenie). Przecięcia z szyną są osobną luką (`crossingBusGaps`) — mostek na szynie
+ * jest zakazany. 0 = zielono.
+ */
+export function przecieciaBezMostka(segments: readonly PreviewSegment[]): readonly PowerPathCrossing[] {
+  const crossings = interiorCrossings(segments).filter((c) => !c.involvesBus);
+  if (crossings.length === 0) return [];
+  const pokryte = new Set<string>();
+  for (const s of segments) {
+    if (NON_POWER_KINDS.has(s.meta?.kind ?? 'sn')) continue;
+    for (const [i, ys] of bridgePointsForPolyline(s.points, crossings)) {
+      const a = s.points[i]!;
+      const b = s.points[i + 1]!;
+      const y1 = Math.min(a.y, b.y);
+      const y2 = Math.max(a.y, b.y);
+      const rosnaco = [...ys].sort((p, q) => p - q);
+      rosnaco.forEach((y, k) => {
+        // Mostek jest RYSOWALNY: półłuk ±BRIDGE_RADIUS mieści się w pionie (nie sięga
+        // za jego koniec) i nie zachodzi na sąsiedni mostek tego pionu.
+        const odKoncow = y - y1 >= BRIDGE_RADIUS && y2 - y >= BRIDGE_RADIUS;
+        const odSasiadow =
+          (k === 0 || y - rosnaco[k - 1]! >= 2 * BRIDGE_RADIUS) &&
+          (k === rosnaco.length - 1 || rosnaco[k + 1]! - y >= 2 * BRIDGE_RADIUS);
+        if (odKoncow && odSasiadow) pokryte.add(`${a.x},${y}`);
+      });
+    }
+  }
+  const { h } = flatten(segments);
+  return crossings.filter((c) => {
+    if (!pokryte.has(`${c.x},${c.y}`)) return true;
+    // Poziom przechodzi POD całym półłukiem (łuk wybrzusza się w prawo o BRIDGE_RADIUS):
+    // koniec poziomu w obrysie łuku zostawiłby łuk nad pustką.
+    const poziom = h.find(
+      (hs) => hs.a.y === c.y && Math.min(hs.a.x, hs.b.x) < c.x && Math.max(hs.a.x, hs.b.x) > c.x,
+    );
+    return !poziom || Math.max(poziom.a.x, poziom.b.x) - c.x < BRIDGE_RADIUS;
+  });
+}
+
+/** Współliniowe nałożenie odcinków dwóch RÓŻNYCH właścicieli toru mocy. */
+export interface NalozenieOdcinkow {
+  readonly ownerA: string;
+  readonly ownerB: string;
+  /** Odcinek wspólny (świat) i jego długość [px]. */
+  readonly od: RouteVertex;
+  readonly do: RouteVertex;
+  readonly dlugosc: number;
+}
+
+/**
+ * Wyrocznia rozłączności toru mocy (rozstrzygnięcie architekta KD-5, 2026-10-30): dwa
+ * różne obiekty (kable, szyny, przewody pól) NIE biegną po jednym odcinku — nałożenie
+ * współliniowe o dodatniej długości jest fikcją rysunku (czyta się jak jeden przewód).
+ * Styk końcami (węzeł, narożnik) nie jest nałożeniem. Warstwy adnotacji wyłączone tą samą
+ * listą co przecięcia (`NON_POWER_KINDS`). Wynik posortowany deterministycznie.
+ */
+export function nalozeniaRoznychWlascicieli(segments: readonly PreviewSegment[]): readonly NalozenieOdcinkow[] {
+  const { h, v } = flatten(segments);
+  const out: NalozenieOdcinkow[] = [];
+  const zbadaj = (lista: readonly FlatSeg[], poziome: boolean): void => {
+    for (let i = 0; i < lista.length; i += 1) {
+      const e = lista[i]!;
+      for (let j = i + 1; j < lista.length; j += 1) {
+        const f = lista[j]!;
+        if ((e.ownerRef ?? '') === (f.ownerRef ?? '')) continue;
+        const osE = poziome ? e.a.y : e.a.x;
+        const osF = poziome ? f.a.y : f.a.x;
+        if (osE !== osF) continue;
+        const wsp = (p: RouteVertex): number => (poziome ? p.x : p.y);
+        const lo = Math.max(Math.min(wsp(e.a), wsp(e.b)), Math.min(wsp(f.a), wsp(f.b)));
+        const hi = Math.min(Math.max(wsp(e.a), wsp(e.b)), Math.max(wsp(f.a), wsp(f.b)));
+        if (hi - lo <= 0) continue;
+        const [ownerA, ownerB] = [e.ownerRef ?? '', f.ownerRef ?? ''].sort();
+        out.push({
+          ownerA: ownerA!,
+          ownerB: ownerB!,
+          od: poziome ? { x: lo, y: osE } : { x: osE, y: lo },
+          do: poziome ? { x: hi, y: osE } : { x: osE, y: hi },
+          dlugosc: hi - lo,
+        });
+      }
+    }
+  };
+  zbadaj(h, true);
+  zbadaj(v, false);
+  return out.sort(
+    (p, q) => p.od.y - q.od.y || p.od.x - q.od.x || p.ownerA.localeCompare(q.ownerA) || p.ownerB.localeCompare(q.ownerB),
+  );
+}
+
+/**
  * Ścieżka SVG pionowego odcinka z mostkami: linia przerwana w ±BRIDGE_RADIUS
  * wokół każdego mostka, półłuk (sweep w prawo — jednolita konwencja D3-11)
  * ponad linią poziomą. Czysta funkcja tekstowa (testowalna bez DOM).
@@ -233,7 +336,9 @@ export function crossingBusGaps(segments: readonly PreviewSegment[]): readonly C
 export interface JunctionDotGap {
   readonly x: number;
   readonly y: number;
-  readonly reason: 'rozgalezienie-bez-kropki' | 'kropka-bez-rozgalezienia';
+  readonly reason: 'rozgalezienie-bez-kropki' | 'kropka-bez-wezla-modelu' | 'kropka-poza-torem' | 'kropka-bez-rozgalezienia';
+  /** Kropka: `testId` symbolu (WHITE BOX — do raportu luki). */
+  readonly testId?: string;
 }
 
 interface JunctionSceneInput {
@@ -242,6 +347,7 @@ interface JunctionSceneInput {
     readonly symbolId: string;
     readonly x: number;
     readonly y: number;
+    readonly meta?: { readonly wezelModelu?: string; readonly testId?: string; readonly elementKind?: string; readonly ownerRef?: string };
   }>;
 }
 
@@ -251,11 +357,14 @@ interface JunctionSceneInput {
 const DOT_MATCH_TOLERANCE = GRID;
 
 /**
- * Realne węzły ROZGAŁĘZIENIA TRAS (świat): punkt, w którym koniec odcinka
- * trasy ZEWNĘTRZNEJ (`ownerRef` z prefiksem `seg/`) ląduje we WNĘTRZU
- * odcinka INNEJ trasy zewnętrznej — klasyczny T-węzeł magistrala×odgałęzienie.
- * (Styki tras z portami pól/stacji NIE są węzłami tras — rozstrzyga je §16;
- * kropka jest konwencją WĘZŁA TRASOWEGO, spec §22.1.)
+ * Geometryczne T-węzły TRAS ZEWNĘTRZNYCH (świat): punkt, w którym koniec odcinka
+ * trasy ZEWNĘTRZNEJ (`ownerRef` z prefiksem `seg/`) ląduje we WNĘTRZU odcinka INNEJ
+ * trasy zewnętrznej. Kable ciągu są cięte wyłącznie w węzłach modelu (punkt
+ * odgałęźny ma własny symbol, węzeł nazwany — kropkę na końcach kawałków), więc taki
+ * styk na rysunku znaczy połączenie dwóch kabli w miejscu, w którym model węzła nie
+ * ma — wyrocznia `junctionDotGaps` zgłasza go jako lukę (żadna kropka z węzłem modelu
+ * go nie pokrywa). (Styki tras z portami pól/stacji NIE są węzłami tras — rozstrzyga
+ * je §16.)
  */
 export function externalBranchNodes(segments: readonly PreviewSegment[]): readonly RouteVertex[] {
   // §16-v3: słupek terminalny (`kind==='openTerminal'`) NIE jest torem —
@@ -297,57 +406,168 @@ export function externalBranchNodes(segments: readonly PreviewSegment[]): readon
   return nodes.sort((p, q) => (p.y - q.y) || (p.x - q.x));
 }
 
+/** Odczep z węzła pola: odcinek aparatu bocznego pola (`⟨pole⟩#lateral-…`), pola WN
+ *  i pola SN transformatora GPZ (`⟨transformator⟩#hv-lateral-⟨n⟩`,
+ *  `⟨transformator⟩#tr-field-lateral-⟨n⟩`) albo odgałęzienia toru pola
+ *  (`⟨pole | transformator⟩#odgalezienie-⟨n⟩`, bez przewodów kolumny `…-wire-…`). */
+const ODCZEP_WEZLA_POLA = /#(lateral-|hv-lateral-\d+$|tr-field-lateral-\d+$|odgalezienie-\d+$)/;
+
 /**
- * KROPKA-WEZLOWA (V12K-150, spec §22.1, IEC 60617) — realne węzły ODCZEPÓW
- * LATERALNYCH POLA (świat): punkt na osi toru głównego, w którym odgałęzia się
- * aparat boczny (ES/VT/SA — `compose/station.ts`/`compose/gpz.ts` budują odcinek
- * `#lateral-…` jako `[{anchor na osi}, {port aparatu bocznego}]`, więc `points[0]`
- * = WĘZEŁ przyłączenia na osi, ta sama prawda co wyrocznia W1b
- * `buildScene.w1MatrixVariants.test` „start odczepu = oś"). W ODRÓŻNIENIU od
- * `externalBranchNodes` (T-węzły TRAS zewnętrznych `seg/…`) te węzły powstają z
- * DANYCH ODGAŁĘZIENIA pola (ownerRef `#lateral-`), nie z heurystyki
- * geometrycznego przecięcia — dług W1b (V12K-150) zamknięty: junction_dot_probe
- * liczy teraz również odczepy WEWNĄTRZ pola, nie tylko węzły tras.
- *
- * Kawałki rozcięte węzłem T (`#tee-N`, `buildScene.resolveTeeJunctions`) są
- * WYKLUCZONE — ich `points[0]` to punkt rozcięcia kabla, nie odczep lateralny
- * (odczep jest krótki i poziomy, nie bywa rozcinany; filtr chroni przed
- * fałszywym węzłem, gdyby kiedyś był).
+ * JEDNO źródło prawdy odczepu z węzła modelu (reguła KLASA §3, predykaty parami): ten sam
+ * predykat wybiera odcinki, którym scena dorysowuje kropkę (`buildScene.ts`, sekcja 7.6),
+ * i węzły, których kropki wymaga wyrocznia (`lateralBranchNodes`). Odcinek odczepu niesie
+ * węzeł przyłączenia na osi toru pola jako `points[0]` (`compose/station.ts`,
+ * `compose/gpz.ts`, `apparatusSequence.ts::ukladGalezi`) — rysowany wyłącznie wtedy, gdy
+ * porty aparatów leżą na wspólnym węźle albo pole niesie układ z szablonu. Zwraca punkt
+ * węzła i ref pola (węzeł modelu), `null` dla każdego innego odcinka.
  */
-export function lateralBranchNodes(segments: readonly PreviewSegment[]): readonly RouteVertex[] {
-  const nodes: RouteVertex[] = [];
-  const seen = new Set<string>();
-  for (const s of segments) {
-    const ref = s.meta?.ownerRef ?? '';
-    if (!ref.includes('#lateral-') || ref.includes('#tee-')) continue;
-    const tap = s.points[0];
-    if (!tap) continue;
-    const key = `${tap.x},${tap.y}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      nodes.push(tap);
+export function odczepWezlaModelu(
+  segment: PreviewSegment,
+): { readonly punkt: RouteVertex; readonly wezelModelu: string } | null {
+  const ref = segment.meta?.ownerRef ?? '';
+  if (!ODCZEP_WEZLA_POLA.test(ref)) return null;
+  const punkt = segment.points[0];
+  if (!punkt) return null;
+  return { punkt, wezelModelu: ref.slice(0, ref.indexOf('#')) };
+}
+
+/** Rozmiary i porty symboli (kształt `SYMBOL_DEFS`) — podaje wołający, moduł nie importuje
+ *  warstwy symboli. */
+export type RozmiarySymboli = Readonly<
+  Record<
+    string,
+    {
+      readonly width: number;
+      readonly height: number;
+      readonly ports?: readonly { readonly x: number; readonly y: number; readonly dir?: string }[];
+    }
+  >
+>;
+
+/**
+ * Liczba RAMION toru mocy w punkcie `p`: odcinek toru kończący się w `p` daje jedno ramię,
+ * odcinek przechodzący przez `p` (wnętrze albo wierzchołek załamania) — dwa, port symbolu
+ * w `p` — jedno (kropki węzłowe nie mają ramion). Stos aparatów pola bez portów ENM nie ma
+ * przewodów między aparatami: kontrakt stosu (`layout/apparatusStack.ts`, aparat–aparat =
+ * `APPARATUS_STACK_VERTICAL_GAP`) łączy port S aparatu z portem N następnego, odległym o ten
+ * raster — taki port sąsiada daje jedno ramię, gdy przerwy nie pokrywa żaden odcinek.
+ * Rozgałęzienie = co najmniej trzy ramiona; dwa ramiona to ciągłość toru albo narożnik
+ * (np. glif źródła przy głowicy kablowej, za którą tor się nie ciągnie), nie węzeł do
+ * oznaczenia kropką.
+ */
+export function ramionaToru(scene: JunctionSceneInput, sizes: RozmiarySymboli, p: RouteVertex): number {
+  let ramiona = 0;
+  for (const s of scene.segments) {
+    if (NON_POWER_KINDS.has(s.meta?.kind ?? 'sn') || jestZnacznikiemToru(s)) continue;
+    const pts = s.points;
+    if (pts.length < 2) continue;
+    if ((pts[0]!.x === p.x && pts[0]!.y === p.y) || (pts[pts.length - 1]!.x === p.x && pts[pts.length - 1]!.y === p.y)) {
+      ramiona += 1;
+      continue;
+    }
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i]!;
+      const b = pts[i + 1]!;
+      const naOdcinku =
+        (a.y === b.y && a.y === p.y && p.x >= Math.min(a.x, b.x) && p.x <= Math.max(a.x, b.x)) ||
+        (a.x === b.x && a.x === p.x && p.y >= Math.min(a.y, b.y) && p.y <= Math.max(a.y, b.y));
+      if (naOdcinku) {
+        ramiona += 2;
+        break;
+      }
     }
   }
-  return nodes.sort((p, q) => (p.y - q.y) || (p.x - q.x));
+  const przerwaPokryta = (y1: number, y2: number): boolean =>
+    scene.segments.some(
+      (s) =>
+        !NON_POWER_KINDS.has(s.meta?.kind ?? 'sn') &&
+        s.points.some((a, i) => {
+          const b = s.points[i + 1];
+          return b != null && a.x === p.x && b.x === p.x && Math.min(a.y, b.y) <= y1 && Math.max(a.y, b.y) >= y2;
+        }),
+    );
+  for (const sym of scene.symbols) {
+    if (sym.symbolId === 'junction' || sym.symbolId === 'branchJunction') continue;
+    for (const port of sizes[sym.symbolId]?.ports ?? []) {
+      const px = sym.x + port.x;
+      const py = sym.y + port.y;
+      if (px !== p.x) continue;
+      if (py === p.y) ramiona += 1;
+      else if (port.dir === 'N' && py === p.y + APPARATUS_STACK_VERTICAL_GAP && !przerwaPokryta(p.y, py)) ramiona += 1;
+      else if (port.dir === 'S' && py === p.y - APPARATUS_STACK_VERTICAL_GAP && !przerwaPokryta(py, p.y)) ramiona += 1;
+    }
+  }
+  return ramiona;
 }
 
 /**
- * junction_dot_probe (spec §22.1, D3-5): (a) każdy realny węzeł rozgałęzienia
- * ma kropkę węzłową (`junction`/`branchJunction`) w promieniu GRID;
- * (b) żadna kropka bez realnego węzła. Węzły = T-węzły TRAS zewnętrznych
- * (`externalBranchNodes`) ∪ odczepy LATERALNE pól (`lateralBranchNodes`,
- * V12K-150 — kropka na odgałęzieniu ES/VT/SA w scenie produkcyjnej). Rozmiary
- * symboli podaje wołający (mapą symbolId→{width,height}) — moduł nie importuje
- * SYMBOL_DEFS, żeby pozostać czysty względem warstwy symboli (wołający:
- * acceptance/testy).
+ * KROPKA-WEZLOWA (V12K-150, spec §22.1, IEC 60617) — odczepy z węzła modelu, które SĄ
+ * rozgałęzieniem: punkt na osi toru pola, w którym odchodzi aparat boczny (ES/VT/SA), glif
+ * źródła pola albo odgałęzienie toru (przekładnik napięciowy od strony linii, Z.11.1), i który
+ * ma co najmniej trzy ramiona toru (`ramionaToru`). Odczep z końca toru, za którym tor się
+ * nie ciągnie (glif źródła przy głowicy kablowej pola bez narysowanego kabla), jest
+ * narożnikiem — bez kropki. JEDNO źródło dla kropek sceny (`buildScene.ts`, sekcja 7.6)
+ * i wymagań wyroczni (`lateralBranchNodes`, `junctionDotGaps`) — predykaty parami.
+ * Deterministycznie: sort po (y, x), pierwszy odcinek wygrywa ref węzła.
+ */
+export function odczepyWezlowModelu(
+  scene: JunctionSceneInput,
+  sizes: RozmiarySymboli,
+): readonly { readonly punkt: RouteVertex; readonly wezelModelu: string }[] {
+  const wynik: { readonly punkt: RouteVertex; readonly wezelModelu: string }[] = [];
+  const seen = new Set<string>();
+  for (const s of scene.segments) {
+    const odczep = odczepWezlaModelu(s);
+    if (odczep == null) continue;
+    const key = `${odczep.punkt.x},${odczep.punkt.y}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (ramionaToru(scene, sizes, odczep.punkt) >= 3) wynik.push(odczep);
+  }
+  return wynik.sort((a, b) => (a.punkt.y - b.punkt.y) || (a.punkt.x - b.punkt.x));
+}
+
+/** Węzły odczepów z rozgałęzieniem (punkty `odczepyWezlowModelu`) — wymagane kropki. */
+export function lateralBranchNodes(scene: JunctionSceneInput, sizes: RozmiarySymboli): readonly RouteVertex[] {
+  return odczepyWezlowModelu(scene, sizes).map((o) => o.punkt);
+}
+
+function punktNaTorze(segments: readonly PreviewSegment[], x: number, y: number): boolean {
+  for (const s of segments) {
+    if (NON_POWER_KINDS.has(s.meta?.kind ?? 'sn')) continue;
+    for (let i = 0; i + 1 < s.points.length; i++) {
+      const a = s.points[i];
+      const b = s.points[i + 1];
+      if (a.y === b.y && a.y === y && x >= Math.min(a.x, b.x) && x <= Math.max(a.x, b.x)) return true;
+      if (a.x === b.x && a.x === x && y >= Math.min(a.y, b.y) && y <= Math.max(a.y, b.y)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * junction_dot_probe (spec §22.1, D3-5; rozstrzygnięcie S7-P2 z 2026-10-30):
+ * (a) każdy węzeł rozgałęzienia narysowany na torze — odczep z węzła pola
+ *     (`lateralBranchNodes`) i każdy T-styk tras zewnętrznych (`externalBranchNodes`) —
+ *     ma kropkę w promieniu GRID; T-styk dwóch kabli bez węzła modelu nie ma kropki
+ *     z węzłem, więc jest luką (połączenie narysowane bez węzła w sieci);
+ * (b) każda kropka (`junction`/`branchJunction`) wskazuje węzeł modelu
+ *     (`meta.wezelModelu`), a gdy wołający poda zbiór węzłów modelu (`wezlyModelu`:
+ *     `Bus.ref_id` ∪ `Bay.ref_id`) — węzeł istniejący w tym modelu;
+ * (c) każda kropka leży na narysowanym torze (nie wisi obok);
+ * (d) kropka odczepu stoi wyłącznie w rozgałęzieniu (co najmniej trzy ramiona toru,
+ *     `ramionaToru`); kropka węzła nazwanego toru (rekord `Bus`) jest z tego zwolniona.
+ * Rozmiary symboli podaje wołający (mapą symbolId→{width,height}) — moduł nie importuje
+ * SYMBOL_DEFS, żeby pozostać czysty względem warstwy symboli.
  */
 export function junctionDotGaps(
   scene: JunctionSceneInput,
-  symbolSizes: Readonly<Record<string, { readonly width: number; readonly height: number }>>,
+  symbolSizes: RozmiarySymboli,
+  wezlyModelu?: ReadonlySet<string>,
 ): readonly JunctionDotGap[] {
   const nodeSeen = new Set<string>();
   const nodes: RouteVertex[] = [];
-  for (const n of [...externalBranchNodes(scene.segments), ...lateralBranchNodes(scene.segments)]) {
+  for (const n of [...externalBranchNodes(scene.segments), ...lateralBranchNodes(scene, symbolSizes)]) {
     const key = `${n.x},${n.y}`;
     if (!nodeSeen.has(key)) {
       nodeSeen.add(key);
@@ -358,18 +578,54 @@ export function junctionDotGaps(
     .filter((s) => s.symbolId === 'junction' || s.symbolId === 'branchJunction')
     .map((s) => {
       const size = symbolSizes[s.symbolId] ?? { width: 0, height: 0 };
-      return { cx: s.x + size.width / 2, cy: s.y + size.height / 2 };
+      return {
+        cx: s.x + size.width / 2,
+        cy: s.y + size.height / 2,
+        wezel: s.meta?.wezelModelu,
+        testId: s.meta?.testId,
+        // Kropka węzła NAZWANEGO toru (`scene/elementyToru.ts`): oznacza rekord `Bus` między
+        // kawałkami ciągu — sam węzeł modelu, bez wymogu trzech ramion.
+        wezelNazwany: s.meta?.elementKind === 'bus' && s.meta?.ownerRef === s.meta?.wezelModelu,
+      };
     });
+  const zWezlem = (d: (typeof dots)[number]): boolean =>
+    d.wezel != null && d.wezel !== '' && (wezlyModelu == null || wezlyModelu.has(d.wezel));
   const gaps: JunctionDotGap[] = [];
   for (const n of nodes) {
-    const hit = dots.some((d) => Math.abs(d.cx - n.x) <= DOT_MATCH_TOLERANCE && Math.abs(d.cy - n.y) <= DOT_MATCH_TOLERANCE);
+    const hit = dots.some(
+      (d) => zWezlem(d) && Math.abs(d.cx - n.x) <= DOT_MATCH_TOLERANCE && Math.abs(d.cy - n.y) <= DOT_MATCH_TOLERANCE,
+    );
     if (!hit) gaps.push({ x: n.x, y: n.y, reason: 'rozgalezienie-bez-kropki' });
   }
   for (const d of dots) {
-    const hit = nodes.some((n) => Math.abs(d.cx - n.x) <= DOT_MATCH_TOLERANCE && Math.abs(d.cy - n.y) <= DOT_MATCH_TOLERANCE);
-    if (!hit) gaps.push({ x: d.cx, y: d.cy, reason: 'kropka-bez-rozgalezienia' });
+    if (!zWezlem(d)) gaps.push({ x: d.cx, y: d.cy, reason: 'kropka-bez-wezla-modelu', testId: d.testId });
+    else if (!punktNaTorze(scene.segments, d.cx, d.cy)) {
+      gaps.push({ x: d.cx, y: d.cy, reason: 'kropka-poza-torem', testId: d.testId });
+    } else if (
+      !d.wezelNazwany &&
+      !nodes.some((n) => Math.abs(d.cx - n.x) <= DOT_MATCH_TOLERANCE && Math.abs(d.cy - n.y) <= DOT_MATCH_TOLERANCE)
+    ) {
+      // (d) kropka odczepu tylko w rozgałęzieniu: kropka w narożniku albo na ciągłym torze
+      // rysuje węzeł, którego tor nie ma.
+      gaps.push({ x: d.cx, y: d.cy, reason: 'kropka-bez-rozgalezienia', testId: d.testId });
+    }
   }
   return gaps;
+}
+
+/** Węzły modelu, które może oznaczać kropka węzłowa: `Bus.ref_id` (węzeł nazwany toru)
+ *  ∪ `Bay.ref_id` (węzeł pola, z którego odchodzi odczep) ∪ `Transformer.ref_id` (węzeł
+ *  pola WN/SN transformatora GPZ, z którego odchodzi odczep aparatu bocznego). */
+export function wezlyModeluEnm(enm: {
+  readonly buses?: readonly { readonly ref_id: string }[] | null;
+  readonly bays?: readonly { readonly ref_id: string }[] | null;
+  readonly transformers?: readonly { readonly ref_id: string }[] | null;
+}): ReadonlySet<string> {
+  return new Set([
+    ...(enm.buses ?? []).map((b) => b.ref_id),
+    ...(enm.bays ?? []).map((b) => b.ref_id),
+    ...(enm.transformers ?? []).map((t) => t.ref_id),
+  ]);
 }
 
 // ---------------------------------------------------------------------------

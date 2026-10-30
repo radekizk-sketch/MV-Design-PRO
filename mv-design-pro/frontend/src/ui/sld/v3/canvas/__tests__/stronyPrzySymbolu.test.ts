@@ -142,10 +142,11 @@ describe('strony zastępcze przy symbolu — pismo podłogi opisów celu', () =>
   it('drugie przejście: pełny tekst na dalszej stronie przy obrysie wygrywa ze skrótem na pierwszej', () => {
     const [label] = resolveLabels({ simpleAnchored: [etykieta(GLIF, 'below', true)] });
     const pismo = PODLOGA.screenPx / SKALA;
-    const pelna = measureTextWidth('PV 500 kW', pismo);
-    const skrot = shortenPreservingIdentity('PV 500 kW', pismo, pelna * 0.75);
+    const waga = LABEL_TYPOGRAPHY[label.labelClass].fontWeight;
+    const pelna = measureTextWidth('PV 500 kW', pismo, waga);
+    const skrot = shortenPreservingIdentity('PV 500 kW', pismo, waga, pelna * 0.75);
     expect(skrot).not.toBe('PV 500 kW');
-    const szerokoscSkrotu = measureTextWidth(skrot, pismo);
+    const szerokoscSkrotu = measureTextWidth(skrot, pismo, waga);
     const srodek = GLIF.x + GLIF.width / 2;
     const polowaPrzerwy = szerokoscSkrotu / 2 + 2;
     expect(2 * polowaPrzerwy).toBeLessThan(pelna);

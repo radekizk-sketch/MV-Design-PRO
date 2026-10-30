@@ -168,13 +168,13 @@ exports[`rejestr symboli CAD — kontrakt R2 > snapshot prymitywów per symbol �
       },
       {
         "k": "letter",
-        "size": 3.6,
+        "size": 4,
         "t": "3",
-        "x": 4.6,
-        "y": 7.3,
+        "x": 4.4,
+        "y": 6.3,
       },
       {
-        "d": "M 6.199999999999999 7.4 q 1.2 -2.2 2.4 0 t 2.4 0",
+        "d": "M 6.1000000000000005 6.3 q 0.9 -1.65 1.8 0 t 1.8 0",
         "k": "arc",
       },
       {
@@ -449,13 +449,13 @@ exports[`rejestr symboli CAD — kontrakt R2 > snapshot prymitywów per symbol �
       },
       {
         "k": "letter",
-        "size": 3.6,
+        "size": 4,
         "t": "3",
-        "x": 4.6,
-        "y": 9.3,
+        "x": 4.4,
+        "y": 8.3,
       },
       {
-        "d": "M 6.199999999999999 9.4 q 1.2 -2.2 2.4 0 t 2.4 0",
+        "d": "M 6.1000000000000005 8.3 q 0.9 -1.65 1.8 0 t 1.8 0",
         "k": "arc",
       },
       {
@@ -1635,13 +1635,13 @@ exports[`rejestr symboli CAD — kontrakt R2 > snapshot prymitywów per symbol �
       },
       {
         "k": "letter",
-        "size": 3.6,
+        "size": 4,
         "t": "3",
-        "x": 4.6,
-        "y": 7.3,
+        "x": 4.4,
+        "y": 6.3,
       },
       {
-        "d": "M 6.199999999999999 7.4 q 1.2 -2.2 2.4 0 t 2.4 0",
+        "d": "M 6.1000000000000005 6.3 q 0.9 -1.65 1.8 0 t 1.8 0",
         "k": "arc",
       },
       {

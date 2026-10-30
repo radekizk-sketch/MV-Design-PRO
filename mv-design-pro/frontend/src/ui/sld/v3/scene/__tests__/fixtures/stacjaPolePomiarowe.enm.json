@@ -225,9 +225,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/b2904594a55a273351e46fd8c613116c/sn_field/003",
@@ -840,7 +840,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "4e3e309c9e8b4708a68d1410f119f84fe566ac433ee401f7a760a0f36a7bc54a",
+      "hash_sha256": "106f11297e137a7cad288db785f915d8a5df1d98f20cb68027b9d21c28d8a9f2",
       "name": "Stacja z polem pomiarowym",
       "revision": 5,
       "updated_at": "2026-09-25T00:00:00Z"

@@ -179,9 +179,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002",
@@ -417,9 +417,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002",
@@ -655,9 +655,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/002",
@@ -893,9 +893,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002",
@@ -2900,7 +2900,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "846360c8996d4daad999e5aa3ff5db3a128401ab5fc01be9f9fb4e8935bcdc98",
+    "hash_sha256": "c487d6e946e25453f32977306abf4b0878410648130629392cefe57c28751f2b",
     "name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

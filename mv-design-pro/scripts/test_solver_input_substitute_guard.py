@@ -2073,7 +2073,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `funkcje_eaz_wylaczajace`), pole (`zrodlo_u0_ref`) i ocena zrodla napiecia zerowego
     # (`enm/zrodlo_napiecia_zerowego.py`: `potwierdzone`, `pole_zrodla_ref`, `uzwojenie_pl`,
     # `ferranti`, `braki_zrodla`, `kody_brakow`, `funkcje`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4469." in wyjscie, wyjscie
+    # Decyzje architekta 2026-10-30 karty UX-04/POLE-LINIOWE-WZORZEC (pkt A: naped lacznika jako
+    # atrybut aparatu): 4469 -> 4468 — POMIAR `contract_fields()` na drzewie bazy `e41837b4e`
+    # (`git archive`: 4469, pin zgodny) i na drzewie karty (4468). Roznica zbiorow +1, -2:
+    # `ObwodyWtornePola` (`network_model/catalog/obwody_wtorne_pola.py`) niesie liste `napedy`
+    # (naped kazdego lacznika pola z rysunku: Q0 silnikowy, Q1 zasobnikowy z obsluga reczna)
+    # zamiast pary `naped_wylacznika` + `naped_weryfikacja` (naped tylko wylacznika). PASS
+    # niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4468." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

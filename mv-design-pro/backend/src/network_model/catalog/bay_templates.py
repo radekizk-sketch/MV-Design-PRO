@@ -425,7 +425,8 @@ def bez_niespelnionych_warunkow(kody: Iterable[str], warunki: Collection[str]) -
 
 
 #: Funkcje EAZ wg rysunku (kody słownika `funkcje_eaz`). Z.10: I>, I>>, zabezpieczenie
-#: ziemnozwarciowe z wejściami Io i U0, ZS, LRW, SPZ, SCO1/SCO2 i SPZ po SCO. Blok „Zab.
+#: ziemnozwarciowe z wejściami Io i U0, ZS, LRW, SPZ, SCO (obwody okrężne SCO1, SCO2 i SCO/SPZ
+#: do sterownika pola — jedna funkcja `SCO` z ponownym załączeniem po SCO). Blok „Zab.
 #: ziemnozwarciowe" rysunku ma wejście Io z przekładnika Ferrantiego (czerwona linia z zacisku 2
 #: przekładnika 1/100) i wejście U0 z obwodu okrężnego „Z, Zz" pod znakiem kierunku „↦" nad
 #: członami t1, t2 — zestaw rozdziela go na kryterium prądowe Io> (51N, z samego przekładnika
@@ -435,12 +436,13 @@ def bez_niespelnionych_warunkow(kody: Iterable[str], warunki: Collection[str]) -
 #: I>, I> kierunkowe (ZS), I>>, ziemnozwarciowe, U>, U<, f<, f>, df/dt, ZS, LRW, SPZ, SPZE,
 #: wyłączenie od zabezpieczeń transformatora (OWG), automatyka blokowania od napięcia
 #: zwrotnego (NZ — Zeszyt 1 §26.9.3 i §26.10.3; rysunek s.91 niesie jej obwód pomiaru napięcia
-#: zwrotnego, a lista funkcji §26.9.3 nazywa ją wprost), SCO i SPZ po SCO (wejście okrężne
-#: „SCO/SPZ" na s.90 i s.91 — zweryfikowane na rysunku 2026-10-29). Obwody wtórne każdej
+#: zwrotnego, a lista funkcji §26.9.3 nazywa ją wprost) i SCO z ponownym załączeniem po SCO
+#: (obwody okrężne SCO1, SCO2, „SCO/SPZ" na s.90 i s.91 — zweryfikowane na rysunku 2026-10-29;
+#: rysunek nie ma osobnego bloku „SPZ po SCO", 400 dpi 2026-10-30). Obwody wtórne każdej
 #: funkcji (z czego mierzy, na co działa) — `obwody_wtorne_pola`. Zestaw wg KLASY pola (odbiorcze,
 #: mieszane, dedykowane wytwórcy — IRiESD II.4.5.4.2) wyprowadza `funkcje_eaz_pola_liniowego`.
 _FUNKCJE_EAZ_WYKONANIA_POLA: dict[str, list[str]] = {
-    "Z10": ["51", "50", "51N", "67N", "ZS", "50BF", "79", "SCO", "SPZ/SCO"],
+    "Z10": ["51", "50", "51N", "67N", "ZS", "50BF", "79", "SCO"],
     "Z11_1": [
         "51",
         "50",
@@ -459,7 +461,6 @@ _FUNKCJE_EAZ_WYKONANIA_POLA: dict[str, list[str]] = {
         "OWG",
         "NZ",
         "SCO",
-        "SPZ/SCO",
     ],
 }
 _FUNKCJE_EAZ_WYKONANIA_POLA["Z11"] = list(_FUNKCJE_EAZ_WYKONANIA_POLA["Z11_1"])
@@ -832,8 +833,10 @@ WYMAGANIA_EAZ_KLASY_POLA: dict[str, tuple[tuple[str, str, str], ...]] = {
             ("ZS", "OBOWIAZKOWA", "pkt 4"),
             ("50BF", "OBOWIAZKOWA", "pkt 4"),
             ("81U", "OBOWIAZKOWA", "pkt 5"),
-            ("SCO", "DOPUSZCZALNA", "pkt 6"),
-            ("SPZ/SCO", "NA_ZADANIE_OSD", "pkt 6"),
+            # Udział pola w SCO i ponowne załączenie po SCO: pkt 6 („SPZ/SCO — jeśli ENEA
+            # Operator tego wymaga") i II.4.5.4.7.1 pkt 1–2 (SCO działa na wyłączenie
+            # WYBRANYCH pól; SPZ/SCO w uzgodnieniu z OSD) — o udziale pola decyduje operator.
+            ("SCO", "NA_ZADANIE_OSD", "pkt 6; II.4.5.4.7.1 pkt 1–2"),
             *_KRYTERIA_ZIEMNOZWARCIOWE_PRAKTYKI,
         ),
     ),
@@ -855,7 +858,6 @@ WYMAGANIA_EAZ_KLASY_POLA: dict[str, tuple[tuple[str, str, str], ...]] = {
             ("67", "NA_ZADANIE_OSD", "pkt 8"),
             ("32", "NA_ZADANIE_OSD", _PKT_MOCY_ZWROTNEJ),
             ("SCO", "ZAKAZANA", "pkt 6; II.4.5.4.7.1 pkt 1"),
-            ("SPZ/SCO", "ZAKAZANA", "pkt 6; II.4.5.4.7.1 pkt 1"),
             *_KRYTERIA_ZIEMNOZWARCIOWE_PRAKTYKI,
         ),
     ),
@@ -877,7 +879,6 @@ WYMAGANIA_EAZ_KLASY_POLA: dict[str, tuple[tuple[str, str, str], ...]] = {
             ("79", "ZAKAZANA", "(lista funkcji bez SPZ)"),
             ("SPZE", "ZAKAZANA", "(lista funkcji bez SPZ)"),
             ("SCO", "ZAKAZANA", "II.4.5.4.7.1 pkt 1"),
-            ("SPZ/SCO", "ZAKAZANA", "II.4.5.4.7.1 pkt 1"),
             *_KRYTERIA_ZIEMNOZWARCIOWE_PRAKTYKI,
         ),
     ),
@@ -1032,8 +1033,9 @@ BAY_TEMPLATE_TRANSFORMER = BayTemplate(
         ),
     ],
     # Różnicowe 87T + nadprądowe 51/50 + ziemnozwarciowe 51N + technologiczne transformatora
-    # (Buchholz / temperatura / ciśnienie), które wyzwalają wyłącznik pola Q0.
-    funkcje_eaz=["87T", "51", "50", "51N", "Buchholz", "temp", "ciśnienie"],
+    # (63 Buchholz / 26 temperatura / 63P ciśnienie — kody IEEE C37.2, jedna nomenklatura
+    # słownika `funkcje_eaz`), które wyzwalają wyłącznik pola Q0.
+    funkcje_eaz=["87T", "51", "50", "51N", "63", "26", "63P"],
     ports=[BayPortTemplate(kind="sn_transformer", suffix="trafo")],
 )
 
@@ -1068,6 +1070,11 @@ BAY_TEMPLATE_COUPLER = BayTemplate(
     ],
 )
 
+#: Zabezpieczenia interfejsu pola źródłowego SN: kierunkowe 67/67N, napięciowe 27/59,
+#: częstotliwościowe 81U/81O i ROCOF 81R — każda funkcja raz. Ochronę od pracy wyspowej (LoM)
+#: realizują TE kryteria (LoM `application/analyses/ochrona_lom.py` rozpoznaje 81R i 78
+#: w `Bay.protection_codes`); dawny kod-agregat „anti-islanding" obok nich był duplikatem
+#: semantycznym (decyzja architekta 2026-10-30, `funkcje_eaz`).
 _FUNKCJE_EAZ_INTERFEJSU_OZE: tuple[str, ...] = (
     "67",
     "67N",
@@ -1076,7 +1083,6 @@ _FUNKCJE_EAZ_INTERFEJSU_OZE: tuple[str, ...] = (
     "81U",
     "81O",
     "81R",
-    "anti-islanding",
 )
 
 BAY_TEMPLATE_DER_PV = BayTemplate(
@@ -1191,15 +1197,15 @@ UZWOJENIA_VT_POLA_POMIARU_NAPIECIA_Z17: tuple[UzwojeniePrzekladnikaNapieciowego,
 )
 
 #: Funkcje EAZ pola pomiaru napięcia — §26.9.8 w kolejności tekstu: U> (59), U< (27), 3Uo>
-#: (59N), f< (81U) ze stopniami SCO 1 i 2 (SCO) i SPZ po SCO (SPZ/SCO), df/dt (81R); rysunek
-#: s.97 — bloki „U>, U<, Uo>, f<, df/dt” sterownika pola i obwody okrężne SCO1, SCO2, SCO/SPZ.
+#: (59N), f< (81U) ze stopniami SCO 1 i 2 i SPZ po SCO (jedna automatyka SCO), df/dt (81R);
+#: rysunek s.97 — bloki „U>, U<, Uo>, f<, df/dt” sterownika pola i obwody okrężne SCO1, SCO2,
+#: SCO/SPZ.
 FUNKCJE_EAZ_POLA_POMIARU_NAPIECIA_Z17: tuple[str, ...] = (
     "59",
     "27",
     "59N",
     "81U",
     "SCO",
-    "SPZ/SCO",
     "81R",
 )
 

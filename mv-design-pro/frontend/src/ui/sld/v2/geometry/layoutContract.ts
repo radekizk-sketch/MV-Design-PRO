@@ -56,7 +56,7 @@ export type PortSide = 'top' | 'bottom' | 'left' | 'right';
  * Współrzędne w world-space (po auto-fit). Krawędź rysuje się port→port, nie slot→slot.
  */
 export interface PortAnchor {
-  /** ENM PortRef.port_id (np. "...FEEDER.BRANCH"). */
+  /** ENM `PortRef.port_id` — identyfikator portu z rejestru portów modelu (`Port.id`). */
   readonly portId: string;
   /** Pole/stacja/GPZ, do którego port należy (ref_id). */
   readonly ownerRef: string;

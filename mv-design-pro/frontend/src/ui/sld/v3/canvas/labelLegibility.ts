@@ -116,7 +116,7 @@ import {
   shortenPreservingIdentity,
 } from '../core/text';
 import { labelPriority, labelResolutionOrder } from '../layout/declutter';
-import { lodClassOf, type OwnedLabel, type SimpleAnchorPlacement, type WyrownanieTekstu } from '../layout/labels';
+import { lodClassOf, wyrownanieEtykiety, type OwnedLabel, type SimpleAnchorPlacement, type WyrownanieTekstu } from '../layout/labels';
 import { rectWithinSheet, type SheetOutline } from '../sheet/outline';
 
 /** Etykieta zaplanowana do narysowania — geometria EFEKTYWNA (po ewentualnym
@@ -145,6 +145,10 @@ export interface PlannedLabel {
   readonly rect: V3Rect;
   /** `true`, gdy pismo powiększono ponad rozmiar klasy typograficznej. */
   readonly enlarged: boolean;
+  /** Strona, po której etykieta stoi względem kotwicy w TYM planie — strona zastępcza, gdy plan
+   *  przeniósł etykietę (`stronyWKolejnosci`); `undefined` = strona zadeklarowana przez scenę
+   *  (`label.placement`). Trafia do węzła tekstu (`wyrownanieEtykiety`, zaczep w krawędzi). */
+  readonly strona?: SimpleAnchorPlacement;
 }
 
 export interface LabelRenderPlan {
@@ -232,6 +236,12 @@ function rozciagloscWzdluzTekstu(rect: V3Rect, rotated: boolean): number {
   return rotated ? rect.height : rect.width;
 }
 
+/** Odmiana kroju etykiety (CSS font-weight) z jej klasy typograficznej — ta sama, którą
+ *  rysuje `SceneLabelNode`; pomiar tuszu (`measureTextWidth`) liczy posuwy tej odmiany. */
+function wagaPisma(label: Pick<OwnedLabel, 'labelClass'>): number {
+  return LABEL_TYPOGRAPHY[label.labelClass].fontWeight;
+}
+
 /**
  * RAMKA-TNIE-PODPISY — prostokąt TUSZU: dokładnie to, co pokryją narysowane
  * glify. JEDYNE miejsce w planie, które zamienia (tekst, pismo, obrót) na
@@ -258,11 +268,12 @@ function prostokatTuszu(
   slot: V3Rect,
   text: string,
   fontSize: number,
+  fontWeight: number,
   rotated: boolean,
   placement: OwnedLabel['placement'],
   wyrownanie?: WyrownanieTekstu,
 ): V3Rect {
-  const wzdluz = measureTextWidth(text, fontSize);
+  const wzdluz = measureTextWidth(text, fontSize, fontWeight);
   const wpoprzek = wysokoscWiersza(fontSize);
   const rect = anchoredRect(slot, rotated ? wpoprzek : wzdluz, rotated ? wzdluz : wpoprzek, placement);
   // Wiersz bloku w piśmie naturalnym (`placement === undefined`): tusz skróconego tekstu
@@ -305,7 +316,7 @@ function prostokatPrzySymbolu(
   wyrownanie: WyrownaniePrzySymbolu,
 ): V3Rect {
   const rotated = label.rotated === true;
-  const wzdluz = measureTextWidth(text, fontSize);
+  const wzdluz = measureTextWidth(text, fontSize, wagaPisma(label));
   const wpoprzek = wysokoscWiersza(fontSize);
   const width = rotated ? wpoprzek : wzdluz;
   const height = rotated ? wzdluz : wpoprzek;
@@ -411,6 +422,8 @@ interface Dopasowanie {
   readonly rect: V3Rect;
   readonly fontSize: number;
   readonly enlarged: boolean;
+  /** Strona kotwicy dopasowania (`PlannedLabel.strona`). */
+  readonly strona?: SimpleAnchorPlacement;
 }
 
 /**
@@ -509,7 +522,7 @@ function najlepszeDopasowanie(
     // jednak TUSZ (wyśrodkowany w slocie, tak jak go rysuje `SceneLabelNode`),
     // a nie sam slot: tekst został już skrócony do rozciągłości slotu
     // (`tekstBazowy`), więc tusz ⊆ slot ⊆ rezerwacja ⊆ arkusz.
-    const tusz = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, undefined, label.wyrownanieTekstu);
+    const tusz = prostokatTuszu(slot, tekstBazowy, fontSize, wagaPisma(label), rotated, undefined, wyrownanieEtykiety(label));
     return tekstBazowy.length > 0 && wolne(tusz)
       ? { text: tekstBazowy, rect: tusz, fontSize, enlarged: false }
       : null;
@@ -527,7 +540,7 @@ function najlepszeDopasowanie(
   const skroc = (maxWidth: number): string => {
     const zapamietane = skroconeDo.get(maxWidth);
     if (zapamietane !== undefined) return zapamietane;
-    const wynik = shortenPreservingIdentity(tekstBazowy, fontSize, maxWidth);
+    const wynik = shortenPreservingIdentity(tekstBazowy, fontSize, wagaPisma(label), maxWidth);
     skroconeDo.set(maxWidth, wynik);
     return wynik;
   };
@@ -549,7 +562,7 @@ function najlepszeDopasowanie(
       prostokatDla: (text, wyrownanie) =>
         przySymbolu && wyrownanie !== null && placement !== undefined
           ? prostokatPrzySymbolu(label, obrys, text, fontSize, placement, wyrownanie)
-          : prostokatTuszu(slot, text, fontSize, rotated, placement),
+          : prostokatTuszu(slot, text, fontSize, wagaPisma(label), rotated, placement),
     };
   };
 
@@ -559,7 +572,7 @@ function najlepszeDopasowanie(
     const { wyrownania, prostokatDla } = geometria(placement, przyObrysie);
     for (const wyrownanie of wyrownania) {
       const pelny = prostokatDla(tekstBazowy, wyrownanie);
-      if (wolne(pelny)) return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true };
+      if (wolne(pelny)) return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true, ...(placement !== undefined ? { strona: placement } : {}) };
     }
     return null;
   };
@@ -570,7 +583,7 @@ function najlepszeDopasowanie(
     const { wyrownania, prostokatDla } = geometria(placement, przyObrysie);
     for (const wyrownanie of wyrownania) {
       let lo = 1;
-      let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize)) - 1);
+      let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize, wagaPisma(label))) - 1);
       let najlepszy: Dopasowanie | null = null;
       while (lo <= hi) {
         const mid = Math.floor((lo + hi) / 2);
@@ -581,7 +594,7 @@ function najlepszeDopasowanie(
         }
         const rect = prostokatDla(text, wyrownanie);
         if (wolne(rect)) {
-          najlepszy = { text, rect, fontSize, enlarged: true };
+          najlepszy = { text, rect, fontSize, enlarged: true, ...(placement !== undefined ? { strona: placement } : {}) };
           lo = mid + 1;
         } else {
           hi = mid - 1;
@@ -668,7 +681,7 @@ function ustapSasiadow(
   const rotated = label.rotated === true;
   const strony = stronyWKolejnosci(label.placement);
   for (const strona of strony.length === 0 ? [label.placement] : strony) {
-    const rect = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, strona);
+    const rect = prostokatTuszu(slot, tekstBazowy, fontSize, wagaPisma(label), rotated, strona);
     if (!rectWithinSheet(rect, sheet) || obstacles.anyOverlap(rect)) continue;
     const blokujace = [...zaplanowane.values()].filter((p) => rectsOverlap(p.rect, rect));
     if (blokujace.length === 0) continue;
@@ -687,7 +700,7 @@ function ustapSasiadow(
         break;
       }
       zajeteBez.add(d.rect);
-      nowe.push({ label: p.label, index: p.index, text: d.text, fontSize: d.fontSize, rect: d.rect, enlarged: d.enlarged });
+      nowe.push({ label: p.label, index: p.index, text: d.text, fontSize: d.fontSize, rect: d.rect, enlarged: d.enlarged, ...(d.strona !== undefined ? { strona: d.strona } : {}) });
     }
     if (!wszystkieMieszcza) continue;
     for (const p of nowe) zaplanowane.set(p.index, p);
@@ -698,6 +711,7 @@ function ustapSasiadow(
       fontSize,
       rect,
       enlarged: true,
+      ...(strona !== undefined ? { strona } : {}),
     });
     uzyteKandydaty.set(kandydat.index, kandydat);
     return true;
@@ -735,6 +749,7 @@ export function planSceneLabels(
         const text = shortenPreservingIdentity(
           label.text,
           fontSize,
+          wagaPisma(label),
           rozciagloscWzdluzTekstu(label.rect, rotated),
         );
         return {
@@ -742,7 +757,7 @@ export function planSceneLabels(
           index,
           text,
           fontSize,
-          rect: prostokatTuszu(label.rect, text, fontSize, rotated, undefined, label.wyrownanieTekstu),
+          rect: prostokatTuszu(label.rect, text, fontSize, wagaPisma(label), rotated, undefined, wyrownanieEtykiety(label)),
           enlarged: false,
         };
       }),
@@ -817,7 +832,7 @@ export function planSceneLabels(
     const tekstBazowy =
       !czytelna && label.ownerKind !== 'station-name'
         ? label.text
-        : shortenPreservingIdentity(label.text, fontSize, granicaTekstu);
+        : shortenPreservingIdentity(label.text, fontSize, wagaPisma(label), granicaTekstu);
     return { label, index, fontSize, enlarged: !czytelna, slot: label.rect, tekstBazowy };
   };
   labels.forEach((label, index) => {
@@ -835,6 +850,7 @@ export function planSceneLabels(
           ? shortenPreservingIdentity(
               label.text,
               fontCelu,
+              wagaPisma(label),
               label.rezerwacjaSzerokosci ?? rozciagloscWzdluzTekstu(label.rect, rotated),
             )
           : label.text;
@@ -870,7 +886,7 @@ export function planSceneLabels(
         // granica pisma naturalnego (i tędy uciekał opis zbiorczy GPZ).
         text: k.tekstBazowy,
         fontSize: k.fontSize,
-        rect: prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, k.label.rotated === true, undefined, k.label.wyrownanieTekstu),
+        rect: prostokatTuszu(k.slot, k.tekstBazowy, k.fontSize, wagaPisma(k.label), k.label.rotated === true, undefined, wyrownanieEtykiety(k.label)),
         enlarged: false,
       })),
       hiddenDetail,
@@ -952,6 +968,7 @@ export function planSceneLabels(
       fontSize: dopasowanie.fontSize,
       rect: dopasowanie.rect,
       enlarged: dopasowanie.enlarged,
+      ...(dopasowanie.strona !== undefined ? { strona: dopasowanie.strona } : {}),
     });
   }
 

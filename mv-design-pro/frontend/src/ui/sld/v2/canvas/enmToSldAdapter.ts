@@ -36,6 +36,7 @@ import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../
 import { stacjaSzyn, szynaGlownaStacji, szynyStacji } from '../../../shared/szynyStacji';
 import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
 import { bateriaWidokuPola } from '../model/bateriaPola';
+import { przeznaczeniePrzekladnika, tekstKlasRdzeni, tekstPrzekladniRdzeni } from '../model/tabliczkaPrzekladnika';
 import { polaSnStacji, stacjaPola } from '../../../shared/polaStacji';
 import { NAZWA_RODZAJU_STACJI_PL, czyPoleRezerwowe, czyPoleWolne, rodzajStacji } from '../../../shared/rodzajStacji';
 import type { GpzViewModel } from '../model/widokSld';
@@ -2335,7 +2336,11 @@ export function resolveBayProtectionMarking(
  * KONKRETNY aparat NARYSOWANEGO stosu (`linked_ref` match) dzieje się w
  * `compose/protectionMarking.ts` `resolveCtRatingAnnotations` (adapter nie
  * zna geometrii — wzorzec `resolveBayProtectionMarking`). `undefined` gdy
- * pole nie ma żadnego CT (brak danych = brak oznaczenia, §18.3 dosłownie).
+ * pole nie ma ani pomiaru CT, ani aparatu CT z tabliczką rdzeni (brak danych =
+ * brak oznaczenia, §18.3 dosłownie). Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja
+ * architekta §11.7 pkt 6): aparat CT pola z `BayPrimaryDevice.rdzenie`, na który nie
+ * wskazuje pomiar CT pola, daje adnotację z tabliczki (przekładnia i klasy rdzeni,
+ * `v2/model/tabliczkaPrzekladnika.ts`), zakotwiczoną po `deviceRef`.
  * F10.6 (D3, V12K-036): układ pomiarowy (`Measurement.ct_arrangement`)
  * przekazywany 1:1 jako `arrangement` — `undefined` gdy dana niedostarczona
  * (adnotacja rysuje sam identyfikator+przekładnię, zero zgadywania).
@@ -2352,8 +2357,7 @@ export function resolveBayCtRatingAnnotations(
   const measurements = (snapshot.measurements ?? []).filter(
     (m: Measurement) => m.measurement_type === 'CT' && m.bay_ref === bay.ref_id,
   );
-  if (measurements.length === 0) return undefined;
-  return measurements.map((m) => ({
+  const zPomiarow = measurements.map((m): CtRatingAnnotationView => ({
     measurementRef: m.ref_id,
     identifier: m.name,
     ratioText: `${m.rating.ratio_primary}/${m.rating.ratio_secondary}`,
@@ -2367,6 +2371,23 @@ export function resolveBayCtRatingAnnotations(
     // `null`/brak — uczciwy brak, zero fabrykacji).
     cores: m.rdzenie?.length ?? undefined,
   }));
+  // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6): tabliczka aparatu CT
+  // pola (`BayPrimaryDevice.rdzenie` — z szablonu pola albo z pozycji katalogu) dla aparatu, na
+  // który nie wskazuje pomiar CT tego pola (jeden aparat — jedna adnotacja; pomiar ma
+  // pierwszeństwo, bo niesie tożsamość pomiaru). Brak rdzeni w rekordzie = brak tabliczki.
+  const pomiaryPola = new Set(measurements.map((m) => m.ref_id));
+  const zTabliczek = (bay.primary_devices ?? [])
+    .filter((d) => d.kind === 'CT' && (d.rdzenie?.length ?? 0) > 0 && !(d.linked_ref && pomiaryPola.has(d.linked_ref)))
+    .map((d): CtRatingAnnotationView => ({
+      measurementRef: null,
+      deviceRef: d.device_ref,
+      identifier: null,
+      ratioText: tekstPrzekladniRdzeni(d.rdzenie)!,
+      klasy: tekstKlasRdzeni(d.rdzenie)!,
+      purpose: przeznaczeniePrzekladnika(d.rdzenie),
+    }));
+  const adnotacje = [...zPomiarow, ...zTabliczek];
+  return adnotacje.length > 0 ? adnotacje : undefined;
 }
 
 /**

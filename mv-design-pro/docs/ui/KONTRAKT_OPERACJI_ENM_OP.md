@@ -359,7 +359,7 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
 ### 3.4 `start_branch_segment_sn`
 
-**Cel:** Rozpoczecie nowego odgalezienia (branch) od istniejacej szyny SN.
+**Cel:** Rozpoczecie nowego odgalezienia (branch) z portu startu: pola liniowego SN (stacji albo GPZ), portu odgaleznego punktu (slup rozgalezny, ZK SN) albo szyny konca ciagu.
 
 **Publiczna nazwa V11:** tylko `start_branch_segment_sn`
 
@@ -367,16 +367,19 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `from_bus_ref` | `string` | TAK | Referencja szyny zrodlowej --- MUSI byc jawna, brak auto-detekcji |
+| `from_ref` | `string` | TAK, gdy brak `from_bus_ref` | Port startu w JEDNEJ postaci (rozstrzygniecie architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC; `_rozwiaz_port_startu` w `enm/domain_operations.py`): `ref_id` pola liniowego SN, gdy ciag startuje z pola (np. `gpz/…/bay/001`, `stn/…/sn_field/002`); inaczej ZACISK --- szyna portu odgaleznego punktu (`ports.BRANCH[i]` slupa albo ZK SN) lub szyna z tagiem `topology_terminal`. Dawna postac `⟨element⟩.BRANCH[_n]` nie jest rozpoznawana (odmowa `branch_connection.source_not_branch_capable`); punkt odgalezny wskazany bez portu --- odmowa `branch_point.required_port_missing` (slup bez portu) albo `branch_connection.invalid_source_port` |
+| `from_bus_ref` | `string` | TAK, gdy brak `from_ref` | Szyna zrodlowa; port startu wyznacza domena (`_port_startu_dla_szyny`). Podane razem z `from_ref` --- musza wskazywac te sama szyne |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
-| `segment.catalog_ref` | `string` | NIE | Referencja katalogowa |
+| `segment.catalog_ref` / `segment.catalog_binding` | `string` / obiekt | TAK (jedno z nich) | Wiazanie katalogowe odcinka |
+
+Ciag liniowy odgalezienia zapisuje ten sam port: `line_runs[].starting_port_ref` = `from_ref`, `starting_bay_ref` = pole albo punkt odgalezny.
 
 **Tworzy:**
 - Szyne koncowa odgalezienia (`bus`) z napieciem dziedziczonym topologicznie
 - Segment odgalezienia (`branch`)
 
-**Warunek wstepny:** Szyna `from_bus_ref` MUSI istniec w modelu. Brak auto-detekcji szyny zrodlowej.
+**Warunek wstepny:** Port startu MUSI istniec w modelu i byc wolny (pole liniowe bez przydzielonego ciagu, port punktu niezajety). Brak auto-detekcji szyny zrodlowej poza jawnym `from_bus_ref`.
 
 ---
 
@@ -659,7 +662,7 @@ podane przez uzytkownika.
 | **Brak domyslnych dlugosci** | Pole `dlugosc_m` MUSI byc jawnie podane i > 0 w kazdej operacji tworzacej segment | Ustawienie `dlugosc_m = 100` gdy uzytkownik nie podal wartosci |
 | **Brak domyslnych napiec** | Napiecia sa dziedziczone WYLACZNIE topologicznie z podlaczonej szyny --- brak wartosci domyslnych | Ustawienie `voltage_kv = 15.0` gdy szyna zrodlowa nie ma napiecia |
 | **Brak auto-detekcji koncow pierscienia** | Operacja `connect_secondary_ring_sn` wymaga jawnych `from_bus_ref` i `to_bus_ref` | Automatyczne wybranie dwoch najdalszych szyn jako koncow pierscienia |
-| **Brak auto-detekcji szyny zrodlowej odgalezienia** | Operacja `start_branch_segment_sn` wymaga jawnego `from_bus_ref` | Automatyczne wybranie ostatniej szyny jako zrodlowej |
+| **Brak auto-detekcji szyny zrodlowej odgalezienia** | Operacja `start_branch_segment_sn` wymaga jawnego portu startu (`from_ref`) albo jawnej szyny (`from_bus_ref`) | Automatyczne wybranie ostatniej szyny jako zrodlowej |
 | **Brak zastepczych parametrow transformatora** | Parametry `uk_percent`, `pk_kw`, `sn_mva` NIE MAJA wartosci domyslnych --- wymagaja katalogu lub jawnego podania | Ustawienie `uk_percent = 6.0` jako wartosci domyslnej |
 
 ### 4.2 Dozwolone dziedziczenie topologiczne

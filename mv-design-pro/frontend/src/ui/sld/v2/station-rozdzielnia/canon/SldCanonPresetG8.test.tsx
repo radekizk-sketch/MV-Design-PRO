@@ -50,10 +50,13 @@ describe('SldCanonPresetG8 — synchronous cogeneration', () => {
     expect(sc.ik_contribution_ka ?? 0).toBeGreaterThan(0);
   });
 
-  it('protection: NC RfG interface (df/dt + anti-islanding, NO 87/40); FULL generator set separate', () => {
+  it('protection: NC RfG interface (RoCoF 81R + loss-of-mains criteria, NO 87/40); FULL generator set separate', () => {
+    // Each function once, EAZ dictionary codes (architect decision 2026-10-30, `funkcje_eaz`):
+    // loss-of-mains = 27/59/81U/81O/81R; the former "df/dt" + "anti-islanding" duplicated them.
     const iface = G8.fields.find((f) => f.interface_protection)?.protection_codes ?? [];
-    expect(iface).toContain('anti-islanding');
-    expect(iface).toContain('df/dt');
+    expect(iface).toEqual(expect.arrayContaining(['27', '59', '81U', '81O', '81R']));
+    expect(iface).not.toContain('df/dt');
+    expect(iface).not.toContain('anti-islanding');
     expect(iface).not.toContain('87'); // 87G is a MACHINE function, not interface
     expect(iface).not.toContain('40');
     const mach = G8.source.protection?.machine ?? [];

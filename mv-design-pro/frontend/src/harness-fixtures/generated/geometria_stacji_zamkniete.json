@@ -201,14 +201,14 @@
         "element_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/003",
         "port_id": "trunk_start",
         "status": "ZAJETY",
-        "trunk_id": "corridor/30cbbdd3dd40e74f40574b142a45b386/branch"
+        "trunk_id": "corridor/a068820fcc14d6207f41f461d4770dad/branch"
       },
       {
         "branch_id": null,
         "element_id": "bus/2013a824dfb5f91e1f24ef2089b22623/sn_field_terminal/001",
         "port_id": "trunk_end",
         "status": "ZAJETY",
-        "trunk_id": "corridor/30cbbdd3dd40e74f40574b142a45b386/branch"
+        "trunk_id": "corridor/a068820fcc14d6207f41f461d4770dad/branch"
       },
       {
         "branch_id": null,
@@ -227,7 +227,7 @@
     ],
     "trunks": [
       {
-        "corridor_ref": "corridor/30cbbdd3dd40e74f40574b142a45b386/branch",
+        "corridor_ref": "corridor/a068820fcc14d6207f41f461d4770dad/branch",
         "corridor_type": "radial",
         "embedded_objects": [],
         "no_point_refs": [],
@@ -240,14 +240,14 @@
             "element_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/003",
             "port_id": "trunk_start",
             "status": "ZAJETY",
-            "trunk_id": "corridor/30cbbdd3dd40e74f40574b142a45b386/branch"
+            "trunk_id": "corridor/a068820fcc14d6207f41f461d4770dad/branch"
           },
           {
             "branch_id": null,
             "element_id": "bus/2013a824dfb5f91e1f24ef2089b22623/sn_field_terminal/001",
             "port_id": "trunk_end",
             "status": "ZAJETY",
-            "trunk_id": "corridor/30cbbdd3dd40e74f40574b142a45b386/branch"
+            "trunk_id": "corridor/a068820fcc14d6207f41f461d4770dad/branch"
           }
         ]
       },
@@ -336,7 +336,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -381,8 +381,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -560,8 +559,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -629,7 +627,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -674,8 +672,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -853,8 +850,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -1106,9 +1102,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/004",
@@ -1304,9 +1300,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field/002",
@@ -1549,9 +1545,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/003",
@@ -1743,9 +1739,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "field/5479c8038b3ce967fae13b12319add05/tr",
@@ -1845,9 +1841,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "field/2013a824dfb5f91e1f24ef2089b22623/tr",
@@ -3782,13 +3778,13 @@
       },
       {
         "corridor_type": "radial",
-        "id": "9ad8ea98-a3d2-51be-802b-418028a52e72",
+        "id": "1952c75e-abda-5954-9bd8-0a183c4c7230",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
         "ordered_segment_refs": [
           "seg/c49dc5b710a20a15cd013af3d490ca35/branch_segment"
         ],
-        "ref_id": "corridor/30cbbdd3dd40e74f40574b142a45b386/branch",
+        "ref_id": "corridor/a068820fcc14d6207f41f461d4770dad/branch",
         "tags": []
       }
     ],
@@ -3844,12 +3840,12 @@
           }
         ],
         "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-        "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+        "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
         "stations": []
       },
       {
         "branch_origin_station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/003",
-        "id": "corridor/30cbbdd3dd40e74f40574b142a45b386/branch",
+        "id": "corridor/a068820fcc14d6207f41f461d4770dad/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": null,
         "run_kind": "branch",
@@ -3860,7 +3856,7 @@
           }
         ],
         "starting_bay_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/003",
-        "starting_port_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/003.BRANCH",
+        "starting_port_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/003",
         "stations": []
       }
     ],

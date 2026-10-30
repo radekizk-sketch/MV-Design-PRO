@@ -50,6 +50,7 @@ import {
   zachodza,
   HIDDEN_LABELS_HINT_PLATE_PADDING_X_PX,
   HIDDEN_LABELS_HINT_PLATE_PADDING_Y_PX,
+  SHEET_CAPTION_OFFSET_SCREEN_PX,
 } from '../../canvas/chromeLayout';
 import { rectWithinSheet, sheetSizeFor } from '../outline';
 import { FRAME_MARGIN } from '../Frame';
@@ -312,6 +313,8 @@ describe('DOLNY PAS CHROMU — podpisy arkusza i wskaźnik ekranowy są rozłąc
     { width: 2000, height: 1180 },
   ] as const;
   const MNOZNIKI = [0.5, 1, 2, 5] as const;
+  const KAMERY = ['dopasowanie', 'krawedz-w-slocie'] as const;
+  type Kamera = (typeof KAMERY)[number];
   const METRYKA = { measure: measureTextWidth };
 
   function ukladDla(
@@ -321,6 +324,7 @@ describe('DOLNY PAS CHROMU — podpisy arkusza i wskaźnik ekranowy są rozłąc
     kadr: { readonly width: number; readonly height: number },
     mnoznik: number,
     liczbaUkrytych: number,
+    kamera: Kamera = 'dopasowanie',
   ) {
     const lodBboxes: Record<SceneLod, BoundingBox> = {
       0: boundingBoxOfRect(sceny[0].bbox),
@@ -330,14 +334,29 @@ describe('DOLNY PAS CHROMU — podpisy arkusza i wskaźnik ekranowy są rozłąc
     const cel = sceneBoxToCameraWorld(contentBoundingBoxOf(scene) ?? lodBboxes[lod]);
     const fit = computeInitialCameraState(cel, kadr, lodBboxes, null, SLD_CANVAS_DOCK_INSETS);
     const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, fit.transform.scale * mnoznik));
-    const camera = { ...fit.transform, scale };
     const sheet = sheetSizeFor(scene);
+    const captionFontPx = screenFixedFontSize('t2', scale) * scale;
+    // `krawedz-w-slocie`: projektant przesunął widok tak, że dolna krawędź arkusza stoi w pasie
+    // wskaźnika „Ukryto N opisów", a prawa — przy prawej krawędzi kadru (podpis „Skala" wpada
+    // w slot bazowy wskaźnika). Przesunięcie widoku jest zwykłą czynnością użytkownika, więc ten
+    // układ jest cechą iloczynu, nie przypadkiem z fikstury.
+    const slot = hiddenLabelsHintScreenRect(kadr, hiddenLabelsHintText(liczbaUkrytych), [], METRYKA);
+    const camera =
+      kamera === 'dopasowanie'
+        ? { ...fit.transform, scale }
+        : {
+            ...fit.transform,
+            scale,
+            translateX: slot.x + slot.width - (FRAME_MARGIN + sheet.width) * scale,
+            translateY: slot.y + captionFontPx - SHEET_CAPTION_OFFSET_SCREEN_PX - (FRAME_MARGIN + sheet.height) * scale,
+          };
     const captions = sheetCaptionScreenRects(
       {
         sheet,
         frameMargin: FRAME_MARGIN,
         camera,
-        captionFontPx: screenFixedFontSize('t2', scale) * scale,
+        captionFontPx,
+        captionFontWeight: LABEL_TYPOGRAPHY.t2.fontWeight,
         scaleLabel: 'wg kamery',
         lodLabel: SCENE_LOD_LABELS_PL[lod],
       },
@@ -347,61 +366,72 @@ describe('DOLNY PAS CHROMU — podpisy arkusza i wskaźnik ekranowy są rozłąc
     return { aparat: captions, hint };
   }
 
-  it('ILOCZYN {kadr × LOD × zoom}: zero kolizji „Skala …" × „Widok: …" × „Ukryto N opisów"', () => {
-    const sceny: Record<SceneLod, SceneV3> = {
-      0: scenaDla('referencyjna', REFERENCYJNA, 0),
-      1: scenaDla('referencyjna', REFERENCYJNA, 1),
-      2: scenaDla('referencyjna', REFERENCYJNA, 2),
-    };
+  /** Sceny sieci na każdym LOD — dolna krawędź arkusza zależy od kształtu sieci (szeroka sieć
+   *  referencyjna: kadr dopasowany szerokością; długi ciąg łamany na wiersze: wysokością). */
+  function scenySieci(siec: (typeof SIECI)[number]): Record<SceneLod, SceneV3> {
+    return { 0: scenaDla(siec.klucz, siec.enm, 0), 1: scenaDla(siec.klucz, siec.enm, 1), 2: scenaDla(siec.klucz, siec.enm, 2) };
+  }
+
+  it('ILOCZYN {sieć × kadr × LOD × zoom × kamera}: zero kolizji „Skala …" × „Widok: …" × „Ukryto N opisów"', () => {
     const kolizje: string[] = [];
     let ukladow = 0;
-    for (const kadr of KADRY) {
-      for (const lod of LODY) {
-        for (const mnoznik of MNOZNIKI) {
-          const { aparat, hint } = ukladDla(sceny[lod], sceny, lod, kadr, mnoznik, 1);
-          // Dolny aparat arkusza = KRAWĘDŹ RAMKI + oba podpisy. Krawędź jest w
-          // tym zbiorze dlatego, że napis przecięty linią ramki jest tak samo
-          // nieczytelny jak napis pod drugim napisem — to jedna klasa.
-          expect(aparat.map((a) => a.id)).toEqual(['ramka', 'skala', 'widok']);
-          const znalezione = chromeCaptionCollisions([...aparat, { id: 'ukryto', ...hint }]);
-          for (const k of znalezione) {
-            kolizje.push(`${kadr.width}×${kadr.height} L${lod} ×${mnoznik}: ${k.a}↔${k.b}`);
+    for (const siec of SIECI) {
+      const sceny = scenySieci(siec);
+      for (const kadr of KADRY) {
+        for (const lod of LODY) {
+          for (const mnoznik of MNOZNIKI) {
+            for (const kamera of KAMERY) {
+              const { aparat, hint } = ukladDla(sceny[lod], sceny, lod, kadr, mnoznik, 1, kamera);
+              // Dolny aparat arkusza = KRAWĘDŹ RAMKI + oba podpisy. Krawędź jest w
+              // tym zbiorze dlatego, że napis przecięty linią ramki jest tak samo
+              // nieczytelny jak napis pod drugim napisem — to jedna klasa.
+              expect(aparat.map((a) => a.id)).toEqual(['ramka', 'skala', 'widok']);
+              const znalezione = chromeCaptionCollisions([...aparat, { id: 'ukryto', ...hint }]);
+              for (const k of znalezione) {
+                kolizje.push(`${siec.klucz} ${kamera} ${kadr.width}×${kadr.height} L${lod} ×${mnoznik}: ${k.a}↔${k.b}`);
+              }
+              ukladow += 1;
+            }
           }
-          ukladow += 1;
         }
       }
     }
     expect(kolizje).toEqual([]);
-    expect(ukladow).toBe(KADRY.length * LODY.length * MNOZNIKI.length);
+    expect(ukladow).toBe(SIECI.length * KADRY.length * LODY.length * MNOZNIKI.length * KAMERY.length);
   });
 
   it('INIEKCJA: bez ustąpienia wskaźnika kolizja WRACA — czyli test mierzy naprawę, a nie przypadek', () => {
-    const sceny: Record<SceneLod, SceneV3> = {
-      0: scenaDla('referencyjna', REFERENCYJNA, 0),
-      1: scenaDla('referencyjna', REFERENCYJNA, 1),
-      2: scenaDla('referencyjna', REFERENCYJNA, 2),
-    };
-    let bezUstapienia = 0;
-    for (const kadr of KADRY) {
-      for (const lod of LODY) {
-        // Slot BAZOWY (bez znajomości aparatu arkusza) = stan sprzed karty.
-        const { aparat } = ukladDla(sceny[lod], sceny, lod, kadr, 1, 1);
-        const surowy = hiddenLabelsHintScreenRect(kadr, hiddenLabelsHintText(1), [], METRYKA);
-        const znalezione = chromeCaptionCollisions([
-          ...aparat.filter((a) => a.id === 'skala'),
-          { id: 'ukryto-surowy', ...surowy },
-        ]);
-        if (znalezione.length > 0) bezUstapienia += 1;
+    const bezUstapienia: Record<Kamera, number> = { dopasowanie: 0, 'krawedz-w-slocie': 0 };
+    let par = 0;
+    for (const siec of SIECI) {
+      const sceny = scenySieci(siec);
+      for (const kadr of KADRY) {
+        for (const lod of LODY) {
+          for (const mnoznik of MNOZNIKI) {
+            for (const kamera of KAMERY) {
+              // Slot BAZOWY (bez znajomości aparatu arkusza) = stan sprzed karty.
+              const { aparat } = ukladDla(sceny[lod], sceny, lod, kadr, mnoznik, 1, kamera);
+              const surowy = hiddenLabelsHintScreenRect(kadr, hiddenLabelsHintText(1), [], METRYKA);
+              const znalezione = chromeCaptionCollisions([...aparat, { id: 'ukryto-surowy', ...surowy }]);
+              if (znalezione.some((k) => k.a === 'ukryto-surowy' || k.b === 'ukryto-surowy')) bezUstapienia[kamera] += 1;
+              par += 1;
+            }
+          }
+        }
       }
     }
     // Pomiar karty: kolizja w 12 na 12 par {kadr × LOD} przy kadrze dopasowania.
     // LV Domain Projection (po B-02): kolumny stacji z transformatorem
     // poszerzone o portal domeny nN ⇒ arkusz szerszy, inna skala dopasowania i
-    // inny podpis skali — zmierzone ponownie: kolizja w 3 na 12 par. Sens
-    // testu (wyrocznia MIERZY naprawę: bez ustąpienia kolizja WRACA w co
-    // najmniej jednej parze) zachowany; liczba par jest własnością geometrii
-    // fixtury, nie kontraktu.
-    expect(bezUstapienia).toBeGreaterThan(0);
+    // inny podpis skali — zmierzone ponownie: kolizja w 3 na 12 par.
+    // UX-04/POLE-LINIOWE-WZORZEC (tablica szerokości znaków kroju, 2026-10-30): przy kadrze
+    // dopasowania 0 na 96 układów {sieć × kadr × LOD × zoom} — dolna krawędź arkusza
+    // dopasowanego nie sięga już pasa wskaźnika, więc dawna iniekcja zależała od przypadku
+    // geometrii fikstury. Cechą iloczynu jest teraz PRZESUNIĘCIE WIDOKU (`krawedz-w-slocie`:
+    // dolna krawędź arkusza w pasie wskaźnika, czynność użytkownika): bez ustąpienia kolizja
+    // w KAŻDYM z 96 takich układów, z ustąpieniem — w żadnym (test iloczynu wyżej).
+    expect(par).toBe(2 * SIECI.length * KADRY.length * LODY.length * MNOZNIKI.length);
+    expect(bezUstapienia['krawedz-w-slocie']).toBe(SIECI.length * KADRY.length * LODY.length * MNOZNIKI.length);
   });
 
   it('wskaźnik zachowuje slot bazowy tam, gdzie podpis arkusza jest daleko (ustępuje TYLKO gdy trzeba)', () => {

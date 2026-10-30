@@ -305,8 +305,7 @@
         "59",
         "81U",
         "81O",
-        "81R",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -456,8 +455,7 @@
         "59",
         "81U",
         "81O",
-        "81R",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -607,8 +605,7 @@
         "59",
         "81U",
         "81O",
-        "81R",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -768,8 +765,7 @@
         "ZS",
         "50BF",
         "79",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -913,8 +909,7 @@
         "ZS",
         "50BF",
         "79",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -1055,8 +1050,7 @@
         "ZS",
         "50BF",
         "79",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -1343,8 +1337,7 @@
         "SPZE",
         "OWG",
         "NZ",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -1598,8 +1591,7 @@
         "SPZE",
         "OWG",
         "NZ",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -1867,8 +1859,7 @@
         "SPZE",
         "OWG",
         "NZ",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -2174,8 +2165,7 @@
         "SPZE",
         "OWG",
         "NZ",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -2448,8 +2438,7 @@
         "SPZE",
         "OWG",
         "NZ",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -2736,8 +2725,7 @@
         "SPZE",
         "OWG",
         "NZ",
-        "SCO",
-        "SPZ/SCO"
+        "SCO"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -2861,7 +2849,6 @@
         "59N",
         "81U",
         "SCO",
-        "SPZ/SCO",
         "81R"
       ],
       "renderable": true,
@@ -3379,9 +3366,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -3532,8 +3519,7 @@
         "59",
         "81U",
         "81O",
-        "81R",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",
@@ -3699,8 +3685,7 @@
         "59",
         "81U",
         "81O",
-        "81R",
-        "anti-islanding"
+        "81R"
       ],
       "renderable": true,
       "source": "kanoniczny",

@@ -233,9 +233,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/acf00ef4a403c5cd6cdbb7f671e5af3d/sn_field/003",
@@ -524,9 +524,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/fc0a2fb3866e8ce1988f741142d25d9e/sn_field/003",
@@ -815,9 +815,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/05363213961cad844e5963e0a389a648/sn_field/003",
@@ -1106,9 +1106,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/9f0ec1345d7e7ffda7d01028bd8bef10/sn_field/003",
@@ -1397,9 +1397,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/dbfe29ccb7a4259e6d7221481536eeda/sn_field/003",
@@ -1688,9 +1688,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/fd7a06b91d0ec7548456277b9416b10c/sn_field/003",
@@ -1979,9 +1979,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/2b065d5926ba59fbc46152421375f32f/sn_field/003",
@@ -2270,9 +2270,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/96e7d82e4d77225f375b5727719f68de/sn_field/003",
@@ -2561,9 +2561,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/02c02da3e20ffca29359940dcd736939/sn_field/003",
@@ -2852,9 +2852,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/663b8e39d04c4ed73eda1f2caa7edcdc/sn_field/003",
@@ -3143,9 +3143,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/a7d7594e57d98c98c626204be1f30d00/sn_field/003",
@@ -3434,9 +3434,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/df4bd43754d8639852fb7f333934db3b/sn_field/003",
@@ -3725,9 +3725,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/bd432d56c4b5ba64270d17bc8510e298/sn_field/003",
@@ -11450,7 +11450,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "3d538287e0959801da8ac72c2933b6aef02356ad841ce90b1e560c437064a86e",
+      "hash_sha256": "501aa1d095d291594c3fd7f8d92cf60c1ca0639364195f912d47daef7f7bcd9d",
       "name": "Sieć Duza — przed",
       "revision": 48,
       "updated_at": "2026-09-25T00:00:00Z"

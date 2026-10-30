@@ -175,15 +175,10 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 2 — audyt długości pionów (każdy
     expect(gaps.some((g) => g.ownerRef === 'obcy/rola/nieznana')).toBe(true);
     expect(allVerticalsAttributed(mystery)).toBe(false);
   });
-
-  it('węzeł T (#tee-N): pion dziedziczy przyczynę pierwotnego kabla (nie nieuzasadniony)', () => {
-    // Kontynuacja kabla za odczepem (`#tee-1`) NIE jest osobną rolą — sufiks
-    // zdejmowany, pion dziedziczy przyczynę bazy (lateral ⇒ rezerwacja-kanalu).
-    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, 2);
-    const teeVerticals = auditVerticalSegments(scene).filter((v) => (v.ownerRef ?? '').includes('#tee-'));
-    expect(teeVerticals.length).toBeGreaterThan(0);
-    for (const v of teeVerticals) expect(v.cause).not.toBe('nieuzasadniony');
-  });
+  // Dawny test „węzeł T (#tee-N): pion dziedziczy przyczynę pierwotnego kabla" skasowany
+  // razem z rozcinaniem kabla w punktach przecięć (rozstrzygnięcie S7-P2, 2026-10-30):
+  // scena nie tworzy już kawałków `#tee-N`, więc każdy pion jest kablem pod własnym
+  // `ownerRef` i podlega tej samej przyczynowości co reszta (`allVerticalsAttributed` wyżej).
 });
 
 /** Wstrzyknięcie syntetycznego punktu NO na ciąg główny (§3: „znacznik sekcji/NOP
@@ -395,10 +390,12 @@ describe('SCHEMAT-10 S7 etap 4 §9 pkt 7 — fixtura H (~100 stacji, syntetyczna
   });
 
   for (const lod of LODS) {
-    it(`H LOD${lod}: ZERO-DEFEKT (crossing/kolizje/przecięcia/nieortog=0) + wszystkie wyrocznie P0 zielone`, () => {
+    it(`H LOD${lod}: ZERO-DEFEKT (przecięcie bez mostka/kropka bez węzła/kolizje/przecięcia/nieortog=0) + wszystkie wyrocznie P0 zielone`, () => {
       const scene = buildSceneV3(hEnm, lod);
       const m = layoutMetricsReport(scene);
-      expect(m.crossingCount).toBe(0);
+      // Rozstrzygnięcie S7-P2 (2026-10-30): mostek na każdym przecięciu, kropka tylko na węźle modelu.
+      expect(m.crossingWithoutBridgeCount).toBe(0);
+      expect(m.junctionDotGapCount).toBe(0);
       expect(m.labelCollisionCount).toBe(0);
       expect(m.subtreeIntersectionCount).toBe(0);
       expect(m.nonOrthogonalSegmentCount).toBe(0);

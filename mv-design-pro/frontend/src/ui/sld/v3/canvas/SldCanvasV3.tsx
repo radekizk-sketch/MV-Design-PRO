@@ -35,9 +35,18 @@ import { scenyWszystkichPoziomow } from '../scene/scenaSld';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
-import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth, measureTextWidth, screenFixedFontSize } from '../core/text';
+import {
+  LABEL_TYPOGRAPHY,
+  SLD_FONT_FAMILY,
+  SLD_TEXT_STYLE,
+  labelLineHeight,
+  measureLabelWidth,
+  measureTextWidth,
+  screenFixedFontSize,
+} from '../core/text';
 import { GRID } from '../core/grid';
 import { planSceneLabels, type PlannedLabel } from './labelLegibility';
+import { paneleWgPlanu, ramkiBlokowWgPlanu } from './obrysyWgPlanu';
 import {
   LABEL_OWNER_ELEMENT_KIND,
   buildCanvasHitAreas,
@@ -61,6 +70,7 @@ import { FRAME_MARGIN, SheetFrame, type SheetLegendEntry } from '../sheet/Frame'
 import { sheetSizeFor } from '../sheet/outline';
 import {
   HIDDEN_LABELS_HINT_FONT_PX,
+  HIDDEN_LABELS_HINT_FONT_WEIGHT,
   hiddenLabelsHintPlateRect,
   hiddenLabelsHintScreenRect,
   hiddenLabelsHintText,
@@ -71,7 +81,7 @@ import {
 import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
 import type { SafeInsets } from '../../v2/viewport/ViewportController';
 import type { RouteVertex } from '../layout/route';
-import { labelReservationRect, zaczepTekstuEtykiety } from '../layout/labels';
+import { labelReservationRect, wyrownanieEtykiety, zaczepTekstuEtykiety } from '../layout/labels';
 import { buildKanonicznyRefSzynyWgBazy, kanonicznyRefSzynyUchwytu } from './canvasMenuSubject';
 import {
   boundingBoxOfRect,
@@ -529,6 +539,10 @@ function SceneSymbolNode(props: {
    *  kreska aparatu 0,16 px (15,70× zamiast projektowych 3,33×) — zgłoszenie
    *  właściciela „tor prądowy grubszy od kreski aparatu ok. 8–10×". */
   readonly cameraScale: number;
+  /** Ramka bloku przekaźnika wg PLANU etykiet (`canvas/obrysyWgPlanu.ts`) — zastępuje ramkę
+   *  sceny (`meta.ramkaBlokuPrzekaznika`), liczoną ze slotów w piśmie naturalnym; `undefined`
+   *  = symbol bez ramki albo żaden wiersz bloku nie jest narysowany. */
+  readonly ramkaBloku: { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | undefined;
 }): JSX.Element {
   const { symbol, index, overlay, cameraScale } = props;
   const palette = useSldPalette();
@@ -589,6 +603,7 @@ function SceneSymbolNode(props: {
         stroke={stroke}
         strokeScale={strokeScaleFactor(cameraScale)}
         {...daneGlifuSymbolu(symbol)}
+        ramkaBloku={props.ramkaBloku}
         kafleStanu={palette.state}
       />
     </g>
@@ -1091,7 +1106,7 @@ function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): J
           textAnchor="middle"
           dominantBaseline="middle"
           fill={palette.highlight.flow}
-          fontFamily="sans-serif"
+          fontFamily={SLD_FONT_FAMILY}
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
         >
@@ -1449,7 +1464,7 @@ function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; rea
         textAnchor="middle"
         dominantBaseline="middle"
         fill={palette.highlight.oltc}
-        fontFamily="sans-serif"
+        fontFamily={SLD_FONT_FAMILY}
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
       >
@@ -2041,7 +2056,7 @@ function SceneResultLabelNode(props: {
           textAnchor="middle"
           dominantBaseline="middle"
           fill={color}
-          fontFamily="sans-serif"
+          fontFamily={SLD_FONT_FAMILY}
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
         >
@@ -2058,7 +2073,7 @@ function SceneResultLabelNode(props: {
           textAnchor="end"
           dominantBaseline="hanging"
           fill={color}
-          fontFamily="sans-serif"
+          fontFamily={SLD_FONT_FAMILY}
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
         >
@@ -2138,7 +2153,7 @@ function SceneResultAggregateNode(props: {
           textAnchor="middle"
           dominantBaseline="middle"
           fill={color}
-          fontFamily="sans-serif"
+          fontFamily={SLD_FONT_FAMILY}
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
         >
@@ -2166,7 +2181,7 @@ function SceneResultAggregateNode(props: {
               textAnchor="start"
               dominantBaseline="middle"
               fill={palette.highlight.resultLabel}
-              fontFamily="sans-serif"
+              fontFamily={SLD_FONT_FAMILY}
               fontSize={typo.fontSize}
               fontWeight={typo.fontWeight}
             >
@@ -2234,7 +2249,7 @@ function SceneResultAggregateNode(props: {
                   textAnchor="start"
                   dominantBaseline="middle"
                   fill={rowColor}
-                  fontFamily="sans-serif"
+                  fontFamily={SLD_FONT_FAMILY}
                   fontSize={typo.fontSize}
                   fontWeight={typo.fontWeight}
                 >
@@ -2269,7 +2284,7 @@ function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }
         textAnchor="middle"
         dominantBaseline="middle"
         fill={palette.highlight.resultStale}
-        fontFamily="sans-serif"
+        fontFamily={SLD_FONT_FAMILY}
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
       >
@@ -2292,8 +2307,10 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
   const cx = planned.rect.x + planned.rect.width / 2;
   const cy = planned.rect.y + planned.rect.height / 2;
   const textTransform = label.rotated ? `rotate(-90, ${cx}, ${cy})` : undefined;
-  // Wiersze bloku przekaźnika: tekst w krawędzi prostokąta planu (`zaczepTekstuEtykiety`).
-  const zaczep = zaczepTekstuEtykiety(planned.rect, label.wyrownanieTekstu, label.rotated === true);
+  // Tekst w krawędzi prostokąta planu zwróconej do kotwicy (`wyrownanieEtykiety`: etykiety
+  // `dane`, podpisy aparatów, wiersze bloku przekaźnika) — strona z planu renderu.
+  const strona = planned.strona ?? label.placement;
+  const zaczep = zaczepTekstuEtykiety(planned.rect, wyrownanieEtykiety(label, strona), label.rotated === true);
   return (
     <g
       data-testid={`sld-v3-label-${index}`}
@@ -2303,6 +2320,7 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
       data-ct-purpose={label.ctPurpose}
       data-label-role={label.labelRole}
       data-label-enlarged={planned.enlarged ? 'true' : 'false'}
+      data-label-strona={strona}
     >
       {label.leader && (
         <path
@@ -2320,7 +2338,7 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
         dominantBaseline="middle"
         transform={textTransform}
         fill={palette.baseStroke}
-        fontFamily="sans-serif"
+        fontFamily={SLD_FONT_FAMILY}
         fontSize={planned.fontSize}
         fontWeight={typo.fontWeight}
       >
@@ -2352,8 +2370,8 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly camera
  *  pasmo nazw stacji (69 j. świata przy rezerwie 76) i NIE pokrywała
  *  etykiet po bokach (na sieci e2e: 56 j. w lewo, 88 j. w prawo, 37 j. w
  *  górę poza bboxem treści). `OwnedLabel.rect` jest deterministyczny
- *  (`core/text.ts` — `measureLabelWidth`/`labelLineHeight`, jawna stała
- *  `AVG_GLYPH_WIDTH_FACTOR`), więc kadr nie zależy od renderu czcionki w
+ *  (`core/text.ts` — `measureLabelWidth`/`labelLineHeight`, tabela posuwów
+ *  kroju `core/metrykiKroju.json`), więc kadr nie zależy od renderu czcionki w
  *  przeglądarce (P7). Etykiety ukryte progiem czytelności (`declutter`
  *  ekranowy warstwy renderu) NADAL liczą się do kadru — kadr jest
  *  własnością sceny, nie stanu kamery, inaczej fit oscylowałby razem z
@@ -2879,6 +2897,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         : { drawn: [], hiddenDetail: [], droppedIdentity: [] },
     [scene, labelObstacles, camera.transform.scale, layerVisibility, sheetSize, podlogaCelu],
   );
+  // Obrysy etykiet (ramka bloku przekaźnika, tło pola GPZ) z prostokątów NARYSOWANYCH etykiet
+  // planu — plan powiększa pismo celu kadru ponad slot sceny, więc obrys ze slotu nie obejmował
+  // tuszu (`canvas/obrysyWgPlanu.ts`).
+  const ramkiBlokow = useMemo(() => ramkiBlokowWgPlanu(scene.symbols, labelPlan.drawn), [scene, labelPlan]);
+  const adnotacjeGpz = useMemo(() => {
+    const adn = scene.meta.gpzAdnotacje;
+    return adn ? { ...adn, panele: paneleWgPlanu(adn.panele, scene.symbols, ramkiBlokow, labelPlan.drawn) } : null;
+  }, [scene, ramkiBlokow, labelPlan]);
   // K2b §0.2 (b): opisy CELU ukryte przez plan (próg czytelności, sufit
   // proporcji, brak miejsca) i najmniejsza wysokość narysowanego opisu celu na
   // ekranie — kanał audytu (`data-ukryte-opisy-celu`, `data-min-opis-celu-px`)
@@ -2972,6 +2998,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         // wpisany: `screenFixedFontSize` × skala to z definicji rozmiar naturalny
         // klasy, więc zmiana tamtej reguły przechodzi tu sama.
         captionFontPx: screenFixedFontSize('t2', camera.transform.scale) * camera.transform.scale,
+        captionFontWeight: LABEL_TYPOGRAPHY.t2.fontWeight,
         scaleLabel: SHEET_SCALE_LABEL,
         lodLabel: SCENE_LOD_LABELS_PL[effectiveLod],
       },
@@ -3441,7 +3468,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       // rysunku niebieskie prostokąty podświetlenia — widoczne na zrzucie audytu
       // V12K-234 na całej tabliczce stacji („Stacja T8 / S02 / 630 kVA / …").
       // `touchAction: 'none'` załatwia to samo dla dotyku, ale nie dla myszy.
-      style={{ background: palette.canvasBackground, touchAction: 'none', userSelect: 'none' }}
+      style={{ ...SLD_TEXT_STYLE, background: palette.canvasBackground, touchAction: 'none', userSelect: 'none' }}
+      // Krój tekstu schematu — ten, którego posuwy liczy pomiar (`measureTextWidth`).
+      fontFamily={SLD_FONT_FAMILY}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -3555,13 +3584,13 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         )}
         {/* GPZ-PARYTET: tła pól wg roli, bilans/alarmy nagłówka i tabela „Pola GPZ"
          *  (geometria ze sceny, wartości z wyniku backendu) — pod warstwą detalu. */}
-        {scene.meta.gpzAdnotacje && scene.meta.gpzId && (
+        {adnotacjeGpz && scene.meta.gpzId && (
           <g
             data-kadr={pozaKadrem(scene.meta.gpzId) ? 'poza' : undefined}
             opacity={pozaKadrem(scene.meta.gpzId) ? KURTYNA_KADRU_OPACITY : undefined}
           >
             <GpzAdnotacjeWarstwa
-              adnotacje={scene.meta.gpzAdnotacje}
+              adnotacje={adnotacjeGpz}
               gpzRef={scene.meta.gpzId}
               wyniki={overlay?.gpzWyniki ?? null}
               nieaktualny={overlay?.resultsStale === true}
@@ -3639,6 +3668,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 index={index}
                 overlay={effectiveOverlay}
                 cameraScale={camera.transform.scale}
+                ramkaBloku={ramkiBlokow.get(index)}
               />
             );
             return pozaKadrem(symbol.meta?.ownerRef) ? (
@@ -3828,7 +3858,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                   x={badgeX + GRID}
                   y={GRID + 0.4 * GRID + rowH * (i + 0.5)}
                   fill={i === 0 && caseLine ? strokeColor : palette.highlight.resultLabel}
-                  fontFamily="sans-serif"
+                  fontFamily={SLD_FONT_FAMILY}
                   fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
                   dominantBaseline="middle"
                 >
@@ -3900,9 +3930,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             ).y
           }
           textAnchor="end"
-          fontFamily="sans-serif"
+          fontFamily={SLD_FONT_FAMILY}
           fontSize={HIDDEN_LABELS_HINT_FONT_PX / camera.transform.scale}
-          fontWeight={600}
+          fontWeight={HIDDEN_LABELS_HINT_FONT_WEIGHT}
           fill={palette.baseStroke}
           opacity={0.75}
         >

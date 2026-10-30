@@ -179,9 +179,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field/002",
@@ -800,7 +800,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "14f37d849d1c43c17514e5ecdaf69b80c3e129dd5245b53da19d21e3cdf855a6",
+    "hash_sha256": "6716fbd4aac273049ba1297dcd6749ec254e3f6a3c9734604768f72d37443b7c",
     "name": "Projekt demonstracyjny",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

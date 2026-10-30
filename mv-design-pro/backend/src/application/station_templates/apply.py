@@ -808,8 +808,8 @@ def _zabuduj_stacje_w_odgalezieniu(
     1. punkt odgałęzienia na odcinku — ZKSN dla kabla, słup rozgałęźny dla linii
        napowietrznej (operacja domenowa sama pilnuje tej pary: „ZKSN wyłącznie na
        odcinku kablowym", „słup rozgałęźny wyłącznie na linii napowietrznej");
-    2. `start_branch_segment_sn` z portu BRANCH tego punktu — pierwszy odcinek
-       gałęzi klienta;
+    2. `start_branch_segment_sn` z zacisku pierwszego portu odgałęźnego tego punktu —
+       pierwszy odcinek gałęzi klienta;
     3. `append_station_on_endpoint` na końcu gałęzi — stacja KOŃCOWA (zacisk
        końcowy staje się szyną SN stacji, tranzyt nie ma dokąd iść dalej).
 
@@ -880,7 +880,18 @@ def _zabuduj_stacje_w_odgalezieniu(
             code="template.branch_point_failed",
             message_pl="Operacja punktu odgałęzienia nie wskazała utworzonego elementu.",
         )
-    port_id = "BRANCH_1" if kablowy else "BRANCH"
+    punkt = next(
+        (
+            p
+            for p in enm_dict.get("branch_points", [])
+            if isinstance(p, dict) and p.get("ref_id") == punkt_ref
+        ),
+        {},
+    )
+    porty_odgalezne = (punkt.get("ports") or {}).get("BRANCH") or []
+    # Port startu w jedynej postaci (`_rozwiaz_port_startu`): zacisk pierwszego portu
+    # odgałęźnego punktu; punkt bez portu daje nazwaną odmowę domeny, nie domysł portu.
+    port_startu = porty_odgalezne[0] if porty_odgalezne else punkt_ref
 
     # Typ kabla/linii gałęzi: wskazanie projektanta, inaczej TEN SAM typ, co odcinek
     # macierzysty — wzorzec kreatora odgałęzienia (`initial_catalog_ref` z
@@ -901,7 +912,7 @@ def _zabuduj_stacje_w_odgalezieniu(
         enm_dict,
         "start_branch_segment_sn",
         {
-            "from_ref": f"{punkt_ref}.{port_id}",
+            "from_ref": port_startu,
             "segment": {
                 "rodzaj": "KABEL" if kablowy else "LINIA",
                 "dlugosc_m": dlugosc_m,

@@ -160,11 +160,13 @@ export function buildCanonicalGpzProps(
   const polaSekcji = allBays.filter((bay) => !polaWToruTransformatora.has(bay.ref_id) && !polaSprzegiel.has(bay.ref_id));
 
   const lvSections = buildLvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx);
-  // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
-  // przypisania TR do sekcji wg `lv_bus_ref`.
+  // Mapowanie sectionId po `busRef` sekcji ZBUDOWANYCH wyżej — przypisanie TR do sekcji wg
+  // `lv_bus_ref`. Jedno źródło z listą sekcji rysunku: mapa z samego `gpz_sections` gubiła
+  // sekcję syntetyczną (GPZ bez `gpz_sections`), a transformator zostawał bez sekcji
+  // (`gpz.transformer.section.missing`, tor SN transformatora urwany nad szyną).
   const sectionIdByLvBusRef = new Map<string, string>();
-  for (const sec of substation.gpz_sections ?? []) {
-    if (sec.bus_ref) sectionIdByLvBusRef.set(sec.bus_ref, sec.section_id);
+  for (const sec of lvSections) {
+    if (sec.busRef && !sectionIdByLvBusRef.has(sec.busRef)) sectionIdByLvBusRef.set(sec.busRef, sec.sectionId);
   }
 
   // Każdy transformator stacji rysuje się torem transformatora; pole TR przypisane wyżej
@@ -402,15 +404,18 @@ function buildLvSections(
 ): CanonicalGpzSection[] {
   const sectionDefs = gpz.gpz_sections ?? [];
   const lvBays = bays.filter((b) => isLvBay(b, buses));
+  const defaultBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && !wPasmieWn(b.voltage_kv));
 
-  if (sectionDefs.length === 0 && lvBays.length === 0) {
-    // Brak sekcji + brak pól — operator widzi explicit "brak danych ENM" w renderze.
+  if (sectionDefs.length === 0 && lvBays.length === 0 && !defaultBus) {
+    // Brak sekcji, pól i szyny SN — operator widzi explicit "brak danych ENM" w renderze.
     return [];
   }
 
-  if (sectionDefs.length === 0 && lvBays.length > 0) {
-    // Auto-synteza: 1 sekcja domyślna gdy brak gpz_sections ale są bays.
-    const defaultBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && !wPasmieWn(b.voltage_kv));
+  if (sectionDefs.length === 0) {
+    // Auto-synteza: 1 sekcja domyślna gdy brak gpz_sections, a GPZ ma pola albo SAMĄ szynę SN
+    // (rekord `Bus` w `bus_refs` GPZ). Szyna bez pól jest elementem modelu — rysunek, który
+    // ją pomijał, zaczepiał magistralę w originie GPZ (punkt bez węzła modelu, przewód przez
+    // szynę WN; pomiar: fikstury migawek sieci złotej, 5 plików × L1/L2).
     return [{
       sectionId: `${gpz.ref_id}__synth-section-1`,
       order: 1,

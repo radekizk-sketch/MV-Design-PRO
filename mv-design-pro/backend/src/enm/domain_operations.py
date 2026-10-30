@@ -2038,7 +2038,9 @@ def _zapisz_ciag_z_portu(
     return nowy
 
 
-def _first_gpz_line_field_for_run(enm: dict[str, Any]) -> tuple[str | None, str | None]:
+def _first_gpz_line_field_for_run(enm: dict[str, Any]) -> str | None:
+    """Pierwsze pole liniowe GPZ (rola OUT/FEEDER) — pole startu ciągu bez wskazanego pola;
+    pierwszeństwo ma pole z zaciskiem (kabel ma z czego wyjść)."""
     candidates: list[dict[str, Any]] = []
     for substation in enm.get("substations", []):
         if not isinstance(substation, dict) or substation.get("station_type") != "gpz":
@@ -2048,14 +2050,9 @@ def _first_gpz_line_field_for_run(enm: dict[str, Any]) -> tuple[str | None, str 
                 continue
             candidates.append(rekord)
 
-    for rekord in candidates:
-        terminal_ref = zacisk_pola(rekord)
-        if terminal_ref:
-            return str(rekord.get("ref_id")), terminal_ref
-
-    for rekord in candidates:
-        return str(rekord.get("ref_id")), zacisk_pola(rekord)
-    return None, None
+    for rekord in [*(r for r in candidates if zacisk_pola(r)), *candidates]:
+        return str(rekord.get("ref_id"))
+    return None
 
 
 def _ensure_line_run_for_corridor(
@@ -2074,11 +2071,11 @@ def _ensure_line_run_for_corridor(
             return line_run
 
     corridor = _find_corridor_by_ref(enm, corridor_ref) or {}
-    gpz_line_bay_ref, gpz_line_port_ref = _first_gpz_line_field_for_run(enm)
-    start_bay = starting_bay_ref or corridor.get("starting_bay_ref") or gpz_line_bay_ref
-    start_port = (
-        starting_port_ref or corridor.get("starting_port_ref") or gpz_line_port_ref or start_bay
+    start_bay = (
+        starting_bay_ref or corridor.get("starting_bay_ref") or _first_gpz_line_field_for_run(enm)
     )
+    # Port startu w JEDNEJ postaci (`_rozwiaz_port_startu`): ciąg z pola — `ref_id` pola.
+    start_port = starting_port_ref or corridor.get("starting_port_ref") or start_bay
     if (
         not isinstance(start_bay, str)
         or not start_bay
@@ -2978,109 +2975,102 @@ def _terminal_status(kontekst: _KontekstTerminali, bus_ref: str, corridor_ref: s
     return "OTWARTY"
 
 
-def _resolve_branch_from_ref(enm: dict[str, Any], from_ref: str) -> tuple[str | None, str | None]:
-    """Rozwiąż from_ref (station/branch_pole/zksn) na szynę źródłową.
+@dataclass(frozen=True)
+class _PortStartu:
+    """Rozwiązany port startu ciągu odgałęzienia (`_rozwiaz_port_startu`)."""
 
-    Obsługiwane:
-    - bay.BRANCH (pole liniowe stacji albo GPZ)
-    - branch_pole.BRANCH
-    - zksn.BRANCH_1, zksn.BRANCH_2
+    #: Szyna, z której wychodzi odcinek (zacisk pola, zacisk portu punktu, szyna terminalna).
+    bus_ref: str
+    #: Element pochodzenia: pole, punkt odgałęźny albo szyna terminalna.
+    element_ref: str
+    #: Identyfikator portu punktu odgałęźnego (`BRANCH` słupa, `BRANCH_n` ZKSN) — klucz
+    #: zajętości `branch_occupied`; `None` poza punktem odgałęźnym.
+    port_id: str | None
+
+
+def _rozwiaz_port_startu(enm: dict[str, Any], from_ref: str) -> _PortStartu | str:
+    """Port startu odgałęzienia w JEDNEJ postaci (rozstrzygnięcie architekta 2026-10-30, karta
+    UX-04/POLE-LINIOWE-WZORZEC): `ref_id` pola liniowego SN (stacji albo GPZ), gdy ciąg
+    startuje z pola, inaczej ZACISK — szyna portu odgałęźnego punktu (`ports.BRANCH[i]` słupa
+    rozgałęźnego albo ZKSN) albo szyna z tagiem `topology_terminal`. Dawna postać
+    `⟨element⟩.BRANCH[_n]` nie jest rozpoznawana (bez warstwy zgodności).
+
+    Wynik: rozwiązany port ALBO kod odmowy z rejestru (napis) — jeden typ sumy, więc wywołujący
+    nie ma stanu „ani portu, ani kodu" i nie potrzebuje zapasu kodu.
     """
-    if "." not in from_ref:
-        return None, "branch_connection.invalid_source_port"
-    element_ref, port_id = from_ref.split(".", 1)
-
     # Pole stacji (rekord `bays`) — odcinek wychodzi z ZACISKU pola (aparat pola w torze,
     # POLA-W-TORZE), a bez zacisku z szyny pola; tylko z pola liniowego SN (rola OUT/FEEDER).
-    if pole_modelu(enm, element_ref) is not None:
-        if port_id != "BRANCH" or not _czy_pole_liniowe_sn(enm, element_ref):
-            return None, "branch_connection.invalid_source_port"
-        bus_ref = _punkt_przylaczenia(enm, element_ref)
+    if pole_modelu(enm, from_ref) is not None:
+        if not _czy_pole_liniowe_sn(enm, from_ref):
+            return "branch_connection.invalid_source_port"
+        bus_ref = _punkt_przylaczenia(enm, from_ref)
         if not bus_ref:
-            return None, "branch_connection.source_not_branch_capable"
-        return bus_ref, None
+            return "branch_connection.source_not_branch_capable"
+        return _PortStartu(bus_ref=bus_ref, element_ref=from_ref, port_id=None)
 
-    if element_ref.startswith("stn/"):
-        if port_id != "BRANCH":
-            return None, "branch_connection.invalid_source_port"
-        return None, "branch_connection.source_not_branch_capable"
+    for bp in enm.get("branch_points", []):
+        if not isinstance(bp, dict):
+            continue
+        bp_ref = bp.get("ref_id")
+        ports = bp.get("ports") or {}
+        porty_branch = ports.get("BRANCH")
+        porty_odgalezne: list[Any] = porty_branch if isinstance(porty_branch, list) else []
+        typ = bp.get("branch_point_type")
+        if bp_ref == from_ref:
+            # Punkt odgałęźny wskazany bez portu — start wymaga zacisku konkretnego portu.
+            if typ == "branch_pole" and not porty_odgalezne:
+                return "branch_point.required_port_missing"
+            return "branch_connection.invalid_source_port"
+        if from_ref not in porty_odgalezne or not isinstance(bp_ref, str):
+            continue
+        if typ == "branch_pole":
+            port_id = "BRANCH"
+        elif typ == "zksn":
+            port_id = f"BRANCH_{porty_odgalezne.index(from_ref) + 1}"
+        else:
+            return "branch_connection.source_not_branch_capable"
+        if (bp.get("branch_occupied") or {}).get(port_id):
+            return "branch_point.branch_port_occupied"
+        return _PortStartu(bus_ref=from_ref, element_ref=bp_ref, port_id=port_id)
 
-    if element_ref.startswith("bus/"):
-        if port_id != "BRANCH":
-            return None, "branch_connection.invalid_source_port"
-        bus = next(
-            (
-                candidate
-                for candidate in enm.get("buses", [])
-                if isinstance(candidate, dict) and candidate.get("ref_id") == element_ref
-            ),
-            None,
-        )
-        tags = bus.get("tags", []) if isinstance(bus, dict) else []
-        if isinstance(tags, list) and "topology_terminal" in tags:
-            return element_ref, None
-        return None, "branch_connection.source_not_branch_capable"
+    if from_ref.startswith("stn/"):
+        return "branch_connection.source_not_branch_capable"
 
-    bp = next((b for b in enm.get("branch_points", []) if b.get("ref_id") == element_ref), None)
-    if not bp:
-        return None, "branch_connection.source_not_branch_capable"
-
-    ports = bp.get("ports", {})
-    if bp.get("branch_point_type") == "branch_pole":
-        if port_id != "BRANCH":
-            return None, "branch_connection.invalid_source_port"
-        if bp.get("branch_occupied", {}).get(port_id):
-            return None, "branch_point.branch_port_occupied"
-        bus_ref = ports.get("BRANCH", [None])[0] if isinstance(ports.get("BRANCH"), list) else None
-        if not bus_ref:
-            return None, "branch_point.required_port_missing"
-        return bus_ref, None
-
-    if bp.get("branch_point_type") == "zksn":
-        if not port_id.startswith("BRANCH_"):
-            return None, "branch_connection.invalid_source_port"
-        try:
-            idx = int(port_id.split("_", 1)[1]) - 1
-        except ValueError:  # „BRANCH_x" z nieliczbowym numerem portu
-            return None, "branch_connection.invalid_source_port"
-        branch_ports = ports.get("BRANCH", [])
-        if idx < 0 or idx >= len(branch_ports):
-            return None, "branch_connection.invalid_source_port"
-        if bp.get("branch_occupied", {}).get(port_id):
-            return None, "branch_point.branch_port_occupied"
-        return branch_ports[idx], None
-
-    return None, "branch_connection.source_not_branch_capable"
+    bus = next(
+        (
+            candidate
+            for candidate in enm.get("buses", [])
+            if isinstance(candidate, dict) and candidate.get("ref_id") == from_ref
+        ),
+        None,
+    )
+    tags = bus.get("tags", []) if isinstance(bus, dict) else []
+    if isinstance(tags, list) and "topology_terminal" in tags:
+        return _PortStartu(bus_ref=from_ref, element_ref=from_ref, port_id=None)
+    return "branch_connection.source_not_branch_capable"
 
 
-def _lookup_branch_from_ref_for_bus(
+def _port_startu_dla_szyny(
     enm: dict[str, Any],
     from_bus_ref: str,
 ) -> tuple[str | None, str | None]:
-    """Legacy lookup: wyznacz from_ref na podstawie from_bus_ref.
+    """Port startu (postać `_rozwiaz_port_startu`) wyznaczony z samej szyny `from_bus_ref`.
 
-    Dopuszcza wyłącznie źródła branch-capable:
-    - station.BRANCH (bay_role=FEEDER)
-    - branch_pole.BRANCH
-    - zksn.BRANCH_n
+    Dopuszcza wyłącznie źródła odgałęźne: zacisk portu słupa rozgałęźnego albo ZKSN, pole
+    liniowe SN tej szyny (`ref_id` pola), szynę terminalną (`topology_terminal`).
     """
     structured_candidates: list[str] = []
 
     for bp in enm.get("branch_points", []):
-        bp_ref = bp.get("ref_id")
-        ports = bp.get("ports", {})
-        if not bp_ref:
+        ports = bp.get("ports", {}) if isinstance(bp, dict) else {}
+        if not isinstance(bp, dict) or not bp.get("ref_id"):
             continue
-        if bp.get("branch_point_type") == "branch_pole":
-            branch_bus = (
-                ports.get("BRANCH", [None])[0] if isinstance(ports.get("BRANCH"), list) else None
-            )
-            if branch_bus == from_bus_ref:
-                structured_candidates.append(f"{bp_ref}.BRANCH")
-        if bp.get("branch_point_type") == "zksn":
-            for idx, bus_ref in enumerate(ports.get("BRANCH", []), start=1):
-                if bus_ref == from_bus_ref:
-                    structured_candidates.append(f"{bp_ref}.BRANCH_{idx}")
+        if bp.get("branch_point_type") not in {"branch_pole", "zksn"}:
+            continue
+        porty_branch = ports.get("BRANCH")
+        porty_odgalezne: list[Any] = porty_branch if isinstance(porty_branch, list) else []
+        if from_bus_ref in porty_odgalezne:
+            structured_candidates.append(from_bus_ref)
 
     unique_structured = sorted(set(structured_candidates))
     if len(unique_structured) == 1:
@@ -3101,7 +3091,7 @@ def _lookup_branch_from_ref_for_bus(
             and _czy_pole_liniowe_sn(enm, field_ref)
             and (not _pole_liniowe_zajete(enm, rekord) or _czy_pole_gpz(enm, field_ref))
         ):
-            structured_candidates.append(f"{field_ref}.BRANCH")
+            structured_candidates.append(field_ref)
 
     unique_structured = sorted(set(structured_candidates))
     if len(unique_structured) == 1:
@@ -3119,7 +3109,7 @@ def _lookup_branch_from_ref_for_bus(
     )
     tags = bus.get("tags", []) if isinstance(bus, dict) else []
     if isinstance(tags, list) and "topology_terminal" in tags:
-        return f"{from_bus_ref}.BRANCH", None
+        return from_bus_ref, None
 
     return None, "branch_connection.source_not_branch_capable"
 
@@ -5378,7 +5368,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         new_enm,
         corridor_ref,
         starting_bay_ref=first_line_field.get("ref_id") if first_line_field else None,
-        starting_port_ref=zacisk_pola(first_line_field) if first_line_field else None,
+        # Port startu ciągu z pola = `ref_id` pola (postać `_rozwiaz_port_startu`).
+        starting_port_ref=first_line_field.get("ref_id") if first_line_field else None,
     )
 
     return _response(
@@ -5732,9 +5723,9 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             new_enm,
             corridor_ref=effective_trunk_id,
             nazwa=nazwa_ciagu,
-            # Port startu w konwencji tej operacji (zacisk, z którego wychodzi odcinek) — ta
-            # sama, co ciąg magistrali z pierwszego pola (`starting_port_ref=from_terminal_id`).
-            from_ref=from_terminal_id,
+            # Port startu w JEDNEJ postaci (`_rozwiaz_port_startu`): pole startu, a bez pola —
+            # zacisk, z którego wychodzi odcinek.
+            from_ref=field_ref or from_terminal_id,
             origin_element_ref=pochodzenie,
             segment_ref=branch_ref,
             parent_run_ref=None,
@@ -5751,7 +5742,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             new_enm,
             effective_trunk_id,
             starting_bay_ref=field_ref,
-            starting_port_ref=from_terminal_id,
+            starting_port_ref=field_ref or from_terminal_id,
         )
         _append_line_run_segment(line_run, branch_ref)
     if effective_trunk_id:
@@ -8917,9 +8908,10 @@ def insert_zksn_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj odgałęzienie SN z istniejącej szyny.
 
-    Wymaga jawnego from_ref (port BRANCH na stacji lub branch-poincie).
-    from_bus_ref jest obsługiwane wyłącznie jako pole kompatybilności
-    i musi mapować się 1:1 do bus_ref rozwiązanego z from_ref.
+    Port startu `from_ref` w jednej postaci (`_rozwiaz_port_startu`): `ref_id` pola liniowego
+    SN albo zacisk — szyna portu odgałęźnego słupa rozgałęźnego / ZKSN albo szyna terminalna.
+    Bez `from_ref` port wyznacza `from_bus_ref` (`_port_startu_dla_szyny`); podane razem muszą
+    wskazywać tę samą szynę.
     """
     odmowa = _odmowa_typu_segmentu(payload, "start_branch_segment_sn")
     if odmowa is not None:
@@ -8954,7 +8946,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         # blad mypy na HEAD, naprawiony przy okazji karty P0.6, zero zmiany
         # zachowania w runtime).
         assert from_bus_ref is not None
-        inferred_from_ref, lookup_err = _lookup_branch_from_ref_for_bus(enm, from_bus_ref)
+        inferred_from_ref, lookup_err = _port_startu_dla_szyny(enm, from_bus_ref)
         if lookup_err:
             # Szyna stacji z polami liniowymi, z których każde jest zajęte — nazwana odmowa
             # z akcją naprawczą (dodaj pole w rozdzielnicy), nie „brak portu odgałęźnego".
@@ -8988,10 +8980,10 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
             "branch.from_ref_required",
         )
 
-    resolved_bus_ref, err_code = _resolve_branch_from_ref(enm, from_ref)
-    if err_code:
-        return _error_response("Nieprawidłowe źródło odgałęzienia.", err_code)
-    from_bus_ref = resolved_bus_ref
+    port_startu = _rozwiaz_port_startu(enm, from_ref)
+    if isinstance(port_startu, str):
+        return _error_response("Nieprawidłowe źródło odgałęzienia.", port_startu)
+    from_bus_ref = port_startu.bus_ref
 
     if (
         payload.get("from_bus_ref")
@@ -9018,7 +9010,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     # Karta POLE-ZAJĘTE: odgałęzienie z pola stacji wychodzi tylko z WOLNEGO pola (jedno
     # źródło prawdy `enm.zajetosc_pol`). Pole GPZ zajęte nie jest odmową: kanon GPZ przydziela
     # feederowi inne wolne albo nowe pole (`_allocate_gpz_line_field_for_branch` niżej).
-    origin_element_ref = from_ref.split(".", 1)[0]
+    origin_element_ref = port_startu.element_ref
     pole_zrodlowe = origin_element_ref if pole_modelu(enm, origin_element_ref) else None
     pole_zrodlowe_gpz = _czy_pole_gpz(enm, pole_zrodlowe)
     if pole_zrodlowe and not pole_zrodlowe_gpz:
@@ -9083,7 +9075,6 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     events.append({"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": new_bus_ref})
 
     branch_type = "cable" if rodzaj == "KABEL" else "line_overhead"
-    origin_element_ref, origin_port_id = from_ref.split(".", 1)
 
     # Kanon dedykowanych pól (dyrektywa właściciela, 2026-07-17): feeder wyprowadzany z GPZ
     # dostaje WŁASNE pole liniowe — wskazane w `from_ref`, jeśli wolne, inaczej pierwsze wolne,
@@ -9174,10 +9165,10 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     created.append(branch_ref)
 
     parent_run_ref = None
-    if from_ref and from_ref.startswith("bp/"):
+    if port_startu.port_id is not None:
         for bp in new_enm.get("branch_points", []):
             if bp.get("ref_id") == origin_element_ref:
-                bp.setdefault("branch_occupied", {})[origin_port_id] = branch_ref
+                bp.setdefault("branch_occupied", {})[port_startu.port_id] = branch_ref
                 main_segment_refs = _branch_point_main_segment_refs(new_enm, bp)
                 runtime_inputs = bp.get("runtime_inputs")
                 parent_run_ref = _line_run_ref_for_segments(new_enm, main_segment_refs) or (
@@ -9208,12 +9199,14 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
                         "element_id": str(created_gpz_field.get("ref_id")),
                     }
                 )
+    # Port startu ciągu w JEDNEJ postaci (`_rozwiaz_port_startu`): pole, z którego odcinek
+    # FAKTYCZNIE wychodzi (przydzielone pole GPZ bywa inne niż wskazane), inaczej zacisk portu.
     if _zapisz_ciag_z_portu(
         new_enm,
         corridor_ref=branch_corridor_ref,
         nazwa=f"Odgałęzienie SN {branch_type_label}",
-        from_ref=from_ref,
-        origin_element_ref=origin_element_ref,
+        from_ref=pole_zrodlowe or port_startu.bus_ref,
+        origin_element_ref=pole_zrodlowe or origin_element_ref,
         segment_ref=branch_ref,
         parent_run_ref=parent_run_ref,
         gpz_field_ref=gpz_field_ref,

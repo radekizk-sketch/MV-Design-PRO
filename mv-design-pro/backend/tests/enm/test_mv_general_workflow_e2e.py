@@ -428,7 +428,7 @@ class TestE2E2BranchFromStation:
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{sub_ref}.BRANCH",
+                "from_ref": sub_ref,
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
             },
         )
@@ -463,7 +463,7 @@ class TestE2E2BranchFromStation:
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{field_ref}.BRANCH",
+                "from_ref": field_ref,
                 "from_bus_ref": terminal_bus_ref,
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
             },
@@ -492,7 +492,7 @@ class TestE2E2BranchFromStation:
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{invalid_bus_ref}.BRANCH",
+                "from_ref": invalid_bus_ref,
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 150, "catalog_ref": CATALOG_CABLE_70},
             },
         )
@@ -559,14 +559,13 @@ class TestE2E3BranchFromBranchPole:
         )
 
         bp = _find_branch_point(s, "branch_pole")
-        bp_ref = bp["ref_id"]
 
         # Odgałęzienie z portu BRANCH słupa
         result = execute_domain_operation(
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{bp_ref}.BRANCH",
+                "from_ref": bp["ports"]["BRANCH"][0],
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 200,
@@ -633,14 +632,13 @@ class TestE2E3BranchFromBranchPole:
         )
 
         bp = _find_branch_point(s, "branch_pole")
-        bp_ref = bp["ref_id"]
 
         # Pierwsze odgałęzienie — OK
         s = op(
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{bp_ref}.BRANCH",
+                "from_ref": bp["ports"]["BRANCH"][0],
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 100,
@@ -654,7 +652,7 @@ class TestE2E3BranchFromBranchPole:
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{bp_ref}.BRANCH",
+                "from_ref": bp["ports"]["BRANCH"][0],
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 100,
@@ -696,14 +694,13 @@ class TestE2E4BranchFromZKSN:
         )
 
         zksn = _find_branch_point(s, "zksn")
-        zksn_ref = zksn["ref_id"]
 
         # Odgałęzienie z BRANCH_1
         result = execute_domain_operation(
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{zksn_ref}.BRANCH_1",
+                "from_ref": zksn["ports"]["BRANCH"][0],
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 300, "catalog_ref": CATALOG_CABLE_120},
             },
         )
@@ -741,14 +738,13 @@ class TestE2E4BranchFromZKSN:
         )
 
         zksn = _find_branch_point(s, "zksn")
-        zksn_ref = zksn["ref_id"]
 
         # Odgałęzienie z BRANCH_2
         result = execute_domain_operation(
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{zksn_ref}.BRANCH_2",
+                "from_ref": zksn["ports"]["BRANCH"][1],
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": CATALOG_CABLE_70},
             },
         )
@@ -1088,12 +1084,12 @@ class TestE2E5ReceivingStationsAndOzeBess:
         )
         zksn = _find_branch_point(s, "zksn")
 
-        # 4. Odgałęzienie kablowe z ZKSN.BRANCH_1
+        # 4. Odgałęzienie kablowe z zacisku portu 1 ZKSN
         s = op(
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{zksn['ref_id']}.BRANCH_1",
+                "from_ref": zksn["ports"]["BRANCH"][0],
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": CATALOG_CABLE_120},
             },
         )
@@ -1129,7 +1125,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             s,
             "start_branch_segment_sn",
             {
-                "from_ref": f"{pole['ref_id']}.BRANCH",
+                "from_ref": pole["ports"]["BRANCH"][0],
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 150,

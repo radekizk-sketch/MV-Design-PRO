@@ -667,7 +667,8 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(activeSurface?.routeState.payload?.context).toEqual(
         expect.objectContaining({
           station_ref: 'stn/station-branch/station',
-          from_ref: 'field-odg.BRANCH',
+          // Port startu w jedynej postaci: `ref_id` pola liniowego (backend `_rozwiaz_port_startu`).
+          from_ref: 'field-odg',
           source_type_label: 'Pole liniowe SN',
           source_bus_ref: 'stn/station-branch/field-odg-terminal',
           from_bus_ref: 'stn/station-branch/field-odg-terminal',

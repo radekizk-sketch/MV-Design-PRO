@@ -45,7 +45,9 @@ from network_model.catalog.bay_templates import (
     WymogFunkcjiWKlasie,
 )
 from network_model.catalog.obwody_wtorne_pola import (
+    NapedAparatuPola,
     ObwodyWtornePola,
+    RodzajNapedu,
     StatusWeryfikacji,
     SygnalPola,
 )
@@ -55,6 +57,8 @@ FRONT = BACKEND.parent / "frontend" / "src" / "ui" / "field"
 LUSTRO = FRONT / "useFieldReadModel.ts"
 #: Lustro danych wzorca (profil EAZ, obwody wtórne) w API katalogu frontu.
 LUSTRO_KATALOGU = FRONT.parent / "catalog" / "api.ts"
+#: Lustro typów ENM frontu (rodzaj napędu łącznika `BayPrimaryDevice.naped`).
+LUSTRO_TYPOW_ENM = FRONT.parents[1] / "types" / "enm.ts"
 FIKSTURA = FRONT / "__tests__" / "fixtures" / "ocena_pola_liniowego.json"
 
 SCENY = (
@@ -99,12 +103,19 @@ def test_lustro_frontu_danych_wzorca_rowne_modelom_backendu():
         ("WymogFunkcjiWKlasie", WymogFunkcjiWKlasie, ()),
         ("PozycjaProfiluEaz", PozycjaProfiluEaz, ()),
         ("ObwodyWtornePola", ObwodyWtornePola, _POMINIETE_W_LUSTRZE_OBWODOW),
+        # Napęd łącznika wzorca (decyzja architekta 2026-10-30) — z polem wyliczanym opisu.
+        ("NapedAparatuWzorca", NapedAparatuPola, ()),
     ):
-        oczekiwane = [p for p in model.model_fields if p not in pominiete]
+        oczekiwane = [
+            p for p in [*model.model_fields, *model.model_computed_fields] if p not in pominiete
+        ]
         assert _pola_interfejsu(interfejs, LUSTRO_KATALOGU) == oczekiwane, interfejs
     zrodlo = LUSTRO_KATALOGU.read_text(encoding="utf-8")
     m = re.search(r"export type StatusWeryfikacjiWzorca = ([^;]+);", zrodlo)
     assert m and re.findall(r"'([A-Z_]+)'", m.group(1)) == list(get_args(StatusWeryfikacji))
+    typy = LUSTRO_TYPOW_ENM.read_text(encoding="utf-8")
+    m = re.search(r"export type RodzajNapeduLacznika = ([^;]+);", typy)
+    assert m and re.findall(r"'([A-Z_]+)'", m.group(1)) == list(get_args(RodzajNapedu))
 
 
 def test_slownik_wymogow_frontu_rowny_backendowi():

@@ -180,9 +180,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/6158c2950b46f59fa12ba32db33a383f/sn_field/002",
@@ -418,9 +418,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/6075a765b1c19e8835e225fb7a891c12/sn_field/002",
@@ -2283,7 +2283,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "31defa591d6d60630f5f1de0bf819503fbc683491cf2fb038a0faaaacc34a093",
+      "hash_sha256": "fec7bdd1d9c20ad61bd9b26242f847974498776c680628ee8231470fcaadd568",
       "name": "Elementy ciągu — lacznik",
       "revision": 14,
       "updated_at": "2026-09-25T00:00:00Z"

@@ -31,6 +31,9 @@ const KLASY: readonly LabelClass[] = ['t1', 't2', 't3', 't4'];
 /** Skale od dolnego krańca kamery (`MIN_SCALE`) po górny (`MAX_SCALE`). */
 const SKALE = [0.05, 0.13, 0.51, 1, 2, 8];
 
+/** Odmiana kroju klasy t2 (pismo 11) — pomiar liczy posuwy odmiany, którą rysuje kanwa. */
+const WAGA_T2 = LABEL_TYPOGRAPHY.t2.fontWeight;
+
 describe('S9-7 (a) — aparat arkusza w pikselach EKRANU', () => {
   it('rozmiar EKRANOWY jest stały dla KAŻDEJ klasy i KAŻDEJ skali (iloczyn cech)', () => {
     for (const cls of KLASY) {
@@ -92,13 +95,13 @@ describe('S9-7 (b) — skracanie zachowujące człon rozróżniający', () => {
   it('ILOCZYN {rodzaj etykiety} × {dostępna szerokość}: nigdy nie przekracza szerokości, każdy skrót jawnie oznaczony', () => {
     for (const { opis, text } of ETYKIETY) {
       const fontSize = 11;
-      const pelna = measureTextWidth(text, fontSize);
+      const pelna = measureTextWidth(text, fontSize, WAGA_T2);
       // Szerokość ≤ 0 jest pomiarem NIEWIARYGODNYM (osobna asercja niżej),
       // więc iloczyn cech idzie po szerokościach realnych.
       for (let w = pelna + 20; w >= 1; w -= 3) {
-        const wynik = shortenPreservingIdentity(text, fontSize, w);
+        const wynik = shortenPreservingIdentity(text, fontSize, WAGA_T2, w);
         if (wynik.length === 0) continue;
-        expect(measureTextWidth(wynik, fontSize), `${opis} @${w}`).toBeLessThanOrEqual(w);
+        expect(measureTextWidth(wynik, fontSize, WAGA_T2), `${opis} @${w}`).toBeLessThanOrEqual(w);
         // Nigdy fragment wyrazu BEZ znaku skrócenia: każdy wynik krótszy od
         // pełnego tekstu musi nieść wielokropek (jawny znak, że to skrót).
         if (wynik !== text) expect(wynik, `${opis} @${w}`).toContain('…');
@@ -111,25 +114,25 @@ describe('S9-7 (b) — skracanie zachowujące człon rozróżniający', () => {
 
   it('tekst mieszczący się w całości NIE jest ruszany (skracanie jest awaryjne, nie domyślne)', () => {
     for (const { text } of ETYKIETY) {
-      expect(shortenPreservingIdentity(text, 11, measureTextWidth(text, 11))).toBe(text);
-      expect(shortenPreservingIdentity(text, 11, 10_000)).toBe(text);
+      expect(shortenPreservingIdentity(text, 11, WAGA_T2, measureTextWidth(text, 11, WAGA_T2))).toBe(text);
+      expect(shortenPreservingIdentity(text, 11, WAGA_T2, 10_000)).toBe(text);
     }
   });
 
   it('człony odpadają od KOŃCA — pierwszy człon (rozróżniający) przeżywa najdłużej', () => {
     const text = 'S07 ↔ S08 · Linia napowietrzna Al 120 mm² · Un=20 kV · l = 150 m';
     // Szerokość na dokładnie pierwszy człon + znak skrócenia.
-    const w = measureTextWidth('S07 ↔ S08 …', 11);
-    expect(shortenPreservingIdentity(text, 11, w)).toBe('S07 ↔ S08 …');
+    const w = measureTextWidth('S07 ↔ S08 …', 11, WAGA_T2);
+    expect(shortenPreservingIdentity(text, 11, WAGA_T2, w)).toBe('S07 ↔ S08 …');
     // Szerokość na dwa człony — drugi też zostaje.
-    const w2 = measureTextWidth('S07 ↔ S08 · Linia napowietrzna Al 120 mm² …', 11);
-    expect(shortenPreservingIdentity(text, 11, w2)).toBe('S07 ↔ S08 · Linia napowietrzna Al 120 mm² …');
+    const w2 = measureTextWidth('S07 ↔ S08 · Linia napowietrzna Al 120 mm² …', 11, WAGA_T2);
+    expect(shortenPreservingIdentity(text, 11, WAGA_T2, w2)).toBe('S07 ↔ S08 · Linia napowietrzna Al 120 mm² …');
   });
 
   it('nazwa z numerem na końcu zachowuje OGON rozróżniający („Stacja SN-…" ×20 to nie jest rozróżnienie)', () => {
     const text = 'Stacja SN-01';
     // Ciasno: nie mieści się całość, ale mieści się głowa + ogon.
-    const wynik = shortenPreservingIdentity(text, 11, measureTextWidth('S…SN-01', 11));
+    const wynik = shortenPreservingIdentity(text, 11, WAGA_T2, measureTextWidth('S…SN-01', 11, WAGA_T2));
     expect(wynik).toContain('SN-01');
     expect(wynik).toContain('…');
   });
@@ -137,8 +140,8 @@ describe('S9-7 (b) — skracanie zachowujące człon rozróżniający', () => {
   it('sam ogon „wartość + jednostka" NIE jest pokazywany (czyta się jak dana techniczna, nie jak nazwa)', () => {
     const text = 'PV 500 kW';
     // Szerokość, na której zmieściłoby się „…500 kW", ale nie „P…500 kW".
-    const w = measureTextWidth('…500 kW', 11);
-    const wynik = shortenPreservingIdentity(text, 11, w);
+    const w = measureTextWidth('…500 kW', 11, WAGA_T2);
+    const wynik = shortenPreservingIdentity(text, 11, WAGA_T2, w);
     expect(wynik.startsWith('…5')).toBe(false);
     // Zamiast tego forma z wyrazów wiodących albo uczciwy brak.
     expect(wynik === '' || wynik.startsWith('PV')).toBe(true);
@@ -148,16 +151,21 @@ describe('S9-7 (b) — skracanie zachowujące człon rozróżniający', () => {
     // Wadą z audytu nie jest sam fragment, tylko fragment BEZ ZNAKU: „S400"
     // (z „S4001") czyta się jak moc transformatora. Ten sam fragment ze
     // znakiem („S4…") mówi wprost, że jest skrótem.
-    const wynik = shortenPreservingIdentity('S4001', 11, measureTextWidth('S40', 11));
+    // Budżet = szerokość „S4…" z tabeli posuwów kroju (wielokropek ma posuw 1 em, szerszy od
+    // cyfry). Mieści się w nim także fragment bez znaku „S40" — tym bardziej wynik nie może nim być.
+    const budzet = measureTextWidth('S4…', 11, WAGA_T2);
+    expect(measureTextWidth('S40', 11, WAGA_T2)).toBeLessThanOrEqual(budzet);
+    const wynik = shortenPreservingIdentity('S4001', 11, WAGA_T2, budzet);
     expect(wynik).toBe('S4…');
+    expect(wynik).not.toBe('S40');
     expect(wynik).not.toBe('S400');
     // Poniżej szerokości JEDNEGO znaku z wielokropkiem — uczciwy brak.
-    expect(shortenPreservingIdentity('S4001', 11, 1)).toBe('');
+    expect(shortenPreservingIdentity('S4001', 11, WAGA_T2, 1)).toBe('');
   });
 
   it('szerokość niewiarygodna (0/ujemna/NaN) zwraca tekst pełny — brak pomiaru nie skraca', () => {
     for (const zla of [0, -5, Number.NaN]) {
-      expect(shortenPreservingIdentity('Stacja SN-01', 11, zla)).toBe('Stacja SN-01');
+      expect(shortenPreservingIdentity('Stacja SN-01', 11, WAGA_T2, zla)).toBe('Stacja SN-01');
     }
   });
 });

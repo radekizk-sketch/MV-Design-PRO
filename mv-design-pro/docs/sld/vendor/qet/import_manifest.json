@@ -95,6 +95,18 @@
       "teksty": { "M": "zachowaj" }
     },
     {
+      "id": "en_60617_02_13_20",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_20.elmt",
+      "upstreamBlobSha": "2f5f838b2563c4aacb697a370ed99f5f946f5a71",
+      "teksty": {}
+    },
+    {
+      "id": "en_60617_02_13_01",
+      "sourcePath": "10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_01.elmt",
+      "upstreamBlobSha": "cd510c0dc8025bcb2f83be90c9bde092119bcac2",
+      "teksty": {}
+    },
+    {
       "id": "en_60617_07_15_01",
       "sourcePath": "10_electric/91_en_60617/en_60617_07/en_60617_07_15/en_60617_07_15_01.elmt",
       "upstreamBlobSha": "23118a6a8946dda5c1e996ee3ebaa58dac883b57",
@@ -226,9 +238,9 @@
         { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
       ],
       "skalaRysunku": {
-        "k": 3,
+        "k": 3.3333333333333335,
         "srodek": [0, -12],
-        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) — jednokładność rysunku źródła wokół punktu, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
+        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) — jednokładność rysunku źródła wokół punktu, kształt elementu QET bez zmian; przewody przycięte do gabarytu. k = 10/3, nie 3: nóż odłącznika kończy się w położeniu zamkniętym na kresce styku (zasięg noża, decyzja architekta 2026-10-30 — zamknięty odłącznik bez krzyżyka „+”), więc glif zamknięty jest niższy niż przy nożu przechodzącym przez styk i przy k = 3 spadał pod dolny próg stopnia (0,500 < 0,55); k = 10/3 daje 0,556 (zamknięty) i 0,667 (otwarty, nieustalony), a odstęp portów 60 × 10/3 · 0,4 = 80 pozostaje wielokrotnością rastra 20 od portu górnego (k = 3,5 wyprowadza port dolny poza raster)"
       },
       "skalaLokalna": [
         {
@@ -368,6 +380,81 @@
       ]
     },
     {
+      "symbolId": "qetThreePositionSwitchZNapedem",
+      "namePl": "Łącznik trójpołożeniowy z napędem zasobnikowym",
+      "zlozenie": "złożenie z elementów QET en_60617_07_13_07 (odłącznik dwukierunkowy) + en_60617_02_15_01 (uziemienie) nad zestykiem prawym + en_60617_02_13_20 (napęd energią zmagazynowaną) na kreskowanym sprzężeniu mechanicznym od przegubu noża w prawo + en_60617_02_13_01 (napęd ręczny, symbol ogólny) pod kwadratem napędu",
+      "skladniki": [
+        { "element": "en_60617_07_13_07", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_02_15_01", "obrot": 180, "przesuniecie": [20, -55] },
+        { "element": "en_60617_02_13_20", "obrot": 180, "przesuniecie": [8, 2] },
+        { "element": "en_60617_02_13_01", "obrot": -90, "przesuniecie": [32, 20] }
+      ],
+      "noz": {
+        "skladnik": 0,
+        "prymitywy": [1],
+        "przegub": [0, 2],
+        "cele": { "closed": [-20, -20], "earthed": [20, -20] },
+        "nieznanyJakOtwarty": true
+      },
+      "porty": [
+        { "name": "top", "skladnik": 0, "zacisk": [-20, -40] },
+        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+      ],
+      "zaciskiWewnetrzne": [
+        {
+          "skladnik": 0,
+          "zacisk": [20, -40],
+          "z": { "skladnik": 1, "zacisk": [0, -15] },
+          "powod": "zestyk uziemiający łącznika połączony z symbolem uziemienia — nie jest portem pola"
+        }
+      ],
+      "portyWewnatrzGabarytu": {
+        "top": "zacisk szynowy QET leży 40 jednostek QET pod górną krawędzią kafla stanu, bo symbol uziemienia nad zestykiem uziemiającym sięga 30 jednostek nad poziom zacisków, a kafel jest wyśrodkowany na rysunku łącznika ze znakiem napędu — przewód zestyku szynowego przedłużony do krawędzi kafla",
+        "bottom": "zacisk dolny QET leży 20 jednostek QET nad dolną krawędzią kafla stanu, bo znak napędu ręcznego pod kwadratem napędu sięga poniżej zacisku — przewód toru przedłużony do krawędzi kafla"
+      },
+      "osprzet": [
+        {
+          "skladnik": 2,
+          "powod": "napęd łącznika trójpołożeniowego z modelu (`BayPrimaryDevice.naped` = ZASOBNIKOWY_RECZNY; ENEA Zeszyt 1, Z.10 s.89, Z.11 s.90, Z.11.1 s.91: kwadrat na kreskowanym sprzężeniu mechanicznym przy łączniku Q1) — kształt EN 60617 02-13-20 (napęd energią zmagazynowaną); koniec kreskowanej linii sprzężenia przy okręgu przegubu noża (styk odłączający ○), kwadrat po prawej stronie osi, pod zestykiem uziemiającym"
+        },
+        {
+          "skladnik": 3,
+          "powod": "obsługa ręczna napędu (ENEA Zeszyt 1, Z.10/Z.11/Z.11.1: od kwadratu napędu w dół kreskowany odcinek zakończony poprzeczką) — kształt EN 60617 02-13-01 (napęd ręczny, symbol ogólny); obrót o −90° stawia koniec sprzężenia w środku dolnego boku kwadratu, a poprzeczkę na dole"
+        }
+      ],
+      "uwaga": "Napęd łącznika trójpołożeniowego z modelu (`BayPrimaryDevice.naped` = ZASOBNIKOWY_RECZNY, decyzja architekta 2026-10-30: napęd jest atrybutem łącznika, nie osobnym aparatem). Rysunek łącznika (nóż, zestyki, uziemienie, porty, położenia) — ten sam co `qetThreePositionSwitch`; kafel wyśrodkowany na treści przesuwa się o jeden raster zacisków QET w dół, bo znak napędu ręcznego sięga poniżej zacisku dolnego. Odłącznik z uziemieniem Q5 odgałęzienia przekładnika napięciowego znaku napędu na rysunku ENEA nie ma — rysuje się `qetThreePositionSwitch`.",
+      "skalaLokalna": [
+        {
+          "skladnik": 0,
+          "prymitywy": [4],
+          "srodek": [-20, -20],
+          "skala": 3,
+          "powod": "kreski zestyków łącznika trójpołożeniowego (zestyk szynowy i uziemiający) powiększone trzykrotnie wokół środka — rodzaj zestyku czytelny w kaflu stanu; łącznik bez jednokładności rysunku, bo jego rysunek źródła już zajmuje ponad 0,55 boku kafla"
+        },
+        {
+          "skladnik": 0,
+          "prymitywy": [5],
+          "srodek": [20, -20],
+          "skala": 3,
+          "powod": "kreski zestyków łącznika trójpołożeniowego (zestyk szynowy i uziemiający) powiększone trzykrotnie wokół środka — rodzaj zestyku czytelny w kaflu stanu; łącznik bez jednokładności rysunku, bo jego rysunek źródła już zajmuje ponad 0,55 boku kafla"
+        },
+        {
+          "skladnik": 2,
+          "prymitywy": [0],
+          "srodek": [-14, 0],
+          "skala": 2,
+          "powod": "kwadrat napędu (EN 60617 02-13-20) powiększony dwukrotnie wokół punktu styku z kreskowaną linią sprzężenia — bok 20 jednostek QET (8 jednostek świata, co najmniej 8 px ekranu przy wejściu w LOD2, jak podłoga znaków symboli S9-7); linia sprzężenia bez zmian"
+        },
+        {
+          "skladnik": 3,
+          "prymitywy": [0, 1],
+          "srodek": [8, 0],
+          "skala": 0.75,
+          "powod": "znak napędu ręcznego (EN 60617 02-13-01) pomniejszony do 0,75 wokół końca sprzężenia — kreskowany odcinek 22,5 jednostki QET z poprzeczką mieści się pod kwadratem napędu w kaflu stanu z marginesem (pełna długość źródła, 30 jednostek, wychodzi poza margines kafla)"
+        }
+      ]
+    },
+    {
       "symbolId": "qetCurrentTransformer",
       "namePl": "Przekładnik prądowy",
       "zlozenie": null,
@@ -426,17 +513,31 @@
         }
       ],
       "skalaRysunku": {
-        "k": 1.5,
+        "k": 2,
         "srodek": [0, 1],
-        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) — jednokładność rysunku źródła wokół punktu, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
+        "powod": "stopień symboli LOD2 (uwaga właściciela 2026-10-29: glif aparatu ok. 55–70 % boku kafla stanu, symbole toru w spójnym stopniu z kaflami) i podłoga pisma S9-7 obejmująca litery symboli (decyzja architekta §11.7 pkt 5, 2026-10-30: znak „3” ≥ 8 jednostek świata, czyli ≥ 8 px przy wejściu w LOD2) — jednokładność rysunku źródła wokół środka rdzenia, kształt elementu QET bez zmian; przewody przycięte do gabarytu"
       },
       "skalaLokalna": [
         {
           "skladnik": 0,
           "prymitywy": [5, 6, 7],
-          "srodek": [20, 0],
-          "skala": 0.5,
-          "powod": "doprowadzenie uzwojenia wtórnego przekładnika Ferrantiego i jego kreski zmniejszone o połowę przed jednokładnością rysunku (skala 1,5) — rdzeń pierścieniowy rośnie do stopnia toru, a doprowadzenie zostaje w szerokości kafla"
+          "srodek": [17.894736842105264, 0],
+          "skala": 0.525,
+          "powod": "doprowadzenie uzwojenia wtórnego przekładnika Ferrantiego (x 20…60) i jego kreski zmniejszone przed jednokładnością rysunku (skala 2) do odcinka x 19…40: początek na krawędzi rdzenia o promieniu 19 (decyzja niżej), koniec w porcie wtórnym (40, 0) na rastrze — środek 340/19 i skala 21/40 wynikają z tych dwóch punktów; rdzeń rośnie do stopnia toru, a doprowadzenie nie wydłuża gabarytu ponad port wtórny"
+        },
+        {
+          "skladnik": 0,
+          "prymitywy": [0],
+          "srodek": [0, 1],
+          "skala": 0.95,
+          "powod": "rdzeń pierścieniowy (promień 20 wokół (0, 1), o 1 jednostkę poza rastrem zacisków ±40) zmniejszony do promienia 19 wokół własnego środka przed jednokładnością rysunku (skala 2): pierścień średnicy 76 mieści się w czterech rastrach od zacisku toru, więc gabaryt wzdłuż toru zostaje 32 (bez tej decyzji przesunięcie źródła 2 jednostki po jednokładności dokładało piąty raster — 40, z 7,2 jednostki pustego gabarytu pod pierścieniem); różnica 5 % promienia jest niewidoczna, rdzeń 30,4 j. (stopień toru 0,63)"
+        },
+        {
+          "skladnik": 0,
+          "prymitywy": [4],
+          "srodek": [5, -1.4],
+          "skala": 1.1111111111111112,
+          "powod": "znak „3” (trzy przewlekane przewody pierwotne) powiększony 10/9 wokół lewego górnego narożnika pisma przed jednokładnością rysunku (skala 2): pismo 9 × 0,4 × 2 × 10/9 = 8 jednostek świata — podłoga S9-7 przy wejściu w LOD2 (decyzja architekta §11.7 pkt 5); znak rośnie w prawo i w dół, w głąb rdzenia, z dala od osi toru i od kreski ukośnej"
         }
       ]
     },

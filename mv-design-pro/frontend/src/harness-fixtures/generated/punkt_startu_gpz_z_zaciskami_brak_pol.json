@@ -387,7 +387,7 @@
         "run_kind": "main_trunk",
         "segments": [],
         "starting_bay_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
-        "starting_port_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal",
+        "starting_port_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
         "stations": []
       }
     ],

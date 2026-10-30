@@ -127,9 +127,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "field/406ec9c7de80233f6ff070bc72972037/2",
@@ -892,7 +892,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "e0b3cc9d7489cc86e86191d0714a171d47b47648333b901c882749ba1d1cb067",
+    "hash_sha256": "2d36a4595dc2e9ee9f98d2f7059d70b0fbdea7fe4666c96caa0a9655448bd7d8",
     "name": "Scena analiz OZE",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

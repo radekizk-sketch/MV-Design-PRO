@@ -30,6 +30,7 @@ import { KartaObwoduNn } from './KartaObwoduNn';
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import { CadSymbol } from '../cad/CadSymbol';
+import { SLD_FONT_FAMILY, SLD_FONT_FAMILY_MONO, SLD_TEXT_STYLE } from '../core/text';
 import { ELECTRICAL_CAD_SYMBOL_REGISTRY, gabarytCad, type CadOrientation, type CadSwitchState } from '../cad/cadSymbolRegistry';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
 import {
@@ -44,9 +45,6 @@ import { kodyAnsiPelne, nazwyFunkcjiPl, stanSlowny, technologiaZrodlaPl, znakiIe
 import {
   BUS_STROKE_SCREEN_PX,
   CAD_U_PX,
-  CHAR_WIDTH_RATIO,
-  CHAR_WIDTH_RATIO_BOLD,
-  CHAR_WIDTH_RATIO_MONO,
   JUNCTION_RADIUS_SCREEN_PX,
   LINE_DASH_SCREEN_PX,
   LINE_HEIGHT,
@@ -56,7 +54,7 @@ import {
   etykietaStanuZasilania,
   fitSceneToViewport,
   licznikOdplywowLabel,
-  limitZnakow,
+  miaraPisma,
   mocLabel,
   paletaMono,
   paletaNnDlaMotywu,
@@ -288,9 +286,10 @@ function glyphScreenSize(node: LvDomainSceneNode, fit: SceneFit): { readonly w: 
   return { w: bbox.width * pxNaU, h: bbox.height * pxNaU, k: pxNaU / fit.s, pxNaU };
 }
 
-/** Limit znaków w linii etykiety dla szerokości slotu [świat] przy skali fitu. */
-function maxCharsForWidth(worldWidth: number, fontPx: number, fit: SceneFit, ratio: number = CHAR_WIDTH_RATIO): number {
-  return limitZnakow(worldWidth * fit.s, fontPx, ratio);
+/** Szerokość pasa etykiety [px EKRANU] dla szerokości slotu [świat] przy skali fitu —
+ *  zawijanie mierzy wiersze posuwami kroju (`miaraPisma`) w px ekranu. */
+function pasEkranu(worldWidth: number, fit: SceneFit): number {
+  return worldWidth * fit.s;
 }
 
 /** Szerokość pasa etykiety aparatu [px ekranu] — od prawej krawędzi symbolu
@@ -508,7 +507,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
 
   if (view.status !== 'OK') {
     return (
-      <div data-testid="lv-domain-view-root" data-status="brak-danych" style={{ background: paleta.tlo, color: paleta.kreskaBazowa, padding: 24, fontFamily: 'monospace' }}>
+      <div data-testid="lv-domain-view-root" data-status="brak-danych" style={{ background: paleta.tlo, color: paleta.kreskaBazowa, padding: 24, fontFamily: SLD_FONT_FAMILY_MONO }}>
         Domena nN stacji „{projection.station_ref}" — brak danych ({(view.missing_data ?? []).join(', ') || 'nieznany powód'}).
       </div>
     );
@@ -577,7 +576,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       data-theme-mode={theme}
       data-mono={mono ? 'true' : 'false'}
       data-selected-ref={selectedRef ?? undefined}
-      style={{ ...(tokenyCss() as CSSProperties), background: paleta.tlo, color: paleta.kreskaBazowa, fontFamily: 'sans-serif', position: 'relative' }}
+      style={{ ...(tokenyCss() as CSSProperties), background: paleta.tlo, color: paleta.kreskaBazowa, fontFamily: SLD_FONT_FAMILY, ...SLD_TEXT_STYLE, position: 'relative' }}
     >
       <style>{'@media print { [data-testid="lv-domain-toolbar"], [data-testid="lv-domain-feeder-panel"], [data-testid="lv-domain-warnings-panel"] { display: none !important; } }'}</style>
       <header data-testid="lv-domain-toolbar" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
@@ -759,12 +758,12 @@ function WarningsPanel({ messages, paleta, onPick, onClose }: {
         <ol style={{ margin: '10px 0 0', paddingLeft: 18 }}>
           {messages.map((m, i) => (
             <li key={`${m.code}-${i}`} data-testid={`lv-domain-warning-${m.code}`} data-severity={m.severity} style={{ marginBottom: 8 }}>
-              <div style={{ color: tonWagi(m.severity, paleta), fontWeight: 700, fontFamily: 'monospace' }}>{`${m.code} · ${m.severity === 'BLOCKER' ? 'blokujące' : m.severity === 'IMPORTANT' ? 'istotne' : 'informacja'}`}</div>
+              <div style={{ color: tonWagi(m.severity, paleta), fontWeight: 700, fontFamily: SLD_FONT_FAMILY_MONO }}>{`${m.code} · ${m.severity === 'BLOCKER' ? 'blokujące' : m.severity === 'IMPORTANT' ? 'istotne' : 'informacja'}`}</div>
               <div>{m.message_pl}</div>
               {m.element_refs.length > 0 ? (
                 <div style={{ marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {m.element_refs.map((ref) => (
-                    <button key={ref} type="button" onClick={() => onPick(ref)} style={{ ...overlayButtonStyle(false, paleta), fontFamily: 'monospace' }}>{ref}</button>
+                    <button key={ref} type="button" onClick={() => onPick(ref)} style={{ ...overlayButtonStyle(false, paleta), fontFamily: SLD_FONT_FAMILY_MONO }}>{ref}</button>
                   ))}
                 </div>
               ) : null}
@@ -872,7 +871,7 @@ function AnchorBarNode({ node, ctx }: { readonly node: LvDomainSceneNode; readon
   // Opis (Sk″/Ik″ albo powód braku) zawijany do pasa kotwicy (§30) — dwie
   // niezależne kotwice SN obok siebie nie piszą po sobie ani poza kadr.
   const labelMaxWidth = typeof node.meta?.labelMaxWidth === 'number' ? node.meta.labelMaxWidth : TOKENY_GEOMETRII.sourceSlot * 3;
-  const opisLinie = opis ? zawinNazwe(opis, maxCharsForWidth(labelMaxWidth - 40, SLD_LABEL.RESULT, ctx.fit, CHAR_WIDTH_RATIO_MONO), 4) : [];
+  const opisLinie = opis ? zawinNazwe(opis, pasEkranu(labelMaxWidth - 40, ctx.fit), 4, miaraPisma(SLD_LABEL.RESULT, 400, 'mono')) : [];
   const opisStep = ctx.sp(SLD_LABEL.RESULT * LINE_HEIGHT);
   const opisY0 = node.y - ctx.sp(6) - ctx.sp(SLD_LABEL.SECONDARY * LINE_HEIGHT) - opisStep * (opisLinie.length - 1);
   return (
@@ -894,7 +893,7 @@ function AnchorBarNode({ node, ctx }: { readonly node: LvDomainSceneNode; readon
         </text>
       ) : null}
       {opisLinie.length > 0 && ctx.widoczne('parametryKotwicyZrodla') ? (
-        <text {...textHalo(ctx)} data-testid={`lv-domain-anchor-opis-${node.ref}`} x={left + ctx.sp(28)} y={opisY0} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={ctx.paleta.kreskaWygaszona} fontFamily="monospace">
+        <text {...textHalo(ctx)} data-testid={`lv-domain-anchor-opis-${node.ref}`} x={left + ctx.sp(28)} y={opisY0} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={ctx.paleta.kreskaWygaszona} fontFamily={SLD_FONT_FAMILY_MONO}>
           {opisLinie.map((linia, i) => (
             <tspan key={i} x={left + ctx.sp(28)} dy={i === 0 ? 0 : opisStep}>{linia}</tspan>
           ))}
@@ -933,7 +932,7 @@ function BusBarNode({ node, ctx, activeOverlay, resultOverlayPayload, voltagePro
     : null;
   // Nazwa sekcji zawijana do długości kreski (§30; wąski ekran §43): długa
   // nazwa rozdzielnicy nie wychodzi poza kreskę ani poza kadr.
-  const nazwaLinie = zawinNazwe(node.label, maxCharsForWidth(Math.max(right - labelX, TOKENY_GEOMETRII.feederGap) - 8, labelPx, ctx.fit, CHAR_WIDTH_RATIO_BOLD), 2);
+  const nazwaLinie = zawinNazwe(node.label, pasEkranu(Math.max(right - labelX, TOKENY_GEOMETRII.feederGap) - 8, ctx.fit), 2, miaraPisma(labelPx, 700));
   const nazwaStep = ctx.sp(labelPx * LINE_HEIGHT);
   const nazwaY0 = labelY - nazwaStep * (nazwaLinie.length - 1);
   // Wiersze NAD kreską (od dołu): nazwa → stan zasilania → wyspa (1–2
@@ -944,13 +943,13 @@ function BusBarNode({ node, ctx, activeOverlay, resultOverlayPayload, voltagePro
   const wyspaY0 = (stanLinia ? stanY - stanStep : stanY) - stanStep * ((wyspaLinie?.length ?? 1) - 1);
   const najwyzszyWiersz = wyspaLinie ? wyspaY0 : stanLinia ? stanY : nazwaY0;
   const kotwicaPlakietki: KotwicaPlakietki = isMain
-    ? { x: right + ctx.sp(TOKENY_GEOMETRII.labelGap), textAnchor: 'start', y0: node.y + ctx.sp(BUS_STROKE_SCREEN_PX.main / 2 + SLD_LABEL.RESULT + 4), kierunek: 1, maxChars: null }
+    ? { x: right + ctx.sp(TOKENY_GEOMETRII.labelGap), textAnchor: 'start', y0: node.y + ctx.sp(BUS_STROKE_SCREEN_PX.main / 2 + SLD_LABEL.RESULT + 4), kierunek: 1, pasPx: null }
     : {
         x: labelX,
         textAnchor: 'start',
         y0: najwyzszyWiersz - ctx.sp(SLD_LABEL.RESULT * LINE_HEIGHT + 2),
         kierunek: -1,
-        maxChars: maxCharsForWidth(Math.max(right - labelX, TOKENY_GEOMETRII.feederGap) - 8, SLD_LABEL.RESULT, ctx.fit, CHAR_WIDTH_RATIO_MONO),
+        pasPx: pasEkranu(Math.max(right - labelX, TOKENY_GEOMETRII.feederGap) - 8, ctx.fit),
       };
   return (
     <g
@@ -1037,12 +1036,15 @@ interface KotwicaPlakietki {
   /** Y pierwszego wiersza; `kierunek` = −1 układa kolejne wiersze W GÓRĘ. */
   readonly y0: number;
   readonly kierunek: 1 | -1;
-  /** Limit znaków w wierszu (zawijanie) albo `null` — pas bez ograniczeń. */
-  readonly maxChars: number | null;
+  /** Szerokość pasa wiersza [px ekranu] (zawijanie) albo `null` — pas bez ograniczeń. */
+  readonly pasPx: number | null;
 }
 
-function wierszePlakietki(kotwica: KotwicaPlakietki, teksty: readonly string[], maxLines = 4): readonly string[] {
-  return teksty.flatMap((t) => (kotwica.maxChars ? zawinNazwe(t, kotwica.maxChars, maxLines) : [t]));
+/** Wiersze plakietki zawinięte do pasa kotwicy; szerokość wiersza z posuwów kroju `mono`
+ *  (wartości liczbowe — `SLD_FONT_FAMILY_MONO`) w rozmiarze pisma `fontPx` wiersza. */
+function wierszePlakietki(kotwica: KotwicaPlakietki, teksty: readonly string[], fontPx: number, maxLines = 4): readonly string[] {
+  const pas = kotwica.pasPx;
+  return teksty.flatMap((t) => (pas !== null ? zawinNazwe(t, pas, maxLines, miaraPisma(fontPx, 400, 'mono')) : [t]));
 }
 
 function BoundaryRefNode({ node, ctx }: { readonly node: LvDomainSceneNode; readonly ctx: KontekstRysunku }): JSX.Element {
@@ -1171,7 +1173,7 @@ function SceneEdgeLine({ edge, scene, ctx }: { readonly edge: LvDomainSceneEdge;
         // POŁOWIE kabla siedzi przekładnik z etykietą po prawej (sąsiedniej
         // kolumny); inny wiersz = zero kolizji z sąsiadem. Jeden wiersz
         // (człony klucza po spacji) mieści się w połowie slotu.
-        <text {...textHalo(ctx)} data-testid={`lv-domain-kabel-${edge.ref}`} x={Math.min(x1, x2) - ctx.sp(CAD_U_PX * 8 + 4)} y={y1 + ((y2 - y1) * 7) / 8 + ctx.sp(3.5)} textAnchor="end" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona} fontFamily="monospace">
+        <text {...textHalo(ctx)} data-testid={`lv-domain-kabel-${edge.ref}`} x={Math.min(x1, x2) - ctx.sp(CAD_U_PX * 8 + 4)} y={y1 + ((y2 - y1) * 7) / 8 + ctx.sp(3.5)} textAnchor="end" fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={ctx.paleta.kreskaWygaszona} fontFamily={SLD_FONT_FAMILY_MONO}>
           {czlonyKluczaKatalogowego(edge.meta.catalogRef, typeof edge.meta?.catalogNamespace === 'string' ? edge.meta.catalogNamespace : null).join(' ')}
         </text>
       ) : null}
@@ -1256,11 +1258,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
     // ściskana — nadmiar ucina wielokropek (pełna nazwa w podpowiedzi).
     const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
     const fontPx = SLD_LABEL.PRIMARY - 2;
-    const oznaczenie = zawinNazwe(
-      node.label,
-      limitZnakow(pasEtykietyAparatuPx(node, ctx), fontPx, CHAR_WIDTH_RATIO_BOLD),
-      WIERSZE_OZNACZENIA_APARATU,
-    );
+    const oznaczenie = zawinNazwe(node.label, pasEtykietyAparatuPx(node, ctx), WIERSZE_OZNACZENIA_APARATU, miaraPisma(fontPx, 600));
     const dodatkoweWiersze = pokazNazwe ? oznaczenie.length - 1 : 0;
     const stanY = node.y + ctx.sp(4 + (1 + dodatkoweWiersze) * SLD_LABEL.STATUS * LINE_HEIGHT);
     // Tabliczka RCD (W5-E-TTIT) w drugim wierszu, jak opis aparatu na rysunku wykonawczym:
@@ -1277,7 +1275,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
           </text>
         ) : null}
         {pokazRcd && rcd ? (
-          <text data-testid={`lv-domain-tabliczka-rcd-${node.ref}`} x={xText} y={node.y + ctx.sp(4 - SLD_LABEL.SECONDARY * LINE_HEIGHT)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona} fontFamily="monospace">
+          <text data-testid={`lv-domain-tabliczka-rcd-${node.ref}`} x={xText} y={node.y + ctx.sp(4 - SLD_LABEL.SECONDARY * LINE_HEIGHT)} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.SECONDARY)} fill={ctx.paleta.kreskaWygaszona} fontFamily={SLD_FONT_FAMILY_MONO}>
             {tabliczkaRcd(rcd)}
           </text>
         ) : null}
@@ -1318,11 +1316,11 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
     // (bez łamania słów, ≤ 2 wiersze nazwy); opis: technologia źródła (§10/§11:
     // PV to TECHNOLOGIA, falownik ELEMENTEM — symbol pokazuje tor, opis
     // technologię) · moc · zdolność pracy wyspowej (FAKT — do 2 wierszy).
-    const maxCharsNazwy = maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 8, SLD_LABEL.PRIMARY - 1, ctx.fit, CHAR_WIDTH_RATIO_BOLD);
-    const nazwaLinie = zawinNazwe(node.label, maxCharsNazwy, 2);
-    const maxCharsOpisu = maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 8, SLD_LABEL.TERTIARY, ctx.fit);
-    const technologiaLinie = zawinNazwe(technologiaZrodlaPl(node.meta?.genType as LvDomainGenerator['gen_type']), maxCharsOpisu, 2);
-    const zdolnoscLinie = zawinNazwe(zdolnosc, maxCharsOpisu, 2);
+    const pasSlotu = pasEkranu(TOKENY_GEOMETRII.feederGap - 8, ctx.fit);
+    const nazwaLinie = zawinNazwe(node.label, pasSlotu, 2, miaraPisma(SLD_LABEL.PRIMARY - 1, 700));
+    const miaraOpisu = miaraPisma(SLD_LABEL.TERTIARY, 400);
+    const technologiaLinie = zawinNazwe(technologiaZrodlaPl(node.meta?.genType as LvDomainGenerator['gen_type']), pasSlotu, 2, miaraOpisu);
+    const zdolnoscLinie = zawinNazwe(zdolnosc, pasSlotu, 2, miaraOpisu);
     const stepNazwy = ctx.sp((SLD_LABEL.PRIMARY - 1) * LINE_HEIGHT);
     const stepOpisu = ctx.sp(SLD_LABEL.TERTIARY * LINE_HEIGHT);
     const yBase = node.y + ctx.sp(glyph.h / 2 + 14);
@@ -1361,7 +1359,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
     const yBase = node.y + ctx.sp(glyph.h / 2 + 14);
     // R2 §17: nazwa odbioru ≤ 2 wiersze BEZ łamania słów, nadmiar „…" —
     // pełna nazwa w podpowiedzi elementu i w panelu odpływu (inspektor).
-    const lines = zawinNazwe(node.label, maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 8, SLD_LABEL.SECONDARY + 1, ctx.fit, CHAR_WIDTH_RATIO_BOLD), 2);
+    const lines = zawinNazwe(node.label, pasEkranu(TOKENY_GEOMETRII.feederGap - 8, ctx.fit), 2, miaraPisma(SLD_LABEL.SECONDARY + 1, 600));
     const step = ctx.sp((SLD_LABEL.SECONDARY + 1) * LINE_HEIGHT);
     return (
       <g {...textHalo(ctx)}>
@@ -1384,7 +1382,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
     // wiersz „CT Agregat G1 200/5 A" dotykał pionu sąsiedniej kolumny.
     const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
     const ratio = typeof node.meta?.ratio === 'string' ? node.meta.ratio : null;
-    const nazwaLinie = zawinNazwe(node.label, maxCharsForWidth(TOKENY_GEOMETRII.feederGap - 40, SLD_LABEL.TERTIARY, ctx.fit), 1);
+    const nazwaLinie = zawinNazwe(node.label, pasEkranu(TOKENY_GEOMETRII.feederGap - 40, ctx.fit), 1, miaraPisma(SLD_LABEL.TERTIARY, 400));
     // Tabliczka przekładnika TEKSTEM obok (R2 §9): przekładnia, klasa, moc
     // pomiarowa, rdzenie i układ — wyłącznie z danych modelu, wiersz pomijany,
     // gdy model go nie niesie (żadnego „—" udającego wartość).
@@ -1446,10 +1444,10 @@ function BusResultBadge({ node, ctx, overlay, payload, outdated, kotwica }: { re
   }
   if (!ctx.widoczne('plakietkaWyniku')) return null;
   const step = ctx.sp(SLD_LABEL.RESULT * LINE_HEIGHT);
-  const wiersze = wierszePlakietki(kotwica, present.map((c) => `${c.label} = ${formatujMetryke(c.metric!)}`));
+  const wiersze = wierszePlakietki(kotwica, present.map((c) => `${c.label} = ${formatujMetryke(c.metric!)}`), SLD_LABEL.RESULT);
   const norm = overlay === 'shortCircuit' ? 'IEC 60909' : 'rozpływ';
   const pochodzenie = ctx.widoczne('pochodzenieWyniku')
-    ? wierszePlakietki(kotwica, [`${norm} · ${skrotPrzebiegu(payload.run_id)} · ${outdated ? 'NIEAKTUALNY' : 'aktualny'}`])
+    ? wierszePlakietki(kotwica, [`${norm} · ${skrotPrzebiegu(payload.run_id)} · ${outdated ? 'NIEAKTUALNY' : 'aktualny'}`], SLD_LABEL.TERTIARY)
     : [];
   // Kolejność wierszy od kotwicy: przy kierunku „w górę" pochodzenie stoi
   // najbliżej kreski, wartości nad nim — czyta się od góry: wartości, potem
@@ -1459,12 +1457,12 @@ function BusResultBadge({ node, ctx, overlay, payload, outdated, kotwica }: { re
   return (
     <g {...textHalo(ctx)} data-testid={`lv-domain-badge-${overlay}-${node.ref}`} data-run-id={payload.run_id} data-outdated={outdated ? 'true' : 'false'}>
       {wiersze.map((wiersz, i) => (
-        <text key={`w${i}`} x={kotwica.x} y={yWiersza(i)} textAnchor={kotwica.textAnchor} fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaBazowa} fontFamily="monospace">
+        <text key={`w${i}`} x={kotwica.x} y={yWiersza(i)} textAnchor={kotwica.textAnchor} fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaBazowa} fontFamily={SLD_FONT_FAMILY_MONO}>
           {wiersz}
         </text>
       ))}
       {pochodzenie.length > 0 ? (
-        <text data-testid="lv-domain-provenance" x={kotwica.x} y={yWiersza(wiersze.length)} textAnchor={kotwica.textAnchor} fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaWygaszona} fontFamily="monospace">
+        <text data-testid="lv-domain-provenance" x={kotwica.x} y={yWiersza(wiersze.length)} textAnchor={kotwica.textAnchor} fontSize={ctx.sp(SLD_LABEL.TERTIARY)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaWygaszona} fontFamily={SLD_FONT_FAMILY_MONO}>
           {pochodzenie.map((wiersz, i) => (
             <tspan key={`p${i}`} x={kotwica.x} dy={i === 0 ? 0 : step}>{wiersz}</tspan>
           ))}
@@ -1483,7 +1481,7 @@ function ApparatusResultBadge({ node, ctx, payload, outdated }: { readonly node:
   const glyph = glyphScreenSize(node, ctx.fit);
   return (
     <g {...textHalo(ctx)} data-testid={`lv-domain-badge-loads-${node.ref}`} data-run-id={payload.run_id}>
-      <text x={node.x} y={node.y + ctx.sp(glyph.h / 2 + 26)} textAnchor="middle" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaBazowa} fontFamily="monospace">{`I = ${formatujMetryke(metric)}`}</text>
+      <text x={node.x} y={node.y + ctx.sp(glyph.h / 2 + 26)} textAnchor="middle" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaBazowa} fontFamily={SLD_FONT_FAMILY_MONO}>{`I = ${formatujMetryke(metric)}`}</text>
     </g>
   );
 }
@@ -1495,24 +1493,27 @@ function SwzBadge({ node, ctx, entry }: { readonly node: LvDomainSceneNode; read
   if (ctx.widoczne('kropkaWerdyktu')) return <VerdictDot node={node} ctx={ctx} tone={tone} overlay="swz" status={entry.status} />;
   if (!ctx.widoczne('plakietkaWyniku')) return null;
   const symbol = entry.status === 'spełnia' ? '✓' : entry.status === 'nie spełnia' ? '✗' : '?';
-  // Plakietka w KOLUMNIE pola (≤ 12 znaków monospace w wierszu — mieści się
-  // w slocie `feederGap`), pod wierszem nazwy i stanu aparatu; jeden długi
-  // wiersz wchodził w glif sąsiedniego odpływu (zrzut 18_swz_overlay).
+  // Plakietka w KOLUMNIE pola, pod wierszem nazwy i stanu aparatu; jeden długi
+  // wiersz wchodził w glif sąsiedniego odpływu (zrzut 18_swz_overlay). Każdy
+  // wiersz zawinięty do pasa etykiety aparatu (`pasEtykietyAparatuPx`) miarą
+  // posuwów kroju `mono` — szerokość wiersza wynika z miary, nie z założenia
+  // o liczbie znaków.
+  const pas = pasEtykietyAparatuPx(node, ctx);
   const linie = [
-    `SWZ ${symbol}`,
-    `${entry.oznaczeniePradu} ${plFixed(entry.ik1MinA, entry.ik1MinA < 10 ? 2 : 0)} A`,
-    ...(entry.status === 'nie spełnia' && entry.iaWymaganeA != null ? [`Ia wym. ${plFixed(entry.iaWymaganeA, 0)} A`] : []),
-    ...(entry.tWymaganyS != null ? [`t ≤ ${plFixed(entry.tWymaganyS, 2)} s`] : []),
-  ];
+    { tekst: `SWZ ${symbol}`, waga: 700 },
+    { tekst: `${entry.oznaczeniePradu} ${plFixed(entry.ik1MinA, entry.ik1MinA < 10 ? 2 : 0)} A`, waga: 400 },
+    ...(entry.status === 'nie spełnia' && entry.iaWymaganeA != null ? [{ tekst: `Ia wym. ${plFixed(entry.iaWymaganeA, 0)} A`, waga: 400 }] : []),
+    ...(entry.tWymaganyS != null ? [{ tekst: `t ≤ ${plFixed(entry.tWymaganyS, 2)} s`, waga: 400 }] : []),
+  ].flatMap(({ tekst, waga }) => zawinNazwe(tekst, pas, 2, miaraPisma(SLD_LABEL.RESULT, waga, 'mono')).map((wiersz) => ({ wiersz, waga })));
   const xText = node.x + ctx.sp(glyph.w / 2 + TOKENY_GEOMETRII.labelGap);
   const step = ctx.sp(SLD_LABEL.RESULT * LINE_HEIGHT);
   // Pod wierszami nazwy i stanu aparatu (jedna orientacja etykiet — pozioma).
   const y0 = node.y + ctx.sp(4 + 2 * SLD_LABEL.STATUS * LINE_HEIGHT);
   return (
     <g {...textHalo(ctx)} data-testid={`lv-domain-badge-swz-${node.ref}`} data-swz-status={entry.status}>
-      <text x={xText} y={y0} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={tone} fontFamily="monospace">
-        {linie.map((linia, i) => (
-          <tspan key={i} x={xText} dy={i === 0 ? 0 : step} fontWeight={i === 0 ? 700 : 400}>{linia}</tspan>
+      <text x={xText} y={y0} textAnchor="start" fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={tone} fontFamily={SLD_FONT_FAMILY_MONO}>
+        {linie.map(({ wiersz, waga }, i) => (
+          <tspan key={i} x={xText} dy={i === 0 ? 0 : step} fontWeight={waga}>{wiersz}</tspan>
         ))}
       </text>
     </g>
@@ -1523,13 +1524,13 @@ function VoltageDropBadge({ node, ctx, row, outdated, kotwica }: { readonly node
   if (!row || row.delta_pct == null) return null;
   if (ctx.widoczne('kropkaWerdyktu')) return <VerdictDot node={node} ctx={ctx} tone={ctx.paleta.kreskaBazowa} overlay="voltageDrop" />;
   if (!ctx.widoczne('plakietkaWyniku')) return null;
-  const wiersze = wierszePlakietki(kotwica, [`ΔU = ${plFixed(row.delta_pct, 2)} %${outdated ? ' (NIEAKTUALNY)' : ''}`]);
+  const wiersze = wierszePlakietki(kotwica, [`ΔU = ${plFixed(row.delta_pct, 2)} %${outdated ? ' (NIEAKTUALNY)' : ''}`], SLD_LABEL.RESULT);
   const step = ctx.sp(SLD_LABEL.RESULT * LINE_HEIGHT);
   const yWiersza = (i: number): number => (kotwica.kierunek === 1 ? kotwica.y0 + i * step : kotwica.y0 - (wiersze.length - 1 - i) * step);
   return (
     <g {...textHalo(ctx)} data-testid={`lv-domain-badge-voltageDrop-${node.ref}`} data-outdated={outdated ? 'true' : 'false'}>
       {wiersze.map((wiersz, i) => (
-        <text key={`w${i}`} x={kotwica.x} y={yWiersza(i)} textAnchor={kotwica.textAnchor} fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaBazowa} fontFamily="monospace">{wiersz}</text>
+        <text key={`w${i}`} x={kotwica.x} y={yWiersza(i)} textAnchor={kotwica.textAnchor} fontSize={ctx.sp(SLD_LABEL.RESULT)} fill={outdated ? ctx.paleta.tonOstrzegawczy : ctx.paleta.kreskaBazowa} fontFamily={SLD_FONT_FAMILY_MONO}>{wiersz}</text>
       ))}
     </g>
   );

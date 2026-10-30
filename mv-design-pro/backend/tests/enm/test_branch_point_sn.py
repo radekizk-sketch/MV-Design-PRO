@@ -541,7 +541,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         )
         assert inserted.get("error") in (None, "")
         bp = inserted["snapshot"]["branch_points"][0]
-        from_ref = f"{bp['ref_id']}.BRANCH"
+        from_ref = bp["ports"]["BRANCH"][0]
 
         result = execute_domain_operation(
             inserted["snapshot"],
@@ -615,7 +615,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             inserted["snapshot"],
             "start_branch_segment_sn",
             {
-                "from_ref": f"{bp['ref_id']}.BRANCH",
+                "from_ref": bp["ports"]["BRANCH"][0],
                 "segment": {
                     "rodzaj": "KABEL",
                     "dlugosc_m": 120,
@@ -646,7 +646,7 @@ class TestDomainOperationsBranchPointSchemaValid:
             inserted["snapshot"],
             "start_branch_segment_sn",
             {
-                "from_ref": f"{bp['ref_id']}.BRANCH_1",
+                "from_ref": bp["ports"]["BRANCH"][0],
                 "segment": {
                     "rodzaj": "LINIA_NAPOWIETRZNA",
                     "dlugosc_m": 120,

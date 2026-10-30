@@ -521,18 +521,34 @@ describe('K2b: podłoga opisów celu w planie etykiet', () => {
     }
   });
 
-  it.each([1, 2] as const)('L%i, skala 0,3 (poza sufitem): opis celu poniżej 13 px tylko tam, gdzie sufit proporcji klasy to wyklucza', (lod) => {
-    let ponizej = 0;
+  // Dwie przyczyny pisma poniżej podłogi (`planSceneLabels`, gałąź `zapasowy`): sufit proporcji
+  // klasy wyklucza postać celu albo postać celu nie ma miejsca — wtedy plan rysuje postać
+  // standardową. Wyrocznia „brak miejsca" niezależna od kolejności planu: postać celu tej
+  // jednej etykiety nie mieści się obok przeszkód sceny i WSZYSTKICH pozostałych narysowanych
+  // etykiet (gdyby się mieściła, plan zostawiłby wolne miejsce i narysował pismo za małe).
+  // Pomiar 2026-10-30 (tabela posuwów kroju, karta UX-04/POLE-LINIOWE-WZORZEC §11.7 pkt 7):
+  // na L2 rząd dwóch źródeł „BESS 500 kW" / „PV 500 kW" (osie co 72 jednostki) dwóch stacji
+  // magistrali — „PV 500 kW" w piśmie 43,3 (220 jednostek) nie mieści się między symbolem
+  // sąsiada, pionem toru i przewodem pod rzędem; obie przyczyny występują na fiksturze.
+  it.each([1, 2] as const)('L%i, skala 0,3 (poza sufitem): opis celu poniżej 13 px tylko tam, gdzie sufit proporcji klasy to wyklucza albo postać celu nie ma miejsca', (lod) => {
+    let ponizejSufit = 0;
     for (const st of stacjeRysunku) {
       const refy = refyStacji(st);
-      for (const d of plan(lod, 0.3, refy).drawn) {
+      const pelny = plan(lod, 0.3, refy);
+      for (const d of pelny.drawn) {
         if (!nalezyDoZakresu(d.label.ownerRef, refy) || d.fontSize * 0.3 >= MIN_OPIS_CELU_KADRU_PX - 1e-6) continue;
-        ponizej += 1;
-        expect(fontSizeForScreenFloorWithinProportion(d.label.labelClass, 0.3, MIN_OPIS_CELU_KADRU_PX), d.text).toBeNull();
+        if (fontSizeForScreenFloorWithinProportion(d.label.labelClass, 0.3, MIN_OPIS_CELU_KADRU_PX) === null) {
+          ponizejSufit += 1;
+          continue;
+        }
+        const inne = pelny.drawn.filter((q) => q !== d).map((q) => q.rect);
+        const sama = planSceneLabels([d.label], [...sceneObstacleRects(sceny[lod]), ...inne], 0.3, sheetSizeFor(sceny[lod]), podlogaOpisowCelu(refy));
+        const postacCelu = sama.drawn.find((q) => q.fontSize * 0.3 >= MIN_OPIS_CELU_KADRU_PX - 1e-6);
+        expect(postacCelu, `${st}: „${d.text}" — postać celu ma miejsce, a plan narysował pismo poniżej podłogi`).toBeUndefined();
       }
     }
-    // Przypadek „(a) wygrywa" występuje na fiksturze — inaczej test niczego nie pilnuje.
-    expect(ponizej).toBeGreaterThan(0);
+    // Przypadek „(a) wygrywa" (sufit proporcji) występuje na fiksturze — inaczej test niczego nie pilnuje.
+    expect(ponizejSufit).toBeGreaterThan(0);
   });
 
   it.each([

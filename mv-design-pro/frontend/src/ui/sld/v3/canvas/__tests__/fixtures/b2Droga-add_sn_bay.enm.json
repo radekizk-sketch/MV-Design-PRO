@@ -233,9 +233,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/003",
@@ -385,7 +385,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -430,8 +430,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -609,8 +608,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "sn/c95102b3e5c8d62d7a4653f991eddb6b/bay",
@@ -1586,13 +1584,13 @@
       },
       {
         "corridor_type": "radial",
-        "id": "980f4299-3627-577b-abbd-a70c146a7b3b",
+        "id": "f3827e87-946e-58d3-9a79-7d6bf6c68461",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
         "ordered_segment_refs": [
           "seg/653b66daa305195f5b6b631b4a36ab21/branch_segment"
         ],
-        "ref_id": "corridor/139d55bbc72976349120fd6e2a6c267d/branch",
+        "ref_id": "corridor/58ea09502d2a8639e39b4d4c9a5f3e05/branch",
         "tags": []
       }
     ],
@@ -1607,7 +1605,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "eabb655f918eab3e96821328f4c99501fce09c10cd91ec16d8e890284382ccfb",
+      "hash_sha256": "8d7e31f7dd4bca3babb6dc6e920cacbc11d7e2da4f00a677a8a9183a5e0cb8c5",
       "name": "Drogi operacji budowy",
       "revision": 9,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1645,7 +1643,7 @@
       },
       {
         "branch_origin_station_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002",
-        "id": "corridor/139d55bbc72976349120fd6e2a6c267d/branch",
+        "id": "corridor/58ea09502d2a8639e39b4d4c9a5f3e05/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": null,
         "run_kind": "branch",
@@ -1656,7 +1654,7 @@
           }
         ],
         "starting_bay_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002",
-        "starting_port_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002.BRANCH",
+        "starting_port_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002",
         "stations": []
       }
     ],

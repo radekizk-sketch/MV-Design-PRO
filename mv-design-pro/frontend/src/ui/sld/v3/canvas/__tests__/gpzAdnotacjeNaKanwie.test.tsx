@@ -231,7 +231,9 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
         .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
       expect(liniowe.length).toBeGreaterThan(1);
       for (const pole of liniowe) pole.protection_codes = [];
-      liniowe[0].protection_codes = ['51', '50', '67N', 'ZS', '50BF', '79', 'SCO', 'SPZ/SCO'];
+      // Zestaw szablonu Z.10 (backend `bay_templates`, każda funkcja raz — decyzja architekta
+      // 2026-10-30: dawny kod złożony „SPZ/SCO" obok 79 i SCO skasowany).
+      liniowe[0].protection_codes = ['51', '50', '51N', '67N', 'ZS', '50BF', '79', 'SCO'];
       liniowe[1].protection_codes = ['51', '50', '81U', '50BF', '79', 'SPZE', 'OWG', 'NZ'];
       useSnapshotStore.setState({ snapshot: zKodami });
       const container = renderKanwe(2);
@@ -291,11 +293,21 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
         expect(Number(t.getAttribute('x')), l.ownerRef).toBe(l.rect.x);
       }
       expect(narysowane, 'wiersze bloku narysowane po powiększeniu do czytelności').toBeGreaterThan(1);
-      // Pozostałe etykiety bez wyrównania — wyśrodkowane jak dotąd (zmiana ogranicza się do
-      // warstwy adnotacji zabezpieczeń).
-      const inne = scena.labels.find((l) => l.ownerKind === 'apparatus');
-      const tInne = inne ? container.querySelector(`g[data-owner-ref="${inne.ownerRef}"] text`) : null;
-      if (tInne) expect(tInne.getAttribute('text-anchor')).toBe('middle');
+      // Podpisy aparatów: zaczep w krawędzi od strony symbolu dla strony wybranej przez plan
+      // (decyzja architekta §11.7 pkt 8 — strona lewa → `end`, prawa → `start`, nad/pod →
+      // środek); intencja testu z 2026-10-29 (wyrównanie bloku nie przecieka na etykiety
+      // bez reguły krawędzi) zostaje dla stron nad/pod.
+      let podpisy = 0;
+      for (const inne of scena.labels.filter((l) => l.ownerKind === 'apparatus' && l.rotated !== true)) {
+        const g = container.querySelector(`g[data-owner-ref="${inne.ownerRef}"]`);
+        const tInne = g?.querySelector('text');
+        if (!g || !tInne) continue;
+        podpisy += 1;
+        const strona = g.getAttribute('data-label-strona');
+        const oczekiwane = strona === 'left' ? 'end' : strona === 'right' ? 'start' : 'middle';
+        expect(tInne.getAttribute('text-anchor'), `${inne.ownerRef} (${strona})`).toBe(oczekiwane);
+      }
+      expect(podpisy, 'podpisy aparatów narysowane').toBeGreaterThan(0);
     });
   }
 

@@ -245,8 +245,14 @@ skorygowane klasą → funkcje domyślne roli):
 
 | Wykonanie | ODBIORCZE | MIESZANE | DEDYKOWANE_WYTWORCY |
 |---|---|---|---|
-| Z.10 | 51, 50, 67N, **81U**, ZS, 50BF, 79, SCO, SPZ/SCO | niedopuszczone (`W052`) | niedopuszczone (`W052`) |
-| Z.11.1, Z.11 | 51, 50, 67, 67N, 27, 59, 81U, 81O, 81R, ZS, 50BF, 79, SPZE, OWG, SCO | jak odbiorcze **bez SCO** | 51, 50, 67N, 27, 59, 81U, 81O, 81R, ZS, 50BF, OWG (**bez 67, 79, SPZE, SCO**) |
+| Z.10 | 51, 50, 51N, 67N¹, **81U**, ZS, 50BF, 79, SCO | niedopuszczone (`W052`) | niedopuszczone (`W052`) |
+| Z.11.1, Z.11 | 51, 50, 67, 51N, 67N¹, 27, 59, 81U, 81O, 81R, ZS, 50BF, 79, SPZE, OWG, NZ, SCO | jak odbiorcze **bez SCO** | 51, 50, 51N, 67N¹, 27, 59, 81U, 81O, 81R, ZS, 50BF, OWG, NZ (**bez 67, 79, SPZE, SCO**) |
+
+¹ 67N wyłącznie z warunkiem `ZRODLO_U0` (źródło 3U₀ powiązane w modelu, `WARUNKI_FUNKCJI_EAZ`,
+§11.8). Stan tabeli zmierzony 2026-10-30 wywołaniem `funkcje_eaz_pola_liniowego` dla trzech
+wykonań × trzech klas × {bez warunku, `ZRODLO_U0`}. Jedna nomenklatura (§11.11 pkt B): SCO jest
+jedną funkcją pola — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO; dawny osobny
+kod „SPZ/SCO” skasowany u źródła.
 
 81U w Z.10 dopisuje klasa odbiorcza (IRiESD II.4.5.4.2.1 pkt 5) — rysunek Z.10 go nie wymienia
 (rozbieżność w raporcie §13).
@@ -503,7 +509,8 @@ modelu odrzuca interpretację bez uwagi).
 | T3 (Z.11.1) | uzwojenia | SN/√3 / 0,1/√3 ×3; I 10 VA 0,2, II 7,5 VA 0,2, III 7,5 VA 0,5/3P; bez otwartego trójkąta | zweryfikowane na rysunku | `BayPrimaryDevice.uzwojenia` |
 | T2 | przekładnia przekładnika Ferrantiego | 1/100 | zweryfikowane na rysunku | NOWE pole `BayPrimaryDevice.przekladnia` (wyłącznie `CORE_BALANCE_CT`; odmowa `bay_equipment.ratio_not_applicable` dla innego rodzaju; addytywne — `None` poza odciskiem modelu i szablonu) |
 | Q0 | prąd wyłączalny, czas własny | z karty pozycji katalogowej aparatu; brak w karcie — wartość robocza z rejestru (`network_model/catalog/wartosci_robocze.py`, profil 0,060 s, jakość `ESTIMATED`) | odczyt tekstu (karta producenta / rejestr) | `SwitchEquipmentType` (`types.py:1770`), `break_time_s` (`types.py:3362`) |
-| Q0 | napęd | silnikowy (sterowanie zdalne ZW/OW) | zweryfikowane na rysunku | `ObwodyWtornePola.naped_wylacznika`; katalog wyłączników NIE ma pola napędu — luka L1 (§9.6) |
+| Q0 | napęd | silnikowy (sterowanie zdalne ZW/OW) — okrąg z literą M na kreskowanym sprzężeniu, EN 60617 02-13-26 | zweryfikowane na rysunku | `ObwodyWtornePola.napedy` (`NapedAparatuPola`), na aparacie ENM `BayPrimaryDevice.naped` = `SILNIKOWY`; katalog wyłączników NIE ma pola napędu — luka L1 (§9.6) |
+| Q1 | napęd | zasobnikowy z obsługą ręczną — kwadrat na kreskowanym sprzężeniu (EN 60617 02-13-20, energia zmagazynowana) i kreskowany odcinek z poprzeczką (EN 60617 02-13-01, napęd ręczny); s.89, s.90, s.91 odczytane z druku 400 dpi 2026-10-30, Q5 bez znaku napędu | zweryfikowane na rysunku (kształt znaku; rodzaju rysunek nie opisuje słownie) | `ObwodyWtornePola.napedy`, `BayPrimaryDevice.naped` = `ZASOBNIKOWY_RECZNY` (dopuszczalne napędy rodzaju: `NAPEDY_RODZAJU_APARATU`); symbol łącznika z napędem na schemacie §11.11 pkt A |
 | PF0, PF1 | wskaźnik napięcia | pojemnościowy, bez parametrów na rysunku | zweryfikowane na rysunku | `VOLTAGE_INDICATOR` |
 
 ### 9.3. Profil funkcjonalny EAZ
@@ -533,8 +540,7 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 | ZS | ZS — współpraca z logicznym zabezpieczeniem szyn (sygnał blokowania ZS) | OBOWIAZKOWA | tak | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
 | 50BF | LRW (50BF) — lokalna rezerwa wyłącznikowa | OBOWIAZKOWA | tak | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
 | 79 | SPZ (79) — samoczynne ponowne załączenie (wielokrotne, programowalne, z blokadą) | WARIANTOWA | tak | NAPOWIETRZNA | niedopuszczone | niedopuszczone |
-| SCO | SCO — samoczynne częstotliwościowe odciążenie | OPCJONALNA | tak | DOPUSZCZALNA | niedopuszczone | niedopuszczone |
-| SPZ/SCO | SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym | OPCJONALNA | tak | NA_ZADANIE_OSD | niedopuszczone | niedopuszczone |
+| SCO | SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) | OPCJONALNA | tak | NA_ZADANIE_OSD | niedopuszczone | niedopuszczone |
 | 81U | f< (81U) — podczęstotliwościowe | OBOWIAZKOWA | nie | OBOWIAZKOWA | niedopuszczone | niedopuszczone |
 | 59N | U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) | OPCJONALNA | nie | DOPUSZCZALNA (interpr.) | niedopuszczone | niedopuszczone |
 | Yo> | Yo> — ziemnozwarciowe admitancyjne | OPCJONALNA | nie | DOPUSZCZALNA (interpr.) | niedopuszczone | niedopuszczone |
@@ -560,8 +566,7 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 | SPZE | SPZE — samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje) | WARIANTOWA | tak | WG_RYSUNKU | WG_RYSUNKU | ZAKAZANA (interpr.) |
 | OWG | OWG — wyłączenie pól z generacją (od zabezpieczeń transformatora i przed SZR) | OBOWIAZKOWA | tak | WG_RYSUNKU | WG_RYSUNKU | WG_RYSUNKU |
 | NZ | blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) | WARIANTOWA | tak | WG_RYSUNKU | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
-| SCO | SCO — samoczynne częstotliwościowe odciążenie | WARIANTOWA | tak | DOPUSZCZALNA | ZAKAZANA | ZAKAZANA |
-| SPZ/SCO | SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym | WARIANTOWA | tak | NA_ZADANIE_OSD | ZAKAZANA | ZAKAZANA |
+| SCO | SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) | WARIANTOWA | tak | NA_ZADANIE_OSD | ZAKAZANA | ZAKAZANA |
 | 59N | U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) | OPCJONALNA | nie | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) |
 | Yo> | Yo> — ziemnozwarciowe admitancyjne | OPCJONALNA | nie | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) |
 | Go> | Go> — ziemnozwarciowe konduktancyjne | OPCJONALNA | nie | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) |
@@ -587,14 +592,13 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 | SPZE | SPZE — samoczynne ponowne załączenie z czasem tE (rozwinięcia skrótu standard nie podaje) | WARIANTOWA | tak | WG_RYSUNKU | WG_RYSUNKU | ZAKAZANA (interpr.) |
 | OWG | OWG — wyłączenie pól z generacją (od zabezpieczeń transformatora i przed SZR) | OBOWIAZKOWA | tak | WG_RYSUNKU | WG_RYSUNKU | WG_RYSUNKU |
 | NZ | blokada NZ — blokada załączenia przy napięciu w linii (napięcie zwrotne) | WARIANTOWA | tak | WG_RYSUNKU | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
-| SCO | SCO — samoczynne częstotliwościowe odciążenie | WARIANTOWA | tak | DOPUSZCZALNA | ZAKAZANA | ZAKAZANA |
-| SPZ/SCO | SPZ po SCO — samoczynne ponowne załączenie po odciążeniu częstotliwościowym | WARIANTOWA | tak | NA_ZADANIE_OSD | ZAKAZANA | ZAKAZANA |
+| SCO | SCO — samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne załączenie po SCO (SPZ po SCO) | WARIANTOWA | tak | NA_ZADANIE_OSD | ZAKAZANA | ZAKAZANA |
 | 59N | U0> (59N) — nadnapięciowe zerowe (napięcie 3U0 z otwartego trójkąta) | OPCJONALNA | nie | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) |
 | Yo> | Yo> — ziemnozwarciowe admitancyjne | OPCJONALNA | nie | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) |
 | Go> | Go> — ziemnozwarciowe konduktancyjne | OPCJONALNA | nie | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) | DOPUSZCZALNA (interpr.) |
 | 32 | P> (32) — kierunkowe mocy czynnej (od skutków mocy zwrotnej) | OPCJONALNA | nie | NIE_WYSTEPUJE | NA_ZADANIE_OSD | NA_ZADANIE_OSD |
 
-#### Obwody Z10 — ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 s.89; napęd SILNIKOWY (ZWERYFIKOWANE_NA_RYSUNKU)
+#### Obwody Z10 — ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.10 s.89; napędy: Q0 SILNIKOWY (ZWERYFIKOWANE_NA_RYSUNKU), Q1 ZASOBNIKOWY_RECZNY (ZWERYFIKOWANE_NA_RYSUNKU)
 
 | Funkcja | Blok rysunku | Wejścia | Wyjścia | Wyłącznik | Weryfikacja | Uwaga |
 |---|---|---|---|---|---|---|
@@ -605,14 +609,13 @@ repozytorium, wykonanie łączników trójpołożeniowe; pozostałe wykonania ma
 | ZS | ZS | RDZEN_CT T1/1 (interpr.) | Blokowanie ZS | — | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50BF | LRW | RDZEN_CT T1/1 (interpr.) | OW1, OW2, Pobudzenie LRW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 79 | SPZ tSPZ | sygnał Odstawienie SPZ | ZW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
-| SCO | Sterownik pola | sygnał SCO1, sygnał SCO2 | OW1, OW2 | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
-| SPZ/SCO | Sterownik pola | sygnał SCO/SPZ | ZW | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
+| SCO | Sterownik pola | sygnał SCO1, sygnał SCO2, sygnał SCO/SPZ | OW1, OW2, ZW | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
 
 Sygnały: Blok. ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW1 (WYJSCIE, WYLACZNIK, INTERPRETACJA); OW2 (WYJSCIE, WYLACZNIK, INTERPRETACJA); Odstawienie SPZ (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Topologia (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); Zasilanie (WEJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); SSiN (WYJSCIE, NADRZEDNY, INTERPRETACJA); Łącze inżynierskie (WYJSCIE, NADRZEDNY, ZWERYFIKOWANE_NA_RYSUNKU); +AwUp (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Up (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Aw (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Al (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); SCO1 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO2 (WEJSCIE, OKREZNY, INTERPRETACJA); SCO/SPZ (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); UL1, UL2, UL3, N (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Pobudzenie LRW (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Blokowanie ZS (WYJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU); Z, Zz (WEJSCIE, OKREZNY, ZWERYFIKOWANE_NA_RYSUNKU)
 
 Obwody przekładników poza EAZ: 
 
-#### Obwody Z11_1 — ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11.1 s.91; napęd SILNIKOWY (ZWERYFIKOWANE_NA_RYSUNKU)
+#### Obwody Z11_1 — ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11.1 s.91; napędy: Q0 SILNIKOWY (ZWERYFIKOWANE_NA_RYSUNKU), Q1 ZASOBNIKOWY_RECZNY (ZWERYFIKOWANE_NA_RYSUNKU)
 
 | Funkcja | Blok rysunku | Wejścia | Wyjścia | Wyłącznik | Weryfikacja | Uwaga |
 |---|---|---|---|---|---|---|
@@ -623,8 +626,7 @@ Obwody przekładników poza EAZ:
 | ZS | ZS (kierunkowe I>) | RDZEN_CT T1/1 (interpr.) | Blokowanie ZS | — | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50BF | LRW | RDZEN_CT T1/1 (interpr.) | OW1, Pobudzenie LRW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 79 | SPZ tSPZ | sygnał Odstawienie SPZ | ZW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
-| SCO | Sterownik pola | sygnał SCO1, sygnał SCO2 | OW1 | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
-| SPZ/SCO | Sterownik pola | sygnał SCO/SPZ | ZW | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
+| SCO | Sterownik pola | sygnał SCO1, sygnał SCO2, sygnał SCO/SPZ | OW1, ZW | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
 | 67 | ZS (kierunkowe I>) | RDZEN_CT T1/1 (interpr.), UZWOJENIE_VT T3/3 (interpr.) | Blokowanie ZS | — | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 27 | U> U< | UZWOJENIE_VT T3/3 | Blok. ZW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 59 | U> U< | UZWOJENIE_VT T3/3 | Blok. ZW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
@@ -639,7 +641,7 @@ Sygnały: Blok. ZW (WYJSCIE, WYLACZNIK, INTERPRETACJA); ZW (WYJSCIE, WYLACZNIK, 
 
 Obwody przekładników poza EAZ: T3/1 → niepodłączone na rysunku (ZWERYFIKOWANE_NA_RYSUNKU); T3/2 → niepodłączone na rysunku (ZWERYFIKOWANE_NA_RYSUNKU)
 
-#### Obwody Z11 — ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 s.90; napęd SILNIKOWY (ZWERYFIKOWANE_NA_RYSUNKU)
+#### Obwody Z11 — ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1, Z.11 s.90; napędy: Q0 SILNIKOWY (ZWERYFIKOWANE_NA_RYSUNKU), Q1 ZASOBNIKOWY_RECZNY (ZWERYFIKOWANE_NA_RYSUNKU)
 
 | Funkcja | Blok rysunku | Wejścia | Wyjścia | Wyłącznik | Weryfikacja | Uwaga |
 |---|---|---|---|---|---|---|
@@ -650,8 +652,7 @@ Obwody przekładników poza EAZ: T3/1 → niepodłączone na rysunku (ZWERYFIKOW
 | ZS | ZS (kierunkowe I>) | RDZEN_CT T1/3 (interpr.) | Blokowanie ZS | — | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 50BF | LRW | RDZEN_CT T1/3 (interpr.) | OW1, Pobudzenie LRW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 79 | SPZ tSPZ | sygnał Odstawienie SPZ | ZW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
-| SCO | Sterownik pola | sygnał SCO1, sygnał SCO2 | OW1 | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
-| SPZ/SCO | Sterownik pola | sygnał SCO/SPZ | ZW | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
+| SCO | Sterownik pola | sygnał SCO1, sygnał SCO2, sygnał SCO/SPZ | OW1, ZW | Q0 | INTERPRETACJA | rysunek prowadzi sygnał do bloku „Sterownik pola”; wykonanie przez obwód sterowania wyłącznikiem sterownika jest wnioskiem z układu rysunku |
 | 67 | ZS (kierunkowe I>) | RDZEN_CT T1/3 (interpr.), UZWOJENIE_VT T3/3 (interpr.) | Blokowanie ZS | — | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 27 | U> U< | UZWOJENIE_VT T3/3 | Blok. ZW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
 | 59 | U> U< | UZWOJENIE_VT T3/3 | Blok. ZW | Q0 | ZWERYFIKOWANE_NA_RYSUNKU |  |
@@ -691,7 +692,7 @@ Ocena pola (`backend/src/enm/pole_liniowe_gpz.py::_obwody_funkcji`, front
 `OcenaPolaLiniowegoGpz.tsx`, tabela `ocena-pola-liniowego-obwody`) pokazuje dla każdej funkcji
 pola jej obwody z tabliczek aparatów TEGO pola (np. „rdzeń I przekładnika prądowego T1:
 200-400/5, 15 VA, klasa 5P20"; aparat usunięty z pola → „brak aparatu w polu"), a pod nią sygnały
-pola i napęd wyłącznika (`ocena-pola-liniowego-sygnaly`, `ocena-pola-liniowego-naped`).
+pola i napędy łączników (`ocena-pola-liniowego-sygnaly`, `ocena-pola-liniowego-naped`).
 Funkcja pola bez powiązania na rysunku wzorca — wiersz z jawnym zdaniem, że rysunek jej nie
 rysuje.
 
@@ -769,7 +770,7 @@ nowe: `kafelStanu.test.tsx` (rodzaj × stan × motyw × eksport × NOP, kontrast
 (żywa kanwa × LOD × warstwy), `stanAparatuParytetGlifu.test.tsx`, `menuStanuAparatuPola.test.tsx`
 (aparat × położenie × pozycja menu).
 
-**Funkcje automatyki ze stanem.** Plakietki SPZ/SCO/LRW/NZ/OWG z kodów funkcji pola; stan funkcji
+**Funkcje automatyki ze stanem.** Plakietki SPZ, SCO, LRW, NZ i OWG (`PLAKIETKI_GPZ`, `ui/sld/v2/canvas/canonicalGpzModel.ts`) z kodów funkcji pola — pięć osobnych plakietek, bez dawnego kodu złożonego; stan funkcji
 należy do nastaw (ADR-022) — czytany z jednego miejsca, dziś nieustalony i tak oznaczony (§9.5,
 luka L2, karta OCHRONA-ADR022-NASTAWY).
 
@@ -919,13 +920,13 @@ porównania przez właściciela. To NIE jest deklaracja zgodności z ENEA ani we
 | Poz. rysunku | Na zrzucie | Odczyt wykonawcy |
 |---|---|---|
 | 1 — szyna SN L1, L2, L3 | przewód od szyny sekcji wchodzi do Q1 u góry kadru; sama szyna leży poza kadrem pola (kadr = obrys aparatów pola z marginesem na oznaczenia i podpis) | różnica: przewód nie ma znacznika trzech faz „///" |
-| 2–3 — zestyk odłączający i zestyk uziemiający z napędem (łącznik trójpołożeniowy) | Q1 `qetThreePositionSwitch` w kaflu 48 × 48. Nóż w trzech położeniach: na zestyku liniowym (zamknięty, kafel czerwony), w osi (odłączony, kafel zielony), na zestyku uziemiającym (uziemiony, kafel czerwony, `data-qet-polozenie="earthed"`) | aparat i trzy położenia odpowiadają rysunkowi. Znak uziemienia stoi nad zestykiem prawym, u góry pola przy torze, jak na rysunku (§11.9 pkt 2). Różnica: rysunek pokazuje napęd łącznika (kwadrat z kreskowaną linią sprzężenia), na zrzucie go nie ma. Model nie ma rekordu napędu łącznika trójpołożeniowego — `naped` jest wyłącznie polem wyłącznika (§9.6 L1), a decyzja właściciela §11.2 pkt 2 zakazuje dodawania aparatów |
+| 2–3 — zestyk odłączający i zestyk uziemiający z napędem (łącznik trójpołożeniowy) | Q1 `qetThreePositionSwitchZNapedem` w kaflu 48 × 48. Nóż w trzech położeniach: na zestyku liniowym (zamknięty, kafel czerwony; koniec noża leży na kresce styku stałego), w osi (odłączony, kafel zielony), na zestyku uziemiającym (uziemiony, kafel czerwony, `data-qet-polozenie="earthed"`). Napęd z rekordu aparatu (`BayPrimaryDevice.naped` = `ZASOBNIKOWY_RECZNY`): kreskowana linia sprzężenia od przegubu noża do kwadratu napędu energią zmagazynowaną (EN 60617 02-13-20) po prawej stronie osi, pod zestykiem uziemiającym, i od kwadratu w dół kreskowany odcinek z poprzeczką (obsługa ręczna, EN 60617 02-13-01) | aparat, trzy położenia i napęd łącznika odpowiadają rysunkowi. Znak uziemienia stoi nad zestykiem prawym, u góry pola przy torze, jak na rysunku (§11.9 pkt 2). Napęd jest atrybutem aparatu, nie nowym aparatem, więc decyzja właściciela §11.2 pkt 2 (zakaz dodawania aparatów) obowiązuje bez zmian (§11.11 pkt A). Położenie zamknięte czyta się jako odłącznik: koniec noża na kresce styku, z tej samej reguły w importerze i w renderze (§11.11 pkt C) |
 | 4 — wyłącznik z napędem silnikowym M | Q0 `qetBreakerZNapedem`: × na styku stałym; po LEWEJ stronie toru okrąg z literą M i kreskowana linia sprzężenia z przegubu noża; po prawej cewka wyłączająca (EN 60617 07-15-01) z zaciskiem `wylacz`, w którym kończy się linia wyłączania z bloku przekaźnika | aparat i napęd po tej samej stronie toru co na rysunku; litera M 8,4 j.św. (§11.1 wiersz 4). Cewka wyłączająca jest dodatkiem wykonawcy: rysunek prowadzi wyłączanie obwodem wtórnym, którego kanwa nie rysuje (wymaganie 5) |
-| 5 — przekładnik prądowy, 1 rdzeń 200-400/5 A, 15 VA, kl. 5P20 | T1 `qetCurrentTransformer` w torze pod Q0, linia pomiarowa do przekaźnika pola | aparat jak na rysunku. Przekładnia i rdzeń są w rekordzie aparatu (`przekladnia`, `rdzenie`) i w karcie pola. Na kanwie nie ma opisu przekładni: adnotację przekładni CT kanwa rysuje wyłącznie z danych zabezpieczenia (`ctRatingAnnotations`, `compose/gpz.ts`), a pole z szablonu takich danych nie ma. Zacisków P1/P2 kanwa nie opisuje — strażnik kryptonimów traktuje te napisy jako kryptonimy (§11.7 pkt 6) |
+| 5 — przekładnik prądowy, 1 rdzeń 200-400/5 A, 15 VA, kl. 5P20 | T1 `qetCurrentTransformer` w torze pod Q0, linia pomiarowa do przekaźnika pola. Na lewo od symbolu zaciski strony pierwotnej: P1 nad pierścieniem (od strony szyny, port `we` modelu) i P2 pod nim (port `wy`); obok tabliczka „200-400/5 A · 5P20” — przekładnia i klasa rdzenia z rekordu aparatu (`rdzenie`) | aparat, zaciski P1/P2 i zapis przekładni z klasą jak na rysunku. Moc rdzenia 15 VA jest w rekordzie i w karcie pola; tabliczka kanwy niesie przekładnię i klasy rdzeni (§11.11 pkt 6) |
 | 6 — wskaźnik napięcia (pojemnościowy) | PF1 `qetVoltageIndicator` na węźle za T1 (od strony kabla) | jak na rysunku |
 | 7 — głowica kablowa | GK `qetCableHead` (złącze wtykowe EN 60617 03-03-05) | jak na rysunku |
-| 8 — przekładnik Ferrantiego 1/100 na kablu | T2 `qetCoreBalanceCt` na kablu za GK. W polu zajętym kabel ciągnie się dalej jako gałąź modelu, w polu wolnym tor kończy się symbolem „koniec kabla niepodłączony" (`bayReserve`) | aparat jak na rysunku. Przekładni 1/100 kanwa nie opisuje. T2 ma linię pomiarową z portu wtórnego do bloku przekaźnika: zasila funkcję 51N, czyli kryterium prądowe Io bloku „Zab. ziemnozwarciowe t1, t2" (czerwona linia z zacisku 2 na rysunku, §11.9 pkt 4). Kierunkowe 67N z Ferrantiego wchodzi wyłącznie przy potwierdzonym źródle 3U₀ (§11.2 pkt 4). Litera „3" znaku EN 60617 06-13-10 ma 5,4 j.św. po jednokładności symbolu ×1,5, czyli 8,0–14,9 px na zrzutach pola (skala kadru 1,48–2,76, §11.4) i 5,5 px przy wejściu w LOD2 (§11.7 pkt 5) |
-| funkcje: I> (t1, t2), I>>, zab. ziemnozwarciowe (Io, U0 „Z, Zz"), ZS, LRW, SPZ, SCO1/SCO2/SCO-SPZ, sterownik pola | blok przekaźnika w ramce obok pola: okrąg „51 50", wiersze „51N · ZS · 50BF · 79 · SCO" i „SPZ/SCO" — każdy kod raz, tekst wierszy od wspólnej lewej krawędzi (rozrzut 0 px, §11.4); linia wyłączania do cewki Q0, linie pomiarowe z T1 i T2 | I> = 51, I>> = 50, Io = 51N (z T2), LRW = 50BF, SPZ = 79, SCO-SPZ = SPZ/SCO. Kierunkowe 67N nie wchodzi, bo warunek źródła 3U₀ nie jest spełniony (ocena funkcji `NIE_OCENIONO` z wyjaśnieniem). Różnica: rysunek rozpisuje SCO1/SCO2, zrzut pokazuje jedno „SCO". Obwodów okrężnych („Z, Zz", SCO, blokady ZS) zrzut nie rysuje — powiązania są danymi aparatów, bez schematu wtórnego (wymaganie 5) |
+| 8 — przekładnik Ferrantiego 1/100 na kablu | T2 `qetCoreBalanceCt` na kablu za GK. W polu zajętym kabel ciągnie się dalej jako gałąź modelu, w polu wolnym tor kończy się symbolem „koniec kabla niepodłączony" (`bayReserve`) | aparat jak na rysunku. Przekładni 1/100 kanwa nie opisuje. T2 ma linię pomiarową z portu wtórnego do bloku przekaźnika: zasila funkcję 51N, czyli kryterium prądowe Io bloku „Zab. ziemnozwarciowe t1, t2" (czerwona linia z zacisku 2 na rysunku, §11.9 pkt 4). Kierunkowe 67N z Ferrantiego wchodzi wyłącznie przy potwierdzonym źródle 3U₀ (§11.2 pkt 4). Litera „3" znaku EN 60617 06-13-10 ma 8 j.św. (dawniej 5,4 j.św.; podłoga S9-7 obejmuje litery symboli, §11.11 pkt 5), czyli 11,8–22,1 px na zrzutach pola (skala kadru 1,48–2,76, §11.4) i 8 px przy wejściu w LOD2 |
+| funkcje: I> (t1, t2), I>>, zab. ziemnozwarciowe (Io, U0 „Z, Zz"), ZS, LRW, SPZ, SCO1/SCO2/SCO-SPZ, sterownik pola | blok przekaźnika w ramce obok pola: okrąg „51 50", wiersz „51N · ZS · 50BF · 79 · SCO" — każdy kod raz, tekst od lewej krawędzi bloku (§11.4); ramka bloku i tło pola obejmują tusz wiersza w piśmie narysowanym na kanwie (§11.11, obrysy według planu); linia wyłączania do cewki Q0, linie pomiarowe z T1 i T2 | I> = 51, I>> = 50, Io = 51N (z T2), LRW = 50BF, SPZ = 79, SCO1/SCO2/SCO-SPZ = SCO: dawny kod złożony „SPZ/SCO" jest włączony do SCO — jedna funkcja słownika obejmuje wyłączenie od SCO1, SCO2 i ponowne załączenie po SCO (§11.11 pkt B). Kierunkowe 67N nie wchodzi, bo warunek źródła 3U₀ nie jest spełniony (ocena funkcji `NIE_OCENIONO` z wyjaśnieniem). Różnica: rysunek rozpisuje SCO1/SCO2/SCO-SPZ, zrzut pokazuje jedno „SCO". Obwodów okrężnych („Z, Zz", SCO, blokady ZS) zrzut nie rysuje — powiązania są danymi aparatów, bez schematu wtórnego (wymaganie 5) |
 | — (rysunek nie podaje) | podpis pola „Pole liniowe GPZ 1" nad blokiem przekaźnika; numeru „52" przy Q0 nie ma — linia wyłączania kończy się na cewce Q0 (§11.9 pkt 5) | dodatek wykonawcy: rysunek ENEA nie ma oznaczeń literowo-cyfrowych ani podpisu pola w polu rysunku (§2.1) |
 
 **Z.10, wykonanie z wyłącznikiem stałym** (§13 druk s.25, nie rysunek Z.10) — zrzuty
@@ -946,12 +947,12 @@ z menu aparatu: Q1 i Q0 czerwone (zamknięte), Q8 zielony (otwarty); po odłącz
 | Poz. rysunku | Na zrzucie | Odczyt wykonawcy |
 |---|---|---|
 | 1 — wskaźnik napięcia przy szynie | PF0 `qetVoltageIndicator` na przewodzie od szyny, nad Q1 (węzeł `szyna` modelu) | jak na rysunku |
-| 2 — łącznik trójpołożeniowy z napędem | Q1 jak w Z.10 | jak w Z.10 (napęd łącznika nierysowany) |
+| 2 — łącznik trójpołożeniowy z napędem | Q1 `qetThreePositionSwitchZNapedem` jak w Z.10 (napęd zasobnikowy z obsługą ręczną z rekordu aparatu) | jak w Z.10 |
 | 3 — wyłącznik z napędem M | Q0 `qetBreakerZNapedem` | jak na rysunku |
 | 4 — odgałęzienie: odłącznik z uziemieniem → głowica/złącze → przekładnik napięciowy SN/√3 / 0,1/√3 ×3 (I 10 VA 0,2; II 7,5 VA 0,2; III 7,5 VA 0,5/3P), za wyłącznikiem, przed CT | odgałęzienie z węzła między Q0 a T1. Q5 `qetThreePositionSwitch` w kaflu, GK1 `qetCableHead`, T3 `qetVoltageTransformer3` (cztery okręgi: pierwotne i trzy wtórne). Linia pomiarowa z T3 do przekaźnika | kolejność aparatów i miejsce odgałęzienia jak na rysunku. Tabliczki trzech uzwojeń są w rekordzie T3 (`uzwojenia`) i w karcie pola; na kanwie nie są opisane |
 | 5 — CT 200-400/5, 1 rdzeń 15 VA 5P20 | T1 pod odgałęzieniem | jak w Z.10 |
 | 6 — wskaźnik napięcia, głowica, Ferranti 1/100 | PF1, GK, T2 z linią pomiarową 51N do bloku przekaźnika. Pole wolne kończy się symbolem „koniec kabla niepodłączony" | jak w Z.10 |
-| funkcje: I>, I>>, ziemnozw., U>, U<, f<, f>, df/dt, ZS (kierunkowe I>), LRW, SPZ, SPZE, wył. od zab. TR, SCO | blok przekaźnika w ramce: okrąg „51 50", wiersze „67 · 51N · 27 · 59 · 81U", „81O · 81R · ZS · 50BF · 79" i „SPZE · OWG · NZ · SCO · SPZ/SCO" — każdy kod raz, tekst od wspólnej lewej krawędzi; linia wyłączania do cewki Q0, linie pomiarowe z T1, T2 i T3 | I> = 51, I>> = 50, ziemnozwarciowe Io = 51N (z T2), kierunkowe I> = 67 (z blokadą ZS), U> = 59, U< = 27, f< = 81U, f> = 81O, df/dt = 81R, LRW = 50BF, SPZ = 79, SPZE, wył. od zab. TR = OWG, SCO. Kierunkowe ziemnozwarciowe 67N nie wchodzi (warunek §11.2 pkt 4). T3 ma trzy uzwojenia wtórne w gwieździe 0,1/√3, bez otwartego trójkąta (§11.2 pkt 1). Różnica: NZ (blokada załączenia przy napięciu zwrotnym) i SPZ/SCO nie są na liście funkcji rysunku — wzorzec dodaje je z klasy pola (§4, IRiESD II.4.5.4.2). Wiersz „SPZE · OWG · NZ · SCO · SPZ/SCO" ma najmniejszy zapas tuszu do ramki (18,4 px, §11.7 pkt 7) |
+| funkcje: I>, I>>, ziemnozw., U>, U<, f<, f>, df/dt, ZS (kierunkowe I>), LRW, SPZ, SPZE, wył. od zab. TR, SCO | blok przekaźnika w ramce: okrąg „51 50", wiersze „67 · 51N · 27 · 59 · 81U", „81O · 81R · ZS · 50BF · 79" i „SPZE · OWG · NZ · SCO" — każdy kod raz, tekst od wspólnej lewej krawędzi; ramka bloku i tło pola z tuszu wierszy narysowanych na kanwie (§11.11, obrysy według planu); linia wyłączania do cewki Q0, linie pomiarowe z T1, T2 i T3 | I> = 51, I>> = 50, ziemnozwarciowe Io = 51N (z T2), kierunkowe I> = 67 (z blokadą ZS), U> = 59, U< = 27, f< = 81U, f> = 81O, df/dt = 81R, LRW = 50BF, SPZ = 79, SPZE, wył. od zab. TR = OWG, SCO (dawne „SPZ/SCO" włączone do SCO, §11.11 pkt B). Kierunkowe ziemnozwarciowe 67N nie wchodzi (warunek §11.2 pkt 4). T3 ma trzy uzwojenia wtórne w gwieździe 0,1/√3, bez otwartego trójkąta (§11.2 pkt 1). Różnica: NZ (blokada załączenia przy napięciu zwrotnym) nie jest na liście funkcji rysunku — wzorzec dodaje ją z klasy pola (§4, IRiESD II.4.5.4.2). Zapas tuszu najszerszego wiersza do prawej krawędzi ramki: 6,7 px przy marginesie ramki od okręgu 7,4 px (skala kadru 1,48 px/j.św., pismo t4 podniesione podłogą opisów celu do 8,79 j.św.) (§11.4); dawny szacunek 0,62 em dawał tu 18,4 px |
 
 Zmiany kanwy wykryte przy tej tabeli (2026-10-29):
 
@@ -962,7 +963,9 @@ Zmiany kanwy wykryte przy tej tabeli (2026-10-29):
   Ich prostokąty liczy ta sama funkcja co układ etykiet (`layout/labels.ts::prostokatEtykietyZakotwiczonej`,
   wspólna z `resolveSimpleAnchoredLabel`). Test: `poleLinioweGpz.test.tsx`, opis „tło pola
   obejmuje podpis pola i opisy jego zabezpieczeń" — fikstury × LOD, tła pól rozłączne parami;
-  iniekcja dawnego tła daje czerwone 3 z 3 fikstur.
+  iniekcja dawnego tła daje czerwone 3 z 3 fikstur. Od 2026-10-30 kanwa liczy tło pola
+  i ramkę bloku przekaźnika z prostokątów NARYSOWANYCH etykiet planu, bo podłogi pisma
+  powiększają tekst ponad slot sceny (§11.11, obrysy według planu).
 - **Selektory e2e ograniczone do kanwy.** Inspektor rysuje kartę pola z tym samym
   `data-device-ref` (`SchematPolaSn.tsx`), więc lokator aparatu bez zawężenia łapał dwa
   węzły (Q0 Z.11.1 policzony podwójnie). Stała `KANWA` w specu zrzutów.
@@ -971,8 +974,9 @@ Zmiany kanwy wykryte przy tej tabeli (2026-10-29):
   oceny. Teraz każdy zrzut jest zrzutem elementu (`zrzutyOknaPola`): schemat pola
   (`okno-pola-*-{motyw}`) i ocena pola wg klasy (`okno-pola-*-ocena-{motyw}`).
 - **Tekst wierszy bloku przekaźnika od wspólnej lewej krawędzi.** Wiersze bloku mają wspólną
-  lewą krawędź prostokątów, ale szerokość prostokąta to szacunek z długości tekstu (0,62 em na
-  znak), a tusz ma szerokość z metryk czcionki. Tekst wyśrodkowany w prostokącie zaczynał się
+  lewą krawędź prostokątów, ale szerokość prostokąta była wtedy szacunkiem z długości tekstu
+  (0,62 em na znak; od decyzji architekta §11.7 pkt 7 liczy ją tabela posuwów kroju, §11.11
+  pkt 7), a tusz ma szerokość z metryk czcionki. Tekst wyśrodkowany w prostokącie zaczynał się
   więc w każdym wierszu gdzie indziej (zrzut Z.10: wiersz 1 od x = 535 px, wiersz 2 od x = 499
   px). Teraz każda etykieta warstwy adnotacji zabezpieczeń niesie `wyrownanieTekstu`
   (`layout/labels.ts`): z prawej strony kotwicy — od lewej krawędzi (`text-anchor: start`),
@@ -1006,16 +1010,23 @@ ekranowy wszystkich kafli kadru, stopień glifu w przedziale manifestu importu
 `stopienSymboli.kafel` [0,55; 0,70] (jedno źródło z importerem, także na ekranie z tolerancją
 1 px), kadr na LOD2. Wynik biegu: `test-results/ux04-pole-liniowe-pomiary-kafli.json`.
 
-Pomiar biegu zrzutów 2026-10-29 (bieg zielony, 2 z 2 testów): 46 pomiarów w 18 kadrach;
-największe |w − h| na ekranie 0,00006 px; największe |bok − 48| w świecie 0; rozrzut boku
-ekranowego w kadrze 0; stopień glifu 0,575–0,617 boku kafla; LOD 2 w każdym kadrze; skala
-kadru 1,48–2,76, czyli bok kafla na ekranie 71,0–132,5 px.
+Pomiar biegu zrzutów 2026-10-30 (2 z 2 testów zielone; test Z.11.1 w drugim biegu — w pierwszym
+przeglądarka padła po zabiciu procesów Chromium przez brak pamięci wspólnej grupy procesów
+maszyny, zanim kadr pola został zmierzony): 46 pomiarów w 18 kadrach; największe |w − h| na
+ekranie 0,00006 px; największe |bok − 48| w świecie 0; rozrzut boku ekranowego w kadrze
+0,00006 px; stopień glifu 0,556–0,667 boku kafla (odłącznik w jednokładności 10/3, §11.11
+pkt C: zamknięty 0,556, otwarty 0,639, nieustalony 0,667; pozostałe aparaty 0,583–0,617);
+LOD 2 w każdym kadrze; skala kadru 1,48–2,76, czyli bok kafla na ekranie 71,0–132,5 px.
+Pomiar 2026-10-29 przed decyzjami §11.7: stopień glifu 0,575–0,617, pozostałe wartości te same.
 
 Iloczyn rodzaj × stan kafla × motyw pokryty na żywej kanwie: wyłącznik z napędem
 {zamknięty, otwarty}, odłącznik {zamknięty, otwarty, nieustalony}, uziemnik {zamknięty,
 otwarty, nieustalony}, łącznik trójpołożeniowy {zamknięty, otwarty, nieustalony; uziemiony —
 kafel „zamknięty" z nożem na zestyku uziemiającym, `data-qet-polozenie="earthed"`} × motyw
-{ciemny, jasny} — 22 z 24 komórek. Odłącznik otwarty i uziemnik zamknięty dochodzą krokiem 10
+{ciemny, jasny} — 22 z 24 komórek. Łącznik trójpołożeniowy ma dwa rysunki z rekordu napędu:
+z napędem (Q1, `qetThreePositionSwitchZNapedem` — zamknięty, otwarty, nieustalony) i bez napędu
+(Q5 odgałęzienia Z.11.1, `qetThreePositionSwitch` — zamknięty, nieustalony); w podziale na
+rysunek aparatu zmierzonych komórek jest 26. Odłącznik otwarty i uziemnik zamknięty dochodzą krokiem 10
 spec (pole stałe odłączone i uziemione); pomiar przed jego dodaniem: 18 z 24 komórek. Poza
 żywą kanwą zostaje wyłącznik w stanie nieustalonym (2 komórki): ścieżka użytkownika zawsze
 daje wyłącznikowi rekord położenia (szablon, operacja łączeniowa), więc tego stanu nie da się
@@ -1026,11 +1037,25 @@ nieustalonym przypina `symbols/__tests__/kafelStanu.test.tsx` (rodzaj × wariant
 
 Spec mierzy też blok przekaźnika każdego pola w kadrze (`zmierzBlokPrzekaznika`): lewe
 krawędzie tuszu wierszy (`getBoundingClientRect` tekstów `#protection-codes-full` i
-`#zrodlo-u0`) i tusz wierszy wewnątrz ramki bloku (`[data-przekaznik="ramka-bloku"]`) z czterech
-stron. Wynik: `test-results/ux04-pole-liniowe-pomiary-bloku.json`. Pomiar: 72 bloki w 18
-kadrach, rozrzut lewych krawędzi tuszu 0 px (próg 1 px), najmniejszy zapas tuszu do prawej
-krawędzi ramki 18,4 px (pole Z.11.1, wiersz „SPZE · OWG · NZ · SCO · SPZ/SCO"; w polach
-Z.10 80,4–93,5 px), najmniejszy zapas dolny 9,8 px.
+`#zrodlo-u0`), tusz wierszy wewnątrz ramki bloku (`[data-przekaznik="ramka-bloku"]`) z czterech
+stron, szerokość tuszu każdego wiersza wobec sumy posuwów z tabeli kroju × pismo × skala
+kamery (± 1 px) i zapas najszerszego wiersza do prawej krawędzi ramki w [margines, margines
++ 1 j.św.] (margines = odstęp lewej krawędzi ramki od okręgu). Ramka bloku i tło pola na kanwie
+powstają z prostokątów narysowanych etykiet planu (§11.11, obrysy według planu). Tę samą
+asercję szerokości przechodzi tabliczka T1 (`sprawdzPrzekladnikPradowy`). Wyniki:
+`test-results/ux04-pole-liniowe-pomiary-bloku.json` i `…-pomiary-szerokosci.json`. Pomiar:
+72 bloki w 18 kadrach, rozrzut lewych krawędzi tuszu 0 px (próg 1 px); 98 pomiarów szerokości,
+największa różnica przeglądarka − tabela 0,27 px; zapas tuszu do prawej krawędzi ramki
+6,7–7,2 px w kadrach pola Z.11.1 (skala 1,48, pismo t4 podniesione podłogą opisów celu do
+8,79 j.św., margines 7,4 px) i 11,8–13,5 px w kadrach pola Z.10 (skala 2,37–2,76, margines
+11,8–13,8 px) — w każdym bloku zapas równy marginesowi z dokładnością 0,75 px; najmniejszy
+zapas dolny 10,4 px. Szacunek 0,62 em dawał 18,4 px (Z.11.1, wiersz z dawnym „SPZ/SCO")
+i 80,4–93,5 px (Z.10). Pokrycie {Z.10, Z.11.1} × {cyfry, wielkie litery} × {ciemny, jasny}
+(`oczekujPokryciaKlasSzerokosci`): w Z.11.1 wiersze bloku obu klas („67 · 51N · 27 · 59 ·
+81U" i „81O · 81R · ZS · 50BF · 79" — cyfry, „SPZE · OWG · NZ · SCO" — wielkie litery)
+i tabliczka T1; w Z.10 wiersz „51N · ZS · 50BF · 79 · SCO" (wielkie litery) i tabliczka T1
+„200-400/5 A · 5P20" (cyfry). Podpisy aparatów po lewej stronie toru (`zmierzPodpisyPola`):
+18 pomiarów, rozrzut prawych krawędzi tuszu najwyżej 0,63 px (próg 1 px).
 
 Iniekcje (każda w osobnym biegu testu Z.10 bez zapisu zrzutów; plik przywrócony i porównany
 `cmp`):
@@ -1047,54 +1072,56 @@ Iniekcje (każda w osobnym biegu testu Z.10 bez zapisu zrzutów; plik przywróco
 
 Iniekcje warunków bloku przekaźnika (wiersz z kodami okręgu, ramka węższa o kratkę, zdjęte
 wyrównanie wiersza, wiersz przesunięty o GRID) są w testach sceny (`poleLinioweGpz.test.tsx`,
-§11.3 i §11.9).
+§11.3 i §11.9); iniekcje obrysów według planu (ramka i tło sceny zamiast planu) —
+w `canvas/__tests__/obrysyWgPlanu.test.tsx` (§11.11). Ten sam warunek e2e był czerwony przed
+naprawą obrysów: „81O · 81R · ZS · 50BF · 79" 8,1 px poza ramką bloku w kadrze pola Z.11.1.
 
 | Kadr | Motyw | Aparat | Symbol | Stan kafla | Kafel w świecie (j.św.) | Kafel na ekranie (px) | \|w − h\| (px) | Glif w świecie (stopień) | Glif na ekranie (px) | Skala | LOD |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| pole-z10-trojpolozeniowy-zamkniete-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
-| pole-z10-trojpolozeniowy-zamkniete-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,22 (0,61) | 87,68 | 2,76 | 2 |
-| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q1 | `qetDisconnector` | nieznany | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,81 (0,60) | 73,63 | 2,37 | 2 |
-| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
-| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q8 | `qetEarthSwitch` | nieznany | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
-| pole-z10-trojpolozeniowy-zamkniete-jasny | jasny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
-| pole-z10-trojpolozeniowy-zamkniete-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,22 (0,61) | 87,68 | 2,76 | 2 |
-| pole-z10-staly-stan-nieznany-jasny | jasny | Q1 | `qetDisconnector` | nieznany | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,81 (0,60) | 73,63 | 2,37 | 2 |
-| pole-z10-staly-stan-nieznany-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
-| pole-z10-staly-stan-nieznany-jasny | jasny | Q8 | `qetEarthSwitch` | nieznany | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
-| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-ciemny | ciemny | Q1 | `qetDisconnector` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
-| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
+| pole-z10-trojpolozeniowy-zamkniete-ciemny | ciemny | Q1 | `qetThreePositionSwitchZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-trojpolozeniowy-zamkniete-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,76 | 2,76 | 2 |
+| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q1 | `qetDisconnector` | nieustalony | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 32,02 (0,67) | 81,20 | 2,37 | 2 |
+| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,80 (0,60) | 73,52 | 2,37 | 2 |
+| pole-z10-staly-stan-nieznany-ciemny | ciemny | Q8 | `qetEarthSwitch` | nieustalony | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
+| pole-z10-trojpolozeniowy-zamkniete-jasny | jasny | Q1 | `qetThreePositionSwitchZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-trojpolozeniowy-zamkniete-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,76 | 2,76 | 2 |
+| pole-z10-staly-stan-nieznany-jasny | jasny | Q1 | `qetDisconnector` | nieustalony | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 32,02 (0,67) | 81,20 | 2,37 | 2 |
+| pole-z10-staly-stan-nieznany-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,80 (0,60) | 73,52 | 2,37 | 2 |
+| pole-z10-staly-stan-nieznany-jasny | jasny | Q8 | `qetEarthSwitch` | nieustalony | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-ciemny | ciemny | Q1 | `qetDisconnector` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 26,67 (0,56) | 69,12 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,80 (0,60) | 73,52 | 2,37 | 2 |
 | pole-z10-wylacznik-zamkniety-uziemnik-otwarty-ciemny | ciemny | Q8 | `qetEarthSwitch` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
-| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny | jasny | Q1 | `qetDisconnector` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
-| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 29,22 (0,61) | 75,17 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny | jasny | Q1 | `qetDisconnector` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 26,67 (0,56) | 69,12 | 2,37 | 2 |
+| pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,80 (0,60) | 73,52 | 2,37 | 2 |
 | pole-z10-wylacznik-zamkniety-uziemnik-otwarty-jasny | jasny | Q8 | `qetEarthSwitch` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
-| pole-z10-wylacznik-otwarty-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-ciemny | ciemny | Q1 | `qetThreePositionSwitchZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
 | pole-z10-wylacznik-otwarty-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
-| pole-z10-wylacznik-otwarty-jasny | jasny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-jasny | jasny | Q1 | `qetThreePositionSwitchZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
 | pole-z10-wylacznik-otwarty-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
-| pole-z10-rozlaczone-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-rozlaczone-ciemny | ciemny | Q1 | `qetThreePositionSwitchZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
 | pole-z10-rozlaczone-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
-| pole-z10-rozlaczone-jasny | jasny | Q1 | `qetThreePositionSwitch` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-rozlaczone-jasny | jasny | Q1 | `qetThreePositionSwitchZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
 | pole-z10-rozlaczone-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
-| pole-z10-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q1 | `qetThreePositionSwitchZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
 | pole-z10-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
-| pole-z10-wylacznik-otwarty-uziemiony-jasny | jasny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
+| pole-z10-wylacznik-otwarty-uziemiony-jasny | jasny | Q1 | `qetThreePositionSwitchZNapedem` | zamknięty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 29,60 (0,62) | 87,22 | 2,76 | 2 |
 | pole-z10-wylacznik-otwarty-uziemiony-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 132,48 × 132,48 | 0,00 | 28,80 (0,60) | 85,01 | 2,76 | 2 |
-| pole-z10-staly-odlaczony-uziemiony-ciemny | ciemny | Q1 | `qetDisconnector` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 27,60 (0,58) | 70,04 | 2,37 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-ciemny | ciemny | Q1 | `qetDisconnector` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 30,67 (0,64) | 77,29 | 2,37 | 2 |
 | pole-z10-staly-odlaczony-uziemiony-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,80 (0,60) | 72,87 | 2,37 | 2 |
-| pole-z10-staly-odlaczony-uziemiony-ciemny | ciemny | Q8 | `qetEarthSwitch` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
-| pole-z10-staly-odlaczony-uziemiony-jasny | jasny | Q1 | `qetDisconnector` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 27,60 (0,58) | 70,04 | 2,37 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-ciemny | ciemny | Q8 | `qetEarthSwitch` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 71,76 | 2,37 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-jasny | jasny | Q1 | `qetDisconnector` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 30,67 (0,64) | 77,29 | 2,37 | 2 |
 | pole-z10-staly-odlaczony-uziemiony-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,80 (0,60) | 72,87 | 2,37 | 2 |
-| pole-z10-staly-odlaczony-uziemiony-jasny | jasny | Q8 | `qetEarthSwitch` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 70,98 | 2,37 | 2 |
-| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | nieznany | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
-| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,22 (0,61) | 46,98 | 1,48 | 2 |
-| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q5 | `qetThreePositionSwitch` | nieznany | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
-| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q1 | `qetThreePositionSwitch` | nieznany | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
-| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,22 (0,61) | 46,98 | 1,48 | 2 |
-| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q5 | `qetThreePositionSwitch` | nieznany | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
-| pole-z11-1-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z10-staly-odlaczony-uziemiony-jasny | jasny | Q8 | `qetEarthSwitch` | zamknięty | 48,00 × 48,00 | 113,57 × 113,57 | 0,00 | 28,00 (0,58) | 71,76 | 2,37 | 2 |
+| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q1 | `qetThreePositionSwitchZNapedem` | nieustalony | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 28,80 (0,60) | 45,95 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-ciemny | ciemny | Q5 | `qetThreePositionSwitch` | nieustalony | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q1 | `qetThreePositionSwitchZNapedem` | nieustalony | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q0 | `qetBreakerZNapedem` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 28,80 (0,60) | 45,95 | 1,48 | 2 |
+| pole-z11-1-stan-wyjsciowy-jasny | jasny | Q5 | `qetThreePositionSwitch` | nieustalony | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q1 | `qetThreePositionSwitchZNapedem` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
 | pole-z11-1-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 28,80 (0,60) | 45,55 | 1,48 | 2 |
 | pole-z11-1-wylacznik-otwarty-uziemiony-ciemny | ciemny | Q5 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
-| pole-z11-1-wylacznik-otwarty-uziemiony-jasny | jasny | Q1 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
+| pole-z11-1-wylacznik-otwarty-uziemiony-jasny | jasny | Q1 | `qetThreePositionSwitchZNapedem` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
 | pole-z11-1-wylacznik-otwarty-uziemiony-jasny | jasny | Q0 | `qetBreakerZNapedem` | otwarty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 28,80 (0,60) | 45,55 | 1,48 | 2 |
 | pole-z11-1-wylacznik-otwarty-uziemiony-jasny | jasny | Q5 | `qetThreePositionSwitch` | zamknięty | 48,00 × 48,00 | 70,98 × 70,98 | 0,00 | 29,60 (0,62) | 46,73 | 1,48 | 2 |
 
@@ -1129,7 +1156,11 @@ Okrąg przekaźnika pola stoi w odstępie GRID…6·GRID od prawej krawędzi obr
 i prawej krawędzi pasa podpisów aparatów (`<pole>#etykieta-aparatu-…`) — przypięte testem
 „przekaźnik pola obok pola" (`poleLinioweGpz.test.tsx`).
 
-### 11.7. Do decyzji architekta (zgłoszenia z pomiarem, bez zmiany w tej karcie)
+### 11.7. Do decyzji architekta (zgłoszenia z pomiarem) — ROZSTRZYGNIĘTE 2026-10-30
+
+**Stan: rozstrzygnięte.** Architekt rozstrzygnął punkty 1–8 dnia 2026-10-30 i polecił wdrożyć
+je w tej karcie; wykonanie z testami i pomiarami jest w §11.11. Tekst zgłoszeń poniżej zostaje
+jako zapis stanu sprzed decyzji (liczby i opisy dotyczą bazy `dbe7c130b`).
 
 Zgłoszenia poniżej nie zostały zmienione w tej karcie. Rozstrzygnięcie zmienia akceptację
 cudzej warstwy albo decyzję zarządcy, dlatego decyzję podejmuje architekt (sesja główna).
@@ -1333,3 +1364,176 @@ testami. Żaden test ani strażnik nie został wyłączony.
    docstringami, wzorzec identyfikatora z podkreśleniem). Innego wystąpienia nie ma. Fikstura
    `ocena_pola_liniowego.json` jest odtworzona generatorem
    (`tests/ci/test_parytet_oceny_pola_liniowego.py`) i różni się wyłącznie tą uwagą (4 wystąpienia).
+
+### 11.11. Rozstrzygnięcia architekta 2026-10-30 (§11.7 pkt 1–8) i defekty z oględzin — wykonanie
+
+Architekt rozstrzygnął zgłoszenia §11.7 pkt 1–8 i dodał trzy zlecenia z oględzin zrzutów: napęd
+łącznika jako atrybut aparatu, deduplikację funkcji EAZ u źródła i poprawkę glifu Q1. Wszystko
+jest wykonane w tej karcie. Zmiana dotyczy całego SLD, dlatego fikstury odtworzyłem wyłącznie
+generatorami repozytorium (liczba i wyjaśnienie różnic niżej). Werdyktu wizualnego nie wystawiam
+(B-02 należy do właściciela) i nie deklaruję zgodności z ENEA.
+
+| # | Rozstrzygnięcie | Wykonanie (plik:linia, pomiar przed → po) | Test (iloczyn cech, iniekcja) |
+|---|---|---|---|
+| 1 | Każde skrzyżowanie bez węzła modelu dostaje mostek §22.1; kropka wyłącznie na węźle modelu | Rozcinanie kabla „węzłem T” skasowane razem z dawnym `resolveTeeJunctions` (`frontend/src/ui/sld/v3/scene/buildScene.ts`). Wyrocznie: `przecieciaBezMostka` (`scene/crossings.ts:170`), `junctionDotGaps` z węzłami modelu (`:563`, `wezlyModeluEnm` `:619`), kropka odczepu tylko w rozgałęzieniu (`ramionaToru` `:458`, `odczepyWezlowModelu` `:513`); eksport spłaszcza łuk mostka (`export/svgPrimitives.ts`). Inwentarz klasy „przecięcie, którego mostek nie widzi”: przecięcie w STYKU dwóch członów przęsła (koniec krawędzi, nie wnętrze — mostek liczony per krawędź) i w wierzchołku współliniowym. Naprawa: `scene/stykiCzlonow.ts` (`stykiCzlonowNaObcychPrzewodach` `:185`; `odsunStykiCzlonow` `:243` przesuwa styk o k·GRID wzdłuż przęsła, suma obu członów bez zmian; wpięte w `buildScene.ts:5615`), `dedupeVertices` (`buildScene.ts:3323`) usuwa wierzchołki współliniowe. Pomiar na bazie `e41837b4e`: 92 kropki bez węzła modelu w 58 fiksturach × L0/L1/L2 → 0; skrzyżowań z mostkiem 113, kropek z węzłem modelu 65; styk członów na obcym przewodzie: 0 w fiksturach, 1 na sieci syntetycznej (odgałęzienie stacji z odgałęzieniem) → 0; wierzchołki współliniowe toru: 57 fikstur na L0 i 6 scen syntetycznych → 0 | `scene/__tests__/wezlyMostkiRozlacznoscFikstur.test.ts` (58 fikstur × L0/L1/L2 × wyrocznie (a)–(j), iniekcje: kropka bez węzła, kropka z węzłem spoza modelu, kropka w narożniku, przecięcie bez mostka, styk członów cofnięty na skrzyżowanie, wierzchołek współliniowy); `stykiCzlonow.test.ts` (59 przypadków: oś {pion, poziom} × obcy przewód {sn, snTrunk, lv} × kierunki członów, obcy nie-przewód {szyna, linia odniesienia, linia wyłączania, linia pomiarowa} bez styku, miejsce na odsunięcie {zajęte, symbol, brak}, scena realna z iniekcją — wyrocznia 1, skrzyżowanie ukryte); `mostkiNaKanwie.test.tsx`; `crossings.test.ts`; `eksportDokumentu.test.ts`; iniekcje: wyłączona naprawa styku — 4 czerwone, dawny `dedupeVertices` — 57 czerwonych |
+| 2 | Zejścia pól na L0 rozsunięte, rozłączność na każdym LOD | Port zejścia KAŻDEGO pola na dolnej krawędzi bloku zwiniętego (`buildScene.ts:3161`, `:7168`, `compose/preview.tsx:462`); wyrocznia nałożeń różnych właścicieli `nalozeniaRoznychWlascicieli` (`crossings.ts:222`). Pomiar fikstury referencyjnej L0: suma pionów 21576 → 21288 (12 zejść × 24 px), L1/L2 bez zmian; wspólny pion czterech kabli (x = 128) → 0 | `wezlyMostkiRozlacznoscFikstur.test.ts` (e) zero nałożeń i (f) końce odcinków zakotwiczone — 58 fikstur × 3 LOD; `buildScene.odejsciaZagniezdzone.test.ts` |
+| 3 | Jedna postać `starting_port_ref`: port pola, gdy ciąg startuje z pola, inaczej zacisk; `….BRANCH` usunięte bez warstwy zgodności | `backend/src/enm/domain_operations.py::_rozwiaz_port_startu` (`:2991`): `ref_id` pola liniowego SN albo zacisk (szyna portu punktu odgałęźnego, szyna terminalna); wynik jest typem sumy (port ALBO kod odmowy), więc odmowa nie ma zapasu kodu. `LineRun.starting_port_ref` (`enm/models.py`) — typ `str` bez zmian, zmienia się tylko treść. Front: `ui/network-build/operationContextResolvers.ts:104`, `trunkOriginResolver.ts`, `cards/BranchPoleCard.tsx`, `cards/ZksnCard.tsx`, adaptery `v2/canvas/enmToSldAdapter.ts`, `enmToCanonicalGpzAdapter.ts`. Kontrakt operacji: `docs/ui/KONTRAKT_OPERACJI_ENM_OP.md` (`from_ref`). Kontrakty FROZEN (ShortCircuitResult, PowerFlowResult, ResultSet v1) nie niosą portu startu — nietknięte. Przy okazji skasowane 7 osieroconych schematów `backend/schemas/*_schema.json` (0 odwołań w repozytorium, jeden opisywał dawną postać portu) | `tests/enm/test_ksztalt_ladunku_operacji.py` (każda postać spoza jedynej — nazwana odmowa; zacisk portu — punkt pochodzenia i klucz zajętości), `test_ciaglosc_ciagu_sn.py`, `test_branch_point_sn.py`, `tests/enm/test_kod_odmowy_operacji_domenowej.py` (zero zapasu kodu); front `operationContext.test.ts`, `trunkOriginResolver.test.ts`, `menuBudowyNaKanwie.test.tsx` |
+| 4 | Wachlarz `gpzProtectionDataPath` przyjęty | Układ z jednym koniecznym skrzyżowaniem z mostkiem jest docelowy (`docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md` §12) | `buildScene.odejsciaZagniezdzone.test.ts` przypina dokładnie to jedno skrzyżowanie i jego mostek |
+| 5 | Podłoga S9-7 (8 px przy wejściu w LOD2) obejmuje litery symboli | „3” przekładnika Ferrantiego: 5,4 → 8 j.św. (manifest importu QET: skala lokalna znaku 10/9, jednokładność rysunku 2, rdzeń r = 19); litery rejestru CAD pismem `CAD_LITERA_MIN_U` = 4 u = 8 px (`cad/cadSymbolRegistry.ts`, „3~” przekształtnika w trójkącie z prześwitem od przekątnej); znaki glifów (`symbols/glyphs.tsx`, `PISMO_ZNAKU_OSTRZEZENIA`); kody w okręgu przekaźnika pismem 8 px (`symbols/okragPrzekaznika.ts`) | `cad/__tests__/literySymboli.test.tsx`: (A) inwentarz WSZYSTKICH liter z rejestrów (CAD w każdym stanie, QET w każdym położeniu noża, glify sceny) — każda ≥ 8 px; (B) tusz litery z tabeli kroju nie dotyka kreski własnego symbolu; okrąg przekaźnika: każdy kod słownika EAZ (34, czytane z backendu) sam i w każdej uporządkowanej parze |
+| 6 | P1/P2: wąski wyjątek strażnika z samotestem; T1 z P1 od szyny, P2, przekładnią i klasami rdzeni | `scripts/no_codenames_guard.py` (wyjątek: jeden plik, jeden wiersz deklaracji, literał równy oznaczeniu; zapadka świeżości wyjątku); lustro vitest `ui/__tests__/canon-codenames-global.test.ts` czyta TĘ SAMĄ definicję z pliku strażnika. Zaciski z portów modelu (`compose/zaciskiPrzekladnika.ts`: P1 = `we`, P2 = `wy`), tabliczka „200-400/5 A · 5P20” z rekordu rdzeni (`v2/model/tabliczkaPrzekladnika.ts`) | `scripts/test_no_codenames_guard.py` (deklaracja przechodzi; ten sam wiersz w innym pliku, „P1” w innym wierszu pliku, „P1 rozpływ” i „P3” w wierszu deklaracji — naruszenia); `canon-codenames-global.test.ts` (to samo w lustrze); `scene/__tests__/zaciskiPrzekladnikaGpz.test.ts`, `v2/model/__tests__/tabliczkaPrzekladnika.test.ts`; e2e zrzutów (`sprawdzPrzekladnikPradowy`) |
+| 7 | `measureTextWidth`: tabela posuwów kroju zamiast 0,62 em | `core/metrykiKroju.json` (Liberation Sans 400/700, zgodny metrycznie z Arial; Liberation Mono dla widoku nN), generowana `scripts/metryki_kroju_sld.py` z plików kroju; `core/text.ts:620` sumuje posuwy i zaokrągla w górę do jednostki świata; ten sam plik czyta importer symboli QET i zawijanie etykiet domeny nN — jedno źródło metryk. Ta sama klasa poza warstwą v3: test kolizji tekstu z symbolem rodziny presetów OZE (`v2/station-rozdzielnia/canon/sldCanonKit.tsx`, `gornaSzerokoscTekstu`) liczył każdy krój stałym 0,62 em; teraz górna granica wg rodziny kroju z atrybutu `font-family` — krój o stałej szerokości 0,62 em (posuw 0,600–0,602 em to własność kroju), krój proporcjonalny pełny kwadrat em; lokalna kopia reguły w `SldCanonPresetG1.test.tsx` zastąpiona wspólną funkcją | `core/__tests__/metrykiKroju.test.ts`, `backend/tests/ci/test_metryki_kroju_sld.py` (świeżość tabeli wobec generatora); e2e zrzutów (`zmierzBlokPrzekaznika`, `sprawdzPrzekladnikPradowy`): szerokość tuszu z metryk PRZEGLĄDARKI = suma posuwów z tabeli × pismo × skala kamery w granicy 1 px dla każdego wiersza bloku przekaźnika i tabliczki T1, zapas najszerszego wiersza do prawej krawędzi ramki w [margines, margines + 1 j.św.]; pokrycie iloczynu {Z.10, Z.11.1} × {cyfry, wielkie litery} × {ciemny, jasny} przypina `oczekujPokryciaKlasSzerokosci` (komórkę cyfr pola Z.10 niesie tabliczka T1 „200-400/5 A · 5P20”, bo po deduplikacji EAZ wiersz bloku Z.10 ma przewagę wielkich liter); `canvas/__tests__/obrysyWgPlanu.test.tsx` (obrysy z tuszu planu, niżej); `canon/SldCanonDoD.test.tsx` ({krój stały, krój proporcjonalny} × {„1”, „①”, „W”}; iniekcja stałego 0,62 em dla każdego kroju — 3 czerwone) |
+| 8 | Strona `PlannedLabel` do węzła tekstu; zaczep w krawędzi dla wszystkich etykiet `dane` i podpisów aparatów | `layout/labels.ts:341` (`wyrownanieEtykiety` — jedno źródło dla kanwy, podglądu kompozycji i prostokąta tuszu planu): strona lewa → zaczep w prawej krawędzi, strona prawa → w lewej | `canvas/__tests__/zaczepKrawedziEtykiet.test.tsx`, `layout/__tests__/krawedzZaczepu.test.ts`, `gpzAdnotacjeNaKanwie.test.tsx`; e2e — wspólna krawędź tuszu podpisów kolumny pola w granicy 1 px |
+| A | Napęd łącznika jako atrybut (Q1 zasobnikowy z obsługą ręczną, Q0 silnikowy) | `backend/src/network_model/catalog/obwody_wtorne_pola.py` (`RodzajNapedu`, `NAPEDY_RODZAJU_APARATU`, `NapedAparatuPola`, `OPIS_NAPEDU_PL`; dowód odczytu `:633` — druk s.89, s.90, s.91 w 400 dpi, Q5 bez znaku napędu), `BayPrimaryDevice.naped` (`enm/models.py`, walidator ze słownika rodzaju), symbol `qetThreePositionSwitchZNapedem` złożony z elementów QET EN 60617 07-13-07 + 02-15-01 + 02-13-20 + 02-13-01 (dwa nowe elementy w `docs/sld/vendor/qet/`), wybór rysunku z modelu `compose/apparatusSequence.ts:162` (`SYMBOL_LACZNIKA_Z_NAPEDEM`) | `compose/__tests__/symbolNapeduLacznika.test.ts` (KAŻDY rodzaj aparatu × napęd {brak, każdy} × wariant rysunku, parytet słownika z backendem); `tests/network_model/catalog/test_obwody_wtorne_pola.py`, `tests/enm/test_powiazania_obwodow_aparatow_pola.py`, `tests/ci/test_qet_pole_sn_import.py` (nóż i położenia łącznika z napędem = bez napędu); `kafelStanu.test.tsx`, `poleLinioweGpz.test.tsx` |
+| B | Deduplikacja funkcji EAZ u źródła, jedna nomenklatura | `network_model/catalog/funkcje_eaz.py`: dawny kod złożony „SPZ/SCO” włączony do SCO (wyłączenie od SCO1, SCO2 i ponowne załączenie po SCO; wymóg IRiESD „jeśli ENEA Operator tego wymaga” — SCO w klasie odbiorczej `NA_ZADANIE_OSD`), agregat „anti-islanding” skasowany (kryteria LoM 27/59/81U/81O/81R stoją w tym samym zestawie), klucze-nazwy „Buchholz”, „temp”, „ciśnienie” → numery IEEE 63, 26, 63P; zestawy szablonów i obwody wtórne (`bay_templates.py`, `obwody_wtorne_pola.py`), front `compose/protectionMarking.ts`, preset G5 | `tests/network_model/catalog/test_funkcje_eaz_bez_duplikatow.py` (KAŻDY szablon rejestru × klasa pola {brak, trzy klasy} × warunek 67N {bez, ze źródłem 3U₀} + role bez szablonu i Z.17; detektor przypięty iniekcjami dawnych kodów); `literySymboli.test.tsx` (słownik 34 kody bez powtórzeń) |
+| C | Glif Q1 w położeniu zamkniętym czytelny jako odłącznik | Nóż QET obracany do zasięgu styku stałego (`scripts/import_qet_pole_sn.py`, `noz_w_zasiegu`), odłącznik w jednokładności 10/3 (koniec noża NA kresce styku), render z tej samej reguły (`symbols/glyphs.tsx:1429`, `prymitywyNozaQet`) | `symbols/__tests__/nozQetNaStyku.test.tsx` (KAŻDY łącznik QET z nożem × KAŻDE położenie: koniec noża na rysunku styku w położeniu stykowym, nóż nie przechodzi przez styk, w otwartym nie dotyka; render = reguła importera) |
+
+**Obrysy etykiet według planu — klasa odsłonięta przez decyzję 7.** Pierwszy bieg spec zrzutów
+po wprowadzeniu tabeli posuwów był czerwony w kadrze pola Z.11.1: wiersz „81O · 81R · ZS · 50BF ·
+79” wychodził 8,1 px poza prawą krawędź ramki bloku przekaźnika i 2,3 px poza tło pola (skala
+kadru 1,48 px/j.św.). Przyczyna: scena liczy ramkę bloku (`compose/gpz.ts:1254`,
+`ramkaBlokuPrzekaznika`) i tło pola (`compose/gpzAdnotacje.ts:510`, `panelePolGpz`) ze slotów
+etykiet w piśmie naturalnym, a kanwa rysuje tekst z PLANU etykiet, który w kadrze pola podnosi
+pismo do podłogi opisów celu (13 px ekranu; pismo t4 8 → 8,81 j.św.) i poniżej progu
+czytelności do podłogi S9-7. Zapas 0,62 em maskował rozjazd. Inwentarz klasy (obrys liczony
+z etykiet, tekst rysowany z planu):
+- ramka bloku przekaźnika na kanwie — naprawiona: scena niesie listę członków
+  (`ComposedGpzProtectionSymbol.wierszeBloku`, `compose/gpz.ts:349`, `:2089`;
+  `PreviewElementMeta.wierszeBlokuPrzekaznika`, `compose/preview.tsx:428`; `scene/buildScene.ts:4073`),
+  kanwa liczy ramkę TĄ SAMĄ funkcją z prostokątów narysowanych wierszy
+  (`canvas/obrysyWgPlanu.ts`, `ramkiBlokowWgPlanu`; `canvas/SldCanvasV3.tsx:2903`, `:3671`);
+  żaden wiersz nienarysowany — brak ramki;
+- tło pola GPZ na kanwie — naprawione: lista członków `PanelPolaGpz.etykiety`
+  (`compose/gpzAdnotacje.ts:252`, `:527`), kanwa liczy tło TĄ SAMĄ funkcją `panelePolGpz` z obrysu
+  sceny, narysowanych etykiet pola i ramek bloków według planu (`paneleWgPlanu`;
+  `SldCanvasV3.tsx:2904`, `:3593`). Tło nie kurczy się poniżej obrysu sceny, więc etykieta ukryta
+  progiem czytelności nie przesuwa jego krawędzi przy każdym kroku zoomu. Ta sama naprawa
+  zamyka rozjazd w widoku całej sieci (sondą: 22–35 etykiet pól poza tłem przy skalach 0,35–0,5
+  przed naprawą, 0 po);
+- eksport SVG i PDF — klonuje DOM żywej kanwy (`SldCanvasV3Workspace.tsx:2088`), więc dziedziczy
+  naprawę; eksport DXF nie rysuje ramki bloku ani tła pola;
+- podgląd kompozycji (`compose/preview.tsx:650`, `PreviewLabelNode`) — zostaje z ramką sceny,
+  bo rysuje etykiety w slotach sceny pismem naturalnym (bez planu), czyli obrys sceny JEST tam
+  obrysem tuszu;
+- kadr celu (`canvas/zakresKadru.ts`, `tuszEtykiet`) — liczył już tusz etykiet z tego samego
+  planu (karta K2); obrys według planu dokłada co najwyżej dwa marginesy (8 j.św., 22,1 px przy
+  `KADR_MAX_SCALE` 2,76), mniej niż margines kadru `KADR_PADDING_PX` 40 px.
+W piśmie naturalnym oba obrysy są identyczne ze sceną. Test `canvas/__tests__/obrysyWgPlanu.test.tsx`
+(7 przypadków): trzy fikstury pól GPZ (Z.10 w sekcji 1 i 2, Z.11.1 z odgałęzieniem) × skala
+{2,5; 1,5; 1,0; 0,7; 0,5; 0,35} × kadr {brak, pole każdego tła} × obrys {ramka, tło}: ramka =
+okrąg ∪ narysowane wiersze ⊕ margines dokładnie (niezależna suma prostokątów) albo brak, gdy
+żaden wiersz nie jest narysowany; tło = obrys sceny ∪ członkowie ⊕ margines ∪ ramki planu
+⊕ margines; tła rozłączne parami; tożsamość ze sceną w piśmie naturalnym; predykaty parami —
+lista wierszy ramki = etykiety bloku (`#protection-codes-full`, `#zrodlo-u0`) pola i podzbiór
+członków tła; przypadki niepuste (wiersze powiększone, ramki bez wierszy, tła poszerzone);
+test DOM kanwy (fikstura Z.11.1 w kadrze pola, LOD2): tusz wierszy z węzłów tekstu wewnątrz
+ramki, ramka ciasna, ramka ⊕ margines wewnątrz tła. Iniekcje (każda przywrócona): kanwa z ramką
+sceny (`ramkaBloku={symbol.meta?.ramkaBlokuPrzekaznika}`) — czerwony test DOM („3U₀ (Z, Zz) ← T1,
+pole Pole pomiarowe” poza ramką); tło sceny zamiast tła według planu — czerwone („ramka bloku
+z marginesem w tle pola”). E2e: `zmierzBlokPrzekaznika` (tusz każdego wiersza wewnątrz ramki
+z czterech stron, zapas do prawej krawędzi w [margines, margines + 1 j.św.]).
+
+**Fikstury.** Generatorami repozytorium odtworzyłem 75 plików JSON i artefakt
+`ui/sld/v2/station-rozdzielnia/autolayout/network/sldNetwork53.ts`. Żadnej fikstury nie
+edytowałem ręcznie. Generatory (z katalogu `backend/`, każdy z kodem wyjścia 0):
+`python -m tests.reference_networks.fikstury_enm_sld --write`, `… sld_substrate_fixtures --write`,
+`… rodzaj_stacji_parytet --write`, `… szyny_stacji_parytet --write`,
+`… archiwum_tr_bez_pola --write`, `scripts/emit_sld_network_fixture.py`,
+`scripts/gen_field_configurations_catalog.py`, `scripts/eksport_fixtur_projekcji_nn.py`,
+`scripts/eksport_fixtur_harnessu.py`, `../frontend/scripts/demo-siec-pokazowa/generate-fixture.py`,
+`../frontend/scripts/generate-demo-oze-sc.py`, `tests/ci/test_parytet_oceny_pola_liniowego.py`
+i `tests/ci/test_parytet_zrodla_u0.py` (tryb regeneracji z docstringu); świeżość tabeli kroju
+i pliku symboli QET sprawdzona `scripts/metryki_kroju_sld.py --sprawdz`
+i `scripts/import_qet_pole_sn.py --sprawdz`. Różnice według klucza (pomiar porównaniem z `e41837b4e`):
+- `protection_codes` — jedna nomenklatura funkcji EAZ (pkt B): bez „SPZ/SCO” i „anti-islanding”,
+  numery 63/26/63P zamiast kluczy-nazw;
+- `naped`, `funkcje_eaz_wylaczajace` — napęd zasobnikowy Q1 (pkt A) i powiązanie SCO po włączeniu
+  dawnego „SPZ/SCO”;
+- `starting_port_ref`, `starting_bay_ref`, `branch_origin_station_ref`, `assigned_corridor_ref`,
+  `id`, `ref_id`, `trunk_id`, `corridor_ref` i skróty modelu (`hash_sha256`, `snapshot_hash`,
+  `input_hash`, `enm_hash`, `builder_snapshot_hash`) — jedna postać portu startu (pkt 3) zmienia
+  ładunek operacji, a identyfikatory pochodzą ze skrótu ładunku;
+- `demoOzeSc.sc.json` — wyłącznie `builder_snapshot_hash`; liczby wyniku zwarciowego bajtowo bez
+  zmian.
+Nowe artefakty generowane: `core/metrykiKroju.json` (pkt 7) i plik symboli QET
+`cad/qet/qetPoleSn.ts` (importer z manifestu, pkt A i C).
+
+**Piny zmienione z pomiarem.**
+- Odbiór `accept:sld-v3` (`frontend/scripts/sld_v3_acceptance.mjs`, fikstura referencyjna
+  `sldSubstrate52s`), sonda 2×2 {0,62 em, tabela posuwów} × {fikstura sprzed, fikstura po
+  regeneracji}, wartości każdego wariantu w komentarzach stałych: skrzyżowania z mostkiem
+  7/18/18 → 8/19/19 (wyłącznie fikstura); suma pionów 21288/44352/44352 → 19976/43040/43040
+  i „rezerwacja-kanalu” 21248/42048/42048 → 19648/40736/40736 (tabela posuwów −912…−960,
+  fikstura −352…−400); poziomy 53520/68528/73160 → 45312/58832/62784 (czubek przed kartą
+  52816/67872/72512; kod karty przy 0,62 em +832/+1288/+1320 wyłącznie z zaokrąglenia
+  szerokości kolumn do rastru — ten sam kod bez `snapUp` daje poziomy czubka; tabela posuwów
+  −8304…−11160; fikstura −32); podłoga wypełnienia arkusza podniesiona 0.01374/0.02223/0.02275
+  → 0.01615/0.02476/0.02555 (zmierzone 0.016201/0.024810/0.025599); załamania 43/171/171 bez
+  zmian. Ten sam pomiar pionów w `buildScene.schemat10s7p6.test.ts`.
+- Odciski S9-9 sceny, declutteru i planu etykiet (`scene/__tests__/kosztSceny.test.ts`, krok
+  budżetów): 54 z 54 przeliczone. Czubek `e41837b4e` był czerwony w 4 z 54 (sceny L1/L2 obu
+  sieci — tło pola liniowego GPZ 24 → 144 j.św. po objęciu podpisu pola, §11.3; `dbe7c130b`
+  54 z 54 zgodne), bo test biegnie wyłącznie w kroku budżetów. Sonda 2×2 jak wyżej: każdy
+  czynnik osobno zmienia wszystkie 54 wpisy; liczba etykiet sceny 55/520/914 i 108/1030/1816
+  identyczna we wszystkich wariantach. Listy członków obrysów według planu
+  (`PanelPolaGpz.etykiety`, `wierszeBlokuPrzekaznika`) zmieniają 4 odciski scen (L1 i L2 obu
+  sieci; L0 nie ma adnotacji GPZ); sonda: scena bez obu pól daje dokładnie poprzednie odciski,
+  declutter i plany bez zmian.
+- Fikstury × LOD, skrzyżowania z mostkiem 107 → 113: pomiar 2×2 (kod karty na fiksturach sprzed
+  regeneracji 107, na nowych 113); cała różnica to sieć `sldSubstrate52s` (2 kopie × 3 LOD × +1):
+  nowe identyfikatory zmieniają kolejność komponowania odgałęzień — jedno skrzyżowanie odgałęzienie
+  × odgałęzienie więcej (fikstura referencyjna L2 18 → 19, `crossings.test.ts`), każde z mostkiem.
+- Suma pionów fikstury referencyjnej (`buildScene.test.ts`) 23168/46400/46400 → 21608/45128/45128:
+  pomiar 2×2 — L1/L2 −832 wyłącznie z tabeli posuwów (wariant 0,62 em daje wartości bazy), L0
+  −1120 = tabela posuwów i rozsunięcie zejść KD-5 (12 × 24 px).
+- Odciski sceny TR bez pola (`buildScene.tr2wBezPola.test.ts`): tabela posuwów (szerokości
+  etykiet, szyna WN), wyrównanie szerokości kolumn do rastra, zaczep w krawędzi.
+- Odcisk widoku N-1 sieci gn01 (`tests/application/analyses/test_kontyngencje_n1_service.py`):
+  porównanie liść po liściu z `e41837b4e` — różnią się wyłącznie `context.snapshot_hash`
+  i `input_hash`; jedyna różnica modelu: kody 63/26/63P pola transformatora.
+- Licznik pól kontraktów wejściowych strażnika podstawień
+  (`scripts/test_solver_input_substitute_guard.py`) 4469 → 4468: pomiar `contract_fields()`
+  na `e41837b4e` (4469, pin zgodny) i na drzewie karty — zbiór +1 (`napedy`), −2
+  (`naped_wylacznika`, `naped_weryfikacja`), bo `ObwodyWtornePola` niesie napęd każdego
+  łącznika pola z rysunku (pkt A), a nie tylko wyłącznika; zero nowych podstawień.
+- Licznik pól Literal strażnika parytetu ENM (`tests/ci/test_enm_contract_parity_guard.py`)
+  131 → 132: pole `BayPrimaryDevice.naped` dodane w `e41837b4e` bez podniesienia pinu (test był
+  czerwony na `e41837b4e`, pomiar 132); ta karta rozszerza tylko zbiór wartości tego pola.
+- Iniekcja testu obrysu arkusza (`sheet/__tests__/obrysArkusza.contract.test.tsx`): przy kadrze
+  dopasowanym tabela posuwów zostawia aparatom miejsce (0 z 96 przypadków bez ustąpienia), więc
+  iloczyn dostał cechę kamery „krawędź w slocie” — przesunięcie kadru użytkownika, przy którym
+  iniekcja gryzie 96 z 96.
+
+### 11.12. Przekazanie (stan na przerwaniu, 2026-10-30)
+
+**Zrobione (z dowodem).** Wszystkie rozstrzygnięcia §11.7 pkt 1–8, zlecenia A (napęd łącznika
+jako atrybut), B (funkcje EAZ bez duplikatów u źródła), C (glif Q1) oraz klasa D (obrysy etykiet
+według planu, `frontend/src/ui/sld/v3/canvas/obrysyWgPlanu.ts`, wpięcie w
+`canvas/SldCanvasV3.tsx`, test `canvas/__tests__/obrysyWgPlanu.test.tsx`) — opis i inwentarz
+w §11.11. Fikstury odtworzone generatorami (75 plików JSON i `sldNetwork53.ts`), zrzuty
+`docs/uiux/zrzuty/ux04-pole-liniowe/*.png` odświeżone w obu motywach. Kody wyjścia: vitest
+szeroki rc=0 (486+1 plików, 10 677 testów), krok budżetów rc=0 (7 plików, 184 testy),
+`accept:sld-v3` rc=0 (434 PASS), spec zrzutów ux04 — Z.10 rc=0 w biegu 1, Z.11.1 rc=0 w biegu 2
+(bieg 1 Z.11.1 padł na zabiciu przeglądarki przez wspólny memcg OOM, środowiskowo). Trzy czerwone
+z biegu `guardy_z_ci` nr 3 naprawione u źródła i sprawdzone celowo (wszystkie rc=0):
+`tsconfig_gate_guard` (typy w `cad/__tests__/literySymboli.test.tsx` — `ink`/`paper`,
+`scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` — `rdzenie: undefined`), `mypy_ratchet_guard`
+166/20 (zawężenie listy portów w `backend/src/enm/domain_operations.py::_rozwiaz_port_startu`
+i `::_port_startu_dla_szyny`; 183 testy enm portu startu zielone), pin pól kontraktów
+wejściowych 4469 → 4468 w `scripts/test_solver_input_substitute_guard.py` (70 testów zielonych).
+
+**W trakcie.** Bieg potwierdzający `guardy_z_ci.py --rownoleglosc 2` nr 4 przerwany poleceniem
+sesji głównej: 115 z 115 zadań zielonych (107 strażników CI, lint black/ruff, `npm run
+type-check`, `npm run lint`); przerwany na ostatnim etapie „testy własne strażników”
+(`python -m pytest ../scripts`), wynik tego etapu nieznany.
+
+**Zostało z polecenia.** (1) Dokończyć etap `pytest ../scripts` biegu strażników. (2) Commit
+końcowy bez prefiksu WIP po potwierdzeniu. (3) Meldunek z kodami wyjścia i plikami z liniami.
+Pełna bramka i pełna regresja należą do sesji głównej.
+
+**Znane czerwone.** Brak znanych czerwonych testów i strażników na tym drzewie; niepotwierdzony
+pozostaje wyłącznie etap `pytest ../scripts` (jego czerwony z biegu nr 3 — pin 4468 — zielony
+w biegu celowanym).
+
+**Pierwszy krok następcy.** Z `mv-design-pro/backend`, pod
+`flock /tmp/claude-0/bieg_priorytet.lock`: `PYTHONPATH=src:. <python> -m pytest -q -p
+no:cacheprovider ../scripts` (wyjście do pliku, kod wyjścia łapany bezpośrednio).

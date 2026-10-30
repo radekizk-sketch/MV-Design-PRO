@@ -118,7 +118,6 @@ const ALLOW_PROGRAMMATIC_PATTERNS = [
   /\bstate\.(?:branch|run|snapshot|case|proof|wizard)\b/i,
   /\bNormativeLabels\.terms\.\w+/i,
   /^[a-z0-9_-]+$/i,  // pojedyncze identyfikatory
-  /\$\{[^}]+\}\.BRANCH$/,  // template ID typu `${ref}.BRANCH`
   /^edge_\$\{/,  // `edge_${branch.id}` — programmatic edge ID
 ];
 

@@ -1,8 +1,9 @@
 """Powiązania obwodów wtórnych wzorca pola na rekordach aparatów (poprawki P0 2026-10-29 karty
-UX-04/POLE-LINIOWE-WZORZEC): napęd wyłącznika wykonawczego (`BayPrimaryDevice.naped`), funkcje
+UX-04/POLE-LINIOWE-WZORZEC): napęd łącznika (`BayPrimaryDevice.naped` — wyłącznik Q0 silnikowy,
+łącznik trójpołożeniowy Q1 zasobnikowy z obsługą ręczną, decyzja architekta 2026-10-30), funkcje
 EAZ mierzące z przekładnika (`funkcje_eaz_zasilane`) i działające na wyłącznik
 (`funkcje_eaz_wylaczajace`). Schemat pola rysuje z nich połączenia przekaźnika z rdzeniem CT,
-przekładnikiem Ferrantiego, uzwojeniem VT i wyłącznikiem oraz znak napędu „M" przy wyłączniku.
+przekładnikiem Ferrantiego, uzwojeniem VT i wyłącznikiem oraz znaki napędu przy łącznikach.
 
 Iloczyn cech: szablon (9: Z.10 / Z.11.1 / Z.11 × wykonanie łączników) × droga zapisu {budowa GPZ,
 `set_bay_equipment` szablon, katalog z oznaczeniami wzorca, katalog z innym oznaczeniem
@@ -131,6 +132,10 @@ def _oczekiwane(
         str(a.get("designation")): {} for a in aparaty if a.get("designation")
     }
     rodzaj = {str(a.get("designation")): a["kind"] for a in aparaty if a.get("designation")}
+    # Napęd: atrybut łącznika po oznaczeniu i rodzaju, niezależnie od funkcji pola.
+    for n in obwody.napedy:
+        if rodzaj.get(n.aparat) == n.rodzaj_aparatu:
+            wynik[n.aparat]["naped"] = n.naped
     for p in obwody.powiazania:
         if p.funkcja not in funkcje_pola:
             continue
@@ -139,7 +144,6 @@ def _oczekiwane(
             pola.setdefault("funkcje_eaz_wylaczajace", [])
             if p.funkcja not in pola["funkcje_eaz_wylaczajace"]:
                 pola["funkcje_eaz_wylaczajace"].append(p.funkcja)
-            pola["naped"] = obwody.naped_wylacznika
         for w in p.wejscia:
             if w.aparat is not None and rodzaj.get(w.aparat) == RODZAJ_APARATU_WEJSCIA[w.rodzaj]:
                 pola = wynik[w.aparat]
@@ -201,7 +205,7 @@ def test_powiazania_aparatow_wg_wzorca_i_predykat_parami_z_odczytem(szablon_id: 
 #: bloku „Zab. ziemnozwarciowe t1, t2" z przekładnika Ferrantiego T2 (czerwona linia z zacisku 2
 #: rysunku; uwaga sesji głównej 2026-10-29 pkt 4, §11.9) — w polu BEZ warunku źródła 3U₀.
 TABELA_Z11_1_WYLACZAJACE_Q0 = [
-    "51", "50", "51N", "67N", "50BF", "79", "SCO", "SPZ/SCO",
+    "51", "50", "51N", "67N", "50BF", "79", "SCO",
     "27", "59", "81U", "81O", "81R", "NZ", "SPZE", "OWG",
 ]  # fmt: skip
 TABELA_Z11_1_ZASILANE = {
@@ -259,7 +263,10 @@ def test_tabela_rysunku_z11_1(zrodlo_u0: bool):
         oczekiwane = [k for k in kody if k in kody_pola]
         assert p[oznaczenie] == ({"funkcje_eaz_zasilane": oczekiwane} if oczekiwane else {})
     assert p["T2"] == {"funkcje_eaz_zasilane": ["51N", "67N"] if zrodlo_u0 else ["51N"]}
-    for oznaczenie in ("PF0", "Q1", "Q5", "GK1", "PF1", "GK"):
+    # Łącznik trójpołożeniowy Q1: znak napędu (kwadrat na sprzężeniu, obsługa ręczna) na s.91;
+    # odłącznik z uziemieniem Q5 odgałęzienia przekładnika napięciowego — bez znaku napędu.
+    assert p_wzorca["Q1"] == p["Q1"] == {"naped": "ZASOBNIKOWY_RECZNY"}
+    for oznaczenie in ("PF0", "Q5", "GK1", "PF1", "GK"):
         assert p[oznaczenie] == {}
 
 
@@ -276,6 +283,11 @@ def test_zmiana_zestawu_funkcji_pola_przelicza_powiazania():
     assert po["Q0"] == {"naped": "SILNIKOWY", "funkcje_eaz_wylaczajace": ["51", "50"]}
     assert po["T1"] == {"funkcje_eaz_zasilane": ["51", "50"]}
     assert po["T2"] == {} and po["T3"] == {}
+    # Napęd jest atrybutem łącznika, nie powiązaniem funkcji — zestaw funkcji go nie zdejmuje.
+    assert po["Q1"] == {"naped": "ZASOBNIKOWY_RECZNY"}
+    zmien_pole(enm, rekord["ref_id"], protection_codes=[])
+    po = _powiazania(_po_ref(enm, rekord["ref_id"]))
+    assert po["Q0"] == {"naped": "SILNIKOWY"} and po["Q1"] == {"naped": "ZASOBNIKOWY_RECZNY"}
 
 
 def test_budowa_gpz_niesie_powiazania_szablonu_domyslnego():

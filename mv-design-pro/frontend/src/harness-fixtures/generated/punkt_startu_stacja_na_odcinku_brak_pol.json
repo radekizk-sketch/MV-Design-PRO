@@ -156,7 +156,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -201,8 +201,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -380,8 +379,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
@@ -449,7 +447,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -494,8 +492,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -673,8 +670,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
@@ -828,9 +824,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/298177b52cf4013c836740b86946c50f/sn_field/002",
@@ -1486,7 +1482,7 @@
           }
         ],
         "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-        "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
+        "starting_port_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
         "stations": []
       }
     ],

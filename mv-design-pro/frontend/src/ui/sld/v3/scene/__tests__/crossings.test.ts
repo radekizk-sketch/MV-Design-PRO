@@ -19,6 +19,7 @@ import {
   entryCollinearityGaps,
   interiorCrossings,
   polylinePathWithBridges,
+  przecieciaBezMostka,
   verticalPathWithBridges,
 } from '../crossings';
 import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
@@ -55,18 +56,27 @@ describe('F13.2 A — interiorCrossings (detekcja)', () => {
     expect(interiorCrossings([H, Vtrip, Vmeas])).toHaveLength(0);
   });
 
-  // SCHEMAT-10 S7-P2 (V12K-137) — patrz komentarz w ciele testu.
-  it('fixtura referencyjna L2 (węzeł T, V12K-137): TWARDE ZERO przecięć toru mocy — Rodziny A/B rozcięte węzłem T (styk końcem), ŻADNE z szyną', () => {
-    // Golden przepisany do kanonu S7-P2 (intencja zachowana: pomiar przecięć na
-    // fixturze referencyjnej + „żadne z szyną"). Baza P-1 audytu D3 wynosiła 24
-    // (11 Rodzina A magistrala×zejście + 13 Rodzina B lateral×zejście); S7-P2
-    // rozcina kabel POZIOMY w punkcie styku pionu zejścia (`resolveTeeJunctions`,
-    // `buildScene.ts`), zamieniając każde przecięcie wnętrza na T-węzeł z kropką
-    // (spec §22.1 „skrzyżowanie ≠ połączenie"). `interiorCrossings` sn×sn → 0.
+  // Rozstrzygnięcie architekta S7-P2 (2026-10-30, `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md` §12).
+  it('fixtura referencyjna L2: każde przecięcie toru mocy ma rysowalny mostek §22.1, ŻADNE nie dotyczy szyny', () => {
+    // Golden przepisany do kanonu rozstrzygnięcia S7-P2 z 2026-10-30 (intencja zachowana:
+    // na rysunku żadne skrzyżowanie nie czyta się jak połączenie, żadne nie dotyczy szyny).
+    // Historia: baza P-1 audytu D3 — 24 przecięcia; V12K-137 rozcinało kabel poziomy w
+    // punkcie styku pionu i stawiało kropkę „węzła T" (24 → 21 → 18 węzłów); kropka bez
+    // węzła w modelu rysowała połączenie, którego w sieci nie ma — skasowana. Te same 18
+    // miejsc są dziś skrzyżowaniami z mostkiem (pomiar `buildSceneV3(enm, 2)`).
+    // 18 → 19 (regeneracja fikstury 2026-10-30, rozstrzygnięcie architekta: jedna postać
+    // `starting_port_ref`): ładunek operacji `start_branch_segment_sn` niesie port pola zamiast
+    // `….BRANCH`, więc identyfikatory korytarzy odgałęzień są nowe, a remis `id.localeCompare`
+    // układa wiersze odgałęzień w innej kolejności. DOWÓD (sonda 2×2, kod karty): fikstura
+    // zastana — 18, fikstura nowa — 19, fikstura nowa z przywróconymi zastanymi
+    // `starting_port_ref` i kodami EAZ (same nowe identyfikatory) — 19. Różnica wyłącznie
+    // w skrzyżowaniach odgałęzienie × odgałęzienie (7 → 8); 11 skrzyżowań ciągu z zejściami
+    // odgałęzień bez zmian; każde z mostkiem (asercje niżej).
     const scene = buildSceneV3(enm, 2);
     const crossings = interiorCrossings(scene.segments);
-    expect(crossings.filter((c) => !c.involvesBus)).toHaveLength(0);
-    expect(crossings).toHaveLength(0);
+    expect(crossings.filter((c) => c.involvesBus)).toHaveLength(0);
+    expect(crossings).toHaveLength(19);
+    expect(przecieciaBezMostka(scene.segments)).toEqual([]);
     expect(crossingBusGaps(scene.segments)).toHaveLength(0);
   });
 
@@ -137,58 +147,29 @@ describe('F13.2 B2 — polylinePathWithBridges (API renderu)', () => {
 });
 
 describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny węzeł rozgałęzienia tras)', () => {
-  // SCHEMAT-10 S7-P2 (V12K-137) — patrz komentarz w ciele testu.
-  it('fixtura L2 (węzeł T, V12K-137 + odczepy lateralne V12K-150): każdy węzeł T tras I każdy odczep pola ma kropkę węzłową, kropki wyłącznie na węzłach — 0 luk', async () => {
+  // Rozstrzygnięcie architekta S7-P2 (2026-10-30): kropka wyłącznie na węźle modelu.
+  it('fixtura L2: kropki wyłącznie na węzłach modelu (odczepy pól), zero T-styków kabli bez węzła — 0 luk', async () => {
     const { SYMBOL_DEFS } = await import('../../symbols/defs');
-    const { externalBranchNodes, lateralBranchNodes, junctionDotGaps } = await import('../crossings');
+    const { externalBranchNodes, lateralBranchNodes, junctionDotGaps, wezlyModeluEnm } = await import('../crossings');
     const scene = buildSceneV3(enm, 2);
-    // Golden przepisany do kanonu S7-P2 (intencja zachowana: obustronna
-    // spójność kropka⇔węzeł). Do V12K-039 zejścia PRZECINAŁY przęsła (0 węzłów
-    // T, 0 kropek); S7-P2 rozcina kabel poziomy w punkcie styku ⇒ każde dawne
-    // przecięcie staje się realnym węzłem T tras zewnętrznych
-    // (`externalBranchNodes`) i dostaje kropkę `junction`.
-    //
-    // S9-1 (ŁAMANIE ARKUSZA): liczba OBNIŻONA 24 → 21. Przyczyna zmierzona:
-    // odgałęzienia leżą teraz w PAŚMIE swojego wiersza arkusza (przeplot,
-    // decyzja §4), więc pion zejścia przecina mniej przęseł magistrali niż
-    // wtedy, gdy schodził pod CAŁY rysunek. Spadek liczby węzłów T = spadek
-    // liczby przecięć = poprawa czytelności; niezmiennik obustronnej spójności
-    // (`junctionDotGaps` = 0, asercja niżej) BEZ zmian.
-    //
-    // LV DOMAIN PROJECTION (po B-02, 2026-09-01): liczba BEZ ZMIAN = 21.
-    // Portal domeny nN stoi NA OSI portu LV transformatora (`planLvTerminal`),
-    // więc kolumny stacji NIE rosną, łamanie arkusza (S9-1) jest identyczne
-    // jak przed portalem i piony zejść odgałęzień przecinają tyle samo
-    // przęseł magistrali (pomiar: wariant „portal ZA blokiem" dawał 24 węzły
-    // przez INNE złamanie arkusza — i łamał arkusz L0 golden sieci 53 stacji).
-    // Niezmiennik obustronnej spójności (`junctionDotGaps` = 0, niżej) BEZ
-    // zmian — każdy z 21 węzłów ma kropkę i żadna kropka nie stoi bez węzła.
-    // GPZ-MODEL (2026-10-21): 21 → 18 — REGENERACJA fikstury, nie zmiana kodu. Substrat
-    // dostaje GPZ z równoważnikiem 110 kV (tryb A); ziarno GPZ obejmuje ładunek operacji,
-    // więc identyfikatory wszystkich odcinków i stacji są nowe, a remis `id.localeCompare`
-    // pakuje pasma odgałęzień w innej kolejności (precedens SLD-SUBSTRAT). DOWÓD 2×2 (sonda
-    // karty): STARA treść fikstury z SAMYMI nowymi identyfikatorami daje 18 węzłów T, nowy
-    // kod na starej fiksturze — 21; luki kropka⇔węzeł = 0 we wszystkich czterech.
-    const teeNodes = externalBranchNodes(scene.segments);
-    expect(teeNodes).toHaveLength(18);
-    // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) też są węzłami
-    // z DANYCH odgałęzienia (`#lateral-…`, `points[0]` = oś toru) i dostają
-    // kropkę w scenie produkcyjnej — dług W1b zamknięty.
-    const lateralNodes = lateralBranchNodes(scene.segments);
-    expect(lateralNodes.length).toBeGreaterThan(0);
-    const teeKeys = new Set(teeNodes.map((n) => `${n.x},${n.y}`));
+    // Golden przepisany do kanonu S7-P2 z 2026-10-30 (intencja zachowana: obustronna
+    // spójność kropka⇔węzeł). Dawne 18 „węzłów T" tras (V12K-137) stało na przecięciach
+    // kabli bez węzła w modelu — dziś to skrzyżowania z mostkiem (test wyżej), a T-styk
+    // dwóch kabli bez węzła modelu jest luką wyroczni (`rozgalezienie-bez-kropki`).
+    expect(externalBranchNodes(scene.segments)).toHaveLength(0);
+    // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) są węzłami z DANYCH pola
+    // (`#lateral-…`, `points[0]` = oś toru) — kropka wskazuje rekord pola (`wezelModelu`).
+    const lateralNodes = lateralBranchNodes(scene, SYMBOL_DEFS);
+    expect(lateralNodes).toHaveLength(172);
     const dots = scene.symbols.filter((s) => s.symbolId === 'junction');
-    const jdef = SYMBOL_DEFS.junction;
-    // Kropki dzielą się DOKŁADNIE na (a) węzły T tras i (b) odczepy lateralne —
-    // suma pokrywa wszystkie kropki (kropka wyłącznie na realnym węźle).
-    const dotsAtTee = dots.filter((s) => teeKeys.has(`${s.x + jdef.width / 2},${s.y + jdef.height / 2}`));
-    expect(dotsAtTee).toHaveLength(18);
-    expect(dots).toHaveLength(18 + lateralNodes.length);
-    // Obustronnie: każdy węzeł ma kropkę i żadna kropka nie wisi bez węzła.
-    expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
+    expect(dots).toHaveLength(lateralNodes.length);
+    const wezly = wezlyModeluEnm(enm);
+    for (const kropka of dots) expect(wezly.has(String(kropka.meta?.wezelModelu))).toBe(true);
+    // Obustronnie, z węzłami TEGO modelu: każdy węzeł ma kropkę, żadna kropka bez węzła.
+    expect(junctionDotGaps(scene, SYMBOL_DEFS, wezly)).toEqual([]);
   });
 
-  it('test negatywny (a): realny węzeł T bez kropki ⇒ luka rozgalezienie-bez-kropki (na syntetycznej geometrii)', async () => {
+  it('test negatywny (a): T-styk bez kropki ⇒ rozgalezienie-bez-kropki; kropka bez węzła modelu go NIE domyka', async () => {
     const { SYMBOL_DEFS } = await import('../../symbols/defs');
     const { externalBranchNodes, junctionDotGaps } = await import('../crossings');
     const segments = [
@@ -198,16 +179,22 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
     expect(externalBranchNodes(segments)).toEqual([{ x: 96, y: 100 }]);
     const gaps = junctionDotGaps({ segments, symbols: [] }, SYMBOL_DEFS);
     expect(gaps).toEqual([{ x: 96, y: 100, reason: 'rozgalezienie-bez-kropki' }]);
-    // Kropka wycentrowana na węźle domyka lukę:
     const def = SYMBOL_DEFS.junction;
-    const withDot = junctionDotGaps(
-      { segments, symbols: [{ symbolId: 'junction', x: 96 - def.width / 2, y: 100 - def.height / 2 }] },
-      SYMBOL_DEFS,
-    );
-    expect(withDot).toEqual([]);
+    const kropka = { symbolId: 'junction', x: 96 - def.width / 2, y: 100 - def.height / 2 };
+    // Kropka BEZ węzła modelu (dawna kropka „węzła T") — fikcja: dwie luki.
+    expect(junctionDotGaps({ segments, symbols: [kropka] }, SYMBOL_DEFS)).toEqual([
+      { x: 96, y: 100, reason: 'rozgalezienie-bez-kropki' },
+      { x: 96, y: 100, reason: 'kropka-bez-wezla-modelu', testId: undefined },
+    ]);
+    // Kropka wskazująca węzeł modelu domyka lukę — o ile węzeł istnieje w modelu.
+    const zWezlem = { ...kropka, meta: { wezelModelu: 'bus/wezel-odgalezny' } };
+    expect(junctionDotGaps({ segments, symbols: [zWezlem] }, SYMBOL_DEFS)).toEqual([]);
+    expect(
+      junctionDotGaps({ segments, symbols: [zWezlem] }, SYMBOL_DEFS, new Set(['bus/inny'])).map((g) => g.reason),
+    ).toEqual(['rozgalezienie-bez-kropki', 'kropka-bez-wezla-modelu']);
   });
 
-  it('test negatywny (b): kropka fabrykowana poza węzłem ⇒ luka kropka-bez-rozgalezienia', async () => {
+  it('test negatywny (b): kropka fabrykowana poza węzłem ⇒ kropka-bez-wezla-modelu; z węzłem, ale obok toru ⇒ kropka-poza-torem', async () => {
     const { SYMBOL_DEFS } = await import('../../symbols/defs');
     const { junctionDotGaps } = await import('../crossings');
     const scene = buildSceneV3(enm, 2);
@@ -215,8 +202,48 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
       segments: scene.segments,
       symbols: [...scene.symbols, { symbolId: 'junction', x: 99991, y: 99991 }],
     };
-    const gaps = junctionDotGaps(withFake, SYMBOL_DEFS);
-    expect(gaps.some((g) => g.reason === 'kropka-bez-rozgalezienia')).toBe(true);
+    expect(junctionDotGaps(withFake, SYMBOL_DEFS).map((g) => g.reason)).toEqual(['kropka-bez-wezla-modelu']);
+    const zWezlemObok = {
+      segments: scene.segments,
+      symbols: [...scene.symbols, { symbolId: 'junction', x: 99991, y: 99991, meta: { wezelModelu: enm.buses[0]!.ref_id } }],
+    };
+    expect(junctionDotGaps(zWezlemObok, SYMBOL_DEFS).map((g) => g.reason)).toEqual(['kropka-poza-torem']);
+  });
+
+  // Kropka odczepu tylko w rozgałęzieniu (rozstrzygnięcie S7-P2, §12 dokumentu S7): iloczyn
+  // cech {port aparatu w odczepie: S górnego / N dolnego} × {sąsiad stosu o raster
+  // APPARATUS_STACK_VERTICAL_GAP: brak / jest / jest z przewodem w przerwie / przesunięty
+  // w X / port o złym kierunku} × {odcinek nie-mocowy i kropka w punkcie: brak / są}.
+  // Jeden predykat (`odczepyWezlowModelu`) wybiera kropki sceny i wymagania wyroczni.
+  it('ramionaToru: stos bez przewodów liczy ciągłość przez przerwę aparat–aparat; narożnik ma dwa ramiona', async () => {
+    const { ramionaToru, odczepyWezlowModelu } = await import('../crossings');
+    const { APPARATUS_STACK_VERTICAL_GAP: G } = await import('../../layout/apparatusStack');
+    const rozmiary = {
+      aparat: { width: 16, height: 24, ports: [{ x: 8, y: 0, dir: 'N' }, { x: 8, y: 24, dir: 'S' }] },
+      tylkoS: { width: 16, height: 24, ports: [{ x: 8, y: 0, dir: 'S' }] },
+      junction: { width: 8, height: 8, ports: [{ x: 4, y: 4 }] },
+    };
+    const gorny = { symbolId: 'aparat', x: 0, y: 0 };
+    const p = { x: 8, y: 24 };
+    const odczep = seg([p, { x: 40, y: 24 }], 'sn', 'pole/x#lateral-0');
+    const dolny = (dx = 0) => ({ symbolId: 'aparat', x: dx, y: 24 + G });
+    const przypadki: [string, PreviewSegment[], { symbolId: string; x: number; y: number }[], number][] = [
+      ['narożnik: port S + odczep', [odczep], [gorny], 2],
+      ['stos: port S + odczep + port N sąsiada o raster', [odczep], [gorny, dolny()], 3],
+      ['stos z przewodem w przerwie (bez podwójnego liczenia)', [odczep, seg([p, { x: 8, y: 24 + G }], 'sn', 'pole/x#wire-0')], [gorny, dolny()], 3],
+      ['sąsiad przesunięty w X', [odczep], [gorny, dolny(8)], 2],
+      ['port o złym kierunku w odległości rastra', [odczep], [gorny, { symbolId: 'tylkoS', x: 0, y: 24 + G }], 2],
+      ['odcinek nie-mocowy i kropka w punkcie nie są ramionami', [odczep, seg([{ x: 0, y: 24 }, { x: 80, y: 24 }], 'protectionTrip', 'pole/x#trip-line')], [gorny, { symbolId: 'junction', x: 4, y: 20 }], 2],
+    ];
+    for (const [nazwa, segments, symbols, oczekiwane] of przypadki) {
+      expect([nazwa, ramionaToru({ segments, symbols }, rozmiary, p)]).toEqual([nazwa, oczekiwane]);
+      expect([nazwa, odczepyWezlowModelu({ segments, symbols }, rozmiary).length]).toEqual([nazwa, oczekiwane >= 3 ? 1 : 0]);
+    }
+    // Odczep z portu N dolnego aparatu: sąsiad stosu powyżej (port S o raster wyżej).
+    const q = { x: 8, y: 24 + G };
+    const odczepDolny = seg([q, { x: 40, y: q.y }], 'sn', 'pole/x#lateral-1');
+    expect(ramionaToru({ segments: [odczepDolny], symbols: [gorny, dolny()] }, rozmiary, q)).toBe(3);
+    expect(ramionaToru({ segments: [odczepDolny], symbols: [dolny()] }, rozmiary, q)).toBe(2);
   });
 });
 

@@ -42,7 +42,8 @@ import {
   type SceneLod,
   sheetRowStationIds,
 } from '../buildScene';
-import { interiorCrossings } from '../crossings';
+import { crossingBusGaps } from '../crossings';
+import { przecieciaMiedzyOdgalezieniamiStacji, przecieciaToruStacji } from './przecieciaStacji';
 import { requiredStationWidth, type StationMeasureInput } from '../../layout/measure';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../../layout/clearances';
 import { GRID } from '../../core/grid';
@@ -212,10 +213,14 @@ describe('RECENZJA EKSPERCKA — fixtury wielkoskalowe rodzina H (~100/250/500 s
       });
 
       for (const lod of LODS) {
-        it(`L${lod}: buduje bez wyjątku, ZERO-DEFEKT (crossing/kolizje/przecięcia/nieortog/niejedn=0)`, () => {
+        it(`L${lod}: buduje bez wyjątku, ZERO-DEFEKT (przecięcie bez mostka/kropka bez węzła/kolizje/przecięcia/nieortog/niejedn=0)`, () => {
           const scene = scenes[lod];
           const m = layoutMetricsReport(scene);
-          expect(m.crossingCount).toBe(0);
+          // Rozstrzygnięcie S7-P2 (2026-10-30): przecięcie dwóch kabli bez węzła modelu jest
+          // skrzyżowaniem z mostkiem §22.1 — warunkiem jest mostek na każdym przecięciu
+          // i zero kropek bez węzła modelu, nie zerowa liczba przecięć.
+          expect(m.crossingWithoutBridgeCount).toBe(0);
+          expect(m.junctionDotGapCount).toBe(0);
           expect(m.labelCollisionCount).toBe(0);
           expect(m.subtreeIntersectionCount).toBe(0);
           expect(m.nonOrthogonalSegmentCount).toBe(0);
@@ -293,7 +298,8 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
   it('zero-defekt zachowany po dodaniu stacji (każdy LOD)', () => {
     for (const lod of LODS) {
       const m = layoutMetricsReport(buildSceneV3(plusOne, lod as SceneLod));
-      expect(m.crossingCount).toBe(0);
+      expect(m.crossingWithoutBridgeCount).toBe(0);
+      expect(m.junctionDotGapCount).toBe(0);
       expect(m.labelCollisionCount).toBe(0);
       expect(m.subtreeIntersectionCount).toBe(0);
       expect(m.nonOrthogonalSegmentCount).toBe(0);
@@ -526,22 +532,24 @@ describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topolog
   // odejścia jest wybierany po TOŻSAMOŚCI pola startowego ciągu (`startingBayRef`),
   // a nie po kolejności ciągów, a laterale jednej szczeliny są komponowane od kanału
   // skrajnego prawego (`kolejnoscKompozycjiLateralow`). Iloczyn mniejszej sieci ×
-  // liczba odgałęzień: `buildScene.odejsciaZagniezdzone.test.ts`. Asercja w całym iloczynie topologia × poziom szczegółu: zero
-  // skrzyżowań i zero sztucznych węzłów T wewnątrz stacji (`#tee-N` na właścicielu
-  // spoza `seg/` — połączenie, którego w sieci nie ma).
+  // liczba odgałęzień: `buildScene.odejsciaZagniezdzone.test.ts`. Asercja w całym iloczynie
+  // topologia × poziom szczegółu: zero przecięć między odgałęzieniami tej samej stacji, zero
+  // przecięć toru wewnętrznego stacji, zero przecięć z szyną; skrzyżowanie zejścia z magistralą
+  // innej pary stacji ma mostek §22.1 (rozstrzygnięcie S7-P2, 2026-10-30), a kropka stoi tylko
+  // na węźle modelu.
   for (const topo of topologies) {
     for (const lod of LODS) {
-      it(`${topo.nazwa} × +1 odgałęzienie (stacja z 2. odgałęzieniem) × L${lod}: zero skrzyżowań i zero węzłów T wewnątrz stacji`, () => {
-        const after = buildSceneV3(appendLateralBranch(topo.network, openTrunkChain), lod);
-        expect(layoutMetricsReport(after).crossingCount).toBe(0);
-        // Także przecięcia z szyną (pion głębszego lateralu przez szynę SN stacji
-        // wiersza płytszego — pomiar przed naprawą: 1 dla +1 odgałęzienia).
-        expect(interiorCrossings(after.segments)).toEqual([]);
-        const teeWewnatrzStacji = after.segments.filter((s) => {
-          const owner = s.meta?.ownerRef ?? '';
-          return /#tee-\d+$/.test(owner) && !owner.startsWith('seg/');
-        });
-        expect(teeWewnatrzStacji.map((s) => s.meta?.ownerRef)).toEqual([]);
+      it(`${topo.nazwa} × +1 odgałęzienie (stacja z 2. odgałęzieniem) × L${lod}: zero przecięć odgałęzień stacji i toru stacji, mostek na każdym skrzyżowaniu`, () => {
+        const model = appendLateralBranch(topo.network, openTrunkChain);
+        const after = buildSceneV3(model, lod);
+        const m = layoutMetricsReport(after);
+        expect(m.crossingWithoutBridgeCount).toBe(0);
+        expect(m.junctionDotGapCount).toBe(0);
+        // Przecięcia z szyną (pion głębszego lateralu przez szynę SN stacji wiersza
+        // płytszego — pomiar przed naprawą: 1 dla +1 odgałęzienia).
+        expect(crossingBusGaps(after.segments)).toEqual([]);
+        expect(przecieciaToruStacji(after)).toEqual([]);
+        expect(przecieciaMiedzyOdgalezieniamiStacji(model, after)).toEqual([]);
       });
     }
   }

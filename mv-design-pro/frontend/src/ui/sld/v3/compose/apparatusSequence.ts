@@ -46,7 +46,7 @@ import { SYMBOL_DEFS, rodzajSymbolu, type SymbolId } from '../symbols/defs';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor, PortAparatuPolaView } from '../../v2/model/widokPolStacji';
-import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, BayPrimaryPlacement, RodzajNapeduLacznika } from '../../../../types/enm';
 import { PORTY_APARATU_POLA, PORT_WEJSCIA, PORT_WYJSCIA, WEZEL_SZYNY, WEZLY_KONCA_TORU, czyRodzajWTorze } from './rodzajeAparatuPola';
 import { GRID, snapToGrid, snapUp } from '../core/grid';
 
@@ -150,6 +150,26 @@ export const SYMBOL_QET_RODZAJU: Readonly<Partial<Record<BayPrimaryDeviceKind, S
 };
 
 /**
+ * Rysunek QET łącznika ZE ZNAKIEM NAPĘDU z modelu (`BayPrimaryDevice.naped`) — rodzaj aparatu
+ * × rodzaj napędu. Klucze = backend `obwody_wtorne_pola.NAPEDY_RODZAJU_APARATU` (napęd
+ * dopuszczalny wyłącznie na rodzaju, dla którego słownik go przewiduje; parytet przypina
+ * `__tests__/symbolNapeduLacznika.test.ts`): wyłącznik — napęd silnikowy „M" (EN 60617 02-13-26,
+ * ENEA Z.10/Z.11/Z.11.1 przy Q0), łącznik trójpołożeniowy — napęd zasobnikowy z obsługą ręczną
+ * (EN 60617 02-13-20 + 02-13-01, ENEA Z.10/Z.11/Z.11.1 przy Q1; decyzja architekta 2026-10-30:
+ * napęd jest atrybutem łącznika, nie osobnym aparatem). Rysunek kanoniczny napędu nie
+ * rozróżnia (znak ogólny aparatu).
+ */
+export const SYMBOL_LACZNIKA_Z_NAPEDEM: Readonly<
+  Partial<Record<BayPrimaryDeviceKind, Readonly<Partial<Record<RodzajNapeduLacznika, SymbolId>>>>>
+> = {
+  CB: { SILNIKOWY: 'qetBreakerZNapedem' },
+  THREE_POSITION_SWITCH: { ZASOBNIKOWY_RECZNY: 'qetThreePositionSwitchZNapedem' },
+};
+
+/** Wszystkie rodzaje napędu łącznika — lustro `RodzajNapeduLacznika` (obchód cech rysunku). */
+export const RODZAJE_NAPEDU_LACZNIKA: readonly RodzajNapeduLacznika[] = ['SILNIKOWY', 'ZASOBNIKOWY_RECZNY'];
+
+/**
  * Mapowanie `BayPrimaryDeviceKind` (ENM) → `SymbolId` (spec §12.1). `null`
  * dla kindów DER (nie są aparatem pola — patrz DECYZJA w nagłówku pliku).
  * `renderVariant` = `BayPrimaryDevice.render_variant` rekordu: wariant QET
@@ -164,9 +184,11 @@ export function symbolIdForPrimaryDeviceKind(
 ): SymbolId | null {
   if (renderVariant === WARIANT_RYSUNKU_QET) {
     if (kind === 'VT') return symbolQetPrzekladnikaNapieciowego(cechy.liczbaUzwojenWtornych);
-    // Karta UX-04/POLE-LINIOWE-WZORZEC (korekta P0 pkt 7): napęd silnikowy wyłącznika z modelu
-    // — rysunek wyłącznika ze znakiem napędu EN 60617 02-13-26 w kaflu (ENEA Z.11.1).
-    if (kind === 'CB' && cechy.naped === 'SILNIKOWY') return 'qetBreakerZNapedem';
+    // Karta UX-04/POLE-LINIOWE-WZORZEC: napęd łącznika z modelu — rysunek łącznika ze znakiem
+    // napędu w kaflu (`SYMBOL_LACZNIKA_Z_NAPEDEM`); napęd spoza słownika rodzaju — rysunek bez
+    // znaku (backend takiego rekordu nie przyjmuje).
+    const zNapedem = cechy.naped ? SYMBOL_LACZNIKA_Z_NAPEDEM[kind]?.[cechy.naped] : undefined;
+    if (zNapedem) return zNapedem;
     const qet = SYMBOL_QET_RODZAJU[kind];
     if (qet) return qet;
   }
@@ -174,11 +196,11 @@ export function symbolIdForPrimaryDeviceKind(
 }
 
 /** Cechy rekordu aparatu wybierające rysunek QET: liczba uzwojeń wtórnych przekładnika
- *  napięciowego (liczba okręgów) i napęd wyłącznika (znak napędu silnikowego). Rysunek
- *  kanoniczny ich nie rozróżnia (znak ogólny aparatu). */
+ *  napięciowego (liczba okręgów) i napęd łącznika (znak napędu). Rysunek kanoniczny ich nie
+ *  rozróżnia (znak ogólny aparatu). */
 export interface CechyRysunkuAparatu {
   readonly liczbaUzwojenWtornych?: number;
-  readonly naped?: 'SILNIKOWY';
+  readonly naped?: RodzajNapeduLacznika;
 }
 
 /** WSZYSTKIE rysunki, którymi może się narysować aparat danego rodzaju — oba warianty
@@ -190,7 +212,7 @@ export function symboleRodzajuAparatu(kind: BayPrimaryDeviceKind): readonly Symb
   const wynik: SymbolId[] = [];
   const cechyRysunku: readonly CechyRysunkuAparatu[] = [
     {},
-    { naped: 'SILNIKOWY' },
+    ...RODZAJE_NAPEDU_LACZNIKA.map((naped) => ({ naped })),
     ...[1, 2, 3].map((liczbaUzwojenWtornych) => ({ liczbaUzwojenWtornych })),
   ];
   for (const wariant of [null, WARIANT_RYSUNKU_QET]) {
@@ -279,12 +301,12 @@ export interface AparatSekwencjiPola {
   readonly ports?: readonly PortAparatuPolaView[];
   /** Liczba uzwojeń wtórnych przekładnika napięciowego z rekordu (wybór rysunku QET). */
   readonly liczbaUzwojenWtornych?: number;
-  /** Napęd wyłącznika z rekordu (wybór rysunku QET ze znakiem napędu). */
-  readonly naped?: 'SILNIKOWY';
+  /** Napęd łącznika z rekordu (wybór rysunku QET ze znakiem napędu). */
+  readonly naped?: RodzajNapeduLacznika;
 }
 
 /** Symbol aparatu pola z jego rekordu (rodzaj + wariant rysunku + cechy rysunku: liczba
- *  uzwojeń wtórnych przekładnika napięciowego, napęd wyłącznika) — JEDNO wywołanie dla measure, stacji, GPZ i sond sceny. */
+ *  uzwojeń wtórnych przekładnika napięciowego, napęd łącznika) — JEDNO wywołanie dla measure, stacji, GPZ i sond sceny. */
 export function symbolAparatuPola(
   device: Pick<AparatSekwencjiPola, 'kind' | 'renderVariant' | 'liczbaUzwojenWtornych' | 'naped'>,
 ): SymbolId | null {
@@ -609,6 +631,18 @@ export function przewodPortPort(
   return od.x === do_.x ? [od, do_] : [od, { x: do_.x, y: od.y }, do_];
 }
 
+/** Port wyjścia aparatu `a` i port wejścia następnego aparatu `b` toru leżą na tym samym węźle
+ *  pola. JEDNA reguła przewodu toru (`przewodyToruZPortow`) i orientacji aparatu na rysunku
+ *  (zaciski P1/P2 przekładnika prądowego, `compose/gpz.ts`): aparat połączony przewodem ma port
+ *  `we` po stronie szyny (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6). */
+export function czyWspolnyWezelToru(
+  a: Pick<AparatSekwencjiPola, 'kind' | 'ports'>,
+  b: Pick<AparatSekwencjiPola, 'kind' | 'ports'>,
+): boolean {
+  const wspolny = wezlyAparatuWTorze(a).wyjscie;
+  return wspolny != null && wspolny === wezlyAparatuWTorze(b).wejscie;
+}
+
 /**
  * Karta UX-04/POLE-LINIOWE-WZORZEC (§0 pkt 5) — PRZEWODY TORU GŁÓWNEGO Z PORTÓW ENM: przewód
  * między kolejnymi pozycjami toru powstaje WYŁĄCZNIE, gdy port wyjścia aparatu i port wejścia
@@ -627,10 +661,9 @@ export function przewodyToruZPortow(
     if (!a.device) continue;
     let polaczone: boolean;
     if (!b.device) {
-      polaczone = b.symbolId === 'bayReserve' && wezlyAparatuWTorze(a.device).wyjscie != null;
+      polaczone = b.symbolId === 'bayReserve' && czyElementModeluNaWyjsciu(a.device);
     } else {
-      const wspolny = wezlyAparatuWTorze(a.device).wyjscie;
-      polaczone = wspolny != null && wspolny === wezlyAparatuWTorze(b.device).wejscie;
+      polaczone = czyWspolnyWezelToru(a.device, b.device);
     }
     if (!polaczone) continue;
     const points = przewodPortPort(a, b);
@@ -658,6 +691,14 @@ export function czyOdgalezienieNaWezleKotwicy(
       : WEZEL_SZYNY;
   const wezelBoczny = wezlyAparatuWTorze(boczny).wejscie;
   return wezelBoczny != null && wezelBoczny === wezelKotwicy;
+}
+
+/** Element MODELU bez rekordu aparatu (zakończenie rezerwy, glif źródła pola OZE) wisi na
+ *  zacisku wyjściowym aparatu, za którym stoi: kabel do źródła i koniec kabla rezerwy wychodzą
+ *  z węzła końca toru pola. Połączony, gdy aparat-kotwica ma węzeł wyjścia z portów ENM —
+ *  JEDNA reguła dla przewodów toru (`przewodyZPortow`) i odgałęzień bocznych pola GPZ. */
+export function czyElementModeluNaWyjsciu(kotwica: Pick<AparatSekwencjiPola, 'kind' | 'ports'> | undefined): boolean {
+  return kotwica != null && wezlyAparatuWTorze(kotwica).wyjscie != null;
 }
 
 /** Tor z portów zaczyna się na węźle szyny (inaczej pole nie dostaje zejścia z szyny).
@@ -1151,6 +1192,42 @@ export function ukladBocznyPola(
   ];
   const odstepy = ulozPasyBoczne(pasy);
   return { boczne: odstepy.slice(0, plan.laterals.length), galezie: odstepy.slice(plan.laterals.length) };
+}
+
+/** Odczep aparatu bocznego: kotwica na torze głównym i oś portu N aparatu bocznego. */
+export interface OdczepBoczny {
+  readonly kotwica: { readonly x: number; readonly y: number };
+  readonly celX: number;
+}
+
+/**
+ * Odcinki odczepów aparatów bocznych pola — łańcuch BEZ NAKŁADANIA (rozstrzygnięcie
+ * architekta KD-5, 2026-10-30: różne przewody na jednym odcinku to fikcja). Aparaty boczne
+ * wspólnej kotwicy (ten sam węzeł toru, ta sama wysokość) wiszą na JEDNYM poziomym przewodzie:
+ * odcinek aparatu zaczyna się na porcie N najbliższego aparatu bocznego tej samej kotwicy
+ * leżącego między kotwicą a nim (trójnik tego samego węzła modelu pola — kropka `junction`
+ * z `wezelModelu` pola, `scene/crossings.ts::odczepWezlaModelu`), a gdy takiego nie ma — na
+ * kotwicy. Wynik nie zależy od kolejności wpisów. JEDNO źródło dla stosu stacji
+ * (`compose/station.ts::buildBayStack`) i pola GPZ (`compose/gpz.ts::buildFieldStack`).
+ */
+export function odcinkiOdczepowBocznych(
+  odczepy: readonly OdczepBoczny[],
+): readonly (readonly [{ readonly x: number; readonly y: number }, { readonly x: number; readonly y: number }])[] {
+  return odczepy.map(({ kotwica, celX }) => {
+    const kierunek = Math.sign(celX - kotwica.x);
+    let startX = kotwica.x;
+    for (const inny of odczepy) {
+      if (inny.kotwica.x !== kotwica.x || inny.kotwica.y !== kotwica.y) continue;
+      const odKotwicy = (inny.celX - kotwica.x) * kierunek;
+      if (odKotwicy > 0 && (celX - inny.celX) * kierunek > 0 && odKotwicy > (startX - kotwica.x) * kierunek) {
+        startX = inny.celX;
+      }
+    }
+    return [
+      { x: startX, y: kotwica.y },
+      { x: celX, y: kotwica.y },
+    ] as const;
+  });
 }
 
 export interface BayApparatusPlanFootprint {

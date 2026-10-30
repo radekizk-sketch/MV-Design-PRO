@@ -270,6 +270,15 @@ def segmenty_korytarza(enm: dict[str, Any], indeks: int = 0) -> list[str]:
     return list(enm["corridors"][indeks]["ordered_segment_refs"])
 
 
+def port_odgalezny(enm: dict[str, Any], punkt_ref: str, indeks: int = 0) -> str:
+    """Zacisk portu odgałęźnego punktu (szyna ``ports.BRANCH[indeks]`` słupa rozgałęźnego albo
+    ZKSN) — jedyna postać portu startu odgałęzienia z punktu (``_rozwiaz_port_startu``)."""
+    for punkt in enm.get("branch_points", []):
+        if punkt.get("ref_id") == punkt_ref:
+            return str(punkt["ports"]["BRANCH"][indeks])
+    raise BladBudowy(f"brak punktu odgałęźnego {punkt_ref} w migawce")
+
+
 def pole_gpz(enm: dict[str, Any], indeks: int = 0) -> str:
     """Identyfikator pola liniowego GPZ o danym indeksie (kolejność rekordów ``bays`` GPZ —
     kolejność tworzenia pól, karta W5-B)."""

@@ -38,7 +38,7 @@ import {
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
-import { interiorCrossings, junctionDotGaps } from '../crossings';
+import { interiorCrossings, junctionDotGaps, przecieciaBezMostka } from '../crossings';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -107,7 +107,9 @@ describe('feedery z pól GPZ — gpzFeeder.enm (wspólne pole, stacje na obu ci�
       przeciecia.some((c) => c.vOwnerRef === feederRef && c.hOwnerRef === trunkRef),
       'pion feederu krzyżuje kabel magistrali (mostek), bez rozcięcia magistrali',
     ).toBe(true);
-    expect(scene.segments.some((s) => (s.meta?.ownerRef ?? '').startsWith(`${trunkRef}#tee-`))).toBe(false);
+    // Magistrala jest jednym nierozciętym przęsłem w miejscu przecięcia (mostek
+    // jest pochodną renderu pionu, nie podziałem kabla poziomego).
+    expect(przecieciaBezMostka(scene.segments)).toEqual([]);
     // Pion feederu startuje w porcie pola 002 — X różny od portu pola 001
     // (magistrali). Porty odczytane z PIERWSZYCH wierzchołków tras obu
     // ciągów (kawałek 0 każdego ciągu zaczyna się w porcie jego pola).

@@ -59,6 +59,9 @@ import type { MVApparatusType, TransformerType } from '../../../ui/catalog/types
 import {
   FONT_APARATU,
   FONT_ROLI,
+  WAGA_APARATU,
+  WAGA_NAZWY_APARATU,
+  WAGA_ROLI,
   ODSTEP_TABELA_SZYNA,
   przesunScene,
   symbolRodzajuAparatu,
@@ -242,7 +245,7 @@ export function sklejJednostki(tekst: string): string {
  * ucięcie nazwy katalogowej („Rozłącznik bezpiecz…") ukrywałoby daną, na
  * której projektant opiera dobór; zamiast tego rośnie slot.
  */
-export function zawinTekst(tekst: string, fontSize: number, maks: number): string[] {
+export function zawinTekst(tekst: string, fontSize: number, fontWeight: number, maks: number): string[] {
   // Podział WYŁĄCZNIE po spacji zwykłej/tabulatorze/końcu wiersza: `\s` w
   // JavaScripcie obejmuje też spację nierozdzielającą, więc `split(/\s+/)`
   // rozrywałby dokładnie te pary, które `sklejJednostki` przed chwilą skleił.
@@ -254,7 +257,7 @@ export function zawinTekst(tekst: string, fontSize: number, maks: number): strin
   let biezacy = slowa[0];
   for (const slowo of slowa.slice(1)) {
     const kandydat = `${biezacy} ${slowo}`;
-    if (measureTextWidth(kandydat, fontSize) <= maks) biezacy = kandydat;
+    if (measureTextWidth(kandydat, fontSize, fontWeight) <= maks) biezacy = kandydat;
     else {
       wiersze.push(biezacy);
       biezacy = slowo;
@@ -264,9 +267,16 @@ export function zawinTekst(tekst: string, fontSize: number, maks: number): strin
   return wiersze;
 }
 
-/** Najszerszy wiersz zbioru [px świata]. */
-function najszerszy(wiersze: readonly string[], fontSize: number): number {
-  return wiersze.reduce((max, w) => Math.max(max, measureTextWidth(w, fontSize)), 0);
+/** Najszerszy wiersz zbioru [px świata]; `wagaWiersza` — odmiana kroju wiersza o numerze `i`
+ *  (ta, którą rysuje `PodgladRozdzielnicySn`). */
+function najszerszy(wiersze: readonly string[], fontSize: number, wagaWiersza: (i: number) => number): number {
+  return wiersze.reduce((max, w, i) => Math.max(max, measureTextWidth(w, fontSize, wagaWiersza(i))), 0);
+}
+
+/** Odmiana kroju wiersza opisu pola: wiersze nazwy aparatu pogrubione, reszta — klasa aparatu.
+ *  JEDNO źródło dla pomiaru (`najszerszy`, `bboxyEtykiet`) i renderu (`PodgladRozdzielnicySn`). */
+export function wagaWierszaOpisu(slot: Pick<SlotPodgladu, 'wierszyNazwy'>, i: number): number {
+  return i < slot.wierszyNazwy ? WAGA_NAZWY_APARATU : WAGA_APARATU;
 }
 
 /** Separator członów opisu na rysunku (ten sam, co w pickerach kreatora). */
@@ -280,6 +290,7 @@ const SEPARATOR = ' · ';
 export function zawinCzesci(
   czesci: readonly string[],
   fontSize: number,
+  fontWeight: number,
   maks: number,
 ): string[] {
   const niepuste = czesci.filter((c) => c.trim() !== '');
@@ -288,7 +299,7 @@ export function zawinCzesci(
   let biezacy = niepuste[0];
   for (const czlon of niepuste.slice(1)) {
     const kandydat = `${biezacy}${SEPARATOR}${czlon}`;
-    if (measureTextWidth(kandydat, fontSize) <= maks) biezacy = kandydat;
+    if (measureTextWidth(kandydat, fontSize, fontWeight) <= maks) biezacy = kandydat;
     else {
       wiersze.push(biezacy);
       biezacy = czlon;
@@ -426,20 +437,22 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
     const wierszeRoli = zawinTekst(
       fieldRoleLabelPl(pole.field_role),
       FONT_ROLI,
+      WAGA_ROLI,
       MAKS_TEKST,
     );
     // Rodzaj i znamiona idą jednym wierszem, dopóki się w nim mieszczą — dopiero
     // przy dłuższych danych rozchodzą się na dwa. Zawijanie wspólnego łańcucha
     // wypychało separator „·" na początek wiersza (zapis obcy rysunkowi).
     const wierszeNazwy = aparat
-      ? zawinTekst(aparat.name, FONT_APARATU, MAKS_TEKST)
-      : zawinTekst(T.podgladBrakAparatu, FONT_APARATU, MAKS_TEKST);
+      ? zawinTekst(aparat.name, FONT_APARATU, WAGA_NAZWY_APARATU, MAKS_TEKST)
+      : zawinTekst(T.podgladBrakAparatu, FONT_APARATU, WAGA_NAZWY_APARATU, MAKS_TEKST);
     const opisAparatu = aparat
       ? [
           ...wierszeNazwy,
           ...zawinCzesci(
             [etykietaRodzajuAparatu(aparat.device_kind), ...czesciZnamionAparatu(aparat)],
             FONT_APARATU,
+            WAGA_APARATU,
             MAKS_TEKST,
           ),
         ]
@@ -448,10 +461,10 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
       pole.field_role === 'TRANSFORMATOROWE'
         ? transformator
           ? [
-              ...zawinTekst(transformator.name, FONT_APARATU, MAKS_TEKST),
-              ...zawinCzesci(czesciZnamionTransformatora(transformator), FONT_APARATU, MAKS_TEKST),
+              ...zawinTekst(transformator.name, FONT_APARATU, WAGA_APARATU, MAKS_TEKST),
+              ...zawinCzesci(czesciZnamionTransformatora(transformator), FONT_APARATU, WAGA_APARATU, MAKS_TEKST),
             ]
-          : zawinTekst(T.podgladBrakTransformatora, FONT_APARATU, MAKS_TEKST)
+          : zawinTekst(T.podgladBrakTransformatora, FONT_APARATU, WAGA_APARATU, MAKS_TEKST)
         : [];
     // Pakiet katalogowy pola: rodzina + KOD KATALOGOWY pola (to on identyfikuje
     // jednostkę funkcjonalną w ofercie producenta) + status pakietu — ten sam
@@ -463,6 +476,7 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
             szablon.template_code ?? szablon.template_ref,
           ],
           FONT_APARATU,
+          WAGA_APARATU,
           MAKS_TEKST,
         )
       : [];
@@ -501,8 +515,8 @@ export function zbudujPodglad(wejscie: WejsciePodgladu): PodgladRozdzielnicy {
     const scena = sceny[i];
     const [dxMin, dxMax] = zasiegSceny(scena);
     const szerokoscTekstu = Math.max(
-      najszerszy(w.wierszeRoli, FONT_ROLI),
-      najszerszy(w.wierszeOpisu, FONT_APARATU),
+      najszerszy(w.wierszeRoli, FONT_ROLI, () => WAGA_ROLI),
+      najszerszy(w.wierszeOpisu, FONT_APARATU, (i) => wagaWierszaOpisu(w, i)),
     );
     // Slot musi pomieścić JEDNO I DRUGIE: rysunek (symetrycznie wokół osi, żeby
     // oś slotu pokrywała się z osią nagłówka i opisu) oraz najszerszy wiersz.
@@ -602,7 +616,7 @@ export function bboxyEtykiet(podglad: PodgladRozdzielnicy): BboxEtykiety[] {
     // Numer pola też jest napisem rysunku — wyrocznia obejmuje KAŻDY wiersz
     // tekstu, nie tylko te, które dziś wyglądają na zagrożone (reguła KLASA §1).
     const numer = T.podgladPole(slot.numer);
-    const wNumeru = measureTextWidth(numer, FONT_ROLI);
+    const wNumeru = measureTextWidth(numer, FONT_ROLI, WAGA_ROLI);
     wynik.push({
       slot: slot.numer,
       wiersz: numer,
@@ -611,7 +625,7 @@ export function bboxyEtykiet(podglad: PodgladRozdzielnicy): BboxEtykiety[] {
       y: podglad.naglowekY,
     });
     slot.wierszeRoli.forEach((wiersz, i) => {
-      const w = measureTextWidth(wiersz, FONT_ROLI);
+      const w = measureTextWidth(wiersz, FONT_ROLI, WAGA_ROLI);
       wynik.push({
         slot: slot.numer,
         wiersz,
@@ -621,7 +635,7 @@ export function bboxyEtykiet(podglad: PodgladRozdzielnicy): BboxEtykiety[] {
       });
     });
     slot.wierszeOpisu.forEach((wiersz, i) => {
-      const w = measureTextWidth(wiersz, FONT_APARATU);
+      const w = measureTextWidth(wiersz, FONT_APARATU, wagaWierszaOpisu(slot, i));
       wynik.push({
         slot: slot.numer,
         wiersz,

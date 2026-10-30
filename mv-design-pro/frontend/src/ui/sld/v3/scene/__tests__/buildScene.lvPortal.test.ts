@@ -29,6 +29,7 @@ import { lvPortalOwnerRef } from '../../compose/station';
 import { buildStacjaBFixture, STACJA_B_REFS } from '../../electrical/__tests__/fixtures/stacjaB';
 import type { PreviewSymbol } from '../../compose/preview';
 import { buildSceneV3, sourceCoverageGaps, type SceneLod, type SceneV3 } from '../buildScene';
+import { interiorCrossings } from '../crossings';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -92,8 +93,13 @@ describe('PORTAL nN — scena referencyjna (53 stacje, 20/20 DER na nN)', () => 
         expect(Math.min(rowBus.points[0].x, rowBus.points[1].x)).toBeGreaterThanOrEqual(portal.x + 32 + 8);
         expect(trunk.points[0].x).toBeGreaterThanOrEqual(portal.x + 32 + 8);
       }
-      // Zero rozciętych szyn rzędu DER (rozcięcie = przecięcie z innym odcinkiem).
-      expect(scene.segments.filter((s) => (s.meta?.ownerRef ?? '').includes('#der-row-bus#tee-'))).toHaveLength(0);
+      // Zero przecięć szyny rzędu DER z innym odcinkiem (dawniej mierzone liczbą
+      // rozcięć `#tee-`; rozcinanie skasowane rozstrzygnięciem S7-P2, więc mierzymy
+      // samo przecięcie — to ono rysowałoby fałszywy węzeł albo mostek na szynie rzędu).
+      expect(
+        interiorCrossings(scene.segments).filter((c) =>
+          [c.hOwnerRef, c.vOwnerRef].some((o) => (o ?? '').endsWith('#der-row-bus'))),
+      ).toEqual([]);
     });
   }
 

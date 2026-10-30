@@ -135,7 +135,7 @@ def test_api_drugi_kabel_z_zajetego_pola(klient: TestClient, rodzaj: str, operac
             klient,
             case_id,
             "start_branch_segment_sn",
-            {"from_ref": f"{pole}.BRANCH", "segment": _odcinek(150, nazwa)},
+            {"from_ref": pole, "segment": _odcinek(150, nazwa)},
         )
 
     pierwszy = _przylacz("Pierwszy")

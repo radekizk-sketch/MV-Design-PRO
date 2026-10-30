@@ -14,7 +14,11 @@ from uuid import UUID, uuid4
 
 from dziedziny.karta_widmowa import KartaWidmowa, ModeleWidmoweElementu
 from network_model.catalog.gazy_fluorowane import StanObiektu
-from network_model.catalog.obwody_wtorne_pola import RODZAJ_APARATU_WEJSCIA, RodzajNapeduWylacznika
+from network_model.catalog.obwody_wtorne_pola import (
+    NAPEDY_RODZAJU_APARATU,
+    RODZAJ_APARATU_WEJSCIA,
+    RodzajNapedu,
+)
 from network_model.catalog.przekladniki import (
     RdzenPrzekladnikaPradowego,
     UzwojeniePrzekladnikaNapieciowego,
@@ -1242,8 +1246,11 @@ class LineRun(BaseModel):
     id: str
     name: str | None = None
     run_kind: Literal["main_trunk", "branch", "ring", "loop"]
-    starting_bay_ref: str  # pole SN GPZ skąd ciąg startuje
-    starting_port_ref: str  # konkretny port pola wyjściowego
+    starting_bay_ref: str  # pole SN (GPZ albo stacji) albo punkt odgałęźny, z którego ciąg startuje
+    # Port startu w JEDNEJ postaci (`domain_operations._rozwiaz_port_startu`): `ref_id` pola
+    # liniowego, gdy ciąg startuje z pola; inaczej zacisk — szyna portu odgałęźnego punktu albo
+    # szyna końca ciągu.
+    starting_port_ref: str
     segments: list[LineRunSegmentRef] = []
     stations: list[LineRunStationRef] = []
     parent_run_ref: str | None = None  # dla odgałęzień: ref do ciągu macierzystego
@@ -1646,24 +1653,27 @@ class BayPrimaryDevice(BaseModel):
     # Karta UX-04/POLE-LINIOWE-WZORZEC (poprawki P0 2026-10-29): powiązania obwodów wtórnych
     # wzorca pola na aparatach — z `ObwodyWtornePola` szablonu pola po oznaczeniu i rodzaju
     # aparatu (`obwody_wtorne_pola.powiazania_aparatow_pola`, ta sama reguła co odczyt pola
-    # `pole_liniowe_gpz._obwody_funkcji`). `naped` — napęd wyłącznika wykonawczego (WYŁĄCZNIE
-    # `kind == "CB"`; ENEA Z.10/Z.11/Z.11.1: silnik „M"); `funkcje_eaz_zasilane` — kody funkcji
+    # `pole_liniowe_gpz._obwody_funkcji`). `naped` — napęd łącznika, przy którym rysunek stawia
+    # znak napędu (rodzaje dopuszczalne wg `NAPEDY_RODZAJU_APARATU`: wyłącznik — silnikowy „M",
+    # łącznik trójpołożeniowy — zasobnikowy z obsługą ręczną; ENEA Z.10/Z.11/Z.11.1);
+    # `funkcje_eaz_zasilane` — kody funkcji
     # EAZ mierzących z przekładnika (WYŁĄCZNIE CT, VT, przekładnik Ferrantiego);
     # `funkcje_eaz_wylaczajace` — kody funkcji działających na wyłącznik (WYŁĄCZNIE `CB`).
     # Brak / pusta lista = pole bez obwodów wzorca albo aparat, którego wzorzec nie wiąże.
-    naped: RodzajNapeduWylacznika | None = None
+    naped: RodzajNapedu | None = None
     funkcje_eaz_zasilane: list[str] = []
     funkcje_eaz_wylaczajace: list[str] = []
 
     @model_validator(mode="after")
     def _powiazania_obwodow_wtornych(self) -> BayPrimaryDevice:
-        """Powiązania obwodów wtórnych tylko na aparatach, których dotyczą: napęd i funkcje
-        wyłączające na wyłączniku, funkcje mierzące na przekładniku; kody bez powtórzeń."""
+        """Powiązania obwodów wtórnych tylko na aparatach, których dotyczą: napęd na łączniku
+        rodzaju, dla którego słownik go dopuszcza (`NAPEDY_RODZAJU_APARATU`), funkcje wyłączające
+        na wyłączniku, funkcje mierzące na przekładniku; kody bez powtórzeń."""
         zasilajace = set(RODZAJ_APARATU_WEJSCIA.values())
-        if self.naped is not None and self.kind != "CB":
+        if self.naped is not None and self.naped not in NAPEDY_RODZAJU_APARATU.get(self.kind, ()):
             raise ValueError(
-                f"aparat {self.device_ref!r} ({self.kind}): napęd wyłącznika ma wyłącznie "
-                "wyłącznik"
+                f"aparat {self.device_ref!r} ({self.kind}): napęd {self.naped} nie dotyczy "
+                "aparatu tego rodzaju"
             )
         if self.funkcje_eaz_wylaczajace and self.kind != "CB":
             raise ValueError(

@@ -332,9 +332,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/68ac9ff70674fa86039f9a70c3a683fe/sn_field/002",
@@ -722,9 +722,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/825dd01827860a6bbea74fd1fe138487/sn_field/002",
@@ -1112,9 +1112,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/a5f8be9c1b6264cdd998ece632d0fb11/sn_field/002",
@@ -1350,9 +1350,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/6158c2950b46f59fa12ba32db33a383f/sn_field/002",
@@ -1588,9 +1588,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/6075a765b1c19e8835e225fb7a891c12/sn_field/002",
@@ -5262,38 +5262,38 @@
       },
       {
         "corridor_type": "radial",
-        "id": "35255652-d397-54ad-a7a6-9d22760653a7",
+        "id": "79cc09ee-fc59-5d16-bbc4-4686d969fcb9",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
         "ordered_segment_refs": [
           "seg/9cc784d4b07403052586652b8eac0f35/branch_segment_L",
           "seg/9cc784d4b07403052586652b8eac0f35/branch_segment_R"
         ],
-        "ref_id": "corridor/5ed9072ceca6c2aa60040f37ea4ef504/branch",
+        "ref_id": "corridor/49642a952d74dc2b62bd62739bacdb7d/branch",
         "tags": []
       },
       {
         "corridor_type": "radial",
-        "id": "8d8e58f2-7731-5da2-a92a-c24648f0170e",
+        "id": "eead8449-90c2-516d-9dd6-7c460ee76351",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
         "ordered_segment_refs": [
           "seg/e5538ef5f71422009848289f9c89808c/branch_segment_L",
           "seg/e5538ef5f71422009848289f9c89808c/branch_segment_R"
         ],
-        "ref_id": "corridor/e1f2f564e17b01488c97ddd7df20f744/branch",
+        "ref_id": "corridor/3b65a5e317e3fd5266c6754a168ac5cd/branch",
         "tags": []
       },
       {
         "corridor_type": "radial",
-        "id": "5e306628-c155-500f-be44-37e40b805abb",
+        "id": "58c2ce78-faef-5a5c-924e-f9512e86b924",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
         "ordered_segment_refs": [
           "seg/157644508f6e3a9585acef59af226370/branch_segment_L",
           "seg/157644508f6e3a9585acef59af226370/branch_segment_R"
         ],
-        "ref_id": "corridor/dd3d88ddb6ed6e1cfd1c5cb936f74f98/branch",
+        "ref_id": "corridor/c3e03847794b8c8d8d36d1cc8f44df93/branch",
         "tags": []
       }
     ],
@@ -5308,7 +5308,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "4e87e77a26f9678f70876b0983e5961e0ffc18d7b47804099c45946f90672312",
+      "hash_sha256": "0538a1d420d1fe4502d7b9ef352529294ee12899fdf7a9016246c3753e1246c3",
       "name": "Elementy ciągu — zksn",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -5370,7 +5370,7 @@
       },
       {
         "branch_origin_station_ref": "bp/fbbfde486f682d983d163da758767d53/zksn",
-        "id": "corridor/5ed9072ceca6c2aa60040f37ea4ef504/branch",
+        "id": "corridor/49642a952d74dc2b62bd62739bacdb7d/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
         "run_kind": "branch",
@@ -5385,12 +5385,12 @@
           }
         ],
         "starting_bay_ref": "bp/fbbfde486f682d983d163da758767d53/zksn",
-        "starting_port_ref": "bp/fbbfde486f682d983d163da758767d53/zksn.BRANCH_1",
+        "starting_port_ref": "bp/fbbfde486f682d983d163da758767d53/branch_bus_1",
         "stations": []
       },
       {
         "branch_origin_station_ref": "bp/e51c97148656cdc731d80913c6c03825/zksn",
-        "id": "corridor/e1f2f564e17b01488c97ddd7df20f744/branch",
+        "id": "corridor/3b65a5e317e3fd5266c6754a168ac5cd/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
         "run_kind": "branch",
@@ -5405,12 +5405,12 @@
           }
         ],
         "starting_bay_ref": "bp/e51c97148656cdc731d80913c6c03825/zksn",
-        "starting_port_ref": "bp/e51c97148656cdc731d80913c6c03825/zksn.BRANCH_1",
+        "starting_port_ref": "bp/e51c97148656cdc731d80913c6c03825/branch_bus_1",
         "stations": []
       },
       {
         "branch_origin_station_ref": "bp/2a586a953986d8db53c8e2fe70384feb/zksn",
-        "id": "corridor/dd3d88ddb6ed6e1cfd1c5cb936f74f98/branch",
+        "id": "corridor/c3e03847794b8c8d8d36d1cc8f44df93/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
         "run_kind": "branch",
@@ -5425,7 +5425,7 @@
           }
         ],
         "starting_bay_ref": "bp/2a586a953986d8db53c8e2fe70384feb/zksn",
-        "starting_port_ref": "bp/2a586a953986d8db53c8e2fe70384feb/zksn.BRANCH_1",
+        "starting_port_ref": "bp/2a586a953986d8db53c8e2fe70384feb/branch_bus_1",
         "stations": []
       }
     ],

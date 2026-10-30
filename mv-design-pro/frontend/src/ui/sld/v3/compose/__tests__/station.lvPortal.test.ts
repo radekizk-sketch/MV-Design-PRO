@@ -250,7 +250,7 @@ describe('PORTAL nN — projekcja SN kończy tor na zacisku nN i JEDNYM portalu'
     expect(trunk.points[1].y).toBe(busY + DER_ROW_TOP_CLEARANCE);
     // Strzałka odbioru ZA portalem (prześwit ≥ GRID), trunk DER ZA strzałką
     // (prześwit ≥ GRID) — żaden odcinek nie przecina pionu portalu ani strzałki
-    // (inaczej `resolveTeeJunctions` dorysowałby fałszywy węzeł).
+    // (przecięcie toru odbioru z pionem portalu wymagałoby mostka na torze stacji).
     expect(loadDrop.points[0].y).toBe(busY);
     expect(loadArrow.x).toBeGreaterThanOrEqual(portal.x + LV_PORTAL_WIDTH + GRID);
     expect(trunk.points[0].x).toBeGreaterThanOrEqual(loadArrow.x + SYMBOL_DEFS.loadArrow.width + GRID);

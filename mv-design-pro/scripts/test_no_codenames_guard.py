@@ -535,6 +535,121 @@ class TestExcludedRelativeFilesFreshness:
         assert guard_module.main() == 1
 
 
+class TestWyjatekZaciskowPrzekladnika:
+    """Wyjątek oznaczeń zacisków przekładnika PN-EN 61869-2 (karta UX-04/POLE-LINIOWE-WZORZEC,
+    decyzja architekta §11.7 pkt 6, 2026-10-30): „P1"/„P2" przechodzą WYŁĄCZNIE jako literał
+    równy oznaczeniu w wierszu deklaracji stałej w jedynym pliku wyjątku. Iloczyn cech: plik
+    {wyjątku, inny} × wiersz {deklaracja, inny} × literał {P1, P2, P3, „P1 rozpływ", S1, S2}."""
+
+    DEKLARACJA = (
+        "export const ZACISKI_PRZEKLADNIKA_PRADOWEGO = "
+        "{ pierwotne: ['P1', 'P2'], wtorne: ['S1', 'S2'] } as const;\n"
+    )
+
+    def _plik(self, root: Path, rel: str, tresc: str) -> Path:
+        plik = root / rel
+        plik.parent.mkdir(parents=True, exist_ok=True)
+        plik.write_text(tresc, encoding="utf-8")
+        return plik
+
+    def _trafienia(self, tmp_path: Path, monkeypatch, rel: str, tresc: str) -> list[str]:
+        monkeypatch.setattr(guard_module, "REPO_ROOT", tmp_path)
+        return [v.match for v in scan_file(self._plik(tmp_path, rel, tresc))]
+
+    def test_deklaracja_w_pliku_wyjatku_przechodzi(self, tmp_path: Path, monkeypatch) -> None:
+        trafienia = self._trafienia(
+            tmp_path, monkeypatch, guard_module.PLIK_ZACISKOW_PRZEKLADNIKA, self.DEKLARACJA
+        )
+        assert trafienia == []
+
+    def test_ta_sama_deklaracja_w_innym_pliku_jest_blokowana(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        trafienia = self._trafienia(
+            tmp_path, monkeypatch, "frontend/src/ui/sld/v3/compose/inny.ts", self.DEKLARACJA
+        )
+        assert trafienia == ["P1", "P2"]
+
+    def test_p1_w_innym_wierszu_pliku_wyjatku_jest_blokowane(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        trafienia = self._trafienia(
+            tmp_path,
+            monkeypatch,
+            guard_module.PLIK_ZACISKOW_PRZEKLADNIKA,
+            self.DEKLARACJA + "export const ETYKIETA = 'P1';\n",
+        )
+        assert trafienia == ["P1"]
+
+    def test_wyjatek_tylko_dla_literalu_rownego_oznaczeniu(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """„P3" i „P1 rozpływ" w wierszu deklaracji nie są oznaczeniem zacisku — naruszenie."""
+        tresc = (
+            "export const ZACISKI_PRZEKLADNIKA_PRADOWEGO = "
+            "{ pierwotne: ['P1', 'P3'], opis: 'P1 rozpływ' } as const;\n"
+        )
+        trafienia = self._trafienia(
+            tmp_path, monkeypatch, guard_module.PLIK_ZACISKOW_PRZEKLADNIKA, tresc
+        )
+        assert trafienia == ["P3", "P1"]
+
+    def test_s1_s2_nie_pasuja_do_wzorca_takze_poza_kontekstem(self) -> None:
+        """Zaciski wtórne S1/S2 nie są kryptonimem z konstrukcji wzorca (litera S) — wyjątek ich
+        nie potrzebuje; zbiór oznaczeń wymienia je dla kompletu normy."""
+        assert find_codenames_in_strings("const zacisk = 'S1'; const drugi = 'S2';") == []
+        assert {"S1", "S2"} <= guard_module.OZNACZENIA_ZACISKOW_PRZEKLADNIKA
+
+    def test_zrodlo_repo_bez_wyjatku_nioslo_by_p1_p2(self) -> None:
+        """Wyjątek nie jest martwy: wiersz deklaracji w repo bez wyjątku daje P1 i P2, a skan
+        pliku z wyjątkiem — zero naruszeń."""
+        plik = guard_module.REPO_ROOT / guard_module.PLIK_ZACISKOW_PRZEKLADNIKA
+        wiersze = [
+            w
+            for w in plik.read_text(encoding="utf-8").split("\n")
+            if guard_module.KONTEKST_ZACISKOW_PRZEKLADNIKA.match(w)
+        ]
+        assert len(wiersze) == 1
+        assert find_codenames_in_strings(wiersze[0]) == ["P1", "P2"]
+        assert scan_file(plik) == []
+
+    def test_zapadka_zielona_na_repo(self) -> None:
+        assert guard_module.check_wyjatek_zaciskow_przekladnika(guard_module.REPO_ROOT) == []
+
+    def test_zapadka_lapie_brak_pliku(self, tmp_path: Path) -> None:
+        naruszenia = guard_module.check_wyjatek_zaciskow_przekladnika(tmp_path)
+        assert len(naruszenia) == 1
+        assert "[no-codenames-wyjatek-zaciskow-osierocony]" in naruszenia[0]
+
+    def test_zapadka_lapie_wiersz_bez_p1_p2(self, tmp_path: Path) -> None:
+        self._plik(
+            tmp_path,
+            guard_module.PLIK_ZACISKOW_PRZEKLADNIKA,
+            "export const ZACISKI_PRZEKLADNIKA_PRADOWEGO = { wtorne: ['S1', 'S2'] } as const;\n",
+        )
+        naruszenia = guard_module.check_wyjatek_zaciskow_przekladnika(tmp_path)
+        assert len(naruszenia) == 1
+        assert "nie niesie już" in naruszenia[0]
+
+    def test_zapadka_lapie_drugi_wiersz_deklaracji(self, tmp_path: Path) -> None:
+        self._plik(
+            tmp_path,
+            guard_module.PLIK_ZACISKOW_PRZEKLADNIKA,
+            self.DEKLARACJA + self.DEKLARACJA,
+        )
+        naruszenia = guard_module.check_wyjatek_zaciskow_przekladnika(tmp_path)
+        assert len(naruszenia) == 1
+        assert "2 wierszy" in naruszenia[0]
+
+    def test_main_zwraca_1_gdy_wyjatek_osierocony(self, monkeypatch) -> None:
+        monkeypatch.setattr(
+            guard_module,
+            "PLIK_ZACISKOW_PRZEKLADNIKA",
+            "frontend/src/ui/nigdy/nieistniejacy_plik.ts",
+        )
+        assert guard_module.main() == 1
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
 

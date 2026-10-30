@@ -279,7 +279,7 @@ def rozpocznij_z_pola(
         enm,
         "start_branch_segment_sn",
         {
-            "from_ref": f"{field_ref}.BRANCH",
+            "from_ref": field_ref,
             "segment": _segment_z_kategoria(
                 {
                     "rodzaj": rodzaj,

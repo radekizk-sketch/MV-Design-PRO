@@ -138,7 +138,7 @@ PROG_AJEE_ODBIORCY_KW = 4000.0
 _PODSTAWA_AJEE = "ENEA Zeszyt 1, Z.11 (s.90) — rdzeń I przekładnika prądowego"
 _DOWOD_DEKLARACJI = "deklaracja funkcji pola (zestaw funkcji zabezpieczeniowych rekordu pola)"
 _KODY_SPZ = frozenset({"79", "SPZE"})
-_KODY_SCO = frozenset({"SCO", "SPZ/SCO"})
+_KODY_SCO = frozenset({"SCO"})
 
 
 @dataclass(frozen=True)

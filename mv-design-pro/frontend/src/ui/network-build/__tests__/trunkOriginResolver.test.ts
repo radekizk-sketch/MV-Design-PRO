@@ -56,7 +56,9 @@ describe('resolveOriginKindFromContext', () => {
 });
 
 describe('resolveTrunkOriginKind ze snapshotu', () => {
-  it('rozpoznaje ZKSN po from_ref = bp/zksn/1.BRANCH_1', () => {
+  // Port startu w jedynej postaci: zacisk portu odgałęźnego punktu (backend
+  // `_rozwiaz_port_startu`); dawna postać `⟨punkt⟩.BRANCH[_n]` nie istnieje.
+  it('rozpoznaje ZKSN po from_ref = zacisk portu odgałęźnego', () => {
     const zksn: BranchPointSN = {
       id: 'bp/zksn/1',
       ref_id: 'bp/zksn/1',
@@ -68,11 +70,11 @@ describe('resolveTrunkOriginKind ze snapshotu', () => {
     } as BranchPointSN;
     const snapshot = snapshotWith({ branch_points: [zksn] });
     expect(
-      resolveTrunkOriginKind(snapshot, { from_ref: 'bp/zksn/1.BRANCH_1' }),
+      resolveTrunkOriginKind(snapshot, { from_ref: 'bus/br/1' }),
     ).toBe('pole_liniowe_kablowe_zksn');
   });
 
-  it('rozpoznaje słup rozgałęźny po from_ref', () => {
+  it('rozpoznaje słup rozgałęźny po from_ref = zacisk portu bocznego', () => {
     const pole: BranchPointSN = {
       id: 'bp/slup/1',
       ref_id: 'bp/slup/1',
@@ -84,7 +86,7 @@ describe('resolveTrunkOriginKind ze snapshotu', () => {
     } as BranchPointSN;
     const snapshot = snapshotWith({ branch_points: [pole] });
     expect(
-      resolveTrunkOriginKind(snapshot, { from_ref: 'bp/slup/1.BRANCH' }),
+      resolveTrunkOriginKind(snapshot, { from_ref: 'bus/br/1' }),
     ).toBe('slup');
   });
 
@@ -96,6 +98,8 @@ describe('resolveTrunkOriginKind ze snapshotu', () => {
     expect(
       resolveTrunkOriginKind(snapshot, { field_ref: 'bay/gpz/1' }),
     ).toBe('pole_liniowe_kablowe_gpz');
+    // Port startu z pola w jedynej postaci: `from_ref` = `ref_id` pola.
+    expect(resolveTrunkOriginKind(snapshot, { from_ref: 'bay/gpz/1' })).toBe('pole_liniowe_kablowe_gpz');
   });
 
   it('pole liniowe stacji SN/nN — domyślnie kablowe', () => {

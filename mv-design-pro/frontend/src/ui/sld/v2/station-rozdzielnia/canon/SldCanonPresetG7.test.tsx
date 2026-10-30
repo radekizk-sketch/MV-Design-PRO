@@ -54,12 +54,16 @@ describe('SldCanonPresetG7 — wind Type 1 (asynchronous)', () => {
     expect(lvMach).toBeGreaterThan(snMach); // terminal share is the LOCAL machine (large)
   });
 
-  it('protection split matches G6: NC RfG interface (df/dt + anti-islanding, NO 46/47); machine separate', () => {
-    // Interface (connection bay, NC RfG) — directional OC + U/f + RoCoF + anti-islanding; the
-    // 46/47 neg-seq are MACHINE functions and MUST NOT sit on the interface (audit #5).
+  it('protection split matches G6: NC RfG interface (RoCoF 81R + loss-of-mains criteria, NO 46/47); machine separate', () => {
+    // Interface (connection bay, NC RfG) — directional OC + U/f + RoCoF; loss-of-mains detection
+    // IS the 27/59/81U/81O/81R criteria (critical — self-excitation from the Q-comp bank). Each
+    // function once, EAZ dictionary codes: the former "df/dt" and the aggregate "anti-islanding"
+    // duplicated them (architect decision 2026-10-30, `funkcje_eaz`). The 46/47 neg-seq are
+    // MACHINE functions and MUST NOT sit on the interface (audit #5).
     const iface = G7.fields.find((f) => f.interface_protection)?.protection_codes ?? [];
-    expect(iface).toContain('df/dt');
-    expect(iface).toContain('anti-islanding'); // critical — self-excitation from the Q-comp bank
+    expect(iface).toEqual(expect.arrayContaining(['27', '59', '81U', '81O', '81R']));
+    expect(iface).not.toContain('df/dt');
+    expect(iface).not.toContain('anti-islanding');
     expect(iface).not.toContain('46');
     expect(iface).not.toContain('47');
     // Machine functions live on source.protection (split), no rotor converter for Typ 1.
@@ -67,7 +71,8 @@ describe('SldCanonPresetG7 — wind Type 1 (asynchronous)', () => {
     expect(mach).toEqual(expect.arrayContaining(['46', '47', '49', '51', '37', '32']));
     expect(G7.source.protection?.converter).toEqual([]);
     const txt = renderG7().container.textContent ?? '';
-    expect(txt).toContain('anti-islanding'); // rendered on the interface zone
+    expect(txt).toContain(iface.join(' · ')); // rendered on the interface zone (from the companion)
+    expect(txt).not.toContain('anti-islanding');
     expect(txt).toContain('zab. maszyny'); // machine-protection note (split from interface)
   });
 

@@ -108,7 +108,18 @@ describe('OcenaPolaLiniowegoGpz — ocena z modelu odczytu pola', () => {
         // Skrót, którego standard nie rozwija, nie dostaje odgadniętego znaczenia.
         expect(sygnaly[i].textContent).toContain(s.znaczenie_pl ?? 'rozwinięcia skrótu standard nie podaje');
       });
-      expect(screen.getByTestId('ocena-pola-liniowego-naped').textContent).toContain('silnikowy (M)');
+      // Napędy łączników wzorca (Q0 silnikowy, Q1 zasobnikowy z obsługą ręczną) — opis
+      // i status weryfikacji z backendu, jeden wiersz na aparat.
+      const napedy = screen.getAllByTestId('ocena-pola-liniowego-naped');
+      expect(napedy.map((w) => [w.getAttribute('data-aparat'), w.getAttribute('data-naped')])).toEqual(
+        ocena.obwody_wtorne!.napedy.map((n) => [n.aparat, n.naped]),
+      );
+      ocena.obwody_wtorne!.napedy.forEach((n, i) => {
+        for (const czesc of [n.naped_pl, NAZWA_WERYFIKACJI_PL[n.weryfikacja], n.uwaga ?? '']) {
+          expect(napedy[i].textContent, `${n.aparat}: ${czesc}`).toContain(czesc);
+        }
+      });
+      expect(napedy.map((w) => w.getAttribute('data-aparat'))).toEqual(['Q0', 'Q1']);
 
       const nz = screen.queryByTestId('ocena-pola-liniowego-napiecie-zwrotne');
       expect(Boolean(nz)).toBe(Boolean(ocena.napiecie_zwrotne));

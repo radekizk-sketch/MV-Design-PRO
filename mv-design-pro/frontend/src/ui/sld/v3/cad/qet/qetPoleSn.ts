@@ -9,8 +9,9 @@
  * https://creativecommons.org/licenses/by/3.0/). Współrzędne w jednostkach świata
  * schematu SLD v3 względem lewego górnego rogu gabarytu (skala 0,4 jednostki QET).
  * Rysunek źródła = położenie OTWARTE; pozostałe położenia — kąty obrotu noża (`noz.katy`,
- * stopnie, konwencja SVG `rotate`) wokół przegubu (`noz.cx`, `noz.cy`). Jednokładność rysunku
- * (`skalaRysunku` manifestu) przenosi kształt elementu bez zmian; role prymitywów: `przewody`
+ * stopnie, konwencja SVG `rotate`) wokół przegubu (`noz.cx`, `noz.cy`) i zasięg noża
+ * (`noz.zasiegi`: w położeniu zamkniętym i uziemionym koniec noża leży na styku stałym).
+ * Jednokładność rysunku (`skalaRysunku` manifestu) przenosi kształt elementu bez zmian; role prymitywów: `przewody`
  * (kreska przewodu toru), `stale` i `noz` (rysunek aparatu — kreska glifu `QET_KRESKA_GLIFU`),
  * `osprzet` (napęd, cewka wyłączająca — kreska glifu).
  */
@@ -25,6 +26,7 @@ export type QetSymbolPolaSnId =
   | 'qetFuseSwitch'
   | 'qetEarthSwitch'
   | 'qetThreePositionSwitch'
+  | 'qetThreePositionSwitchZNapedem'
   | 'qetCurrentTransformer'
   | 'qetCoreBalanceCt'
   | 'qetVoltageTransformer'
@@ -46,6 +48,9 @@ export interface QetNozSymbolu {
   readonly cx: number;
   readonly cy: number;
   readonly katy: Readonly<Partial<Record<QetPolozenieNoza, number>>>;
+  /** Zasięg noża w położeniu — ułamek długości noża źródła: koniec dalszy od przegubu leży
+   *  w odległości `zasieg` × długość (ZAMKNIĘTY/UZIEMIONY — dokładnie na styku stałym). */
+  readonly zasiegi: Readonly<Partial<Record<QetPolozenieNoza, number>>>;
   readonly prymitywy: readonly CadPrimitive[];
 }
 
@@ -106,6 +111,10 @@ export const QET_BOK_KAFLA_STANU = 48;
  *  × skala, proporcjonalna do boku kafla stanu (bok/24); przewody mają kreskę przewodu. */
 export const QET_KRESKA_GLIFU = 2;
 
+/** Odmiana kroju, której metrykami importer liczy obwiednię i środek liter symboli — odmiana
+ *  rysowana przez `CadPrimitiveLayer` (waga `WAGA_LITERY_SYMBOLU`, `cad/CadSymbol.tsx`). */
+export const QET_ODMIANA_KROJU_LITER = '700';
+
 export const QET_POCHODZENIE = { repozytorium: 'https://github.com/qelectrotech/qelectrotech-elements', commit: '14a4727f70856d8e79de59a353fa3c52d3e90e21', licencja: 'CC-BY-3.0', licencjaUrl: 'https://creativecommons.org/licenses/by/3.0/', autor: 'The QElectroTech team' } as const;
 
 export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPolaSn>> = {
@@ -124,7 +133,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     ],
     doprowadzenia: [],
     obrys: { x: 14.4, y: 0, width: 33.6, height: 48 },
-    glif: { x: 14.4, y: 10.7781, width: 14.4, height: 29.2219 },
+    glif: { x: 14.4, y: 11.1864, width: 14.4, height: 28.8136 },
     kafel: { x: 0, y: 0, width: 48, height: 48 },
     przewody: [
       { k: 'line', x1: 24, y1: 16, x2: 24, y2: 0 },
@@ -142,6 +151,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       cx: 24,
       cy: 40,
       katy: { open: 0, closed: 19.179, unknown: 9.5895 },
+      zasiegi: { open: 1, closed: 0.8213, unknown: 1 },
       prymitywy: [
         { k: 'line', x1: 24, y1: 40, x2: 14.4, y2: 12.4, nozStanu: true },
       ],
@@ -166,7 +176,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     ],
     doprowadzenia: [],
     obrys: { x: 2, y: 0, width: 46, height: 48 },
-    glif: { x: 14.4, y: 2.7781, width: 14.4, height: 29.2219 },
+    glif: { x: 14.4, y: 3.1864, width: 14.4, height: 28.8136 },
     kafel: { x: 0, y: 0, width: 48, height: 48 },
     przewody: [
       { k: 'line', x1: 24, y1: 8, x2: 24, y2: 0 },
@@ -180,13 +190,14 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     osprzet: [
       { k: 'line', x1: 16, y1: 32, x2: 24, y2: 32, kreskowana: true },
       { k: 'circle', cx: 9, cy: 32, r: 7, fill: 'none' },
-      { k: 'letter', x: 8.2986, y: 33.26, t: 'M', size: 8.4 },
+      { k: 'letter', x: 8.2986, y: 33.2879, t: 'M', size: 8.4 },
       { k: 'path', d: 'M 44 8 L 44 24 L 36 24 L 36 8 Z', fill: 'none' },
     ],
     noz: {
       cx: 24,
       cy: 32,
       katy: { open: 0, closed: 19.179, unknown: 9.5895 },
+      zasiegi: { open: 1, closed: 0.8213, unknown: 1 },
       prymitywy: [
         { k: 'line', x1: 24, y1: 32, x2: 14.4, y2: 4.4, nozStanu: true },
       ],
@@ -209,23 +220,24 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     ],
     portyWtorne: [],
     doprowadzenia: [],
-    obrys: { x: 14.4, y: 0, width: 16.8, height: 48 },
-    glif: { x: 14.4, y: 10.7781, width: 16.8, height: 29.2219 },
+    obrys: { x: 13.3333, y: 0, width: 18.6667, height: 48 },
+    glif: { x: 13.3333, y: 5.3182, width: 18.6667, height: 32.0151 },
     kafel: { x: 0, y: 0, width: 48, height: 48 },
     przewody: [
-      { k: 'line', x1: 24, y1: 16, x2: 24, y2: 0 },
-      { k: 'line', x1: 24, y1: 40, x2: 24, y2: 48 },
+      { k: 'line', x1: 24, y1: 10.6667, x2: 24, y2: 0 },
+      { k: 'line', x1: 24, y1: 37.3333, x2: 24, y2: 48 },
     ],
     stale: [
-      { k: 'line', x1: 16.8, y1: 16, x2: 31.2, y2: 16 },
+      { k: 'line', x1: 16, y1: 10.6667, x2: 32, y2: 10.6667 },
     ],
     osprzet: [],
     noz: {
       cx: 24,
-      cy: 40,
+      cy: 37.3333,
       katy: { open: 0, closed: 19.179, unknown: 9.5895 },
+      zasiegi: { open: 1, closed: 0.8213, unknown: 1 },
       prymitywy: [
-        { k: 'line', x1: 24, y1: 40, x2: 14.4, y2: 12.4, nozStanu: true },
+        { k: 'line', x1: 24, y1: 37.3333, x2: 13.3333, y2: 6.6667, nozStanu: true },
       ],
     },
     zrodla: [
@@ -245,7 +257,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     portyWtorne: [],
     doprowadzenia: [],
     obrys: { x: 14.4, y: 0, width: 14.4, height: 48 },
-    glif: { x: 14.4, y: 10.7781, width: 14.4, height: 29.2219 },
+    glif: { x: 14.4, y: 11.1864, width: 14.4, height: 28.8136 },
     kafel: { x: 0, y: 0, width: 48, height: 48 },
     przewody: [
       { k: 'line', x1: 24, y1: 11.2, x2: 24, y2: 0 },
@@ -260,6 +272,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       cx: 24,
       cy: 40,
       katy: { open: 0, closed: 19.179, unknown: 9.5895 },
+      zasiegi: { open: 1, closed: 0.9856, unknown: 1 },
       prymitywy: [
         { k: 'line', x1: 24, y1: 40, x2: 14.4, y2: 12.4, nozStanu: true },
       ],
@@ -296,6 +309,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       cx: 24,
       cy: 40,
       katy: { open: 0, closed: 14.0362, unknown: 7.0181 },
+      zasiegi: { open: 1, closed: 1.1157, unknown: 1 },
       prymitywy: [
         { k: 'line', x1: 24, y1: 40, x2: 18, y2: 16, nozStanu: true },
         { k: 'line', x1: 20.4, y1: 35.2, x2: 16.8, y2: 22, nozStanu: true },
@@ -337,6 +351,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       cx: 24,
       cy: 20,
       katy: { open: 0, closed: 25.2011, unknown: 12.6006 },
+      zasiegi: { open: 1, closed: 1.0645, unknown: 1 },
       prymitywy: [
         { k: 'line', x1: 20, y1: 11.5, x2: 24, y2: 20, nozStanu: true },
       ],
@@ -383,6 +398,7 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
       cx: 24,
       cy: 40.8,
       katy: { open: 0, closed: -42.2737, earthed: 42.2737, unknown: 0 },
+      zasiegi: { open: 1, closed: 1.1435, earthed: 1.1435, unknown: 1 },
       prymitywy: [
         { k: 'line', x1: 24, y1: 40, x2: 24, y2: 30.4, nozStanu: true },
       ],
@@ -390,6 +406,63 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt', upstreamBlobSha: '4c1c408e1e15c304f08c67cb03a5456b941bc614', sha256: '90623920517cb61c0eee48982fffe94b1669e46d16ddf52b9e8dedca88c18061' },
+    ],
+  },
+  qetThreePositionSwitchZNapedem: {
+    id: 'qetThreePositionSwitchZNapedem',
+    namePl: 'Łącznik trójpołożeniowy z napędem zasobnikowym',
+    zlozenie: 'złożenie z elementów QET en_60617_07_13_07 (odłącznik dwukierunkowy) + en_60617_02_15_01 (uziemienie) nad zestykiem prawym + en_60617_02_13_20 (napęd energią zmagazynowaną) na kreskowanym sprzężeniu mechanicznym od przegubu noża w prawo + en_60617_02_13_01 (napęd ręczny, symbol ogólny) pod kwadratem napędu',
+    szerokosc: 48,
+    wysokosc: 48,
+    porty: [
+      { name: 'top', x: 16, y: 0, dir: 'N' },
+      { name: 'bottom', x: 24, y: 48, dir: 'S' },
+    ],
+    portyWtorne: [],
+    doprowadzenia: [
+      { port: 'top', x1: 16, y1: 16, x2: 16, y2: 0, powod: 'zacisk szynowy QET leży 40 jednostek QET pod górną krawędzią kafla stanu, bo symbol uziemienia nad zestykiem uziemiającym sięga 30 jednostek nad poziom zacisków, a kafel jest wyśrodkowany na rysunku łącznika ze znakiem napędu — przewód zestyku szynowego przedłużony do krawędzi kafla' },
+      { port: 'bottom', x1: 24, y1: 40, x2: 24, y2: 48, powod: 'zacisk dolny QET leży 20 jednostek QET nad dolną krawędzią kafla stanu, bo znak napędu ręcznego pod kwadratem napędu sięga poniżej zacisku — przewód toru przedłużony do krawędzi kafla' },
+    ],
+    obrys: { x: 11.2, y: 0, width: 29.6, height: 48 },
+    glif: { x: 11.2, y: 4, width: 25.6, height: 29.6 },
+    kafel: { x: 0, y: 0, width: 48, height: 48 },
+    przewody: [
+      { k: 'line', x1: 24, y1: 33.6, x2: 24, y2: 40 },
+      { k: 'line', x1: 16, y1: 16, x2: 16, y2: 24 },
+      { k: 'line', x1: 16, y1: 16, x2: 16, y2: 0 },
+      { k: 'line', x1: 24, y1: 40, x2: 24, y2: 48 },
+    ],
+    stale: [
+      { k: 'line', x1: 32, y1: 16, x2: 32, y2: 24 },
+      { k: 'line', x1: 11.2, y1: 24, x2: 20.8, y2: 24 },
+      { k: 'line', x1: 27.2, y1: 24, x2: 36.8, y2: 24 },
+      { k: 'circle', cx: 24, cy: 32.8, r: 0.8, fill: 'none' },
+      { k: 'line', x1: 36, y1: 10, x2: 28, y2: 10 },
+      { k: 'line', x1: 32, y1: 16, x2: 32, y2: 10 },
+      { k: 'line', x1: 34.8, y1: 8, x2: 29.2, y2: 8 },
+      { k: 'line', x1: 33.6, y1: 6, x2: 30.4, y2: 6 },
+      { k: 'line', x1: 31.8, y1: 4, x2: 32.2, y2: 4 },
+    ],
+    osprzet: [
+      { k: 'path', d: 'M 40.8 36.8 L 32.8 36.8 L 32.8 28.8 L 40.8 28.8 Z', fill: 'none' },
+      { k: 'line', x1: 32.8, y1: 32.8, x2: 24.8, y2: 32.8, kreskowana: true },
+      { k: 'line', x1: 36.8, y1: 45.8, x2: 36.8, y2: 36.8, kreskowana: true },
+      { k: 'line', x1: 35.3, y1: 45.8, x2: 38.3, y2: 45.8 },
+    ],
+    noz: {
+      cx: 24,
+      cy: 32.8,
+      katy: { open: 0, closed: -42.2737, earthed: 42.2737, unknown: 0 },
+      zasiegi: { open: 1, closed: 1.1435, earthed: 1.1435, unknown: 1 },
+      prymitywy: [
+        { k: 'line', x1: 24, y1: 32, x2: 24, y2: 22.4, nozStanu: true },
+      ],
+    },
+    zrodla: [
+      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
+      { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_15/en_60617_02_15_01.elmt', upstreamBlobSha: '4c1c408e1e15c304f08c67cb03a5456b941bc614', sha256: '90623920517cb61c0eee48982fffe94b1669e46d16ddf52b9e8dedca88c18061' },
+      { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_20.elmt', upstreamBlobSha: '2f5f838b2563c4aacb697a370ed99f5f946f5a71', sha256: '3d6b970baee6dccc23fa5a951387da2586435d9bc9d3eb1f6bc87ef553d60823' },
+      { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_01.elmt', upstreamBlobSha: 'cd510c0dc8025bcb2f83be90c9bde092119bcac2', sha256: 'b5ae20d2e5a7fb08d4654909679bb6bf194eb1ad26475a497169eef9d80cb09b' },
     ],
   },
   qetCurrentTransformer: {
@@ -431,29 +504,29 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     id: 'qetCoreBalanceCt',
     namePl: 'Przekładnik Ferrantiego',
     zlozenie: null,
-    szerokosc: 48,
+    szerokosc: 64,
     wysokosc: 32,
     porty: [
-      { name: 'top', x: 24, y: 0, dir: 'N' },
-      { name: 'bottom', x: 24, y: 32, dir: 'S' },
+      { name: 'top', x: 32, y: 0, dir: 'N' },
+      { name: 'bottom', x: 32, y: 32, dir: 'S' },
     ],
     portyWtorne: [
-      { name: 'wtorny', x: 48, y: 16, dir: 'E' },
+      { name: 'wtorny', x: 64, y: 16, dir: 'E' },
     ],
     doprowadzenia: [],
-    obrys: { x: 12, y: 0, width: 36, height: 32 },
-    glif: { x: 12, y: 4.6, width: 33, height: 24 },
+    obrys: { x: 16.8, y: 0, width: 47.2, height: 32 },
+    glif: { x: 16.8, y: 1.6, width: 43, height: 30.4 },
     kafel: null,
     przewody: [
-      { k: 'line', x1: 24, y1: 0, x2: 24, y2: 32 },
-      { k: 'line', x1: 36, y1: 16, x2: 48, y2: 16 },
+      { k: 'line', x1: 32, y1: 0, x2: 32, y2: 32 },
+      { k: 'line', x1: 47.2, y1: 16, x2: 64, y2: 16 },
     ],
     stale: [
-      { k: 'circle', cx: 24, cy: 16.6, r: 12, fill: 'none' },
-      { k: 'line', x1: 21, y1: 19, x2: 27, y2: 13 },
-      { k: 'letter', x: 28.5016, y: 17.11, t: '3', size: 5.4 },
-      { k: 'line', x1: 40.5, y1: 19, x2: 43.5, y2: 13 },
-      { k: 'line', x1: 42, y1: 19, x2: 45, y2: 13 },
+      { k: 'circle', cx: 32, cy: 16.8, r: 15.2, fill: 'none' },
+      { k: 'line', x1: 28, y1: 20, x2: 36, y2: 12 },
+      { k: 'letter', x: 38.2246, y: 17.7955, t: '3', size: 8 },
+      { k: 'line', x1: 53.5, y1: 20.2, x2: 57.7, y2: 11.8 },
+      { k: 'line', x1: 55.6, y1: 20.2, x2: 59.8, y2: 11.8 },
     ],
     osprzet: [],
     noz: null,

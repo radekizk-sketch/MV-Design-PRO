@@ -224,7 +224,7 @@ for (const motyw of [
       .map((f) => f.ref_id)[0];
     expect(wolnePole, 'wolne pole odgałęźne stacji przelotowej').toBeTruthy();
     let enm = await operacja(request, seed.caseId, 'start_branch_segment_sn', {
-      from_ref: `${wolnePole}.BRANCH`,
+      from_ref: wolnePole,
       segment: {
         rodzaj: 'LINIA_NAPOWIETRZNA',
         dlugosc_m: 300,

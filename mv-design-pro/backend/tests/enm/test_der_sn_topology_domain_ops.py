@@ -277,7 +277,11 @@ def test_case2_pv_full_sn_chain_materializes_all_elements() -> None:
     assert field["bay_role"] == "OZE"
     kinds = [d["kind"] for d in field["primary_devices"]]
     assert kinds == ["DS", "CB", "CT", "VT", "DS", "ES", "SURGE_ARRESTER", "CABLE_HEAD"]
-    assert "anti-islanding" in field["protection_codes"]
+    # Zabezpieczenia interfejsu NC RfG: ROCOF 81R i napięciowo-częstotliwościowe — każda funkcja
+    # raz; dawny kod-agregat „anti-islanding” (zestaw tych kryteriów) skasowany (decyzja
+    # architekta 2026-10-30, `funkcje_eaz`).
+    assert {"27", "59", "81U", "81O", "81R"} <= set(field["protection_codes"])
+    assert "anti-islanding" not in field["protection_codes"]
 
     EnergyNetworkModel.model_validate(snap)
 

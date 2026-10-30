@@ -67,8 +67,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -125,8 +124,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -182,8 +180,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": null
@@ -239,8 +236,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -293,7 +289,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -363,8 +358,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -421,8 +415,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -478,8 +471,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": null
@@ -535,8 +527,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -589,7 +580,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -661,8 +651,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -719,8 +708,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -776,8 +764,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": null
@@ -833,8 +820,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -887,7 +873,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -941,7 +926,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay",
@@ -1013,8 +997,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -1071,8 +1054,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -1128,8 +1110,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -1185,8 +1166,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -1239,7 +1219,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -1311,8 +1290,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -1369,8 +1347,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -1426,8 +1403,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": null
@@ -1483,8 +1459,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -1555,8 +1530,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::0"
@@ -1613,8 +1587,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -1670,8 +1643,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": null
@@ -1727,8 +1699,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -1781,7 +1752,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -1853,8 +1823,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -1911,8 +1880,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -1968,8 +1936,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": null
@@ -2025,8 +1992,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -2079,7 +2045,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -2145,8 +2110,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -2203,8 +2167,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -2260,8 +2223,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": null
@@ -2317,8 +2279,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -2371,7 +2332,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -2437,8 +2397,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
           "zrodlo_u0_ref": null
@@ -2495,8 +2454,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
           "zrodlo_u0_ref": "sn/b882f3847846b5aef46b00e43dda068b/bay::dev::3"
@@ -2552,8 +2510,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
           "zrodlo_u0_ref": null
@@ -2609,8 +2566,7 @@
             "ZS",
             "50BF",
             "79",
-            "SCO",
-            "SPZ/SCO"
+            "SCO"
           ],
           "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
           "zrodlo_u0_ref": null
@@ -3072,7 +3028,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -3532,7 +3487,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -3994,7 +3948,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -4048,7 +4001,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/9a50aa47b86e8bd2f09878d4bf363c5e/bay",
@@ -4510,7 +4462,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -5380,7 +5331,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -5842,7 +5792,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -6298,7 +6247,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -7163,7 +7111,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -7625,7 +7572,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",
@@ -8087,7 +8033,6 @@
             "59N",
             "81U",
             "SCO",
-            "SPZ/SCO",
             "81R"
           ],
           "ref_id": "sn/b882f3847846b5aef46b00e43dda068b/bay",

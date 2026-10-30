@@ -27,7 +27,7 @@
  */
 
 import { SYMBOL_GLYPHS } from '../../../ui/sld/v3/symbols/glyphs';
-import { LABEL_TYPOGRAPHY } from '../../../ui/sld/v3/core/text';
+import { LABEL_TYPOGRAPHY, SLD_FONT_FAMILY, SLD_TEXT_STYLE } from '../../../ui/sld/v3/core/text';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type { MVApparatusType, TransformerType } from '../../../ui/catalog/types';
@@ -43,6 +43,7 @@ import {
   WYS_WIERSZA_APARATU,
   WYS_WIERSZA_ROLI,
   pozycjaOznaczenia,
+  wagaWierszaOpisu,
   zbudujPodglad,
   type NaglowekRozdzielnicy,
   type StatusKonfiguracji,
@@ -201,7 +202,11 @@ export function PodgladRozdzielnicySn({
         viewBox={`0 0 ${szerokosc} ${wysokosc}`}
         role="img"
         aria-label={T.podgladTytul}
+        // Krój i styl tekstu rysunku = te, których posuwy liczy pomiar szerokości
+        // (`measureTextWidth`, tabela posuwów kroju) — dziedziczone przez każdy napis.
+        fontFamily={SLD_FONT_FAMILY}
         style={{
+          ...SLD_TEXT_STYLE,
           width: '100%',
           maxWidth: `${szerokosc}px`,
           height: 'auto',
@@ -389,7 +394,7 @@ export function PodgladRozdzielnicySn({
                         : 'var(--mvd-muted)'
                   }
                   fontSize={LABEL_TYPOGRAPHY[KLASA_APARATU].fontSize}
-                  fontWeight={nazwa ? 700 : LABEL_TYPOGRAPHY[KLASA_APARATU].fontWeight}
+                  fontWeight={wagaWierszaOpisu(slot, i)}
                 >
                   {wiersz}
                 </text>

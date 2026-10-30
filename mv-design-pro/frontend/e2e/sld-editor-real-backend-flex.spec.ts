@@ -219,7 +219,7 @@ function findBranchCapableFieldPort(snapshot: DomainOpResponse['snapshot']): str
     for (const pole of (snapshot?.bays ?? []).filter((b) => b.substation_ref === substation.ref_id)) {
       const bayRole = String(pole.bay_role ?? '').toUpperCase();
       if (branchRoles.has(bayRole)) {
-        return `${pole.ref_id}.BRANCH`;
+        return pole.ref_id;
       }
     }
   }

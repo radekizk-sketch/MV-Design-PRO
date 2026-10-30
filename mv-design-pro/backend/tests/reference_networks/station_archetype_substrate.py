@@ -1030,26 +1030,31 @@ _MACHINE_TMIN_S = 0.10
 
 # Protection function sets per machine type (gate I) — ANSI/IEC codes on the
 # connection field, per machine type (axis T). IBG ≠ synchronous ≠ asynchronous.
+# Codes come from the EAZ dictionary `network_model/catalog/funkcje_eaz.py` — one code per
+# function (architect decision 2026-10-30, card UX-04/POLE-LINIOWE-WZORZEC): ROCOF is "81R"
+# (the former "df/dt" duplicated it), and loss-of-mains protection IS the 27/59/81U/81O/81R
+# criteria in the same set (the former aggregate code "anti-islanding" duplicated them).
 _PROTECTION_BY_MACHINE: dict[str, list[str]] = {
     # IBG (PV/BESS/full-converter wind): directional OC + voltage/frequency +
-    # rate-of-change + neutral OV + anti-islanding.
-    "IBG": ["67", "67N", "81U", "81O", "df/dt", "27", "59", "59N", "anti-islanding"],
+    # rate-of-change (81R) + neutral OV; loss-of-mains = 27/59/81U/81O/81R.
+    "IBG": ["67", "67N", "81U", "81O", "81R", "27", "59", "59N"],
     # Synchronous machine (cogeneration) — INTERFACE set only (line bay, NC RfG), same as
     # G6/G7. The FULL generator protection (87G diff, 40 loss-of-field, 32 reverse-power,
     # 64 ground, 46 neg-seq, 21/25, 27/59/81) lives on source.protection, NOT the interface.
-    "SYNCHRONOUS": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
+    "SYNCHRONOUS": ["67", "67N", "27", "59", "81U", "81O", "81R"],
     # Asynchronous machine (wind Type 1) — INTERFACE set only (line bay, NC RfG), same as DFIG:
     # 46/47 neg-seq, 49, 51 (+ 37 motoring, 32 reverse-power) are MACHINE functions and live on
-    # source.protection, NOT on the grid interface. anti-islanding is critical (self-excitation
-    # of the induction generator from the compensation capacitor bank).
-    "ASYNCHRONOUS": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
+    # source.protection, NOT on the grid interface. Loss-of-mains detection (27/59/81U/81O/81R)
+    # is critical (self-excitation of the induction generator from the compensation capacitor
+    # bank).
+    "ASYNCHRONOUS": ["67", "67N", "27", "59", "81U", "81O", "81R"],
     # GPO wielopolowe (różne źródła na wspólnej szynie) — INTERFEJS = NC RfG (jak wyżej); każde
     # pole źródłowe ma własny zestaw maszynowy/IBG na polu (split per typ, audit #5).
-    "MIXED": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
+    "MIXED": ["67", "67N", "27", "59", "81U", "81O", "81R"],
     # DFIG (wind Type 3) — INTERFACE set only (line bay, NC RfG). The MACHINE functions
     # (46/47 neg-seq, 49, 51) + the rotor-CONVERTER protection live on source.protection,
     # NOT on the grid interface (audit #5).
-    "DFIG": ["67", "67N", "27", "59", "81U", "81O", "df/dt", "anti-islanding"],
+    "DFIG": ["67", "67N", "27", "59", "81U", "81O", "81R"],
 }
 
 
@@ -3198,7 +3203,7 @@ def build_g9_gpo() -> dict[str, Any]:
             source_ref="enm:Generator.gen_type=pv_inverter;std:IEC_60909_6_7",
             interface_protection=False,
             source_kind="IBG",
-            protection_codes=["anti-islanding", "81U", "81O", "27", "59"],
+            protection_codes=["81U", "81O", "81R", "27", "59"],
         ),
         _field(
             "g9-sync",

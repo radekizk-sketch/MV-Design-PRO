@@ -27,6 +27,7 @@ import {
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
+import { interiorCrossings } from '../crossings';
 import { SHEET_MAX_ASPECT } from '../../layout/sheetRows';
 import { computeInitialCameraState, boundingBoxOfRect } from '../../canvas/camera';
 import { screenToWorld } from '../../../v2/viewport/ViewportController';
@@ -281,14 +282,30 @@ describe('S9-1 — determinizm i brak regresji niezmienników', () => {
     }
   });
 
-  it('DŁUGI CIĄG: zero-defekt (skrzyżowania, ortogonalność, kolizje etykiet, przecięcia poddrzew, niejednoznaczność) na każdym LOD', () => {
+  it('DŁUGI CIĄG: zero-defekt (łącznik bez skrzyżowań, skrzyżowania z mostkiem, ortogonalność, kolizje etykiet, przecięcia poddrzew, niejednoznaczność) na każdym LOD', () => {
     for (const lod of LODS) {
-      const m = layoutMetricsReport(buildSceneV3(dlugiCiag, lod));
+      const scena = buildSceneV3(dlugiCiag, lod);
+      const m = layoutMetricsReport(scena);
       // PRZYPIĘCIE DEKLARACJI z decyzji §2: „bieg powrotny jest z konstrukcji
       // wolny od skrzyżowań". Bez tej asercji zdanie byłoby obietnicą bez
       // testu — a przy 4 złamaniach arkusza łącznik przecina najwięcej
-      // potencjalnych torów ze wszystkich tras sceny.
-      expect(m.crossingCount, `LOD ${lod} skrzyżowania`).toBe(0);
+      // potencjalnych torów ze wszystkich tras sceny. Łącznik = przęsło, które niesie
+      // znak ciągu dalszego (`#sheet-continuation-…`); żadne skrzyżowanie go nie dotyczy.
+      const laczniki = new Set(
+        scena.segments
+          .filter((s) => s.meta?.kind === 'sheetContinuation')
+          .map((s) => String(s.meta?.ownerRef ?? '').replace(/#sheet-continuation-.*$/, '')),
+      );
+      expect(laczniki.size, `LOD ${lod} złamania arkusza`).toBeGreaterThan(0);
+      expect(
+        interiorCrossings(scena.segments).filter((c) => laczniki.has(c.hOwnerRef ?? '') || laczniki.has(c.vOwnerRef ?? '')),
+        `LOD ${lod} skrzyżowania łącznika`,
+      ).toEqual([]);
+      // Rozstrzygnięcie S7-P2 (2026-10-30): pozostałe skrzyżowania kabli bez węzła modelu
+      // (zejścia odgałęzień sieci referencyjnej) rysują się mostkiem — warunek odbioru to
+      // zero skrzyżowań bez mostka i zero kropek bez węzła modelu, nie zero skrzyżowań.
+      expect(m.crossingWithoutBridgeCount, `LOD ${lod} skrzyżowania bez mostka`).toBe(0);
+      expect(m.junctionDotGapCount, `LOD ${lod} kropki bez węzła modelu`).toBe(0);
       expect(m.nonOrthogonalSegmentCount, `LOD ${lod} ortogonalność`).toBe(0);
       expect(m.labelCollisionCount, `LOD ${lod} kolizje etykiet`).toBe(0);
       expect(m.subtreeIntersectionCount, `LOD ${lod} przecięcia poddrzew`).toBe(0);
@@ -299,7 +316,8 @@ describe('S9-1 — determinizm i brak regresji niezmienników', () => {
   it('SIEĆ REFERENCYJNA: zero-defekt na każdym LOD (ten sam zestaw miar, druga klasa topologii)', () => {
     for (const lod of LODS) {
       const m = layoutMetricsReport(buildSceneV3(siecReferencyjna, lod));
-      expect(m.crossingCount, `LOD ${lod} skrzyżowania`).toBe(0);
+      expect(m.crossingWithoutBridgeCount, `LOD ${lod} skrzyżowania bez mostka`).toBe(0);
+      expect(m.junctionDotGapCount, `LOD ${lod} kropki bez węzła modelu`).toBe(0);
       expect(m.nonOrthogonalSegmentCount, `LOD ${lod} ortogonalność`).toBe(0);
       expect(m.labelCollisionCount, `LOD ${lod} kolizje etykiet`).toBe(0);
       expect(m.subtreeIntersectionCount, `LOD ${lod} przecięcia poddrzew`).toBe(0);

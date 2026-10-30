@@ -180,7 +180,7 @@ def test_branch_from_branch_pole_branch_port() -> None:
         s1,
         "start_branch_segment_sn",
         {
-            "from_ref": f"{bp['ref_id']}.BRANCH",
+            "from_ref": bp["ports"]["BRANCH"][0],
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 100,
@@ -205,7 +205,7 @@ def test_start_branch_segment_accepts_explicit_zero_sequence_data() -> None:
         s1,
         "start_branch_segment_sn",
         {
-            "from_ref": f"{bp['ref_id']}.BRANCH",
+            "from_ref": bp["ports"]["BRANCH"][0],
             "segment": {
                 "rodzaj": "LINIA_NAPOWIETRZNA",
                 "dlugosc_m": 100,
@@ -238,7 +238,7 @@ def test_branch_from_zksn_branch_1_port() -> None:
         s1,
         "start_branch_segment_sn",
         {
-            "from_ref": f"{zksn['ref_id']}.BRANCH_1",
+            "from_ref": zksn["ports"]["BRANCH"][0],
             "segment": {"rodzaj": "KABEL", "dlugosc_m": 80, "catalog_ref": CATALOG_KABEL_SN},
         },
     )

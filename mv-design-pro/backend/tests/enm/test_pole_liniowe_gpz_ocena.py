@@ -172,7 +172,7 @@ def _oczekiwane_niezgodnosci(
     if klasa == "DEDYKOWANE_WYTWORCY" and odbior_kw:
         wynik.append(KOD_ODBIORY_ZA_POLEM_DEDYKOWANYM)
     # II.4.5.4.7.1 pkt 1: SCO nie w liniach z jednostkami wytwórczymi.
-    if oceny in {"MIESZANE", "DEDYKOWANE_WYTWORCY"} and {"SCO", "SPZ/SCO"} & set(kody):
+    if oceny in {"MIESZANE", "DEDYKOWANE_WYTWORCY"} and "SCO" in kody:
         wynik.append(KOD_SCO_W_POLU_Z_GENERACJA)
     # Rozstrzygnięcie sesji głównej: SPZ w polu dedykowanym jest niezgodnością.
     if oceny == "DEDYKOWANE_WYTWORCY" and {"79", "SPZE"} & set(kody):

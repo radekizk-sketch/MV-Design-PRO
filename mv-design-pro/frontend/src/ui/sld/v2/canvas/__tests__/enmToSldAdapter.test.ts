@@ -1959,7 +1959,8 @@ describe('enmToSldAdapter — kontrakt topologii terenowej SLD', () => {
         name: 'Odgałęzienie ze słupa',
         run_kind: 'branch',
         starting_bay_ref: 'bp-1',
-        starting_port_ref: 'bp-1.BRANCH',
+        // Port startu w jedynej postaci: zacisk portu odgałęźnego (backend `_rozwiaz_port_startu`).
+        starting_port_ref: 'bp/branch_bus',
         parent_run_ref: 'run-main',
         branch_origin_station_ref: 'bp-1',
         segments: [{ segment_ref: 'seg-branch', order: 1 }],

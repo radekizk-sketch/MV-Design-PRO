@@ -495,21 +495,21 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
   it('wiersz opisu nigdy nie kończy się ani nie zaczyna wiszącym separatorem', () => {
     // Zawijanie gotowego łańcucha „rodzaj · 17,5 kV · 630 A · 25 kA" zostawiało
     // wiersz zakończony „·" — na rysunku technicznym to błąd zapisu.
-    const wiersze = zawinCzesci(['wyłącznik', '17,5 kV', '630 A', '25 kA'], 8, 104);
+    const wiersze = zawinCzesci(['wyłącznik', '17,5 kV', '630 A', '25 kA'], 8, 600, 104);
     expect(wiersze.length).toBeGreaterThan(1);
     for (const w of wiersze) {
       expect(w.trim().endsWith('·')).toBe(false);
       expect(w.trim().startsWith('·')).toBe(false);
     }
     // Człony, których katalog nie niesie (puste), nie tworzą pustych wierszy.
-    expect(zawinCzesci(['', '  '], 8, 104)).toEqual([]);
+    expect(zawinCzesci(['', '  '], 8, 600, 104)).toEqual([]);
   });
 
   it('jednostka NIE odrywa się od liczby przy zawijaniu (spacja nierozdzielająca)', () => {
     // Zapis „…17,5" / „kV" w nowym wierszu jest w rysunku technicznym błędem
     // czytelności; pilnuje tego skleja jednostek, nie szczęśliwa długość slotu.
     expect(sklejJednostki('Rozłącznik LBS 17,5 kV')).toBe('Rozłącznik LBS 17,5\u00a0kV');
-    const wiersze = zawinTekst('Rozłącznik bezpiecznikowy ETI VV 17,5 kV', 8, 60);
+    const wiersze = zawinTekst('Rozłącznik bezpiecznikowy ETI VV 17,5 kV', 8, 600, 60);
     expect(wiersze.some((w) => w.trim() === 'kV')).toBe(false);
     expect(wiersze.join(' ')).toContain('17,5\u00a0kV');
   });

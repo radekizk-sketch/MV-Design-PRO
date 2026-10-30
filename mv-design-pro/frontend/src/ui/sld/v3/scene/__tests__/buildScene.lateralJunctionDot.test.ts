@@ -23,6 +23,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3, noSceneSymbolOverlaps, noSymbolWireCollisions, type SceneLod, type SceneV3 } from '../buildScene';
+import { odczepZaczynaSieNaWezlePola } from './wezelOdczepu';
 import { junctionDotGaps, lateralBranchNodes } from '../crossings';
 import { buildW1MatrixFixture } from './fixtures/w1MatrixVariants';
 import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
@@ -54,7 +55,7 @@ describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie p
     for (const lod of [0, 1, 2] as const) {
       it(`LOD ${lod}: KAŻDY odczep lateralny (points[0] na osi) ma kropkę junction wyśrodkowaną na węźle`, () => {
         const scene = buildSceneV3(enm, lod as SceneLod);
-        const nodes = lateralBranchNodes(scene.segments);
+        const nodes = lateralBranchNodes(scene, SYMBOL_DEFS);
         const centers = junctionDotCenters(scene);
         for (const n of nodes) {
           expect(centers.has(`${n.x},${n.y}`), `kropka na odczepie (${n.x},${n.y}) LOD ${lod}`).toBe(true);
@@ -76,11 +77,12 @@ describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie p
       const dots = scene.symbols.filter((s) => s.symbolId === 'junction').length;
       // węzły z wyroczni (dedupe wg junctionDotGaps): 0 luk ⇒ #kropek == #węzłów.
       expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
-      // Dodatkowo: żadna kropka nie ma testId spoza {tee, lateral}.
+      // Dodatkowo: każda kropka jest kropką odczepu bocznego z węzłem modelu
+      // (kropki „węzła T" bez węzła modelu skasowane rozstrzygnięciem S7-P2).
       const tagged = scene.symbols.filter(
         (s) => s.symbolId === 'junction'
-          && (String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-')
-            || String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-t-')),
+          && String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-')
+          && typeof s.meta?.wezelModelu === 'string',
       ).length;
       expect(tagged).toBe(dots);
     });
@@ -139,9 +141,17 @@ describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie p
           if (laterals.length === 0) continue;
           seenAny = true;
           const axis = mainAxisX(target.fieldRef);
+          const odczepyPola = scene.segments.filter((s) =>
+            String(s.meta?.ownerRef ?? '').includes(`${target.fieldRef}#lateral-`),
+          );
           for (const seg of laterals) {
             const tap = seg.points[0];
-            expect(tap.x, `${target.variant.id}: ${kind} węzeł na osi`).toBe(axis);
+            // Węzeł odczepu = węzeł pola: oś toru albo port bliższego aparatu bocznego tej
+            // samej kotwicy (łańcuch KD-5 bez nakładania, `odcinkiOdczepowBocznych`).
+            expect(
+              odczepZaczynaSieNaWezlePola(seg, odczepyPola, axis),
+              `${target.variant.id}: ${kind} węzeł na węźle pola`,
+            ).toBe(true);
             expect(centers.has(`${tap.x},${tap.y}`), `${target.variant.id}: kropka na odczepie ${kind}`).toBe(true);
           }
         }
@@ -173,19 +183,19 @@ describe('KROPKA-WEZLOWA (V12K-150) — kropka na odczepie lateralnym w scenie p
   describe('NEGATYW syntetyczny: skrzyżowanie bez połączenia ≠ węzeł ≠ kropka', () => {
     it('dwa przecinające się odcinki BEZ wspólnego końca: 0 węzłów lateralnych, kropka fabrykowana ⇒ luka', () => {
       // Skrzyżowanie wnętrze×wnętrze (żaden koniec nie ląduje we wnętrzu drugiego)
-      // — to NIE T-węzeł ani odczep pola: brak `#lateral-`, brak węzła, więc
-      // kropka byłaby fałszywa (kropka-bez-rozgalezienia).
+      // — to NIE T-węzeł ani odczep pola: brak `#lateral-`, brak węzła modelu, więc
+      // kropka byłaby fałszywa (`kropka-bez-wezla-modelu`, rozstrzygnięcie S7-P2 2026-10-30).
       const segments = [
         { points: [{ x: 0, y: 100 }, { x: 200, y: 100 }], meta: { kind: 'sn', ownerRef: 'seg/magistrala' } },
         { points: [{ x: 100, y: 0 }, { x: 100, y: 200 }], meta: { kind: 'sn', ownerRef: 'seg/pion' } },
       ] as const;
-      expect(lateralBranchNodes(segments)).toEqual([]);
+      expect(lateralBranchNodes({ segments, symbols: [] }, SYMBOL_DEFS)).toEqual([]);
       const withFakeDot = {
         segments,
         symbols: [{ symbolId: 'junction', x: 100 - JDEF.width / 2, y: 100 - JDEF.height / 2 }],
       };
       const gaps = junctionDotGaps(withFakeDot, SYMBOL_DEFS);
-      expect(gaps.some((g) => g.reason === 'kropka-bez-rozgalezienia')).toBe(true);
+      expect(gaps.map((g) => g.reason)).toEqual(['kropka-bez-wezla-modelu']);
     });
   });
 });

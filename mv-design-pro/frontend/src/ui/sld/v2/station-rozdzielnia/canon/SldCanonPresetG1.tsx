@@ -174,7 +174,7 @@ export function SldCanonPresetG1({ companion }: { companion: SldOzeArchetypeComp
           {lbl(fx, 769, `Ik″ 3f ≈ ${fmt(invShare, 2)} kA`, TXT2, 9, 700, 'middle')}
         </g>
       ))}
-      {lbl(807, 794, 'zabezpieczenia falowników: anti-islanding · U<> · f<> · df/dt', TXT_MUTED, 9.5, 600, 'middle')}
+      {lbl(807, 794, 'zabezpieczenia falowników od pracy wyspowej: U<> · f<> · df/dt', TXT_MUTED, 9.5, 600, 'middle')}
 
       {/* ── node ② readout ── */}
       <NodeReadout x={X.nnLbl} y={636} n={2} title="szyna nN · 0,80 kV · IT"

@@ -35,12 +35,20 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { buildSceneV3, layoutMetricsReport, type SceneV3 } from '../buildScene';
-import { bridgePointsForPolyline, crossingBusGaps, interiorCrossings } from '../crossings';
+import {
+  bridgePointsForPolyline,
+  crossingBusGaps,
+  interiorCrossings,
+  junctionDotGaps,
+  przecieciaBezMostka,
+  wezlyModeluEnm,
+} from '../crossings';
 import { computeBands, DESCENT_STRIP_HEIGHT, departureStripExtraHeight } from '../../layout/bands';
 import { GRID } from '../../core/grid';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { LODS, appendLateralBranch, loadEnm, radialize, sceneSignature } from './syntheticNetworks';
+import { przecieciaMiedzyOdgalezieniamiStacji, przecieciaToruStacji } from './przecieciaStacji';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -60,57 +68,6 @@ const doklejenia: readonly { readonly nazwa: string; readonly zastosuj: (n: Ener
   },
 ];
 
-/** Węzły T rozcinające segment WEWNĄTRZ stacji (właściciel spoza `seg/`): połączenie,
- *  którego w sieci nie ma — kabel pola przecinał tor wewnętrzny stacji. */
-function wezlyTWewnatrzStacji(scena: SceneV3): string[] {
-  return scena.segments
-    .map((s) => s.meta?.ownerRef ?? '')
-    .filter((owner) => /#tee-\d+$/.test(owner) && !owner.startsWith('seg/'));
-}
-
-/** Kropki węzła T (`resolveTeeJunctions`, rozstrzygnięcie S7-P2) w punkcie, w którym
- *  spotykają się kable DWÓCH RÓŻNYCH odgałęzień tej samej stacji. Przecięcie zejścia
- *  odgałęzienia z magistralą innej pary stacji dostaje kropkę z projektu S7-P2; dwa
- *  odgałęzienia jednej stacji nie mają prawa się spotkać — kropka między nimi rysuje
- *  połączenie dwóch odpływów, którego w sieci nie ma (pomiar przed naprawą na L0: 1 dla
- *  +1 odgałęzienia, 3 dla +2). */
-function kropkiTMiedzyOdgalezieniamiStacji(model: EnergyNetworkModel, scena: SceneV3): string[] {
-  const ciagSegmentu = new Map<string, { readonly stacja: string; readonly ciag: string }>();
-  for (const run of model.line_runs ?? []) {
-    if (run.run_kind !== 'branch') continue;
-    for (const seg of run.segments) {
-      ciagSegmentu.set(seg.segment_ref, { stacja: run.starting_bay_ref.replace(/\/sn_field\/\d+$/, ''), ciag: run.id });
-    }
-  }
-  const kropki = scena.symbols
-    .filter((s) => s.symbolId === 'junction' && String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-t-'))
-    .map((s) => ({ x: s.x + SYMBOL_DEFS.junction.width / 2, y: s.y + SYMBOL_DEFS.junction.height / 2 }));
-  const wynik: string[] = [];
-  for (const d of kropki) {
-    const ciagi = new Map<string, string>();
-    for (const seg of scena.segments) {
-      const ciag = ciagSegmentu.get((seg.meta?.ownerRef ?? '').replace(/#tee-\d+$/, ''));
-      if (!ciag) continue;
-      const lezy = seg.points.some((a, k) => {
-        const b = seg.points[k + 1];
-        if (!b) return false;
-        return (
-          (a.x === b.x && a.x === d.x && d.y >= Math.min(a.y, b.y) && d.y <= Math.max(a.y, b.y))
-          || (a.y === b.y && a.y === d.y && d.x >= Math.min(a.x, b.x) && d.x <= Math.max(a.x, b.x))
-        );
-      });
-      if (lezy) ciagi.set(ciag.ciag, ciag.stacja);
-    }
-    const wpisy = [...ciagi.entries()];
-    for (let i = 0; i < wpisy.length; i++) {
-      for (let j = i + 1; j < wpisy.length; j++) {
-        if (wpisy[i][1] === wpisy[j][1]) wynik.push(`${wpisy[i][0]} × ${wpisy[j][0]} @${d.x},${d.y}`);
-      }
-    }
-  }
-  return wynik;
-}
-
 interface Krawedz {
   readonly owner: string;
   readonly staly: number;
@@ -125,7 +82,7 @@ function nakladaniaWspolliniowe(scena: SceneV3): string[] {
   const pionowe: Krawedz[] = [];
   for (const s of scena.segments) {
     if ((s.meta?.kind ?? 'sn') !== 'sn') continue;
-    const owner = (s.meta?.ownerRef ?? '').replace(/#tee-\d+$/, '');
+    const owner = s.meta?.ownerRef ?? '';
     for (let i = 0; i + 1 < s.points.length; i++) {
       const a = s.points[i];
       const b = s.points[i + 1];
@@ -155,14 +112,17 @@ describe('ODEJŚCIA-ZAGNIEŻDŻONE — topologia × liczba odgałęzień tej sam
   for (const topo of topologie) {
     for (const dokl of doklejenia) {
       for (const lod of LODS) {
-        it(`${topo.nazwa} × ${dokl.nazwa} × L${lod}: zero skrzyżowań (także z szyną), zero węzłów T w stacji i między odgałęzieniami stacji, zero nakładań`, () => {
+        it(`${topo.nazwa} × ${dokl.nazwa} × L${lod}: odgałęzienia stacji bez wzajemnych przecięć, każde skrzyżowanie z mostkiem, zero kropek bez węzła modelu, zero przecięć z szyną i torem stacji, zero nakładań`, () => {
           const model = dokl.zastosuj(topo.siec);
           const scena = buildSceneV3(model, lod);
-          expect(layoutMetricsReport(scena).crossingCount).toBe(0);
-          expect(kropkiTMiedzyOdgalezieniamiStacji(model, scena)).toEqual([]);
+          // Rozstrzygnięcie S7-P2 (2026-10-30): skrzyżowanie kabli bez węzła modelu jest
+          // dozwolone wyłącznie z rysowalnym mostkiem; kropka tylko na węźle modelu.
+          expect(przecieciaBezMostka(scena.segments)).toEqual([]);
+          expect(junctionDotGaps(scena, SYMBOL_DEFS, wezlyModeluEnm(model))).toEqual([]);
+          expect(layoutMetricsReport(scena).crossingWithoutBridgeCount).toBe(0);
+          expect(przecieciaMiedzyOdgalezieniamiStacji(model, scena)).toEqual([]);
           expect(crossingBusGaps(scena.segments)).toEqual([]);
-          expect(interiorCrossings(scena.segments)).toEqual([]);
-          expect(wezlyTWewnatrzStacji(scena)).toEqual([]);
+          expect(przecieciaToruStacji(scena)).toEqual([]);
           expect(nakladaniaWspolliniowe(scena)).toEqual([]);
           // Degeneracja c (kanał w kolumnie 0 wiersza lateralu) nie występuje.
           expect(scena.meta.stopNotes.filter((n) => n.includes('degeneracja (c'))).toEqual([]);
@@ -277,12 +237,9 @@ describe('ODEJŚCIA-ZAGNIEŻDŻONE — wachlarz pól GPZ na L0', () => {
   for (const lod of LODS) {
     it(`GPZ z kilkoma polami liniowymi × L${lod}: zejścia pól bez węzła T; jedyne skrzyżowanie to dwa kable dwóch pól, rysowane mostkiem`, () => {
       const scena = buildSceneV3(gpzOchrony, lod);
-      expect(scena.segments.filter((s) => /#tee-\d+$/.test(s.meta?.ownerRef ?? ''))).toEqual([]);
-      // Kropki węzła T z rozstrzygania przecięć (`sld-v3-wezel-t-…`) — zero. Kropki
-      // `sld-v3-wezel-lateral-…` to węzły odgałęzień stacji z modelu, nie przecięcia.
-      expect(
-        scena.symbols.filter((s) => s.symbolId === 'junction' && (s.meta?.testId ?? '').startsWith('sld-v3-wezel-t-')),
-      ).toEqual([]);
+      // Kropka wyłącznie na węźle modelu (rozstrzygnięcie S7-P2, 2026-10-30): kropki
+      // `sld-v3-wezel-lateral-…` to węzły odczepów pól z modelu, nie przecięcia.
+      expect(junctionDotGaps(scena, SYMBOL_DEFS, wezlyModeluEnm(gpzOchrony))).toEqual([]);
       expect(crossingBusGaps(scena.segments)).toEqual([]);
       const przeciecia = interiorCrossings(scena.segments);
       expect(przeciecia.map((c) => [c.hOwnerRef, c.vOwnerRef, c.involvesBus])).toEqual([
@@ -293,6 +250,10 @@ describe('ODEJŚCIA-ZAGNIEŻDŻONE — wachlarz pól GPZ na L0', () => {
       const pion = scena.segments.find((s) => s.meta?.ownerRef === KABEL_ODGALEZIENIA)!;
       const mostki = [...bridgePointsForPolyline(pion.points, przeciecia).values()].flat();
       expect(mostki).toEqual([przeciecia[0].y]);
+      // Decyzja architekta 2026-10-30 (pkt 4, `S7_GAP_CROSSING_ZERO_2026-07.md` §12): ten
+      // wachlarz z JEDNYM koniecznym skrzyżowaniem z mostkiem jest układem docelowym —
+      // mostek musi być rysowalny (półłuk mieści się w pionie, poziom przechodzi pod nim).
+      expect(przecieciaBezMostka(scena.segments)).toEqual([]);
     });
   }
 });

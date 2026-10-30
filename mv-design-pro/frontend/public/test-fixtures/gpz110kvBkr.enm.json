@@ -51,7 +51,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -96,8 +96,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -275,8 +274,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
@@ -343,7 +341,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -388,8 +386,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -567,8 +564,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/002",
@@ -635,7 +631,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -680,8 +676,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -859,8 +854,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/001",
@@ -927,7 +921,7 @@
             "is_controllable": true,
             "kind": "THREE_POSITION_SWITCH",
             "linked_ref": null,
-            "naped": null,
+            "naped": "ZASOBNIKOWY_RECZNY",
             "odgalezienie": null,
             "operating_state": null,
             "placement": "UPSTREAM",
@@ -972,8 +966,7 @@
               "51N",
               "50BF",
               "79",
-              "SCO",
-              "SPZ/SCO"
+              "SCO"
             ],
             "funkcje_eaz_zasilane": [],
             "is_controllable": true,
@@ -1151,8 +1144,7 @@
           "ZS",
           "50BF",
           "79",
-          "SCO",
-          "SPZ/SCO"
+          "SCO"
         ],
         "protection_ref": null,
         "ref_id": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/002/002",
@@ -1855,7 +1847,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "c85fbf73418456ea4d150e2f6fb5b25f2c6cfebcf1decc2359917c57e8064163",
+      "hash_sha256": "5948bfb87969a5895f901b37b8cc27ef930333c2fd11c278bd74c4d49350065b",
       "name": "GPZ z polem baterii kondensatorów",
       "revision": 1,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1871,7 +1863,7 @@
         "run_kind": "main_trunk",
         "segments": [],
         "starting_bay_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
-        "starting_port_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001/terminal",
+        "starting_port_ref": "gpz/32c4d4eb9dc133cf25b1e01d79525f14/bay/001/001",
         "stations": []
       }
     ],

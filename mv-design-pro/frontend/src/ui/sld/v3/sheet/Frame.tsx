@@ -20,7 +20,7 @@ import type { ReactNode } from 'react';
 
 import { OVERHEAD_LINE_DASHARRAY } from '../compose/preview';
 import { GRID } from '../core/grid';
-import { LABEL_TYPOGRAPHY, labelLineHeight, screenFixedFontSize, screenFixedLength } from '../core/text';
+import { LABEL_TYPOGRAPHY, SLD_FONT_FAMILY, labelLineHeight, screenFixedFontSize, screenFixedLength } from '../core/text';
 import {
   SHEET_BORDER_STROKE_SCREEN_PX,
   SHEET_CAPTION_OFFSET_SCREEN_PX,
@@ -289,7 +289,7 @@ export function LegendStateTile(props: { readonly id: string; readonly y: number
     <g data-legenda-kafel={stan}>
       <rect x={4} y={props.y} width={16} height={12} rx={1.5} fill={palette.state[stan]} />
       {znak && (
-        <text x={12} y={props.y + 9.5} textAnchor="middle" fontFamily="sans-serif" fontSize={9} fontWeight={700} fill={palette.state.glif}>
+        <text x={12} y={props.y + 9.5} textAnchor="middle" fontFamily={SLD_FONT_FAMILY} fontSize={9} fontWeight={700} fill={palette.state.glif}>
           {znak}
         </text>
       )}
@@ -387,7 +387,7 @@ export function SheetLegend(props: {
               x={entry.kind === 'note' ? 4 : LEGEND_GLYPH_COLUMN_WIDTH}
               y={centerY}
               dominantBaseline="middle"
-              fontFamily="sans-serif"
+              fontFamily={SLD_FONT_FAMILY}
               fontSize={screenFixedFontSize('t3', cameraScale)}
               fontWeight={LABEL_TYPOGRAPHY.t3.fontWeight}
               fill={palette.baseStroke}
@@ -454,7 +454,7 @@ function ZoneMarkers(props: {
             x={xCenter}
             y={-labelOffset}
             textAnchor="middle"
-            fontFamily="sans-serif"
+            fontFamily={SLD_FONT_FAMILY}
             fontSize={fontSize}
             fontWeight={LABEL_TYPOGRAPHY.t1.fontWeight}
             fill={palette.baseStroke}
@@ -474,7 +474,7 @@ function ZoneMarkers(props: {
             y={band.y + band.height / 2}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontFamily="sans-serif"
+            fontFamily={SLD_FONT_FAMILY}
             fontSize={fontSize}
             fontWeight={LABEL_TYPOGRAPHY.t1.fontWeight}
             fill={palette.baseStroke}
@@ -587,7 +587,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
           x={width}
           y={height + captionOffset}
           textAnchor="end"
-          fontFamily="sans-serif"
+          fontFamily={SLD_FONT_FAMILY}
           fontSize={captionFontSize}
           fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
           fill={palette.baseStroke}
@@ -601,7 +601,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
             x={0}
             y={height + captionOffset}
             textAnchor="start"
-            fontFamily="sans-serif"
+            fontFamily={SLD_FONT_FAMILY}
             fontSize={captionFontSize}
             fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
             fill={palette.baseStroke}

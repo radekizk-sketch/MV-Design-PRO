@@ -12,21 +12,31 @@
  * Origin glifu = lewy-górny róg bboxa z SYMBOL_DEFS (porty pasują 1:1).
  */
 
-import { SYMBOL_DEFS, czyLacznikZPolozeniem, czySymbolQet, obrysSymbolu, type SymbolId } from './defs';
+import { SYMBOL_DEFS, czyLacznikZPolozeniem, czySymbolQet, obrysSymbolu, rodzajSymbolu, type SymbolId } from './defs';
 import { CadPrimitiveLayer } from '../cad/CadSymbol';
-import { QET_BOK_KAFLA_STANU, QET_KRESKA_GLIFU, QET_SYMBOLE_POLA_SN, type QetPolozenieNoza, type QetSymbolPolaSnId } from '../cad/qet/qetPoleSn';
+import type { CadPrimitive } from '../cad/cadSymbolRegistry';
+import {
+  QET_BOK_KAFLA_STANU,
+  QET_KRESKA_GLIFU,
+  QET_SYMBOLE_POLA_SN,
+  type QetNozSymbolu,
+  type QetPolozenieNoza,
+  type QetSymbolPolaSnId,
+} from '../cad/qet/qetPoleSn';
 import { BASE_STROKE, type KafleStanuLacznika, type StanKafla } from '../theme/colorTokens';
 import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 import type { RodzajUzwojenia, Uzwojenie, UzwojeniaTransformatora } from './uzwojenia';
 import type { UkladPolaczenBaterii } from '../../../../types/enm';
 import { PORTY_APARATU_POLA, RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA } from '../compose/rodzajeAparatuPola';
 import { OPIS_POLOZENIA_PL } from '../../v2/model/stanAparatowPola';
+import { MIN_TEXT_SCREEN_PX, SLD_FONT_FAMILY, zasiegPionowyTuszu } from '../core/text';
+import { KRESKA_OKREGU_PRZEKAZNIKA, OKRAG_PRZEKAZNIKA, PISMO_KODU_W_OKREGU, ukladKodowWOkregu } from './okragPrzekaznika';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
  *  zmiany zachowania. Re-eksport zachowuje istniejący import w `SldCanvasV3.tsx`. */
 export const V3_STROKE_BASE = BASE_STROKE;
-export const V3_STROKE_APPARATUS = 1.2;
+export const V3_STROKE_APPARATUS = KRESKA_OKREGU_PRZEKAZNIKA;
 /** Kreska ramki bloku przekaźnika [px świata] — cieńsza od okręgu przekaźnika: ramka grupuje
  *  okrąg i wiersze funkcji, nie jest aparatem. */
 export const V3_STROKE_RAMKI_BLOKU = 0.8;
@@ -84,7 +94,7 @@ export interface GlyphProps {
   readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
   /** Nadpisanie koloru bazowego (nakładka napięcia na szynach itd.). */
   readonly stroke?: string;
-  /** F9.9 (spec §17.3): kody funkcji przekaźnika (np. ["50/51","51N"], maks.
+  /** F9.9 (spec §17.3): kody funkcji przekaźnika (np. ["51","51N"], maks.
    *  2 linie) — WYŁĄCZNIE `ProtectionRelayGlyph` czyta to pole, pozostałe
    *  glify je ignorują (wspólny `GlyphProps`, jak `state`, zero rozgałęzień
    *  sygnatury per symbol). */
@@ -537,7 +547,7 @@ function BrakUzwojenia(props: { readonly c: { x: number; y: number }; readonly s
       y={props.c.y + 4.5}
       textAnchor="middle"
       fill={stroke(props.glif)}
-      fontFamily="sans-serif"
+      fontFamily={SLD_FONT_FAMILY}
       fontSize={13}
       fontWeight={700}
     >
@@ -565,6 +575,30 @@ function OznaczenieUzwojen(props: { readonly glif: GlyphProps }): JSX.Element | 
   );
 }
 
+/** Pismo znaku ostrzeżenia „!" przy symbolu — podłoga S9-7 (8 px, decyzja §11.7 pkt 5). */
+export const PISMO_ZNAKU_OSTRZEZENIA = { fontSize: MIN_TEXT_SCREEN_PX, fontWeight: 700 } as const;
+
+/** Promień kółka znaku ostrzeżenia [px świata]. */
+export const PROMIEN_ZNAKU_OSTRZEZENIA = 3.6;
+
+/** Znak ostrzeżenia „!" w kółku (TR2W-BEZ-POLA, F10.5): tusz „!" pismem 8 px wyśrodkowany
+ *  pionowo w kółku — linia bazowa z zasięgu tuszu kroju (`zasiegPionowyTuszu`), nie z szacunku. */
+function ZnakOstrzezenia(props: { readonly cx: number; readonly cy: number; readonly glif: GlyphProps }): JSX.Element {
+  const { fontSize, fontWeight } = PISMO_ZNAKU_OSTRZEZENIA;
+  const tusz = zasiegPionowyTuszu('!', fontSize, fontWeight);
+  return (
+    <>
+      <circle cx={props.cx} cy={props.cy} r={PROMIEN_ZNAKU_OSTRZEZENIA} fill="none" stroke={stroke(props.glif)} strokeWidth={grubosc(props.glif, 0.9)} />
+      <text
+        x={props.cx} y={props.cy - (tusz.gora + tusz.dol) / 2} textAnchor="middle"
+        fill={stroke(props.glif)} fontFamily={SLD_FONT_FAMILY} fontSize={fontSize} fontWeight={fontWeight}
+      >
+        !
+      </text>
+    </>
+  );
+}
+
 export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('transformer2W', props)}>
@@ -582,13 +616,7 @@ export function Transformer2WGlyph(props: GlyphProps): JSX.Element {
        *  Mono jak reszta glifu bazowego — kolor nie koduje tu stanu fizycznego. */}
       {props.hasFieldGapWarning && (
         <g data-field-gap-warning="true">
-          <circle cx={28} cy={4} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, 0.9)} />
-          <text
-            x={28} y={6.2} textAnchor="middle"
-            fill={stroke(props)} fontFamily="sans-serif" fontSize={6} fontWeight={700}
-          >
-            !
-          </text>
+          <ZnakOstrzezenia cx={28} cy={4} glif={props} />
         </g>
       )}
     </g>
@@ -806,7 +834,7 @@ export function DerGeneratorGlyph(props: GlyphProps): JSX.Element {
       <circle cx={16} cy={18} r={13} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <text
         x={16} y={22} textAnchor="middle"
-        fill={stroke(props)} fontFamily="sans-serif" fontSize={12} fontWeight={700}
+        fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={12} fontWeight={700}
       >
         G
       </text>
@@ -841,7 +869,7 @@ export function DerUnknownGlyph(props: GlyphProps): JSX.Element {
   return derFrame(props, 'derUnknown', (
     <text
       x={16} y={22} textAnchor="middle"
-      fill={stroke(props)} fontFamily="sans-serif" fontSize={16} fontWeight={700}
+      fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={16} fontWeight={700}
     >
       ?
     </text>
@@ -864,7 +892,7 @@ export function BayNoEquipmentGlyph(props: GlyphProps): JSX.Element {
       />
       <text
         x={8} y={21} textAnchor="middle"
-        fill={stroke(props)} fontFamily="sans-serif" fontSize={13} fontWeight={700}
+        fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={13} fontWeight={700}
       >
         ?
       </text>
@@ -1115,15 +1143,17 @@ export function GpzCollapsedGlyph(props: GlyphProps): JSX.Element {
 
 /**
  * F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg z kodami
- * funkcji ANSI/IEEE C37.2 (np. „50/51" nad „51N", maks. 2 linie ≤4 znaki,
- * §17.3 — obcinanie/wybór DWÓCH pierwszych kodów jest odpowiedzialnością
- * WOŁAJĄCEGO, `compose/station.ts`/`compose/gpz.ts`, ta funkcja rysuje
- * WYŁĄCZNIE to, co dostanie w `labelLines`, zero własnej logiki wyboru).
+ * funkcji ANSI/IEEE C37.2 (np. „51" nad „51N", maks. 2 linie). Wybór kodów
+ * mieszczących się w okręgu pismem podłogi 8 px i ich linie bazowe — JEDNA
+ * funkcja `ukladKodowWOkregu` (`symbols/okragPrzekaznika.ts`), którą woła
+ * kompozycja (`compose/station.ts`/`compose/gpz.ts`) i ten glif.
  * Brak wypełnienia (P5: rysunek bazowy mono) — element ADNOTACJI, nie stanu.
  */
 export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
-  const lines = props.labelLines ?? [];
-  const ty = lines.length > 1 ? [9, 17] : [13.5];
+  // Kody i ich linie bazowe z JEDNEGO źródła (`symbols/okragPrzekaznika.ts`): kompozycja
+  // podaje prefiks mieszczący się w okręgu pismem 8 px, glif rysuje go w liniach bazowych
+  // tej samej funkcji (blok tuszu wyśrodkowany w okręgu).
+  const uklad = ukladKodowWOkregu(props.labelLines ?? []);
   return (
     <g {...glyphGroupProps('protectionRelay', props)}>
       {props.ramkaBloku && (
@@ -1138,12 +1168,13 @@ export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
           data-przekaznik="ramka-bloku"
         />
       )}
-      <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
-      {lines.slice(0, 2).map((line, i) => (
+      <circle cx={OKRAG_PRZEKAZNIKA.cx} cy={OKRAG_PRZEKAZNIKA.cy} r={OKRAG_PRZEKAZNIKA.r} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      {uklad.kody.map((line, i) => (
         <text
           key={line}
-          x={12} y={ty[i]} textAnchor="middle"
-          fill={stroke(props)} fontFamily="sans-serif" fontSize={7} fontWeight={600}
+          x={OKRAG_PRZEKAZNIKA.cx} y={uklad.linieBazowe[i]} textAnchor="middle"
+          fill={stroke(props)} fontFamily={SLD_FONT_FAMILY}
+          fontSize={PISMO_KODU_W_OKREGU.fontSize} fontWeight={PISMO_KODU_W_OKREGU.fontWeight}
         >
           {line}
         </text>
@@ -1155,13 +1186,7 @@ export function ProtectionRelayGlyph(props: GlyphProps): JSX.Element {
        *  glifu bazowego, P5 — kolor NIE koduje tu stanu fizycznego). */}
       {props.hasTopologyWarning && (
         <g data-topology-warning="true">
-          <circle cx={19.5} cy={4.5} r={3.6} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, 0.9)} />
-          <text
-            x={19.5} y={6.7} textAnchor="middle"
-            fill={stroke(props)} fontFamily="sans-serif" fontSize={6} fontWeight={700}
-          >
-            !
-          </text>
+          <ZnakOstrzezenia cx={19.5} cy={4.5} glif={props} />
         </g>
       )}
     </g>
@@ -1180,7 +1205,7 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
       <circle cx={12} cy={12} r={11} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <text
         x={12} y={16} textAnchor="middle"
-        fill={stroke(props)} fontFamily="sans-serif" fontSize={12} fontWeight={700}
+        fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={12} fontWeight={700}
       >
         {/* Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej wielkości
             (A/V) z danych pomiaru; „M" tylko gdy wielkość nieznana. */}
@@ -1271,7 +1296,7 @@ export function LvPortalGlyph(props: GlyphProps): JSX.Element {
         fill="none" stroke={stroke(props)} strokeWidth={w}
         data-lv-portal-flag="true"
       />
-      <text x={16} y={13} textAnchor="middle" fill={stroke(props)} fontFamily="sans-serif" fontSize={8} fontWeight={700}>
+      <text x={16} y={13} textAnchor="middle" fill={stroke(props)} fontFamily={SLD_FONT_FAMILY} fontSize={8} fontWeight={700}>
         nN
       </text>
     </g>
@@ -1313,7 +1338,8 @@ export function stanKaflaLacznika(id: SymbolId, state: SwitchState | undefined):
   // łącznika — model nie niesie położenia, więc znacznik funkcji stoi bez kafla (kafel „?"
   // sugerowałby łącznik o nieznanym stanie, którego w modelu nie ma).
   if (id === 'noPoint' && state === undefined) return null;
-  if (state === 'earthed' && id !== 'qetThreePositionSwitch') return 'nieustalony';
+  // Rodzaj semantyczny: rysunek łącznika trójpołożeniowego ze znakiem napędu to ten sam łącznik.
+  if (state === 'earthed' && rodzajSymbolu(id) !== 'qetThreePositionSwitch') return 'nieustalony';
   return stanKaflaPolozenia(state);
 }
 
@@ -1348,10 +1374,11 @@ export function prostokatKaflaStanu(id: SymbolId): { readonly x: number; readonl
 }
 
 /** Wysokość znaku „?"/„!" kafla [px świata]: jedna czwarta krótszego boku kafla, nie mniej
- *  niż 6 i nie więcej niż 12 — znak stanu niepewnego czytelny na kaflu każdego rozmiaru, bez
- *  zasłaniania glifu (narożnik kafla). */
+ *  niż podłoga czytelności S9-7 (`MIN_TEXT_SCREEN_PX` = 8 px przy wejściu w LOD 2 — decyzja
+ *  §11.7 pkt 5 karty UX-04/POLE-LINIOWE-WZORZEC: podłoga obejmuje litery symboli) i nie więcej
+ *  niż 12 — znak stanu niepewnego czytelny na kaflu każdego rozmiaru, w narożniku kafla. */
 export function rozmiarZnakuKafla(r: { readonly width: number; readonly height: number }): number {
-  return Math.min(12, Math.max(6, Math.floor(Math.min(r.width, r.height) / 4)));
+  return Math.min(12, Math.max(MIN_TEXT_SCREEN_PX, Math.floor(Math.min(r.width, r.height) / 4)));
 }
 
 /** Kafel stanu: wypełniony prostokąt pod symbolem, znak „?"/„!" w rogu, dymek z opisem
@@ -1382,7 +1409,7 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
             x={props.x + r.x + 1}
             y={props.y + r.y + rozmiarZnakuKafla(r)}
             fill={kafle.glif}
-            fontFamily="sans-serif"
+            fontFamily={SLD_FONT_FAMILY}
             fontSize={rozmiarZnakuKafla(r)}
             fontWeight={700}
             data-kafel="znak"
@@ -1394,6 +1421,31 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
     );
   }
   return GlifNaKaflu;
+}
+
+/**
+ * Prymitywy noża symbolu QET w położeniu (przed obrotem `noz.katy`): koniec linii dalszy od
+ * przegubu przesunięty wzdłuż noża do `noz.zasiegi[położenie]` × długości — w położeniu
+ * zamkniętym i uziemionym koniec noża leży NA styku stałym (decyzja architekta 2026-10-30:
+ * nóż odłącznika dłuższy od odległości do styku przechodził przez kreskę styku i odłącznik
+ * zamknięty czytał się jak krzyżyk „+”). Ta sama reguła co importer
+ * (`scripts/import_qet_pole_sn.py::noz_w_zasiegu`), który z niej liczy obwiednię i stopień glifu.
+ */
+export function prymitywyNozaQet(noz: QetNozSymbolu, polozenie: QetPolozenieNoza): readonly CadPrimitive[] {
+  const zasieg = noz.zasiegi[polozenie] ?? 1;
+  if (zasieg === 1) return noz.prymitywy;
+  return noz.prymitywy.map((p) => {
+    if (p.k !== 'line') return p;
+    const d1 = Math.hypot(p.x1 - noz.cx, p.y1 - noz.cy);
+    const d2 = Math.hypot(p.x2 - noz.cx, p.y2 - noz.cy);
+    const dalej = (x: number, y: number) => ({ x: noz.cx + (x - noz.cx) * zasieg, y: noz.cy + (y - noz.cy) * zasieg });
+    if (d2 >= d1) {
+      const k = dalej(p.x2, p.y2);
+      return { ...p, x2: k.x, y2: k.y };
+    }
+    const k = dalej(p.x1, p.y1);
+    return { ...p, x1: k.x, y1: k.y };
+  });
 }
 
 /**
@@ -1414,6 +1466,7 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
     const noz = symbol.noz;
     const polozenie = noz ? polozenieNozaQet(id, state) : undefined;
     const kat = noz && polozenie ? noz.katy[polozenie] ?? 0 : 0;
+    const prymitywyNoza = noz && polozenie ? prymitywyNozaQet(noz, polozenie) : [];
     return (
       <g {...glyphGroupProps(id, props)} data-symbol-family="qet" data-qet-polozenie={polozenie}>
         <g data-qet="przewody">
@@ -1424,7 +1477,7 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
           {noz && (
             <g transform={`rotate(${kat} ${noz.cx} ${noz.cy})`} data-qet="noz" data-qet-kat={kat}>
               <CadPrimitiveLayer
-                prims={noz.prymitywy}
+                prims={prymitywyNoza}
                 ink={ink}
                 paper="none"
                 strokeWidth={wGlifu}
@@ -1533,7 +1586,7 @@ export function CapacitorBankGlyph(props: GlyphProps): JSX.Element {
       {uklad === null && (
         <text
           x={16} y={27} textAnchor="middle" data-znak-ukladu="NIEOKRESLONY"
-          fill={s} fontFamily="sans-serif" fontSize={10} fontWeight={700}
+          fill={s} fontFamily={SLD_FONT_FAMILY} fontSize={10} fontWeight={700}
         >
           ?
         </text>

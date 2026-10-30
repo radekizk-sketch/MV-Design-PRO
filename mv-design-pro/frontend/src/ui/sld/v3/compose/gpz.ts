@@ -41,9 +41,10 @@
  * rozwija gramatyki pól WN poza polem TR).
  */
 
-import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
+import { GRID, rectsOverlap, snapDown, snapToGrid, snapUp, type V3Rect } from '../core/grid';
 import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, czySymbolQet, rodzajSymbolu, type SymbolId } from '../symbols/defs';
+import { kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { BayPrimaryDeviceKind, StanObiektu } from '../../../../types/enm';
 import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
@@ -73,14 +74,19 @@ import {
   type PoleTabeliGpzWejscie,
 } from './gpzAdnotacje';
 import { createUnikalnyTestId } from './unikalnyTestId';
+import { ZNACZNIK_ZACISKU_PRZEKLADNIKA, zaciskiPierwotneWTorze } from './zaciskiPrzekladnika';
 import {
   apparatusIdentifiers,
   bayApparatusPlanFootprint,
   brakiPrzylaczyPola,
   czyAparatBoczny,
+  czyElementModeluNaWyjsciu,
   czyOdgalezienieNaWezleKotwicy,
+  odcinkiOdczepowBocznych,
+  type OdczepBoczny,
   czyPoleNiesiePorty,
   czyTorOdSzyny,
+  czyWspolnyWezelToru,
   glifZrodlaRoliPola,
   planApparatusSymbolIds,
   przewodyToruZPortow,
@@ -336,6 +342,11 @@ export interface ComposedGpzProtectionSymbol {
    *  jedna reprezentacja funkcji przy przekaźniku. Brak = blok bez wierszy (sam okrąg) albo
    *  układ stacji (R-2 §17.3) i LOD1. */
   readonly ramkaBloku?: V3Rect;
+  /** `ownerRef` wierszy bloku, z których policzono `ramkaBloku` (kolejność wierszy) — JEDNA
+   *  lista członków ramki dla sceny i kanwy: kanwa liczy ramkę tą samą funkcją
+   *  (`ramkaBlokuPrzekaznika`) z prostokątów NARYSOWANYCH wierszy planu etykiet
+   *  (`canvas/obrysyWgPlanu.ts`), bo plan powiększa pismo celu kadru. Obecna razem z `ramkaBloku`. */
+  readonly wierszeBloku?: readonly string[];
 }
 
 /** Pole SN GPZ z brakami topologicznymi funkcji (`GpzComposition.brakiTopologiiFunkcji`). */
@@ -802,6 +813,7 @@ function buildFieldStack(
     mainInstances.length > 0 ? ukladBocznyPola(plan, (afterMainIndex) => kotwicaToru(afterMainIndex).y) : { boczne: [], galezie: [] };
   if (laterals.length > 0 && mainInstances.length > 0) {
     const odstepy = uklad.boczne;
+    const odczepy: OdczepBoczny[] = [];
     laterals.forEach(({ spec, index, afterMainIndex }, numerOdgalezienia) => {
       const def = SYMBOL_DEFS[spec.symbolId];
       const anchorInstance = afterMainIndex >= 0 ? mainInstances[afterMainIndex] : mainInstances[0];
@@ -829,15 +841,19 @@ function buildFieldStack(
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];
       if (zPortami) {
         const kotwica = afterMainIndex >= 0 ? mainSpecs[afterMainIndex]?.spec.device : mainSpecs[0]?.spec.device;
-        if (!czyOdgalezienieNaWezleKotwicy(kotwica, afterMainIndex >= 0, spec.device)) return;
+        // Glif źródła pola OZE jest elementem modelu bez rekordu aparatu: kabel do źródła
+        // wychodzi z zacisku wyjściowego aparatu-kotwicy (głowicy kablowej). Dawniej odczep
+        // wymagał portów ENM po stronie glifu, których element modelu nie ma — glif wisiał
+        // bez przewodu (sonda połączenia źródeł: migawki magazynu i macierzy OZE, L1/L2).
+        const naWezle =
+          spec.device == null && GLIFY_ZRODLA_POLA_GPZ.has(spec.symbolId)
+            ? afterMainIndex >= 0 && czyElementModeluNaWyjsciu(kotwica)
+            : czyOdgalezienieNaWezleKotwicy(kotwica, afterMainIndex >= 0, spec.device);
+        if (!naWezle) return;
       }
-      branchSegments.push({
-        points: [
-          { x: anchor.x, y: anchor.y },
-          { x: lx + north.x, y: anchor.y },
-        ],
-      });
+      odczepy.push({ kotwica: anchor, celX: lx + north.x });
     });
+    odcinkiOdczepowBocznych(odczepy).forEach((points) => branchSegments.push({ points }));
   }
 
   // UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): odgałęzienia toru z portów (przekładnik
@@ -937,6 +953,10 @@ interface SectionLayout {
  *  położenie niesie kafel i geometria styku (dawny dopisek „stan nieznany" usunięty: kafel
  *  nieustalony z „?" jest silniejszym nośnikiem niż podpis, a podpis dublował treść). */
 export const KLASA_ETYKIETY_APARATU_GPZ = 't3';
+
+/** Klasa pisma oznaczeń zacisków pierwotnych przekładnika prądowego (P1/P2) — pismo danych
+ *  t4, drobniejsze od oznaczenia aparatu, jak dopiski zacisków na rysunku ENEA Z.10/Z.11.1. */
+export const KLASA_ZACISKU_PRZEKLADNIKA_GPZ = 't4';
 
 /** Podpis aparatu pola GPZ przed ułożeniem w pasie podpisów (kotwica przy symbolu). */
 export interface PodpisAparatuWPasie {
@@ -1060,7 +1080,69 @@ function rezerwyEtykietAparatowGpz(spec: readonly FieldApparatusSpec[]): { reado
     if (jestAparatemBocznymPolaGpz(pozycja.symbolId)) prawa = Math.max(prawa, szerokosc);
     else lewa = Math.max(lewa, szerokosc);
   });
-  return { lewa: lewa > 0 ? snapUp(GRID + lewa) : 0, prawa: prawa > 0 ? snapUp(GRID + prawa) : 0 };
+  return {
+    lewa: lewa > 0 ? snapUp(GRID + lewa) + pasmoZaciskowPrzekladnikaGpz(spec) : 0,
+    prawa: prawa > 0 ? snapUp(GRID + prawa) : 0,
+  };
+}
+
+/**
+ * Zaciski pierwotne przekładników prądowych toru głównego pola GPZ (PN-EN 61869-2: P1, P2;
+ * karta UX-04/POLE-LINIOWE-WZORZEC, decyzja architekta §11.7 pkt 6), index-aligned do `spec`;
+ * `null` = aparat bez oznaczeń. Oznaczenia dostaje aparat rodzaju `currentTransformer` toru
+ * głównego, który (1) ma podpis (konwencja QET pola GPZ, `tekstyEtykietAparatowGpz`), (2) niesie
+ * w rekordzie oba porty z węzłem (`zaciskiPierwotneWTorze`) i (3) jest wpięty w tor przewodem
+ * od strony szyny albo odpływu (`czyWspolnyWezelToru` — ta sama reguła co przewód toru,
+ * `przewodyToruZPortow`; pierwszy aparat toru — port `we` na węźle szyny, `czyTorOdSzyny`). Tor
+ * rysuje się obchodem portów od szyny, więc aparat wpięty w tor ma port `we` (P1) po stronie
+ * szyny z konstrukcji; aparat z brakiem przyłącza stoi bez przewodu i jego orientacji model
+ * nie wyznacza — bez oznaczeń (zero domysłu). JEDNA reguła rysunku i rezerwy pasma.
+ */
+function zaciskiPrzekladnikowPolaGpz(
+  spec: readonly FieldApparatusSpec[],
+): readonly (NonNullable<ReturnType<typeof zaciskiPierwotneWTorze>> | null)[] {
+  const wynik: (NonNullable<ReturnType<typeof zaciskiPierwotneWTorze>> | null)[] = spec.map(() => null);
+  const teksty = tekstyEtykietAparatowGpz(spec);
+  const torGlowny = planPolaGpz(spec).mainSequenceIndices;
+  torGlowny.forEach((indeks, i) => {
+    const device = spec[indeks].device;
+    if (!device || rodzajSymbolu(spec[indeks].symbolId) !== 'currentTransformer' || !teksty[indeks].tekst) return;
+    const zaciski = zaciskiPierwotneWTorze(device.ports);
+    if (zaciski === null) return;
+    const poprzedni = i > 0 ? spec[torGlowny[i - 1]].device : undefined;
+    const nastepny = i + 1 < torGlowny.length ? spec[torGlowny[i + 1]].device : undefined;
+    const odSzyny = i === 0 ? czyTorOdSzyny(device) : poprzedni != null && czyWspolnyWezelToru(poprzedni, device);
+    const odOdplywu = nastepny != null && czyWspolnyWezelToru(device, nastepny);
+    if (odSzyny || odOdplywu) wynik[indeks] = zaciski;
+  });
+  return wynik;
+}
+
+/** Odstęp tuszu oznaczeń zacisków od tuszu kolumny podpisów aparatów [px świata]. */
+const ODSTEP_ZACISKOW_OD_PODPISOW = GRID / 2;
+
+/**
+ * Pasmo oznaczeń zacisków przekładnika w lewej rezerwie podpisów pola GPZ [px świata] — o tyle
+ * kolumna podpisów aparatów odsuwa się w lewo od toru, żeby oznaczenia P1/P2 (prawa krawędź na
+ * lewej krawędzi kafla przekładnika) nie wchodziły na podpisy sąsiednich aparatów. Zero, gdy
+ * kafel przekładnika jest węższy od toru o tyle, że oznaczenia mieszczą się przed kolumną
+ * (wzorce Z.10/Z.11/Z.11.1 z przekładnikiem Ferrantiego szerszym od pierścienia). Położenie
+ * kafla względem lewej krawędzi toru — ta sama arytmetyka co stos (`snapToGrid` od osi pola na
+ * siatce). JEDNA funkcja rezerwy (`rezerwyEtykietAparatowGpz`) i rysunku kolumny.
+ */
+function pasmoZaciskowPrzekladnikaGpz(spec: readonly FieldApparatusSpec[]): number {
+  const zaciski = zaciskiPrzekladnikowPolaGpz(spec);
+  const szerokoscToru = gpzFieldPlanFootprint(spec).mainStack.width;
+  let potrzeba = 0;
+  zaciski.forEach((z, indeks) => {
+    if (z === null) return;
+    const odsuniecieKafla = snapToGrid(-SYMBOL_DEFS[spec[indeks].symbolId].width / 2) - snapToGrid(-szerokoscToru / 2);
+    const szerokoscOznaczen = Math.max(
+      ...[z.odSzyny, z.odOdplywu].map((t) => measureLabelWidth(t, KLASA_ZACISKU_PRZEKLADNIKA_GPZ)),
+    );
+    potrzeba = Math.max(potrzeba, szerokoscOznaczen + ODSTEP_ZACISKOW_OD_PODPISOW - GRID - odsuniecieKafla);
+  });
+  return potrzeba > 0 ? snapUp(potrzeba) : 0;
 }
 
 /** Zacisk obwodu wtórnego aparatu w świecie (`SymbolDef.secondaryPorts`). */
@@ -1075,6 +1157,22 @@ interface PortWtornyWSwiecie {
 function portWtornyWSwiecie(aparat: PlacedStackDevice, nazwa: string): PortWtornyWSwiecie | null {
   const port = SYMBOL_DEFS[aparat.symbolId].secondaryPorts.find((p) => p.name === nazwa);
   return port ? { x: aparat.x + port.x, y: aparat.y + port.y, dir: port.dir } : null;
+}
+
+/**
+ * Wysokość kotwicy adnotacji przekładnika prądowego (tabliczka albo pomiar, §18.3) po prawej
+ * toru. Przekładnik rysowany symbolem z zaciskiem wtórnym skierowanym na wschód
+ * (`qetCurrentTransformer`, ENEA Z.10/Z.11.1) wyprowadza z tego zacisku poziomą linię
+ * pomiarową do przekaźnika — adnotacja stoi wtedy w wierszu siatki NAD tą linią (dolna krawędź
+ * tuszu co najmniej ćwierć oczka nad przewodem), a nie na wysokości środka symbolu, która
+ * wypada na przewodzie (karta UX-04/POLE-LINIOWE-WZORZEC, §11.7 pkt 6). Symbol bez takiego
+ * zacisku (kanoniczny `currentTransformer`) — środek symbolu, jak dotąd.
+ */
+function wysokoscAdnotacjiPrzekladnika(aparat: PlacedStackDevice, srodekY: number): number {
+  const zacisk = portWtornyWSwiecie(aparat, 'wtorny');
+  if (zacisk === null || zacisk.dir !== 'E') return srodekY;
+  const wysokosc = labelLineHeight(PROTECTION_FULL_LIST_LABEL_CLASS);
+  return snapDown(zacisk.y - GRID / 4 - wysokosc) + wysokosc / 2;
 }
 
 /** F9.9 R-1: szerokość kolumny adnotacji zabezpieczeń pola GPZ — TA SAMA
@@ -1607,6 +1705,18 @@ function wierszeZrodlaSystemowego(
 /** Odsunięcie pierwszego symbolu źródła od końca szyny (przedłużenie szyny do zaczepu). */
 const ODSUNIECIE_ZRODLA = 3 * GRID;
 
+/** Osie zejść kolejnych źródeł bloku przy prawym końcu szyny (`busContentRightX`) —
+ *  JEDNA arytmetyka położenia bloku dla rysunku źródeł (`rysujBlokZrodel`) i dla końca
+ *  szyny, za którym zaczyna się łącznik sprzęgła (`koniecSzynySekcji`). */
+function zejsciaBlokuZrodel(liczbaZrodel: number, busContentRightX: number): readonly number[] {
+  const def = SYMBOL_DEFS.gridSource;
+  const attachX = snapToGrid(busContentRightX + ODSUNIECIE_ZRODLA);
+  return Array.from({ length: liczbaZrodel }, (_, i) => {
+    const x = attachX + i * (def.width + GRID);
+    return portsInWorld('gridSource', x, 0).bottom?.x ?? x + def.width / 2;
+  });
+}
+
 /** Szerokość bloku źródeł przy prawym końcu szyny — ta sama arytmetyka co budowa
  *  bloku w `composeGpz` (symbole co `szerokość + GRID`, tabliczka źródła systemowego
  *  za ostatnim symbolem), z zapasem na przyciągnięcie zaczepu do siatki. */
@@ -1916,7 +2026,6 @@ export function composeGpz(
           if (annotationDetail === 'full') {
             odniesienia.forEach((wiersz, indeksOdniesienia) => {
               const indeks = fullListLines.length + indeksOdniesienia;
-              const szerokoscWiersza = measureLabelWidth(wiersz, PROTECTION_FULL_LIST_LABEL_CLASS);
               etykietyBloku.push({
                 ownerRef: `${bay.bayRef}#zrodlo-u0${indeksOdniesienia === 0 ? '' : `-${indeksOdniesienia + 1}`}`,
                 ownerKind: 'protection',
@@ -1928,7 +2037,8 @@ export function composeGpz(
                       y: circleTopY + GRID + indeks * ODSTEP_WIERSZY_KODOW_EAZ,
                     }
                   : {
-                      x: rightX - Math.ceil(szerokoscWiersza / 2),
+                      // Krawędź zaczepu wiersza prawo-dosuniętego (`wyrownanieTekstu: 'koniec'`).
+                      x: rightX,
                       y: circleTopY + PROTECTION_ANNOTATION_DIAMETER + indeks * ODSTEP_WIERSZY_KODOW_EAZ,
                     },
                 placement: powiazany ? 'right' : 'below',
@@ -1940,7 +2050,6 @@ export function composeGpz(
             // R-2 (§17.3 zd. 2) — wiersz pod wierszem (`fullCodesListLines`). Układ powiązań:
             // po prawej okręgu, od jego górnej krawędzi; inaczej model stacji
             // (`compose/station.ts`): pod okręgiem, prawo-dosunięte do rezerwacji.
-            const szerokoscWiersza = measureLabelWidth(wiersz, PROTECTION_FULL_LIST_LABEL_CLASS);
             etykietyBloku.push({
               ownerRef: `${bay.bayRef}#protection-codes-full${indeks === 0 ? '' : `-${indeks + 1}`}`,
               ownerKind: 'protection',
@@ -1952,7 +2061,8 @@ export function composeGpz(
                     y: circleTopY + GRID + indeks * ODSTEP_WIERSZY_KODOW_EAZ,
                   }
                 : {
-                    x: rightX - Math.ceil(szerokoscWiersza / 2),
+                    // Krawędź zaczepu wiersza prawo-dosuniętego (`wyrownanieTekstu: 'koniec'`).
+                    x: rightX,
                     y: circleTopY + PROTECTION_ANNOTATION_DIAMETER + indeks * ODSTEP_WIERSZY_KODOW_EAZ,
                   },
               placement: powiazany ? 'right' : 'below',
@@ -1972,9 +2082,11 @@ export function composeGpz(
             bayRef: bay.bayRef,
             x: circleLeftX,
             y: circleTopY,
-            protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
+            // Prefiks kodów mieszczący się w okręgu pismem 8 px (`kodyWOkreguPrzekaznika`) —
+            // to samo źródło co wiersze poza okręgiem i pełna lista wyżej.
+            protectionCodes: annotationDetail === 'full' ? kodyWOkreguPrzekaznika(marking.codes) : undefined,
             ...(topologyGaps.length > 0 ? { protectionTopologyGaps: topologyGaps } : {}),
-            ...(ramkaBloku ? { ramkaBloku } : {}),
+            ...(ramkaBloku ? { ramkaBloku, wierszeBloku: etykietyBloku.map((e) => e.ownerRef) } : {}),
           });
 
           if (annotationDetail === 'full' && marking.tripTarget) {
@@ -2108,7 +2220,7 @@ export function composeGpz(
             ownerKind: 'protection',
             text: ann.text,
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
-            anchor: { x: ctTextAnchorX, y: center.y },
+            anchor: { x: ctTextAnchorX, y: wysokoscAdnotacjiPrzekladnika(ann.device, center.y) },
             placement: 'right',
             wyrownanieTekstu: 'poczatek',
             // W5 (§12–15/uwaga 7): wariant CT z danych — `data-ct-purpose`,
@@ -2378,6 +2490,8 @@ export function composeGpz(
       // UX-04/POLE-LINIOWE-WZORZEC: etykiety aparatów QET — samo oznaczenie (położenie niesie kafel).
       const tekstyEtykiet = tekstyEtykietAparatowGpz(spec);
       const lewaTorX = snapToGrid(field.centerX - footprint.mainStack.width / 2);
+      // Pasmo oznaczeń zacisków przekładnika między kolumną podpisów a torem (§11.7 pkt 6).
+      const pasmoZaciskow = pasmoZaciskowPrzekladnikaGpz(spec);
       // Podpisy odgałęzienia toru stoją w JEGO pasie podpisów — na prawo od CAŁEGO
       // podstosu odgałęzienia (kolumna + jej aparaty boczne), tam gdzie plan rezerwuje pas
       // (`GalazPlanu.rezerwaEtykiet`, doliczany za `sub.width`). Rezerwa i kotwica z jednej
@@ -2408,7 +2522,7 @@ export function composeGpz(
             ? { x: prawaKrawedzOdgalezienia.get(pozycja.odgalezienie)!, y: srodekY }
             : pozycja.boczny
               ? { x: pozycja.instance.x + def.width, y: srodekY }
-              : { x: lewaTorX, y: srodekY };
+              : { x: lewaTorX - pasmoZaciskow, y: srodekY };
         podpisyAparatow.push({
           ownerRef: `${field.bay.bayRef}#etykieta-aparatu-${pozycja.spec.device?.deviceRef ?? indeks}`,
           text: etykieta.tekst,
@@ -2427,6 +2541,41 @@ export function composeGpz(
           placement: podpis.placement,
         });
       }
+      // Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja architekta §11.7 pkt 6): zaciski pierwotne
+      // przekładnika prądowego toru głównego (PN-EN 61869-2) — P1 nad pierścieniem, P2 pod nim,
+      // po lewej toru, jak na rysunku ENEA Z.10 s.89 (`zaciskiPrzekladnikowPolaGpz`: ta sama
+      // reguła co rezerwa pasma zacisków w kolumnie podpisów).
+      zaciskiPrzekladnikowPolaGpz(spec).forEach((zaciski, indeks) => {
+        if (zaciski === null) return;
+        const pozycja = stack.pozycje.find((p) => p.spec === spec[indeks]);
+        if (!pozycja) return;
+        const { instance } = pozycja;
+        const def = SYMBOL_DEFS[instance.symbolId];
+        const portGorny = def.ports.find((p) => p.dir === 'N');
+        const portDolny = def.ports.find((p) => p.dir === 'S');
+        if (!portGorny || !portDolny) return;
+        const wysokosc = labelLineHeight(KLASA_ZACISKU_PRZEKLADNIKA_GPZ);
+        const deviceRef = spec[indeks].device?.deviceRef ?? indeks;
+        for (const [oznaczenie, srodekY] of [
+          // Dolna krawędź wiersza P1 nie niżej niż zacisk górny, górna krawędź wiersza P2 nie
+          // wyżej niż zacisk dolny (wiersze siatki) — oznaczenie stoi przy wyprowadzeniu, nie
+          // na wysokości pierścienia, gdzie stoi podpis aparatu.
+          [zaciski.odSzyny, snapDown(instance.y + portGorny.y - wysokosc) + wysokosc / 2],
+          [zaciski.odOdplywu, snapUp(instance.y + portDolny.y) + wysokosc / 2],
+        ] as const) {
+          fieldDesignations.push({
+            ownerRef: `${field.bay.bayRef}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}${deviceRef}-${oznaczenie}`,
+            ownerKind: 'apparatus',
+            text: oznaczenie,
+            labelClass: KLASA_ZACISKU_PRZEKLADNIKA_GPZ,
+            // Prawa krawędź na lewej krawędzi kafla symbolu (poza kaflem — kafel jest bryłą
+            // kolizji etykieta↔symbol sceny).
+            anchor: { x: instance.x, y: srodekY },
+            placement: 'left',
+            clearance: 0,
+          });
+        }
+      });
 
       // pkt 8 (recenzja NO-GO 2026-07-17): oznacznik z layoutu (bay_number
       // albo deterministyczne F01/FT1… — patrz `gpzFieldOrdinalDesignation`).
@@ -2522,13 +2671,25 @@ export function composeGpz(
   });
 
   // -- 5. Sprzęgła międzysekcyjne (props.couplers). -------------------------
+  // Koniec szyny sekcji lewej sprzęgła: z przedłużeniem do zaczepu źródła systemowego,
+  // gdy sekcja niesie blok źródeł SN (`rysujBlokZrodel` niżej). Łącznik szyn sprzęgła
+  // zaczyna się ZA przedłużeniem — od końca treści szyny biegłby po tym samym odcinku co
+  // przedłużenie (dwa różne obiekty na jednym odcinku; pomiar: fikstury
+  // `punkt_startu_gpz_z_zaciskami_*`, 32 j.św.).
+  const koniecSzynySekcji = (layout: (typeof sectionLayouts)[number]): number => {
+    const koniecTresci = layout.x + layout.width;
+    const zrodla = attachAboveHv ? undefined : zrodlaSnWgSekcji.get(layout.section.sectionId);
+    if (!zrodla || zrodla.length === 0) return koniecTresci;
+    const zejscia = zejsciaBlokuZrodel(zrodla.length, koniecTresci);
+    return Math.max(koniecTresci, zejscia[zejscia.length - 1]!);
+  };
   props.couplers.forEach((coupler) => {
     const leftLayout = sectionById.get(coupler.leftSectionId);
     const rightLayout = sectionById.get(coupler.rightSectionId);
     if (!leftLayout || !rightLayout) return;
     const first = leftLayout.x <= rightLayout.x ? leftLayout : rightLayout;
     const second = leftLayout.x <= rightLayout.x ? rightLayout : leftLayout;
-    const gapStart = first.x + first.width;
+    const gapStart = koniecSzynySekcji(first);
     const gapEnd = second.x;
     // Wyłącznik sprzęgła na środku pasa sprzęgła (za blokiem źródła sekcji lewej, przed
     // etykietą sekcji prawej — `layoutSections`), gdy sekcje sąsiadują w porządku `order`.
@@ -2965,7 +3126,9 @@ export function composeGpz(
     let cursorX = attachX;
     // Oś zejścia ostatniego źródła bloku — tam kończy się przedłużenie szyny (bez kikuta
     // za zaczepem: dawniej przedłużenie biegło do prawej krawędzi symbolu, 8 px za zejściem).
-    let ostatnieZejscieX: number | null = null;
+    // Ta sama arytmetyka co `zejsciaBlokuZrodel` (koniec szyny dla łącznika sprzęgła).
+    const zejscia = zejsciaBlokuZrodel(zrodla.length, busContentRightX);
+    const ostatnieZejscieX: number | null = zejscia.length > 0 ? zejscia[zejscia.length - 1]! : null;
     let tabliczka: StationNameBandOwnerInput | null = null;
     for (const source of zrodla) {
       const x = cursorX;
@@ -2980,7 +3143,6 @@ export function composeGpz(
       symbols.push({ symbolId: 'gridSource', x, y, ports, meta });
 
       const bottomPort = ports.bottom ?? { x: x + def.width / 2, y: y + def.height, dir: 'S' };
-      ostatnieZejscieX = bottomPort.x;
       segments.push({
         ownerRef: `${source.id}#grid-source-drop`,
         points: [
@@ -3286,6 +3448,7 @@ export function composeGpz(
     ...[...fieldDesignations, ...protectionLabels].map((etykieta) => ({
       bayRef: etykieta.ownerRef.slice(0, Math.max(0, etykieta.ownerRef.indexOf('#'))),
       rect: prostokatEtykietyZakotwiczonej(etykieta),
+      ownerRef: etykieta.ownerRef,
     })),
   ]);
   if (adnotacjePlan && panele.length > 0) tag(['gpz.bay.panel']);

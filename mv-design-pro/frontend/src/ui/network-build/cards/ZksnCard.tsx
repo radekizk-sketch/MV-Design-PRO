@@ -197,10 +197,11 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
   }, [branchPoint, branchPorts, lacznikiPortow]);
 
   const handleAddBranchFromPort = useCallback(
-    (portId: string) => {
+    (busRef: string) => {
       if (!branchPoint) return;
+      // Port startu w jedynej postaci: zacisk portu odgałęźnego (backend `_rozwiaz_port_startu`).
       openOperationForm('start_branch_segment_sn', {
-        from_ref: `${branchPoint.ref_id}.${portId}`,
+        from_ref: busRef,
       });
     },
     [branchPoint, openOperationForm],
@@ -262,7 +263,7 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
         id: `add_branch_${port.portId}`,
         label: `Dodaj odgałęzienie z ${port.displayLabel}`,
         variant: 'primary',
-        onClick: () => handleAddBranchFromPort(port.portId),
+        onClick: () => handleAddBranchFromPort(port.busRef),
         disabled: port.occupied,
       });
     });

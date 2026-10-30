@@ -345,8 +345,7 @@
         "59",
         "81U",
         "81O",
-        "81R",
-        "anti-islanding"
+        "81R"
       ],
       "protection_ref": null,
       "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
@@ -663,8 +662,7 @@
         "59",
         "81U",
         "81O",
-        "81R",
-        "anti-islanding"
+        "81R"
       ],
       "protection_ref": null,
       "ref_id": "sn/a14bb0e6a533796dc251500f1b5fe5fa/der/source_field",
@@ -1497,7 +1495,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "6706b05c088bda56ad06a84ffa4ec56143357b0876bd5f7b8650e9bb9b265127",
+    "hash_sha256": "b77a33cdebd590fe1f083eab1a8a11422b677a229bc49eec44341e97a7a15a36",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"

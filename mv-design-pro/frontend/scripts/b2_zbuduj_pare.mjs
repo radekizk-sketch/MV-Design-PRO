@@ -91,7 +91,7 @@ async function build() {
       (x) => String(x.bay_role ?? '').toUpperCase() === 'FEEDER'
         || String(x.field_role ?? '').toUpperCase().includes('ODG'),
     );
-    return f?.ref_id ? `${f.ref_id}.BRANCH` : null;
+    return f?.ref_id ?? null;
   };
   // Karta W5-B: pola stacji to rekordy `bays` migawki — stacja niesie swoje pola z tej samej
   // odpowiedzi operacji (`pola`), żeby wybór pola odgałęźnego nie czytał innej migawki.

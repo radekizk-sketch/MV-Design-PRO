@@ -134,7 +134,7 @@ export async function siecKadrow(request: APIRequestContext) {
     .map((f) => f.ref_id);
   expect(polaOdgalezne.length).toBe(2);
   enm = await operacja(request, caseId, 'start_branch_segment_sn', {
-    from_ref: `${polaOdgalezne[1]}.BRANCH`,
+    from_ref: polaOdgalezne[1],
     segment: odcinek(400, 'Odgałęzienie 1'),
   });
   const koniecOdgalezienia = kable(enm).find((b) => b.name === 'Odgałęzienie 1')?.to_bus_ref;

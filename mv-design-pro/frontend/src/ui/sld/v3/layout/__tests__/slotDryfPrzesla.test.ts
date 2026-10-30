@@ -27,8 +27,8 @@
  *      referencyjnej × {L0, L1, L2}, DWIEMA jawnie rozróżnionymi miarami
  *      (runda 2, uwaga nadzorcy: zdanie w raporcie i asercja w teście muszą
  *      znaczyć to samo):
- *      (M1) ODDALENIE = 0 — prostokąt podpisu i polilinia właściciela (z
- *           kawałkami `#tee-N`, bo to TEN SAM kabel za kropką węzła) zachodzą
+ *      (M1) ODDALENIE = 0 — prostokąt podpisu i polilinia właściciela (kabel
+ *           ENM jest jedną polilinią sceny, nierozciętą w przecięciach) zachodzą
  *           na siebie w osi X, a środek napisu leży na kablu ALBO napis
  *           pokrywa kabel w całości;
  *      (M2) NADMIAR PONAD MINIMUM GEOMETRYCZNE = 0 — samo WYSTAWANIE poza
@@ -286,15 +286,13 @@ describe('SLOT-DRYF-PRZĘSŁA §2 — rezerwacja centruje się na RYSOWANYM prz�
 // (4) SCENA REFERENCYJNA: podpis leży na kablu, który opisuje.
 // ---------------------------------------------------------------------------
 
-/** Zakres X polilinii NIOSĄCEJ dany ref — razem z kawałkami `#tee-N`, bo
- *  `resolveTeeJunctions` nadaje je kontynuacji TEGO SAMEGO kabla ENM za
- *  kropką węzła (patrz `scene/buildScene.ts`). Bez sklejenia wyrocznia
- *  mierzyłaby konwencję nazewniczą, a nie położenie napisu. */
+/** Zakres X polilinii NIOSĄCEJ dany ref (kabel ENM jest jedną polilinią sceny
+ *  — rozstrzygnięcie S7-P2 skasowało rozcinanie kabla w punktach przecięć). */
 function zakresWlasciciela(scene: SceneV3, ref: string): { min: number; max: number } | null {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   for (const g of scene.segments) {
-    const owner = g.meta?.ownerRef?.replace(/#tee-\d+$/, '');
+    const owner = g.meta?.ownerRef;
     if (owner !== ref) continue;
     for (const p of g.points) {
       min = Math.min(min, p.x);
@@ -311,7 +309,7 @@ function zakresWlascicielaY(scene: SceneV3, ref: string): { min: number; max: nu
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   for (const g of scene.segments) {
-    const owner = g.meta?.ownerRef?.replace(/#tee-\d+$/, '');
+    const owner = g.meta?.ownerRef;
     if (owner !== ref) continue;
     for (const p of g.points) {
       min = Math.min(min, p.y);

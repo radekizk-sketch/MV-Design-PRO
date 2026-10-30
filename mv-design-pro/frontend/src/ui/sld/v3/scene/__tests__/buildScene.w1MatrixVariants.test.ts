@@ -15,6 +15,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3 } from '../buildScene';
+import { odczepZaczynaSieNaWezlePola } from './wezelOdczepu';
 import {
   buildW1MatrixFixture,
   W1_VARIANTS,
@@ -218,7 +219,7 @@ describe('W1b — semantyka toru (uwagi 4/5/6/13/14)', () => {
     }
   });
 
-  it('uwaga 5 — UZIEMNIK NA ODCINKU TORU: odgałęzienie ES ma jawny WĘZEŁ na osi toru (start odczepu = oś), koniec = port ES', () => {
+  it('uwaga 5 — UZIEMNIK NA ODCINKU TORU: odgałęzienie ES ma jawny WĘZEŁ pola (oś toru albo łańcuch od osi), koniec = port ES', () => {
     for (const target of fixture.targets) {
       const es = baySymbols(sceneL2, target.fieldRef).find((s) => s.symbolId === 'earthSwitch');
       if (!es) continue;
@@ -226,11 +227,16 @@ describe('W1b — semantyka toru (uwagi 4/5/6/13/14)', () => {
         String(s.meta?.ownerRef).includes('#lateral-earthSwitch-'),
       );
       expect(laterals.length, `${target.variant.id}: odczep(y) uziemnika`).toBeGreaterThan(0);
+      const odczepyPola = fieldSegments(target.fieldRef).filter((s) => String(s.meta?.ownerRef).includes('#lateral-'));
       for (const seg of laterals) {
         const tap = seg.points[0];
         const tip = seg.points[seg.points.length - 1];
-        // Węzeł przyłączenia leży NA osi toru głównego (odczep od toru, nie „obok kolumny").
-        expect(tap.x, `${target.variant.id}: węzeł ES na osi toru`).toBe(axisX(target.fieldRef));
+        // Węzeł przyłączenia leży na WĘŹLE POLA (odczep od toru, nie „obok kolumny"): na osi
+        // toru albo na porcie bliższego aparatu bocznego tej samej kotwicy — łańcuch KD-5.
+        expect(
+          odczepZaczynaSieNaWezlePola(seg, odczepyPola, axisX(target.fieldRef)),
+          `${target.variant.id}: węzeł ES na węźle pola`,
+        ).toBe(true);
         // Odczep POZIOMY, koniec na osi symbolu ES (port N) — poza osią toru.
         expect(tip.y).toBe(tap.y);
         expect(tip.x).not.toBe(tap.x);
@@ -250,7 +256,8 @@ describe('W1b — semantyka toru (uwagi 4/5/6/13/14)', () => {
       String(s.meta?.ownerRef).includes('#lateral-surgeArrester-'),
     );
     expect(saSeg, 'odczep SA').toBeTruthy();
-    expect(saSeg!.points[0].x, 'węzeł SA na osi toru').toBe(axisX(saTarget.fieldRef));
+    const odczepySa = fieldSegments(saTarget.fieldRef).filter((s) => String(s.meta?.ownerRef).includes('#lateral-'));
+    expect(odczepZaczynaSieNaWezlePola(saSeg!, odczepySa, axisX(saTarget.fieldRef)), 'węzeł SA na węźle pola').toBe(true);
   });
 
   it('uwaga 13 — STAN aparatu z danych: para IDENTYCZNEJ konfiguracji różni się WYŁĄCZNIE stanem łącznika (geometria stanu)', () => {

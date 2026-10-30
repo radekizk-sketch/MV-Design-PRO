@@ -16,6 +16,17 @@ inżynierowi obok kodu. Jeden kod = jedna funkcja: dawny zapis „df/dt" w zesta
 i „81R" w LoM opisywały TĘ SAMĄ funkcję dwoma kodami (LoM nie rozpoznawał deklaracji pola
 źródłowego) — słownik zna wyłącznie „81R".
 
+JEDNA NOMENKLATURA, KAŻDA FUNKCJA RAZ (decyzja architekta 2026-10-30, karta
+UX-04/POLE-LINIOWE-WZORZEC). Reguła klucza obowiązuje bez wyjątków: funkcja z numerem IEEE C37.2
+ma kod równy numerowi — także zabezpieczenia technologiczne transformatora (63 — Buchholz,
+26 — temperatura, 63P — ciśnienie; dawniej klucze-nazwy „Buchholz", „temp", „ciśnienie"); skrót
+krajowy jest kodem wyłącznie funkcji bez numeru. Słownik nie zna kodów złożonych z oznaczeń
+innych funkcji ani agregatów kryteriów wymienianych obok tych kryteriów: dawne „SPZ/SCO"
+(= SPZ 79 + SCO) jest częścią automatyki SCO, dawne „anti-islanding" (zestaw kryteriów LoM
+27/59/81U/81O/81R stojących w tym samym zestawie pola) — skasowane. Przypina
+`tests/network_model/catalog/test_funkcje_eaz_bez_duplikatow.py` na iloczynie wszystkich
+szablonów pól × klas pola × warunków funkcji.
+
 Moduł jest LIŚCIEM (stdlib): czytają go szablony pól, operacje domenowe, walidator i API.
 """
 
@@ -188,14 +199,6 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "IEEE C37.2 (78); wymóg wyłącznie z warunków przyłączenia OSD",
     ),
     FunkcjaEaz(
-        "anti-islanding",
-        "LoM",
-        None,
-        "ochrona od pracy wyspowej (zestaw kryteriów LoM)",
-        "ZABEZPIECZENIE",
-        "NC RfG (rozporządzenie (UE) 2016/631) art. 14; IEEE 1547",
-    ),
-    FunkcjaEaz(
         "ZS",
         "ZS",
         None,
@@ -231,22 +234,25 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         f"{_Z1}, Z.11 s.90, Z.11.1 s.91 (SPZE, tE)",
     ),
     FunkcjaEaz(
+        # JEDNA funkcja pola: udział w automatyce SCO — wyłączenie od stopni SCO1, SCO2 i ponowne
+        # załączenie po SCO (obwód okrężny „SCO/SPZ”). Rysunki s.89, s.90, s.91 nie mają osobnego
+        # bloku „SPZ po SCO”: trzy obwody okrężne SCO1, SCO2, SCO/SPZ wchodzą do jednego
+        # sterownika pola, a przekaźnik SCO stoi w polu pomiaru napięcia (Z.17 s.97, §26.10.6).
+        # Dawny osobny kod „SPZ/SCO” powtarzał na schemacie SPZ (79) i SCO — dwie funkcje pod
+        # trzema nazwami (decyzja architekta 2026-10-30, deduplikacja u źródła). Wymóg IRiESD
+        # stopnia SPZ po SCO („jeśli ENEA Operator tego wymaga”, „w uzgodnieniu z ENEA Operator”)
+        # niesie wymóg tej funkcji w macierzy klas (`bay_templates.WYMAGANIA_EAZ_KLASY_POLA`).
         "SCO",
         "SCO",
         None,
-        "samoczynne częstotliwościowe odciążenie",
+        "samoczynne częstotliwościowe odciążenie — wyłączenie od stopni SCO1, SCO2 i ponowne "
+        "załączenie po SCO (SPZ po SCO)",
         "AUTOMATYKA",
-        f"{_Z1}, Z.10 s.89, Z.11 s.90, Z.11.1 s.91 (SCO1/SCO2), Z.17 s.97; "
-        f"{_IR} II.4.5.4.2.1 pkt 6 — w liniach "
-        "z jednostkami wytwórczymi SCO nie należy uruchamiać (II.4.5.4.7.1 pkt 1)",
-    ),
-    FunkcjaEaz(
-        "SPZ/SCO",
-        "SPZ po SCO",
-        None,
-        "samoczynne ponowne załączenie po odciążeniu częstotliwościowym",
-        "AUTOMATYKA",
-        f"{_Z1}, Z.10 s.89, Z.11 s.90, Z.11.1 s.91 (wejście okrężne SCO/SPZ), Z.17 s.97",
+        f"{_Z1}, Z.10 s.89, Z.11 s.90, Z.11.1 s.91 (obwody okrężne SCO1, SCO2, SCO/SPZ do "
+        f"sterownika pola), Z.17 s.97, §26.10.6; {_IR} II.4.5.4.2.1 pkt 6 (SPZ/SCO — jeśli ENEA "
+        "Operator tego wymaga), II.4.5.4.6.1 (sygnały SCO i SPZ/SCO z pola pomiaru napięcia), "
+        "II.4.5.4.7.1 pkt 1–2 (SCO co najmniej dwustopniowe; SPZ/SCO w uzgodnieniu z ENEA "
+        "Operator; w liniach z jednostkami wytwórczymi SCO nie należy uruchamiać)",
     ),
     FunkcjaEaz(
         "OWG",
@@ -332,7 +338,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         f"{_Z1}, §13 (druk s.25), Z.7, Z.17; {_IR} II.4.5.4.7.2",
     ),
     FunkcjaEaz(
-        "Buchholz",
+        "63",
         "Buchholz",
         "63",
         "gazowo-przepływowe transformatora",
@@ -341,7 +347,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "(przekaźnik gazowo-przepływowy)",
     ),
     FunkcjaEaz(
-        "temp",
+        "26",
         "temperatura",
         "26",
         "temperaturowe transformatora",
@@ -349,7 +355,7 @@ _WPISY: tuple[FunkcjaEaz, ...] = (
         "IEEE C37.2 (26) — zabezpieczenie technologiczne transformatora",
     ),
     FunkcjaEaz(
-        "ciśnienie",
+        "63P",
         "ciśnienie",
         "63P",
         "od wzrostu ciśnienia w kadzi transformatora",

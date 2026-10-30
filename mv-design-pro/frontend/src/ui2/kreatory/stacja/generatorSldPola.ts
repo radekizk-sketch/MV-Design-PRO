@@ -572,6 +572,13 @@ export const KLASA_OZNACZENIA = 't4' as const;
 export const FONT_ROLI = LABEL_TYPOGRAPHY[KLASA_ROLI].fontSize;
 export const FONT_APARATU = LABEL_TYPOGRAPHY[KLASA_APARATU].fontSize;
 export const FONT_OZNACZENIA = LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontSize;
+/** Odmiany kroju (font-weight) tych samych ról — pomiar szerokości liczy posuwy odmiany,
+ *  którą rysuje `PodgladRozdzielnicySn` (tabela posuwów kroju, `core/text.ts`). */
+export const WAGA_ROLI = LABEL_TYPOGRAPHY[KLASA_ROLI].fontWeight;
+export const WAGA_APARATU = LABEL_TYPOGRAPHY[KLASA_APARATU].fontWeight;
+export const WAGA_OZNACZENIA = LABEL_TYPOGRAPHY[KLASA_OZNACZENIA].fontWeight;
+/** Nazwa aparatu w opisie pola — pogrubiona (wyróżnienie danej katalogowej). */
+export const WAGA_NAZWY_APARATU = 700;
 
 /**
  * POWIĘKSZENIE SYMBOLU względem gabarytu kanonicznego.
@@ -994,7 +1001,7 @@ export function zasiegSceny(scena: ScenaPola, os = 0): readonly [number, number]
     min = Math.min(min, bbox.x1);
     max = Math.max(max, bbox.x2);
     if (symbol.oznaczenie !== '') {
-      const szerokosc = measureTextWidth(symbol.oznaczenie, FONT_OZNACZENIA);
+      const szerokosc = measureTextWidth(symbol.oznaczenie, FONT_OZNACZENIA, WAGA_OZNACZENIA);
       // Oznaczenie stoi po PRAWEJ stronie symbolu (poza adnotacją, która ma je
       // po lewej — patrz `pozycjaOznaczenia`).
       if (symbol.umiejscowienie === 'ADNOTACJA') min = Math.min(min, bbox.x1 - ODSTEP_OZNACZENIA - szerokosc);

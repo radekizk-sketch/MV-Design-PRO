@@ -17,6 +17,7 @@
  */
 import type { CSSProperties } from 'react';
 
+import { SLD_FONT_FAMILY } from '../core/text';
 import {
   ELECTRICAL_CAD_SYMBOL_REGISTRY,
   prymitywy,
@@ -34,6 +35,12 @@ export const CAD_SYMBOL_STROKE_PX = 1.4;
 /** Wzór kreski przerywanej stanu nieznanego [u] — skaluje się z symbolem (kreska
  *  `non-scaling-stroke` w px ekranu, kreskowanie w jednostkach symbolu). */
 export const CAD_DASH_NIEZNANY = '1.5 1';
+
+/** Waga CSS liter symboli (kod literowy maszyny, „3" przekładnika i przekształtnika, „M"
+ *  napędu, znaki wnętrza zabezpieczenia) — JEDNA dla rejestru CAD i symboli QET; importer QET
+ *  mierzy litery odmianą tej wagi (`QET_ODMIANA_KROJU_LITER`, przypina
+ *  `cad/__tests__/literySymboli.test.tsx`). */
+export const WAGA_LITERY_SYMBOLU = 600;
 
 /**
  * Wzór kreski przerywanej dla kreski w JEDNOSTKACH SCENY (`nonScalingStroke = false`, symbole
@@ -136,7 +143,7 @@ function rysujPrymityw(p: CadPrimitive, i: number, ctx: KontekstRysunkuCad): JSX
           dominantBaseline="central"
           fontFamily={ctx.fontFamily}
           fontSize={p.size}
-          fontWeight={600}
+          fontWeight={WAGA_LITERY_SYMBOLU}
           fill={ctx.ink}
           data-cad="letter"
         >
@@ -178,7 +185,9 @@ export function CadPrimitiveLayer(props: CadPrimitiveLayerProps): JSX.Element {
     paper: props.paper,
     strokePx: props.strokeWidth,
     nonScaling: props.nonScalingStroke,
-    fontFamily: props.fontFamily ?? 'Inter, "Segoe UI", Arial, sans-serif',
+    // Krój schematu (`SLD_FONT_FAMILY`, Liberation Sans ≡ Arial) — ten sam, którego posuwy
+    // niesie `core/metrykiKroju.json` (importer QET mierzy nim litery symboli).
+    fontFamily: props.fontFamily ?? SLD_FONT_FAMILY,
     state: props.state,
   };
   return <>{props.prims.map((p, i) => rysujPrymityw(p, i, ctx))}</>;
@@ -194,7 +203,9 @@ export function CadSymbol(props: CadSymbolProps): JSX.Element {
     paper: props.paper,
     strokePx: props.strokePx ?? CAD_SYMBOL_STROKE_PX,
     nonScaling: props.nonScalingStroke ?? true,
-    fontFamily: props.fontFamily ?? 'Inter, "Segoe UI", Arial, sans-serif',
+    // Krój schematu (`SLD_FONT_FAMILY`, Liberation Sans ≡ Arial) — ten sam, którego posuwy
+    // niesie `core/metrykiKroju.json` (importer QET mierzy nim litery symboli).
+    fontFamily: props.fontFamily ?? SLD_FONT_FAMILY,
     state,
   };
   const c = def.anchors.center;
@@ -225,7 +236,7 @@ export function CadSymbol(props: CadSymbolProps): JSX.Element {
               dominantBaseline="central"
               fontFamily={ctx.fontFamily}
               fontSize={4.6}
-              fontWeight={600}
+              fontWeight={WAGA_LITERY_SYMBOLU}
               fill={ctx.ink}
               data-cad="mark"
             >

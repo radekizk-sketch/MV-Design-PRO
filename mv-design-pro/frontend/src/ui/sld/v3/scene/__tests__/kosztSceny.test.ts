@@ -609,87 +609,113 @@ interface OdciskiLod {
  * referencyjnej, 2 na scenę podwojonej). Zrzut sześciu scen z zdjętym tym polem jest CO DO
  * BAJTU identyczny z bazą (sha256 `936a9d0b6edf5165caee4eb43d59decea38980505603288e802a26342a511f47`
  * w obu fazach); geometria bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (UX-04/POLE-LINIOWE-WZORZEC, decyzje architekta §11.7 pkt 1–8,
+ * 2026-10-30) — przeliczone odciski; z 54 wpisów tablicy zmienione wszystkie 54. Pomiar sondą
+ * (te same funkcje co ten test, `vite-node`, archiwa `git archive`, fikstura podana jawnie):
+ *  · CZUBEK BYŁ CZERWONY: na `e41837b4e` 4 z 54 wpisów (sceny L1/L2 obu sieci) różniły się od
+ *    tablicy, na `dbe7c130b` 54 z 54 zgodne. Jedyna różnica sceny L1 sieci referencyjnej
+ *    (porównanie liść po liściu): `meta.gpzAdnotacje.panele[].rect.width` pola liniowego GPZ
+ *    24 → 144 — tło pola obejmuje podpis pola i opisy zabezpieczeń (§11.3 karty). Test biegnie
+ *    wyłącznie w kroku budżetów, więc czerwień nie wyszła przy tamtym commicie.
+ *  · Sonda 2×2 {szerokość tekstu 0,62 em, tabela posuwów kroju} × {fikstura `sldSubstrate52s`
+ *    sprzed, po regeneracji}: KAŻDY czynnik osobno zmienia 54 z 54 wpisów — tabela posuwów
+ *    (decyzja 7) zmienia prostokąt każdej etykiety, a za nim declutter i plan przy każdej
+ *    skali; regeneracja fikstury (jedna postać `starting_port_ref`, decyzja 3; kody EAZ bez
+ *    duplikatów, pkt B) zmienia identyfikatory korytarzy i treść okręgów przekaźników; kod
+ *    karty przy 0,62 em na fiksturze sprzed różni się od czubka w 54 z 54 wpisach (skrzyżowania
+ *    z mostkiem zamiast rozcinania kabla „węzłem T”, decyzja 1; zejścia L0 rozsunięte, decyzja
+ *    2; szerokości kolumn na rastrze; zaczep etykiet w krawędzi, decyzja 8).
+ *  · NIEZMIENNIK potwierdzony we wszystkich pięciu wariantach (czubek, A–D): etykiet sceny
+ *    55/520/914 (referencyjna) i 108/1030/1816 (podwojona) — żadna etykieta nie zginęła ani
+ *    nie przybyła; zmieniają się wyłącznie geometria i treść.
+ *  · Obrysy etykiet wg planu (`canvas/obrysyWgPlanu.ts`, ta sama karta): scena niesie listy
+ *    członków obrysów — `PanelPolaGpz.etykiety` i `PreviewElementMeta.wierszeBlokuPrzekaznika`.
+ *    Zmienione 4 odciski scen (L1 i L2 obu sieci; L0 nie ma adnotacji GPZ). Sonda: scena
+ *    z usuniętymi OBOMA polami daje DOKŁADNIE poprzednie odciski 11348eb5…/1fa2cc5d…/b92af088…/
+ *    90ab6519… — geometria, declutter i plany bez zmian (sieć referencyjna: 1 członek tła pola,
+ *    0 ramek bloku — jej pola GPZ nie mają układu powiązań).
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '8e090057f6695ada129159f69517efae',
-      declutter: 'd07fba87b2f56a1eef4c600fe0709a17',
+      scena: 'f2583461996deb27a7213ea5ac48846c',
+      declutter: '839be59727464389e65c8f0867c71da8',
       plany: [
-        '3073b65d61f123c6da6d042c95f705b4',
-        '6b10640883aa9a473b7279618649d1e1',
-        '172728286ead7bb23cd923432968a504',
-        '1d40ebb9aa22cf4b7d406cfd7a7dea89',
-        'f77dcd8f91618667280fff097f9fd7ee',
-        '11e9a49e4ea8cebb2745065ce73382a7',
-        '11e9a49e4ea8cebb2745065ce73382a7',
+        '1285bc6dfb41c3425c255110a42279f4',
+        '26dd65b9af955de7877644091879b5af',
+        'ede5d4aaa1937bc8effc8738c4ab0a8a',
+        'c24572d28abafec0ce9a5033a79fd05d',
+        '683fdda2eb695f0a3f39c67ae28eb0ac',
+        '5b17920045292c06feae17cfd14dc9b6',
+        '5b17920045292c06feae17cfd14dc9b6',
       ],
     },
     {
-      scena: '04a7561db346f689bb61973104fd95a5',
-      declutter: '40b7251b852fc542752fe1ba1f29338e',
+      scena: '839e8431d5b5e84b6f15f58cb9c7dc71',
+      declutter: 'f3e487f7aedb8a8488f942c911896ef4',
       plany: [
-        '06752775d45bbab5bd2330a0c33ea6b7',
-        '836e830b596dac4681f9e6855b8d5903',
-        'd14fde551e5c185fd96bf7f31f0a9569',
-        'a91c398d4eda4d56bf74eab60e87ca70',
-        '8aa76b130cababf582150067129767ec',
-        'e76685ef2a5da4093d1e774aa61fcce4',
-        'e76685ef2a5da4093d1e774aa61fcce4',
+        '010f86be310c943abf3b6b2ff7546fb6',
+        'c8e4b96c0ea0e63f64c386c7612aaf4c',
+        'b180c0c03279159de9317cb373d92ff4',
+        'b0bdc56a37b1207f9eb9d1a15a897605',
+        '38535f306dad0a79704758d9bde54f12',
+        'bff5ebede3a4a8aa8fb6bd4a95ca8200',
+        'bff5ebede3a4a8aa8fb6bd4a95ca8200',
       ],
     },
     {
-      scena: '5cd691db568dafaffb980eb3ddb3b584',
-      declutter: '3ac69d221753e008d7ac680e0531d8d4',
+      scena: '1f624e6d108c0de787c33dd2aa6bdca1',
+      declutter: '20ae1edfb81866ef5b0449658fb7c90f',
       plany: [
-        '67205bf8127c4c224ade425c47dd2246',
-        'bb6dfa40a0e49fcb070c10f0d0117059',
-        '793ee94663dae1ab0252c6bdd070b7eb',
-        '26d8e421568e2395a3ece2e59dd1ac2e',
-        '311a1b1aefbffa019832b301a7605eed',
-        '09e6fcc06fd2a007070d9abd4eb4f083',
-        '09e6fcc06fd2a007070d9abd4eb4f083',
+        'daeccc2bd1669583f6abe133252991e0',
+        'b7d88af83af19fc6e164b84133469eef',
+        'ba2f6cd11083ec96df415e36d7ec3c31',
+        '6aeeea0899918a97e93ff96ca598df4b',
+        'c7e2117719684af35471a89382d2fa9e',
+        'fe91d60551ed89d5d53fefec9edda503',
+        'fe91d60551ed89d5d53fefec9edda503',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '0056a451233997ceffc36dce4ddfba37',
-      declutter: 'fcaad8f6069e583ea05a5a8de5e14a11',
+      scena: 'c7e64f315cb7298f5ff85d1943f3b9bf',
+      declutter: '5c8a9ecc9394c03aeeee770251a604dc',
       plany: [
-        'b8eea41ccf515f1acc228cd82b6436dd',
-        'bda4c229ea6367eb4a824f3a0511e4e6',
-        'eda8d972ac0062b74c5d1d3a1fb6b219',
-        '1c1f71a06b7b72d607069a888618b9af',
-        '799392b7e737ef4a3f90280596f220d8',
-        '5a8106565c8335db1702e7284d38d537',
-        '5a8106565c8335db1702e7284d38d537',
+        'bd3d70050a68901c4c4a87f5a5c40b93',
+        '3f4c0ec06022e8b430d6c44b9f9c59f2',
+        '13ddfe79dcd3608f9f4b6d4de13142d1',
+        'c3bc5cd93233aa9a1bef5cbd817ee74f',
+        '5a89923b837baa37c5903bbd512ca6fc',
+        'f14289a450e43d5dfc7d629f4bdd7590',
+        'f14289a450e43d5dfc7d629f4bdd7590',
       ],
     },
     {
-      scena: 'd28b090591f78279dad5e51d97be5bb4',
-      declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
+      scena: 'e1eaeff3d1bf5ff75c67c0783a35c19f',
+      declutter: 'be0684c749171ecebed4e695cefebfac',
       plany: [
-        'bb96bce423fc0946291bdd36d49ed8c2',
-        '7823922d2b8bfa2a847f1e655be156d0',
-        'ddbc1230a5bccb4fa4daa6b6427de3ca',
-        '7b072d4ef954c286798124c8c0fa6c77',
-        '66fb0c6845420ad9f48030a9ae8b0866',
-        '1af119c9668b67927bf66a4c995e7195',
-        '1af119c9668b67927bf66a4c995e7195',
+        '346a4b28ed31ce799f115e5455af2d24',
+        'fe0670688be7affa823c956743d0020f',
+        '33198d23c66510fe8f12d1c89eef78e9',
+        '17c4e6ee62a00a53d58985795faaafb1',
+        '919b2521ffe5fd9a54b9ab9c98e5ab34',
+        '678d7929cc30fcd179041d7e85d40332',
+        '678d7929cc30fcd179041d7e85d40332',
       ],
     },
     {
-      scena: '9395eb34f0b10c721e30c88cf4260a85',
-      declutter: 'fd2ac4acf96701c6273059192dddd93f',
+      scena: '3b4a66e7528ee4f06df51958ff149eee',
+      declutter: 'fc428b2fa8d133ae396afe5a81078195',
       plany: [
-        '28965374c394c62b1d414eddfdd5e98a',
-        '831a2768e8325c241b3574cb8e460e52',
-        '6beb6ca8596df41241a64a39286e58ef',
-        'ad8cd0a9b733288867caf0ec67712d1b',
-        'dd7706bb913891b95bf649e9e0b5a4e2',
-        '4d60be0ead8e5bc02800c365e32d2ad9',
-        '4d60be0ead8e5bc02800c365e32d2ad9',
+        'adca2d79865cb9e5630b184cbf63c8b0',
+        '17aadce7cabaa88c7ccc106059b9430e',
+        '1a65e40d436e4eaae209dafe1bcb4a7e',
+        '2627598db3b58e6c98d3465a6eda2ef0',
+        '9f59dc999c27afd8505c07e4bff89de2',
+        '69399af41bc0df5babeebf5e07332fb5',
+        '69399af41bc0df5babeebf5e07332fb5',
       ],
     },
   ],

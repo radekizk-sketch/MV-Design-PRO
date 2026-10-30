@@ -233,9 +233,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/15ec590199593aedd97bb7794dd02000/sn_field/003",
@@ -524,9 +524,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/5a5162352a7a96891da4bfaa813076c8/sn_field/003",
@@ -815,9 +815,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/04651959d6bce6c332642e4f5048d0b0/sn_field/003",
@@ -2666,7 +2666,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "8a8f48ba99c1f27e05e6f7440ac728e9efffc9ed52b838acd37e4de54901d0e4",
+      "hash_sha256": "2950ea1ea1b5256a651d2a01449f9d62d1e788cbb25ade83d1762d9ea47434f2",
       "name": "Sieć Mala — po",
       "revision": 12,
       "updated_at": "2026-09-25T00:00:00Z"

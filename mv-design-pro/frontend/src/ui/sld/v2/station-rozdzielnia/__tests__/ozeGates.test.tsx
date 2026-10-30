@@ -21,6 +21,17 @@ import { OzeSourceArchetype } from '../OzeSourceArchetype';
 import { OZE_ARCHETYPES_2A } from '../companions/ozeArchetypes2a';
 
 const PV = ['G1', 'G2', 'G3'] as const;
+
+/** Kryteria ochrony od pracy wyspowej (LoM) zestawu interfejsu — słownik EAZ backendu
+ *  (`network_model/catalog/funkcje_eaz.py`): KAŻDA funkcja raz, ROCOF to „81R". Dawny kod-agregat
+ *  „anti-islanding" (zestaw tych kryteriów) i dawny zapis „df/dt" obok nich były duplikatami
+ *  semantycznymi (decyzja architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC). */
+const KRYTERIA_LOM = ['27', '59', '81U', '81O', '81R'] as const;
+function oczekujKryteriowLoM(codes: readonly string[]) {
+  for (const k of KRYTERIA_LOM) expect(codes).toContain(k);
+  expect(codes).not.toContain('anti-islanding');
+  expect(codes).not.toContain('df/dt');
+}
 const BOUNDARY_VARIANTS = ['G-GPZ', 'G-ZKSN', 'G-SLUP', 'G-ZLACZE-POM', 'G-ZALICZNIK'];
 
 function renderOze(archetype: string, detail: 'far' | 'closer' | 'close') {
@@ -173,12 +184,12 @@ describe('GATE I — interface protection on the connection field (not the sourc
     }
   });
 
-  it('IBG protection includes directional OC + anti-islanding + V/f; not synchro-only', () => {
+  it('IBG protection includes directional OC + loss-of-mains criteria (27/59/81U/81O/81R) + V/f; not synchro-only', () => {
     for (const a of PV) {
       const codes = OZE_ARCHETYPES_2A[a].fields.find((f) => f.role === 'connection')!.protection_codes;
       expect(codes).toContain('67');
       expect(codes).toContain('67N');
-      expect(codes).toContain('anti-islanding');
+      oczekujKryteriowLoM(codes);
       expect(codes).toContain('81U');
       expect(codes).toContain('59N');
       expect(codes).not.toContain('25'); // synchro-check is synchronous-only
@@ -244,7 +255,7 @@ describe('GATE J′ — rotating machines: machine-typed SC contribution (not IB
     // Interface (line bay) = NC RfG only; the generator functions (87G/40/32/64/25/21…) are split
     // onto source.protection, NOT the grid interface.
     const conn = c.fields.find((f) => f.role === 'connection')!;
-    expect(conn.protection_codes).toContain('anti-islanding');
+    oczekujKryteriowLoM(conn.protection_codes);
     expect(conn.protection_codes).not.toContain('25');
     expect(conn.protection_codes).not.toContain('87G');
     expect(c.source.protection?.machine).toEqual(
@@ -899,8 +910,7 @@ describe('G5-BESS — magazyn energii (IBG dwukierunkowy + oś energii kWh)', ()
   it('B8 — ochrona = zestaw interfejsowy IBG (NIE kody maszyny synchronicznej)', () => {
     const conn = OZE_ARCHETYPES_2A[G5].fields.find((f) => f.role === 'connection')!;
     expect(conn.interface_protection).toBe(true);
-    expect(conn.protection_codes).toContain('anti-islanding');
-    expect(conn.protection_codes).toContain('81U');
+    oczekujKryteriowLoM(conn.protection_codes);
     expect(conn.protection_codes).not.toContain('25'); // synchro-check — synchronous only
     expect(conn.protection_codes).not.toContain('40'); // loss of field — synchronous only
   });
@@ -1010,8 +1020,35 @@ describe('G5-WIND-T4 — wiatr Typ 4 (IBG + sieć kolektorowa SN)', () => {
   it('W8 — ochrona = zestaw interfejsowy IBG (nie kody maszyny synchronicznej)', () => {
     const conn = OZE_ARCHETYPES_2A[G6].fields.find((f) => f.role === 'connection')!;
     expect(conn.interface_protection).toBe(true);
-    expect(conn.protection_codes).toContain('anti-islanding');
+    oczekujKryteriowLoM(conn.protection_codes);
     expect(conn.protection_codes).not.toContain('25');
     expect(conn.protection_codes).not.toContain('40');
+  });
+});
+
+describe('zestawy zabezpieczeń archetypów — każda funkcja raz (iloczyn: archetyp × pole × źródło)', () => {
+  // Iloczyn cech: KAŻDY archetyp towarzysza × KAŻDE pole (protection_codes) + zestaw źródła
+  // (source.protection_codes) + funkcje maszyny i przekształtnika (source.protection). Duplikat
+  // semantyczny ma trzy postacie z inwentarza klasy (decyzja architekta 2026-10-30): powtórzony
+  // kod, kod-agregat kryteriów obok tych kryteriów („anti-islanding") i ta sama funkcja w dwóch
+  // nomenklaturach w jednym zestawie (ROCOF „81R" obok „df/dt"). Zestawy z rysunku wykonawczego
+  // Buk 1 (dok. 1.18) niosą oznaczenia krajowe tego dokumentu („f<", „df/dt") — spójnie jedną
+  // nomenklaturą, więc „df/dt" bez „81R" jest tam poprawne.
+  const zestawy: [string, readonly string[]][] = Object.entries(OZE_ARCHETYPES_2A).flatMap(([a, c]) => [
+    ...c.fields.map((f, i): [string, readonly string[]] => [`${a} × pole ${i} (${f.role})`, f.protection_codes]),
+    [`${a} × źródło`, c.source.protection_codes] as [string, readonly string[]],
+    [`${a} × maszyna`, c.source.protection?.machine ?? []] as [string, readonly string[]],
+    [`${a} × przekształtnik`, c.source.protection?.converter ?? []] as [string, readonly string[]],
+  ]);
+
+  it('iloczyn obejmuje każdy archetyp i niepuste zestawy', () => {
+    expect(new Set(zestawy.map(([n]) => n.split(' × ')[0]))).toEqual(new Set(Object.keys(OZE_ARCHETYPES_2A)));
+    expect(zestawy.filter(([, k]) => k.length > 0).length).toBeGreaterThan(Object.keys(OZE_ARCHETYPES_2A).length);
+  });
+
+  it.each(zestawy)('%s', (_nazwa, kody) => {
+    expect(kody.filter((k, i) => kody.indexOf(k) !== i)).toEqual([]);
+    expect(kody).not.toContain('anti-islanding');
+    expect(kody.includes('81R') && kody.includes('df/dt')).toBe(false);
   });
 });

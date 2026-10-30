@@ -233,9 +233,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/003",
@@ -1138,7 +1138,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "0683d79705d6bb49695de5fd9526b0fb60ae85dda1c06aa5accdd8d13a21caa4",
+      "hash_sha256": "658dbf7aadf7ec4ddc3faff107f24eb72455dd54aa9a94871c53330a0fbd0cc7",
       "name": "Drogi operacji budowy",
       "revision": 7,
       "updated_at": "2026-09-25T00:00:00Z"

@@ -33,7 +33,7 @@ def _branch_field_ref(enm: dict, station_ref: str) -> str:
     for spec in pola_stacji(enm, station_ref):
         role = str(spec.get("field_role") or spec.get("bay_role") or "").upper()
         if role in {"LINIA_ODG", "FEEDER"}:
-            return f"{spec['ref_id']}.BRANCH"
+            return str(spec["ref_id"])
     raise AssertionError(f"Brak pola odgałęźnego w stacji {station_ref}")
 
 

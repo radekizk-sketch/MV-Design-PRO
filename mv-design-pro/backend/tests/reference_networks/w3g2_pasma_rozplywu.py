@@ -130,7 +130,7 @@ def zbuduj_siec_w3g2_dzis(klient: TestClient) -> dict[str, Any]:
     op = b.operacja(
         "start_branch_segment_sn",
         {
-            "from_ref": f"{pole_odgalezne['ref_id']}.BRANCH",
+            "from_ref": pole_odgalezne["ref_id"],
             "segment": {
                 "rodzaj": "KABEL",
                 "dlugosc_m": 180,

@@ -1,7 +1,7 @@
 import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
 import type { FactoryConfigurationWire, SwitchgearFamily } from './SwitchgearFamilyPicker';
-import type { KartaWidmowa } from '../../types/enm';
+import type { KartaWidmowa, RodzajNapeduLacznika } from '../../types/enm';
 import type {
   BranchPointCatalogType,
   BESSInverterCatalogType,
@@ -322,12 +322,24 @@ export interface SygnalPolaWzorca {
   readonly uwaga: string | null;
 }
 
+/** Napęd łącznika wzorca — lustro `obwody_wtorne_pola.NapedAparatuPola` (oznaczenie i rodzaj
+ *  aparatu, przy którym rysunek stawia znak napędu; opis napędu z backendu). */
+export interface NapedAparatuWzorca {
+  readonly aparat: string;
+  readonly rodzaj_aparatu: string;
+  readonly naped: RodzajNapeduLacznika;
+  readonly weryfikacja: StatusWeryfikacjiWzorca;
+  readonly uwaga: string | null;
+  /** Pole wyliczane backendu (`computed_field`) — opis napędu z `OPIS_NAPEDU_PL`. */
+  readonly naped_pl: string;
+}
+
 /** Obwody wtórne wzorca pola — lustro `obwody_wtorne_pola.ObwodyWtornePola` (karta pola czyta
- *  z niego sygnały; powiązania funkcji przychodzą rozwiązane na aparatach pola). */
+ *  z niego sygnały i napędy łączników; powiązania funkcji przychodzą rozwiązane na aparatach
+ *  pola). */
 export interface ObwodyWtornePola {
   readonly podstawa: string;
-  readonly naped_wylacznika: 'SILNIKOWY';
-  readonly naped_weryfikacja: StatusWeryfikacjiWzorca;
+  readonly napedy: readonly NapedAparatuWzorca[];
   readonly sygnaly: readonly SygnalPolaWzorca[];
 }
 

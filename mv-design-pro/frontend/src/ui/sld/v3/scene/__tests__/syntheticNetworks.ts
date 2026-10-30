@@ -327,7 +327,7 @@ export function appendLateralBranch(
     name: 'Odgałęzienie SN (test lokalności)',
     run_kind: 'branch',
     starting_bay_ref: newFieldRef,
-    starting_port_ref: `${newFieldRef}.BRANCH`,
+    starting_port_ref: newFieldRef,
     segments: ct.segments.map((s: any) => ({ segment_ref: s.segment_ref, order: s.order })),
     stations: [],
     parent_run_ref: null,

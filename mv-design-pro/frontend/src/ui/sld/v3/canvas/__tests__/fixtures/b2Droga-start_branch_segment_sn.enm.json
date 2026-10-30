@@ -233,9 +233,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/003",
@@ -1232,13 +1232,13 @@
       },
       {
         "corridor_type": "radial",
-        "id": "980f4299-3627-577b-abbd-a70c146a7b3b",
+        "id": "f3827e87-946e-58d3-9a79-7d6bf6c68461",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
         "ordered_segment_refs": [
           "seg/653b66daa305195f5b6b631b4a36ab21/branch_segment"
         ],
-        "ref_id": "corridor/139d55bbc72976349120fd6e2a6c267d/branch",
+        "ref_id": "corridor/58ea09502d2a8639e39b4d4c9a5f3e05/branch",
         "tags": []
       }
     ],
@@ -1253,7 +1253,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "19bca95931f959735864721cb56f4f7896936da6b7c34e57c6b8da36988a9b8e",
+      "hash_sha256": "be6c5925fc5c11fe8977bdcfbd426986d9501671aaf8d737b2acfc9f44d4e2af",
       "name": "Drogi operacji budowy",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1291,7 +1291,7 @@
       },
       {
         "branch_origin_station_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002",
-        "id": "corridor/139d55bbc72976349120fd6e2a6c267d/branch",
+        "id": "corridor/58ea09502d2a8639e39b4d4c9a5f3e05/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": null,
         "run_kind": "branch",
@@ -1302,7 +1302,7 @@
           }
         ],
         "starting_bay_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002",
-        "starting_port_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002.BRANCH",
+        "starting_port_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002",
         "stations": []
       }
     ],

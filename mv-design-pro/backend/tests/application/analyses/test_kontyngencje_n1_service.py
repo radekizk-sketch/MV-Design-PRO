@@ -965,7 +965,15 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # wejściowego: pole „Pole liniowe wyjściowe 2" nie dostaje automatycznie funkcji 67N
     # (`bez_niespelnionych_warunkow` — pole bez powiązanego źródła 3U₀); `Bay.zrodlo_u0_ref`
     # nienadane jest poza odciskiem. Enumeracja kontyngencji, dotkliwości i ranking identyczne.
-    "gn01_promieniowa": "bebbfc4d8c6cfcc0b906334d36694af3966d6ccbdc67a70baf36ed83fca61d92",
+    # 2026-10-30 (ta sama karta, decyzja architekta: jedna nomenklatura funkcji EAZ, każda
+    # funkcja raz — `network_model/catalog/funkcje_eaz.py`): gn01 bebbfc4d… → 138e3743…, gn03
+    # bez zmiany. Pełne widoki z kodu bazy `e41837b4e` (`git archive`, odtwarzają dokładnie
+    # poprzednie piny obu sieci) i po karcie porównane liść po liściu: IDENTYCZNY zbiór 408
+    # kluczy, różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu
+    # wejściowego (738 liści, identyczny zbiór kluczy): 3 kody zabezpieczeń technologicznych
+    # pola transformatora — klucze-nazwy „Buchholz", „temp", „ciśnienie" → numery IEEE C37.2
+    # „63", „26", „63P". Enumeracja kontyngencji, dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "138e374399ddb5b25f2b2b67d8e2b51caf911cad075301845c69aeae0bcedba0",
     "gn03_pierscien": "c1a30de457e5befd7dce52b9ccbc466ca9d101118e6a4a5202103a02d66b29e4",
 }
 

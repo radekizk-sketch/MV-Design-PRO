@@ -1,6 +1,6 @@
 /**
- * GRAMATYKA WIZUALNA nN (§20–§30, §41–§44) — czyste funkcje: fit, zawijanie,
- * limity znaków, sufit rozmiaru symbolu w slocie, nośniki stanów, rejestr
+ * GRAMATYKA WIZUALNA nN (§20–§30, §41–§44) — czyste funkcje: fit, zawijanie
+ * miarą posuwów kroju, sufit rozmiaru symbolu w slocie, nośniki stanów, rejestr
  * elementów kanwy, paleta mono.
  */
 import { describe, expect, it } from 'vitest';
@@ -11,8 +11,6 @@ import { CAD_SYMBOL_STROKE_PX } from '../../cad/CadSymbol';
 import {
   BUS_STROKE_SCREEN_PX,
   CAD_U_PX,
-  CHAR_WIDTH_RATIO,
-  CHAR_WIDTH_RATIO_BOLD,
   FIT_SCALE_MAX,
   LINE_DASH_SCREEN_PX,
   LINE_SCREEN_PX,
@@ -31,7 +29,7 @@ import {
   etykietaStanuZasilania,
   fitSceneToViewport,
   licznikOdplywowLabel,
-  limitZnakow,
+  miaraPisma,
   mocLabel,
   paletaMono,
   paletaNnDlaMotywu,
@@ -46,6 +44,7 @@ import {
   zawinNazwe,
   type ElementKanwyNn,
 } from '../visualGrammar';
+import { measureTextWidth } from '../../core/text';
 
 describe('§25 fit-to-content — zajętość osi wiążącej, clamp, centrowanie, wąski ekran', () => {
   const SCENY = [
@@ -133,44 +132,84 @@ describe('§25 fit-to-content — zajętość osi wiążącej, clamp, centrowani
 });
 
 describe('§30 / R2 §17 zawijanie nazw — po słowach, BEZ łamania wyrazów, skrót „…" zamiast wystawania', () => {
+  /** Miara jednostkowa (1 znak = 1) — reguły podziału po słowach niezależne od kroju. */
+  const znaki = (t: string): number => Array.from(t).length;
+
   it('krótka nazwa = jeden wiersz; dłuższa dzieli się po spacjach', () => {
-    expect(zawinNazwe('Odbiór A1', 12, 3)).toEqual(['Odbiór A1']);
-    expect(zawinNazwe('Wentylacja mechaniczna hali', 12, 3)).toEqual(['Wentylacja', 'mechaniczna', 'hali']);
+    expect(zawinNazwe('Odbiór A1', 12, 3, znaki)).toEqual(['Odbiór A1']);
+    expect(zawinNazwe('Wentylacja mechaniczna hali', 12, 3, znaki)).toEqual(['Wentylacja', 'mechaniczna', 'hali']);
   });
 
   it('wyraz dłuższy niż wiersz NIE jest łamany (żadnego „Oświetl-enie"): zostaje w całości i jest skrócony „…" w limicie', () => {
-    const linie = zawinNazwe('Oświetlenie zewnętrzne parkingu', 8, 4);
-    for (const l of linie) expect(l.length, l).toBeLessThanOrEqual(8);
+    const linie = zawinNazwe('Oświetlenie zewnętrzne parkingu', 8, 4, znaki);
+    for (const l of linie) expect(znaki(l), l).toBeLessThanOrEqual(8);
     for (const l of linie) expect(l.endsWith('-'), l).toBe(false);
     expect(linie[0]).toBe('Oświetl…');
     expect(linie.join(' ')).not.toContain('Oświetl-');
   });
 
   it('wyraz techniczny z dywizem („grid-following") nigdy nie jest dzielony na dywizie ani w środku', () => {
-    const linie = zawinNazwe('podąża za siecią · grid-following', 12, 4);
+    const linie = zawinNazwe('podąża za siecią · grid-following', 12, 4, znaki);
     expect(linie.some((l) => l === 'grid-' || l === 'following')).toBe(false);
-    for (const l of linie) expect(l.length).toBeLessThanOrEqual(12);
-    expect(zawinNazwe('grid-forming', 12, 3)).toEqual(['grid-forming']);
-    expect(zawinNazwe('grid-forming', 8, 3)).toEqual(['grid-fo…']);
+    for (const l of linie) expect(znaki(l)).toBeLessThanOrEqual(12);
+    expect(zawinNazwe('grid-forming', 12, 3, znaki)).toEqual(['grid-forming']);
+    expect(zawinNazwe('grid-forming', 8, 3, znaki)).toEqual(['grid-fo…']);
   });
 
   it('powyżej limitu wierszy ostatni kończy się „…" (uczciwy skrót, nie ukrycie)', () => {
-    const linie = zawinNazwe('Stacja ładowania pojazdów elektrycznych', 10, 2);
+    const linie = zawinNazwe('Stacja ładowania pojazdów elektrycznych', 10, 2, znaki);
     expect(linie).toHaveLength(2);
     expect(linie[1].endsWith('…')).toBe(true);
-    for (const l of linie) expect(l.length).toBeLessThanOrEqual(10);
+    for (const l of linie) expect(znaki(l)).toBeLessThanOrEqual(10);
   });
 
-  it('pusty tekst daje jeden pusty wiersz; limit < 2 jest podnoszony do 2', () => {
-    expect(zawinNazwe('   ', 10, 2)).toEqual(['']);
-    expect(zawinNazwe('ab', 1, 2)).toEqual(['ab']);
+  it('pusty tekst daje jeden pusty wiersz; pas węższy niż znak z „…" niesie pierwszy znak i „…" (etykieta nie znika)', () => {
+    expect(zawinNazwe('   ', 10, 2, znaki)).toEqual(['']);
+    expect(zawinNazwe('ab', 1, 2, znaki)).toEqual(['a…']);
   });
 
-  it('limitZnakow: szerokość / (współczynnik · rozmiar), nie mniej niż 4; pismo półgrube liczy szerzej', () => {
-    expect(limitZnakow(120, 12)).toBe(Math.floor(120 / (CHAR_WIDTH_RATIO * 12)));
-    expect(limitZnakow(120, 12, CHAR_WIDTH_RATIO_BOLD)).toBeLessThan(limitZnakow(120, 12));
-    expect(limitZnakow(1, 12)).toBe(4);
-    expect(CHAR_WIDTH_RATIO_BOLD).toBeGreaterThan(CHAR_WIDTH_RATIO);
+  /**
+   * Karta UX-04/POLE-LINIOWE-WZORZEC (decyzja §11.7 pkt 7): szerokość wiersza z posuwów kroju,
+   * nie z liczby znaków. Iloczyn cech: krój {sans, mono} × waga {400, 600, 700} × treść
+   * {wielkie litery, cyfry, polskie małe, mieszana} × pas {wąski, średni, szeroki}. Każdy
+   * wiersz mieści się w pasie (albo jest minimalnym skrótem „X…”), a podział nie gubi słów.
+   */
+  it('iloczyn: krój × waga × treść × pas — każdy wiersz w pasie wg posuwów kroju', () => {
+    const TRESCI = [
+      'WWW MMM WWWW MMMMM WWWWWW',
+      '1234 5678 90 123456 7890',
+      'ąćęłńóśźż żółć gęślą jaźń',
+      'Odpływ nN 1 gospodarstwo · QF-01 · 3×CT 200/5 A',
+    ];
+    for (const kroj of ['sans', 'mono'] as const) {
+      for (const waga of [400, 600, 700]) {
+        for (const tresc of TRESCI) {
+          for (const pas of [40, 90, 200]) {
+            const miara = miaraPisma(12, waga, kroj);
+            const linie = zawinNazwe(tresc, pas, 6, miara);
+            const opis = `${kroj}/${waga}/„${tresc}”/${pas}`;
+            for (const l of linie) {
+              const minimalny = Array.from(l).length === 2 && l.endsWith('…');
+              if (!minimalny) expect(miara(l), `${opis}: „${l}”`).toBeLessThanOrEqual(pas);
+            }
+            if (!linie.some((l) => l.endsWith('…'))) expect(linie.join(' '), opis).toBe(tresc);
+          }
+        }
+      }
+    }
+  });
+
+  it('miara pisma = posuwy kroju: wielkie litery szersze od cyfr, pogrubienie szersze, mono stały posuw', () => {
+    expect(miaraPisma(12, 400)('WWWW')).toBe(measureTextWidth('WWWW', 12, 400));
+    expect(miaraPisma(12, 400)('WWWW')).toBeGreaterThan(miaraPisma(12, 400)('1111'));
+    expect(miaraPisma(12, 700)('Odpływ')).toBeGreaterThan(miaraPisma(12, 400)('Odpływ'));
+    expect(miaraPisma(12, 400, 'mono')('WWWW')).toBe(miaraPisma(12, 400, 'mono')('iiii'));
+    // Dawny limit znaków (0,60 em pisma półgrubego: ⌊80 / 7,2⌋ = 11 znaków w pasie 80 px przy
+    // 12 px) puszczał „WWWWW WWWWW” (11 znaków) jednym wierszem o tuszu 116,6 px. Miara kroju
+    // zawija ten wiersz do pasa.
+    const linie = zawinNazwe('WWWWW WWWWW', 80, 3, miaraPisma(12, 600));
+    expect(linie).toEqual(['WWWWW', 'WWWWW']);
+    for (const l of linie) expect(miaraPisma(12, 600)(l)).toBeLessThanOrEqual(80);
   });
 });
 

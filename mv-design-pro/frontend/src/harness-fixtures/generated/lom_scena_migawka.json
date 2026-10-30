@@ -179,9 +179,9 @@
         "51",
         "50",
         "51N",
-        "Buchholz",
-        "temp",
-        "ciśnienie"
+        "63",
+        "26",
+        "63P"
       ],
       "protection_ref": null,
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
@@ -972,7 +972,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "90d39bba357d80b56fcb5ab9cd2f484edb0ccdbef0e30c101677b6cca9d43238",
+    "hash_sha256": "f19259e51c2f57fe8a12853a00e893108f949955cc9bc6999261088d926676ee",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

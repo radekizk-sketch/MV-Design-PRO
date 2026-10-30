@@ -180,9 +180,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/a7caf2f7359a3922248142a74018d199/sn_field/002",
@@ -418,9 +418,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/e7293959a70cd6dcebcd700accd9a068/sn_field/002",
@@ -1833,7 +1833,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "d22acc9930473718f9879ba70bcba4ca2f23c47e4b83bd928841f3a8f92fb61b",
+      "hash_sha256": "22c781190ec0276b3f79d000b7340188b042035946cd3201d6e23e06198a22e4",
       "name": "Elementy ciągu — wezel",
       "revision": 11,
       "updated_at": "2026-09-25T00:00:00Z"

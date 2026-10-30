@@ -37,8 +37,17 @@
  *    (`[data-qet="glif"]`) wzdłuż osi toru w przedziale `stopienSymboli.kafel` manifestu importu
  *    QET (0,55–0,70 boku kafla) — `getBBox()` w świecie i `boundingBox()` na ekranie, ten sam
  *    iloczyn rodzaj × stan × motyw;
- *  - symbol z rodzaju aparatu w modelu: Q0 z napędem silnikowym M (`naped`), T3 z trzema
+ *  - symbol z rodzaju aparatu w modelu: Q0 z napędem silnikowym M (`naped`), łącznik
+ *    trójpołożeniowy Q1 z napędem zasobnikowym ręcznym (Q5 odgałęzienia bez napędu), T3 z trzema
  *    uzwojeniami wtórnymi (`uzwojenia`), GK/GK1 i T2 jako elementy toru;
+ *  - PRZEKŁADNIK T1 (decyzja architekta §11.7 pkt 6): zaciski P1 (strona szyny, nad
+ *    pierścieniem) i P2 (pod pierścieniem) na lewo od symbolu, tabliczka „przekładnia · klasy"
+ *    z rdzeni modelu;
+ *  - SZEROKOŚĆ RAMKI BLOKU (pkt 7): szerokość każdego wiersza na ekranie = suma posuwów tabeli
+ *    kroju (≤ 1 px), zapas tuszu do prawej krawędzi ramki w przedziale [margines, margines
+ *    + 1 j.św.] — iloczyn {Z.10, Z.11.1} × {cyfry, wielkie litery} × motyw;
+ *  - ZACZEP PODPISÓW (pkt 8): podpisy aparatów po lewej toru pola — wspólna prawa krawędź tuszu
+ *    (≤ 1 px), pomiary do `test-results/ux04-pole-liniowe-pomiary-podpisow.json`;
  *  - BLOK PRZEKAŹNIKA (uwaga sesji głównej 2026-10-29 pkt 5): wiersze kodów i odniesienie
  *    źródła 3U₀ zaczynają się we wspólnej lewej krawędzi, a tusz każdego wiersza (metryki
  *    czcionki przeglądarki) leży wewnątrz ramki bloku — pomiary do
@@ -56,6 +65,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
+import type { RdzenPrzekladnikaPradowego } from '../src/types/przekladniki';
+import { tekstKlasRdzeni, tekstPrzekladniRdzeni } from '../src/ui/sld/v2/model/tabliczkaPrzekladnika';
+import { ZACISKI_PRZEKLADNIKA_PRADOWEGO, ZNACZNIK_ZACISKU_PRZEKLADNIKA } from '../src/ui/sld/v3/compose/zaciskiPrzekladnika';
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
 
@@ -84,6 +96,7 @@ const BOK_KAFLA_SWIATA = 48;
 const TOLERANCJA_EKRANU_PX = 1;
 const POMIARY_KAFLI_PLIK = resolve(HERE, '..', 'test-results', 'ux04-pole-liniowe-pomiary-kafli.json');
 const POMIARY_BLOKU_PLIK = resolve(HERE, '..', 'test-results', 'ux04-pole-liniowe-pomiary-bloku.json');
+const POMIARY_SZEROKOSCI_PLIK = resolve(HERE, '..', 'test-results', 'ux04-pole-liniowe-pomiary-szerokosci.json');
 // Stopień glifu łącznika (uwaga właściciela 2026-10-29 pkt 1: znak rodzaju aparatu zajmuje
 // ok. 55–70 % boku kafla) — przedział z JEDNEGO źródła, manifestu importu symboli QET
 // (`stopienSymboli.kafel`), tego samego, którym importer odrzuca symbol poza przedziałem.
@@ -93,6 +106,34 @@ const STOPIEN_GLIFU_KAFLA: readonly [number, number] = (
   }
 ).stopienSymboli.kafel;
 
+// Tabela posuwów znaków kroju schematu (`core/metrykiKroju.json`, generator
+// `scripts/metryki_kroju_sld.py`) — wyrocznia szerokości wierszy bloku przekaźnika czytana
+// z pliku (bez importu modułu pomiaru): decyzja architekta §11.7 pkt 7 — szerokość ramki
+// z posuwów kroju, więc szerokość tekstu w przeglądarce = suma posuwów z tabeli.
+const METRYKI_KROJU = JSON.parse(
+  readFileSync(resolve(HERE, '..', 'src', 'ui', 'sld', 'v3', 'core', 'metrykiKroju.json'), 'utf8'),
+) as {
+  jednostkiEm: number;
+  posuwSpozaTabeliEm: number;
+  kroje: { sans: { znaki: string; posuwy: Record<'400' | '700', number[]> } };
+};
+function szerokoscZTabeliEm(tekst: string, fontWeight: number): number {
+  const znaki = Array.from(METRYKI_KROJU.kroje.sans.znaki);
+  const posuwy = METRYKI_KROJU.kroje.sans.posuwy[fontWeight > 500 ? '700' : '400'];
+  let em = 0;
+  for (const znak of tekst) {
+    const i = znaki.indexOf(znak);
+    em += i >= 0 ? posuwy[i] / METRYKI_KROJU.jednostkiEm : METRYKI_KROJU.posuwSpozaTabeliEm;
+  }
+  return em;
+}
+/** Klasa treści wiersza: przewaga cyfr albo wielkich liter (iloczyn pkt 7). */
+function klasaTresci(tekst: string): 'cyfry' | 'wielkie litery' {
+  const cyfry = (tekst.match(/[0-9]/g) ?? []).length;
+  const wielkie = (tekst.match(/[A-ZĄĆĘŁŃÓŚŹŻ]/g) ?? []).length;
+  return cyfry >= wielkie ? 'cyfry' : 'wielkie litery';
+}
+
 type Aparat = {
   device_ref: string;
   kind: string;
@@ -101,6 +142,8 @@ type Aparat = {
   switch_state?: { actual_state: string } | null;
   naped?: string | null;
   uzwojenia?: unknown[] | null;
+  ports?: Array<{ port_id: string; wezel?: string | null }> | null;
+  rdzenie?: RdzenPrzekladnikaPradowego[] | null;
 };
 type Pole = {
   ref_id: string;
@@ -480,15 +523,26 @@ type PomiarBloku = {
   ramka: { x: number; y: number; width: number; height: number };
   zapasPrawy: number;
   zapasDolny: number;
+  /** Margines ramki [px ekranu] — odstęp lewej krawędzi ramki od okręgu przekaźnika (ramka =
+   *  suma okręgu i wierszy poszerzona o jeden margines), i skala kamery [px ekranu / j.św.]. */
+  margines: number;
+  skala: number;
   wiersze: string[];
+  /** Klasa treści każdego wiersza (`klasaTresci`) — pokrycie iloczynu pkt 7. */
+  klasy: Array<'cyfry' | 'wielkie litery'>;
 };
 const POMIARY_BLOKU: PomiarBloku[] = [];
 
-/** Pomiar bloku przekaźnika każdego pola w kadrze — metryki czcionki PRZEGLĄDARKI (szerokość
- *  prostokątów sceny jest szacunkiem z długości tekstu, `core/text.ts::measureTextWidth`).
- *  Asercje: wiersze kodów i odniesienia źródła 3U₀ zaczynają się w jednej lewej krawędzi
- *  (rozrzut ≤ 1 px) i tusz każdego wiersza leży wewnątrz ramki bloku. Iniekcja: render
- *  z tekstem wyśrodkowanym w prostokącie (stan przed naprawą) — rozrzut lewych krawędzi. */
+/** Pomiar bloku przekaźnika każdego pola w kadrze — metryki czcionki PRZEGLĄDARKI wobec
+ *  prostokątów planu (szerokość wiersza = suma posuwów kroju z tabeli, `core/text.ts::
+ *  measureTextWidth`; ramka bloku i tło pola liczone na kanwie z prostokątów NARYSOWANYCH
+ *  wierszy planu, `canvas/obrysyWgPlanu.ts` — w kadrze pola podłoga opisów celu powiększa
+ *  pismo ponad slot sceny). Asercje: wiersze kodów i odniesienia źródła 3U₀ zaczynają się
+ *  w jednej lewej krawędzi (rozrzut ≤ 1 px), tusz każdego wiersza leży wewnątrz ramki bloku,
+ *  szerokość tuszu = tabela posuwów (± 1 px) i zapas do prawej krawędzi ramki mieści się
+ *  w [margines, margines + 1 j.św.]. Iniekcja: render z tekstem wyśrodkowanym w prostokącie
+ *  (stan przed naprawą) — rozrzut lewych krawędzi; ramka sceny zamiast ramki planu — tusz
+ *  poza ramką (pomiar 2026-10-30: 8,1 px w kadrze pola Z.11.1). */
 async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBloku[]> {
   const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
   const bloki = await page.evaluate((kanwa) => {
@@ -496,13 +550,24 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
     const prost = (r: DOMRect) => ({ x: r.x, y: r.y, width: r.width, height: r.height });
     return [...svg.querySelectorAll('[data-przekaznik="ramka-bloku"]')].map((rama) => {
       const wlasciciel = rama.closest('[data-owner-ref]')?.getAttribute('data-owner-ref') ?? '';
-      const wiersze = [...svg.querySelectorAll('g[data-owner-ref] > text')]
-        .filter((t) => {
-          const ref = t.parentElement!.getAttribute('data-owner-ref') ?? '';
-          return ref.startsWith(`${wlasciciel}#`) && /#(protection-codes-full|zrodlo-u0)(-\d+)?$/.test(ref);
-        })
-        .map((t) => ({ tekst: t.textContent ?? '', r: prost(t.getBoundingClientRect()) }));
-      return { pole: wlasciciel, ramka: prost(rama.getBoundingClientRect()), wiersze };
+      const okrag = rama.parentElement?.querySelector('circle');
+      return {
+        pole: wlasciciel,
+        ramka: prost(rama.getBoundingClientRect()),
+        ramkaSwiat: Number(rama.getAttribute('width')),
+        okragLewa: okrag ? okrag.getBoundingClientRect().x : null,
+        wiersze: [...svg.querySelectorAll('g[data-owner-ref] > text')]
+          .filter((t) => {
+            const ref = t.parentElement!.getAttribute('data-owner-ref') ?? '';
+            return ref.startsWith(`${wlasciciel}#`) && /#(protection-codes-full|zrodlo-u0)(-\d+)?$/.test(ref);
+          })
+          .map((t) => ({
+            tekst: t.textContent ?? '',
+            r: prost(t.getBoundingClientRect()),
+            fontSize: Number(t.getAttribute('font-size')),
+            fontWeight: Number(t.getAttribute('font-weight')),
+          })),
+      };
     });
   }, KANWA);
   const pomiary: PomiarBloku[] = [];
@@ -519,12 +584,158 @@ async function zmierzBlokPrzekaznika(page: Page, kadr: string): Promise<PomiarBl
       expect(w.r.y, `${opis}: „${w.tekst}" wewnątrz ramki (góra)`).toBeGreaterThanOrEqual(b.ramka.y);
       expect(w.r.y + w.r.height, `${opis}: „${w.tekst}" wewnątrz ramki (dół)`).toBeLessThanOrEqual(b.ramka.y + b.ramka.height);
     }
-    pomiary.push({ kadr, motyw, pole: b.pole, lewe, rozrzutLewych, ramka: b.ramka, zapasPrawy, zapasDolny, wiersze: b.wiersze.map((w) => w.tekst) });
+    // Decyzja architekta §11.7 pkt 7: szerokość wiersza na ekranie = suma posuwów kroju z tabeli
+    // (`metrykiKroju.json`) × rozmiar pisma × skala kamery — w granicy 1 px, na każdym wierszu
+    // (cyfry i wielkie litery), więc ramka liczona z tabeli ma zapas do tuszu w STAŁYM
+    // przedziale: [margines, margines + 1 j.św.] (prostokąt wiersza = posuw zaokrąglony w górę do
+    // pełnej jednostki świata, ramka = najszerszy prostokąt + margines). Dawny szacunek 0,62 em:
+    // zapas 80,4–93,5 px w polach Z.10 i 18,4 px w Z.11.1 (pomiar 2026-10-29).
+    const skala = b.ramka.width / b.ramkaSwiat;
+    expect(b.okragLewa, `${opis}: okrąg przekaźnika w bloku`).not.toBeNull();
+    const margines = b.okragLewa! - b.ramka.x;
+    for (const w of b.wiersze) {
+      const zTabeli = szerokoscZTabeliEm(w.tekst, w.fontWeight) * w.fontSize * skala;
+      expect(Math.abs(w.r.width - zTabeli), `${opis}: „${w.tekst}" szerokość ${w.r.width.toFixed(2)} px = tabela posuwów ${zTabeli.toFixed(2)} px`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+      zapiszPomiarSzerokosci({ kadr, motyw, rodzaj: 'wiersz bloku', tekst: w.tekst, klasa: klasaTresci(w.tekst), fontSize: w.fontSize, szerokoscPx: w.r.width, zTabeliPx: zTabeli });
+    }
+    expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≥ margines (${margines.toFixed(2)} px)`).toBeGreaterThanOrEqual(margines - TOLERANCJA_EKRANU_PX);
+    expect(zapasPrawy, `${opis}: zapas tuszu do ramki ≤ margines + 1 j.św. (${(margines + skala).toFixed(2)} px)`).toBeLessThanOrEqual(margines + skala + TOLERANCJA_EKRANU_PX);
+    pomiary.push({
+      kadr,
+      motyw,
+      pole: b.pole,
+      lewe,
+      rozrzutLewych,
+      ramka: b.ramka,
+      zapasPrawy,
+      zapasDolny,
+      margines,
+      skala,
+      wiersze: b.wiersze.map((w) => w.tekst),
+      klasy: b.wiersze.map((w) => klasaTresci(w.tekst)),
+    });
   }
   POMIARY_BLOKU.push(...pomiary);
   mkdirSync(dirname(POMIARY_BLOKU_PLIK), { recursive: true });
   writeFileSync(POMIARY_BLOKU_PLIK, `${JSON.stringify(POMIARY_BLOKU, null, 2)}\n`);
   return pomiary;
+}
+
+/** Zaciski strony pierwotnej i tabliczka przekładnika prądowego T1 na kanwie (decyzja architekta
+ *  §11.7 pkt 6; PN-EN 61869-2): P1 po stronie szyny (nad pierścieniem), P2 po stronie odpływu
+ *  (pod pierścieniem), oba na lewo od symbolu; tabliczka = przekładnia i klasy rdzeni z rekordu
+ *  modelu (`BayPrimaryDevice.rdzenie`) w zapisie rysunku ENEA („200-400/5 A · 5P20") — wyrocznia
+ *  z czystego formatowania tabliczki (`tabliczkaPrzekladnika.ts`), tekst z DOM. */
+async function sprawdzPrzekladnikPradowy(page: Page, kadr: string, pole: Pole): Promise<void> {
+  const t1 = aparat(pole, 'T1');
+  expect(t1.rdzenie?.length ?? 0, `${kadr}: T1 z rdzeniami w modelu`).toBeGreaterThan(0);
+  const ramkaT1 = (await page.locator(`${KANWA} g[data-device-ref="${t1.device_ref}"]`).first().boundingBox())!;
+  const srodekT1 = ramkaT1.y + ramkaT1.height / 2;
+  const [odSzyny, odOdplywu] = ZACISKI_PRZEKLADNIKA_PRADOWEGO.pierwotne;
+  const zaciski: Record<string, { x: number; y: number; width: number; height: number }> = {};
+  for (const oznaczenie of [odSzyny, odOdplywu]) {
+    const tekst = page.locator(`${KANWA} g[data-owner-ref="${pole.ref_id}${ZNACZNIK_ZACISKU_PRZEKLADNIKA}${t1.device_ref}-${oznaczenie}"] > text`);
+    await expect(tekst, `${kadr}: zacisk ${oznaczenie} przekładnika T1`).toHaveCount(1);
+    await expect(tekst).toHaveText(oznaczenie);
+    zaciski[oznaczenie] = (await tekst.boundingBox())!;
+    // Na lewo od symbolu (tusz nie wchodzi na kafel aparatu).
+    expect(zaciski[oznaczenie].x + zaciski[oznaczenie].width, `${kadr}: ${oznaczenie} na lewo od T1`).toBeLessThanOrEqual(ramkaT1.x + TOLERANCJA_EKRANU_PX);
+  }
+  const srodek = (r: { y: number; height: number }) => r.y + r.height / 2;
+  expect(srodek(zaciski[odSzyny]), `${kadr}: ${odSzyny} nad pierścieniem T1 (strona szyny)`).toBeLessThan(srodekT1);
+  expect(srodek(zaciski[odOdplywu]), `${kadr}: ${odOdplywu} pod pierścieniem T1 (strona odpływu)`).toBeGreaterThan(srodekT1);
+  const tabliczka = page.locator(`${KANWA} g[data-owner-ref="${pole.ref_id}#ct-rating-${t1.device_ref}"] > text`);
+  await expect(tabliczka, `${kadr}: tabliczka T1`).toHaveCount(1);
+  await expect(tabliczka).toHaveText(`${tekstPrzekladniRdzeni(t1.rdzenie)} · ${tekstKlasRdzeni(t1.rdzenie)}`);
+  // Decyzja architekta §11.7 pkt 7: tabliczka (przewaga cyfr) — szerokość tuszu w przeglądarce
+  // = tabela posuwów kroju × pismo × skala kamery (macierz ekranowa tekstu), w granicy 1 px.
+  const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
+  const t = await tabliczka.evaluate((el) => {
+    const tekst = el as SVGTextElement;
+    return {
+      tekst: tekst.textContent ?? '',
+      szerokosc: tekst.getBoundingClientRect().width,
+      fontSize: Number(tekst.getAttribute('font-size')),
+      fontWeight: Number(tekst.getAttribute('font-weight')),
+      skala: tekst.getScreenCTM()!.a,
+    };
+  });
+  const zTabeli = szerokoscZTabeliEm(t.tekst, t.fontWeight) * t.fontSize * t.skala;
+  expect(Math.abs(t.szerokosc - zTabeli), `${kadr}: tabliczka T1 „${t.tekst}" szerokość ${t.szerokosc.toFixed(2)} px = tabela posuwów ${zTabeli.toFixed(2)} px`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+  zapiszPomiarSzerokosci({ kadr, motyw, rodzaj: 'tabliczka T1', tekst: t.tekst, klasa: klasaTresci(t.tekst), fontSize: t.fontSize, szerokoscPx: t.szerokosc, zTabeliPx: zTabeli });
+}
+
+type PomiarSzerokosci = {
+  kadr: string;
+  motyw: string;
+  rodzaj: 'wiersz bloku' | 'tabliczka T1';
+  tekst: string;
+  klasa: 'cyfry' | 'wielkie litery';
+  /** Pismo [j.św.] z atrybutu węzła (po podłodze opisów celu kadru). */
+  fontSize: number;
+  szerokoscPx: number;
+  zTabeliPx: number;
+};
+const POMIARY_SZEROKOSCI: PomiarSzerokosci[] = [];
+function zapiszPomiarSzerokosci(p: PomiarSzerokosci): void {
+  POMIARY_SZEROKOSCI.push(p);
+  mkdirSync(dirname(POMIARY_SZEROKOSCI_PLIK), { recursive: true });
+  writeFileSync(POMIARY_SZEROKOSCI_PLIK, `${JSON.stringify(POMIARY_SZEROKOSCI, null, 2)}\n`);
+}
+
+type PomiarPodpisow = {
+  kadr: string;
+  motyw: string;
+  pole: string;
+  /** Prawe krawędzie tuszu podpisów aparatów po lewej stronie toru [px ekranu] i ich rozrzut. */
+  prawe: number[];
+  rozrzut: number;
+  podpisy: string[];
+};
+const POMIARY_PODPISOW: PomiarPodpisow[] = [];
+const POMIARY_PODPISOW_PLIK = resolve(HERE, '..', 'test-results', 'ux04-pole-liniowe-pomiary-podpisow.json');
+
+/** Wspólna krawędź tuszu podpisów pola (decyzja architekta §11.7 pkt 8): podpisy aparatów pola
+ *  stojące po lewej stronie toru (`data-label-strona="left"`, tekst poziomy) kończą się w jednej
+ *  prawej krawędzi tuszu — tolerancja 1 px ekranu, metryki czcionki PRZEGLĄDARKI (jednostkowy
+ *  odpowiednik w świecie: `zaczepKrawedziEtykiet.test.tsx` (C)). */
+async function zmierzPodpisyPola(page: Page, kadr: string, pole: Pole): Promise<void> {
+  const motyw = (await page.evaluate(() => document.documentElement.getAttribute('data-theme'))) ?? '';
+  const podpisy = await page.evaluate(
+    ([kanwa, prefiks]) =>
+      [...document.querySelectorAll(`${kanwa} g[data-owner-ref^="${prefiks}"][data-label-strona="left"] > text`)]
+        .filter((t) => !t.hasAttribute('transform'))
+        .map((t) => {
+          const r = t.getBoundingClientRect();
+          return { tekst: t.textContent ?? '', prawa: r.x + r.width, anchor: t.getAttribute('text-anchor') ?? '' };
+        }),
+    [KANWA, `${pole.ref_id}#etykieta-aparatu-`] as const,
+  );
+  expect(podpisy.length, `${kadr}: co najmniej dwa podpisy aparatów po lewej toru pola`).toBeGreaterThanOrEqual(2);
+  for (const p of podpisy) expect(p.anchor, `${kadr}: „${p.tekst}" zaczepiony w prawej krawędzi`).toBe('end');
+  const prawe = podpisy.map((p) => p.prawa);
+  const rozrzut = Math.max(...prawe) - Math.min(...prawe);
+  expect(rozrzut, `${kadr} · ${motyw}: wspólna prawa krawędź podpisów (${podpisy.map((p) => `${p.tekst}@${p.prawa.toFixed(1)}`).join(', ')})`).toBeLessThanOrEqual(TOLERANCJA_EKRANU_PX);
+  POMIARY_PODPISOW.push({ kadr, motyw, pole: pole.ref_id, prawe, rozrzut, podpisy: podpisy.map((p) => p.tekst) });
+  mkdirSync(dirname(POMIARY_PODPISOW_PLIK), { recursive: true });
+  writeFileSync(POMIARY_PODPISOW_PLIK, `${JSON.stringify(POMIARY_PODPISOW, null, 2)}\n`);
+}
+
+/** Pokrycie iloczynu decyzji §11.7 pkt 7 w biegu jednego wykonania pola: teksty, których
+ *  prostokąt liczy tabela posuwów kroju (wiersze bloku przekaźnika, tabliczka przekładnika T1),
+ *  z przewagą {cyfr, wielkich liter} × motyw {ciemny, jasny} — każda komórka zmierzona
+ *  (asercja szerokości ± 1 px w `zmierzBlokPrzekaznika` i `sprawdzPrzekladnikPradowy`), więc
+ *  test nie jest pusty. Po usunięciu duplikatów funkcji EAZ u źródła blok pola Z.10 ma jeden
+ *  wiersz poza okręgiem („51N · ZS · 50BF · 79 · SCO", przewaga wielkich liter) — komórkę cyfr
+ *  pola Z.10 niesie tabliczka T1 („200-400/5 A · 5P20"), tekst z tego samego pisma t4. */
+function oczekujPokryciaKlasSzerokosci(prefiksKadru: string): void {
+  const komorki = new Set(POMIARY_SZEROKOSCI.filter((p) => p.kadr.startsWith(prefiksKadru)).map((p) => `${p.klasa}|${p.motyw}`));
+  expect([...komorki].sort(), `${prefiksKadru}: iloczyn klasa treści × motyw`).toEqual([
+    'cyfry|dark_scada',
+    'cyfry|light_technical',
+    'wielkie litery|dark_scada',
+    'wielkie litery|light_technical',
+  ]);
 }
 
 async function oczekujKafla(page: Page, deviceRef: string, stan: StanKafla, opis: string): Promise<void> {
@@ -794,6 +1005,8 @@ async function zrzut(
   await zmierzKafle(page, nazwa, pole);
   // Kadr pola niesie blok przekaźnika SWOJEGO pola (pole z funkcjami EAZ i powiązaniami).
   expect((await zmierzBlokPrzekaznika(page, nazwa)).length, `${nazwa}: blok przekaźnika w kadrze`).toBeGreaterThan(0);
+  await sprawdzPrzekladnikPradowy(page, nazwa, pole);
+  await zmierzPodpisyPola(page, nazwa, pole);
   zapiszOdcisk(nazwa, await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `${nazwa}.png`), clip: await kadrPola(page, aparatyPola) }));
   await widokCalejSieci(page);
 }
@@ -1056,8 +1269,11 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
     }
     // Rodzaj aparatu z modelu → symbol: Q0 z napędem silnikowym M (rekord `naped`), głowica
     // kablowa i przekładnik Ferrantiego jako elementy toru (wymaganie właściciela pkt 3–4).
+    // Łącznik trójpołożeniowy Q1 z napędem zasobnikowym ręcznym (rysunek s.89 w 400 dpi; decyzja
+    // architekta 2026-10-30: atrybut łącznika `naped`, nie osobny aparat).
     expect(q0.naped, 'Q0: napęd silnikowy w modelu').toBe('SILNIKOWY');
-    for (const [ozn, symbol] of [['Q0', 'qetBreakerZNapedem'], ['Q1', 'qetThreePositionSwitch'], ['GK', 'qetCableHead'], ['T2', 'qetCoreBalanceCt']] as const) {
+    expect(q1.naped, 'Q1: napęd zasobnikowy ręczny w modelu').toBe('ZASOBNIKOWY_RECZNY');
+    for (const [ozn, symbol] of [['Q0', 'qetBreakerZNapedem'], ['Q1', 'qetThreePositionSwitchZNapedem'], ['GK', 'qetCableHead'], ['T2', 'qetCoreBalanceCt']] as const) {
       await expect(page.locator(`${KANWA} g[data-device-ref="${aparat(poleZajete, ozn).device_ref}"] [data-symbol-canon="${symbol}"]`), `${klucz}: ${ozn} → ${symbol}`).toHaveCount(1);
     }
     // Stan obiektu dyskretnie: atrybut symbolu (podpowiedź na kształcie trafienia).
@@ -1170,6 +1386,7 @@ test('UX-04 — pole liniowe Z.10 GPZ: budowa z kanwy, klik = zaznaczenie, ramki
     await oczekujKafla(page, esStaly.device_ref, 'zamkniety', `${klucz}: Q8 uziemnik zamknięty`);
     await zrzut(page, `pole-z10-staly-odlaczony-uziemiony-${klucz}`, esStaly.device_ref, poleStalePo, ['Q1', 'Q0', 'Q8']);
   }
+  oczekujPokryciaKlasSzerokosci('pole-z10-');
 });
 
 test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciowego od strony linii (oba motywy)', async ({ page, request }) => {
@@ -1231,11 +1448,22 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
     await przyblizDoAparatu(page, q5.device_ref);
     // Q0 z napędem silnikowym M; przekładnik napięciowy T3 z TRZEMA uzwojeniami wtórnymi
     // z modelu (decyzja właściciela 2026-10-29 pkt 1); GK1, GK i T2 jako elementy toru.
-    for (const [ozn, symbol] of [['Q0', 'qetBreakerZNapedem'], ['T3', 'qetVoltageTransformer3'], ['GK1', 'qetCableHead'], ['GK', 'qetCableHead'], ['T2', 'qetCoreBalanceCt']] as const) {
+    // Q1 z napędem zasobnikowym ręcznym, Q5 odgałęzienia bez napędu (rysunek s.91 w 400 dpi).
+    for (const [ozn, symbol] of [
+      ['Q0', 'qetBreakerZNapedem'],
+      ['Q1', 'qetThreePositionSwitchZNapedem'],
+      ['Q5', 'qetThreePositionSwitch'],
+      ['T3', 'qetVoltageTransformer3'],
+      ['GK1', 'qetCableHead'],
+      ['GK', 'qetCableHead'],
+      ['T2', 'qetCoreBalanceCt'],
+    ] as const) {
       await expect(page.locator(`${KANWA} g[data-device-ref="${aparat(poleZ11Po, ozn).device_ref}"] [data-symbol-canon="${symbol}"]`), `${klucz}: ${ozn} → ${symbol}`).toHaveCount(1);
     }
     expect(aparat(poleZ11Po, 'T3').uzwojenia?.length, 'T3: trzy uzwojenia wtórne w modelu').toBe(3);
     expect(aparat(poleZ11Po, 'Q0').naped, 'Q0: napęd silnikowy w modelu').toBe('SILNIKOWY');
+    expect(q1.naped, 'Q1: napęd zasobnikowy ręczny w modelu').toBe('ZASOBNIKOWY_RECZNY');
+    expect(q5.naped ?? null, 'Q5: bez napędu w modelu').toBeNull();
     await oczekujKafla(page, q0.device_ref, 'zamkniety', `${klucz}: Q0 zamknięty (gałąź wyłącznika zamknięta)`);
     for (const a of [q1, q5]) {
       await oczekujKafla(page, a.device_ref, stanKaflaZModelu(polozenieAparatu(enm, a.device_ref)), `${klucz}: ${a.designation} wg rekordu położenia`);
@@ -1273,4 +1501,5 @@ test('UX-04 — pole liniowe Z.11.1 GPZ: odgałęzienie przekładnika napięciow
     await oczekujKafla(page, q5.device_ref, 'zamkniety', `${klucz}: Q5 zamknięty`);
     await zrzut(page, `pole-z11-1-wylacznik-otwarty-uziemiony-${klucz}`, q5.device_ref, poleZ11Po, ['PF0', 'Q1', 'Q0', 'Q5', 'T3']);
   }
+  oczekujPokryciaKlasSzerokosci('pole-z11-1-');
 });

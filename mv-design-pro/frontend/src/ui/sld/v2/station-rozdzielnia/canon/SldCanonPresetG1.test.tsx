@@ -8,7 +8,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { OZE_ARCHETYPES_2A } from '../companions/ozeArchetypes2a';
-import { ctRatioLabel, vtRatioLabel } from './sldCanonKit';
+import { ctRatioLabel, glyphTextCollisions, vtRatioLabel } from './sldCanonKit';
 import { SldCanonPresetG1 } from './SldCanonPresetG1';
 
 const G1 = OZE_ARCHETYPES_2A['G4-PVTR']; // PV 1 MW companion (solver-bound)
@@ -119,27 +119,9 @@ describe('SldCanonPresetG1 — canonical PV 1 MW template (G1)', () => {
     });
     expect(keepouts.length).toBeGreaterThan(10);
 
-    const CHAR = 0.62; // monospace advance ≈ 0.6·fontSize (slight over-estimate)
-    const BAND = [130, 820]; // schematic band (excludes header + legend)
-    const offenders: string[] = [];
-    for (const t of Array.from(svg.querySelectorAll('text'))) {
-      if (t.closest('[data-keepout]')) continue; // a symbol's own internal label
-      const x = Number(t.getAttribute('x'));
-      const y = Number(t.getAttribute('y'));
-      const size = Number(t.getAttribute('font-size'));
-      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(size)) continue;
-      if (y < BAND[0] || y > BAND[1]) continue;
-      const anchor = t.getAttribute('text-anchor') ?? 'start';
-      const w = (t.textContent ?? '').length * size * CHAR;
-      const tx0 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x;
-      const box = { x0: tx0, x1: tx0 + w, y0: y - size, y1: y + 2 };
-      for (const k of keepouts) {
-        if (box.x0 < k.x1 && box.x1 > k.x0 && box.y0 < k.y1 && box.y1 > k.y0) {
-          offenders.push(`"${t.textContent}" @(${x},${y}) ∩ keepout(${k.x0},${k.y0},${k.x1},${k.y1})`);
-          break;
-        }
-      }
-    }
+    // Jedna reguła dla całej rodziny G1–G9: wspólny `glyphTextCollisions` (szerokość tekstu
+    // z górnej granicy posuwu wg rodziny kroju), nie lokalna kopia ze stałym 0,62 em.
+    const offenders = glyphTextCollisions(svg, [130, 820]);
     expect(offenders, `text-on-glyph collisions:\n${offenders.join('\n')}`).toEqual([]);
   });
 });

@@ -60,8 +60,9 @@
  */
 
 import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
-import { labelLineHeight, measureLabelWidth } from '../core/text';
+import { labelLineHeight } from '../core/text';
 import { SYMBOL_DEFS, type SymbolDef, type SymbolId } from '../symbols/defs';
+import { kodyWOkreguPrzekaznika } from '../symbols/okragPrzekaznika';
 import type { GlifBaterii, SwitchState } from '../symbols/glyphs';
 import { uzwojeniaZGrupyPolaczen, type UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { RoutePort, RouteVertex } from '../layout/route';
@@ -120,6 +121,8 @@ import {
   brakiPrzylaczyPola,
   czyAparatBoczny,
   czyOdgalezienieNaWezleKotwicy,
+  odcinkiOdczepowBocznych,
+  type OdczepBoczny,
   czyPoleNiesiePorty,
   czyTorOdSzyny,
   czyZakonczenieToruKablowego,
@@ -713,6 +716,7 @@ function buildBayStack(
   const uklad = ukladBocznyPola(plan, (afterMainIndex) => kotwicaToru(afterMainIndex).y);
   if (laterals.length > 0) {
     const odstepy = uklad.boczne;
+    const odczepy: (OdczepBoczny & { readonly ownerRef: string })[] = [];
     laterals.forEach(({ item, afterMainIndex, identifier, identifierSource }, lateralIndex) => {
       const def = SYMBOL_DEFS[item.symbolId];
       const anchorInstance =
@@ -780,14 +784,10 @@ function buildBayStack(
         // Odgałęzienie poza węzłem kotwicy — symbol zostaje, przewodu z domysłu nie ma.
         if (!czyOdgalezienieNaWezleKotwicy(kotwica, afterMainIndex >= 0, item.device)) return;
       }
-      branchSegments.push({
-        ownerRef: `${bay.bayRef}#lateral-${item.symbolId}-${lateralIndex}`,
-        points: [
-          { x: anchor.x, y: anchor.y },
-          { x: x + north.x, y: anchor.y },
-        ],
-      });
+      odczepy.push({ ownerRef: `${bay.bayRef}#lateral-${item.symbolId}-${lateralIndex}`, kotwica: anchor, celX: x + north.x });
     });
+    // KD-5: odczepy wspólnej kotwicy łańcuchem bez nakładania (jedna reguła z polem GPZ).
+    odcinkiOdczepowBocznych(odczepy).forEach((points, i) => branchSegments.push({ ownerRef: odczepy[i]!.ownerRef, points }));
   }
 
   // UX-04/POLE-LINIOWE-WZORZEC (rozszerzenie 4): odgałęzienia toru z portów — kolumna na
@@ -1358,8 +1358,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       // `render-v3-protection.tsx`), mimo że `noSceneSymbolOverlaps` tego NIE
       // łapie na fixturze referencyjnej (0 pól z OBOMA jednocześnie).
       let relayCircleTopY: number | null = null;
-      // R-2 (§17.3 zd. 2): tekst pełnej listy kodów (>2 funkcji) — `null` gdy
-      // ≤2 (okrąg niesie kody w całości). Liczone RAZ (miernik niżej używa
+      // R-2 (§17.3 zd. 2): tekst pełnej listy kodów — pusta, gdy okrąg niesie wszystkie
+      // kody pola (`kodyWOkreguPrzekaznika`). Liczone RAZ (miernik niżej używa
       // do odsunięcia).
       const marking = resolveStationProtectionMarking(bay, stackDevices);
       const fullListLines =
@@ -1385,12 +1385,13 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           x: circleLeftX,
           y: circleTopY,
           ports: portsInWorld(SYMBOL_DEFS.protectionRelay, circleLeftX, circleTopY),
-          // spec §17.3: maks. 2 kody, dwa PIERWSZE wg kolejności listy z
-          // danych (zero sortowania/fabrykacji) — pełna lista w etykiecie
-          // slotu pola (R-2, `#protection-codes-full` niżej) gdy >2 funkcji.
+          // spec §17.3: maks. 2 kody — prefiks listy z danych (zero sortowania/fabrykacji),
+          // który mieści się w okręgu pismem podłogi 8 px (`kodyWOkreguPrzekaznika`,
+          // `symbols/okragPrzekaznika.ts`) — pełna lista w etykiecie slotu pola (R-2,
+          // `#protection-codes-full` niżej), gdy okrąg nie niesie wszystkich.
           // §17.4 L1 (`'circle-only'`): okrąg BEZ kodów — `undefined`, glif
           // rysuje sam kontur.
-          protectionCodes: annotationDetail === 'full' ? marking.codes.slice(0, 2) : undefined,
+          protectionCodes: annotationDetail === 'full' ? kodyWOkreguPrzekaznika(marking.codes) : undefined,
           // F10.5 (spec §20.2): adnotacja „!" przy okręgu (glif czyta
           // WYŁĄCZNIE obecność/pustkę — treść ostrzeżenia żyje w
           // `missingData`/inspektorze, nie na scenie, spec §20.3 „zwarta,
@@ -1402,20 +1403,18 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         // (model §4) — POD okręgiem przekaźnika, w kolumnie adnotacji
         // (measure zarezerwował `snapUp(szerokość najszerszego wiersza)+GRID`,
         // `protectionAnnotationColumnWidth`), wiersz pod wierszem
-        // (`fullCodesListLines`, odstęp `ODSTEP_WIERSZY_KODOW_EAZ`). Kotwica
-        // przesunięta w LEWO od prawej krawędzi rezerwacji o połowę szerokości
-        // wiersza — `resolveSimpleAnchoredLabel` (placement 'below') centruje
-        // prostokąt na `anchor.x`, więc prawa krawędź wiersza kończy się przy
-        // prawej krawędzi rezerwacji (± snapToGrid ≤4px, pokryte zapasem GRID).
+        // (`fullCodesListLines`, odstęp `ODSTEP_WIERSZY_KODOW_EAZ`). Kotwica = prawa
+        // krawędź rezerwacji: wiersz `placement: 'below'` z `wyrownanieTekstu: 'koniec'`
+        // kończy się DOKŁADNIE w kotwicy (`prostokatEtykietyZakotwiczonej`, krawędź
+        // zaczepu), więc wiersze listy mają jedną prawą krawędź.
         fullListLines.forEach((wiersz, indeks) => {
-          const szerokoscWiersza = measureLabelWidth(wiersz, PROTECTION_FULL_LIST_LABEL_CLASS);
           protectionLabels.push({
             ownerRef: `${bay.bayRef}#protection-codes-full${indeks === 0 ? '' : `-${indeks + 1}`}`,
             ownerKind: 'protection',
             text: wiersz,
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
             anchor: {
-              x: bx + reservedWidth - Math.ceil(szerokoscWiersza / 2),
+              x: bx + reservedWidth,
               y: circleTopY + PROTECTION_ANNOTATION_DIAMETER + indeks * ODSTEP_WIERSZY_KODOW_EAZ,
             },
             placement: 'below',
@@ -1430,14 +1429,13 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         if (annotationDetail === 'full') {
           odniesieniaPrzekaznikaPola(bay, marking.codes).forEach((wiersz, indeksOdniesienia) => {
             const indeks = fullListLines.length + indeksOdniesienia;
-            const szerokoscWiersza = measureLabelWidth(wiersz, PROTECTION_FULL_LIST_LABEL_CLASS);
             protectionLabels.push({
               ownerRef: `${bay.bayRef}#zrodlo-u0${indeksOdniesienia === 0 ? '' : `-${indeksOdniesienia + 1}`}`,
               ownerKind: 'protection',
               text: wiersz,
               labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
               anchor: {
-                x: bx + reservedWidth - Math.ceil(szerokoscWiersza / 2),
+                x: bx + reservedWidth,
                 y: circleTopY + PROTECTION_ANNOTATION_DIAMETER + indeks * ODSTEP_WIERSZY_KODOW_EAZ,
               },
               placement: 'below',
@@ -1913,11 +1911,17 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   if (multiSection) {
     composeSectionBuses();
   } else if (busTapXs.length > 0) {
+    // Szyna obejmuje WSZYSTKIE zaczepy (min..max, niezależnie od kolejności dopisania).
+    // Jeden zaczep (stacja bez pól z samym transformatorem) dawał odcinek zerowej długości —
+    // szyna niewidoczna, a kabel magistrali kończył się na zejściu transformatora; szyna
+    // dostaje wtedy ±GRID wokół zaczepu (ta sama reguła co sekcja stacji wielosekcyjnej).
+    const lewyZaczep = Math.min(...busTapXs);
+    const prawyZaczep = Math.max(...busTapXs);
     segments.push({
       ownerRef: `${busOwnerBase}#sn-bus`,
       points: [
-        { x: busTapXs[0], y: busAxisY },
-        { x: busTapXs[busTapXs.length - 1], y: busAxisY },
+        { x: lewyZaczep === prawyZaczep ? lewyZaczep - GRID : lewyZaczep, y: busAxisY },
+        { x: lewyZaczep === prawyZaczep ? prawyZaczep + GRID : prawyZaczep, y: busAxisY },
       ],
     });
 

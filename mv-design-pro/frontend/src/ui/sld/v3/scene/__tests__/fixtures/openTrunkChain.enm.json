@@ -180,9 +180,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/709b330e6195072d50c999810decd888/sn_field/002",
@@ -923,7 +923,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "43e836e3a3f93de4b54a4cd9b2f80330c9a6b94e4da3505b3d517a245e64e308",
+      "hash_sha256": "6943e5dc0ecef78aec72b9385218332618c91dbc06ac28f735e204489a4979d1",
       "name": "Łańcuch odcinków magistrali",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"

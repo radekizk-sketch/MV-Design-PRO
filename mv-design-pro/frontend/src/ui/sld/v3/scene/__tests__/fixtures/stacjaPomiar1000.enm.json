@@ -286,9 +286,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "field/74b61dfe0dd2de5e5798a29c9465431a/3",
@@ -1751,13 +1751,13 @@
       },
       {
         "corridor_type": "radial",
-        "id": "2f622caf-e29b-594e-80b4-fb927e642a0a",
+        "id": "7c13d28c-3b71-5ecd-b498-a5d81d4752ac",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
         "ordered_segment_refs": [
           "seg/e0798a1ecd7b90bfce5367437583c89e/branch_segment"
         ],
-        "ref_id": "corridor/2622e044b15dd3ab2e34946e3a0eba75/branch",
+        "ref_id": "corridor/5b6f1362dc7c669eef4eb8b246e9c56b/branch",
         "tags": []
       }
     ],
@@ -1772,7 +1772,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "ca469ee2c1ab83d7d10ca5d610d35fc13427d383cfb7a33d0cc3e10e709af492",
+      "hash_sha256": "7e207c47ac97559b4b83448b769538377970937edfe89e792ccf7d9e2c427d8d",
       "name": "Stacja z pomiarem za ZKSN",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1806,7 +1806,7 @@
       },
       {
         "branch_origin_station_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
-        "id": "corridor/2622e044b15dd3ab2e34946e3a0eba75/branch",
+        "id": "corridor/5b6f1362dc7c669eef4eb8b246e9c56b/branch",
         "name": "Odgałęzienie SN kablowe",
         "parent_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
         "run_kind": "branch",
@@ -1817,7 +1817,7 @@
           }
         ],
         "starting_bay_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
-        "starting_port_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn.BRANCH_1",
+        "starting_port_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/branch_bus_1",
         "stations": []
       }
     ],

@@ -246,6 +246,10 @@ export interface PanelPolaGpz {
   readonly bayRef: string;
   readonly rola: RolaPolaGpz;
   readonly rect: V3Rect;
+  /** `ownerRef` etykiet, których prostokąty objęło tło (kolejność wejścia) — JEDNA lista członków
+   *  tła dla sceny i kanwy: kanwa poszerza tło o NARYSOWANE prostokąty tych etykiet z planu
+   *  (`canvas/obrysyWgPlanu.ts`), bo plan powiększa pismo celu kadru ponad slot sceny. */
+  readonly etykiety: readonly string[];
 }
 
 export interface GpzAdnotacje {
@@ -489,10 +493,12 @@ export function wymiaryTabeliGpz(
   return { width: probna.rect.width, height: probna.rect.height };
 }
 
-/** Prostokąt elementu kompozycji uczestniczącego w tle pola. */
+/** Prostokąt elementu kompozycji uczestniczącego w tle pola. `ownerRef` niesie wyłącznie
+ *  etykieta (członek `PanelPolaGpz.etykiety`); symbol i przekaźnik — bez. */
 export interface ElementPolaGpz {
   readonly bayRef: string;
   readonly rect: V3Rect;
+  readonly ownerRef?: string;
 }
 
 /**
@@ -518,6 +524,7 @@ export function panelePolGpz(
       bayRef: pole.bayRef,
       rola: pole.rola,
       rect: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
+      etykiety: wlasne.flatMap((e) => (e.ownerRef === undefined ? [] : [e.ownerRef])),
     });
   });
   return wynik;

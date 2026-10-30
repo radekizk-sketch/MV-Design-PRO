@@ -38,8 +38,8 @@ import {
 import type { UzwojeniaTransformatora } from '../symbols/uzwojenia';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
-import { LABEL_TYPOGRAPHY } from '../core/text';
-import { zaczepTekstuEtykiety, type OwnedLabel } from '../layout/labels';
+import { LABEL_TYPOGRAPHY, SLD_FONT_FAMILY, SLD_TEXT_STYLE } from '../core/text';
+import { wyrownanieEtykiety, zaczepTekstuEtykiety, type OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
 import type { ProtectionTopologyGap } from './protectionTopologyValidation';
 import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
@@ -328,6 +328,13 @@ export interface PreviewElementMeta {
    *  (przekładnik napięciowy od strony linii), w którym stoi aparat; `undefined` = tor główny
    *  pola. Audytor DOM: `data-odgalezienie-toru`. */
   readonly odgalezienieToru?: number;
+  /** Rozstrzygnięcie architekta S7-P2 (2026-10-30, `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`
+   *  §12): ref ENM WĘZŁA MODELU, który oznacza kropka węzłowa (`junction`) — `Bus.ref_id`
+   *  węzła nazwanego toru albo ref pola (`Bay.ref_id`), w którego węźle odchodzi odczep
+   *  aparatu bocznego lub odgałęzienie toru pola. Kropka bez tego pola jest fikcją (rysuje
+   *  połączenie, którego w sieci nie ma) — wyrocznia `junctionDotGaps` (`scene/crossings.ts`).
+   *  `undefined` dla wszystkich symboli, które nie są kropką węzłową. */
+  readonly wezelModelu?: string;
   /** Jawna klasa napięcia elementu (V12K-217) — nadawana przez kompozycję tam,
    *  gdzie referencja domenowa strony napięciowej NIE zdradza (aparaty pola WN
    *  transformatora GPZ: `transformerRef`/`bayRef` są opaque). Czytana przez
@@ -416,6 +423,9 @@ export interface PreviewElementMeta {
    *  i odniesienie źródła 3U₀), względem lewego górnego rogu symbolu — WYŁĄCZNIE dla symboli
    *  `protectionRelay`; przekazana 1:1 do `ProtectionRelayGlyph.ramkaBloku`. */
   readonly ramkaBlokuPrzekaznika?: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  /** `ownerRef` wierszy bloku objętych `ramkaBlokuPrzekaznika` (`ComposedGpzProtectionSymbol.wierszeBloku`)
+   *  — kanwa liczy z nich ramkę wg NARYSOWANYCH prostokątów planu etykiet (`canvas/obrysyWgPlanu.ts`). */
+  readonly wierszeBlokuPrzekaznika?: readonly string[];
   /** Recenzja NO-GO 2026-07-17 pkt 11: litera mierzonej wielkości miernika
    *  (A/V z `Measurement.measurement_type`) — WYŁĄCZNIE dla symboli
    *  `meter`; `MeterGlyph` pokazuje ją zamiast mylącego „M". */
@@ -452,6 +462,14 @@ export interface PreviewElementMeta {
    *  `stationGlyph`). Liczby WYPROWADZONE z realnej kompozycji GPZ
    *  (`GpzComposition.sections`/`transformers` + pola liniowe SN), nie z nazw. */
   readonly gpzGlyph?: GpzCompactGlyphSummary;
+  /** Rozstrzygnięcie architekta KD-5 (2026-10-30): porty ZEJŚĆ bloku zwiniętego na L0
+   *  (współrzędne świata) — WYŁĄCZNIE dla `gpzCollapsed` i `stationCollapsed`. Zejście
+   *  każdego pola liniowego GPZ (wachlarz) i każdego pola odgałęźnego stacji wychodzi
+   *  z WŁASNEGO punktu dolnej (albo bocznej) krawędzi bloku, bez wspólnego pionu. Kompozycja
+   *  wylicza punkty raz i deklaruje je tutaj; wyrocznia końców odcinków
+   *  (`sceneSegmentEndpointGaps`) przyjmuje je jako porty bloku tylko, gdy leżą na jego
+   *  krawędzi dolnej albo bocznej. */
+  readonly portyZejscBloku?: readonly { readonly x: number; readonly y: number }[];
 }
 
 /** KD-5: kompaktowe cechy bloku GPZ rysowane sylwetką na L0. Wszystkie pola
@@ -685,7 +703,7 @@ export function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly s
   const cx = label.rect.x + label.rect.width / 2;
   const cy = label.rect.y + label.rect.height / 2;
   const textTransform = label.rotated ? `rotate(-90, ${cx}, ${cy})` : undefined;
-  const zaczep = zaczepTekstuEtykiety(label.rect, label.wyrownanieTekstu, label.rotated === true);
+  const zaczep = zaczepTekstuEtykiety(label.rect, wyrownanieEtykiety(label), label.rotated === true);
   return (
     <g data-owner-ref={label.ownerRef} data-owner-kind={label.ownerKind} data-slot-index={label.slotIndex}>
       {label.leader && (
@@ -705,7 +723,7 @@ export function PreviewLabelNode(props: { readonly label: OwnedLabel; readonly s
         dominantBaseline="middle"
         transform={textTransform}
         fill={stroke}
-        fontFamily="sans-serif"
+        fontFamily={SLD_FONT_FAMILY}
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
       >
@@ -728,6 +746,8 @@ export function CompositionPreview(props: CompositionPreviewProps): JSX.Element 
       height={height}
       viewBox={`0 0 ${width} ${height}`}
       data-testid="sld-v3-composition-preview"
+      fontFamily={SLD_FONT_FAMILY}
+      style={SLD_TEXT_STYLE}
     >
       <rect x={0} y={0} width={width} height={height} fill={background} />
       <g data-preview-layer="segments">

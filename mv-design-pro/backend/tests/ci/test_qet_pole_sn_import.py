@@ -123,38 +123,54 @@ def test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione():
     po_id = {s["id"]: s for s in _symbole()}
     lacznikowe = {w["symbolId"] for w in manifest["symbole"] if w.get("noz")}
     # Wyłącznik z napędem silnikowym M (wymaganie właściciela 2026-10-29 pkt 4) jest osobnym
-    # symbolem z nożem — ta sama reguła noża i ten sam kafel co wyłącznik bez napędu.
-    assert lacznikowe == {
-        "qetBreaker",
-        "qetBreakerZNapedem",
-        "qetDisconnector",
-        "qetLoadBreakSwitch",
-        "qetFuseSwitch",
-        "qetEarthSwitch",
-        "qetThreePositionSwitch",
-    }
+    # symbolem z nożem — ta sama reguła noża i ten sam kafel co wyłącznik bez napędu. Tak samo
+    # łącznik trójpołożeniowy z napędem zasobnikowym z obsługą ręczną (decyzja architekta
+    # 2026-10-30: napęd jest atrybutem łącznika `BayPrimaryDevice.naped`, symbol wybiera go
+    # z modelu) — ten sam nóż i te same położenia co łącznik bez napędu.
+    trojpolozeniowe = {"qetThreePositionSwitch", "qetThreePositionSwitchZNapedem"}
+    assert (
+        lacznikowe
+        == {
+            "qetBreaker",
+            "qetBreakerZNapedem",
+            "qetDisconnector",
+            "qetLoadBreakSwitch",
+            "qetFuseSwitch",
+            "qetEarthSwitch",
+        }
+        | trojpolozeniowe
+    )
     for ident in lacznikowe:
         noz = po_id[ident]["noz"]
         assert noz["katy"]["open"] == 0
         assert noz["katy"]["closed"] != 0
         assert all(p["k"] == "line" and p["nozStanu"] for p in noz["prymitywy"])
-    trojpol = po_id["qetThreePositionSwitch"]["noz"]["katy"]
-    # Zamknięty i uziemiony — przeciwne kierunki od położenia odłączonego (oś).
-    assert trojpol["closed"] == -trojpol["earthed"] and trojpol["closed"] < 0
-    assert trojpol["unknown"] == 0
+    for ident in trojpolozeniowe:
+        trojpol = po_id[ident]["noz"]["katy"]
+        # Zamknięty i uziemiony — przeciwne kierunki od położenia odłączonego (oś).
+        assert trojpol["closed"] == -trojpol["earthed"] and trojpol["closed"] < 0, ident
+        assert trojpol["unknown"] == 0, ident
+    # Napęd nie zmienia noża: kąty położeń łącznika z napędem równe kątom łącznika bez napędu.
+    assert (
+        po_id["qetThreePositionSwitchZNapedem"]["noz"]["katy"]
+        == po_id["qetThreePositionSwitch"]["noz"]["katy"]
+    )
     # Dwupołożeniowe: nieznany = połowa kąta zamknięcia.
-    for ident in lacznikowe - {"qetThreePositionSwitch"}:
+    for ident in lacznikowe - trojpolozeniowe:
         katy = po_id[ident]["noz"]["katy"]
         assert "earthed" not in katy
         assert math.isclose(katy["unknown"], katy["closed"] / 2, abs_tol=1e-4)
     # Intencja (bez zmian od pierwszej wersji): symbol złożony z kilku elementów QET istnieje
     # tylko z jawną deklaracją złożenia — nigdy po cichu. Zbiór złożeń przypięty wprost: łącznik
-    # trójpołożeniowy (QET nie ma elementu), oba wyłączniki (wyłącznik + cewka wyłączająca
-    # EN 60617 07-15-01 — koniec linii wyłączania; z napędem M dodatkowo napęd silnikowy)
-    # i przekładniki napięciowe wielouzwojeniowe (kopie elementu przekładnika, rysunek Z.11.1).
+    # trójpołożeniowy (QET nie ma elementu; z napędem dodatkowo napęd energią zmagazynowaną
+    # EN 60617 02-13-20 i napęd ręczny EN 60617 02-13-01), oba wyłączniki (wyłącznik + cewka
+    # wyłączająca EN 60617 07-15-01 — koniec linii wyłączania; z napędem M dodatkowo napęd
+    # silnikowy) i przekładniki napięciowe wielouzwojeniowe (kopie elementu przekładnika,
+    # rysunek Z.11.1).
     zlozone = {s["id"] for s in po_id.values() if s["zlozenie"]}
     assert zlozone == {
         "qetThreePositionSwitch",
+        "qetThreePositionSwitchZNapedem",
         "qetBreaker",
         "qetBreakerZNapedem",
         "qetVoltageTransformer2",
@@ -164,6 +180,13 @@ def test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione():
     assert wiele_skladnikow == zlozone
     assert "złożenie z elementów QET" in po_id["qetThreePositionSwitch"]["zlozenie"]
     assert "en_60617_02_13_26" in po_id["qetBreakerZNapedem"]["zlozenie"]
+    for element in (
+        "en_60617_07_13_07",
+        "en_60617_02_15_01",
+        "en_60617_02_13_20",
+        "en_60617_02_13_01",
+    ):
+        assert element in po_id["qetThreePositionSwitchZNapedem"]["zlozenie"], element
     for ident in ("qetBreaker", "qetBreakerZNapedem"):
         assert "en_60617_07_15_01" in po_id[ident]["zlozenie"], ident
     # Intencja: odcinek przewodu dorysowany przez importer (zacisk źródła WEWNĄTRZ kafla →
@@ -171,7 +194,9 @@ def test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione():
     # i ma powód; zacisk źródła POZA kaflem (rysunek po jednokładności) przenosi się na krawędź
     # z przycięciem przewodu, bez doprowadzenia. Po jednokładności rysunku jedynym zaciskiem toru
     # wewnątrz kafla jest zacisk szynowy łącznika trójpołożeniowego (uziemienie nad zestykiem
-    # uziemiającym sięga ponad poziom zacisków) — z powodem z własnej deklaracji.
+    # uziemiającym sięga ponad poziom zacisków) — z powodem z własnej deklaracji; łącznik
+    # z napędem ma dodatkowo zacisk dolny wewnątrz kafla (znak napędu ręcznego pod kwadratem
+    # napędu sięga poniżej zacisku), też z powodem z deklaracji.
     tor_z_doprowadzeniem = set()
     for ident in lacznikowe:
         s = po_id[ident]
@@ -183,8 +208,14 @@ def test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione():
             port = porty[d["port"]]
             assert d["x1"] == d["x2"] == port["x"], (ident, d)
             assert d["y2"] == port["y"], (ident, d)
-            assert 0 < d["y1"] < s["wysokosc"] and d["powod"].startswith("zacisk szynowy QET")
-    assert tor_z_doprowadzeniem == {("qetThreePositionSwitch", "top")}
+            assert 0 < d["y1"] < s["wysokosc"], (ident, d)
+            poczatek = "zacisk szynowy QET" if d["port"] == "top" else "zacisk dolny QET"
+            assert d["powod"].startswith(poczatek), (ident, d)
+    assert tor_z_doprowadzeniem == {
+        ("qetThreePositionSwitch", "top"),
+        ("qetThreePositionSwitchZNapedem", "top"),
+        ("qetThreePositionSwitchZNapedem", "bottom"),
+    }
     # Poza łącznikami doprowadzenie powstaje wyłącznie jako przedłużenie portu obwodu wtórnego
     # do rastru (przekładniki) — port toru pierwotnego leży na krawędzi bez dorysowań.
     for s in po_id.values():
@@ -412,12 +443,14 @@ def test_iniekcja_bez_jednokladnosci_rysunku_glif_ponizej_progu_przerywa_import(
     _zapisz_manifest(kopia_zrodel, manifest)
     with pytest.raises(qet.BladImportu, match="nie mieści się w kaflu"):
         qet.generuj()
-    # Górny próg kafla: położenie zamknięte (0,609) ponad obniżonym górnym progiem.
+    # Górny próg kafla: położenie nieznane (0,600 — nóż pod połową kąta zamknięcia, zasięg
+    # źródła) ponad obniżonym górnym progiem. Położenie zamknięte kończy nóż na „×” styku
+    # (zasięg noża, decyzja architekta 2026-10-30), więc nie jest już najwyższym rysunkiem.
     wpis["skalaRysunku"] = zapis
     wpis["skladniki"][1]["przesuniecie"] = [40, -16]
     manifest["stopienSymboli"]["kafel"] = [0.55, 0.6]
     _zapisz_manifest(kopia_zrodel, manifest)
-    with pytest.raises(qet.BladImportu, match="qetBreaker: stopień glifu 0.609 .*closed"):
+    with pytest.raises(qet.BladImportu, match="qetBreaker: stopień glifu 0.600 .*unknown"):
         qet.generuj()
     # Próg toru: wskaźnik pojemnościowy (0,333) poniżej podniesionego dolnego progu toru.
     manifest["stopienSymboli"]["kafel"] = [0.55, 0.7]
@@ -459,12 +492,16 @@ def test_iniekcja_skala_rysunku_i_stopien_przerywa_import(kopia_zrodel, wariant,
 
 
 def test_szerokosc_znaku_z_metryki_kroju_zrodla_i_fail_closed():
-    """Środek litery liczony z posuwu znaku kroju źródła (Liberation Sans), nie z jednej
-    szerokości dla wszystkich znaków; znak spoza tabeli przerywa import."""
+    """Środek litery liczony z posuwu znaku kroju schematu (Liberation Sans) w odmianie, którą
+    renderer rysuje litery symboli (waga 600 → odmiana 700), nie z jednej szerokości dla
+    wszystkich znaków; znak spoza tabeli kroju (``core/metrykiKroju.json``, krój ``sans``)
+    przerywa import — litera symbolu bez posuwu w tabeli nie dostaje szacunku."""
     assert qet.szerokosc_tekstu("M", 6) == pytest.approx(6 * 1706 / 2048)
     assert qet.szerokosc_tekstu("3", 9) == pytest.approx(9 * 1139 / 2048)
+    # „x” odmiany pogrubionej (1139); zwykła ma 1024 — odmiana z wagi renderera, nie źródła QET.
+    assert qet.szerokosc_tekstu("x", 6) == pytest.approx(6 * 1139 / 2048)
     with pytest.raises(qet.BladImportu, match="brak szerokości znaków"):
-        qet.szerokosc_tekstu("Mx", 6)
+        qet.szerokosc_tekstu("M\u4e2d", 6)
 
 
 def test_iniekcja_skala_lokalna_bez_powodu_lub_poza_skala_przerywa_import(kopia_zrodel):

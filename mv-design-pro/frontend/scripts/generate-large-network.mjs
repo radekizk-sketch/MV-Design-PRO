@@ -73,7 +73,7 @@ async function build() {
     const f = (station?.pola ?? []).find(
       (x) => String(x.bay_role ?? '').toUpperCase() === 'FEEDER' || String(x.field_role ?? '').toUpperCase().includes('ODG'),
     );
-    return f?.ref_id ? `${f.ref_id}.BRANCH` : null;
+    return f?.ref_id ?? null;
   };
   const insertStation = async (segmentId, pos = 0.5) => {
     const o = await op(caseId, 'insert_station_on_segment_sn', {

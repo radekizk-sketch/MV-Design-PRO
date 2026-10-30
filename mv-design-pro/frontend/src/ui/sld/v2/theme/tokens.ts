@@ -170,7 +170,7 @@ export const FONT_SIZES = {
   numericValue: 14,
   /** Statusy raportowe (sans, 12). */
   reportStatus: 12,
-  /** Badge zabezpieczeń (SPZ/SCO/...) — czytelny ≥9 (audyt OSD). */
+  /** Badge automatyki pola (SPZ, SCO, LRW, NZ, OWG) — czytelny ≥9 (audyt OSD). */
   badge: 9,
   /** Status row badge (Zal./Odbl./Odst./Zabl.). */
   badgeStatus: 8,
@@ -197,90 +197,15 @@ export const FONT_SIZES = {
 
 /** Geometria GPZ Switchgear renderera (kanoniczne wymiary world-space). */
 export const GPZ_GEOMETRY = {
-  /** Pasek tytułu (góra rozdzielni). */
-  titleBarHeight: 26,
-  /** Wysokość kolumny HV-tower w trybie single-bus. Wyższa kolumna robi pionowy
-   *  prześwit na panele pomiarowe TR nad szyną SN (anty-kolizja z etykietami sekcji). */
-  hvTowerHeight: 96,
-  /** Padding wewnętrzny (poziomy + pionowy). */
-  horizontalPadding: 14,
-  verticalPadding: 10,
-  /** Szyna sekcyjna — overhang poza ostatnie pole. */
-  sectionBusOverhang: 10,
-  /** Odstęp między sekcjami w polu. */
-  sectionInterGap: 28,
-  /** Odstęp między etykietą sekcji a pierwszym polem. */
-  sectionLabelGap: 18,
-  /** Pole — szerokość, wysokość, gap między polami. */
-  bayColumnWidth: 64,
-  bayColumnHeight: 124, // K30-113: 110 → 124 dla unified APPARATUS_PITCH (audyt #4 MEDIUM)
-  bayGap: 6,
-  /** Nagłówek pola (feeder name) — pasmo mieści DWIE linie kondensowanej
-   *  nazwy (font `FONT_SIZES.bayHeaderName`), żeby realne nazwy odpływów
-   *  czytały się w całości zamiast twardego "Pole W…" (audyt SCADA-parity). */
-  bayHeaderHeight: 22,
-  /** Odstęp od dolnej krawędzi kolumny do numeru pola. */
-  bayNumberGap: 14,
-  /** Pitch aparatów w kolumnie (Y). */
-  apparatusPitch: 18,
-  /** Wymiary symboli aparatów (kanon IEC 60617). */
+  /** Wymiary symboli aparatów (kanon IEC 60617) — jedyne klucze z konsumentem
+   *  (`station-rozdzielnia/GpzApparatusSymbols.tsx`); 44 klucze bez konsumenta, w tym
+   *  stały szacunek szerokości glifu 0,62 em, usunięte 2026-10-30 — pomiar
+   *  tekstu SLD stoi na tabeli posuwów kroju `ui/sld/v3/core/metrykiKroju.json`. */
   cbSize: 9,
-  dsRadius: 4.5,
-  esBranchLength: 8,        // długość gałęzi bocznej uziemnika
-  esBranchOffset: 8,        // przesunięcie od osi pola
+  esBranchLength: 8, // długość gałęzi bocznej uziemnika
+  esBranchOffset: 8, // przesunięcie od osi pola
   triangleSize: 6,
   ctRadius: 3.5,
-  /** Pozycja kolumny aparatów (X-offset od lewej krawędzi pola). */
-  apparatusColXOffset: 18,
-  /** Pozycja stosu badge (X-offset od lewej krawędzi pola). */
-  badgeColXOffset: 36,
-  badgeWidth: 22,
-  badgeLabelHeight: 8,
-  badgeStatusHeight: 8,
-  /** KAS button. */
-  kasLedRadius: 3,
-  kasRowHeight: 16,
-  /** Panel pomiarów. */
-  measurementRowHeight: 10,
-  measurementPanelHeaderHeight: 12,
-  /** Wewnętrzny inset poziomy nagłówka pola/panelu — gwarantuje prześwit
-   *  między sąsiednimi wąskimi kolumnami (anty-kolizja D1/D2). */
-  labelClipInset: 4,
-  /** Lewy/prawy gutter korpusu rozdzielni (tryb two-bus) na etykiety napięcia
-   *  szyn ("110kV"/"15kV"). Etykiety kotwiczą się na końcach szyn WEWNĄTRZ
-   *  ramki korpusu — ciasny kadr eksportu nie ucina już "0kV"/"kV". */
-  busLabelGutter: 46,
-  /** Przybliżony współczynnik szerokości glifu (advance ÷ fontSize) dla
-   *  Inter w wersalikach. Używany do przycinania etykiet do szerokości
-   *  kolumny z wielokropkiem (clip-to-width zamiast char-count). */
-  labelCharWidthFactor: 0.62,
-  /** Sprzęgło. */
-  couplerBayWidth: 120,
-  couplerLegInset: 18,
-  couplerDsOffsetY: 22,
-  couplerHorizontalOffsetY: 36,
-  couplerBayNumberOffsetY: 8,
-  /** Two-bus: gap między HV bays bottom a LV bus (TR symbols). */
-  twoBusTrGap: 84,
-  twoBusTrSpacing: 80,
-  /** Single-bus: spacing TR-ów w HV tower column. Szerszy odstęp robi miejsce
-   *  na panele pomiarowe TR rozłożone na zewnątrz (anty-kolizja w środku). */
-  singleBusTrSpacing: 84,
-  /** Minimalna szerokość rozdzielni (clamp dla małych GPZ). */
-  minSwitchgearWidth: 360,
-  /** Magistrala sieci terenowej. */
-  outgoingFeederDropPx: 36,
-  fieldTrunkGapPx: 16,
-  /** Strzałka kierunku przepływu na trunk feeder. */
-  trunkArrowSize: 5,
-  /** Transformator (Y/Δ markers). */
-  trRadius: 9,
-  trWindingGap: 7,
-  trHvLeadLen: 10,
-  trLvLeadLen: 10,
-  /** Y/Δ markers — większy dla operator-grade czytelności. */
-  trMarkerArmLen: 6,
-  trMarkerStrokeWidth: 1.6,
 } as const;
 
 /** Snap to grid — każda współrzędna musi być wielokrotnością GRID_BASE_PX. */

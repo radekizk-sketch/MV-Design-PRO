@@ -180,9 +180,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/1aac3dcf8f90ea05b076bc2d4a09eb85/sn_field/002",
@@ -418,9 +418,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/fbc4d27941e94a7b03779c755575bf10/sn_field/002",
@@ -656,9 +656,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/e86f78f86f26c6934663867816f4130b/sn_field/002",
@@ -894,9 +894,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/23cd7fa0275c5b7fb91cf3621d75c464/sn_field/002",
@@ -1132,9 +1132,9 @@
           "51",
           "50",
           "51N",
-          "Buchholz",
-          "temp",
-          "ciśnienie"
+          "63",
+          "26",
+          "63P"
         ],
         "protection_ref": null,
         "ref_id": "stn/1ca971e52ede46184a162664fdbfd0b6/sn_field/002",
@@ -4404,38 +4404,38 @@
       },
       {
         "corridor_type": "radial",
-        "id": "72558470-d2de-5545-888d-51d8da02429b",
+        "id": "5d692160-4ad4-5799-aadf-c9dc66b26bdc",
         "meta": {},
         "name": "Odgałęzienie SN napowietrzne",
         "ordered_segment_refs": [
           "seg/a5b634d09b4d680db533e98a60c77446/branch_segment_L",
           "seg/a5b634d09b4d680db533e98a60c77446/branch_segment_R"
         ],
-        "ref_id": "corridor/4f88653e1045639e6713bef185b4571b/branch",
+        "ref_id": "corridor/61ae28549550435e853836842e6abc19/branch",
         "tags": []
       },
       {
         "corridor_type": "radial",
-        "id": "8e2d527e-b1ec-5a88-8ad5-5cab308dacb2",
+        "id": "6f7fe090-bb5f-5d71-868b-629e0ccd9c58",
         "meta": {},
         "name": "Odgałęzienie SN napowietrzne",
         "ordered_segment_refs": [
           "seg/45d95fa031c6317990b8c97627194eb0/branch_segment_L",
           "seg/45d95fa031c6317990b8c97627194eb0/branch_segment_R"
         ],
-        "ref_id": "corridor/ac8c6a51e1622c1e89ace2383fc31810/branch",
+        "ref_id": "corridor/c3e31a6b41ab3bf68346faf1b391ae2f/branch",
         "tags": []
       },
       {
         "corridor_type": "radial",
-        "id": "179e913e-8909-5c9a-aaa6-6978778f2105",
+        "id": "e16a4596-cb1d-556e-b8f3-6800d1ac942e",
         "meta": {},
         "name": "Odgałęzienie SN napowietrzne",
         "ordered_segment_refs": [
           "seg/102e2d28ad5dea54ae11df0baecc0b18/branch_segment_L",
           "seg/102e2d28ad5dea54ae11df0baecc0b18/branch_segment_R"
         ],
-        "ref_id": "corridor/ff3ff523eaa8162845f49d527590f65c/branch",
+        "ref_id": "corridor/a62c2ae4c70288d2622a2930f1552a6c/branch",
         "tags": []
       }
     ],
@@ -4450,7 +4450,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "87b0dd7181491414971b8e29b3d86d7cfe2cc4898010da2e23403c3d821508d8",
+      "hash_sha256": "2ddfab35769f93af873464cfc837ed72446c5c5b9b3c39232020153206e6f76c",
       "name": "Elementy ciągu — slup",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -4512,7 +4512,7 @@
       },
       {
         "branch_origin_station_ref": "bp/0e64dd8e7532dbf30ffd1b204b4c5439/branch_pole",
-        "id": "corridor/4f88653e1045639e6713bef185b4571b/branch",
+        "id": "corridor/61ae28549550435e853836842e6abc19/branch",
         "name": "Odgałęzienie SN napowietrzne",
         "parent_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
         "run_kind": "branch",
@@ -4527,12 +4527,12 @@
           }
         ],
         "starting_bay_ref": "bp/0e64dd8e7532dbf30ffd1b204b4c5439/branch_pole",
-        "starting_port_ref": "bp/0e64dd8e7532dbf30ffd1b204b4c5439/branch_pole.BRANCH",
+        "starting_port_ref": "bp/0e64dd8e7532dbf30ffd1b204b4c5439/branch_bus_1",
         "stations": []
       },
       {
         "branch_origin_station_ref": "bp/ec1f49aaa4c77eddddfc06bdab5de0d1/branch_pole",
-        "id": "corridor/ac8c6a51e1622c1e89ace2383fc31810/branch",
+        "id": "corridor/c3e31a6b41ab3bf68346faf1b391ae2f/branch",
         "name": "Odgałęzienie SN napowietrzne",
         "parent_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
         "run_kind": "branch",
@@ -4547,12 +4547,12 @@
           }
         ],
         "starting_bay_ref": "bp/ec1f49aaa4c77eddddfc06bdab5de0d1/branch_pole",
-        "starting_port_ref": "bp/ec1f49aaa4c77eddddfc06bdab5de0d1/branch_pole.BRANCH",
+        "starting_port_ref": "bp/ec1f49aaa4c77eddddfc06bdab5de0d1/branch_bus_1",
         "stations": []
       },
       {
         "branch_origin_station_ref": "bp/2edc887c98badd2a43a7319601ad741f/branch_pole",
-        "id": "corridor/ff3ff523eaa8162845f49d527590f65c/branch",
+        "id": "corridor/a62c2ae4c70288d2622a2930f1552a6c/branch",
         "name": "Odgałęzienie SN napowietrzne",
         "parent_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
         "run_kind": "branch",
@@ -4567,7 +4567,7 @@
           }
         ],
         "starting_bay_ref": "bp/2edc887c98badd2a43a7319601ad741f/branch_pole",
-        "starting_port_ref": "bp/2edc887c98badd2a43a7319601ad741f/branch_pole.BRANCH",
+        "starting_port_ref": "bp/2edc887c98badd2a43a7319601ad741f/branch_bus_1",
         "stations": []
       }
     ],

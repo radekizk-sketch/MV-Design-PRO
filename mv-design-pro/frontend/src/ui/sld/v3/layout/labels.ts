@@ -307,20 +307,48 @@ export interface OwnedLabel {
  * Wyrównanie tekstu w prostokącie etykiety: `'poczatek'` — tekst od lewej krawędzi
  * prostokąta (`text-anchor: start`), `'koniec'` — do prawej (`text-anchor: end`).
  *
- * DLACZEGO. Szerokość prostokąta jest SZACUNKIEM z długości tekstu (`measureTextWidth`,
- * 0,62 em na znak — deterministyczna geometria sceny bez metryk czcionki), a rysowany tusz
- * ma szerokość z metryk czcionki: dla wiersza kodów „51N · ZS · 50BF · 79 · SCO" tusz jest
- * węższy od szacunku, dla wiersza z wielkimi literami — szerszy. Tekst wyśrodkowany
- * w prostokącie zaczyna się więc w każdym wierszu w innym miejscu: wiersze bloku przekaźnika
- * pola GPZ rozjeżdżały się o (szacunek − tusz)/2 (zrzut pola Z.10 2026-10-29: wiersz 1 od
- * x = 535 px, wiersz 2 od x = 499 px przy wspólnej lewej krawędzi prostokątów). Wiersze
- * kolumny trzymają wspólną krawędź prostokątów, więc tekst kotwiczy się w tej krawędzi:
- * etykieta z prawej strony kotwicy (`placement: 'right'` — wiersze bloku układu powiązań,
- * pasmo adnotacji CT/VT za torem, „52" przy wyłączniku) — `'poczatek'`, wiersze
- * prawo-dosunięte do rezerwacji kolumny (układ stacji, `placement: 'below'`) — `'koniec'`.
- * Pozostałe etykiety zostają wyśrodkowane (`undefined`).
+ * DLACZEGO. Szerokość prostokąta to suma posuwów znaków z tabeli kroju (`measureTextWidth`,
+ * `core/metrykiKroju.json`) zaokrąglona W GÓRĘ do całej jednostki świata — tusz jest węższy
+ * od prostokąta o ułamek jednostki, a do 2026-10-30 (szacunek „0,62 em na znak”) był węższy
+ * dla cyfr i szerszy dla wielkich liter. Tekst wyśrodkowany w prostokącie zaczynał się więc
+ * w każdym wierszu w innym miejscu: wiersze bloku przekaźnika pola GPZ rozjeżdżały się
+ * o (szacunek − tusz)/2 (zrzut pola Z.10 2026-10-29: wiersz 1 od x = 535 px, wiersz 2 od
+ * x = 499 px przy wspólnej lewej krawędzi prostokątów). Wiersze kolumny trzymają wspólną
+ * krawędź prostokątów, więc tekst kotwiczy się w tej krawędzi: etykieta z prawej strony
+ * kotwicy (`placement: 'right'` — wiersze bloku układu powiązań, pasmo adnotacji CT/VT za
+ * torem, „52" przy wyłączniku) — `'poczatek'`, wiersze prawo-dosunięte do rezerwacji kolumny
+ * (układ stacji, `placement: 'below'`) — `'koniec'`. Etykiety danych i podpisy aparatów
+ * (`labelRole: 'dane'`, `ownerKind: 'apparatus'`) kotwiczą się w krawędzi od strony symbolu
+ * dla strony wybranej przez plan czytelności (`wyrownanieEtykiety`). Pozostałe etykiety
+ * zostają wyśrodkowane (`undefined`).
  */
 export type WyrownanieTekstu = 'poczatek' | 'koniec';
+
+/**
+ * Wyrównanie tekstu etykiety w jej prostokącie wg STRONY, po której etykieta stoi względem
+ * kotwicy (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja architekta §11.7 pkt 8). Etykiety klasy
+ * znaczeniowej `'dane'` i podpisy aparatów (`ownerKind: 'apparatus'`) kotwiczą tekst w
+ * krawędzi ZWRÓCONEJ DO KOTWICY: strona lewa → `'koniec'` (prawa krawędź prostokąta, przy
+ * symbolu), strona prawa → `'poczatek'`. Kolumna podpisów pola (kotwica wspólna — lewa
+ * krawędź toru) ma więc jedną krawędź tuszu niezależnie od treści i od metryk kroju
+ * przeglądarki (tekst wyśrodkowany w prostokącie przesuwał tusz o połowę różnicy pomiar −
+ * tusz). Strona nad/pod, etykieta obrócona i pozostałe rodzaje — jawne `wyrownanieTekstu`
+ * etykiety albo środek. `strona` = strona z planu renderu (`PlannedLabel.strona`, plan może
+ * przenieść etykietę na stronę zastępczą); domyślnie strona zadeklarowana przez scenę.
+ * JEDNO źródło dla renderu kanwy (`SceneLabelNode`), podglądu kompozycji i prostokąta tuszu
+ * planu (`canvas/labelLegibility.ts`).
+ */
+export function wyrownanieEtykiety(
+  label: Pick<OwnedLabel, 'labelRole' | 'ownerKind' | 'placement' | 'rotated' | 'wyrownanieTekstu'>,
+  strona: SimpleAnchorPlacement | undefined = label.placement,
+): WyrownanieTekstu | undefined {
+  const zaczepWKrawedzi = label.labelRole === 'dane' || label.ownerKind === 'apparatus';
+  if (zaczepWKrawedzi && label.rotated !== true) {
+    if (strona === 'left') return 'koniec';
+    if (strona === 'right') return 'poczatek';
+  }
+  return label.wyrownanieTekstu;
+}
 
 /** Punkt zaczepienia tekstu etykiety w jej prostokącie — JEDNO źródło dla renderu kanwy
  *  (`SceneLabelNode`) i podglądu kompozycji (`PreviewLabelNode`); eksport DXF/PDF czyta
@@ -793,44 +821,59 @@ export function przesunKotwiczonaEtykiete(
  * etykiet (`resolveSimpleAnchoredLabel`) i obrys tła pola GPZ (`compose/gpz.ts`, karta
  * UX-04: tło pola obejmuje podpis pola i opisy jego zabezpieczeń). Dwa niezależne wzory
  * slotu rozjechałyby się przy pierwszej zmianie prześwitu albo przyciągania do siatki.
+ *
+ * KRAWĘDŹ ZACZEPU (karta UX-04/POLE-LINIOWE-WZORZEC, decyzja §11.7 pkt 8). Krawędź slotu,
+ * w której render kotwiczy tekst, leży na siatce (spec §2) w punkcie wyznaczonym WYŁĄCZNIE
+ * przez kotwicę — niezależnie od szerokości tekstu — a prostokąt ma szerokość tuszu
+ * (`measureLabelWidth`, BLOK-PUSTY §1: plan czytelności liczy prostokąt tuszu tym samym
+ * pomiarem, więc slot szerszy od tuszu rozjechałby się z planem). Dotyczy:
+ *  - `placement: 'left'` — prawa krawędź = siatka(`anchor.x − prześwit`) (przy jawnym
+ *    prześwicie w dół, OD kotwicy — KD-8 poz. 5), lewa = prawa − szerokość tuszu. Podpisy
+ *    aparatów kolumny toru po lewej mają jedną prawą krawędź całej kolumny. Do 2026-10-30
+ *    przyciągano do siatki LEWĄ krawędź prostokąta o szerokości tekstu, więc prawa krawędź
+ *    (od strony symbolu) zależała od długości podpisu — podpisy jednego pola GPZ kończyły się
+ *    w x = 85, 85, 91, 89, 86, 91 (fikstura `pole_liniowe_z10_gpz_staly_w_sekcji_1`, LOD 2);
+ *  - `placement: 'above' | 'below'` z `wyrownanieTekstu` — kotwica `anchor.x` jest krawędzią
+ *    zaczepu (`'koniec'` — prawa, `'poczatek'` — lewa), nie środkiem: wiersze listy kodów
+ *    prawo-dosunięte do rezerwacji kolumny kończą się w jednej krawędzi zamiast
+ *    w `snapToGrid(środek − szerokość/2) + szerokość` (rozrzut do 8 jednostek).
+ * `placement: 'right'` i tekst wyśrodkowany — lewa krawędź na siatce jak dotąd.
  */
 export function prostokatEtykietyZakotwiczonej(
-  owner: Pick<SimpleAnchoredOwnerInput, 'text' | 'labelClass' | 'anchor' | 'placement' | 'clearance'>,
+  owner: Pick<SimpleAnchoredOwnerInput, 'text' | 'labelClass' | 'anchor' | 'placement' | 'clearance' | 'wyrownanieTekstu'>,
 ): V3Rect {
   const width = measureLabelWidth(owner.text, owner.labelClass);
   const height = labelLineHeight(owner.labelClass);
   const przeswit = owner.clearance ?? GRID;
-  let x: number;
-  let y: number;
+  // KD-8 poz. 5: przy JAWNIE zadeklarowanym prześwicie przyciąganie do siatki
+  // idzie ZAWSZE OD kotwicy (w górę dla „above"), a nie do najbliższego węzła —
+  // inaczej zaokrąglenie zjada do połowy oczka i slot ląduje bliżej toru, niż
+  // deklaruje kontrakt (pomiar: 16 zadeklarowane → 15 po `snapToGrid`).
+  const jawnyPrzeswit = owner.clearance !== undefined;
+  const snapY = jawnyPrzeswit && owner.placement === 'above' ? snapDown : snapToGrid;
+  /** Prostokąt tuszu zaczepiony prawą krawędzią w `prawa` (krawędź na siatce; rośnie w lewo). */
+  const odPrawej = (prawa: number): { x: number; width: number } => ({ x: prawa - width, width });
   switch (owner.placement) {
     case 'above':
-      x = owner.anchor.x - width / 2;
-      y = owner.anchor.y - przeswit - height;
-      break;
-    case 'below':
-      x = owner.anchor.x - width / 2;
-      y = owner.anchor.y + przeswit;
-      break;
+    case 'below': {
+      const y = owner.placement === 'above' ? owner.anchor.y - przeswit - height : owner.anchor.y + przeswit;
+      const poziomo =
+        owner.wyrownanieTekstu === 'koniec'
+          ? odPrawej(snapToGrid(owner.anchor.x))
+          : owner.wyrownanieTekstu === 'poczatek'
+            ? { x: snapToGrid(owner.anchor.x), width }
+            : { x: snapToGrid(owner.anchor.x - width / 2), width };
+      return { ...poziomo, y: snapY(y), height };
+    }
     case 'left':
-      x = owner.anchor.x - przeswit - width;
-      y = owner.anchor.y - height / 2;
-      break;
+      return {
+        ...odPrawej((jawnyPrzeswit ? snapDown : snapToGrid)(owner.anchor.x - przeswit)),
+        y: snapY(owner.anchor.y - height / 2),
+        height,
+      };
     case 'right':
-      x = owner.anchor.x + przeswit;
-      y = owner.anchor.y - height / 2;
-      break;
+      return { x: snapToGrid(owner.anchor.x + przeswit), y: snapY(owner.anchor.y - height / 2), width, height };
   }
-  // KD-8 poz. 5: przy JAWNIE zadeklarowanym prześwicie przyciąganie do siatki
-  // idzie ZAWSZE OD kotwicy (w górę dla „above", w lewo dla „left" itd.), a nie
-  // do najbliższego węzła — inaczej zaokrąglenie zjada do połowy oczka i slot
-  // ląduje bliżej toru, niż deklaruje kontrakt (pomiar: 16 zadeklarowane → 15
-  // po `snapToGrid`). Bez deklaracji prześwitu zachowanie jest DOKŁADNIE takie
-  // jak dotąd (`snapToGrid` w obu osiach), więc geometria pozostałych etykiet
-  // się nie rusza.
-  const jawnyPrzeswit = owner.clearance !== undefined;
-  const snapX = jawnyPrzeswit && owner.placement === 'left' ? snapDown : snapToGrid;
-  const snapY = jawnyPrzeswit && owner.placement === 'above' ? snapDown : snapToGrid;
-  return { x: snapX(x), y: snapY(y), width, height };
 }
 
 function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
