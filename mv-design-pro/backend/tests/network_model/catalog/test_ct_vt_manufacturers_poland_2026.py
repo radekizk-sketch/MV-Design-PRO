@@ -23,6 +23,7 @@ def test_49_rodzin_12_producentow_z_wiarygodnym_zrodlem() -> None:
         "Łukasiewicz-ITR", "SPIE Energotest", "ZELISKO",
     }
     for record in items:
+        assert record["id"].isascii()
         assert record["record_kind"] == "MANUFACTURER_FAMILY_NOT_SKU"
         assert record["catalog_status"] == "REFERENCYJNY_V1"
         assert record["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
@@ -54,6 +55,14 @@ def test_kpb_ct_prawidlowy_zakres_vs_fikcyjne_wykonanie() -> None:
     # Nie wyprowadzamy ALF z samej nazwy klasy 5P (to rodzina).
     assert "secondary_cores" not in item
     assert "accuracy_limit_factor" not in item
+
+
+def test_kpb_cts12_l_ma_do_czterech_rdzeni_jak_w_karcie_producenta() -> None:
+    families = get_all_instrument_transformer_manufacturer_families_pl()
+    ct = next(x for x in families if x["manufacturer"] == "KPB Intra" and x["model_family"] == "CTS 12.L")
+    assert ct["um_kv"] == 12.0
+    assert ct["core_count_max"] == 4
+    assert "secondary_windings_max" not in ct
 
 
 def test_vts25_resztkowe_jest_opcja_a_nie_zawsze_obecna() -> None:
