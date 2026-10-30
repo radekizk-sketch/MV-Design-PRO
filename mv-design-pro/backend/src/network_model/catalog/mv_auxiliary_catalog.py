@@ -1318,6 +1318,48 @@ def get_all_lv_fuse_link_types() -> list[dict]:
     return records
 
 
+# OSD ENEA: dokumentacja 05.2022-2 obowiązująca od 02.04.2024, zał. 5/B.
+# Minimalne parametry rdzenia POMIAROWEGO: klasa 0,2S, FS5, 5 VA;
+# przekładnie 5/5 i 15/5, Ith 1 s odpowiednio 2 kA i 8 kA.
+# To WYMAGANIE ENEA (profil referencyjny), nie dostarczony wyrób producenta.
+ZRODLO_CT_ENEA_2024 = (
+    "ENEA Operator, Układy pomiarowe energii elektrycznej, wersja 05.2022-2,"
+    " obowiązuje od 02.04.2024, załącznik 5/B, s. 27, rdzenie pomiarowe SN;"
+    " https://www.operator.enea.pl/media/698/"
+    "uklady-pomiarowe-energii-elektrycznej-obowiazuje-od-02042024pdf.pdf"
+)
+
+
+def _ct_pomiarowy_enea_2024(pierwotny_a: int, ith_ka: float) -> dict:
+    if (pierwotny_a, ith_ka) not in ((5, 2.0), (15, 8.0)):
+        raise ValueError("Parametry poza pozycjami 5/5 i 15/5 ENEA zał. 5/B")
+    return {
+        "id": f"ct_enea_2024_{pierwotny_a}_5_02s_fs5",
+        "name": f"CT ENEA SN {pierwotny_a}/5 A kl. 0,2S FS5, 5 VA, Um 24 kV",
+        "params": {
+            "ratio_primary_a": float(pierwotny_a),
+            "ratio_secondary_a": 5.0,
+            "accuracy_class": "0.2S",
+            "burden_va": 5.0,
+            "ith_ka_1s": ith_ka,
+            "idyn_ka_peak": ith_ka * 2.5,
+            "fs_safety_factor": 5.0,
+            "verification_status": "REFERENCYJNY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "contract_version": "2.0",
+            "source_reference": ZRODLO_CT_ENEA_2024,
+            "verification_note": (
+                "Wymagania ENEA, nie wyrób producenta. Klasa i FS dotyczą "
+                "rdzenia pomiarowego rozliczeniowego, nie rdzenia 5P. "
+                "Um = 24 kV jest wymaganiem standardu, nie osobnym polem "
+                "CTType. Ith = wymagana wartość z tab. 5/B; Idyn = "
+                "2,5×Ith jako referencja wg IEC 61869-2. "
+                "Rct i parametry innych rdzeni wymagają DTR konkretnego CT."
+            ),
+        },
+    }
+
+
 def get_all_ct_types() -> list[dict]:
     def _quality_meta(
         *,
@@ -1347,6 +1389,8 @@ def get_all_ct_types() -> list[dict]:
         "konkretnego wyrobu potwierdza karta producenta."
     )
     return [
+        _ct_pomiarowy_enea_2024(5, 2.0),
+        _ct_pomiarowy_enea_2024(15, 8.0),
         {
             "id": "ct_50_1_0_5_5va_arteche",
             "name": "CT 50/1 A kl. 0.5 5 VA",
