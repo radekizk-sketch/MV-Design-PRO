@@ -233,7 +233,8 @@ def get_all_instrument_transformer_manufacturer_families_pl() -> list[dict[str, 
         ("URW", "VT_SENSOR", "INDOOR", ITR_URW_SOURCE),
     ):
         families.append(_family(
-            "Łukasiewicz-ITR", model, kind, source + " || " + ITR_CT_SOURCE,
+            "Łukasiewicz-ITR", model, kind,
+            source + (" || " + ITR_CT_SOURCE if kind == "CT_SENSOR" else ""),
             mounting=mounting,
             note="Sensor małej mocy: wymaga kompatybilnego wejścia pomiarowego "
                  "i znanej charakterystyki przetwarzania. NIE zamieniać na 1A/5A ani 100V.",
