@@ -114,7 +114,7 @@ export const OBSZAR_STRINGS = {
   limityTytul: 'Zapisz ograniczenia Q modułu wytwórczego',
   limityOpis:
     'Wyznaczone pasmo Q trafia do ograniczeń generatora w modelu sieci '
-    + '(GenLimits.q_min/q_max) — czytają je rozpływ mocy i oceny zgodności.',
+    + '(granice $Q_{\\min}$ i $Q_{\\max}$ generatora) — czytają je rozpływ mocy i oceny zgodności.',
   limityGenerator: 'Moduł wytwórczy w tym węźle',
   limityBrakGeneratorow:
     'W analizowanym węźle nie ma modułu wytwórczego — ograniczenia Q nie mają '

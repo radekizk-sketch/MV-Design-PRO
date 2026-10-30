@@ -20,6 +20,7 @@
 import { useState } from 'react';
 import './ssci.css';
 import { useAppStateStore } from '../../../ui/app-state';
+import { MathInline } from '../../../ui/proof/MathRenderer';
 import { TekstZWzorami } from '../../kreatory/rama';
 import {
   fetchStabilnoscSsci,
@@ -96,9 +97,9 @@ function PanelPrzeksztaltnika({ dane }: { dane: WidokStabilnosciSsci }) {
         )}
       </div>
       <div className="mvd-ssci-metryka mvd-ssci-metryka--neutral">
-        <span className="mvd-ssci-metryka-etyk">{S.metrRezystancjaUjemna}</span>
+        <span className="mvd-ssci-metryka-etyk"><TekstZWzorami tekst={S.metrRezystancjaUjemna} /></span>
         <span className="mvd-ssci-metryka-wartosc mvd-num" data-testid="mvd-ssci-rezystancja-ujemna">
-          {opisRezystancjiUjemnej(w)}
+          <TekstZWzorami tekst={opisRezystancjiUjemnej(w)} />
         </span>
         <span className="mvd-ssci-metryka-opis">{S.metrRezystancjaOpis}</span>
       </div>
@@ -122,9 +123,9 @@ function PanelMetryk({ dane }: { dane: WidokStabilnosciSsci }) {
             className="mvd-ssci-metryka mvd-ssci-metryka--neutral"
             data-testid={`mvd-ssci-metryka-${m.klucz}`}
           >
-            <span className="mvd-ssci-metryka-etyk">{m.etykieta}</span>
+            <span className="mvd-ssci-metryka-etyk"><TekstZWzorami tekst={m.etykieta} /></span>
             <span className="mvd-ssci-metryka-wartosc mvd-num">{m.wartosc}</span>
-            {m.opis && <span className="mvd-ssci-metryka-opis">{m.opis}</span>}
+            {m.opis && <span className="mvd-ssci-metryka-opis"><TekstZWzorami tekst={m.opis} /></span>}
           </div>
         ))}
       </div>
@@ -171,7 +172,7 @@ function PanelBrakow({ dane }: { dane: WidokStabilnosciSsci }) {
   return (
     <section className="mvd-ssci-braki" data-testid="mvd-ssci-braki">
       <h3 className="mvd-ssci-sekcja-tytul">{S.brakiTytul}</h3>
-      <p className="mvd-ssci-pole-opis">{S.brakiOpis}</p>
+      <p className="mvd-ssci-pole-opis"><TekstZWzorami tekst={S.brakiOpis} /></p>
       <p className="mvd-num mvd-ssci-braki-lista">
         {S.brakiPola}: {missing.join(', ')}
       </p>
@@ -203,7 +204,7 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
           <table className="mvd-ssci-slad-tabela">
             <thead>
               <tr>
-                <th>{S.sladKolSymbol}</th>
+                <th>{S.sladKolWzor}</th>
                 <th>{S.sladKolPodstawienie}</th>
                 <th>{S.sladKolWynik}</th>
                 <th>{S.sladKolJednostka}</th>
@@ -212,7 +213,9 @@ function SladSsci({ kroki }: { kroki: readonly KrokWhiteBox[] }) {
             <tbody>
               {kroki.map((k) => (
                 <tr key={k.symbol}>
-                  <td className="mvd-num">{k.symbol}</td>
+                  <td>
+                    <MathInline latex={k.formula_latex} />
+                  </td>
                   <td>{k.substitution_pl}</td>
                   <td>{k.result_pl}</td>
                   <td>{k.unit_check_pl}</td>
@@ -261,7 +264,7 @@ function WynikSsci({
       {szczegolyAudytowe && (
         <dl className="mvd-ssci-eksp" data-testid="mvd-ssci-eksp">
           <div className="mvd-ssci-eksp-para">
-            <dt>{S.ekspProgGain}</dt>
+            <dt><TekstZWzorami tekst={S.ekspProgGain} /></dt>
             <dd className="mvd-num">{fmtGain(dane.gain_crossover_mag)}</dd>
           </div>
         </dl>
@@ -325,7 +328,7 @@ export function EkranSsci({ szczegolyAudytowe }: EkranSsciProps) {
       <div className="mvd-ssci" data-testid="mvd-ssci-ekran">
         <header className="mvd-ssci-naglowek">
           <h2 className="mvd-ssci-tytul">{S.tytul}</h2>
-          <p className="mvd-ssci-opis">{S.opisWstep}</p>
+          <p className="mvd-ssci-opis"><TekstZWzorami tekst={S.opisWstep} /></p>
         </header>
         <StanPanel
           komunikat={S.brakPrzypadku}
@@ -342,7 +345,7 @@ export function EkranSsci({ szczegolyAudytowe }: EkranSsciProps) {
     <div className="mvd-ssci" data-testid="mvd-ssci-ekran">
       <header className="mvd-ssci-naglowek">
         <h2 className="mvd-ssci-tytul">{S.tytul}</h2>
-        <p className="mvd-ssci-opis">{S.opisWstep}</p>
+        <p className="mvd-ssci-opis"><TekstZWzorami tekst={S.opisWstep} /></p>
       </header>
 
       {/* Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych". */}

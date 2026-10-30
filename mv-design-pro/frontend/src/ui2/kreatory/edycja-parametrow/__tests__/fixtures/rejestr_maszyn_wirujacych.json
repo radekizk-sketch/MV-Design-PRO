@@ -11,6 +11,7 @@
         "dopuszczalne_do": 100.0,
         "dopuszczalne_od": 0.001,
         "jednostka": "MW",
+        "jednostka_latex": "",
         "nazwa_pl": "moc znamionowa (mechaniczna) jednej maszyny",
         "parametr": "pr_mw",
         "propozycja": {
@@ -24,6 +25,7 @@
           "wplyw_pl": "moc pozorna S_rM, a z nią udział maszyny w prądach zwarciowych, oraz moc na parę biegunów m (zanik prądu wyłączeniowego I_b) są proporcjonalne do P_rM — maszyna o mocy znamionowej większej niż punkt pracy daje większe prądy"
         },
         "symbol": "P_rM",
+        "symbol_latex": "P_{rM}",
         "wyznaczenie_z_tabliczki": {
           "klucz_tabliczki": "sn_mva",
           "opis_pl": "wyznaczona z mocy pozornej znamionowej S_rM tabliczki elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7"
@@ -34,6 +36,7 @@
         "dopuszczalne_do": 50.0,
         "dopuszczalne_od": 1.0,
         "jednostka": "1",
+        "jednostka_latex": "",
         "nazwa_pl": "liczba par biegunów",
         "parametr": "pole_pairs",
         "propozycja": {
@@ -47,6 +50,7 @@
           "wplyw_pl": "prąd wyłączeniowy I_b (i przy maszynie SN — współczynnik udaru) jest liczony zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy I_b"
         },
         "symbol": "p",
+        "symbol_latex": "p",
         "wyznaczenie_z_tabliczki": null
       },
       {
@@ -54,6 +58,7 @@
         "dopuszczalne_do": 10.0,
         "dopuszczalne_od": 2.0,
         "jednostka": "1",
+        "jednostka_latex": "",
         "nazwa_pl": "krotność prądu zablokowanego wirnika",
         "parametr": "i_lr_ratio",
         "propozycja": {
@@ -67,6 +72,7 @@
           "wplyw_pl": "impedancja maszyny Z_M jest odwrotnie proporcjonalna do I_LR/I_rM — maszyna o większej krotności daje proporcjonalnie większy udział w prądach zwarciowych"
         },
         "symbol": "I_LR/I_rM",
+        "symbol_latex": "I_{LR}/I_{rM}",
         "wyznaczenie_z_tabliczki": null
       },
       {
@@ -74,6 +80,7 @@
         "dopuszczalne_do": 1.0,
         "dopuszczalne_od": 0.5,
         "jednostka": "1",
+        "jednostka_latex": "",
         "nazwa_pl": "znamionowy współczynnik mocy",
         "parametr": "cos_phi",
         "propozycja": {
@@ -87,6 +94,7 @@
           "wplyw_pl": "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach zwarciowych, są odwrotnie proporcjonalne do cos φ_rM"
         },
         "symbol": "cos φ_r",
+        "symbol_latex": "\\cos\\varphi_r",
         "wyznaczenie_z_tabliczki": null
       },
       {
@@ -94,6 +102,7 @@
         "dopuszczalne_do": 1.0,
         "dopuszczalne_od": 0.5,
         "jednostka": "1",
+        "jednostka_latex": "",
         "nazwa_pl": "sprawność znamionowa",
         "parametr": "efficiency",
         "propozycja": {
@@ -107,6 +116,7 @@
           "wplyw_pl": "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach zwarciowych, są odwrotnie proporcjonalne do sprawności"
         },
         "symbol": "η_r",
+        "symbol_latex": "\\eta_r",
         "wyznaczenie_z_tabliczki": null
       }
     ],
@@ -116,6 +126,7 @@
         "dopuszczalne_do": 2000.0,
         "dopuszczalne_od": 0.001,
         "jednostka": "MVA",
+        "jednostka_latex": "",
         "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
         "parametr": "sn_mva",
         "propozycja": {
@@ -129,6 +140,7 @@
           "wplyw_pl": "impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie"
         },
         "symbol": "S_rG",
+        "symbol_latex": "S_{rG}",
         "wyznaczenie_z_tabliczki": null
       },
       {
@@ -136,6 +148,7 @@
         "dopuszczalne_do": 0.5,
         "dopuszczalne_od": 0.05,
         "jednostka": "p.u. (S_rG, U_rG)",
+        "jednostka_latex": "\\mathrm{p.u.}\\ (S_{rG},\\ U_{rG})",
         "nazwa_pl": "reaktancja podprzejściowa nasycona",
         "parametr": "xd_subtransient_pu",
         "propozycja": {
@@ -149,6 +162,7 @@
           "wplyw_pl": "impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych"
         },
         "symbol": "x″d",
+        "symbol_latex": "x''_{d}",
         "wyznaczenie_z_tabliczki": null
       },
       {
@@ -156,6 +170,7 @@
         "dopuszczalne_do": 1.0,
         "dopuszczalne_od": 0.5,
         "jednostka": "1",
+        "jednostka_latex": "",
         "nazwa_pl": "znamionowy współczynnik mocy",
         "parametr": "cos_phi",
         "propozycja": {
@@ -169,6 +184,7 @@
           "wplyw_pl": "współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych"
         },
         "symbol": "cos φ_r",
+        "symbol_latex": "\\cos\\varphi_r",
         "wyznaczenie_z_tabliczki": null
       }
     ]

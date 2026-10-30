@@ -5,9 +5,9 @@ export const RCD_NN_STRINGS = {
   tytul: 'Nowy wyłącznik różnicowoprądowy nN',
   cel: 'Wstaw wyłącznik różnicowoprądowy (RCD) w tor zasilania instalacji odbioru nN — po co: w '
     + 'układzie TT ochronę przez samoczynne wyłączenie zasilania realizuje RCD (IEC 60364-4-41 '
-    + '§411.5); z czego: typ RCD z katalogu (APARAT_NN_RCD — prąd różnicowy znamionowy I_Δn, '
+    + '§411.5); z czego: typ RCD z katalogu (APARAT_NN_RCD — prąd różnicowy znamionowy $I_{\\Delta n}$, '
     + 'rodzaj prądu różnicowego, czasy wyłączenia); co daje: ocena SWZ układu TT liczy prąd '
-    + 'doziemny przez uziomy R_A i R_B, porównuje go z I_Δn, a czas wyłączenia t_a z tabelą '
+    + 'doziemny przez uziomy $R_A$ i $R_B$, porównuje go z $I_{\\Delta n}$, a czas wyłączenia $t_a$ z tabelą '
     + 'czasów — bez RCD analiza odmawia kodem nn.brak_rcd.',
   odznaka: 'Nowy RCD',
 
@@ -37,17 +37,17 @@ export const RCD_NN_STRINGS = {
   nazwaPlaceholder: 'np. RCD instalacji budynku A',
 
   paramSekcja: 'Parametry z katalogu (odczyt rekordu, bez przeliczeń)',
-  paramIdn: 'Prąd różnicowy znamionowy I_Δn',
+  paramIdn: 'Prąd różnicowy znamionowy $I_{\\Delta n}$',
   paramRodzaj: 'Rodzaj prądu różnicowego',
   paramSelektywny: 'Selektywny (typ S)',
   paramTak: 'tak',
   paramNie: 'nie',
-  paramTa1: 'Czas wyłączenia t_a przy I_Δn',
-  paramTa2: 'Czas wyłączenia t_a przy 2·I_Δn',
-  paramTa5: 'Czas wyłączenia t_a przy 5·I_Δn',
+  paramTa1: 'Czas wyłączenia $t_a$ przy $I_{\\Delta n}$',
+  paramTa2: 'Czas wyłączenia $t_a$ przy $2 \\cdot I_{\\Delta n}$',
+  paramTa5: 'Czas wyłączenia $t_a$ przy $5 \\cdot I_{\\Delta n}$',
   paramTnz: 'Minimalny czas niezadziałania',
-  paramIn: 'Prąd znamionowy In',
-  paramUn: 'Napięcie znamionowe Un',
+  paramIn: 'Prąd znamionowy $I_n$',
+  paramUn: 'Napięcie znamionowe $U_n$',
   paramZrodlo: 'Podstawa danych',
 
   kontrolaTytul: 'Kontrola wyłącznika',
@@ -58,8 +58,8 @@ export const RCD_NN_STRINGS = {
   downstreamTytul: 'Co dalej',
   downstreamOpis: 'Wyłącznik wchodzi do modelu jako aparat toru nN z wiązaniem katalogowym. '
     + 'Ocenę ochrony przeciwporażeniowej obwodu w układzie TT (prąd doziemny, napięcie dotykowe, '
-    + 'czas wyłączenia) zobaczysz w zakładce SWZ po uzupełnieniu rezystancji uziomu instalacji R_A '
-    + 'odbioru i uziomu R_B punktu neutralnego transformatora.',
+    + 'czas wyłączenia) zobaczysz w zakładce SWZ po uzupełnieniu rezystancji uziomu instalacji $R_A$ '
+    + 'odbioru i uziomu $R_B$ punktu neutralnego transformatora.',
 
   zapisz: 'Zapisz wyłącznik',
   anuluj: 'Anuluj',

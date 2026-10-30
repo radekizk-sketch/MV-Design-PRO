@@ -155,7 +155,7 @@ function RozbicieCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
     >
       <dl className="mvd-apar-czas-pola">
         <div>
-          <dt>{T.czasSuma}</dt>
+          <dt><TekstZWzorami tekst={T.czasSuma} /></dt>
           <dd className="mvd-num">{sekundy(czas.t_clearing_s)}</dd>
         </div>
         <div>

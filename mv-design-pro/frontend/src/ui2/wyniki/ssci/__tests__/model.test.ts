@@ -74,7 +74,7 @@ describe('naMetryki — brak danych karty', () => {
 describe('opisRezystancjiUjemnej — informacja o modelu przekształtnika', () => {
   it('strefa obecna: częstotliwość i Re_min z backendu', () => {
     expect(opisRezystancjiUjemnej(widokZMetrykamiFixture().verdict)).toBe(
-      'obecna (przy f 28,00 Hz, Re_min -0,0125 Ω)',
+      'obecna (przy $f$ 28,00 Hz, $\\mathrm{Re}_{\\min}$ -0,0125 Ω)',
     );
   });
 

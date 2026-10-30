@@ -75,8 +75,8 @@ export const ETYKIETY_POL_WEJSCIA: Readonly<Record<PoleLiczboweWejscia, string>>
   dead_band_hz: 'Strefa nieczułości [Hz]',
   ramp_rate_pct_per_min: 'Szybkość zmiany mocy [%/min]',
   cos_phi_min: 'Minimalny współczynnik mocy cosφ',
-  q_range_pct_pn_min: 'Zakres Q — dolna granica [p.u. P_n]',
-  q_range_pct_pn_max: 'Zakres Q — górna granica [p.u. P_n]',
+  q_range_pct_pn_min: 'Zakres Q — dolna granica [p.u. $P_n$]',
+  q_range_pct_pn_max: 'Zakres Q — górna granica [p.u. $P_n$]',
   reactive_current_gain: 'Wzmocnienie prądu biernego k',
   p_recovery_time_s: 'Czas odbudowy mocy czynnej po zwarciu [s]',
   harmonic_thdu_percent: 'Współczynnik THD napięcia [%]',
@@ -85,9 +85,9 @@ export const ETYKIETY_POL_WEJSCIA: Readonly<Record<PoleLiczboweWejscia, string>>
 
 /** Etykiety pól nastaw zabezpieczeń (słownik Banku Nastaw, jednostki z nazw pól). */
 export const ETYKIETY_POL_NASTAW: Readonly<Record<PoleNastawy, string>> = {
-  u_min_pu: 'U< — próg [p.u. U_n]',
+  u_min_pu: 'U< — próg [p.u. $U_n$]',
   u_min_czas_s: 'U< — czas [s]',
-  u_max_pu: 'U> — próg [p.u. U_n]',
+  u_max_pu: 'U> — próg [p.u. $U_n$]',
   u_max_czas_s: 'U> — czas [s]',
   f_min_hz: 'f< — próg [Hz]',
   f_min_czas_s: 'f< — czas [s]',

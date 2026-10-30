@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { tekstZrodlowy } from '../../../../test/tekstZWzorami';
 import { render, screen, within } from '@testing-library/react';
 import { KartaPrzypadku } from '../KartaPrzypadku';
 import { PRZYPADKI_STRINGS as T, STATUS_WYNIKOW_LABEL } from '../strings';
@@ -50,7 +51,7 @@ describe('KartaPrzypadku — karta z konfiguracją', () => {
       <KartaPrzypadku przypadek={studyCaseFixture('K1', 'A')} ladowanie={false} blad={null} />,
     );
     const zalozenia = screen.getByRole('region', { name: T.sekcjaZalozenia });
-    expect(within(zalozenia).getByTestId('mvd-karta-zalozenie-c-nosnik')).toHaveTextContent(
+    expect(tekstZrodlowy(within(zalozenia).getByTestId('mvd-karta-zalozenie-c-nosnik'))).toBe(
       T.zalozenieCNosnik,
     );
     // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: przypadek nie niesie c ani t_k — żadnej liczby c.

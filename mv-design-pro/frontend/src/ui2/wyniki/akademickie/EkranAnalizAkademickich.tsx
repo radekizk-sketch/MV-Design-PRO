@@ -644,7 +644,13 @@ function SekcjaDane({
               <li className="mvd-akad-dane-pozycja" key={parametr.klucz}>
                 <span className="mvd-akad-dane-nazwa">
                   <TekstZWzorami tekst={parametr.nazwa_pl} />
-                  {parametr.jednostka !== '-' && parametr.jednostka !== '' && ` [${parametr.jednostka}]`}
+                  {parametr.jednostka !== '-' && parametr.jednostka !== '' && (
+                    <>
+                      {' ['}
+                      <TekstZWzorami tekst={parametr.jednostka} />
+                      {']'}
+                    </>
+                  )}
                   <span
                     className={
                       parametr.wymagane
@@ -1094,7 +1100,7 @@ function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown 
               : odczytaj(payload, pole.odniesienieSciezka);
           return (
             <div className="mvd-akad-wiersz" key={pole.sciezka}>
-              <span className="mvd-akad-wiersz-etyk">{pole.etykieta}</span>
+              <span className="mvd-akad-wiersz-etyk"><TekstZWzorami tekst={pole.etykieta} /></span>
               {pole.postac === 'tekst' ? (
                 <span className="mvd-akad-wiersz-wartosc">
                   <TekstZWzorami tekst={String(wartosc)} />
@@ -1102,11 +1108,11 @@ function PanelWielkosci({ rodzaj, payload }: { rodzaj: string; payload: unknown 
               ) : (
                 <span className="mvd-akad-wiersz-wartosc mvd-num">
                   {fmtPole(wartosc)}
-                  {pole.jednostka !== undefined && ` ${pole.jednostka}`}
+                  {pole.jednostka !== undefined && <> <TekstZWzorami tekst={pole.jednostka} /></>}
                   {odniesienie !== undefined && odniesienie !== null && (
                     <span className="mvd-akad-odniesienie">
                       {` (${pole.odniesienieEtykieta ?? S.odniesienieDomyslne}: ${fmtWartosc(odniesienie)}`}
-                      {pole.jednostka !== undefined && ` ${pole.jednostka}`}
+                      {pole.jednostka !== undefined && <> <TekstZWzorami tekst={pole.jednostka} /></>}
                       {')'}
                     </span>
                   )}
@@ -1174,8 +1180,14 @@ function PanelObiektow({
                 <th>{tabela.etykietaRef}</th>
                 {tabela.kolumny.map((kolumna) => (
                   <th key={kolumna.klucz}>
-                    {kolumna.etykieta}
-                    {kolumna.jednostka !== undefined && ` [${kolumna.jednostka}]`}
+                    <TekstZWzorami tekst={kolumna.etykieta} />
+                    {kolumna.jednostka !== undefined && (
+                      <>
+                        {' ['}
+                        <TekstZWzorami tekst={kolumna.jednostka} />
+                        {']'}
+                      </>
+                    )}
                   </th>
                 ))}
               </tr>
@@ -1246,7 +1258,7 @@ function PanelBrakow({ payload }: { payload: unknown }) {
           <p className="mvd-akad-opis">{S.brakiLista}</p>
           <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-braki-lista">
             {listaBrakow.map((pole) => (
-              <li key={pole}>{NAZWY_BRAKUJACYCH_POL[pole] ?? pole}</li>
+              <li key={pole}><TekstZWzorami tekst={NAZWY_BRAKUJACYCH_POL[pole] ?? pole} /></li>
             ))}
           </ul>
         </>
@@ -1635,7 +1647,7 @@ function PanelOdniesien({ namespace }: { namespace: string }) {
             <div className="mvd-akad-wiersze" data-testid="mvd-akad-katalog-wiersze">
               {stan.pozycje.map((pozycja, indeks) => (
                 <div className="mvd-akad-wiersz" key={`${indeks}-${pozycja.etykieta}`}>
-                  <span className="mvd-akad-wiersz-etyk">{pozycja.etykieta}</span>
+                  <span className="mvd-akad-wiersz-etyk"><TekstZWzorami tekst={pozycja.etykieta} /></span>
                   <span className="mvd-akad-wiersz-wartosc">{pozycja.wartosc}</span>
                 </div>
               ))}

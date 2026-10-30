@@ -13,6 +13,7 @@
  * Zero fizyki, zero mutacji, zero wołań API z tego pliku.
  */
 
+import { TekstZWzorami, tekstBezWzorow } from '../../kreatory/rama';
 import type { ZrodloSiecioweSlad } from '../../../ui/results-inspector/types';
 import { TabelaWynikow, useNazwaObiektu } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
@@ -37,9 +38,9 @@ export function SladZrodelSieciowych({
     <section
       className="mvd-zwarcia-zrodla"
       data-testid="mvd-zwarcia-zrodla"
-      aria-label={ZWARCIA_STRINGS.zrodlaTytul}
+      aria-label={tekstBezWzorow(ZWARCIA_STRINGS.zrodlaTytul)}
     >
-      <h3 className="mvd-zwarcia-wklady-tytul">{ZWARCIA_STRINGS.zrodlaTytul}</h3>
+      <h3 className="mvd-zwarcia-wklady-tytul"><TekstZWzorami tekst={ZWARCIA_STRINGS.zrodlaTytul} /></h3>
       {wiersze.length === 0 ? (
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-zrodla-brak">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.zrodlaNiedostepne}</p>

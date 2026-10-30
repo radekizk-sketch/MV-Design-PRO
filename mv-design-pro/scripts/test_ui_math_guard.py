@@ -359,6 +359,185 @@ def test_main_pomija_pliki_z_wylaczonych_wzorcow(monkeypatch, tmp_path: Path) ->
 
 
 # ---------------------------------------------------------------------------
+# Goły indeks symbolu (decyzja architekta 2026-10-30, karta UX-04/ZU): `U_f`, `I_C`, `Z_0`
+# w tekście UI poza wzorem `$...$`/`*_latex`. Iloczyn cech: alfabet litery (łaciński/grecki) ×
+# postać indeksu (litery, cyfry, Unicode, klamry) × kontekst (proza, wzór `$...$`, LaTeX,
+# identyfikator kodu, stała kodu w/poza kontekstem tekstu UI) × język pliku (TS/Python).
+# ---------------------------------------------------------------------------
+
+GOLY = "goly indeks symbolu"
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Napięcie fazy doziemionej U_f",
+        "I_C",
+        "impedancja Z_0 transformatora",
+        "Czułość (I_k2min/I>)",
+        "Prąd różnicowy I_Δn",
+        "Sprawność η_n",
+        "cos φ_r",
+        "Moc zwarciowa S_k''",
+        "Z_{grid}(f)",
+        "× I_n",
+    ],
+)
+def test_goly_indeks_wykryty_w_prozie(tekst: str) -> None:
+    assert any(GOLY in t for t in guard._dopasowania(tekst)), tekst
+
+
+@pytest.mark.parametrize(
+    "tekst",
+    [
+        "Napięcie fazy doziemionej $U_f$",
+        "$I_C$",
+        r"impedancja $Z_{0,\mathrm{TU}}$ transformatora",
+        r"$I_{\Delta n}$ i $\eta_n$",
+        r"I_{\mathrm{res}}",
+        "bus_ref",
+        "u_pu@",
+        "nn.brak_r_a",
+        "kod SC_1F i NO_TRIP",
+        "zwykły tekst bez symbolu",
+    ],
+)
+def test_goly_indeks_nie_wykryty_we_wzorze_i_w_kodzie(tekst: str) -> None:
+    assert not any(GOLY in t for t in guard._dopasowania(tekst)), tekst
+
+
+def test_stala_kodu_jest_kodem_tylko_poza_kontekstem_tekstu_ui() -> None:
+    # Predykat parami: ta sama wartość jest kodem albo etykietą — decyduje kontekst, nie treść.
+    assert not any(GOLY in t for t in guard._dopasowania("I_A", stala_kodu_dozwolona=True))
+    assert any(GOLY in t for t in guard._dopasowania("I_A", stala_kodu_dozwolona=False))
+    assert not any(GOLY in t for t in guard._dopasowania("V_MAGNITUDE", stala_kodu_dozwolona=True))
+    # Proza ze spacją nigdy nie jest stałą kodu.
+    assert any(GOLY in t for t in guard._dopasowania("Prąd I_A", stala_kodu_dozwolona=True))
+
+
+def test_skanuj_ts_stala_kodu_poza_modulem_tekstow_przechodzi(tmp_path: Path) -> None:
+    plik = tmp_path / "api.ts"
+    plik.write_text(
+        "export type Rodzaj =\n  | 'V_MAGNITUDE'\n  | 'P_FLOW';\n"
+        "const kod = { meas_type: 'V_MAGNITUDE' };\n",
+        encoding="utf-8",
+    )
+    assert guard.skanuj_ts(plik) == []
+
+
+def test_skanuj_ts_ta_sama_stala_w_module_tekstow_jest_etykieta(tmp_path: Path) -> None:
+    plik = tmp_path / "strings.ts"
+    # Klucz `rnKolIA` nie pasuje do `KLUCZ_TEKSTU_UI_RE` — rozstrzyga sam moduł `strings.ts`.
+    plik.write_text("export const S = {\n  rnKolIA: 'I_A',\n};\n", encoding="utf-8")
+    wyniki = guard.skanuj_ts(plik)
+    assert [(n, GOLY in powod) for n, _l, powod in wyniki] == [(2, True)]
+
+
+def test_skanuj_ts_stala_jako_wartosc_wlasciwosci_tekstowej_jest_etykieta(tmp_path: Path) -> None:
+    plik = tmp_path / "model.ts"
+    plik.write_text(
+        "const k = { klucz: 'u', etykieta: 'U_m', jednostka: 'kV' };\n", encoding="utf-8"
+    )
+    wyniki = guard.skanuj_ts(plik)
+    assert len(wyniki) == 1 and GOLY in wyniki[0][2]
+
+
+def test_skanuj_ts_wlasciwosc_latex_pominieta_a_tekstowa_obok_wykryta(tmp_path: Path) -> None:
+    """Para cech: {wlasciwosc LaTeX `symbolLatex:`/`formula_latex:`, wlasciwosc tekstowa} ×
+    {ta sama linia, osobne linie}. Wartosc pola LaTeX jest zrodlem `MathInline` (jak `*_latex`
+    w Pythonie), etykieta z gołym indeksem w tej samej linii pozostaje wykryta."""
+    plik = tmp_path / "parametry.ts"
+    plik.write_text(
+        "const a = { symbol: 'Isc', symbolLatex: 'I_{sc}' };\n"
+        "const b = { formula_latex: 'P_{st} = c_i' };\n"
+        "const c = { symbolLatex: 'I_{th}', etykieta: 'I_th aparatu' };\n",
+        encoding="utf-8",
+    )
+    wyniki = guard.skanuj_ts(plik)
+    assert [numer for numer, _linia, _powod in wyniki] == [3]
+    assert GOLY in wyniki[0][2]
+
+
+def test_skanuj_ts_pomija_komentarz_blokowy(tmp_path: Path) -> None:
+    plik = tmp_path / "Plik.tsx"
+    plik.write_text("/** Etykieta: `nazwa · I_Δn w mA`. */\nconst x = 1;\n", encoding="utf-8")
+    assert guard.skanuj_ts(plik) == []
+
+
+def test_skanuj_py_pola_latex_i_identyfikator_symbolu_w_parze_pominiete(tmp_path: Path) -> None:
+    plik = tmp_path / "katalog.py"
+    plik.write_text(
+        "from dataclasses import dataclass\n"
+        "@dataclass(frozen=True)\n"
+        "class Wielkosc:\n"
+        "    symbol: str\n"
+        "    nazwa_pl: str\n"
+        "    symbol_latex: str\n"
+        "A = Wielkosc('R_g', 'Rezystancja uziomu', r'R_g')\n"
+        "B = Wielkosc(symbol='U_c', nazwa_pl='Napięcie', symbol_latex=r'U_c')\n"
+        "C = {'symbol': 'I_C', 'symbol_latex': 'I_C'}\n",
+        encoding="utf-8",
+    )
+    assert guard.skanuj_py(plik) == []
+
+
+def test_skanuj_py_identyfikator_bez_pary_i_proza_wykryte(tmp_path: Path) -> None:
+    plik = tmp_path / "katalog.py"
+    plik.write_text(
+        "from dataclasses import dataclass\n"
+        "@dataclass(frozen=True)\n"
+        "class Parametr:\n"
+        "    symbol: str\n"
+        "    jednostka: str\n"
+        "A = Parametr('I_k', 'kA')\n"
+        "B = Parametr(symbol='t_b', jednostka='× I_n')\n"
+        "C = ('Prąd ' 'I_n' ' na rząd')\n",
+        encoding="utf-8",
+    )
+    linie = sorted({n for n, _l, powod in guard.skanuj_py(plik) if GOLY in powod})
+    assert linie == [6, 7, 8]
+
+
+def test_iniekcja_golego_indeksu_w_kopii_realnego_modulu_czerwieni_main(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Iniekcja na kopii REALNYCH plików ze skanu: drzewo czyste (main == 0), a jeden goły
+    indeks dopisany do kopii modułu tekstów i do kopii katalogu backendu czerwieni strażnika
+    każdy osobno (main == 1)."""
+    zrodlo_ts = guard.FRONTEND_UI2 / "wyniki" / "stan-fazowy" / "strings.ts"
+    frontend_ui2 = tmp_path / "frontend" / "src" / "ui2"
+    frontend_ui2.mkdir(parents=True)
+    kopia_ts = frontend_ui2 / "strings.ts"
+    kopia_ts.write_text(zrodlo_ts.read_text(encoding="utf-8"), encoding="utf-8")
+    kopie_py = []
+    for zrodlo_py in guard.BACKEND_PLIKI:
+        kopia = tmp_path / zrodlo_py.name
+        kopia.write_text(zrodlo_py.read_text(encoding="utf-8"), encoding="utf-8")
+        kopie_py.append(kopia)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "FRONTEND_UI2", frontend_ui2)
+    monkeypatch.setattr(guard, "BACKEND_PLIKI", tuple(kopie_py))
+    monkeypatch.setattr(guard, "WYJATKI_ZNANE", frozenset())
+    monkeypatch.setattr(guard, "PIN", 0)
+    assert guard.main() == 0
+
+    oryginal_ts = kopia_ts.read_text(encoding="utf-8")
+    kopia_ts.write_text(
+        oryginal_ts.replace("rnKolUA: '$U_A$',", "rnKolUA: 'U_A',"), encoding="utf-8"
+    )
+    assert kopia_ts.read_text(encoding="utf-8") != oryginal_ts
+    assert guard.main() == 1
+    kopia_ts.write_text(oryginal_ts, encoding="utf-8")
+
+    oryginal_py = kopie_py[0].read_text(encoding="utf-8")
+    kopie_py[0].write_text(
+        oryginal_py.replace('"% $I_n$ na rząd"', '"% I_n na rząd"'), encoding="utf-8"
+    )
+    assert kopie_py[0].read_text(encoding="utf-8") != oryginal_py
+    assert guard.main() == 1
+
+
+# ---------------------------------------------------------------------------
 # Pomiar realny — dokumentuje intencje PIN (zapadka, nie liczba magiczna).
 # ---------------------------------------------------------------------------
 

@@ -1360,18 +1360,22 @@ piny mypy 163/21 i `raise ValueError` 79, trzy strażniki naprawione po `guardy_
 etykiety wielkości doziemienia E-29 jako wzory, spec `v126-okna-zrzuty` z szyną stacji z modelu
 własnej sieci.
 
-**W toku (decyzja architekta w sprawie `ui_math_guard`).** Strażnik wykrywa goły indeks
-symbolu (`U_f`, `I_C`, `Z_0`, `I_Δn`, `φ_r`) w tekstach UI (`ui2/**` i dwa moduły katalogu
-backendu); skan Pythona po drzewie `ast` pomija wyłącznie pola `*_latex` i identyfikator
-`symbol` w parze z `symbol_latex`; stała kodu TS (`'V_MAGNITUDE'`) jest kodem tylko poza modułem
-`strings.ts` i poza właściwością tekstową. Pomiar przed naprawą: 122 trafienia w 31 plikach
-(117 wzorcem łacińskim, 5 dalszych po dopuszczeniu liter greckich), po naprawie 0 = PIN. Naprawa:
-symbole jako `$…$` składane przez `TekstZWzorami` (rama kreatora: etykieta, błąd, pomoc,
-opis przełącznika, nota sekcji, cel, informacja, podsumowanie, następny krok; tabela wyników,
-założenia, ekrany SSCI, stanu fazowego, analiz V12.6, NC RfG, OZE), atrybuty i natywne
-`<option>` przez `tekstBezWzorow`. Do zrobienia: testy vitest/e2e zależne od etykiet,
-samotest strażnika z iniekcją, proza podstawy `doziemienie_sn.py` (+ regeneracja parytetu),
-fikstury generowane, biegi weryfikacyjne.
+**W toku (decyzja architekta w sprawie `ui_math_guard`) — commit WIP, weryfikacja trwa.**
+Strażnik wykrywa goły indeks symbolu (`U_f`, `I_C`, `Z_0`, `I_Δn`, `φ_r`) w tekstach UI
+(`ui2/**` i dwa moduły katalogu backendu); skan Pythona po drzewie `ast` pomija wyłącznie pola
+`*_latex` i identyfikator `symbol` w parze z `symbol_latex`, skan TS — wartość właściwości
+`*_latex:`/`*Latex:`; stała kodu TS (`'V_MAGNITUDE'`) jest kodem tylko poza modułem `strings.ts`
+i poza właściwością tekstową. Pomiar przed naprawą: 122 trafienia w 31 plikach, po naprawie
+0 = PIN; samotest 66 passed, iniekcje (wyłączenie wzorca, reguły pary, kontekstu `strings.ts`,
+reguły pola LaTeX TS) czerwienią. Naprawa: symbole jako `$…$` składane przez `TekstZWzorami`,
+atrybuty i natywne `<option>` przez `tekstBezWzorow`. Klasa dynamiczna (symbol z danych
+renderowany tekstem): SSCI — kolumna „Wzór” z `formula_latex`; ślady migotania, łuku
+i `SladAnalizy` — etykieta „Wzór” bez identyfikatora kroku; karta techniczna katalogu —
+`symbolLatex` 54 definicji przez `MathInline`; rejestr maszyn wirujących — `symbol_latex`
+i `jednostka_latex` z backendu (fikstura frontu przegenerowana testem
+`test_parametry_robocze_maszyn.py`). Nazwa parametru katalogu V12.6 bez wzorów (kontrakt
+komunikatów gotowości). Pola kreatora mają powiązanie etykieta–kontrolka (`useId`).
+Zostaje: proza podstawy `doziemienie_sn.py` (+ regeneracja parytetu), biegi weryfikacyjne.
 
 **Biegi w kolejce.** Zestaw celowany backendu (bieg `cel7`) i e2e `v126-okna-zrzuty`,
 `v126-jezyk-screenshot`, `dowody-flow-ekspert-screenshot` (bieg `e2e12`) — pod blokadą;

@@ -61,7 +61,7 @@
           {
             "klucz": "harmonic_spectra",
             "nazwa_pl": "Widmo harmoniczne przekształtnika (wejście ręczne)",
-            "jednostka": "% I_n per rząd",
+            "jednostka": "% $I_n$ na rząd",
             "wymagane": false,
             "opis_pl": "Nadpisuje widmo karty katalogowej wskazanego przekształtnika."
           }
@@ -687,7 +687,7 @@
           {
             "klucz": "inrush_multiple_in",
             "nazwa_pl": "Krotność prądu załączania transformatora",
-            "jednostka": "× I_n",
+            "jednostka": "× $I_n$",
             "wymagane": true,
             "opis_pl": "Właściwość transformatora — model jej nie niesie."
           }
@@ -870,7 +870,7 @@
           },
           {
             "klucz": "motors[].rated_efficiency",
-            "nazwa_pl": "Sprawność znamionowa η_n",
+            "nazwa_pl": "Sprawność znamionowa",
             "jednostka": "-",
             "wymagane": false,
             "opis_pl": "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana przyjęta wyniku)."

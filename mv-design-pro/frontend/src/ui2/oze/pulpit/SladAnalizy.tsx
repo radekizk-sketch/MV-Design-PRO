@@ -8,8 +8,10 @@
  * jednostek. `formula_latex` to czysty LaTeX z backendu (MathInline,
  * fail-safe fallback w MathRenderer); pola tekstowe (podstawienie, wynik,
  * jednostki) mogą nieść wzory inline w delimiterach `$...$` — renderuje je
- * `TekstZWzorami`. Krok bez wzoru (formula_latex = '') pokazuje wyłącznie
- * etykietę symbolu. Zero ocen własnych, zero fizyki — dane z backendu.
+ * `TekstZWzorami`. Identyfikator kroku `symbol` (np. `ΣQ_zrodla` z backendu) NIE jest
+ * pokazywany przy wzorze — symbol wielkości niesie sam wzór KaTeX-em (`ui_math_guard`, karta
+ * UX-04/ZU). Krok bez wzoru (formula_latex = '', wyłącznie kroki lokalne z nazwą prozą,
+ * np. „konwencja znaku”) pokazuje tę nazwę. Zero ocen własnych, zero fizyki — dane z backendu.
  */
 
 import { MathInline } from '../../../ui/proof/MathRenderer';
@@ -53,7 +55,7 @@ export function SladAnalizy({ kroki }: SladAnalizyProps): JSX.Element {
       {kroki.map((krok) => (
         <li key={krok.symbol} className="mvd-oze-slad-krok">
           {krok.formula_latex ? (
-            <Pole etykieta={`${PULPIT_STRINGS.sladWzor} (${krok.symbol})`}>
+            <Pole etykieta={PULPIT_STRINGS.sladWzor}>
               <MathInline latex={krok.formula_latex} />
             </Pole>
           ) : (

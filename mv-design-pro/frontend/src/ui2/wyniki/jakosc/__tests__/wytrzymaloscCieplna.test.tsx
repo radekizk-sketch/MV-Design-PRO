@@ -287,7 +287,15 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
     fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz([pozycja()])));
     render(<SekcjaWytrzymaloscCieplna {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
-    expect(screen.getByText(/I_th ≤ I_th\(1s\)/)).toBeTruthy();
+    // Kryterium jest wzorem KaTeX (`ui_math_guard`), nie tekstem ASCII `I_th ≤ I_th(1s)`.
+    expect(
+      screen
+        .getAllByTestId('math-rendered')
+        .some(
+          (wzor) =>
+            wzor.getAttribute('data-latex') === '$I_{th} \\leq I_{th(1\\,\\mathrm{s})} / \\sqrt{t}$',
+        ),
+    ).toBe(true);
     expect(screen.getByText('BUS-02')).toBeTruthy();
   });
 });

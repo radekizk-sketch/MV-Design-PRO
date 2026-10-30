@@ -478,8 +478,10 @@ def test_uziom_komplet_bez_pradu_jest_potwierdzony_pradem_z_modelu() -> None:
     assert "z modelu" in prad.opis_pl and "2 z 2" in prad.opis_pl
     assert prad.elementy == (_SZYNA_STACJI,)
     dane = {d.nazwa_pl: d.wartosc_pl for d in wynik.dane_z_modelu}
-    assert any("sieć SN 15 kV" in k and v.startswith("I_C = ") for k, v in dane.items()), dane
-    assert any("sieć WN 110 kV" in k and v.startswith("I″k1 = ") for k, v in dane.items()), dane
+    assert any("sieć SN 15 kV" in k and v.startswith("$I_C$ = ") for k, v in dane.items()), dane
+    assert any(
+        "sieć WN 110 kV" in k and v.startswith("$I''_{k1}$ = ") for k, v in dane.items()
+    ), dane
 
 
 @pytest.mark.parametrize("brakujacy_klucz", list(_UZIOM_KOMPLETNY))
@@ -666,7 +668,7 @@ def test_neutral_earthing_design_z_rezystorem_czyta_rezystor_modelu() -> None:
     czas = kody["parametr.ner_clearing_time_s"]
     assert czas.spelniony is False and czas.blokujacy is False
     rezystory = [d for d in wynik.dane_z_modelu if d.nazwa_pl.startswith("Rezystor punktu")]
-    assert len(rezystory) == 1 and "R = " in rezystory[0].wartosc_pl
+    assert len(rezystory) == 1 and "$R$ = " in rezystory[0].wartosc_pl
     pelne = ocen_gotowosc_v126(
         enm, V126AnalysisType.NEUTRAL_EARTHING_DESIGN, {"ner_clearing_time_s": 1.0}
     )

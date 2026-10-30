@@ -148,13 +148,13 @@ export const POLA_SILNIKA: readonly DefinicjaPola[] = [
   { klucz: 'load_start_torque_pu', etykieta: 'Moment obciążenia przy rozruchu', rodzaj: 'liczba', jednostka: 'j.w.' },
   {
     klucz: 'rated_power_factor',
-    etykieta: 'Znamionowy współczynnik mocy cos φ_n',
+    etykieta: 'Znamionowy współczynnik mocy $\\cos\\varphi_n$',
     rodzaj: 'liczba',
     opis: 'Z tabliczki maszyny. Puste = wartość robocza rejestru maszyn (dana przyjęta w wyniku).',
   },
   {
     klucz: 'rated_efficiency',
-    etykieta: 'Sprawność znamionowa η_n',
+    etykieta: 'Sprawność znamionowa $\\eta_n$',
     rodzaj: 'liczba',
     opis: 'Z tabliczki maszyny. Puste = wartość robocza rejestru maszyn (dana przyjęta w wyniku).',
   },
@@ -324,8 +324,8 @@ export const PARAMETRY_RODZAJU: Record<RodzajAnalizy, ZestawParametrow> = {
         etykieta: 'Napięcie znamionowe łącznika',
         rodzaj: 'liczba',
         jednostka: 'kV',
-        opis: 'Puste = napięcie najwyższe urządzenia U_m sieci SN modelu (IEC 60038 tab. 3–5; '
-          + 'U_r aparatu = U_m, IEC 62271-1).',
+        opis: 'Puste = napięcie najwyższe urządzenia $U_m$ sieci SN modelu (IEC 60038 tab. 3–5; '
+          + '$U_r$ aparatu równe $U_m$, IEC 62271-1).',
       },
       {
         klucz: 'trv_natural_frequency_hz',

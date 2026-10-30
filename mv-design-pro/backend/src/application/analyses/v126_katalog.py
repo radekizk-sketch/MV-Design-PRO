@@ -381,7 +381,7 @@ _PARAMETRY_SILNIKA: tuple[ParametrUzytkownika, ...] = (
     ),
     ParametrUzytkownika(
         "motors[].rated_efficiency",
-        "Sprawność znamionowa η_n",
+        "Sprawność znamionowa",
         "-",
         False,
         "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana "
@@ -456,7 +456,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ParametrUzytkownika(
                 "harmonic_spectra",
                 "Widmo harmoniczne przekształtnika (wejście ręczne)",
-                "% I_n per rząd",
+                "% $I_n$ na rząd",
                 False,
                 "Nadpisuje widmo karty katalogowej wskazanego przekształtnika.",
             ),
@@ -946,7 +946,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ParametrUzytkownika(
                 "inrush_multiple_in",
                 "Krotność prądu załączania transformatora",
-                "× I_n",
+                "× $I_n$",
                 True,
                 "Właściwość transformatora — model jej nie niesie.",
             ),

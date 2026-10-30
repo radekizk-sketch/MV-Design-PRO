@@ -49,7 +49,7 @@ export const APARATURA_STRINGS = {
   blad: 'Nie udało się sprawdzić wytrzymałości aparatury.',
   bladUwaga: 'Ocenę wystawia obliczenie wytrzymałości — bez jego odpowiedzi nie ma podstawy do oceny.',
   // Rozbicie czasu wyłączenia (KD-6 poz. 3) — WHITE BOX: suma i oba człony.
-  czasSuma: 'Czas wyłączenia t_wył',
+  czasSuma: 'Czas wyłączenia $t_{\\mathrm{wył}}$',
   czasCzlonNastawczy: 'Człon nastawczy zabezpieczenia',
   czasWlasny: 'Czas własny wyłącznika',
   czasZrodlo: 'Źródło czasu',
