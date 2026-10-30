@@ -36,7 +36,7 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
     curves = repo.list_protection_curves()
     templates = repo.list_protection_setting_templates()
 
-    assert len(devices) >= 14
+    assert len(devices) >= 22
     assert len(curves) >= 8
     assert len(templates) >= 8
 
@@ -46,7 +46,8 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
 
     # Karta FAB-A/D-33: 5 pozycji sa profilami REFERENCYJNYMI bez marki
     # (catalog_status REFERENCYJNY_V1, verification_status REFERENCYJNY) —
-    # pozostale 7 (Elektrometal e2TANGO) sa analitycznymi rekordami producenta.
+    # 7 wpisow e2TANGO legacy pozostaje ANALITYCZNY; 10 nowszych/weryfikowanych
+    # typow SN to CZESCIOWO_ZWERYFIKOWANY/REFERENCYJNY (nie dane nastaw).
     assert {data["catalog_status"] for data in device_dicts} == {
         CatalogStatus.ANALITYCZNY_V1.value,
         CatalogStatus.REFERENCYJNY_V1.value,
@@ -110,6 +111,14 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
         "EM_ETANGO_2000_V0",
         "EM_E2TANGO_250",
         "EM_E2TANGO_450",
+        "EM_E2TANGO_100",
+        "EM_E2TANGO_150",
+        "EM_E2TANGO_200",
+        "EM_E2TANGO_400",
+        "EM_E2TANGO_600",
+        "EM_E2TANGO_800",
+        "EM_E2TANGO_1000",
+        "EM_E2TANGO_1200",
     }
 
 def test_new_etango_families_are_catalogued_without_guessed_functions() -> None:
