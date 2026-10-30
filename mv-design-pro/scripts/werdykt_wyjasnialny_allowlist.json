@@ -116,36 +116,36 @@
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "application.proof_engine.packs.sc_asymmetrical:SCAsymmetricalPackResult.all_passed",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 8), klasa C44 jak `SC3FPackResult.all_passed`: koniunkcja flag spójności jednostek dowodów SC1 (`summary.unit_check_passed`) — wewnętrzna kontrola jakości dokumentu, nie ocena wobec kryterium; niedrukowana (plakietka PASS/FAIL zdjęta z LaTeX-a), bez konsumenta produkcyjnego poza eksportem pakietu.",
    "wiersz_inwentarza": null
   },
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "application.proof_engine.packs.sc_symmetrical:SC3FPackResult.all_passed",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 8), ta sama klasa co inwentarz C44 (`ProofSummary.unit_check_passed`, `UnitCheckResult.passed` — ENUM_WEWNETRZNY): `all_passed` opakowania pakietu SC3F to przepisana flaga spójności jednostek dowodu (`proof.summary.unit_check_passed`) — wewnętrzna kontrola jakości dokumentu dowodowego, nie ocena wobec kryterium inżynierskiego. Nie jest drukowana: raport LaTeX nie ma już plakietki PASS/FAIL (C44 „stop printing”), DOCX pokazuje derywację jednostek kroku. Opakowanie nie ma konsumenta produkcyjnego poza eksportem pakietu.",
    "wiersz_inwentarza": null
   },
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "application.proof_engine.proof_inspector.types:SummaryView.overall_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C41 opisuje ten plik, nie ten symbol.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 8): widok inspektora przepisuje 1:1 `ProofSummary.overall_status` (ENUM_WEWNETRZNY C44) — kod agregatu pakietu dla filtrów i API; pakiety, które rozstrzygają wymagania (dowód obwodu nN), wyprowadzają go projekcją rekordów K (`werdykt.porownanie.projekcja_statusu`), a rekordy z wyjaśnieniem niosą kroki dowodu. Inspektor nie ma konsumenta HTTP ani frontu.",
    "wiersz_inwentarza": "C41 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "application.proof_engine.proof_inspector.types:SummaryView.unit_check_passed",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C41 opisuje ten plik, nie ten symbol.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 8), klasa C44: widok inspektora przepisuje 1:1 `ProofSummary.unit_check_passed` (ENUM_WEWNETRZNY C44) — flaga spójności jednostek, nie ocena wobec kryterium. Inspektor dowodu nie ma konsumenta HTTP ani frontu (eksporty JSON/TeX/PDF/DOCX nie drukują tej flagi jako werdyktu).",
    "wiersz_inwentarza": "C41 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "1_backend",
    "tozsamosc": "application.proof_engine.proof_inspector.types:UnitCheckView.passed",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C41 opisuje ten plik, nie ten symbol.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta WERDYKT-MIGRACJA-190 (domena 8), klasa C44: widok kroku przepisuje 1:1 `UnitCheckResult.passed` (ENUM_WEWNETRZNY C44) razem z derywacją jednostek (`derivation`, `expected_unit`, `computed_unit`) — to derywacja jest treścią dla człowieka; flaga jest wewnętrzną kontrolą jakości dowodu.",
    "wiersz_inwentarza": "C41 (dopasowanie po pliku)"
   },
   {
@@ -770,20 +770,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C48 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "C48"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.latex_renderer:LaTeXRenderer._render_summary:FAIL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Inwentarz C44: plakietka „Weryfikacja jednostek: PASS/FAIL” w podsumowaniu dowodu LaTeX — flaga jakości wewnętrznej, w części pakietów zaszyta na `True`; zalecenie inwentarza „stop printing”. Zdjęcie zmienia złote pliki dowodów SC1 (`tests/golden/sc_asymmetrical/*/proof.tex`), których ta karta nie rusza (złote nietknięte) — fala WW-1 razem z F2, plan AB §8. Wydruk DOCX „OK/BŁĄD” tej samej flagi zdjęty kartą AB-1a Pakiet E2 (derywacja jednostek).",
-   "wiersz_inwentarza": "C44"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.latex_renderer:LaTeXRenderer._render_summary:PASS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Inwentarz C44: plakietka „Weryfikacja jednostek: PASS/FAIL” w podsumowaniu dowodu LaTeX — flaga jakości wewnętrznej, w części pakietów zaszyta na `True`; zalecenie inwentarza „stop printing”. Zdjęcie zmienia złote pliki dowodów SC1 (`tests/golden/sc_asymmetrical/*/proof.tex`), których ta karta nie rusza (złote nietknięte) — fala WW-1 razem z F2, plan AB §8. Wydruk DOCX „OK/BŁĄD” tej samej flagi zdjęty kartą AB-1a Pakiet E2 (derywacja jednostek).",
-   "wiersz_inwentarza": "C44"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",

@@ -3,7 +3,7 @@
 Gałąź `claude/mv-design-pro-twin-audit-u4lhy0-werdykt-migracja`, drzewo `/home/user/wt-werdykt`.
 Cel karty: lista `scripts/werdykt_wyjasnialny_allowlist.json` bez wpisów MIGRACJA (strażnik
 `scripts/werdykt_wyjasnialny_guard.py`). Stan bazowy karty (`b1e677ced`): MIGRACJA 190,
-ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 72, ENUM_WEWNETRZNY 58** (strażnik RC=0).
+ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 65, ENUM_WEWNETRZNY 63** (strażnik RC=0).
 
 ## Domeny
 
@@ -16,7 +16,7 @@ ENUM_WEWNETRZNY 49. Stan teraz: **MIGRACJA 72, ENUM_WEWNETRZNY 58** (strażnik R
 | 5. Wzorce odniesienia A i C (+ API, PDF/DOCX) | 18 | 0 | zmigrowane — w commicie WIP (testy wzorców i API 56+175 zielone, 4 iniekcje czerwone bez naprawy) |
 | 6. Modele analiz: siła sieci B11, adekwatność Q B10, SSCI B12, wgląd zabezpieczeń B7 | 8 | 1 | siła sieci B11 zmigrowana (rekord K SCR na węzeł i WSCR, `verdict`/`is_weak` projekcją, front pulpitu OZE i kontekst sekwencji FRT z etykietą i kartą rekordu); adekwatność Q B10 zmigrowana (rekord W: rezerwy w górę/w dół każdego źródła wobec ε i pasmo napięcia węzłów; nasycenie i naruszenie projekcją rekordów; brak danych źródła ≠ wystarczająca); SSCI B12 zmigrowana (wyjaśnienie rekordu `NIE_OCENIONO` przy polu werdyktu, model i ładunek HTTP); B7 `ProtectionInsightItem.selectivity_status` ZATRZYMANE do decyzji architekta — klasa bez producenta w produkcji (wejście zawsze `None` w `pokrycie_analiz`/`wrazliwosc_rozplywu`), a ocena pokrycia odejmuje 5 pkt za „Brak analizy zabezpieczeń”, której nic nie dostarcza |
 | 7. nN / SWZ (C25, C27, C29, C30, arkusz obwodów, E75, E77, fieldLabels) | 22 | 0 | zmigrowane: SWZ TN z rekordu W (`swz.tn`), dobór aparatu nN z rekordów K, arkusz obwodów z rekordami w komórkach; pakiet dowodowy obwodu nN (C30) — kroki 4–5 z rekordów doboru (jedna reguła), krok 6 jako dwa rekordy K zdolności wyłączania (kombinacja / goły aparat, `NIE_DOTYCZY` z powodem) ze wspólnej reguły `ocena_zdolnosci_wylaczania`, krok 7 z rekordu `th.ocena`, krok 10 z rekordu W SWZ (`swz_wymaganie`), agregat obwodu projekcją rekordów; nakładka SWZ i karta obwodu nN z etykiety rekordu (`tonRysunkuEtykiety`/`znakEtykiety` w `KartaWerdyktu.tsx`, jedna tabela warunków TN i TT/IT). ENUM_WEWNETRZNY: 4 koperty arkusza obwodów, koperta sekcji raportu nN, `communicationStatusLabel`, `BayRuntimeState.secondary_communication_status`, `BaySwitchState.communication_ok` (stan telemetrii / dostępność danych, nie ocena) |
-| 8. Proof Engine / audyt (C41, C44, C48, A36, sc_symmetrical/asymmetrical) | 19 | 19 | nietknięte |
+| 8. Proof Engine / audyt (C41, C44, C48, A36, sc_symmetrical/asymmetrical) | 19 | 12 | w toku: plakietka „Weryfikacja jednostek: PASS/FAIL” zdjęta z podsumowania LaTeX (C44 „stop printing”, jak DOCX; złote `tests/golden/sc_asymmetrical/*/proof.tex` −2 linie); flagi spójności jednostek opakowań SC3F/SC1 i widoki inspektora → ENUM_WEWNETRZNY (ta sama klasa co zaakceptowane C44). Zostają: audyt 2 (A36/A37/B17), `api.proof_pack` (C48), `protection_read_model` (C39), `equipment_proof` (C33) |
 | 9. Frontend pozostały (D18…D72, E20…E62, SLD v2 G1–G9, NnSwitchgearCard) | 38 | 32 | nietknięte poza wpisami usuniętymi razem z grupami 2–4 |
 | 10. Pozostałe (archiwum, importy, preflight B20, kreator C54, katalogi audit2, reference_engine) | 24 | 14 | w części przeklasyfikowane na ENUM_WEWNETRZNY z uzasadnieniem; reszta nietknięta |
 | FRT/HVRT A13 (`network_model/solvers/frt_hvrt/contracts.py`, `FrtHvrtResult.status`, `FrtScenarioResult.status`, `FrtScenarioResult.stayed_connected`) | 3 | 3 | ZATRZYMANE — rdzeń FROZEN z `scripts/rdzenie_b01.py` (wiersz „FRT/HVRT”), wymaga decyzji B-01 |
@@ -63,6 +63,13 @@ niesie rekord K walidacji energetycznej; porównanie widoku przed/po: 2 linie te
   za brak I²t (zapadka `solver_input_substitute_guard` 45/208 → 44/206).
 - Iniekcje domeny 7: kombinacja MCB bez `NIE_DOTYCZY` → 10 testów pakietu czerwonych; status
   nakładki SWZ wymuszony na `SPELNIA` → 4 testy frontu czerwone.
+
+## Znalezisko poza kartą (stan bazy karty)
+
+`tests/golden/parytet_assemblera/test_parytet_assemblera.py` czerwony już na `b1e677ced`
+(57 rozjazdów szkieletu `SC_1F_max`: nowe pole `doziemienie_sieci`/`brak_wyniku_zerowego`
+z karty doziemienia SN); obszar `doziemienie_sn.py` jest poza granicą tej karty — do
+regeneracji złotego pliku przez kartę ZU (zmiana zamierzona po jej stronie).
 
 ## Pierwszy krok następcy
 

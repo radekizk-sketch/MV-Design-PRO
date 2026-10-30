@@ -229,19 +229,11 @@ class LaTeXRenderer:
 
             lines.append(r"\end{itemize}")
 
-        lines.extend(
-            [
-                "",
-                rf"Liczba kroków: {doc.summary.total_steps}",
-                "",
-                r"Weryfikacja jednostek: "
-                + (
-                    r"\textcolor{green}{PASS}"
-                    if doc.summary.unit_check_passed
-                    else r"\textcolor{red}{FAIL}"
-                ),
-            ]
-        )
+        # Bez plakietki „Weryfikacja jednostek: PASS/FAIL” (inwentarz werdyktów C44): flaga
+        # spójności jednostek jest wewnętrzną kontrolą jakości dowodu, nie oceną wobec
+        # kryterium inżynierskiego; każdy krok niesie własną derywację jednostek
+        # (`_render_step`), tak jak eksport DOCX (`proof_inspector/exporters.py`).
+        lines.extend(["", rf"Liczba kroków: {doc.summary.total_steps}"])
 
         if doc.summary.warnings:
             lines.append("")
