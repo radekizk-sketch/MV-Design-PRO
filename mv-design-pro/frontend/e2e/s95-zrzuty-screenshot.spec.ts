@@ -20,7 +20,7 @@ import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
-import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
+import { czekajNaStabilnaGeometrie, punktNaWierzchu } from './stabilnaGeometria';
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
@@ -172,9 +172,11 @@ test('S9-5 — zrzuty menu kontekstowego na klasach obiektów kanwy (oba motywy)
       // jest dokładnie ten kształt, który karta S9-4 uczyniła klikalnym.
       // Spoczynek kadru po zamknięciu poprzedniego menu (klasa G karty FIX-E2E-PELNE).
       await czekajNaStabilnaGeometrie(uchwyt);
-      const box = await uchwyt.boundingBox();
-      if (!box) continue;
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+      // Punkt NA kresce, w którym uchwyt jest na wierzchu — środek prostokąta łamanego
+      // odcinka leży w tle i otwierał menu TŁA zamiast menu obiektu.
+      const punkt = await punktNaWierzchu(uchwyt);
+      expect(punkt, `uchwyt klasy ${wpis.klasa} nie jest na wierzchu w żadnym punkcie`).not.toBeNull();
+      await page.mouse.click(punkt!.x, punkt!.y, { button: 'right' });
       const menu = page.getByRole('menu');
       if (!(await menu.isVisible({ timeout: 5000 }).catch(() => false))) {
         // Obiekt świadomie bez menu (rysunek bez odpowiednika w modelu) —

@@ -23,7 +23,7 @@
  * naprawdę urosnąć, nie tylko rysunek.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { czekajNaStabilnaGeometrie } from './stabilnaGeometria';
+import { czekajNaStabilnaGeometrie, punktNaWierzchu } from './stabilnaGeometria';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 /**
@@ -160,26 +160,6 @@ async function czekajNaWarstweTrafien(page: Page): Promise<void> {
     .toBeGreaterThan(0);
 }
 
-/** Punkt NA geometrii uchwytu (środek długości ścieżki dla kresek, środek
- *  prostokąta dla pozostałych). Odcinek bywa ŁAMANY — środek jego prostokąta
- *  gabarytowego leży poza kreską i klik trafiłby w tło (pomiar S9-10). */
-async function punktNaUchwycie(
-  uchwyt: ReturnType<Page['locator']>,
-): Promise<{ x: number; y: number }> {
-  return uchwyt.evaluate((el) => {
-    const geo = el as unknown as SVGGeometryElement;
-    if (typeof geo.getTotalLength === 'function' && typeof geo.getPointAtLength === 'function') {
-      const p = geo.getPointAtLength(geo.getTotalLength() / 2);
-      const ctm = geo.getScreenCTM();
-      if (ctm) {
-        return { x: ctm.a * p.x + ctm.c * p.y + ctm.e, y: ctm.b * p.x + ctm.d * p.y + ctm.f };
-      }
-    }
-    const r = el.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-  });
-}
-
 async function prawyKlikWUchwyt(page: Page, uchwyt: ReturnType<Page['locator']>) {
   // Czekamy, aż uchwyt trafienia ma NIEZEROWY prostokąt na ekranie (sam byt
   // w DOM nie wystarcza: element poza `viewBox` jest nieklikalny).
@@ -193,8 +173,9 @@ async function prawyKlikWUchwyt(page: Page, uchwyt: ReturnType<Page['locator']>)
   // `locator.click` odrzuca cienkie kreski SVG jako „niewidoczne" (heurystyka
   // aktorowalności Playwrighta), a to jest właśnie ten kształt, który karta
   // S9-4 uczyniła klikalnym — więc celujemy myszą, nie omijamy ścieżki.
-  const punkt = await punktNaUchwycie(uchwyt);
-  await page.mouse.click(punkt.x, punkt.y, { button: 'right' });
+  const punkt = await punktNaWierzchu(uchwyt);
+  expect(punkt, 'uchwyt obiektu nie jest na wierzchu w żadnym punkcie swojej geometrii').not.toBeNull();
+  await page.mouse.click(punkt!.x, punkt!.y, { button: 'right' });
   const menu = page.getByRole('menu');
   await expect(menu).toBeVisible({ timeout: 15000 });
   return menu;
