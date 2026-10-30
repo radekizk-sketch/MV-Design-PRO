@@ -1360,7 +1360,7 @@ piny mypy 163/21 i `raise ValueError` 79, trzy strażniki naprawione po `guardy_
 etykiety wielkości doziemienia E-29 jako wzory, spec `v126-okna-zrzuty` z szyną stacji z modelu
 własnej sieci.
 
-**W toku (decyzja architekta w sprawie `ui_math_guard`) — commit WIP, weryfikacja trwa.**
+**Decyzja architekta w sprawie `ui_math_guard` — wykonana i zweryfikowana (biegi końcowe niżej).**
 Strażnik wykrywa goły indeks symbolu (`U_f`, `I_C`, `Z_0`, `I_Δn`, `φ_r`) w tekstach UI
 (`ui2/**` i dwa moduły katalogu backendu); skan Pythona po drzewie `ast` pomija wyłącznie pola
 `*_latex` i identyfikator `symbol` w parze z `symbol_latex`, skan TS — wartość właściwości
@@ -1397,3 +1397,24 @@ uziomu. Parser zwraca teraz `NIEJEDNOZNACZNA` przy kilku różnych etykietach te
 wpisy słownika wskazują stałą (`plik.ts STALA.klucz`: 25 wpisów uziomu i silnika, `feeder_ref`
 w `ODBIOR_STRINGS` — `ODBIOR_SN_STRINGS` ma tę samą etykietę z inną treścią). Iniekcja (silnik
 bez stałej, nazwa uziomu) — czerwień; plik testu 106 passed.
+
+**Biegi końcowe — stan zamknięcia (2026-10-30).** Zestaw celowany backendu (13 katalogów i plików
+testów, xdist 4): 4 failed, 24 556 passed — cztery skutki commitu 5 naprawione u źródła
+(commit f25913de1: inwentarz `build_zbus`, wpisy czasów po kasacji P19, zakres wpisów pakietu L,
+pin mypy w metateście). `guardy_z_ci`: 107/107 strażników zielonych, lint i type-check zielone,
+samotesty 2 failed, 4601 passed — naprawione (commit 88de3b242: pin pól kontraktów 4503 z pomiarem,
+glob testu wzorów bez plików testów). E2E: `v126-okna-zrzuty`, `v126-jezyk-screenshot`,
+`dowody-flow-ekspert-screenshot`, `zwarcie-przez-impedancje-przejscia` — powtórka na czystym
+drzewie 19 passed, kod 0; `ZRZUTY_DO_DOKUMENTACJI=1` `doziemienie-slad-zrzuty-screenshot` 9 passed,
+osiem PNG odświeżonych (werdykt wizualny — właściciel, B-02).
+
+**Następca — co zostaje (pomiar, nie odroczenie w obrębie decyzji architekta).** Decyzja dotyczyła
+tekstów UI `ui2/**` (pin 0) i prozy `doziemienie_sn.py` (zrobione). Poza nią zmierzone i niezrobione:
+proza backendu z gołymi indeksami (2101 surowych trafień w 195 plikach, z fałszywymi trafieniami;
+największe `proof_engine` 885, `solvers` 355, `analyses` 168, `catalog` 167), warstwa `ui/**`
+(173 trafienia w 28 plikach), symbole spłaszczone do Unicode w `ui2` (`Ik″`, `Ith`, `Pmax`, `cosφ`:
+~253 literały w 42 plikach, także osie wykresów SVG) oraz nazwy pól w komunikatach operacji
+(`a_P`, `k_pf` — tekst API bez KaTeX-a). Każda z tych klas wymaga decyzji architekta o zakresie
+strażnika; specy e2e `menu-schematu-nn`, `w5e-ttit-nn`, `kanon-menu-sld` podają dane
+transformatorów 110/SN przy równoważniku SN (ten sam defekt co naprawiony spec Z_f, karta GPZ-MODEL)
+— w zakresie równoległej karty czerwonych e2e pełnego biegu.
