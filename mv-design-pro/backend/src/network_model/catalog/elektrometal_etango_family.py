@@ -11,11 +11,12 @@ Brak wypełnionej DTR / kodu zamówieniowego = brak podstaw do nastaw.
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 from typing import Any
 
 # Dane celowo proste, bez nowego modelu domenowego ani nowej tabeli SQL.
 # Źródła: oficjalne strony i karty Elektrometal Energetyka.
-_FAMILY: list[dict[str, Any]] = [
+_FAMILY: list[dict[str, Any]] = json.loads(\n    r'''\n[
   {
     "id": "EM_E2TANGO_50",
     "model": "e²TANGO-50",
@@ -40,9 +41,9 @@ _FAMILY: list[dict[str, Any]] = [
       "RCUx",
       "RCUxR"
     ],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_100",
@@ -57,9 +58,9 @@ _FAMILY: list[dict[str, Any]] = [
     "funkcje_publikowane": [],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_150",
@@ -79,9 +80,9 @@ _FAMILY: list[dict[str, Any]] = [
       "G",
       "LG"
     ],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_200",
@@ -99,9 +100,9 @@ _FAMILY: list[dict[str, Any]] = [
       "S",
       "U"
     ],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_250",
@@ -134,9 +135,9 @@ _FAMILY: list[dict[str, Any]] = [
       "S",
       "U"
     ],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_400",
@@ -151,9 +152,9 @@ _FAMILY: list[dict[str, Any]] = [
     "funkcje_publikowane": [],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_450",
@@ -184,9 +185,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_600",
@@ -250,9 +251,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_800",
@@ -316,9 +317,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_1000",
@@ -382,9 +383,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_1200",
@@ -448,9 +449,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_2000_ODL",
@@ -467,9 +468,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_2000_TRR",
@@ -486,9 +487,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_2000_STP",
@@ -508,9 +509,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_2000_ARN",
@@ -525,9 +526,9 @@ _FAMILY: list[dict[str, Any]] = [
     "funkcje_publikowane": [],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_2000_LRR",
@@ -544,9 +545,9 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   },
   {
     "id": "EM_E2TANGO_SZR_PPZ",
@@ -563,11 +564,13 @@ _FAMILY: list[dict[str, Any]] = [
     ],
     "status_funkcji": "DEKLARACJA_RODZINY_LUB_ROLI_NIE_AKTYWNA_KONFIGURACJA",
     "wykonania_wg_zrodla": [],
-    "aktywnie_wlaczone_funkcje": None,
-    "nastawy": None,
-    "przekladnia_ct": None
+    "aktywnie_wlaczone_funkcje": null,
+    "nastawy": null,
+    "przekladnia_ct": null
   }
 ]
+    '''
+)
 
 # Do katalogu kanonicznego dodajemy TYLKO istniejące wyroby nadające się do
 # ręcznego doboru w polu SN. e²TANGO-50 jest DETEKTOREM, WN=poza tym zakresem,
