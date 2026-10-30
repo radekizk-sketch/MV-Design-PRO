@@ -62,8 +62,10 @@ async function dodajZrodloSn(request: APIRequestContext, caseId: string): Promis
             catalog_item_id: SOURCE_ID,
             catalog_item_version: CATALOG_VERSION,
           },
-          hv_voltage_kv: 110.0,
-          transformer_sn_mva: 25.0,
+          // Równoważnik na szynach SN GPZ: bez kluczy transformatorów 110/SN (`hv_voltage_kv`,
+          // `transformer_*`) — od karty GPZ-MODEL backend ich odmawia
+          // (`source.transformer_requires_hv_equivalent`), bo moc zwarciowa na szynach SN już
+          // zawiera impedancję transformatorów. Intencja speca (GPZ SN zasilający ciąg) bez zmian.
         },
       },
     },

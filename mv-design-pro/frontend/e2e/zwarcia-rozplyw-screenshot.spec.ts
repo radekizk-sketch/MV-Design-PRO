@@ -41,6 +41,7 @@ import { nazwaElementu } from './nazwyModelu';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { formatMagnitudeKa } from '../src/ui/sld-overlay/FaultContributionArrow';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -70,6 +71,15 @@ const pradToru = (nazwa: string): number =>
       .filter((wklad) => wklad.branch_name === nazwa)
       .map((wklad) => wklad.i_ka),
   );
+/** Wkłady toru sieci nadrzędnej i toru falownika ze sceny schematu (fikstura biegu
+ *  `falowniki_rozplyw_scena_gpz_feeder_wynik`, ta sama, którą czyta harness). */
+const ROZPLYW_SCHEMATU = (
+  czytajFiksture('falowniki_rozplyw_scena_gpz_feeder_wynik') as {
+    flows: { source_id: string; i_ka: number }[];
+  }
+).flows;
+const PRAD_TORU_SIECI_KA = ROZPLYW_SCHEMATU.find((f) => f.source_id === 'THEVENIN_GRID')!.i_ka;
+const PRAD_TORU_FALOWNIKA_KA = ROZPLYW_SCHEMATU.find((f) => f.source_id !== 'THEVENIN_GRID')!.i_ka;
 const kaPl = (wartosc: number): string =>
   wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 const CREATOR_HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -209,11 +219,13 @@ test.describe('zwarcia-schemat:screenshot', () => {
       await expect(overlayLayer.getByTestId('sld-v3-fault-point-marker-dot')).toBeVisible();
       await expect(overlayLayer.getByTestId('sld-v3-fault-point-marker-pulse')).toBeVisible();
 
-      // Etykiety UCZCIWE: tor Thevenina „9,1 kA" (realny bieg gpzFeeder, GPZ
-      // 250 MVA), tor falownika w amperach („16 A" — falownik 0,4 MW Stacji
-      // S02; zaokrąglenie do „0,0 kA" fałszowałoby realny wkład).
-      await expect(overlayLayer).toContainText('9,1 kA');
-      await expect(overlayLayer).toContainText('16 A');
+      // Etykiety UCZCIWE: tor Thevenina w kA (realny bieg gpzFeeder, GPZ 250 MVA),
+      // tor falownika w amperach (falownik 0,4 MW Stacji S02; zaokrąglenie do
+      // „0,0 kA" fałszowałoby realny wkład). Liczby z fikstury biegu, którą karmi się
+      // scena — nie literał: literał „9,1 kA" przeżył przegenerowanie fikstury kartą
+      // GPZ-MODEL (8,64 kA) i czerwienił spec, choć ekran pokazywał prawdę.
+      await expect(overlayLayer).toContainText(formatMagnitudeKa(PRAD_TORU_SIECI_KA));
+      await expect(overlayLayer).toContainText(formatMagnitudeKa(PRAD_TORU_FALOWNIKA_KA));
 
       // Kadr do oceny właściciela bez legendy symboli arkusza (nakładała się
       // na tor rozpływu w małej fixturze) — ukrycie CZYSTO prezentacyjne,

@@ -103,6 +103,11 @@ async function utworzProjektISiec(request: APIRequestContext): Promise<{
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    // Pole liniowe GPZ z wyłącznikiem z katalogu. Od karty GEOMETRIA-STACJI aparat
+    // ciągłości pola na L0 pochodzi z REKORDU modelu (dawniej wyłącznik rysowany
+    // z konwencji w każdym polu); GPZ bez aparatury pól pokazuje sylwetkę braku danych.
+    // Intencja bramki („LOD nie ukrywa łączników toru") wymaga więc pola z łącznikiem.
+    gpz_line_field_apparatus: { catalog_binding: buildCatalogBinding('APARAT_SN', FIELD_APPARATUS_ID) },
   });
   let op: DomainOpResponse = {};
   for (const [idx, length] of [400, 350, 300, 250].entries()) {

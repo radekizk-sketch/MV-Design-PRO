@@ -153,8 +153,10 @@ async function zbudujSiecZeStacja(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
+    // Równoważnik na szynach SN GPZ: bez kluczy transformatorów 110/SN (`hv_voltage_kv`,
+    // `transformer_*`) — od karty GPZ-MODEL backend ich odmawia
+    // (`source.transformer_requires_hv_equivalent`), bo moc zwarciowa na szynach SN już
+    // zawiera impedancję transformatorów. Intencja speca (GPZ SN zasilający ciąg) bez zmian.
   });
 
   for (const [idx, length] of [300, 250, 200].entries()) {
