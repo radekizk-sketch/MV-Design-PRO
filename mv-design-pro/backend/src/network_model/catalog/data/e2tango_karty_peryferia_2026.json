@@ -945,14 +945,14 @@
     },
     {
       "id": "R-PSU2",
-      "opis": "PSU2 zajmuje 2 sąsiadujące poziomo sloty; wariant 110–220 V AC/DC",
+      "opis": "PSU2 zajmuje 2 sąsiadujące poziomo sloty; wariant 110–220 V AC/DC Starsza angielska karta K-3.2.24 (02/2026) podaje inną orientację przykładów par C+E/D+F; porównanie rewizji wymaga potwierdzenia przy zamówieniu.",
       "models": [
         "600",
         "800",
         "1000",
         "1200"
       ],
-      "status": "POTWIERDZONE"
+      "status": "ROZNICA_MIEDZY_REWIZJAMI"
     },
     {
       "id": "R-ARC-ARP",
@@ -1047,7 +1047,7 @@
     },
     {
       "id": "R-450-NAMES",
-      "opis": "K-43.1.7 używa 6O3I i AO10/AO20, bieżący formularz online 603I i A010/A020; nie tworzyć odrębnych modeli dla literówek bez potwierdzenia Dodatkowo formularz online nazywa kartę 603I '6 wejść przekaźnikowych', podczas gdy karta K-43.1.7 opisuje 6 wyjść przekaźnikowych; do schematów wykorzystać wyłącznie sprawdzony opis wyjść/terminali DTR.",
+      "opis": "K-43.1.7 używa 6O3I i AO10/AO20, bieżący formularz online 603I i A010/A020; nie tworzyć odrębnych modeli dla literówek bez potwierdzenia Dodatkowo formularz online nazywa kartę 603I '6 wejść przekaźnikowych', podczas gdy karta K-43.1.7 opisuje 6 wyjść przekaźnikowych; do schematów wykorzystać wyłącznie sprawdzony opis wyjść/terminali DTR. W K-3.2.25 opis kart funkcjonalnych zawiera zapis 40UTH, natomiast formularz kod 4OUTH: brak podstaw do tworzenia nowej karty 40UTH.",
       "models": [
         "450"
       ],
