@@ -73,7 +73,7 @@ def test_enea_vt_trzy_wtorne_to_nie_dowod_otwartego_trojkata() -> None:
                    for w in p["secondary_windings"])
         assert all(w.get("connection") != "OPEN_DELTA_THREE_PHASE_BANK"
                    for w in p["secondary_windings"])
-        assert "przekładni" in p["verification_note"]
+        assert "Trzy wtórne napięcia" in p["verification_note"]
         d = repo.vt_types[item["id"]].to_dict()
         assert d["secondary_windings"] == p["secondary_windings"]
         assert VTType.from_dict(d).to_dict() == d
