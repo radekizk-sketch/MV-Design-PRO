@@ -1,9 +1,12 @@
 """Importer symboli QElectroTech pola liniowego SN (karta UX-04/POLE-LINIOWE-WZORZEC).
 
 Przypina: (1) świeżość i determinizm wygenerowanej geometrii TS, (2) zgodność gabarytów
-i portów z siatką schematu, (3) regułę noża (zamknięcie = obrót na styk stały), (4) jednolity
-kwadratowy kafel stanu łączników (wymaganie właściciela 2026-10-29: jeden bok z jednej stałej
-manifestu dla każdego łącznika z nożem), (5) stopień symboli LOD2 (uwaga właściciela 2026-10-29:
+i portów z siatką schematu, (3) układ kafla łącznika wg wzorca HMI e²TANGO (decyzja
+właściciela 2026-10-30: zawias noża u dołu, styk stały u góry, nóż pionowy = zamknięty, ukośny
+= otwarty; znacznik rodzaju aparatu przy styku stałym w jednym rozmiarze 22–28 % boku kafla,
+z marginesem i bez kolizji z nożem w żadnym położeniu; symbol ziemi pod uziemnikiem skierowany
+w dół), (4) jednolity kwadratowy kafel stanu łączników (wymaganie właściciela 2026-10-29: jeden
+bok z jednej stałej manifestu dla każdego łącznika z nożem), (5) stopień symboli LOD2 (uwaga właściciela 2026-10-29:
 glif aparatu ok. 55–70 % boku kafla, kreska glifu proporcjonalna do kafla, symbole toru w spójnym
 stopniu), (6) ciągłość toru przez symbol (każdy port osiągnięty przewodem albo rysunkiem) oraz
 (7) zachowanie fail-closed importera na danych niezaufanych — każda iniekcja w kopii katalogu
@@ -118,122 +121,195 @@ def test_gabaryty_i_porty_na_siatce_schematu():
         assert math.isclose(os_x * 2, s["szerokosc"]), s["id"]
 
 
-def test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione():
-    manifest = json.loads(qet.MANIFEST.read_text(encoding="utf-8"))
-    po_id = {s["id"]: s for s in _symbole()}
-    lacznikowe = {w["symbolId"] for w in manifest["symbole"] if w.get("noz")}
-    # Wyłącznik z napędem silnikowym M (wymaganie właściciela 2026-10-29 pkt 4) jest osobnym
-    # symbolem z nożem — ta sama reguła noża i ten sam kafel co wyłącznik bez napędu. Tak samo
-    # łącznik trójpołożeniowy z napędem zasobnikowym z obsługą ręczną (decyzja architekta
-    # 2026-10-30: napęd jest atrybutem łącznika `BayPrimaryDevice.naped`, symbol wybiera go
-    # z modelu) — ten sam nóż i te same położenia co łącznik bez napędu.
-    trojpolozeniowe = {"qetThreePositionSwitch", "qetThreePositionSwitchZNapedem"}
-    assert (
-        lacznikowe
-        == {
-            "qetBreaker",
-            "qetBreakerZNapedem",
-            "qetDisconnector",
-            "qetLoadBreakSwitch",
-            "qetFuseSwitch",
-            "qetEarthSwitch",
-        }
-        | trojpolozeniowe
-    )
+LACZNIKI_KAFLA = {
+    "qetBreaker",
+    "qetBreakerZNapedem",
+    "qetDisconnector",
+    "qetLoadBreakSwitch",
+    "qetFuseSwitch",
+    "qetEarthSwitch",
+    "qetThreePositionSwitch",
+    "qetThreePositionSwitchZNapedem",
+}
+TROJPOLOZENIOWE = {"qetThreePositionSwitch", "qetThreePositionSwitchZNapedem"}
+#: Tabela właściciela (decyzja 2026-10-30): rodzaj aparatu → znaczniki przy stykach stałych.
+#: Wyłącznik „×”; odłącznik „○”; rozłącznik — kreska styku z okręgiem (IEC 60617 S00290);
+#: uziemnik — sama kreska styku; łącznik trójpołożeniowy — znaczniki obu funkcji przy
+#: odpowiednich stykach stałych.
+ZNACZNIKI_WG_WLASCICIELA = {
+    "qetBreaker": {"closed": "wylacznik"},
+    "qetBreakerZNapedem": {"closed": "wylacznik"},
+    "qetDisconnector": {"closed": "odlacznik"},
+    "qetLoadBreakSwitch": {"closed": "rozlacznik"},
+    "qetFuseSwitch": {"closed": "rozlacznik"},
+    "qetEarthSwitch": {"closed": "uziemnik"},
+    "qetThreePositionSwitch": {"closed": "odlacznik", "earthed": "uziemnik"},
+    "qetThreePositionSwitchZNapedem": {"closed": "odlacznik", "earthed": "uziemnik"},
+}
+
+
+def _uklad(zlozone) -> dict:
+    return zlozone.manifest["kafelStanu"]["uklad"]
+
+
+def _swiat(zlozone, qet_jednostki: float) -> float:
+    return float(qet_jednostki) * zlozone.skala
+
+
+def _noz_w_polozeniu(noz: dict, polozenie: str) -> list[tuple[tuple[float, float], ...]]:
+    """Odcinki noża w położeniu — NIEZALEŻNIE od importera: zasięg = jednokładność wokół
+    przegubu, potem obrót SVG ``rotate(kąt cx cy)`` (oś y w dół, kąt dodatni zgodnie z ruchem
+    wskazówek zegara na ekranie)."""
+    cx, cy = noz["cx"], noz["cy"]
+    k = noz["zasiegi"][polozenie]
+    r = math.radians(noz["katy"][polozenie])
+
+    def przenies(x: float, y: float) -> tuple[float, float]:
+        dx, dy = (x - cx) * k, (y - cy) * k
+        return (cx + dx * math.cos(r) - dy * math.sin(r), cy + dx * math.sin(r) + dy * math.cos(r))
+
+    return [(przenies(p["x1"], p["y1"]), przenies(p["x2"], p["y2"])) for p in noz["prymitywy"]]
+
+
+def _probki_odcinka(a, b, krok: float = 0.05) -> list[tuple[float, float]]:
+    n = max(1, math.ceil(math.dist(a, b) / krok))
+    return [(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n) for i in range(n + 1)]
+
+
+def _probki_prymitywu(p: dict) -> list[tuple[float, float]]:
+    """Punkty linii środkowej prymitywu znacznika albo ziemi (linia, okrąg) — próbkowanie,
+    nie analityka importera (wyrocznia niezależna)."""
+    if p["k"] == "line":
+        return _probki_odcinka((p["x1"], p["y1"]), (p["x2"], p["y2"]))
+    if p["k"] == "circle":
+        return [
+            (
+                p["cx"] + p["r"] * math.cos(t / 720 * 2 * math.pi),
+                p["cy"] + p["r"] * math.sin(t / 720 * 2 * math.pi),
+            )
+            for t in range(720)
+        ]
+    raise AssertionError(f"prymityw {p['k']} poza znacznikiem i ziemią")
+
+
+def _obwiednia_prymitywow(prymitywy: list[dict]) -> tuple[float, float, float, float]:
+    xs, ys = [], []
+    for p in prymitywy:
+        if p["k"] == "line":
+            xs += [p["x1"], p["x2"]]
+            ys += [p["y1"], p["y2"]]
+        elif p["k"] == "circle":
+            xs += [p["cx"] - p["r"], p["cx"] + p["r"]]
+            ys += [p["cy"] - p["r"], p["cy"] + p["r"]]
+        else:
+            raise AssertionError(f"prymityw {p['k']} poza znacznikiem")
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def test_noz_ukladu_kafla_zawias_u_dolu_styk_u_gory_i_polozenia():
+    """Wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): zawias noża u dołu, styk stały
+    u góry, nóż PIONOWY = zamknięty (koniec noża w punkcie styku zamknięcia), UKOŚNY = otwarty
+    (kąt z jednej deklaracji układu), nieustalony = połowa drogi, skrócony; łącznik
+    trójpołożeniowy — uziemiony = nóż na zestyku uziemiającym PO PRAWEJ stronie osi (jak na
+    rysunku ENEA Zeszyt 1 Z.10 s.89), otwarty między zamkniętym a uziemionym. Geometria noża
+    wynika WYŁĄCZNIE ze stanu (uwaga właściciela 2026-10-30)."""
+    zlozone = qet.zloz_symbole_manifestu()
+    manifest = zlozone.manifest
+    po_id = {s["id"]: s for s in zlozone.symbole}
+    lacznikowe = {w["symbolId"] for w in manifest["symbole"] if w.get("ukladKafla")}
+    assert lacznikowe == LACZNIKI_KAFLA
+    # Nóż i kafel wyłącznie w układzie kafla — żaden symbol nie ma już dawnej deklaracji noża.
+    assert not any("noz" in w for w in manifest["symbole"])
+    uklad = _uklad(zlozone)
     for ident in lacznikowe:
-        noz = po_id[ident]["noz"]
-        katy = noz["katy"]
-        assert katy["closed"] != katy["open"]
-        assert all(p["k"] == "line" and p["nozStanu"] for p in noz["prymitywy"])
-        # Uwaga właściciela 2026-10-30 (kolor kafla i położenie noża sprzeczne): geometria noża
-        # wynika WYŁĄCZNIE ze stanu — nieznany jest położeniem pośrednim między otwartym
-        # a zamkniętym, różnym od każdego położenia pewnego (także w trójpołożeniowym, gdzie
-        # dawniej „nieznany jak otwarty" rysował nóż odłączony pod szarym kaflem „?").
-        assert math.isclose(katy["unknown"], (katy["open"] + katy["closed"]) / 2, abs_tol=1e-4)
+        s = po_id[ident]
+        noz = s["noz"]
+        katy, zasiegi = noz["katy"], noz["zasiegi"]
+        assert all(p["k"] == "line" and p["nozStanu"] for p in noz["prymitywy"]), ident
+        zamk = next(z for z in s["znaczniki"] if z["styk"] == "closed")
+        (ostrze, *_reszta) = _noz_w_polozeniu(noz, "closed")
+        # Nóż pionowy w osi toru (oś = środek kafla), zawias u dołu, koniec na styku zamknięcia.
+        # Kierunek linii źródła bez znaczenia: końce ostrza = {przegub, punkt styku zamknięcia}.
+        konce = sorted(ostrze, key=lambda q: q[1])
+        assert konce[1] == pytest.approx((noz["cx"], noz["cy"])), ident
+        assert konce[0] == pytest.approx((zamk["kotwica"]["x"], zamk["kotwica"]["y"])), ident
+        assert noz["cx"] == s["kafel"]["width"] / 2, ident
+        assert zamk["kotwica"]["y"] < noz["cy"], ident
+        assert katy["closed"] == 0 and zasiegi["closed"] == 1, ident
+        assert katy["open"] == uklad["noz"]["katOtwarty"] == 45, ident
+        assert zasiegi["open"] == 1, ident
+        assert katy["unknown"] == pytest.approx(katy["open"] / 2), ident
+        assert zasiegi["unknown"] == uklad["noz"]["zasiegNieustalony"], ident
         pewne = [katy[k] for k in ("open", "closed", "earthed") if k in katy]
         assert min(abs(katy["unknown"] - k) for k in pewne) >= 5, ident
-    for ident in trojpolozeniowe:
-        trojpol = po_id[ident]["noz"]["katy"]
-        # Trzy położenia pewne, każde z własną geometrią: otwarty (jawny kierunek manifestu —
-        # nóż źródła w 19° stykał się z kreską zestyku szynowego), zamknięty na zestyk toru
-        # (oś, w górę), uziemiony na zestyk uziemnika (w lewo, do symbolu ziemi) — trzy różne
-        # kierunki, uziemiony po przeciwnej stronie otwartego niż zamknięty.
-        assert trojpol["open"] != 0, ident
-        assert trojpol["earthed"] < trojpol["open"] < trojpol["closed"], ident
-        assert trojpol["closed"] - trojpol["open"] >= 30, ident
-        assert trojpol["open"] - trojpol["earthed"] >= 30, ident
-    # Napęd nie zmienia noża: kąty położeń łącznika z napędem równe kątom łącznika bez napędu.
-    assert (
-        po_id["qetThreePositionSwitchZNapedem"]["noz"]["katy"]
-        == po_id["qetThreePositionSwitch"]["noz"]["katy"]
-    )
-    # Dwupołożeniowe: otwarty = rysunek źródła, nieznany = połowa kąta zamknięcia.
-    for ident in lacznikowe - trojpolozeniowe:
-        katy = po_id[ident]["noz"]["katy"]
-        assert "earthed" not in katy
-        assert katy["open"] == 0
-        assert math.isclose(katy["unknown"], katy["closed"] / 2, abs_tol=1e-4)
+        # Otwarty: koniec noża po prawej stronie osi i niżej niż styk zamknięcia (nóż ukośny).
+        otw = min(_noz_w_polozeniu(noz, "open")[0], key=lambda q: q[1])
+        assert otw[0] > noz["cx"] and otw[1] > zamk["kotwica"]["y"], ident
+    for ident in TROJPOLOZENIOWE:
+        s = po_id[ident]
+        noz = s["noz"]
+        uziem = next(z for z in s["znaczniki"] if z["styk"] == "earthed")
+        assert noz["katy"]["earthed"] == 90, ident
+        assert noz["katy"]["closed"] < noz["katy"]["open"] < noz["katy"]["earthed"], ident
+        ostrze_e = _noz_w_polozeniu(noz, "earthed")[0]
+        koniec = max(ostrze_e, key=lambda q: math.dist(q, (noz["cx"], noz["cy"])))
+        assert koniec == pytest.approx((uziem["kotwica"]["x"], uziem["kotwica"]["y"]))
+        assert uziem["kotwica"]["x"] > noz["cx"], "zestyk uziemiający po prawej stronie osi"
+    for ident in lacznikowe - TROJPOLOZENIOWE:
+        assert "earthed" not in po_id[ident]["noz"]["katy"], ident
+    # Napęd nie zmienia noża ani znaczników: łącznik z napędem = łącznik bez napędu + osprzęt.
+    for bez, z in (
+        ("qetBreaker", "qetBreakerZNapedem"),
+        ("qetThreePositionSwitch", "qetThreePositionSwitchZNapedem"),
+    ):
+        for klucz in ("noz", "znaczniki", "ziemia", "przewody", "porty", "portyWtorne"):
+            assert po_id[bez][klucz] == po_id[z][klucz], (z, klucz)
+        assert po_id[bez]["osprzet"] == [] and po_id[z]["osprzet"], z
     # Intencja (bez zmian od pierwszej wersji): symbol złożony z kilku elementów QET istnieje
-    # tylko z jawną deklaracją złożenia — nigdy po cichu. Zbiór złożeń przypięty wprost: łącznik
+    # tylko z jawną deklaracją złożenia — nigdy po cichu. Złożenia przypięte wprost: łącznik
     # trójpołożeniowy (QET nie ma elementu; z napędem dodatkowo napęd energią zmagazynowaną
-    # EN 60617 02-13-20 i napęd ręczny EN 60617 02-13-01), oba wyłączniki (wyłącznik + cewka
-    # wyłączająca EN 60617 07-15-01 — koniec linii wyłączania; z napędem M dodatkowo napęd
-    # silnikowy) i przekładniki napięciowe wielouzwojeniowe (kopie elementu przekładnika,
-    # rysunek Z.11.1).
-    zlozone = {s["id"] for s in po_id.values() if s["zlozenie"]}
-    assert zlozone == {
+    # EN 60617 02-13-20 i napęd ręczny EN 60617 02-13-01), wyłącznik z napędem M, odłącznik
+    # (okrąg styku odłączającego 07-13-07 jako znacznik „○”), rozłącznik z bezpiecznikami
+    # (znacznik rozłącznika z 07-13-08 — ten sam co w rozłączniku), uziemnik (ziemia
+    # 02-15-01) i przekładniki napięciowe wielouzwojeniowe (kopie elementu przekładnika).
+    zlozone_ids = {s["id"] for s in po_id.values() if s["zlozenie"]}
+    assert zlozone_ids == {
         "qetThreePositionSwitch",
         "qetThreePositionSwitchZNapedem",
-        "qetBreaker",
         "qetBreakerZNapedem",
+        "qetDisconnector",
+        "qetFuseSwitch",
+        "qetEarthSwitch",
         "qetVoltageTransformer2",
         "qetVoltageTransformer3",
     }
     wiele_skladnikow = {w["symbolId"] for w in manifest["symbole"] if len(w["skladniki"]) > 1}
-    assert wiele_skladnikow == zlozone
+    assert wiele_skladnikow == zlozone_ids
     assert "złożenie z elementów QET" in po_id["qetThreePositionSwitch"]["zlozenie"]
-    assert "en_60617_02_13_26" in po_id["qetBreakerZNapedem"]["zlozenie"]
-    for element in (
-        "en_60617_07_13_07",
-        "en_60617_02_15_01",
-        "en_60617_02_13_20",
-        "en_60617_02_13_01",
+    for ident, element in (
+        ("qetBreakerZNapedem", "en_60617_02_13_26"),
+        ("qetDisconnector", "en_60617_07_13_07"),
+        ("qetFuseSwitch", "en_60617_07_13_08"),
+        ("qetEarthSwitch", "en_60617_02_15_01"),
+        ("qetThreePositionSwitchZNapedem", "en_60617_07_13_07"),
+        ("qetThreePositionSwitchZNapedem", "en_60617_02_15_01"),
+        ("qetThreePositionSwitchZNapedem", "en_60617_02_13_20"),
+        ("qetThreePositionSwitchZNapedem", "en_60617_02_13_01"),
     ):
-        assert element in po_id["qetThreePositionSwitchZNapedem"]["zlozenie"], element
-    for ident in ("qetBreaker", "qetBreakerZNapedem"):
-        assert "en_60617_07_15_01" in po_id[ident]["zlozenie"], ident
-    # Intencja: odcinek przewodu dorysowany przez importer (zacisk źródła WEWNĄTRZ kafla →
-    # krawędź) jest JAWNY w ``doprowadzenia``, pionowy, kończy się na krawędzi w stronę portu
-    # i ma powód; zacisk źródła POZA kaflem (rysunek po jednokładności) przenosi się na krawędź
-    # z przycięciem przewodu, bez doprowadzenia. Po jednokładności rysunku jedynym zaciskiem toru
-    # wewnątrz kafla jest zacisk dolny łącznika trójpołożeniowego (symbol uziemienia pod
-    # zestykiem uziemiającym, a w wariancie z napędem także znak napędu ręcznego, sięgają poniżej
-    # zacisku) — z powodem z własnej deklaracji. Zestyk szynowy stoi w osi toru na górnej
-    # krawędzi rysunku (uwaga właściciela 2026-10-30, położenie zamknięte = nóż w osi), więc
-    # zacisk szynowy leży na krawędzi kafla bez doprowadzenia.
-    tor_z_doprowadzeniem = set()
+        assert element in po_id[ident]["zlozenie"], (ident, element)
+    # Kafel łącznika: porty toru na krawędziach, bez dorysowanych doprowadzeń; rysunek aparatu
+    # wyłącznie w nożu i znacznikach (``stale`` puste). Poza łącznikami doprowadzenie powstaje
+    # wyłącznie jako przedłużenie portu obwodu wtórnego do rastru (przekładniki).
     for ident in lacznikowe:
         s = po_id[ident]
-        porty = {p["name"]: p for p in s["porty"]}
-        for port in porty.values():
+        assert s["doprowadzenia"] == [] and s["stale"] == [], ident
+        for port in s["porty"]:
+            assert port["x"] == s["kafel"]["width"] / 2, (ident, port)
             assert port["y"] == (0 if port["dir"] == "N" else s["wysokosc"]), (ident, port)
-        for d in (d for d in s["doprowadzenia"] if d["port"] in porty):
-            tor_z_doprowadzeniem.add((ident, d["port"]))
-            port = porty[d["port"]]
-            assert d["x1"] == d["x2"] == port["x"], (ident, d)
-            assert d["y2"] == port["y"], (ident, d)
-            assert 0 < d["y1"] < s["wysokosc"], (ident, d)
-            poczatek = "zacisk szynowy QET" if d["port"] == "top" else "zacisk dolny QET"
-            assert d["powod"].startswith(poczatek), (ident, d)
-    assert tor_z_doprowadzeniem == {
-        ("qetThreePositionSwitch", "bottom"),
-        ("qetThreePositionSwitchZNapedem", "bottom"),
-    }
-    # Poza łącznikami doprowadzenie powstaje wyłącznie jako przedłużenie portu obwodu wtórnego
-    # do rastru (przekładniki) — port toru pierwotnego leży na krawędzi bez dorysowań.
     for s in po_id.values():
         if s["id"] in lacznikowe:
             continue
+        assert s["noz"] is None and s["znaczniki"] == [] and s["ziemia"] is None, s["id"]
         wtorne = {p["name"] for p in s["portyWtorne"]}
         assert {d["port"] for d in s["doprowadzenia"]} <= wtorne, s["id"]
 
@@ -245,9 +321,8 @@ def test_kafel_stanu_jest_jednym_kwadratem_dla_kazdego_lacznika():
     zlozone = qet.zloz_symbole_manifestu()
     bok = float(zlozone.manifest["kafelStanu"]["bokQet"]) * zlozone.skala
     assert bok == 48.0
-    lacznikowe = {w["symbolId"] for w in zlozone.manifest["symbole"] if w.get("noz")}
     for s in zlozone.symbole:
-        if s["id"] in lacznikowe:
+        if s["id"] in LACZNIKI_KAFLA:
             assert s["kafel"] == {"x": 0, "y": 0, "width": bok, "height": bok}, s["id"]
             assert s["szerokosc"] == s["wysokosc"] == bok, s["id"]
         else:
@@ -264,18 +339,20 @@ def test_kafel_stanu_jest_jednym_kwadratem_dla_kazdego_lacznika():
     ("wariant", "oczekiwany"),
     [
         ("bok_nieparzysty_rastrowo", "parzystą wielokrotnością"),
-        ("bok_mniejszy_niz_rysunek", "nie mieści się w kaflu"),
+        ("przegub_przy_krawedzi", "nie mieści się w kaflu"),
         ("bez_powodu", "bez powodu"),
         ("kreska_zerowa", "kreska glifu poza"),
         ("kreska_ponad_bok_12", "kreska glifu poza"),
     ],
 )
 def test_iniekcja_kafel_stanu_przerywa_import(kopia_zrodel, wariant, oczekiwany):
+    """Kafel się nie rozszerza: przegub przesunięty pod dolną krawędź (rysunek noża poza
+    marginesem kafla) przerywa import, zamiast powiększyć kafel."""
     manifest = _manifest(kopia_zrodel)
     if wariant == "bok_nieparzysty_rastrowo":
         manifest["kafelStanu"]["bokQet"] = 100
-    elif wariant == "bok_mniejszy_niz_rysunek":
-        manifest["kafelStanu"]["bokQet"] = 80
+    elif wariant == "przegub_przy_krawedzi":
+        manifest["kafelStanu"]["uklad"]["rodzaje"]["dwupolozeniowy"]["przegub"] = [60, 118]
     elif wariant == "kreska_zerowa":
         manifest["kafelStanu"]["kreskaGlifuQet"] = 0
     elif wariant == "kreska_ponad_bok_12":
@@ -290,25 +367,254 @@ def test_iniekcja_kafel_stanu_przerywa_import(kopia_zrodel, wariant, oczekiwany)
 @pytest.mark.parametrize(
     ("wariant", "oczekiwany"),
     [
-        ("otwarty_bez_powodu", "bez powodu"),
-        ("nieznany_bez_powodu", "bez powodu"),
+        ("uklad_bez_powodu", "układ kafla bez powodu"),
+        ("kat_otwarty_zero", "poza \\(0; 90\\)"),
+        ("kat_otwarty_prosty", "poza \\(0; 90\\)"),
+        ("otwarty_poza_uziemionym", "nie leży między zamkniętym"),
         ("nieznany_zasieg_zero", "poza \\(0; 1\\)"),
         ("nieznany_zasieg_pelny", "poza \\(0; 1\\)"),
+        ("styk_zamkniecia_pod_przegubem", "styk zamknięcia nie leży nad przegubem"),
+        ("przegub_poza_osia", "poza osią toru"),
+        ("ziemia_przy_nieznanym", "przyłączenie ziemi"),
     ],
 )
-def test_iniekcja_polozenie_otwarte_i_nieustalone_wymaga_powodu(kopia_zrodel, wariant, oczekiwany):
-    """Położenie otwarte różne od rysunku źródła (``noz.otwarty``) i skrócony nóż położenia
-    nieustalonego (``noz.nieznany``) to decyzje projektowe — każda z powodem, zasięg w (0; 1)."""
+def test_iniekcja_uklad_kafla_noz_i_rodzaje_przerywa_import(kopia_zrodel, wariant, oczekiwany):
+    """Jedna deklaracja układu kafla (``kafelStanu.uklad``) jest decyzją projektową: powód,
+    kąt położenia otwartego w (0; 90) i między zamkniętym a uziemionym, zasięg nieustalonego
+    w (0; 1), zawias u dołu i styk u góry w osi toru, przyłączenie ziemi ze zbioru zamkniętego."""
     manifest = _manifest(kopia_zrodel)
-    noz = next(w for w in manifest["symbole"] if w["symbolId"] == "qetThreePositionSwitch")["noz"]
-    if wariant == "otwarty_bez_powodu":
-        noz["otwarty"]["powod"] = " "
-    elif wariant == "nieznany_bez_powodu":
-        noz["nieznany"]["powod"] = ""
+    uklad = manifest["kafelStanu"]["uklad"]
+    rodzaje = uklad["rodzaje"]
+    if wariant == "uklad_bez_powodu":
+        uklad["powod"] = " "
+    elif wariant == "kat_otwarty_zero":
+        uklad["noz"]["katOtwarty"] = 0
+    elif wariant == "kat_otwarty_prosty":
+        uklad["noz"]["katOtwarty"] = 90
+    elif wariant == "otwarty_poza_uziemionym":
+        rodzaje["trojpolozeniowy"]["styki"]["earthed"] = [70, 50]
     elif wariant == "nieznany_zasieg_zero":
-        noz["nieznany"]["zasieg"] = 0
+        uklad["noz"]["zasiegNieustalony"] = 0
+    elif wariant == "nieznany_zasieg_pelny":
+        uklad["noz"]["zasiegNieustalony"] = 1
+    elif wariant == "styk_zamkniecia_pod_przegubem":
+        rodzaje["dwupolozeniowy"]["styki"]["closed"] = [60, 100]
+    elif wariant == "przegub_poza_osia":
+        rodzaje["uziemnik"]["przegub"] = [55, 87.5]
     else:
-        noz["nieznany"]["zasieg"] = 1
+        rodzaje["dwupolozeniowy"]["ziemiaPrzy"] = "open"
+    _zapisz_manifest(kopia_zrodel, manifest)
+    with pytest.raises(qet.BladImportu, match=oczekiwany):
+        qet.generuj()
+
+
+def test_znacznik_rodzaju_przy_stykach_iloczyn_rodzaj_x_polozenie():
+    """Decyzja właściciela 2026-10-30 — znacznik rodzaju aparatu przy styku stałym, iloczyn
+    {wyłącznik, wyłącznik z napędem, odłącznik, rozłącznik, rozłącznik z bezpiecznikami,
+    uziemnik, trójpołożeniowy z napędem i bez} × {każde położenie noża: zamknięty, otwarty,
+    nieustalony, uziemiony}. Sprawdza (wyrocznia z próbkowania, niezależna od analityki
+    importera): rozmiar znacznika 22–28 % boku kafla (~11–13 j.św.), margines tuszu od krawędzi
+    kafla ≥ 4 j.św., brak kolizji z nożem w żadnym położeniu (tusz ≥ odstęp poza strefą styku,
+    na którym nóż spoczywa w tym położeniu), kotwicę wg tabeli rodzajów, jednoznaczne
+    rozróżnienie rodzajów po znaczniku i te same proporcje znacznika danego rodzaju
+    w każdym symbolu. Ten sam znacznik jest w każdym położeniu (położenie zmienia wyłącznie
+    nóż), więc iloczyn z położeniem dotyczy kolizji z nożem."""
+    zlozone = qet.zloz_symbole_manifestu()
+    po_id = {s["id"]: s for s in zlozone.symbole}
+    zn = _uklad(zlozone)["znacznik"]
+    bok_kafla = float(zlozone.manifest["kafelStanu"]["bokQet"]) * zlozone.skala
+    kreska = float(zlozone.manifest["kafelStanu"]["kreskaGlifuQet"]) * zlozone.skala
+    bok_zn = _swiat(zlozone, zn["bokQet"])
+    margines = _swiat(zlozone, zn["marginesQet"])
+    odstep = _swiat(zlozone, zn["odstepOdNozaQet"])
+    strefa = _swiat(zlozone, zn["strefaStykuQet"])
+    # Liczby z decyzji właściciela: 22–28 % boku kafla 48 j.św., margines ≥ 4 j.św., kreska
+    # znacznika = kreska noża (jedna kreska glifu), znacznik nie nachodzi na nóż.
+    assert zn["udzial"] == [0.22, 0.28]
+    assert 0.22 * bok_kafla <= bok_zn <= 0.28 * bok_kafla and 11 <= bok_zn <= 13
+    assert margines >= 4 and odstep > 0
+    kotwice = qet.RODZAJE_ZNACZNIKOW
+    sygnatury: dict[str, set] = {}
+    for ident, oczekiwane in ZNACZNIKI_WG_WLASCICIELA.items():
+        s = po_id[ident]
+        assert {z["styk"]: z["rodzaj"] for z in s["znaczniki"]} == oczekiwane, ident
+        for z in s["znaczniki"]:
+            x0, y0, x1, y1 = _obwiednia_prymitywow(z["prymitywy"])
+            assert max(x1 - x0, y1 - y0) == pytest.approx(bok_zn), (ident, z["rodzaj"])
+            # Tusz (linia środkowa ± pół kreski) co najmniej ``margines`` od krawędzi kafla.
+            assert min(x0, y0) - kreska / 2 >= margines - 1e-9, (ident, z["rodzaj"])
+            assert bok_kafla - max(x1, y1) - kreska / 2 >= margines - 1e-9, (ident, z["rodzaj"])
+            k = (z["kotwica"]["x"], z["kotwica"]["y"])
+            if kotwice[z["rodzaj"]] == "srodek":
+                assert ((x0 + x1) / 2, (y0 + y1) / 2) == pytest.approx(k), (ident, z)
+            else:
+                # Bok obwiedni zwrócony do przegubu przechodzi przez punkt styku.
+                przegub = (s["noz"]["cx"], s["noz"]["cy"])
+                if abs(przegub[0] - k[0]) < 1e-9:
+                    assert (y1 if przegub[1] > k[1] else y0) == pytest.approx(k[1]), (ident, z)
+                    assert (x0 + x1) / 2 == pytest.approx(k[0]), (ident, z)
+                else:
+                    assert (x1 if przegub[0] > k[0] else x0) == pytest.approx(k[0]), (ident, z)
+            # Sygnatura kształtu względem kotwicy (rodzaje prymitywów i geometria zaokrąglona).
+            sygnatura = tuple(
+                sorted(
+                    (p["k"],)
+                    + tuple(
+                        (
+                            round(v - (k[0] if c.startswith("x") or c == "cx" else k[1]), 3)
+                            if c != "r"
+                            else round(v, 3)
+                        )
+                        for c, v in sorted(p.items())
+                        if c in ("x1", "y1", "x2", "y2", "cx", "cy", "r")
+                    )
+                    for p in z["prymitywy"]
+                )
+            )
+            if z["rodzaj"] == "uziemnik":
+                # Kreska styku uziemnika: jedna linia prostopadła do noża — pozioma przy styku nad
+                # przegubem, pionowa przy zestyku uziemiającym (nóż poziomy); długość stała.
+                (p,) = z["prymitywy"]
+                sygnatura = (
+                    "uziemnik",
+                    round(math.dist((p["x1"], p["y1"]), (p["x2"], p["y2"])), 3),
+                )
+            sygnatury.setdefault(z["rodzaj"], set()).add(sygnatura)
+            # Kolizja z nożem w każdym położeniu (wyrocznia próbkowana).
+            probki_zn = [q for p in z["prymitywy"] for q in _probki_prymitywu(p)]
+            for polozenie in s["noz"]["katy"]:
+                probki_noza = [
+                    q
+                    for a, b in _noz_w_polozeniu(s["noz"], polozenie)
+                    for q in _probki_odcinka(a, b)
+                    if polozenie != z["styk"] or math.dist(q, k) > strefa
+                ]
+                d = min(math.dist(a, b) for a in probki_noza for b in probki_zn)
+                assert d - kreska >= odstep - 0.05, (ident, z["rodzaj"], polozenie, d)
+    # Ten sam rodzaj = ta sama geometria znacznika w każdym symbolu; różne rodzaje = różne znaki.
+    assert set(sygnatury) == {"wylacznik", "odlacznik", "rozlacznik", "uziemnik"}
+    for rodzaj, zbior in sygnatury.items():
+        assert len(zbior) == 1, (rodzaj, zbior)
+    assert len({next(iter(z)) for z in sygnatury.values()}) == 4
+    # Wyróżniki: „×” = dwie przecinające się kreski, „○” = jeden okrąg, rozłącznik = kreska
+    # i okrąg, uziemnik = jedna kreska.
+    rodzaje_prymitywow = {
+        r: sorted(p[0] for p in next(iter(z))) if r != "uziemnik" else ["line"]
+        for r, z in sygnatury.items()
+    }
+    assert rodzaje_prymitywow == {
+        "wylacznik": ["line", "line"],
+        "odlacznik": ["circle"],
+        "rozlacznik": ["circle", "line"],
+        "uziemnik": ["line"],
+    }
+
+
+def test_symbol_ziemi_pod_uziemnikiem_skierowany_w_dol():
+    """Polecenie właściciela 2026-10-30 (wzorzec HMI e²TANGO): symbol ziemi ZAWSZE pod
+    uziemnikiem, skierowany w dół, na końcu pionu odgałęzienia — uziemnik (Q8, ziemia przy
+    przegubie) i część uziemiająca łącznika trójpołożeniowego (Q1, Q5; ziemia pod dolnym
+    końcem kreski zestyku uziemiającego). Pion odgałęzienia biegnie od punktu przyłączenia
+    w dół; pierwsza kreska ziemi jest najszersza, kolejne węższe i niżej; całość pod kotwicą
+    styku uziemiającego i w kaflu z marginesem."""
+    zlozone = qet.zloz_symbole_manifestu()
+    ziemia_d = _uklad(zlozone)["ziemia"]
+    szer = _swiat(zlozone, ziemia_d["szerokoscQet"])
+    pion = _swiat(zlozone, ziemia_d["pionQet"])
+    margines = float(zlozone.manifest["kafelStanu"]["marginesQet"]) * zlozone.skala
+    z_ziemia = {s["id"] for s in zlozone.symbole if s["ziemia"] is not None}
+    assert z_ziemia == {"qetEarthSwitch"} | TROJPOLOZENIOWE
+    for s in zlozone.symbole:
+        if s["ziemia"] is None:
+            continue
+        ziemia = s["ziemia"]
+        uziem = next(z for z in s["znaczniki"] if z["rodzaj"] == "uziemnik")
+        kx, ky = ziemia["kotwica"]["x"], ziemia["kotwica"]["y"]
+        if s["id"] == "qetEarthSwitch":
+            assert (kx, ky) == (s["noz"]["cx"], s["noz"]["cy"]), "ziemia przy przegubie"
+        else:
+            (p,) = uziem["prymitywy"]
+            assert (kx, ky) == (p["x2"], max(p["y1"], p["y2"])), "pod kreską zestyku"
+        assert ky >= uziem["kotwica"]["y"], s["id"]
+        (pion_p, *kreski) = ziemia["prymitywy"]
+        assert (pion_p["x1"], pion_p["y1"]) == (kx, ky) and pion_p["x2"] == kx, s["id"]
+        assert pion_p["y2"] - pion_p["y1"] == pytest.approx(pion), s["id"]
+        assert len(kreski) == 3, s["id"]
+        szerokosci = []
+        poprzednie_y = pion_p["y2"] - 1e-9
+        for k in kreski:
+            assert k["y1"] == k["y2"], (s["id"], k)
+            assert k["y1"] >= poprzednie_y, (s["id"], k)
+            poprzednie_y = k["y1"] + 1e-9
+            assert (k["x1"] + k["x2"]) / 2 == pytest.approx(kx), (s["id"], k)
+            szerokosci.append(abs(k["x2"] - k["x1"]))
+            assert k["y1"] <= s["kafel"]["height"] - margines + 1e-9, (s["id"], k)
+        assert kreski[0]["y1"] == pytest.approx(pion_p["y2"]), s["id"]
+        assert szerokosci[0] == pytest.approx(szer), s["id"]
+        assert all(b < a for a, b in zip(szerokosci, szerokosci[1:], strict=False)), szerokosci
+
+
+@pytest.mark.parametrize(
+    ("wariant", "oczekiwany"),
+    [
+        ("znacznik_za_maly", "za mały albo za duży"),
+        ("znacznik_za_duzy", "za mały albo za duży"),
+        ("brak_znacznika", "styk closed ma 0 znaczników"),
+        ("znacznik_przy_krawedzi", "bliżej krawędzi kafla niż margines"),
+        ("znacznik_nachodzi_na_noz", "nachodzi na nóż"),
+        ("ziemia_w_gore", "skierowany w górę"),
+        ("ziemia_niewysrodkowana", "nie leżą na jednej osi"),
+        ("uziemnik_przy_styku_bez_ziemi", "znacznik uziemnika wyłącznie przy styku"),
+        ("prymityw_bez_roli", "bez roli w układzie kafla"),
+        ("prymityw_dwie_role", "ma dwie role"),
+        ("dolny_port_zdjety", "porty \\['top'\\] ≠ \\['top', 'bottom'\\]"),
+        ("rodzaj_znacznika_nieznany", "rodzaj znacznika 'bezpiecznik' nieznany"),
+        ("rodzaj_ukladu_nieznany", "rodzaj układu kafla 'czteropolozeniowy' nieznany"),
+    ],
+)
+def test_iniekcja_znacznik_i_ziemia_przerywa_import(kopia_zrodel, wariant, oczekiwany):
+    """Iniekcje decyzji właściciela 2026-10-30: znacznik za mały, za duży, brakujący, przy
+    krawędzi kafla i nachodzący na nóż, ziemia skierowana w górę albo rozjechana, znacznik
+    uziemnika przy styku bez ziemi, prymityw bez roli albo z dwiema rolami, port toru niezgodny
+    z rodzajem — każda przerywa import (czerwony wynik), żadna nie generuje geometrii po cichu."""
+    manifest = _manifest(kopia_zrodel)
+    uklad = manifest["kafelStanu"]["uklad"]
+    po_id = {w["symbolId"]: w for w in manifest["symbole"]}
+    wylacznik = po_id["qetBreaker"]
+    if wariant == "znacznik_za_maly":
+        uklad["znacznik"]["bokQet"] = 24
+    elif wariant == "znacznik_za_duzy":
+        uklad["znacznik"]["bokQet"] = 36
+    elif wariant == "brak_znacznika":
+        (znak,) = wylacznik["ukladKafla"].pop("znaczniki")
+        wylacznik["pominPrymitywy"].append(
+            {"skladnik": 0, "prymitywy": znak["prymitywy"], "powod": "iniekcja"}
+        )
+    elif wariant == "znacznik_przy_krawedzi":
+        uklad["znacznik"]["marginesQet"] = 20
+    elif wariant == "znacznik_nachodzi_na_noz":
+        uklad["znacznik"]["strefaStykuQet"] = 5
+    elif wariant == "ziemia_w_gore":
+        po_id["qetEarthSwitch"]["skladniki"][1]["obrot"] = 180
+    elif wariant == "ziemia_niewysrodkowana":
+        # Najszersza kreska (−10…10) skrócona jednokładnością wokół lewego końca do −10…8:
+        # kreski dalej maleją w dół (18 > 14 > 8), ale środek górnej zjeżdża z osi pionu.
+        po_id["qetEarthSwitch"]["skalaLokalna"] = [
+            {"skladnik": 1, "prymitywy": [0], "srodek": [-10, 0], "skala": 0.9, "powod": "iniekcja"}
+        ]
+    elif wariant == "uziemnik_przy_styku_bez_ziemi":
+        wylacznik["ukladKafla"]["znaczniki"][0]["rodzaj"] = "uziemnik"
+    elif wariant == "prymityw_bez_roli":
+        wylacznik.pop("pominPrymitywy")
+    elif wariant == "prymityw_dwie_role":
+        wylacznik["ukladKafla"]["znaczniki"][0]["prymitywy"] = [2, 3, 4]
+    elif wariant == "dolny_port_zdjety":
+        wylacznik["porty"] = [p for p in wylacznik["porty"] if p["name"] != "bottom"]
+        wylacznik["zaciskiPozaTorem"] = [{"skladnik": 0, "zacisk": [0, 20], "powod": "iniekcja"}]
+    elif wariant == "rodzaj_znacznika_nieznany":
+        wylacznik["ukladKafla"]["znaczniki"][0]["rodzaj"] = "bezpiecznik"
+    else:
+        wylacznik["ukladKafla"]["rodzaj"] = "czteropolozeniowy"
     _zapisz_manifest(kopia_zrodel, manifest)
     with pytest.raises(qet.BladImportu, match=oczekiwany):
         qet.generuj()
@@ -316,28 +622,28 @@ def test_iniekcja_polozenie_otwarte_i_nieustalone_wymaga_powodu(kopia_zrodel, wa
 
 def test_kwalifikator_napedu_powiekszony_w_kaflu_z_litera_w_okregu():
     """Napęd silnikowy wyłącznika (EN 60617 02-13-26) jest OSPRZĘTEM kafla (``osprzet``
-    manifestu, kreska glifu, poza miarą stopnia): okrąg z literą M powiększony jawną decyzją
+    manifestu, kreska glifu, poza miarą stopnia) i atrybutem łącznika (decyzja właściciela
+    2026-10-30: „Napęd M zostaje jako atrybut”): okrąg z literą M powiększony jawną decyzją
     ``skalaLokalna`` (z powodem) wokół punktu styku z linią sprzężenia — okrąg rośnie od linii
-    w stronę lewej krawędzi kafla (prawą zajmuje cewka wyłączająca), linia sprzężenia zostaje
-    w źródłowej długości (przegub noża → okrąg), litera rośnie razem z okręgiem (środek tą samą
-    jednokładnością), a całość mieści się w kaflu stanu z marginesem kafla. Pomiar przed
-    naprawą: litera 2,4 jednostki świata (skala źródła), na zrzutach pola 3,6–6,6 px;
-    czytelność na ekranie w zakresie LOD2 przypina ``kafelStanu.test.tsx``."""
+    w stronę lewej krawędzi kafla, linia sprzężenia zostaje w źródłowej długości (przegub noża
+    → okrąg), litera rośnie razem z okręgiem (środek tą samą jednokładnością), a całość mieści
+    się w kaflu stanu z marginesem kafla. Pomiar przed naprawą: litera 2,4 jednostki świata
+    (skala źródła), na zrzutach pola 3,6–6,6 px; czytelność na ekranie w zakresie LOD2 przypina
+    ``kafelStanu.test.tsx``."""
     zlozone = qet.zloz_symbole_manifestu()
     wpis = next(w for w in zlozone.manifest["symbole"] if w["symbolId"] == "qetBreakerZNapedem")
     znak_napedu = [z for z in wpis["skalaLokalna"] if z["skladnik"] == 1]
     assert len(znak_napedu) == 1 and znak_napedu[0]["powod"].strip()
-    assert {o["skladnik"] for o in wpis["osprzet"]} == {1, 2}
+    assert {o["skladnik"] for o in wpis["osprzet"]} == {1}
     s = next(x for x in zlozone.symbole if x["id"] == "qetBreakerZNapedem")
     (okrag,) = (p for p in s["osprzet"] if p["k"] == "circle")
     (litera,) = (p for p in s["osprzet"] if p["k"] == "letter")
     (sprzezenie,) = (p for p in s["osprzet"] if p["k"] == "line" and p.get("kreskowana"))
-    assert not any(p["k"] in ("circle", "letter") or p.get("kreskowana") for p in s["stale"])
+    assert len(s["osprzet"]) == 3, "osprzęt kafla = wyłącznie napęd M (okrąg, litera, sprzężenie)"
     skala_znaku = float(znak_napedu[0]["skala"])
     zrodlo = next(e for e in zlozone.manifest["elementy"] if e["id"] == "en_60617_02_13_26")
     assert zrodlo["teksty"] == {"M": "zachowaj"}
-    # Rozmiar źródła: okrąg 10 j. QET (promień 5), pismo 6 pt — × skala znaku × skala importu
-    # (napęd stoi poza jednokładnością rysunku wyłącznika — przesunięcie w układzie po niej).
+    # Rozmiar źródła: okrąg 10 j. QET (promień 5), pismo 6 pt — × skala znaku × skala importu.
     assert okrag["r"] == pytest.approx(5 * skala_znaku * zlozone.skala)
     assert litera["t"] == "M"
     assert litera["size"] == pytest.approx(6 * skala_znaku * zlozone.skala)
@@ -353,36 +659,24 @@ def test_kwalifikator_napedu_powiekszony_w_kaflu_z_litera_w_okregu():
 
 
 @pytest.mark.parametrize("ident", ["qetBreaker", "qetBreakerZNapedem"])
-def test_cewka_wylaczajaca_jest_koncem_linii_wylaczania_na_krawedzi_kafla(ident):
-    """Uwaga właściciela 2026-10-29 pkt 5: linia wyłączania od przekaźnika prowadzi do CEWKI
-    wyłącznika, nie do środka kafla. Port obwodu wtórnego ``wylacz`` = zacisk sterujący cewki
-    EN 60617 07-15-01 (osprzęt kafla), na prawej krawędzi kafla, z przewodem do prostokąta
-    cewki; cewka w kaflu z marginesem i rozłączna z rysunkiem wyłącznika (nożem we wszystkich
-    położeniach i krzyżykiem) — znak cewki nie nachodzi na znak aparatu."""
+def test_linia_wylaczania_konczy_sie_na_krawedzi_kafla_wylacznika(ident):
+    """Uwaga właściciela 2026-10-29 pkt 5 (linia wyłączania od przekaźnika kończy się na
+    wyłączniku, nie w środku kafla) w kanonie decyzji 2026-10-30 („kafel zawiera tylko nóż,
+    styk stały ze znacznikiem i ewentualnie M; duży osobny symbol w kaflu znika”): port obwodu
+    wtórnego ``wylacz`` leży na prawej krawędzi kafla, na rastrze schematu, a kafel nie ma
+    cewki wyłączającej (dawny osprzęt EN 60617 07-15-01) ani przewodu do niej — element cewki
+    zniknął z manifestu i z katalogu źródeł."""
     zlozone = qet.zloz_symbole_manifestu()
     s = next(x for x in zlozone.symbole if x["id"] == ident)
     (wylacz,) = s["portyWtorne"]
     assert wylacz["name"] == "wylacz" and wylacz["dir"] == "E"
     assert wylacz["x"] == s["kafel"]["width"]
     assert wylacz["x"] % GRID == 0 and wylacz["y"] % GRID == 0
-    (cewka,) = (p for p in s["osprzet"] if p["k"] == "path")
-    xs = [
-        float(v) for v in cewka["d"].replace("M", " ").replace("L", " ").replace("Z", " ").split()
-    ]
-    cx0, cx1 = min(xs[0::2]), max(xs[0::2])
-    cy0, cy1 = min(xs[1::2]), max(xs[1::2])
-    assert cy0 < wylacz["y"] < cy1
-    przewod = [
-        p
-        for p in s["przewody"]
-        if p["k"] == "line"
-        and {(p["x1"], p["y1"]), (p["x2"], p["y2"])}
-        == {(wylacz["x"], wylacz["y"]), (cx1, wylacz["y"])}
-    ]
-    assert len(przewod) == 1, "przewód od zacisku sterującego cewki do krawędzi kafla"
-    margines = float(zlozone.manifest["kafelStanu"]["marginesQet"]) * zlozone.skala
-    assert cx1 <= s["kafel"]["width"] - margines + 1e-9
-    assert cx0 > s["glif"]["x"] + s["glif"]["width"], "cewka rozłączna z rysunkiem wyłącznika"
+    assert not any(p["k"] == "path" for p in s["osprzet"]), "cewka wyłączająca w kaflu"
+    assert all(p["x1"] == p["x2"] for p in s["przewody"]), "przewody wyłącznie w osi toru"
+    elementy = {e["id"] for e in zlozone.manifest["elementy"]}
+    assert "en_60617_07_15_01" not in elementy
+    assert not list(qet.ZRODLA.rglob("en_60617_07_15_01.elmt"))
 
 
 def test_stopien_glifu_w_zakresie_dla_kazdego_symbolu_i_polozenia():
@@ -391,14 +685,17 @@ def test_stopien_glifu_w_zakresie_dla_kazdego_symbolu_i_polozenia():
     (przekładniki, głowica, wskaźnik, koniec kabla) mają spójny stopień [0,33; 0,70] boku kafla.
     Pomiar przed naprawą (rysunek w skali źródła, znak rodzaju × 2): wyłącznik 0,20–0,20,
     odłącznik 0,19–0,20, rozłącznik z bezpiecznikami 0,19, uziemnik 0,23, przekładnik prądowy
-    0,17, przekładnik Ferrantiego 0,33, głowica 0,21, wskaźnik 0,08 boku kafla. Miara
-    importera (``udzialy``) jest sprawdzana NIEZALEŻNIE z obwiedni glifu w wyjściu TS."""
+    0,17, przekładnik Ferrantiego 0,33, głowica 0,21, wskaźnik 0,08 boku kafla. W układzie
+    kafla (decyzja właściciela 2026-10-30) glif łącznika = nóż + znaczniki + ziemia; stopień
+    wynika z układu, nie z jednokładności rysunku. Miara importera (``udzialy``) jest
+    sprawdzana NIEZALEŻNIE z obwiedni glifu w wyjściu TS."""
     zlozone = qet.zloz_symbole_manifestu()
     deklaracja = zlozone.manifest["stopienSymboli"]
     assert deklaracja["kafel"] == [0.55, 0.70] and deklaracja["tor"] == [0.33, 0.70]
     assert deklaracja["powod"].strip()
     bok = float(zlozone.manifest["kafelStanu"]["bokQet"]) * zlozone.skala
-    lacznikowe = {w["symbolId"] for w in zlozone.manifest["symbole"] if w.get("noz")}
+    lacznikowe = {w["symbolId"] for w in zlozone.manifest["symbole"] if w.get("ukladKafla")}
+    assert lacznikowe == LACZNIKI_KAFLA
     for s in zlozone.symbole:
         lo, hi = deklaracja["kafel"] if s["id"] in lacznikowe else deklaracja["tor"]
         udzialy = zlozone.udzialy[s["id"]]
@@ -425,7 +722,9 @@ def test_kazdy_port_osiagniety_przewodem_albo_rysunkiem_aparatu():
     """Ciągłość toru przez symbol po przycięciu przewodów do gabarytu: każdy port toru
     i obwodu wtórnego jest końcem przewodu albo leży na obwiedni glifu w odległości nie
     większej niż połowa kreski glifu (przekładnik napięciowy: okrąg uzwojenia pierwotnego pod
-    portem). Port bez przewodu i z przerwą do rysunku = przerwany tor na schemacie."""
+    portem). Port bez przewodu i z przerwą do rysunku = przerwany tor na schemacie. Port obwodu
+    wtórnego kafla łącznika (``wylacz``) jest końcem linii wyłączania NA KRAWĘDZI kafla —
+    kafel nie ma osobnego symbolu cewki (decyzja właściciela 2026-10-30)."""
     zlozone = qet.zloz_symbole_manifestu()
     pol_kreski = float(zlozone.manifest["kafelStanu"]["kreskaGlifuQet"]) * zlozone.skala / 2
     for s in zlozone.symbole:
@@ -433,7 +732,15 @@ def test_kazdy_port_osiagniety_przewodem_albo_rysunkiem_aparatu():
             q for p in s["przewody"] + s["stale"] if p["k"] == "line" for q in _koniec_linii(p)
         ]
         g = s["glif"]
-        for port in s["porty"] + s["portyWtorne"]:
+        wtorne = s["portyWtorne"]
+        if s["kafel"] is not None:
+            for port in wtorne:
+                assert port["x"] in (0, s["kafel"]["width"]) or port["y"] in (
+                    0,
+                    s["kafel"]["height"],
+                ), (s["id"], port)
+            wtorne = []
+        for port in s["porty"] + wtorne:
             punkt = (port["x"], port["y"])
             if any(math.dist(punkt, q) < 1e-6 for q in konce):
                 continue
@@ -449,7 +756,8 @@ def test_kazdy_port_osiagniety_przewodem_albo_rysunkiem_aparatu():
 def test_przewody_poza_miara_glifu_i_w_gabarycie():
     """Przewód (linia od zacisku portu w kierunku portu) jest w ``przewody`` — kreska
     przewodu, przycięty do gabarytu; nie wchodzi do ``stale`` (kreska glifu) ani do miary
-    stopnia. Wyłącznik: przewody toru nad krzyżykiem i pod przegubem + przewód cewki."""
+    stopnia. Wyłącznik: przewód toru od portu górnego do krzyżyka styku i od przegubu do portu
+    dolnego; krzyżyk jest znacznikiem styku (dwie kreski), nie kreską stałą."""
     po_id = {s["id"]: s for s in _symbole()}
     for s in po_id.values():
         for p in s["przewody"]:
@@ -459,44 +767,42 @@ def test_przewody_poza_miara_glifu_i_w_gabarycie():
                 assert -1e-9 <= x <= s["szerokosc"] + 1e-9, s["id"]
                 assert -1e-9 <= y <= s["wysokosc"] + 1e-9, s["id"]
     wylacznik = po_id["qetBreaker"]
-    assert len(wylacznik["przewody"]) == 3
-    assert all(p["k"] == "line" and not p.get("kreskowana") for p in wylacznik["stale"])
-    assert len(wylacznik["stale"]) == 2  # krzyżyk wyłącznika (dwie kreski)
+    assert len(wylacznik["przewody"]) == 2
+    assert wylacznik["stale"] == []
+    (krzyzyk,) = wylacznik["znaczniki"]
+    assert krzyzyk["rodzaj"] == "wylacznik"
+    assert [p["k"] for p in krzyzyk["prymitywy"]] == ["line", "line"]  # „×” (dwie kreski)
     assert po_id["bayReserve"]["przewody"] == []  # odcinek kabla jest treścią znaku
 
 
-def test_iniekcja_bez_jednokladnosci_rysunku_glif_ponizej_progu_przerywa_import(kopia_zrodel):
-    """Iniekcja dolnego progu stopnia glifu: wyłącznik bez ``skalaRysunku`` (rysunek źródła
-    w kaflu 48 × 48 — stan sprzed uwagi właściciela, glif 0,20 boku kafla) przerywa import,
-    zamiast wygenerować miniaturowy znak w dużym kaflu. Górny próg: jednokładność 4 wyłącznika
-    wychodzi poza kafel, a obniżony górny próg odrzuca położenie zamknięte."""
+@pytest.mark.parametrize(
+    ("wariant", "oczekiwany"),
+    [
+        ("tor_bez_jednokladnosci", "qetCurrentTransformer: stopień glifu 0.167"),
+        ("kafel_dolny_prog", "qetBreaker: stopień glifu 0.562 .*closed"),
+        ("kafel_gorny_prog", "qetDisconnector: stopień glifu 0.688 .*closed"),
+        ("tor_dolny_prog", "qetVoltageIndicator: stopień glifu 0.333"),
+    ],
+)
+def test_iniekcja_stopien_glifu_poza_progiem_przerywa_import(kopia_zrodel, wariant, oczekiwany):
+    """Iniekcje progów stopnia glifu — każda przerywa import: przekładnik prądowy bez
+    ``skalaRysunku`` (rysunek w skali źródła, 0,167 boku kafla — stan sprzed uwagi właściciela
+    2026-10-29) zamiast miniaturowego znaku w dużym kaflu; podniesiony dolny próg kafla odrzuca
+    wyłącznik (0,5625 — nóż z krzyżykiem w układzie kafla), obniżony górny próg kafla odrzuca
+    odłącznik (0,6875 — okrąg nad końcem noża); podniesiony dolny próg toru odrzuca wskaźnik
+    pojemnościowy (0,333)."""
     manifest = _manifest(kopia_zrodel)
-    wpis = next(w for w in manifest["symbole"] if w["symbolId"] == "qetBreaker")
-    zapis = wpis.pop("skalaRysunku")
-    wpis["skladniki"][1]["przesuniecie"] = [40, -40]
+    if wariant == "tor_bez_jednokladnosci":
+        ct = next(w for w in manifest["symbole"] if w["symbolId"] == "qetCurrentTransformer")
+        ct.pop("skalaRysunku")
+    elif wariant == "kafel_dolny_prog":
+        manifest["stopienSymboli"]["kafel"] = [0.6, 0.7]
+    elif wariant == "kafel_gorny_prog":
+        manifest["stopienSymboli"]["kafel"] = [0.55, 0.65]
+    else:
+        manifest["stopienSymboli"]["tor"] = [0.4, 0.7]
     _zapisz_manifest(kopia_zrodel, manifest)
-    with pytest.raises(qet.BladImportu, match="stopień glifu 0.2"):
-        qet.generuj()
-    # Jednokładność 4: zacisk sterujący cewki przeniesiony na raster portów po tej skali.
-    wpis["skalaRysunku"] = dict(zapis, k=4)
-    wpis["skladniki"][1]["przesuniecie"] = [40, -24]
-    _zapisz_manifest(kopia_zrodel, manifest)
-    with pytest.raises(qet.BladImportu, match="nie mieści się w kaflu"):
-        qet.generuj()
-    # Górny próg kafla: położenie nieznane (0,600 — nóż pod połową kąta zamknięcia, zasięg
-    # źródła) ponad obniżonym górnym progiem. Położenie zamknięte kończy nóż na „×” styku
-    # (zasięg noża, decyzja architekta 2026-10-30), więc nie jest już najwyższym rysunkiem.
-    wpis["skalaRysunku"] = zapis
-    wpis["skladniki"][1]["przesuniecie"] = [40, -16]
-    manifest["stopienSymboli"]["kafel"] = [0.55, 0.6]
-    _zapisz_manifest(kopia_zrodel, manifest)
-    with pytest.raises(qet.BladImportu, match="qetBreaker: stopień glifu 0.600 .*unknown"):
-        qet.generuj()
-    # Próg toru: wskaźnik pojemnościowy (0,333) poniżej podniesionego dolnego progu toru.
-    manifest["stopienSymboli"]["kafel"] = [0.55, 0.7]
-    manifest["stopienSymboli"]["tor"] = [0.4, 0.7]
-    _zapisz_manifest(kopia_zrodel, manifest)
-    with pytest.raises(qet.BladImportu, match="qetVoltageIndicator: stopień glifu 0.333"):
+    with pytest.raises(qet.BladImportu, match=oczekiwany):
         qet.generuj()
 
 
@@ -509,12 +815,19 @@ def test_iniekcja_bez_jednokladnosci_rysunku_glif_ponizej_progu_przerywa_import(
         ("skladnik_spoza", "składnik spoza złożenia"),
         ("stopien_bez_powodu", "stopień symboli bez powodu"),
         ("stopien_zakres_odwrocony", "zakres kafel"),
+        ("skala_rysunku_w_kaflu", "qetBreaker: skalaRysunku zbędne w układzie kafla"),
     ],
 )
 def test_iniekcja_skala_rysunku_i_stopien_przerywa_import(kopia_zrodel, wariant, oczekiwany):
+    """Jednokładność rysunku (``skalaRysunku``) wyłącznie w symbolu toru (przekładnik prądowy),
+    z powodem, w zakresie i dla składników złożenia; w kaflu łącznika rozmiar wynika z układu
+    kafla, więc deklaracja skali rysunku łącznika przerywa import (druga prawda rozmiaru)."""
     manifest = _manifest(kopia_zrodel)
-    wpis = next(w for w in manifest["symbole"] if w["symbolId"] == "qetBreaker")
-    if wariant == "bez_powodu":
+    wpis = next(w for w in manifest["symbole"] if w["symbolId"] == "qetCurrentTransformer")
+    if wariant == "skala_rysunku_w_kaflu":
+        lacznik = next(w for w in manifest["symbole"] if w["symbolId"] == "qetBreaker")
+        lacznik["skalaRysunku"] = dict(wpis["skalaRysunku"], skladniki=[0])
+    elif wariant == "bez_powodu":
         wpis["skalaRysunku"]["powod"] = " "
     elif wariant == "k_poza_zakresem":
         wpis["skalaRysunku"]["k"] = 5
@@ -571,12 +884,16 @@ def test_iniekcja_skala_lokalna_bez_powodu_lub_poza_skala_przerywa_import(kopia_
         ("osprzet_bez_powodu", "osprzęt bez powodu"),
         ("osprzet_skladnik_noza", "składnik noża nie może być osprzętem"),
         ("osprzet_spoza", "osprzęt wskazuje składnik spoza złożenia"),
-        ("cewka_bez_zacisku_powrotnego", "bez przypisania"),
+        ("zacisk_znacznika_bez_deklaracji", "qetDisconnector: zacisk źródła .* bez przypisania"),
     ],
 )
 def test_iniekcja_osprzet_lacznika_przerywa_import(kopia_zrodel, wariant, oczekiwany):
+    """Osprzęt kafla (napęd M) z powodem i wyłącznie ze składnika złożenia innego niż nóż —
+    wskazanie spoza złożenia nie jest już ignorowane po cichu (dawniej fail-open). Zacisk
+    składnika znacznika (okrąg styku odłączającego 07-13-07 w odłączniku) bez deklaracji
+    zacisku poza torem przerywa import."""
     manifest = _manifest(kopia_zrodel)
-    wpis = next(w for w in manifest["symbole"] if w["symbolId"] == "qetBreaker")
+    wpis = next(w for w in manifest["symbole"] if w["symbolId"] == "qetBreakerZNapedem")
     if wariant == "osprzet_bez_powodu":
         wpis["osprzet"][0]["powod"] = ""
     elif wariant == "osprzet_skladnik_noza":
@@ -584,7 +901,8 @@ def test_iniekcja_osprzet_lacznika_przerywa_import(kopia_zrodel, wariant, oczeki
     elif wariant == "osprzet_spoza":
         wpis["osprzet"].append({"skladnik": 5, "powod": "iniekcja"})
     else:
-        wpis.pop("zaciskiPozaTorem")
+        odlacznik = next(w for w in manifest["symbole"] if w["symbolId"] == "qetDisconnector")
+        odlacznik.pop("zaciskiPozaTorem")
     _zapisz_manifest(kopia_zrodel, manifest)
     with pytest.raises(qet.BladImportu, match=oczekiwany):
         qet.generuj()
@@ -715,15 +1033,16 @@ def test_iniekcja_kolor_lub_styl_kreski_przerywa_import(
     [
         "port_toru",
         "port_wtorny_punkt",
-        "port_wtorny_cewki",
+        "port_wtorny_wylacz_poza_rastrem",
+        "port_wtorny_wylacz_poza_krawedzia",
         "przedluzenie_bez_kierunku",
         "przedluzenie_zbedne",
     ],
 )
 def test_iniekcja_port_poza_rastrem_qet_przerywa_import(kopia_zrodel, wariant):
     """Każdy rodzaj punktu zaczepienia (port toru bez zacisku źródła, koniec doprowadzenia
-    obwodu wtórnego, zacisk sterujący cewki wyłączającej) poza rastrem zacisków przerywa
-    import; przedłużenie przewodu obwodu wtórnego do rastru wymaga kierunku i nie jest
+    obwodu wtórnego, koniec linii wyłączania na krawędzi kafla wyłącznika) poza rastrem
+    zacisków albo — w kaflu — poza krawędzią kafla przerywa import; przedłużenie przewodu obwodu wtórnego do rastru wymaga kierunku i nie jest
     dopuszczone dla punktu leżącego już na rastrze (fikcyjny odcinek)."""
     manifest = _manifest(kopia_zrodel)
     po_id = {w["symbolId"]: w for w in manifest["symbole"]}
@@ -743,9 +1062,12 @@ def test_iniekcja_port_poza_rastrem_qet_przerywa_import(kopia_zrodel, wariant):
     elif wariant == "port_wtorny_punkt":
         po_id["qetCoreBalanceCt"]["portyWtorne"][0]["punkt"] = [40, 5]
         oczekiwany = "port wtórny wtorny poza rastrem"
-    elif wariant == "port_wtorny_cewki":
-        po_id["qetBreaker"]["skladniki"][1]["przesuniecie"] = [40, -15]
+    elif wariant == "port_wtorny_wylacz_poza_rastrem":
+        po_id["qetBreaker"]["portyWtorne"][0]["punkt"] = [120, 50]
         oczekiwany = "port wtórny wylacz poza rastrem"
+    elif wariant == "port_wtorny_wylacz_poza_krawedzia":
+        po_id["qetBreaker"]["portyWtorne"][0]["punkt"] = [110, 60]
+        oczekiwany = "port wtórny wylacz poza krawędzią kafla E"
     elif wariant == "przedluzenie_bez_kierunku":
         po_id["qetVoltageTransformer"]["portyWtorne"][0]["przedluzenie"].pop("kierunek")
         oczekiwany = "przedłużenie portu wtórnego wtorny bez kierunku"
@@ -761,18 +1083,22 @@ def test_iniekcja_port_poza_rastrem_qet_przerywa_import(kopia_zrodel, wariant):
 
 
 @pytest.mark.parametrize(
-    ("symbol_id", "deklaracja"),
-    [("qetThreePositionSwitchZNapedem", "top"), ("qetCableHead", "top")],
+    ("symbol_id", "oczekiwany"),
+    [
+        ("qetThreePositionSwitchZNapedem", "portyWewnatrzGabarytu zbędne w układzie kafla"),
+        ("qetCableHead", "poza krawędzią gabarytu"),
+    ],
 )
 def test_iniekcja_deklaracja_portu_wewnatrz_gabarytu_rozna_od_geometrii_przerywa_import(
-    kopia_zrodel, symbol_id, deklaracja
+    kopia_zrodel, symbol_id, oczekiwany
 ):
     """Predykat parami: zbiór portów wewnątrz gabarytu wyliczony z geometrii i zbiór
     zadeklarowany w manifeście muszą być równe — deklaracja portu, który leży na krawędzi
-    (łącznik z kaflem i symbol toru bez kafla), przerywa import."""
+    symbolu toru, przerywa import; w kaflu łącznika porty toru leżą na krawędziach z układu,
+    więc sama deklaracja jest zbędna i przerywa import."""
     manifest = _manifest(kopia_zrodel)
     symbol = next(w for w in manifest["symbole"] if w["symbolId"] == symbol_id)
-    symbol.setdefault("portyWewnatrzGabarytu", {})[deklaracja] = "iniekcja"
+    symbol.setdefault("portyWewnatrzGabarytu", {})["top"] = "iniekcja"
     _zapisz_manifest(kopia_zrodel, manifest)
-    with pytest.raises(qet.BladImportu, match="poza krawędzią gabarytu"):
+    with pytest.raises(qet.BladImportu, match=oczekiwany):
         qet.generuj()

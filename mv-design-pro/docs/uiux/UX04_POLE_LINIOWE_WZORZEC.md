@@ -1507,23 +1507,28 @@ Nowe artefakty generowane: `core/metrykiKroju.json` (pkt 7) i plik symboli QET
 
 **Zrobione na tej gałęzi (commity WIP).** Zaciski P1/P2 przekładnika T1 przy zaciskach, po stronie
 przeciwnej do podpisu (`c218b93b8`). Jedno źródło koloru kafla i położenia noża łącznika
-(`symbols/glyphs.tsx::POLOZENIE_ZE_STANU`, `polozenieLacznika`, `polozenieNozaQet`): glif nie ma
-własnego położenia noża, położenie „nieustalony" jest położeniem pośrednim, uziemiony ma kafel
-otwarty (tor główny otwarty). Importer QET: jawny kierunek położenia otwartego i zasięg położenia
-nieustalonego z powodem (`scripts/import_qet_pole_sn.py`, iniekcje w
-`backend/tests/ci/test_qet_pole_sn_import.py`).
+(`symbols/glyphs.tsx::POLOZENIE_ZE_STANU`, `polozenieLacznika`, `polozenieNozaQet`; `f5458d691`).
+Układ kafla łącznika wg wzorca HMI e²TANGO w importerze QET (`c1ad31c50` i commit testów
+importera): jedna deklaracja `kafelStanu.uklad` w `docs/sld/vendor/qet/import_manifest.json`
+(zawias u dołu, styk stały u góry, nóż pionowy = zamknięty, ukośny 45° = otwarty), znacznik rodzaju
+aparatu przy styku stałym 12 j.św. = 25% boku kafla („×" wyłącznik, „○" odłącznik, kreska
+z okręgiem rozłącznik wg IEC 60617 S00290, kreska uziemnik), symbol ziemi pod uziemnikiem
+skierowany w dół (Q1 trójpołożeniowy, Q5, Q8), cewka wyłączająca zdjęta z kafla. Testy importera
+przepisane na układ kafla: iloczyn rodzaj × położenie noża z wyrocznią próbkowaną (rozmiar,
+margines, kolizja z nożem, rozróżnienie rodzajów), ziemia w dół, iniekcje (znacznik za mały, za
+duży, brak, przy krawędzi, na nożu, ziemia w górę, ziemia poza osią, prymityw bez roli lub z
+dwiema rolami) — `backend/tests/ci/test_qet_pole_sn_import.py`, 83 zielone.
 
-**W toku (polecenia sesji głównej 2026-10-30).** (1) Wzorzec HMI e²TANGO: symbol ziemi pod
-uziemnikiem, skierowany w dół, uziemnik łącznika trójpołożeniowego po prawej stronie osi.
-(2) Znacznik rodzaju aparatu przy styku stałym („×", „○", rozłącznik wg katalogu repo, kreska
-uziemnika), kafel bez osobnego dużego symbolu, rozmiar 22–28% boku kafla, test iloczynu
-z iniekcjami. (3) Przekładnik wieloprzekładniowy — wybrany zaczep w modelu i u konsumentów.
-(4) Decyzje 1–3 (Ferranti i koniec toru, opisy przy symbolach, blok przekaźnika i zakładka
-inspektora).
+**W toku (polecenia sesji głównej 2026-10-30).** (1) Testy frontendu iloczynu znaczników
+{rodzaj × stan × motyw × LOD1/LOD2} i detektor kierunku ziemi w całej klasie glifów (v3, QET,
+CAD, v2, SVG kanoniczne). (2) Dokument: tabela rozmiarów znacznika, „Wzorzec HMI e²TANGO —
+wnioski", tabela stan → kolor → geometria (§11.13), luka modelu członu wysuwnego. (3) Zrzuty ux04
+i tablica rodzajów × stanów w obu motywach. (4) Przekładnik wieloprzekładniowy — wybrany zaczep
+w modelu i u konsumentów. (5) Decyzje 1–3 (Ferranti i koniec toru, opisy przy symbolach, blok
+przekaźnika i zakładka inspektora).
 
-**Znane czerwone.** `symbols/__tests__/kafelStanu.test.tsx` — 9 testów z oczekiwaniami sprzed
-jednego źródła stanu (uziemiony = kafel zamknięty, napęd po prawej); przepisywane razem
-z nowym układem kafla (pkt 2).
+**Znane czerwone.** `symbols/__tests__/kafelStanu.test.tsx` (oczekiwania sprzed układu kafla)
+i `scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` (2 — wariant Z.10 bez przekładnika Ferrantiego,
+kolizja tabliczki przekładnika) — przepisywane w pkt (1) i (5).
 
-**Pierwszy krok następcy.** Dokończyć pkt (1)–(2) w importerze QET (układ kafla łącznika),
-potem testy iloczynu i zrzuty.
+**Pierwszy krok następcy.** Pkt (1): testy frontendu znaczników i ziemi na glifie QET kanwy.
