@@ -7,8 +7,8 @@ ZRODLA DANYCH (proweniencja w polach rekordu, widoczna w karcie technicznej UI):
     ekoprojektu, dokumenty niedolaczone — NIEWERYFIKOWANY, znacznik przekroczenia Tier 2.
 - Pozycje normatywne SN/nN 15/0,4 i 20/0,4 kV (olejowe i suche, 250–3150 kVA) oraz
     blokowe PV/BESS/FW 15|20/0,385–1,0 kV (suche, 500–3150 kVA): straty = pulap Tier 2
-    rozporzadzenia (UE) 548/2014 w brzmieniu 2019/1783, u_k/i0/zaczepy = seria Siemens
-    GEAFOL — REFERENCYJNY (normatywna/typowa, nie egzemplarz producenta).
+    rozporzadzenia (UE) 548/2014 w brzmieniu 2019/1783, u_k/zaczepy = seria Siemens
+    GEAFOL, i0 = GEAFOL (suche) lub BEZ/EG (olejowe) — REFERENCYJNY.
 - Karty producentow: Siemens GEAFOL Neo 4GY6364-1EC 2000 kVA 20/0,48 kV — ZWERYFIKOWANY.
 
 KONWENCJE:
@@ -1263,7 +1263,7 @@ def _pozycja_normatywna(
     lv_kv: float,
     rodzaj: str,
 ) -> dict[str, Any]:
-    """Pozycja NORMATYWNA: straty = pulap Tier 2, u_k/i0/zaczepy = seria GEAFOL.
+    """Pozycja NORMATYWNA: straty = pulap Tier 2, u_k/zaczepy = GEAFOL; i0 = GEAFOL lub BEZ/EG.
 
     i0: suche z GEAFOL; olejowe z katalogow BEZ/EG dla tej samej mocy,
     ale innego modelu. Wszystkie pozycje normatywne sa REFERENCYJNE.
