@@ -98,6 +98,7 @@ def test_raport_rzeczywistego_repo_nie_uznaje_etykiet_za_braki() -> None:
     assert raport["liczba_pustych_pol"] == (
         raport["liczba_brakow_technicznych"] + raport["liczba_danych_projektu"]
     )
+    assert raport["liczba_zerowych_do_weryfikacji"] >= 0
     assert raport["macierz"] == sorted(
         raport["macierz"],
         key=lambda x: (x["rodzina"], x["pole"], x["rodzaj"], x["analiza"])
