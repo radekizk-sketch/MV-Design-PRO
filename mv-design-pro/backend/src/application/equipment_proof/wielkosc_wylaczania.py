@@ -28,12 +28,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
+from werdykt import PodstawaWymagania
 
 __all__ = [
     "WIELKOSC_IB",
     "WIELKOSC_IKSS_BEZPIECZNIK",
     "WIELKOSC_IKSS_NN",
     "WielkoscKryteriumWylaczania",
+    "podstawa_kryterium_wylaczania",
     "wielkosc_kryterium_wylaczania",
 ]
 
@@ -120,3 +122,34 @@ def wielkosc_kryterium_wylaczania(
     if pasmo is None:
         return None
     return WIELKOSC_IKSS_NN if pasmo == "nN" else WIELKOSC_IB
+
+
+def podstawa_kryterium_wylaczania(
+    wielkosc: WielkoscKryteriumWylaczania | None,
+) -> PodstawaWymagania:
+    """Podstawa kryterium wyłączania — z wybranej wielkości (``None`` = wyboru brak).
+
+    JEDNO źródło dla oceny wytrzymałości aparatury pól stacji i dowodu doboru aparatury."""
+    if wielkosc is None:
+        return PodstawaWymagania(
+            rodzaj="NORMA",
+            dokument="IEC 62271-100 (wyłącznik SN/WN) / IEC 60364-4-43 (nN)",
+            wydanie="2008",
+            jednostka_redakcyjna=(
+                "wielkość porównywana zależy od pasma napięcia punktu zwarcia: I_b (SN/WN) "
+                "albo I″k (nN)"
+            ),
+            status="WSKAZANE",
+            uwagi_pl="bieg nie niesie napięcia znamionowego punktu — pasma nie da się ustalić",
+        )
+    return PodstawaWymagania(
+        rodzaj="NORMA",
+        dokument=wielkosc.dokument,
+        wydanie=wielkosc.wydanie,
+        jednostka_redakcyjna=wielkosc.jednostka_redakcyjna,
+        status="WSKAZANE",
+        uwagi_pl=(
+            f"zdolność wyłączania aparatu porównana z wartością {wielkosc.opis_pl} w punkcie "
+            f"zabudowy pola ({wielkosc.norma})"
+        ),
+    )

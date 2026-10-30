@@ -87,20 +87,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "application.equipment_proof.types:EquipmentProofCheckResult.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C33 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C33"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "application.equipment_proof.types:EquipmentProofResult.overall_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C33 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C33"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "application.network_wizard.schema:WizardStateResponse.overall_status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C54 opisuje ten plik, nie ten symbol.",
@@ -665,13 +651,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz C26 (ta sama klasa koperty co sześciu producentów C26): `status: \"OK\" / \"brak danych\"` widoku wytrzymałości aparatury pól (`wytrzymalosc_aparatury_pol.py:1230, :1335`) mówi wyłącznie, czy widok ma wiersze pól z aparatem — flaga dostępności danych, nie ocena aparatu. Ocenę każdego pola niesie rekord W `wymaganie` (składowe K w `oceny`), a komunikat pola to zdanie tego rekordu (karta WERDYKT-MIGRACJA-190). Front nie czyta tego pola (ekran pokazuje rekord W wiersza). ENUM_WEWNETRZNY.",
    "wiersz_inwentarza": "C31"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "application.equipment_proof.generator:EquipmentProofGenerator._build_result.key_results.overall_ok",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C33 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C33"
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",

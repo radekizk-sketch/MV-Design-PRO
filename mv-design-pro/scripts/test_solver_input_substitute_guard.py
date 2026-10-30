@@ -2122,7 +2122,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wytrzymalosci aparatu w `network_model/catalog/audit2_oceny.py`), `i_th_effective_ka`,
     # `utilization_dyn_percent`, `utilization_th_percent` (liczby walidatora wytrzymalosci
     # podawane obok rekordu W); -1: `pass_status` (dowod audytu 2 niesie rekord W `wymaganie`).
-    assert "Pol kontraktow wejsciowych: 4512." in wyjscie, wyjscie
+    # Ta sama karta, C33: 4512 -> 4513 — POMIAR `contract_fields()` na `91b0791d1` (4512)
+    # i na drzewie karty (4513). +1: `wylaczanie` (rekord K kryterium wylaczania w
+    # `OcenyDoboruAparatu`); `status`, `overall_status`, `key_results` wyniku dowodu doboru
+    # zastapione polami `ocena`/`wymaganie`, ktore juz byly w zbiorze nazw.
+    assert "Pol kontraktow wejsciowych: 4513." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2451,7 +2455,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wyjasnialnego). POMIAR guardem na `b1e677ced` (604) i na drzewie karty (606).
         # Ta sama karta, domena 8 (audyt 2): 606 -> 607 (+1 `network_model/catalog/
         # audit2_oceny.py` — rekordy K/W audytu 2). POMIAR guardem na drzewie karty (607).
-        "Przeskanowano 607 plikow w zakresie: network_model, solver_input, enm, "
+        # Ta sama karta, C33: 607 -> 608 (+1 `application/equipment_proof/oceny.py`). POMIAR
+        # guardem na drzewie karty (608).
+        "Przeskanowano 608 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2890,7 +2896,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta WERDYKT-MIGRACJA-190 (2026-10-30): application 254 -> 255 (+1
         # `reference_patterns/oceny.py`), dlug 27/81 -> 25/71 (wpisy wyzej). POMIAR guardem.
         # Ta sama karta, domena 7: dlug 25/71 -> 24/69 (`lv_circuit_verification.py`). POMIAR.
-        "  application: pliki_skanowane=255, dlug=24 plikow/suma 69, "
+        # Ta sama karta, C33: application 255 -> 256 (+1 `equipment_proof/oceny.py` — rekordy
+        # K/W dowodu doboru aparatury); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  application: pliki_skanowane=256, dlug=24 plikow/suma 69, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

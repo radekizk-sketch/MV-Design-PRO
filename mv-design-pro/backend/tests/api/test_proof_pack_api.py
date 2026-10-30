@@ -906,13 +906,15 @@ def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalo
     assert response.status_code == 200, response.text
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
-    # VD4 12kV 630A z katalogu: U_m=12kV >= 10,0kV (biegu); I_cu=20kA >= 4,54kA -> PASS.
+    # VD4 12kV 630A z katalogu: U_s(10 kV) = 12 kV <= U_m = 12 kV; I_b <= I_cu = 20 kA ->
+    # oba rekordy K spełnione (dowód niepełny: zdolność na modelu niezwalidowanym).
     u_m_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "U_m")
     icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
     assert u_m_value["value"] == 12.0
     assert icu_value["value"] == 20.0
-    assert dokument["summary"]["key_results"]["u_m_ok"]["value"] == "PASS"
-    assert dokument["summary"]["key_results"]["icu_ok"]["value"] == "PASS"
+    wyniki = dokument["summary"]["key_results"]
+    assert wyniki["izolacja_ocena"]["value"] == "Kryterium spełnione — dowód niepełny"
+    assert wyniki["wylaczanie_ocena"]["value"] == "Kryterium spełnione — dowód niepełny"
 
 
 def test_pakiet_dowodowy_rozlacznik_sn_z_type_ref_daje_nie_dotyczy_dla_icu():
@@ -945,9 +947,12 @@ def test_pakiet_dowodowy_rozlacznik_sn_z_type_ref_daje_nie_dotyczy_dla_icu():
     assert response.status_code == 200, response.text
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
-    assert dokument["summary"]["key_results"]["icu_ok"]["value"] == "NIE_DOTYCZY"
-    assert dokument["summary"]["key_results"]["u_m_ok"]["value"] == "PASS"
+    wyniki = dokument["summary"]["key_results"]
+    assert wyniki["wylaczanie_ocena"]["value"] == "Nie dotyczy"
+    assert "aparat nie przerywa prądu zwarciowego" in wyniki["wylaczanie_ocena"]["formatted"]
+    assert wyniki["izolacja_ocena"]["value"] == "Kryterium spełnione — dowód niepełny"
     assert "Icu" not in dokument["summary"]["failed_checks"]
+    # Kod agregatu = projekcja rozstrzygnięcia liczbowego rekordów (NIE_DOTYCZY pominięte).
     assert dokument["summary"]["overall_status"] == "PASS"
 
 
@@ -1060,7 +1065,7 @@ def test_pakiet_dowodowy_kryterium_wylaczania_wg_rodzaju_aparatu_z_katalogu(
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dowod = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
     krok = next(k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_P12_004")
-    assert krok["equation"]["latex"] == rf"I_{{cu}} \ge {symbol}"
+    assert krok["equation"]["latex"] == rf"{symbol} \le I_{{cu}}"
 
 
 @pytest.mark.parametrize("t_b_s", [0.10, 0.2])

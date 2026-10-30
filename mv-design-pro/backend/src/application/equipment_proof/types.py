@@ -5,7 +5,7 @@ from typing import Any
 
 from application.analyses.kanon_json import canonicalize_json
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
-from werdykt import DanaPrzyjeta
+from werdykt import DanaPrzyjeta, OcenaKryterium, WynikWymagania
 
 
 @dataclass(frozen=True)
@@ -119,8 +119,11 @@ class EquipmentProofInput:
 
 @dataclass(frozen=True)
 class EquipmentProofCheckResult:
+    """Jedno sprawdzenie doboru: liczby porównania (wywód kroku) i rekord K (rozstrzygnięcie;
+    karta WERDYKT-MIGRACJA-190, C33). ``message_pl`` to zdanie rekordu."""
+
     name: str
-    status: str
+    ocena: OcenaKryterium
     required_value: float | str | None
     device_value: float | str | None
     required_source_key: str | None
@@ -131,7 +134,7 @@ class EquipmentProofCheckResult:
     def to_dict(self) -> dict[str, Any]:
         payload = {
             "name": self.name,
-            "status": self.status,
+            "ocena": self.ocena.model_dump(mode="json"),
             "required_value": self.required_value,
             "device_value": self.device_value,
             "required_source_key": self.required_source_key,
@@ -149,10 +152,11 @@ class EquipmentProofResult:
     run_id: str
     connection_node_id: str
     device_id: str
-    overall_status: str
+    #: Rekord W doboru nad czterema rekordami K sprawdzeń (jedno źródło rozstrzygnięcia).
+    wymaganie: WynikWymagania
+    #: Nazwy sprawdzeń z rekordem ``NIE_SPELNIA`` (brak danej nie jest naruszeniem).
     failed_checks: tuple[str, ...]
     checks: tuple[EquipmentProofCheckResult, ...]
-    key_results: dict[str, str]
     required_fault_results: dict[str, Any]
     #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte, na których stoją wymagane wielkości
     #: zwarciowe (wartość robocza tolerancji sieci nN) — addytywnie, w zapisie WYŁĄCZNIE gdy są.
@@ -165,10 +169,9 @@ class EquipmentProofResult:
             "run_id": self.run_id,
             "connection_node_id": self.connection_node_id,
             "device_id": self.device_id,
-            "overall_status": self.overall_status,
+            "wymaganie": self.wymaganie.model_dump(mode="json"),
             "failed_checks": self.failed_checks,
             "checks": [check.to_dict() for check in self.checks],
-            "key_results": self.key_results,
             "required_fault_results": self.required_fault_results,
         }
         if self.dane_przyjete:

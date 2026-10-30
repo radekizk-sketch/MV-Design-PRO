@@ -262,8 +262,14 @@ BACKEND = ROOT / "backend"
 # domena minus WIP = 0, WIP minus domena = dokladnie 2 bledy `misc` (generator `float` zamiast
 # `bool`) w `analysis/grid_strength/builder.py` — WSCR liczony z krotek z jawnymi `float`
 # zamiast `sum(...)` z `type: ignore` po wejsciu `float | None`. Zero nowych.
-BASELINE_ERRORS = 161
-BASELINE_FILES = 19
+# Karta WERDYKT-MIGRACJA-190, C33 (2026-10-30): 161/19 -> 156/18. POMIAR `mypy src`
+# (mypy 1.19.1) na HEAD `91b0791d1` i na drzewie C33; roznica zbiorow (plik, komunikat):
+# C33 minus HEAD = 0, HEAD minus C33 = dokladnie 5 bledow arg-type w
+# `application/equipment_proof/generator.py` (wartosci kroku `float | str | None` do
+# `_value_or_missing`/`_value_or_not_applicable`) — wywod czyta liczby przez `_as_float`,
+# rozstrzygniecie niesie rekord K. Zero nowych.
+BASELINE_ERRORS = 156
+BASELINE_FILES = 18
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

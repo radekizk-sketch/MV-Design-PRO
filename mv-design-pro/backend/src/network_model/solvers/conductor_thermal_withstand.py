@@ -19,7 +19,7 @@ przyrost temperatury jest proporcjonalny do calki Joule'a:
     I^2 * t = const   =>   I_dop(t) = I_th(1s) * sqrt(1 s / t)
 
 Ta sama zasada rownowaznej energii cieplnej rzadzi sprawdzeniem APARATU
-(`application/equipment_proof/generator.py::_check_ith`) — tu stosujemy ja do
+(`network_model/catalog/audit2_oceny.py::limit_cieplny_aparatu_ka`) — tu stosujemy ja do
 PRZEWODU. Rownowaznie, przez minimalny przekroj:
 
     S_min = I_th * sqrt(t) / k,   gdzie k = Jth(1s) [A/mm^2]

@@ -242,8 +242,11 @@ def izolacja_pokrywa_siec(
     w paśmie nN U_m ≥ Uₙ (`napiecie_wymagane_izolacji_kv`). Czytają go
     odmowa ogranicznika przepięć (`add_surge_arrester_sn`), kontrola aparatu pola
     (`set_bay_equipment`), zgodność napięciowa rodziny rozdzielnicy (klasy U_m karty),
-    podgląd doboru aparatu pola DER, dowód doboru aparatury (kryterium U) i podpowiedzi
-    katalogu. Granica równości U_m = U_s jest dopuszczona.
+    podgląd doboru aparatu pola DER i podpowiedzi katalogu. Dowód doboru aparatury wystawia
+    kryterium U jako rekord werdyktu (`application.equipment_proof.oceny.ocena_izolacji`) na tej
+    samej tablicy `napiecie_wymagane_izolacji_kv`; zgodność rozstrzygnięć obu przypina test
+    `test_parytet_rekordu_izolacji_z_predykatem_pasm`. Granica równości U_m = U_s jest
+    dopuszczona.
 
     ``None`` — rozstrzygnięcie niemożliwe: urządzenie bez U_m albo sieć bez napięcia
     wymaganego (napięcie nieznane, niefizyczne albo poza tablicami). Brak danej nie jest

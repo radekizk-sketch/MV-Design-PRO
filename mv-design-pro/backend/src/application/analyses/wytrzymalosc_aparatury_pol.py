@@ -75,6 +75,7 @@ from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catal
 from application.equipment_proof.wielkosc_wylaczania import (
     WIELKOSC_IB,
     WielkoscKryteriumWylaczania,
+    podstawa_kryterium_wylaczania,
     wielkosc_kryterium_wylaczania,
 )
 from enm.dane_przyjete_galezi import KLUCZ_WIERSZA_DANE_GALEZI, dane_przyjete_galezi_wiersza
@@ -834,33 +835,6 @@ def _ocena_cieplna(
     )
 
 
-def _podstawa_wylaczania(wielkosc: WielkoscKryteriumWylaczania | None) -> PodstawaWymagania:
-    """Podstawa kryterium wyłączania — z wybranej wielkości (``None`` = wyboru brak)."""
-    if wielkosc is None:
-        return PodstawaWymagania(
-            rodzaj="NORMA",
-            dokument="IEC 62271-100 (wyłącznik SN/WN) / IEC 60364-4-43 (nN)",
-            wydanie="2008",
-            jednostka_redakcyjna=(
-                "wielkość porównywana zależy od pasma napięcia punktu zwarcia: I_b (SN/WN) "
-                "albo I″k (nN)"
-            ),
-            status="WSKAZANE",
-            uwagi_pl="bieg nie niesie napięcia znamionowego punktu — pasma nie da się ustalić",
-        )
-    return PodstawaWymagania(
-        rodzaj="NORMA",
-        dokument=wielkosc.dokument,
-        wydanie=wielkosc.wydanie,
-        jednostka_redakcyjna=wielkosc.jednostka_redakcyjna,
-        status="WSKAZANE",
-        uwagi_pl=(
-            f"zdolność wyłączania aparatu porównana z {wielkosc.opis_pl} w punkcie zabudowy "
-            f"pola ({wielkosc.norma})"
-        ),
-    )
-
-
 def _ocena_wylaczania(
     *,
     kryterium_id: str,
@@ -958,7 +932,7 @@ def _ocena_wylaczania(
             warunek_latex=rf"{symbol} \le I_{{cu}}",
             relacja="NIE_WIECEJ",
         ),
-        podstawa=_podstawa_wylaczania(wielkosc),
+        podstawa=podstawa_kryterium_wylaczania(wielkosc),
         stosowalnosc=(
             Stosowalnosc(
                 dotyczy=False,

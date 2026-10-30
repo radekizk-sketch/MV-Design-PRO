@@ -294,7 +294,7 @@ def test_dowod_doboru_aparatury_nazywa_zalozenia(
         return
     assert zdanie in icu.notes
     if i_cu_not_applicable:
-        assert icu.status == "NIE_DOTYCZY"
+        assert icu.ocena.status_maszynowy == "NIE_DOTYCZY"
         assert zdanie not in ostrzezenia
     else:
         assert zdanie in ostrzezenia

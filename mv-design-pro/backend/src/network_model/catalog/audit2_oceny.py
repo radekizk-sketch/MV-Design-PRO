@@ -25,6 +25,7 @@ from typing import Any, Final
 from network_model.core.uziemienie import ETYKIETA_PL_PUNKTU_NEUTRALNEGO, TypPunktuNeutralnego
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
+    DanaPrzyjeta,
     OcenaKryterium,
     OdnosnikSladu,
     PodstawaWymagania,
@@ -148,7 +149,9 @@ def limit_cieplny_aparatu_ka(
     return i_th_ka * math.sqrt(i_th_duration_s / t_clearing_s)
 
 
-def _zakres_wytrzymalosci(opis_pl: str) -> ZakresWaznosci:
+def zakres_wytrzymalosci(opis_pl: str) -> ZakresWaznosci:
+    """Zakres ważności rekordów wytrzymałości aparatu — JEDEN dla K i W (W nie może być
+    opisany szerzej niż składniki)."""
     return ZakresWaznosci(
         rodzaj_analizy="SHORT_CIRCUIT",
         opis_pl=opis_pl,
@@ -171,6 +174,10 @@ def oceny_wytrzymalosci_aparatu(
     i_thermal_calculated_ka: float | None,
     t_clearing_s: float | None,
     zakres_opis_pl: str,
+    dane_dynamiczna: Sequence[DanaPrzyjeta] = (),
+    dane_cieplna: Sequence[DanaPrzyjeta] = (),
+    zdolnosc_id: str = ZDOLNOSC_WYTRZYMALOSCI,
+    odniesienie: str = _ODNIESIENIE,
 ) -> tuple[OcenaKryterium, OcenaKryterium]:
     """Dwa rekordy K wytrzymałości aparatu ze znamion pozycji katalogu: dynamiczny
     (i_p ≤ I_dyn) i cieplny (I_th ≤ I_thr·√min(1, T_kr/T_k)).
@@ -178,9 +185,14 @@ def oceny_wytrzymalosci_aparatu(
     Znamiona są danymi karty katalogowej pozycji (``podstawa_katalogu``); nieznane znamię albo
     nieznany czas wyłączenia dają rekord ``NIE_OCENIONO``/``BRAK_PODSTAWY`` z nazwanym brakiem —
     „nie da się sprawdzić” to inny stan niż „nie wytrzymuje”.
+
+    ``dane_dynamiczna`` / ``dane_cieplna`` — dane przyjęte, na których stoi porównywany prąd
+    (wartości robocze biegu: tolerancja sieci nN, gałęzie, parametry maszyn) — rekord ma wtedy
+    kompletność dowodu ``NIEPELNY``. ``zdolnosc_id`` / ``odniesienie`` — zdolność i moduł
+    wołającego (walidator katalogu albo dowód doboru aparatury), gdy reguła jest ta sama.
     """
-    zdolnosc = classify_dynamic_capability(ZDOLNOSC_WYTRZYMALOSCI)
-    zakres = _zakres_wytrzymalosci(zakres_opis_pl)
+    zdolnosc = classify_dynamic_capability(zdolnosc_id)
+    zakres = zakres_wytrzymalosci(zakres_opis_pl)
     braki_dyn: list[str] = []
     if i_dyn_ka is None or i_dyn_ka <= 0:
         braki_dyn.append(f"pozycja „{etykieta_pl}” nie niesie znamionowego prądu szczytowego I_dyn")
@@ -207,7 +219,8 @@ def oceny_wytrzymalosci_aparatu(
             f"{kryterium_id}.dynamiczna",
             "prąd udarowy podany do oceny wobec I_dyn pozycji katalogu",
         ),
-        odniesienie=_ODNIESIENIE,
+        dane_przyjete=dane_dynamiczna,
+        odniesienie=odniesienie,
     )
     limit_th = limit_cieplny_aparatu_ka(i_th_ka, i_th_duration_s, t_clearing_s)
     braki_th: list[str] = []
@@ -251,7 +264,8 @@ def oceny_wytrzymalosci_aparatu(
             f"{kryterium_id}.cieplna",
             "prąd cieplny podany do oceny wobec I_th przeliczonego na czas wyłączenia",
         ),
-        odniesienie=_ODNIESIENIE,
+        dane_przyjete=dane_cieplna,
+        odniesienie=odniesienie,
     )
     return dynamiczna, cieplna
 
@@ -348,7 +362,7 @@ def ocen_aparat_katalogu_wytrzymalosci(
             wymaganie_id=f"audyt2.wytrzymalosc.{device_id}",
             nazwa_pl=f"Wytrzymałość zwarciowa aparatu „{nazwa}”",
             oceny=(dynamiczna, cieplna),
-            zakres=_zakres_wytrzymalosci(zakres_pl),
+            zakres=zakres_wytrzymalosci(zakres_pl),
         ),
         i_th_effective_ka=limit_th,
         utilization_dyn_percent=_wykorzystanie_procent(i_peak_calculated_ka, device.i_dyn_ka),

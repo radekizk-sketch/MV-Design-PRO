@@ -50,12 +50,14 @@ COMPLETENESS_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "delta_u_total_percent",
         "u_kv",
     ),
+    # Karta WERDYKT-MIGRACJA-190 (C33): pozycje podsumowania dowodu doboru to etykiety rekordów
+    # K/W (`application.equipment_proof.generator`), nie kody PASS/FAIL.
     ProofType.EQUIPMENT_PROOF.value: (
-        "u_m_ok",
-        "icu_ok",
-        "idyn_ok",
-        "ith_ok",
-        "overall_ok",
+        "izolacja_ocena",
+        "wylaczanie_ocena",
+        "dynamiczna_ocena",
+        "cieplna_ocena",
+        "dobor_ocena",
     ),
     ProofType.PROTECTION_OVERCURRENT.value: (
         "breaking_ok",

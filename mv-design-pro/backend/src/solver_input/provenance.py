@@ -415,6 +415,20 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             ),
             audit_ref="karta E21-4; karta WERDYKT-MIGRACJA-190",
         ),
+        CapabilityEvidence(
+            capability_id="aparatura.dobor_aparatu_punktu",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Dowód doboru aparatu w punkcie zabudowy: napięcie najwyższe U_m aparatu wobec "
+                "napięcia najwyższego sieci U_s (IEC 60038), zdolność wyłączania I_cu wobec I_b "
+                "albo I″k, prąd szczytowy I_dyn wobec i_p i prąd krótkotrwały I_th wobec prądu "
+                "cieplnego zapisanego biegu IEC 60909 (application/equipment_proof). Zestawienie "
+                "danych znamionowych z wielkościami biegu na modelu niezwalidowanym pomiarem — "
+                "nie dowód regulacyjny."
+            ),
+            audit_ref="application/equipment_proof/oceny.py; karta WERDYKT-MIGRACJA-190",
+        ),
         # Kontrole konfiguracji stacji audytu 2 (karta WERDYKT-MIGRACJA-190): rekordy werdyktu
         # wyjaśnialnego składane w `network_model/catalog/audit2_oceny.py`.
         CapabilityEvidence(
