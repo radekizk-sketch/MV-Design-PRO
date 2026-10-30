@@ -570,7 +570,7 @@ class TestSeedsLoadThroughRepository:
 class TestLvCableThermalFieldsConsistency:
     def test_all_17_records_present(self) -> None:
         repo = get_default_mv_catalog()
-        assert len(repo.list_lv_cable_types()) == 17
+        assert len(repo.list_lv_cable_types()) == 96  # 17 legacy + 79 NKT nN (YKXS/YAKXS/YKY/YAKY); PEN normowo
 
     def test_core_functions_matches_number_of_cores(self) -> None:
         repo = get_default_mv_catalog()
