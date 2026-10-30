@@ -32,8 +32,8 @@ jasny" (:101). W biegu kontrolnym wszystkie sześć testów grupy zielone.
 | kd6-zrzuty:318 light, dark | sekcja aparatury 22 618 px > 20 000 px dla 3 pól; przyczyna nieustalona | ? | OTWARTE |
 | parytety-fala2:241 | 2× klik w wartość z dowodem nie otwiera zakładki dowodu zawężonej do elementu (`mvd-dowod-zakres-element` brak); obsługa `ui2/spaces/wyniki/WynikiWarsztat.tsx:339`; przyczyna nieustalona | ? | OTWARTE |
 | pola-w-torze-zrzuty:36 | uchwyt nazwy stacji poza viewportem po powrocie do kadru „Sieć"; przyczyna nieustalona | ? (kadrowanie) | OTWARTE |
-| s95-budowa-z-kanwy:250 | prawy klik w środek toru dalszej połówki trafia w tło (menu kanwy zamiast menu odcinka); przyczyna nieustalona | ? (hit-test toru) | OTWARTE |
-| sld-audyt-powykonawczy:205 (stacja) | kotwica `[data-owner-ref$="/station#sn-bus"]`: od GEOMETRIA-STACJI odcinek szyny SN stacji niesie ref sekcji `${busRef}#sn-bus` (`ui/shared/sldActionExecutor.ts:262`) | F: selektor sprzed kanonu refów szyn | OTWARTE (do przepisania na `#sn-bus` stacji, sprawdzić, że kadr trafia w stację) |
+| s95-budowa-z-kanwy:250 | prawy klik w środek toru dalszej połówki trafia w tło; w biegu z sondą zielony — podejrzenie wyścigu: punkt liczony przed ruchem kamery po menu stacji (zrzut: kadr „Stacja S01”) | G: klik współrzędnymi przed ustaleniem kamery | w diagnozie |
+| sld-audyt-powykonawczy:205 (stacja) | kotwica `[data-owner-ref$="/station#sn-bus"]`: od GEOMETRIA-STACJI odcinek szyny SN stacji niesie ref sekcji `stn/<id>/sn_bus#sn-bus` (`ui/sld/shared/sldActionExecutor.ts:262`; sonda DOM: 26 ścieżek `stn/…/sn_bus#sn-bus`, zero `…/station#sn-bus`) | F: selektor sprzed kanonu refów szyn | przepisane na `[data-owner-ref^="stn/"][data-owner-ref$="#sn-bus"]`; NIEZWERYFIKOWANE biegiem |
 
 ## Znalezisko uboczne (nienaprawione)
 

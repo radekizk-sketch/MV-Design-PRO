@@ -95,7 +95,10 @@ const OBSZARY_SZCZEGOLU = [
     // Druga stacja na magistrali — szyna SN stacji jest symbolem obecnym w kazdej skali.
     nazwa: 'stacja na magistrali z polami',
     plik: 'stacja',
-    kotwica: '[data-owner-ref$="/station#sn-bus"] >> nth=1',
+    // GEOMETRIA-STACJI (Z-03): odcinek szyny SN stacji niesie ref SEKCJI szyny
+    // (`stn/<id>/sn_bus#sn-bus`), nie kompozyt stacji (`stn/<id>/station#sn-bus`) —
+    // kotwica przepisana na ref sekcji stacji (prefiks `stn/` odróżnia od szyn GPZ).
+    kotwica: '[data-owner-ref^="stn/"][data-owner-ref$="#sn-bus"] >> nth=1',
     // NAPRAWA (karta TESTY-DRYF-E2E poz. 5, 2026-08-12): etykieta pola SN nie
     // niesie dziś słowa „pole" wprost — render pokazuje kod pola + rodzaj
     // gałęzi („F01 · liniowe", „F02 · liniowe"...), więc fragment „pole" nie
@@ -206,6 +209,8 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
       await page.setViewportSize({ width: WIDOK.szerokosc, height: WIDOK.wysokosc });
       const bledy = await otworzKanwe(page, 2, 'dark');
 
+      // SONDA-TMP
+      console.log('SONDA AUD', await page.evaluate(() => [...new Set([...document.querySelectorAll('[data-owner-ref*="sn-bus"]')].map((e) => `${e.tagName} ${e.getAttribute('data-owner-ref')}`))].join('\n')));
       const kotwica = page.locator(obszar.kotwica);
       await expect(
         kotwica,
