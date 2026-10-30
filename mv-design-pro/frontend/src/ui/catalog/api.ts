@@ -32,6 +32,7 @@ import type {
   TypeCategory,
   VTCatalogType,
   FerrantiCatalogType,
+  InstrumentManufacturerFamilyCatalogType,
 } from './types';
 
 export class CatalogApiError extends Error {
@@ -82,6 +83,7 @@ export type CatalogListItem =
   | CTCatalogType
   | VTCatalogType
   | FerrantiCatalogType
+  | InstrumentManufacturerFamilyCatalogType
   | PVInverterCatalogType
   | BESSInverterCatalogType
   | ProtectionDeviceType
@@ -346,6 +348,12 @@ export async function fetchVtTypes(): Promise<VTCatalogType[]> {
 
 export async function fetchFerrantiTypes(): Promise<FerrantiCatalogType[]> {
   return fetchCatalogJson<FerrantiCatalogType[]>('/api/catalog/ferranti-types');
+}
+
+export async function fetchInstrumentManufacturerFamilies(): Promise<InstrumentManufacturerFamilyCatalogType[]> {
+  return fetchCatalogJson<InstrumentManufacturerFamilyCatalogType[]>(
+    '/api/catalog/instrument-transformer-families',
+  );
 }
 
 export async function fetchSurgeArresterTypes(): Promise<SurgeArresterCatalogType[]> {
@@ -739,6 +747,9 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'FERRANTI':
       types = await fetchFerrantiTypes();
+      break;
+    case 'INSTRUMENT_FAMILY':
+      types = await fetchInstrumentManufacturerFamilies();
       break;
     case 'SURGE_ARRESTER':
       types = await fetchSurgeArresterTypes();
