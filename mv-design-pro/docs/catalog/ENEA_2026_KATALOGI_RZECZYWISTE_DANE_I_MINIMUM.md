@@ -102,6 +102,13 @@ katalogu; istniejące typy zachowują ID:
   strony drukowane 40–45. Wariant referencyjny obciążalności:
   trójkąt, ekrany uziemione obustronnie, grunt 20°C, 0,7 m, 1 K·m/W.
   https://www.tele-fonika.com/storage/file/core_files/2025/3/27/7459739d043ef898b9ecd655bc593b07/Clean%20Energy%20ENG.pdf
+- **Tele-Fonika 8,7/15(17,5) kV**: **24 modele YHAKXS/YHKXS**
+  (13 Al: 50–1000 mm²; 11 Cu: 35–500 mm²) z osobnych tabel
+  R20/C/L i Iz/Ith na stronach drukowanych 10–15 tej samej
+  publikacji producenta. Pominięto niejednoznaczne pozycje Cu
+  dla dużych przekrojów, a `voltage_rating_kv=15` nie jest
+  zastępowane 20 ani 30 kV. Ta rodzina ma szczególne znaczenie
+  przy instalacjach odbiorców zasilanych z sieci 15 kV.
 - **Tele-Fonika 18/30(36) kV**: dalsze **27 modeli XRUHAKXS/XRUHKXS**
   z tej samej publikacji, ale **z odrębnych tabel dla 18/30 kV**
   (str. drukowane 58–63). Al 50–1000 mm²: 13 rekordów,
@@ -146,15 +153,15 @@ założeniem geometrycznym, a nie osobnym pomiarem NKT.
 
 - 6 wariantów NKT z typoszeregu ENEA 2026;
 - 13 dalszych NKT XRUHAKXS1 do projektów odbiorcy;
-- 54 TFK XRUHAKXS/XRUHKXS SN 12/20 i 18/30 kV do projektów odbiorcy;
+- 78 TFK SN: 24 szt. 8,7/15, 27 szt. 12/20 i 27 szt. 18/30 kV.
 - 79 dalszych NKT nN (4 rodziny: Cu/Al i PVC/XLPE).
 
 Są to rekordy o **niepustym minimum projektowym**, nie gwarancja, że
 każdy wariant ma osobno potwierdzone R0/X0 dla dowolnego sposobu
 uziemienia ekranów lub obciążalność po zmianie warunków ułożenia.
-Takich wartości nie wolno wymyślać. Priorytetem dalszych aktualizacji
-są kolejne tabele producentów, szczególnie Tele-Fonika nN oraz
-NKT i TFK 8,7/15 kV i pozostałe wersje konstrukcyjne 18/30 kV.
+Takich wartości nie wolno wymyślać. Priorytetem dalszych aktualizacji są kolejne tabele producentów,
+szczególnie Tele-Fonika nN, NKT dla innych klas SN i dalsze
+warianty konstrukcyjne TFK z kompletnymi danymi.
 
 ## Hierarchia danych — globalnie
 
