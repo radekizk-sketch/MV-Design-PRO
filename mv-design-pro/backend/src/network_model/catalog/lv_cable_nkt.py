@@ -49,6 +49,82 @@ NKT_YKXS_5Z: tuple[tuple[int, float, float, float, int, int], ...] = (
 )
 
 
+
+NKT_YAKXS_SOURCE = (
+    "NKT, YAKXS/YAKXSżo 0,6/1 kV, karta elektryczna, "
+    "str. druk. 79-80, "
+    "https://www.elektrykasklep.pl/file,553320,przewody-i-kable-elektroenergetyczne_201532.pdf"
+)
+
+# NKT AL XLPE, nN: przekrój, R20, L, Ith1s kA, Iz w powietrzu, Iz w ziemi.
+# Gdy jeden przekrój ma różne geometrie (SE/SM), to konkretna
+# poniższa kombinacja pochodzi z JEDNEGO wiersza karty NKT.
+NKT_YAKXS_4Z: tuple[tuple[int, float, float, float, int, int], ...] = (
+    (10, 3.08, 0.279, 0.946, 60, 74),
+    (16, 1.91, 0.265, 1.513, 81, 96),
+    (25, 1.2, 0.267, 2.364, 109, 126),
+    (35, 0.868, 0.259, 3.309, 134, 150),
+    (50, 0.641, 0.226, 4.728, 156, 175),
+    (70, 0.443, 0.224, 6.619, 202, 217),
+    (95, 0.32, 0.22, 8.983, 243, 256),
+    (120, 0.253, 0.217, 11.346, 284, 292),
+    (150, 0.206, 0.219, 14.183, 325, 327),
+    (185, 0.164, 0.218, 17.492, 378, 370),
+    (240, 0.125, 0.213, 22.693, 447, 426),
+)
+NKT_YAKXS_5Z: tuple[tuple[int, float, float, float, int, int], ...] = (
+    (10, 3.08, 0.288, 0.946, 62, 75),
+    (16, 1.91, 0.275, 1.513, 84, 98),
+    (25, 1.2, 0.276, 2.364, 113, 127),
+    (35, 0.868, 0.268, 3.309, 139, 152),
+    (50, 0.641, 0.234, 4.728, 168, 180),
+    (70, 0.443, 0.228, 6.619, 215, 221),
+    (95, 0.32, 0.221, 8.983, 260, 262),
+    (120, 0.253, 0.218, 11.346, 305, 299),
+)
+
+
+def get_all_nkt_yakxs_lv_cable_types() -> list[dict[str, Any]]:
+    result = []
+    for cores, rows in ((4, NKT_YAKXS_4Z), (5, NKT_YAKXS_5Z)):
+        for section, r20, l_mh, ith_ka, iz_air, iz_soil in rows:
+            x = round(tau * 50 * l_mh / 1000, 6)
+            result.append({
+                "id": f"kab-nn-nkt-yakxs-{cores}x{section}",
+                "name": f"NKT YAKXSżo {cores}×{section} Al 0,6/1 kV",
+                "params": {
+                    "u_n_kv": 0.4, "r_ohm_per_km": r20,
+                    "x_ohm_per_km": x, "i_max_a": float(iz_soil),
+                    "manufacturer": "NKT", "conductor_material": "AL",
+                    "insulation_type": "XLPE",
+                    "cross_section_mm2": float(section), "number_of_cores": cores,
+                    "core_functions": "3L+PEN" if cores == 4 else "3L+N+PE",
+                    "return_conductor_cross_section_mm2": float(section),
+                    "return_conductor_r_ohm_per_km_20c": r20,
+                    "return_conductor_x_ohm_per_km": x,
+                    "ith_1s_a": ith_ka * 1000.0,
+                    "jth_1s_a_per_mm2": round(ith_ka * 1000 / section, 6),
+                    "max_temperature_c": 90.0,
+                    "short_circuit_temperature_c": 250.0,
+                    "standard": "IEC 60502-1",
+                    "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                    "catalog_status": "PRODUKCYJNY_V1",
+                    "contract_version": "2.0",
+                    "source_reference": NKT_YAKXS_SOURCE,
+                    "verification_note": (
+                        f"NKT: R20={r20:g} Ω/km, L={l_mh:g} mH/km, "
+                        f"Ith(1s)={ith_ka:g} kA, Iz ziemia={iz_soil} A, "
+                        f"Iz powietrze={iz_air} A. "
+                        "Iz dotyczy tylko warunków odniesienia NKT "
+                        "(grunt 20°C, powietrze 30°C, 0,7m, 1,0 K m/W, pojedynczy kabel). "
+                        "Reaktancja żyły powrotnej to założenie modelowe symetrii, "
+                        "nie osobna dana fabryczna."
+                    ),
+                },
+            })
+    return result
+
+
 def get_all_nkt_lv_cable_types() -> list[dict[str, Any]]:
     """Kable Cu/XLPE nN NKT: 11 wariantów 4ż + 8 wariantów 5ż."""
     result = []
@@ -95,4 +171,5 @@ def get_all_nkt_lv_cable_types() -> list[dict[str, Any]]:
                     ),
                 },
             })
+    result.extend(get_all_nkt_yakxs_lv_cable_types())
     return result
