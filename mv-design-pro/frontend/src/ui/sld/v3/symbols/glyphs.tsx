@@ -1464,37 +1464,35 @@ function zKafelemStanu(id: SymbolId, Glyph: (props: GlyphProps) => JSX.Element):
 }
 
 /**
- * Prymitywy noża symbolu QET w położeniu (przed obrotem `noz.katy`): koniec linii dalszy od
- * przegubu przesunięty wzdłuż noża do `noz.zasiegi[położenie]` × długości — w położeniu
- * zamkniętym i uziemionym koniec noża leży NA styku stałym (decyzja architekta 2026-10-30:
- * nóż odłącznika dłuższy od odległości do styku przechodził przez kreskę styku i odłącznik
- * zamknięty czytał się jak krzyżyk „+”). Ta sama reguła co importer
- * (`scripts/import_qet_pole_sn.py::noz_w_zasiegu`), który z niej liczy obwiednię i stopień glifu.
+ * Prymitywy noża symbolu QET w położeniu (przed obrotem `noz.katy`): nóż SZTYWNY w zasięgu
+ * położenia — jednokładność o skali `noz.zasiegi[położenie]` wokół przegubu dla KAŻDEGO punktu
+ * (ostrze i wkładka bezpiecznika na nożu przesuwają się do przegubu w tej samej proporcji, kształt
+ * noża bez zmian). W położeniu zamkniętym i uziemionym zasięg sprowadza koniec noża na styk stały,
+ * w nieustalonym skraca nóż (`kafelStanu.uklad.noz.zasiegNieustalony`). Ta sama reguła co importer
+ * (`scripts/import_qet_pole_sn.py::noz_w_zasiegu`), który z niej liczy obwiednię, odstępy od
+ * znaczników i stopień glifu. Nóż składa się wyłącznie z linii (importer przerywa import inaczej).
  */
 export function prymitywyNozaQet(noz: QetNozSymbolu, polozenie: QetPolozenieNoza): readonly CadPrimitive[] {
   const zasieg = noz.zasiegi[polozenie] ?? 1;
   if (zasieg === 1) return noz.prymitywy;
+  const k = (x: number, y: number) => ({ x: noz.cx + (x - noz.cx) * zasieg, y: noz.cy + (y - noz.cy) * zasieg });
   return noz.prymitywy.map((p) => {
-    if (p.k !== 'line') return p;
-    const d1 = Math.hypot(p.x1 - noz.cx, p.y1 - noz.cy);
-    const d2 = Math.hypot(p.x2 - noz.cx, p.y2 - noz.cy);
-    const dalej = (x: number, y: number) => ({ x: noz.cx + (x - noz.cx) * zasieg, y: noz.cy + (y - noz.cy) * zasieg });
-    if (d2 >= d1) {
-      const k = dalej(p.x2, p.y2);
-      return { ...p, x2: k.x, y2: k.y };
-    }
-    const k = dalej(p.x1, p.y1);
-    return { ...p, x1: k.x, y1: k.y };
+    if (p.k !== 'line') throw new Error(`nóż QET z prymitywem ${p.k} — importer dopuszcza wyłącznie linie`);
+    const a = k(p.x1, p.y1);
+    const b = k(p.x2, p.y2);
+    return { ...p, x1: a.x, y1: a.y, x2: b.x, y2: b.y };
   });
 }
 
 /**
  * Symbol QET w rolach importera (`qetPoleSn.ts`): PRZEWODY (tor i obwód wtórny w gabarycie)
- * kreską przewodu `V3_STROKE_APPARATUS`; GLIF — rysunek aparatu (`stale` + nóż) — i OSPRZĘT
- * (napęd M, cewka wyłączająca) kreską glifu `QET_KRESKA_GLIFU`, proporcjonalną do kafla stanu
- * (uwaga właściciela 2026-10-29: wyraźny znak rodzaju aparatu). Oba mnożniki przechodzą przez
- * `grubosc` (kompensacja ekranowa jednorodna dla całego symbolu). Grupy `data-qet` są
- * punktem pomiaru stopnia glifu w e2e (`getBBox` glifu względem kafla).
+ * kreską przewodu `V3_STROKE_APPARATUS`; GLIF — rysunek aparatu (`stale`, nóż i ZNACZNIKI rodzaju
+ * aparatu przy stykach stałych), ZIEMIA (symbol uziemienia skierowany w dół, poza miarą stopnia)
+ * i OSPRZĘT (napęd — atrybut łącznika) kreską glifu `QET_KRESKA_GLIFU`, proporcjonalną do kafla
+ * stanu. Znacznik ma kreskę i kolor noża (decyzja właściciela 2026-10-30: kolor znacznika taki
+ * sam jak kolor noża — kontrast na czerwonym i zielonym kaflu). Oba mnożniki przechodzą przez
+ * `grubosc` (kompensacja ekranowa jednorodna dla całego symbolu). Grupy `data-qet` są punktem
+ * pomiaru stopnia glifu w e2e (`getBBox` glifu względem kafla).
  */
 function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
   const symbol = QET_SYMBOLE_POLA_SN[id];
@@ -1526,7 +1524,17 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
               />
             </g>
           )}
+          {symbol.znaczniki.map((z) => (
+            <g key={`${z.styk}-${z.rodzaj}`} data-qet="znacznik" data-znacznik-rodzaj={z.rodzaj} data-znacznik-styk={z.styk}>
+              <CadPrimitiveLayer prims={z.prymitywy} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+            </g>
+          ))}
         </g>
+        {symbol.ziemia && (
+          <g data-qet="ziemia">
+            <CadPrimitiveLayer prims={symbol.ziemia.prymitywy} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+          </g>
+        )}
         {symbol.osprzet.length > 0 && (
           <g data-qet="osprzet">
             <CadPrimitiveLayer prims={symbol.osprzet} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />

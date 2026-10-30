@@ -50,7 +50,7 @@ python -I scripts/import_qet_pole_sn.py --sprawdz  # kontrola świeżości (rc=1
   (linia stała z końcem w zacisku portu toru albo w punkcie źródła portu wtórnego, równoległa
   do kierunku portu — tolerancja `TOLERANCJA_PRZEWODU`), **glif** (znak rodzaju aparatu: styki,
   nóż, rdzeń, okręgi) albo **osprzęt** (składnik jawnie wskazany w manifeście polem `osprzet`
-  z powodem — napęd silnikowy „M”, cewka wyłączająca). Przewody rysuje się kreską przewodu
+  z powodem — napęd łącznika: silnikowy „M”, zasobnikowy z obsługą ręczną). Przewody rysuje się kreską przewodu
   schematu (`V3_STROKE_APPARATUS`), glif i osprzęt kreską glifu `QET_KRESKA_GLIFU`
   (`kafelStanu.kreskaGlifuQet` × 0,4 = 2 jednostki świata = bok kafla / 24) — grubość
   proporcjonalna do kafla, nie do przewodu.
@@ -82,22 +82,40 @@ python -I scripts/import_qet_pole_sn.py --sprawdz  # kontrola świeżości (rc=1
   napięciowego) ma `przedluzenie` {`kierunek`, `powod`}: przewód obwodu wtórnego jest
   przedłużony w podanym kierunku do najbliższego rastru schematu, skąd biegnie linia pomiarowa.
   Przedłużenie punktu leżącego już na rastrze przerywa import („zbędne”).
-* Rysunek źródła = położenie OTWARTE. Położenia ZAMKNIĘTE i UZIEMIONE (łącznik
-  trójpołożeniowy) to obrót prymitywów noża wokół przegubu na kierunek styku stałego;
-  położenie NIEZNANE = połowa kąta zamknięcia (łącznik dwupołożeniowy) albo położenie źródła
-  (łącznik trójpołożeniowy), w obu przypadkach z kreską przerywaną noża. Wzór kreski
-  przerywanej sceny to `w 2w` (`wzorKreskiPrzerywanejSceny`), czyli przerwa dwa razy szersza
-  od kreski — przy okrągłych zakończeniach linii przerwa pozostaje widoczna.
+* Łączniki z położeniem (wyłącznik, wyłącznik z napędem, odłącznik, rozłącznik, rozłącznik
+  z bezpiecznikami, uziemnik, łącznik trójpołożeniowy z napędem i bez) składa UKŁAD KAFLA
+  (`kafelStanu.uklad` w manifeście, `uloz_kafel_lacznika` importera) wg wzorca HMI e²TANGO
+  (decyzja właściciela 2026-10-30): zawias noża u dołu, styk stały u góry, nóż pionowy =
+  zamknięty, ukośny (45° w prawo) = otwarty, kreskowany i skrócony (22,5°, zasięg 0,6) =
+  nieustalony, poziomy na zestyku uziemiającym = uziemiony (łącznik trójpołożeniowy). Każdy
+  prymityw źródła ma dokładnie jedną rolę układu — nóż, znacznik styku, ziemia, osprzęt — albo
+  jawne pominięcie z powodem; przewody toru generuje układ (od portu górnego do znacznika styku
+  zamknięcia, od przegubu do portu dolnego).
+* Znacznik rodzaju aparatu przy styku stałym: wyłącznik „×” (EN 60617 07-13-05), odłącznik
+  i człon wysuwny „○” (okrąg styku odłączającego EN 60617 07-13-07, konwencja właściciela),
+  rozłącznik — kreska styku z okręgiem pod nią (IEC 60617 S00290, element 07-13-08, okrąg
+  w proporcji rejestru symboli repo 0,28), uziemnik — sama kreska styku. Łącznik
+  trójpołożeniowy ma znaczniki obu funkcji: „○” przy zestyku szynowym i kreskę przy zestyku
+  uziemiającym. Rozmiar jednej deklaracji: 30 j. QET = 12 j.św. = 25 % boku kafla (przedział
+  22–28 %), kreska = kreska noża, tusz ≥ 4 j.św. od krawędzi kafla, tusz ≥ 1 j.św. od noża poza
+  strefą styku (5 j.św.). Znacznik za mały, za duży, brakujący, przy krawędzi albo nachodzący
+  na nóż przerywa import.
+* Symbol uziemienia (EN 60617 02-15-01, trzy kreski) leży POD uziemnikiem, skierowany w dół, na
+  końcu pionu odgałęzienia: przy przegubie uziemnika i pod dolnym końcem kreski zestyku
+  uziemiającego łącznika trójpołożeniowego (po prawej stronie osi, jak na rysunku ENEA Zeszyt 1
+  Z.10 s.89). Kreski muszą maleć w dół — ziemia skierowana w górę przerywa import.
+* Napęd jest atrybutem łącznika (osprzęt, kotwica sprzężenia w przegubie noża): napęd silnikowy
+  „M” wyłącznika po lewej stronie osi, napęd zasobnikowy z obsługą ręczną łącznika
+  trójpołożeniowego po lewej (prawą zajmuje zestyk uziemiający z ziemią). Cewki wyłączającej
+  w kaflu nie ma (decyzja właściciela 2026-10-30: kafel zawiera tylko nóż, styk stały ze
+  znacznikiem i ewentualnie M); port wtórny `wylacz` wyłącznika leży na prawej krawędzi kafla
+  i w nim kończy się linia wyłączania od przekaźnika.
+* Wzór kreski przerywanej sceny to `w 2w` (`wzorKreskiPrzerywanejSceny`), czyli przerwa dwa
+  razy szersza od kreski — przy okrągłych zakończeniach linii przerwa pozostaje widoczna.
 * Teksty QET są zapisane jako punkt bazowy; środek znaku i jego obwiednia wynikają z szerokości
   posuwu kroju źródła (Liberation Sans, metrycznie zgodny z Arial: `SZEROKOSC_ZNAKU_EM`,
   „M” 1706/2048 em, „3” 1139/2048 em) i wysokości 0,7 em (`EM_WYSOKOSC`). Znak spoza tabeli
   przerywa import.
-* Łącznik trójpołożeniowy nie ma elementu w kolekcji — jest złożeniem elementów QET
-  `en_60617_07_13_07` (odłącznik dwukierunkowy) i `en_60617_02_15_01` (uziemienie obrócone
-  o 180° nad zestykiem prawym), oznaczonym w pliku generowanym polem `zlozenie`. Uziemienie leży
-  u GÓRY pola, przy torze między szyną a stykiem odłączającym, jak na rysunku ENEA Zeszyt 1 Z.10
-  (s.89). Jego zacisk szynowy leży wewnątrz gabarytu (symbol uziemienia sięga wyżej) i jest
-  przedłużony przewodem do krawędzi.
 * Głowica kablowa i złącze odgałęzienia przekładnika napięciowego to element
   `en_60617_03_03_05` (złącze wtykowe: wtyk zaczerniony + gniazdo) — znak rysunków ENEA Zeszyt 1
   Z.10/Z.11.1 (zaczerniony prostokąt nad czaszą), obrócony o −90°: wtyk (strona rozdzielnicy)
@@ -108,22 +126,13 @@ python -I scripts/import_qet_pole_sn.py --sprawdz  # kontrola świeżości (rc=1
   (koniec przewodu lub kabla, niepodłączony), nie znak uziemienia — uziemienie występuje
   wyłącznie przy uziemniku. Rysunek końca toru jest w całości glifem (`przewodyJakoRysunek`
   z powodem).
-* Wyłącznik jest złożeniem elementów `en_60617_07_13_05` (wyłącznik) i `en_60617_07_15_01`
-  (napęd elektromechaniczny — cewka wyłączająca, obrócona o 90° po prawej stronie toru, jako
-  osprzęt). Zacisk cewki od strony toru jest w `zaciskiPozaTorem`, zacisk zewnętrzny jest portem
-  wtórnym `wylacz` na krawędzi kafla — w nim kończy się linia wyłączania od przekaźnika
-  zabezpieczeniowego (uwaga właściciela 2026-10-29 pkt 5: linia wyłączania prowadzi do cewki Q0,
-  nie do środka kafla).
-* Wyłącznik z napędem silnikowym (`BayPrimaryDevice.naped` = `SILNIKOWY`) dokłada element
-  `en_60617_02_13_26` (napęd silnikowy „M” z kreskowaną linią sprzężenia mechanicznego
-  zaczepioną w przegubie noża) jako osprzęt po lewej stronie toru. Kreska przerywana jest
-  dopuszczona w imporcie wyłącznie dla linii (`STYLE_KRESKI`).
 * Kafel stanu łącznika (`kafelStanu` w manifeście): jeden kwadrat 120 × 120 jednostek QET
   (48 × 48 jednostek świata przy skali 0,4, poziom szczegółu bazowy) dla KAŻDEGO łącznika pola
   (wyłącznik, wyłącznik z napędem, odłącznik, rozłącznik, rozłącznik z bezpiecznikami, uziemnik,
-  łącznik trójpołożeniowy) i każdego położenia — wymaganie właściciela 2026-10-29 pkt 1. Kafel
-  jest wyśrodkowany na treści symbolu; treść z marginesem `marginesQet` musi się w nim mieścić
-  („rysunek łącznika nie mieści się w kaflu stanu”), a kreska glifu musi leżeć w (0; bok/12].
+  łącznik trójpołożeniowy) i każdego położenia — wymaganie właściciela 2026-10-29 pkt 1. Oś toru
+  przechodzi przez środek kafla; rysunek (nóż we wszystkich położeniach, znaczniki, ziemia,
+  napęd) z marginesem `marginesQet` musi się w nim mieścić („rysunek łącznika nie mieści się
+  w kaflu stanu”), a kreska glifu musi leżeć w (0; bok/12].
 * Przekładnik napięciowy o kilku uzwojeniach wtórnych jest złożeniem kopii elementu
   `en_60617_06_13_01A`; liczba okręgów = 1 + liczba uzwojeń wtórnych przekładnika w modelu
   (pole ENM `uzwojenia`), zaciski kopii dodatkowych są w `zaciskiPozaTorem`.

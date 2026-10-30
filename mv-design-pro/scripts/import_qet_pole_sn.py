@@ -14,32 +14,32 @@ Zasady (fail-closed — każde odstępstwo przerywa import z komunikatem):
   encje, skrypty i bitmapy są odrzucane;
 * SHA bloba git każdego pliku musi być równe ``upstreamBlobSha`` z manifestu (plik nie
   został zmieniony po pobraniu z ``qelectrotech-elements``);
-* geometria nie jest przerysowywana: prymitywy źródła są przenoszone 1:1, a manifest
-  podaje wyłącznie złożenie (obrót o wielokrotność 90° i przesunięcie składnika), które
-  prymitywy tworzą nóż łącznika, przegub i styk stały, oraz które zaciski są portami;
+* geometria nie jest przerysowywana: prymitywy źródła są przenoszone przekształceniami
+  zachowującymi kształt (obrót o wielokrotność 90°, przesunięcie, jednokładność, podobieństwo
+  noża), a manifest podaje wyłącznie złożenie, role prymitywów i to, które zaciski są portami;
 * tekst źródła ma jawną decyzję (``pomin``/``zachowaj``) — tekst bez decyzji przerywa import;
 * każdy zacisk źródła jest portem, zaciskiem wewnętrznym złożenia albo zaciskiem spoza toru
   pierwotnego zadeklarowanym z powodem (``zaciskiPozaTorem``, np. uzwojenie wtórne
-  przekładnika napięciowego); zaciski wewnętrzne muszą się pokrywać po złożeniu;
-* położenia łącznika: rysunek źródła = OTWARTY; ZAMKNIĘTY/UZIEMIONY = obrót prymitywów noża
-  wokół przegubu na kierunek styku stałego i ZASIĘG noża równy odległości przegub–styk (koniec
-  noża leży na styku stałym: nóż źródła odłącznika jest dłuższy od odległości do styku, więc
-  obrócony sztywno przechodził przez kreskę styku i odłącznik zamknięty czytał się jak krzyżyk
-  „+” — decyzja architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC); OTWARTY = rysunek
-  źródła albo obrót noża na jawny kierunek z powodem (``otwarty``); NIEZNANY = połowa drogi
-  między położeniem otwartym a zamkniętym, z zasięgiem źródła — położenie pośrednie różne od
-  każdego położenia pewnego, także w łączniku trójpołożeniowym (uwaga właściciela 2026-10-30:
-  geometria noża wynika wyłącznie ze stanu; dawna opcja „nieznany jak otwarty" skasowana);
-* jednokładność rysunku (``skalaRysunku``: skala k ∈ (1; 4] wokół punktu, z powodem) i skala
-  lokalna prymitywów (``skalaLokalna``: znak rodzaju aparatu, doprowadzenie obwodu wtórnego)
-  przenoszą kształt źródła bez zmian; stopień glifu (wysokość rysunku aparatu / bok kafla
+  przekładnika napięciowego, zacisk elementu, z którego łącznik bierze tylko znacznik styku);
+  zaciski wewnętrzne muszą się pokrywać po złożeniu;
+* łącznik z położeniem składa się WYŁĄCZNIE układem kafla (``kafelStanu.uklad``, wzorzec HMI
+  e²TANGO, decyzja właściciela 2026-10-30): zawias noża u dołu, styk stały u góry, nóż pionowy =
+  ZAMKNIĘTY, obrót o kąt z układu = OTWARTY, połowa kąta z zasięgiem z układu = NIEUSTALONY,
+  obrót na zestyk uziemiający = UZIEMIONY; przy styku stałym ZNACZNIK rodzaju aparatu („×”
+  wyłącznik, „○” odłącznik i człon wysuwny, kreska z okręgiem rozłącznik, kreska uziemnik)
+  w jednym rozmiarze kafla, symbol ziemi pod uziemnikiem skierowany w dół; każdy prymityw
+  źródła ma dokładnie jedną rolę układu albo jawne pominięcie, a rozmiar znacznika, margines,
+  odstęp od noża i kierunek ziemi są sprawdzane (``uloz_kafel_lacznika``);
+* jednokładność rysunku symbolu toru (``skalaRysunku``: skala k ∈ (1; 4] wokół punktu, z powodem)
+  i skala lokalna prymitywów (``skalaLokalna``: okrąg styku rozłącznika, napęd, doprowadzenie
+  obwodu wtórnego) przenoszą kształt źródła bez zmian; stopień glifu (wysokość rysunku aparatu / bok kafla
   stanu) musi leżeć w zakresie ``stopienSymboli`` — kafel [0,55; 0,70], tor [0,33; 0,70];
-* role prymitywów: przewód (linia z zacisku portu w kierunku portu), glif (rysunek aparatu)
-  i osprzęt (napęd, cewka — deklaracja ``osprzet``); przewody przycinane do gabarytu;
-* gabaryt: obwiednia rysunku aparatu (wszystkie położenia noża), osprzętu i portów obwodu
-  wtórnego, symetryczna względem osi toru (port ``bottom``, a bez niego ``top``) i domknięta
-  do rastru zacisków QET (20 j.) od pierwszego portu, więc po skali 0,4 porty i gabaryt leżą
-  na siatce schematu GRID = 8; łącznik z nożem — jednolity kwadratowy kafel stanu.
+* role prymitywów symbolu toru: przewód (linia z zacisku portu w kierunku portu) i glif (rysunek
+  aparatu); przewody przycinane do gabarytu;
+* gabaryt symbolu toru: obwiednia rysunku aparatu i portów obwodu wtórnego, symetryczna względem
+  osi toru (port ``bottom``, a bez niego ``top``) i domknięta do rastru zacisków QET (20 j.) od
+  pierwszego portu, więc po skali 0,4 porty i gabaryt leżą na siatce schematu GRID = 8; łącznik
+  z położeniem — jednolity kwadratowy kafel stanu (porty na krawędziach kafla, na rastrze).
 
 Uruchomienie z katalogu ``mv-design-pro``::
 
@@ -92,7 +92,9 @@ POLOZENIA = ("open", "closed", "earthed", "unknown")
 #: (decyzja §11.7 pkt 5: litera ≥ 8 px bez nakładania na kreskę wymaga rzeczywistego tuszu). Znak
 #: spoza tabeli przerywa import — przybliżenie jednej szerokości dla wszystkich znaków przesuwało
 #: środek litery „M" napędu o 0,12 em w bok.
-TABELA_KROJU = KORZEN / "frontend" / "src" / "ui" / "sld" / "v3" / "core" / "metrykiKroju.json"
+TABELA_KROJU = (
+    KORZEN / "frontend" / "src" / "ui" / "sld" / "v3" / "core" / "metrykiKroju.json"
+)
 KROJ_TEKSTU_QET = "sans"
 #: Odmiana kroju liter symboli: renderer rysuje litery symboli wagą CSS 600
 #: (``frontend/src/ui/sld/v3/cad/CadSymbol.tsx``, ``WAGA_LITERY_SYMBOLU``), a waga > 500 dobiera
@@ -109,7 +111,10 @@ def szerokosci_znakow_em(tabela: Path = TABELA_KROJU) -> dict[str, float]:
     jednostki = float(dane["jednostkiEm"])
     kroj = dane["kroje"][KROJ_TEKSTU_QET]
     posuwy = kroj["posuwy"][WAGA_TEKSTU_QET]
-    return {znak: posuw / jednostki for znak, posuw in zip(kroj["znaki"], posuwy, strict=True)}
+    return {
+        znak: posuw / jednostki
+        for znak, posuw in zip(kroj["znaki"], posuwy, strict=True)
+    }
 
 
 SZEROKOSC_ZNAKU_EM: dict[str, float] = szerokosci_znakow_em()
@@ -127,7 +132,9 @@ def metryki_pionowe_em(
     centralna = (pion["wznoszenie"] - pion["zejscie"]) / 2 / jednostki
     tusz = {
         znak: (dol / jednostki, gora / jednostki)
-        for znak, dol, gora in zip(kroj["znaki"], pion["tuszDol"], pion["tuszGora"], strict=True)
+        for znak, dol, gora in zip(
+            kroj["znaki"], pion["tuszDol"], pion["tuszGora"], strict=True
+        )
     }
     return centralna, tusz
 
@@ -143,19 +150,27 @@ def szerokosc_tekstu(tekst: str, rozmiar: float) -> float:
     """Szerokość tekstu źródła w jednostkach QET (suma posuwów znaków kroju źródła)."""
     brak = sorted({z for z in tekst if z not in SZEROKOSC_ZNAKU_EM})
     if brak:
-        raise BladImportu(f"tekst {tekst!r}: brak szerokości znaków {brak} w SZEROKOSC_ZNAKU_EM")
+        raise BladImportu(
+            f"tekst {tekst!r}: brak szerokości znaków {brak} w SZEROKOSC_ZNAKU_EM"
+        )
     return rozmiar * sum(SZEROKOSC_ZNAKU_EM[z] for z in tekst)
 
 
 def zasieg_tuszu_wzgledem_srodka(tekst: str, rozmiar: float) -> tuple[float, float]:
     """(góra, dół) tuszu tekstu względem środka znaku (punktu ``dominant-baseline: central``)
-    w osi y skierowanej w DÓŁ — linia bazowa leży ``LINIA_CENTRALNA_EM`` pod środkiem."""
+    w osi y skierowanej w DÓŁ — linia bazowa leży ``LINIA_CENTRALNA_EM`` pod środkiem.
+    """
     brak = sorted({z for z in tekst if z not in TUSZ_ZNAKU_EM})
     if brak:
-        raise BladImportu(f"tekst {tekst!r}: brak zasięgu tuszu znaków {brak} w tabeli kroju")
+        raise BladImportu(
+            f"tekst {tekst!r}: brak zasięgu tuszu znaków {brak} w tabeli kroju"
+        )
     y_min = min(0.0, *(TUSZ_ZNAKU_EM[z][0] for z in tekst))
     y_max = max(0.0, *(TUSZ_ZNAKU_EM[z][1] for z in tekst))
-    return ((LINIA_CENTRALNA_EM - y_max) * rozmiar, (LINIA_CENTRALNA_EM - y_min) * rozmiar)
+    return (
+        (LINIA_CENTRALNA_EM - y_max) * rozmiar,
+        (LINIA_CENTRALNA_EM - y_min) * rozmiar,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +195,12 @@ def liczba(surowa: str | None, nazwa: str) -> float:
 
 
 def styl(element: ET.Element) -> dict[str, str]:
-    wynik = {"line-style": "normal", "line-weight": "normal", "filling": "none", "color": "black"}
+    wynik = {
+        "line-style": "normal",
+        "line-weight": "normal",
+        "filling": "none",
+        "color": "black",
+    }
     for czesc in element.get("style", "").split(";"):
         if ":" in czesc:
             klucz, wartosc = czesc.split(":", 1)
@@ -188,7 +208,9 @@ def styl(element: ET.Element) -> dict[str, str]:
     if wynik["line-style"] not in STYLE_KRESKI:
         raise BladImportu(f"styl kreski {wynik['line-style']!r} nieobsługiwany")
     if wynik["line-style"] != "normal" and element.tag != "line":
-        raise BladImportu(f"styl kreski {wynik['line-style']!r} dopuszczony wyłącznie dla linii")
+        raise BladImportu(
+            f"styl kreski {wynik['line-style']!r} dopuszczony wyłącznie dla linii"
+        )
     if wynik["line-weight"] != "normal":
         raise BladImportu(f"grubość kreski {wynik['line-weight']!r} nieobsługiwana")
     if wynik["filling"] not in ("none", "black", "white"):
@@ -197,7 +219,9 @@ def styl(element: ET.Element) -> dict[str, str]:
         raise BladImportu(f"kolor {wynik['color']!r} wymaga osobnej oceny")
     for koniec in ("end1", "end2"):
         if element.get(koniec, "none") != "none":
-            raise BladImportu(f"zakończenie linii {koniec}={element.get(koniec)!r} nieobsługiwane")
+            raise BladImportu(
+                f"zakończenie linii {koniec}={element.get(koniec)!r} nieobsługiwane"
+            )
     return wynik
 
 
@@ -212,7 +236,9 @@ class Prymityw:
     wypelnienie: str = "none"
     tekst: str = ""
     rozmiar: float = 0.0
-    luk: tuple[float, float, float, float, float, float] | None = None  # cx, cy, r, start, kat
+    luk: tuple[float, float, float, float, float, float] | None = (
+        None  # cx, cy, r, start, kat
+    )
     kreskowana: bool = False
 
 
@@ -248,7 +274,9 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
         raise BladImportu(f"{sciezka}: zabronione DTD, encja, skrypt albo bitmapa")
     sha = sha_bloba_git(dane)
     if sha != wpis["upstreamBlobSha"]:
-        raise BladImportu(f"{sciezka}: SHA bloba {sha} ≠ manifest {wpis['upstreamBlobSha']}")
+        raise BladImportu(
+            f"{sciezka}: SHA bloba {sha} ≠ manifest {wpis['upstreamBlobSha']}"
+        )
     try:
         korzen = ET.fromstring(dane)  # noqa: S314 — DTD i encje odrzucone wyżej
     except ET.ParseError as exc:
@@ -272,7 +300,9 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             if kierunek is None:
                 raise BladImportu(f"{sciezka}: nieznana orientacja zacisku")
             element.zaciski.append(
-                Zacisk(liczba(wezel.get("x"), "x"), liczba(wezel.get("y"), "y"), kierunek)
+                Zacisk(
+                    liczba(wezel.get("x"), "x"), liczba(wezel.get("y"), "y"), kierunek
+                )
             )
             continue
         if wezel.tag in IGNOROWANE:
@@ -283,7 +313,9 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             tresc = wezel.get("text", "")
             decyzja = decyzje_tekstu.get(tresc)
             if decyzja is None:
-                raise BladImportu(f"{sciezka}: tekst {tresc!r} bez decyzji pomin/zachowaj")
+                raise BladImportu(
+                    f"{sciezka}: tekst {tresc!r} bez decyzji pomin/zachowaj"
+                )
             uzyte_decyzje.add(tresc)
             if wezel.get("rotation", "0") not in ("0", "0.0"):
                 raise BladImportu(f"{sciezka}: obrócony tekst nieobsługiwany")
@@ -297,7 +329,9 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             )
             # Tekst pominięty zachowuje swoje miejsce w numeracji prymitywów (indeksy noża
             # w manifeście liczą figury źródła w kolejności pliku).
-            element.prymitywy.append(prymityw if decyzja == "zachowaj" else Prymityw("pominiety"))
+            element.prymitywy.append(
+                prymityw if decyzja == "zachowaj" else Prymityw("pominiety")
+            )
             if decyzja not in ("pomin", "zachowaj"):
                 raise BladImportu(f"{sciezka}: decyzja tekstu {decyzja!r} nieznana")
             continue
@@ -317,10 +351,15 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             # Prostokąt źródła (np. wtyk złącza EN 60617 03-03-05) = zamknięty wielokąt czterech
             # narożników; zaokrąglenie narożników poza podzbiorem.
             x, y = liczba(wezel.get("x"), "x"), liczba(wezel.get("y"), "y")
-            w, h = liczba(wezel.get("width"), "width"), liczba(wezel.get("height"), "height")
+            w, h = liczba(wezel.get("width"), "width"), liczba(
+                wezel.get("height"), "height"
+            )
             if w <= 0 or h <= 0:
                 raise BladImportu(f"{sciezka}: prostokąt o niedodatnim wymiarze")
-            if liczba(wezel.get("rx", "0"), "rx") != 0 or liczba(wezel.get("ry", "0"), "ry") != 0:
+            if (
+                liczba(wezel.get("rx", "0"), "rx") != 0
+                or liczba(wezel.get("ry", "0"), "ry") != 0
+            ):
                 raise BladImportu(
                     f"{sciezka}: prostokąt z zaokrąglonymi narożnikami nieobsługiwany"
                 )
@@ -334,12 +373,17 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             )
         elif wezel.tag == "polygon":
             indeksy = sorted(
-                int(m.group(1)) for k in wezel.attrib if (m := re.fullmatch(r"x(\d+)", k))
+                int(m.group(1))
+                for k in wezel.attrib
+                if (m := re.fullmatch(r"x(\d+)", k))
             )
             if len(indeksy) < 2 or indeksy != list(range(1, len(indeksy) + 1)):
                 raise BladImportu(f"{sciezka}: niekompletna lista punktów wielokąta")
             punkty = tuple(
-                (liczba(wezel.get(f"x{i}"), f"x{i}"), liczba(wezel.get(f"y{i}"), f"y{i}"))
+                (
+                    liczba(wezel.get(f"x{i}"), f"x{i}"),
+                    liczba(wezel.get(f"y{i}"), f"y{i}"),
+                )
                 for i in indeksy
             )
             zamkniety = wezel.get("closed", "true") == "true"
@@ -353,9 +397,13 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             )
         elif wezel.tag == "ellipse":
             x, y = liczba(wezel.get("x"), "x"), liczba(wezel.get("y"), "y")
-            w, h = liczba(wezel.get("width"), "width"), liczba(wezel.get("height"), "height")
+            w, h = liczba(wezel.get("width"), "width"), liczba(
+                wezel.get("height"), "height"
+            )
             if w <= 0 or w != h:
-                raise BladImportu(f"{sciezka}: elipsa o nierównych osiach nieobsługiwana")
+                raise BladImportu(
+                    f"{sciezka}: elipsa o nierównych osiach nieobsługiwana"
+                )
             element.prymitywy.append(
                 Prymityw(
                     rodzaj="circle",
@@ -366,8 +414,12 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
             )
         elif wezel.tag == "arc":
             x, y = liczba(wezel.get("x"), "x"), liczba(wezel.get("y"), "y")
-            w, h = liczba(wezel.get("width"), "width"), liczba(wezel.get("height"), "height")
-            start, kat = liczba(wezel.get("start"), "start"), liczba(wezel.get("angle"), "angle")
+            w, h = liczba(wezel.get("width"), "width"), liczba(
+                wezel.get("height"), "height"
+            )
+            start, kat = liczba(wezel.get("start"), "start"), liczba(
+                wezel.get("angle"), "angle"
+            )
             if w <= 0 or w != h or not 0 < abs(kat) < 360:
                 raise BladImportu(f"{sciezka}: łuk poza obsługiwanym podzbiorem")
             element.prymitywy.append(
@@ -383,7 +435,9 @@ def wczytaj_element(wpis: dict[str, Any]) -> Element:
 # ---------------------------------------------------------------------------
 
 
-def obroc(punkt: tuple[float, float], stopnie: float, wokol: tuple[float, float] = (0.0, 0.0)):
+def obroc(
+    punkt: tuple[float, float], stopnie: float, wokol: tuple[float, float] = (0.0, 0.0)
+):
     """Obrót w układzie ekranowym (oś y w dół) — ta sama konwencja co SVG ``rotate``."""
     r = math.radians(stopnie)
     dx, dy = punkt[0] - wokol[0], punkt[1] - wokol[1]
@@ -397,7 +451,8 @@ def obroc(punkt: tuple[float, float], stopnie: float, wokol: tuple[float, float]
 class Skladnik:
     """Składnik złożenia: element źródła po obrocie i przesunięciu, a dla składnika objętego
     ``skalaRysunku`` manifestu — po jednokładności o skali ``k`` wokół ``srodek`` (układ
-    złożenia). Jednokładność przenosi kształt źródła bez zmian (wszystkie odległości × k)."""
+    złożenia). Jednokładność przenosi kształt źródła bez zmian (wszystkie odległości × k).
+    """
 
     element: Element
     obrot: int
@@ -414,7 +469,9 @@ class Skladnik:
         )
 
 
-def punkty_luku(luk: tuple[float, float, float, float, float, float]) -> list[tuple[float, float]]:
+def punkty_luku(
+    luk: tuple[float, float, float, float, float, float]
+) -> list[tuple[float, float]]:
     """Punkty łuku źródła (kąty QET: od godziny 3, dodatnie przeciwnie do ruchu wskazówek
     zegara na ekranie) — co 1° plus końce; służą obwiedni i końcom ścieżki SVG."""
     cx, cy, r, start, kat = luk
@@ -441,10 +498,10 @@ def liczba_ts(v: float) -> str:
 #: Role prymitywów w symbolu (wyjście generatora i renderer kafla):
 #: ``przewod`` — przewód toru albo obwodu wtórnego (linia od zacisku portu w kierunku portu;
 #: kreska przewodu, przycinana i przedłużana do krawędzi gabarytu); ``glif`` — rysunek aparatu
-#: (nóż, styk stały i jego znak rodzaju, okręgi przekładników, uziemienie) — kreska glifu
-#: proporcjonalna do kafla stanu, jego wysokość mierzy stopień symbolu; ``osprzet`` — osprzęt
-#: łącznika zadeklarowany w manifeście (napęd silnikowy, cewka wyłączająca) — kreska glifu, poza
-#: miarą stopnia, w kaflu z marginesem.
+#: (nóż i znaczniki styków łącznika, okręgi przekładników) — kreska glifu proporcjonalna do kafla
+#: stanu, jego wysokość mierzy stopień symbolu; ``osprzet`` — napęd łącznika zadeklarowany
+#: w manifeście — kreska glifu, poza miarą stopnia, w kaflu z marginesem. Symbol ziemi łącznika
+#: (``ziemia`` wyjścia) — kreska glifu, poza miarą stopnia.
 ROLE = ("przewod", "glif", "osprzet")
 #: Tolerancja dopasowania końca linii źródła do zacisku portu przy rozpoznaniu przewodu
 #: [jednostki QET] — doprowadzenie uzwojenia wtórnego przekładnika napięciowego EN 60617
@@ -509,18 +566,27 @@ def zloz_prymityw(p: Prymityw, s: Skladnik, rola: str) -> Rysunek | None:
 
 
 def noz_w_zasiegu(r: Rysunek, zasieg: float, przegub: tuple[float, float]) -> Rysunek:
-    """Linia noża z końcem dalszym od przegubu przesuniętym wzdłuż noża do ``zasieg`` × długości
-    (koniec bliższy przegubowi bez zmian) — ta sama reguła co renderer
+    """Prymityw noża w ZASIĘGU położenia: jednokładność o skali ``zasieg`` wokół przegubu —
+    nóż sztywny, każdy punkt (ostrze i wkładka bezpiecznika na nożu) przesuwa się do przegubu
+    w tej samej proporcji, więc kształt noża się nie zmienia (dawna reguła „przesuń wyłącznie
+    dalszy koniec każdej linii" deformowała wkładkę bezpiecznika). Ta sama reguła co renderer
     (``frontend/src/ui/sld/v3/symbols/glyphs.tsx::prymitywyNozaQet``)."""
     if zasieg == 1.0:
         return r
-    (a, b) = r.punkty
-    (blizszy, dalszy) = (a, b) if math.dist(a, przegub) <= math.dist(b, przegub) else (b, a)
-    nowy = (
-        przegub[0] + (dalszy[0] - przegub[0]) * zasieg,
-        przegub[1] + (dalszy[1] - przegub[1]) * zasieg,
+    if r.rodzaj != "line":
+        raise BladImportu(
+            f"prymityw noża {r.rodzaj!r} — nóż składa się wyłącznie z linii"
+        )
+    return replace(
+        r,
+        punkty=[
+            (
+                przegub[0] + (q[0] - przegub[0]) * zasieg,
+                przegub[1] + (q[1] - przegub[1]) * zasieg,
+            )
+            for q in r.punkty
+        ],
     )
-    return replace(r, punkty=[blizszy, nowy] if blizszy is a else [nowy, blizszy])
 
 
 def obroc_rysunek(r: Rysunek, stopnie: float, wokol: tuple[float, float]) -> Rysunek:
@@ -536,7 +602,10 @@ def obwiednia(rysunki: Iterable[Rysunek]) -> list[tuple[float, float]]:
     for r in rysunki:
         if r.rodzaj == "circle":
             (cx, cy) = r.punkty[0]
-            punkty += [(cx - r.promien, cy - r.promien), (cx + r.promien, cy + r.promien)]
+            punkty += [
+                (cx - r.promien, cy - r.promien),
+                (cx + r.promien, cy + r.promien),
+            ]
         elif r.rodzaj == "arc":
             punkty += r.luk_probki
         elif r.rodzaj == "letter":
@@ -549,7 +618,9 @@ def obwiednia(rysunki: Iterable[Rysunek]) -> list[tuple[float, float]]:
     return punkty
 
 
-def prostokat(punkty: Sequence[tuple[float, float]]) -> tuple[float, float, float, float]:
+def prostokat(
+    punkty: Sequence[tuple[float, float]]
+) -> tuple[float, float, float, float]:
     """(min_x, min_y, max_x, max_y) zbioru punktów."""
     return (
         min(q[0] for q in punkty),
@@ -602,7 +673,10 @@ def przeskaluj_prymityw(
     okręgu (litera zostaje w okręgu)."""
 
     def sk(q: tuple[float, float]) -> tuple[float, float]:
-        return (srodek[0] + skala * (q[0] - srodek[0]), srodek[1] + skala * (q[1] - srodek[1]))
+        return (
+            srodek[0] + skala * (q[0] - srodek[0]),
+            srodek[1] + skala * (q[1] - srodek[1]),
+        )
 
     if p.rodzaj in ("line", "polygon"):
         return replace(p, punkty=tuple(sk(q) for q in p.punkty))
@@ -630,9 +704,13 @@ def prymitywy_skladnikow(
 
     def sprawdz(si: int, pi: int, co: str) -> None:
         if not 0 <= si < len(wynik) or not 0 <= pi < len(wynik[si]):
-            raise BladImportu(f"{ident}: {co} — prymityw {pi} składnika {si} poza źródłem")
+            raise BladImportu(
+                f"{ident}: {co} — prymityw {pi} składnika {si} poza źródłem"
+            )
         if wynik[si][pi].rodzaj == "pominiety":
-            raise BladImportu(f"{ident}: {co} — prymityw {pi} składnika {si} już pominięty")
+            raise BladImportu(
+                f"{ident}: {co} — prymityw {pi} składnika {si} już pominięty"
+            )
 
     for decyzja in wpis.get("pominPrymitywy", []):
         _powod(decyzja, ident, "pominięcie prymitywów")
@@ -645,11 +723,15 @@ def prymitywy_skladnikow(
         si = int(decyzja["skladnik"])
         skala = float(decyzja["skala"])
         if not SKALA_LOKALNA[0] <= skala <= SKALA_LOKALNA[1] or skala == 1:
-            raise BladImportu(f"{ident}: skala lokalna {skala} poza [0,25; 4] albo równa 1")
+            raise BladImportu(
+                f"{ident}: skala lokalna {skala} poza [0,25; 4] albo równa 1"
+            )
         srodek = (float(decyzja["srodek"][0]), float(decyzja["srodek"][1]))
         for pi in decyzja["prymitywy"]:
             sprawdz(si, int(pi), "skala lokalna")
-            wynik[si][int(pi)] = przeskaluj_prymityw(wynik[si][int(pi)], srodek, skala, ident)
+            wynik[si][int(pi)] = przeskaluj_prymityw(
+                wynik[si][int(pi)], srodek, skala, ident
+            )
     return wynik
 
 
@@ -671,7 +753,8 @@ class KafelStanu:
 class StopienSymboli:
     """Stopień symboli pola na LOD2 (``stopienSymboli`` manifestu): wysokość glifu (rysunek
     aparatu wzdłuż osi toru, bez przewodów i osprzętu) jako ułamek boku kafla stanu — dla
-    łączników w każdym położeniu noża, dla symboli toru bez kafla w położeniu jedynym."""
+    łączników w każdym położeniu noża, dla symboli toru bez kafla w położeniu jedynym.
+    """
 
     kafel: tuple[float, float]
     tor: tuple[float, float]
@@ -688,16 +771,103 @@ def _blisko(a: tuple[float, float], b: tuple[float, float], tol: float = 1e-9) -
     return abs(a[0] - b[0]) <= tol and abs(a[1] - b[1]) <= tol
 
 
+def wysokosc_glifu(rysunki: Sequence[Rysunek]) -> float:
+    """Wysokość rysunku wzdłuż osi toru (miara stopnia symbolu)."""
+    _, y0, _, y1 = prostokat(obwiednia(rysunki))
+    return y1 - y0
+
+
+def sprawdz_stopien(
+    ident: str, udzialy: dict[str, float], zakres: tuple[float, float]
+) -> None:
+    for pol, u in sorted(udzialy.items()):
+        if not zakres[0] - 1e-9 <= u <= zakres[1] + 1e-9:
+            raise BladImportu(
+                f"{ident}: stopień glifu {u:.3f} boku kafla (położenie {pol}) poza "
+                f"[{zakres[0]}; {zakres[1]}]"
+            )
+
+
+def prymityw_ts_swiata(
+    r: Rysunek, swiat: Any, skala: float, ident: str, noz_stanu: bool = False
+) -> dict[str, Any]:
+    """Prymityw rysunku w układzie świata schematu (``swiat``: punkt QET → punkt świata)."""
+    if r.rodzaj == "line":
+        (a, b) = (swiat(r.punkty[0]), swiat(r.punkty[1]))
+        wynik: dict[str, Any] = {
+            "k": "line",
+            "x1": a[0],
+            "y1": a[1],
+            "x2": b[0],
+            "y2": b[1],
+        }
+        if noz_stanu:
+            wynik["nozStanu"] = True
+        if r.kreskowana:
+            wynik["kreskowana"] = True
+        return wynik
+    if r.rodzaj == "circle":
+        c = swiat(r.punkty[0])
+        return {
+            "k": "circle",
+            "cx": c[0],
+            "cy": c[1],
+            "r": r.promien * skala,
+            "fill": _fill(r),
+        }
+    if r.rodzaj == "polygon":
+        pts = [swiat(q) for q in r.punkty]
+        d = "M " + " L ".join(f"{liczba_ts(x)} {liczba_ts(y)}" for x, y in pts)
+        if r.zamkniety:
+            d += " Z"
+        return {"k": "path", "d": d, "fill": _fill(r)}
+    if r.rodzaj == "arc":
+        a, b = swiat(r.punkty[0]), swiat(r.punkty[1])
+        rr = liczba_ts(r.promien * skala)
+        d = (
+            f"M {liczba_ts(a[0])} {liczba_ts(a[1])} A {rr} {rr} 0 {r.luk_flagi[0]} "
+            f"{r.luk_flagi[1]} {liczba_ts(b[0])} {liczba_ts(b[1])}"
+        )
+        return {"k": "arc", "d": d}
+    if r.rodzaj == "letter":
+        c = swiat(r.punkty[0])
+        return {
+            "k": "letter",
+            "x": c[0],
+            "y": c[1],
+            "t": r.tekst,
+            "size": r.rozmiar * skala,
+        }
+    raise BladImportu(f"{ident}: prymityw {r.rodzaj} bez odwzorowania")
+
+
+def prostokat_ts_swiata(
+    punkty: Sequence[tuple[float, float]], swiat: Any
+) -> dict[str, float]:
+    x0, y0, x1, y1 = prostokat([swiat(q) for q in punkty])
+    return {
+        "x": zaokr(x0),
+        "y": zaokr(y0),
+        "width": zaokr(x1 - x0),
+        "height": zaokr(y1 - y0),
+    }
+
+
 def zloz_symbol(
     wpis: dict[str, Any],
     elementy: dict[str, Element],
     skala: float,
     raster: float,
-    kafel: KafelStanu | None = None,
     stopien: StopienSymboli | None = None,
 ) -> dict[str, Any]:
+    """Symbol TORU bez położenia (przekładniki, głowica, wskaźnik napięcia, pole wolne): złożenie
+    elementów źródła, przewody przycięte do gabarytu domkniętego do rastru. Łącznik z nożem
+    składa się WYŁĄCZNIE układem kafla (``uloz_kafel_lacznika``)."""
     ident = str(wpis["symbolId"])
     liczba_skladnikow = len(wpis["skladniki"])
+    for klucz in ("noz", "ukladKafla", "osprzet"):
+        if wpis.get(klucz):
+            raise BladImportu(f"{ident}: {klucz} wyłącznie w układzie kafla łącznika")
 
     # Jednokładność rysunku (``skalaRysunku``): skala k > 1 wokół punktu układu złożenia dla
     # wskazanych składników (domyślnie wszystkich); składnik poza listą stoi w układzie po
@@ -710,9 +880,13 @@ def zloz_symbol(
         if not SKALA_RYSUNKU[0] < k <= SKALA_RYSUNKU[1]:
             raise BladImportu(f"{ident}: skala rysunku {k} poza (1; 4]")
         srodek_k = (float(skala_rys["srodek"][0]), float(skala_rys["srodek"][1]))
-        skalowane = {int(i) for i in skala_rys.get("skladniki", range(liczba_skladnikow))}
+        skalowane = {
+            int(i) for i in skala_rys.get("skladniki", range(liczba_skladnikow))
+        }
         if not skalowane or not skalowane <= set(range(liczba_skladnikow)):
-            raise BladImportu(f"{ident}: skala rysunku wskazuje składnik spoza złożenia")
+            raise BladImportu(
+                f"{ident}: skala rysunku wskazuje składnik spoza złożenia"
+            )
     skladniki = [
         Skladnik(
             element=elementy[str(s["element"])],
@@ -728,80 +902,12 @@ def zloz_symbol(
             raise BladImportu(f"{ident}: obrót {s.obrot} poza wielokrotnością 90°")
     zrodlowe = prymitywy_skladnikow(wpis, skladniki, ident)
 
-    noz_wpis = wpis.get("noz")
-    indeksy_noza: set[tuple[int, int]] = set()
-    if noz_wpis:
-        indeksy_noza = {(int(noz_wpis["skladnik"]), int(i)) for i in noz_wpis["prymitywy"]}
-
-    osprzet: dict[int, str] = {}
-    for o in wpis.get("osprzet", []):
-        si = int(o["skladnik"])
-        if not 0 <= si < liczba_skladnikow:
-            raise BladImportu(f"{ident}: osprzęt wskazuje składnik spoza złożenia")
-        if noz_wpis and si == int(noz_wpis["skladnik"]):
-            raise BladImportu(f"{ident}: składnik noża nie może być osprzętem")
-        osprzet[si] = _powod(o, ident, "osprzęt")
-
     stale: list[Rysunek] = []
-    noz: list[Rysunek] = []
     for si, s in enumerate(skladniki):
-        for pi, p in enumerate(zrodlowe[si]):
-            r = zloz_prymityw(p, s, "osprzet" if si in osprzet else "glif")
-            if (si, pi) in indeksy_noza:
-                if r is None or r.rodzaj != "line":
-                    raise BladImportu(f"{ident}: prymityw noża {pi} nie jest linią źródła")
-                noz.append(r)
-            elif r is not None:
+        for p in zrodlowe[si]:
+            r = zloz_prymityw(p, s, "glif")
+            if r is not None:
                 stale.append(r)
-    if noz_wpis and len(noz) != len(indeksy_noza):
-        raise BladImportu(f"{ident}: indeks prymitywu noża poza źródłem")
-
-    katy: dict[str, float] = {}
-    zasiegi: dict[str, float] = {}
-    przegub: tuple[float, float] | None = None
-    if noz_wpis:
-        s_noza = skladniki[int(noz_wpis["skladnik"])]
-        przegub = s_noza.punkt((float(noz_wpis["przegub"][0]), float(noz_wpis["przegub"][1])))
-        ostrze = noz[0]
-        koniec = max(ostrze.punkty, key=lambda q: math.dist(q, przegub))
-        katy["open"] = 0.0
-        zasiegi["open"] = 1.0
-        # Położenie OTWARTE = rysunek źródła albo — z jawnym powodem (``otwarty``: kierunek noża
-        # i powód) — obrót noża źródła na podany kierunek, bez zmiany długości (koniec noża poza
-        # zestykami). Łącznik trójpołożeniowy: nóż źródła odłącznika odchylony o 19° przy
-        # kresce zestyku szynowego w osi stykał się z nią grubością kreski glifu.
-        otwarty = noz_wpis.get("otwarty")
-        if otwarty is not None:
-            _powod(otwarty, ident, "kierunek położenia otwartego")
-            cel_otw = s_noza.punkt((float(otwarty["kierunek"][0]), float(otwarty["kierunek"][1])))
-            katy["open"] = normalizuj_kat(
-                kat_kierunku(przegub, cel_otw) - kat_kierunku(przegub, koniec)
-            )
-        for polozenie, cel in sorted(noz_wpis["cele"].items()):
-            if polozenie not in ("closed", "earthed"):
-                raise BladImportu(f"{ident}: położenie {polozenie!r} nieznane")
-            cel_zl = s_noza.punkt((float(cel[0]), float(cel[1])))
-            katy[polozenie] = normalizuj_kat(
-                kat_kierunku(przegub, cel_zl) - kat_kierunku(przegub, koniec)
-            )
-            # Koniec noża NA styku stałym: zasięg = |przegub → styk| / |przegub → koniec noża|.
-            zasiegi[polozenie] = math.dist(przegub, cel_zl) / math.dist(przegub, koniec)
-        if "closed" not in katy:
-            raise BladImportu(f"{ident}: brak położenia zamkniętego noża")
-        # NIEZNANY = położenie pośrednie między otwartym a zamkniętym (różne od obu); zasięg
-        # źródła albo — z jawnym powodem (``nieznany``) — skrócony, gdy nóż w pełnej długości
-        # przechodziłby przy kresce styku stałego.
-        katy["unknown"] = (katy["open"] + katy["closed"]) / 2
-        zasiegi["unknown"] = 1.0
-        nieznany = noz_wpis.get("nieznany")
-        if nieznany is not None:
-            _powod(nieznany, ident, "zasięg położenia nieustalonego")
-            zasieg = float(nieznany["zasieg"])
-            if not 0 < zasieg < 1:
-                raise BladImportu(f"{ident}: zasięg położenia nieustalonego {zasieg} poza (0; 1)")
-            zasiegi["unknown"] = zasieg
-    if kafel is not None and przegub is None:
-        raise BladImportu(f"{ident}: kafel stanu wyłącznie dla łącznika z nożem")
 
     # Porty i zaciski: każdy zacisk źródła jest portem, zaciskiem wewnętrznym, portem obwodu
     # wtórnego albo zaciskiem spoza toru zadeklarowanym z powodem.
@@ -818,9 +924,18 @@ def zloz_symbol(
     def punkt_portu(p: dict[str, Any], co: str) -> tuple[tuple[float, float], str]:
         if "zacisk" in p:
             return zacisk_zrodla(int(p["skladnik"]), p["zacisk"])
-        if not str(p.get("powod") or "").strip() or p.get("dir") not in ("N", "S", "E", "W"):
-            raise BladImportu(f"{ident}: {co} {p['name']} bez zacisku wymaga powodu i kierunku")
-        punkt = skladniki[int(p["skladnik"])].punkt((float(p["punkt"][0]), float(p["punkt"][1])))
+        if not str(p.get("powod") or "").strip() or p.get("dir") not in (
+            "N",
+            "S",
+            "E",
+            "W",
+        ):
+            raise BladImportu(
+                f"{ident}: {co} {p['name']} bez zacisku wymaga powodu i kierunku"
+            )
+        punkt = skladniki[int(p["skladnik"])].punkt(
+            (float(p["punkt"][0]), float(p["punkt"][1]))
+        )
         return punkt, str(p["dir"])
 
     porty: list[tuple[str, tuple[float, float], str]] = []
@@ -831,13 +946,17 @@ def zloz_symbol(
         a, _ = zacisk_zrodla(int(w["skladnik"]), w["zacisk"])
         b, _ = zacisk_zrodla(int(w["z"]["skladnik"]), w["z"]["zacisk"])
         if math.dist(a, b) > 1e-9:
-            raise BladImportu(f"{ident}: zaciski wewnętrzne złożenia nie pokrywają się {a} ≠ {b}")
+            raise BladImportu(
+                f"{ident}: zaciski wewnętrzne złożenia nie pokrywają się {a} ≠ {b}"
+            )
     # Zacisk źródła spoza toru pierwotnego (np. uzwojenie wtórne bez doprowadzenia w złożeniu,
     # zacisk powrotny cewki wyłączającej) nie jest portem — wymaga jawnej deklaracji z powodem;
     # bez niej import jest przerywany.
     for w in wpis.get("zaciskiPozaTorem", []):
         if not str(w.get("powod") or "").strip():
-            raise BladImportu(f"{ident}: zacisk poza torem {w.get('zacisk')} bez powodu")
+            raise BladImportu(
+                f"{ident}: zacisk poza torem {w.get('zacisk')} bez powodu"
+            )
         zacisk_zrodla(int(w["skladnik"]), w["zacisk"])
     p0 = porty[0][1]
 
@@ -856,13 +975,17 @@ def zloz_symbol(
             _powod(przedluzenie, ident, f"przedłużenie portu wtórnego {p['name']}")
             kier_przedl = str(przedluzenie.get("kierunek") or "")
             if kier_przedl not in krok:
-                raise BladImportu(f"{ident}: przedłużenie portu wtórnego {p['name']} bez kierunku")
+                raise BladImportu(
+                    f"{ident}: przedłużenie portu wtórnego {p['name']} bez kierunku"
+                )
             dx, dy = krok[kier_przedl]
             os_ = 0 if dx else 1
             znak = dx or dy
             reszta = (od[os_] - p0[os_]) / raster
             cel = p0[os_] + raster * (
-                math.floor(round(reszta, 9)) + 1 if znak > 0 else math.ceil(round(reszta, 9)) - 1
+                math.floor(round(reszta, 9)) + 1
+                if znak > 0
+                else math.ceil(round(reszta, 9)) - 1
             )
             if _na_rastrze(od[os_], p0[os_], raster):
                 raise BladImportu(
@@ -881,21 +1004,30 @@ def zloz_symbol(
     for si, s in enumerate(skladniki):
         for z in s.element.zaciski:
             if (si, z.x, z.y) not in wykorzystane:
-                raise BladImportu(f"{ident}: zacisk źródła {(z.x, z.y)} bez przypisania")
+                raise BladImportu(
+                    f"{ident}: zacisk źródła {(z.x, z.y)} bez przypisania"
+                )
 
     for nazwa, punkt, _ in porty:
-        if not (_na_rastrze(punkt[0], p0[0], raster) and _na_rastrze(punkt[1], p0[1], raster)):
+        if not (
+            _na_rastrze(punkt[0], p0[0], raster)
+            and _na_rastrze(punkt[1], p0[1], raster)
+        ):
             raise BladImportu(f"{ident}: port {nazwa} poza rastrem zacisków QET")
     for w in wtorne_zrodlo:
         q = w["punkt"]
         if not (_na_rastrze(q[0], p0[0], raster) and _na_rastrze(q[1], p0[1], raster)):
-            raise BladImportu(f"{ident}: port wtórny {w['name']} poza rastrem zacisków QET")
+            raise BladImportu(
+                f"{ident}: port wtórny {w['name']} poza rastrem zacisków QET"
+            )
         if w["od"] != w["punkt"]:
-            stale.append(Rysunek(rodzaj="line", punkty=[w["od"], w["punkt"]], rola="przewod"))
+            stale.append(
+                Rysunek(rodzaj="line", punkty=[w["od"], w["punkt"]], rola="przewod")
+            )
 
-    # Przewód: linia stała (poza nożem), której koniec leży na zacisku portu toru albo na
-    # punkcie źródła portu obwodu wtórnego, równoległa do kierunku tego portu. Pozostałe linie
-    # są rysunkiem aparatu (glif) albo osprzętem. Symbol z deklaracją ``przewodyJakoRysunek``
+    # Przewód: linia stała, której koniec leży na zacisku portu toru albo na punkcie źródła
+    # portu obwodu wtórnego, równoległa do kierunku tego portu. Pozostałe linie są rysunkiem
+    # aparatu (glif). Symbol z deklaracją ``przewodyJakoRysunek``
     # (np. zakończenie kabla — odcinek kabla jest treścią znaku) nie ma przewodów do przycięcia.
     zaczepy = [(punkt, kier) for _, punkt, kier in porty] + [
         (w["od"], w["dir"]) for w in wtorne_zrodlo
@@ -919,69 +1051,38 @@ def zloz_symbol(
                     r.rola = "przewod"
                     break
 
-    polozenia_noza = (
-        {
-            pol: [
-                obroc_rysunek(noz_w_zasiegu(r, zasiegi[pol], przegub), katy[pol], przegub)
-                for r in noz
-            ]
-            for pol in POLOZENIA
-            if pol in katy
-        }
-        if przegub is not None
-        else {"open": []}
-    )
     glif_staly = [r for r in stale if r.rola == "glif"]
-    osprzet_r = [r for r in stale if r.rola == "osprzet"]
-    rysunek_pol = {pol: glif_staly + rys for pol, rys in polozenia_noza.items()}
-    if not any(rysunek_pol.values()):
+    if not glif_staly:
         raise BladImportu(f"{ident}: symbol bez rysunku aparatu (same przewody)")
-    tresc = obwiednia(osprzet_r) + [q for rys in rysunek_pol.values() for q in obwiednia(rys)]
+    tresc = obwiednia(glif_staly)
     przewody = [r for r in stale if r.rola == "przewod"]
 
     nazwy_portow = {nazwa: punkt for nazwa, punkt, _ in porty}
     os_x = (nazwy_portow.get("bottom") or nazwy_portow.get("top") or p0)[0]
     t_min_x, t_min_y, t_max_x, t_max_y = prostokat(tresc)
 
-    # Gabaryt: wzdłuż osi toru — treść (rysunek aparatu we wszystkich położeniach noża i osprzęt)
-    # oraz porty obwodu wtórnego, domknięte do rastru od portu; w poprzek — symetrycznie wokół
-    # osi toru. Łącznik z kaflem: kwadrat kafla wyśrodkowany na treści, krawędzie na rastrze od
-    # portu. Symbol z przewodami jako rysunkiem: gabaryt obejmuje też porty (reguła źródła).
+    # Gabaryt: wzdłuż osi toru — treść (rysunek aparatu) oraz porty obwodu wtórnego, domknięte
+    # do rastru od portu; w poprzek — symetrycznie wokół osi toru. Symbol z przewodami jako
+    # rysunkiem: gabaryt obejmuje też porty (reguła źródła).
     wtorne_punkty = [w["punkt"] for w in wtorne_zrodlo]
     poprzecznie = [t_min_x, t_max_x] + [q[0] for q in wtorne_punkty]
     if przewody_jako_rysunek is not None:
         poprzecznie += [q[0] for q in obwiednia(przewody)] + [q[0] for _, q, _ in porty]
-    pol_szer = raster * math.ceil(round(max(abs(v - os_x) for v in poprzecznie) / raster, 9))
-    if kafel is not None:
-        if kafel.pol_szer < pol_szer:
-            raise BladImportu(f"{ident}: rysunek łącznika nie mieści się w kaflu stanu")
-        pol_szer = kafel.pol_szer
-        srodek_y = (t_min_y + t_max_y) / 2
-        g_min_y = p0[1] - raster * math.floor(
-            (p0[1] - (srodek_y - kafel.wysokosc / 2)) / raster + 0.5
-        )
-        g_max_y = g_min_y + kafel.wysokosc
-    else:
-        wzdluz = [t_min_y, t_max_y] + [q[1] for q in wtorne_punkty]
-        if przewody_jako_rysunek is not None:
-            wzdluz += [q[1] for q in obwiednia(przewody)] + [q[1] for _, q, _ in porty]
-        g_min_y = domknij_w_dol(min(wzdluz), p0[1], raster)
-        g_max_y = domknij_w_gore(max(wzdluz), p0[1], raster)
+    pol_szer = raster * math.ceil(
+        round(max(abs(v - os_x) for v in poprzecznie) / raster, 9)
+    )
+    wzdluz = [t_min_y, t_max_y] + [q[1] for q in wtorne_punkty]
+    if przewody_jako_rysunek is not None:
+        wzdluz += [q[1] for q in obwiednia(przewody)] + [q[1] for _, q, _ in porty]
+    g_min_y = domknij_w_dol(min(wzdluz), p0[1], raster)
+    g_max_y = domknij_w_gore(max(wzdluz), p0[1], raster)
     g_min_x, g_max_x = os_x - pol_szer, os_x + pol_szer
 
-    if kafel is not None:
-        m = kafel.margines
-        if (
-            t_min_x < g_min_x + m - 1e-9
-            or t_max_x > g_max_x - m + 1e-9
-            or t_min_y < g_min_y + m - 1e-9
-            or t_max_y > g_max_y - m + 1e-9
-        ):
-            raise BladImportu(f"{ident}: rysunek łącznika nie mieści się w kaflu stanu")
     for w in wtorne_zrodlo:
         q = w["punkt"]
         if not (
-            g_min_x - 1e-9 <= q[0] <= g_max_x + 1e-9 and g_min_y - 1e-9 <= q[1] <= g_max_y + 1e-9
+            g_min_x - 1e-9 <= q[0] <= g_max_x + 1e-9
+            and g_min_y - 1e-9 <= q[1] <= g_max_y + 1e-9
         ):
             raise BladImportu(f"{ident}: port wtórny {w['name']} poza gabarytem")
 
@@ -1014,7 +1115,12 @@ def zloz_symbol(
 
     def na_krawedzi(q: tuple[float, float]) -> bool:
         x, y = swiat(q)
-        return abs(x) < 1e-9 or abs(y) < 1e-9 or abs(x - szer) < 1e-9 or abs(y - wys) < 1e-9
+        return (
+            abs(x) < 1e-9
+            or abs(y) < 1e-9
+            or abs(x - szer) < 1e-9
+            or abs(y - wys) < 1e-9
+        )
 
     krawedz = {
         "N": (None, g_min_y),
@@ -1023,15 +1129,16 @@ def zloz_symbol(
         "E": (g_max_x, None),
     }
 
-    def na_krawedzi_kierunku(q: tuple[float, float], kierunek: str) -> tuple[float, float]:
+    def na_krawedzi_kierunku(
+        q: tuple[float, float], kierunek: str
+    ) -> tuple[float, float]:
         kx, ky = krawedz[kierunek]
         return (q[0] if kx is None else kx, q[1] if ky is None else ky)
 
     # Port poza gabarytem — przesunięty na krawędź w kierunku portu (jego przewód przycięty
-    # wyżej). Port wewnątrz gabarytu (deklaracja ``portyWewnatrzGabarytu`` z powodem albo —
-    # u łącznika z kaflem — kafel większy od rysunku) jest przedłużany odcinkiem PRZEWODU do
-    # krawędzi — port leży na krawędzi jak w całej bibliotece (sonda portów spec §11.3), odcinek
-    # jest jawny w wyjściu (``doprowadzenia``).
+    # wyżej). Port wewnątrz gabarytu (deklaracja ``portyWewnatrzGabarytu`` z powodem) jest
+    # przedłużany odcinkiem PRZEWODU do krawędzi — port leży na krawędzi jak w całej bibliotece
+    # (sonda portów spec §11.3), odcinek jest jawny w wyjściu (``doprowadzenia``).
     deklarowane: dict[str, str] = dict(wpis.get("portyWewnatrzGabarytu", {}))
     wewnetrzne: list[str] = []
     for i, (nazwa, punkt, kierunek) in enumerate(porty):
@@ -1048,9 +1155,6 @@ def zloz_symbol(
             porty[i] = (nazwa, cel, kierunek)
         elif not na_krawedzi(punkt):
             wewnetrzne.append(nazwa)
-    if kafel is not None:
-        for nazwa in wewnetrzne:
-            deklarowane.setdefault(nazwa, kafel.powod)
     if sorted(wewnetrzne) != sorted(deklarowane):
         raise BladImportu(
             f"{ident}: porty poza krawędzią gabarytu {sorted(wewnetrzne)} ≠ deklaracja "
@@ -1094,7 +1198,9 @@ def zloz_symbol(
         if not na_krawedzi(punkt):
             raise BladImportu(f"{ident}: port {nazwa} poza krawędzią gabarytu")
         x, y = swiat(punkt)
-        porty_swiat.append({"name": nazwa, "x": zaokr(x), "y": zaokr(y), "dir": kierunek})
+        porty_swiat.append(
+            {"name": nazwa, "x": zaokr(x), "y": zaokr(y), "dir": kierunek}
+        )
     porty_wtorne_swiat = []
     for w in wtorne_zrodlo:
         x, y = swiat(w["punkt"])
@@ -1102,57 +1208,17 @@ def zloz_symbol(
             {"name": w["name"], "x": zaokr(x), "y": zaokr(y), "dir": w["dir"]}
         )
 
-    # Stopień symbolu: wysokość glifu wzdłuż osi toru / bok kafla stanu — łącznik w KAŻDYM
-    # położeniu noża w zakresie kafla, symbol toru w zakresie toru.
-    def wys_glifu(rys: Sequence[Rysunek]) -> float:
-        _, y0, _, y1 = prostokat(obwiednia(rys))
-        return y1 - y0
-
+    # Stopień symbolu toru: wysokość glifu wzdłuż osi toru / bok kafla stanu w zakresie toru.
     udzialy: dict[str, float] = {}
     if stopien is not None:
-        udzialy = {pol: wys_glifu(rys) / stopien.bok for pol, rys in rysunek_pol.items()}
-        zakres = stopien.kafel if kafel is not None else stopien.tor
-        for pol, u in sorted(udzialy.items()):
-            if not zakres[0] - 1e-9 <= u <= zakres[1] + 1e-9:
-                raise BladImportu(
-                    f"{ident}: stopień glifu {u:.3f} boku kafla (położenie {pol}) poza "
-                    f"[{zakres[0]}; {zakres[1]}]"
-                )
+        udzialy = {"open": wysokosc_glifu(glif_staly) / stopien.bok}
+        sprawdz_stopien(ident, udzialy, stopien.tor)
 
-    def prymityw_ts(r: Rysunek, noz_stanu: bool = False) -> dict[str, Any]:
-        if r.rodzaj == "line":
-            (a, b) = (swiat(r.punkty[0]), swiat(r.punkty[1]))
-            wynik: dict[str, Any] = {"k": "line", "x1": a[0], "y1": a[1], "x2": b[0], "y2": b[1]}
-            if noz_stanu:
-                wynik["nozStanu"] = True
-            if r.kreskowana:
-                wynik["kreskowana"] = True
-            return wynik
-        if r.rodzaj == "circle":
-            c = swiat(r.punkty[0])
-            return {"k": "circle", "cx": c[0], "cy": c[1], "r": r.promien * skala, "fill": _fill(r)}
-        if r.rodzaj == "polygon":
-            pts = [swiat(q) for q in r.punkty]
-            d = "M " + " L ".join(f"{liczba_ts(x)} {liczba_ts(y)}" for x, y in pts)
-            if r.zamkniety:
-                d += " Z"
-            return {"k": "path", "d": d, "fill": _fill(r)}
-        if r.rodzaj == "arc":
-            a, b = swiat(r.punkty[0]), swiat(r.punkty[1])
-            rr = liczba_ts(r.promien * skala)
-            d = (
-                f"M {liczba_ts(a[0])} {liczba_ts(a[1])} A {rr} {rr} 0 {r.luk_flagi[0]} "
-                f"{r.luk_flagi[1]} {liczba_ts(b[0])} {liczba_ts(b[1])}"
-            )
-            return {"k": "arc", "d": d}
-        if r.rodzaj == "letter":
-            c = swiat(r.punkty[0])
-            return {"k": "letter", "x": c[0], "y": c[1], "t": r.tekst, "size": r.rozmiar * skala}
-        raise BladImportu(f"{ident}: prymityw {r.rodzaj} bez odwzorowania")
+    def prymityw_ts(r: Rysunek) -> dict[str, Any]:
+        return prymityw_ts_swiata(r, swiat, skala, ident)
 
     def prostokat_ts(punkty: Sequence[tuple[float, float]]) -> dict[str, float]:
-        x0, y0, x1, y1 = prostokat([swiat(q) for q in punkty])
-        return {"x": zaokr(x0), "y": zaokr(y0), "width": zaokr(x1 - x0), "height": zaokr(y1 - y0)}
+        return prostokat_ts_swiata(punkty, swiat)
 
     wszystko = (
         tresc
@@ -1170,16 +1236,14 @@ def zloz_symbol(
         "portyWtorne": porty_wtorne_swiat,
         "doprowadzenia": doprowadzenia,
         "obrys": prostokat_ts(wszystko),
-        "glif": prostokat_ts([q for rys in rysunek_pol.values() for q in obwiednia(rys)]),
-        "kafel": (
-            {"x": 0, "y": 0, "width": zaokr(szer), "height": zaokr(wys)}
-            if kafel is not None
-            else None
-        ),
+        "glif": prostokat_ts(obwiednia(glif_staly)),
+        "kafel": None,
         "przewody": [prymityw_ts(r) for r in przewody],
         "stale": [prymityw_ts(r) for r in glif_staly],
-        "osprzet": [prymityw_ts(r) for r in osprzet_r],
+        "osprzet": [],
         "noz": None,
+        "znaczniki": [],
+        "ziemia": None,
         "zrodla": [
             {
                 "sciezka": s.element.sciezka,
@@ -1189,15 +1253,6 @@ def zloz_symbol(
             for s in skladniki
         ],
     }
-    if przegub is not None:
-        c = swiat(przegub)
-        wynik["noz"] = {
-            "cx": zaokr(c[0]),
-            "cy": zaokr(c[1]),
-            "katy": {k: zaokr(katy[k]) for k in POLOZENIA if k in katy},
-            "zasiegi": {k: zaokr(zasiegi[k]) for k in POLOZENIA if k in zasiegi},
-            "prymitywy": [prymityw_ts(r, noz_stanu=True) for r in noz],
-        }
     wynik["_udzialy"] = udzialy
     return wynik
 
@@ -1220,26 +1275,835 @@ def kafel_stanu(manifest: dict[str, Any], raster: float) -> KafelStanu | None:
     if margines < 0:
         raise BladImportu("kafelStanu: ujemny margines")
     if bok <= 0 or abs(bok / (2 * raster) - round(bok / (2 * raster))) > 1e-9:
-        raise BladImportu("kafelStanu: bok kafla musi być parzystą wielokrotnością rastru zacisków")
+        raise BladImportu(
+            "kafelStanu: bok kafla musi być parzystą wielokrotnością rastru zacisków"
+        )
     if not 0 < kreska <= bok / 12:
         raise BladImportu("kafelStanu: kreska glifu poza (0; bok/12]")
-    return KafelStanu(pol_szer=bok / 2, wysokosc=bok, margines=margines, kreska=kreska, powod=powod)
+    return KafelStanu(
+        pol_szer=bok / 2, wysokosc=bok, margines=margines, kreska=kreska, powod=powod
+    )
 
 
-def stopien_symboli(manifest: dict[str, Any], kafel: KafelStanu | None) -> StopienSymboli | None:
+def stopien_symboli(
+    manifest: dict[str, Any], kafel: KafelStanu | None
+) -> StopienSymboli | None:
     deklaracja = manifest.get("stopienSymboli")
     if deklaracja is None:
         return None
     if kafel is None:
-        raise BladImportu("stopienSymboli: stopień mierzony bokiem kafla stanu — brak kafla")
+        raise BladImportu(
+            "stopienSymboli: stopień mierzony bokiem kafla stanu — brak kafla"
+        )
     powod = _powod(deklaracja, "stopienSymboli", "stopień symboli")
     zakresy = []
     for klucz in ("kafel", "tor"):
         lo, hi = (float(v) for v in deklaracja[klucz])
         if not 0 < lo < hi <= 1:
-            raise BladImportu(f"stopienSymboli: zakres {klucz} [{lo}; {hi}] niepoprawny")
+            raise BladImportu(
+                f"stopienSymboli: zakres {klucz} [{lo}; {hi}] niepoprawny"
+            )
         zakresy.append((lo, hi))
-    return StopienSymboli(kafel=zakresy[0], tor=zakresy[1], bok=kafel.wysokosc, powod=powod)
+    return StopienSymboli(
+        kafel=zakresy[0], tor=zakresy[1], bok=kafel.wysokosc, powod=powod
+    )
+
+
+# ---------------------------------------------------------------------------
+# Układ kafla łącznika (decyzja właściciela 2026-10-30, wzorzec HMI e²TANGO)
+# ---------------------------------------------------------------------------
+
+#: Kotwica znacznika rodzaju aparatu przy styku stałym — JEDNA tabela importera i renderera
+#: (eksport do TS: ``QET_KOTWICE_ZNACZNIKOW``). ``srodek``: środek obwiedni znacznika leży
+#: w punkcie styku — nóż zamyka się na środku znaku (krzyżyk wyłącznika; kreska styku
+#: uziemnika). ``od_przegubu``: punkt obwiedni zwrócony do przegubu leży w punkcie styku — nóż
+#: dochodzi do okręgu, nie przechodzi przez niego (okrąg odłącznika i członu wysuwnego; okrąg
+#: rozłącznika zawieszony pod kreską styku).
+RODZAJE_ZNACZNIKOW: dict[str, str] = {
+    "wylacznik": "srodek",
+    "odlacznik": "od_przegubu",
+    "rozlacznik": "od_przegubu",
+    "uziemnik": "srodek",
+}
+#: Położenia, w których nóż spoczywa na styku stałym (styk znacznika).
+STYKI = ("closed", "earthed")
+
+
+@dataclass(frozen=True)
+class RodzajUkladuKafla:
+    """Rozmieszczenie jednego rodzaju łącznika w kaflu (jednostki QET, początek w lewym górnym
+    rogu kafla): przegub noża, styki stałe położeń ``closed``/``earthed`` i punkt przyłączenia
+    symbolu ziemi (``przegub`` — uziemnik: przegub łączy się z ziemią; ``earthed`` — łącznik
+    trójpołożeniowy: dolny koniec kreski zestyku uziemiającego)."""
+
+    przegub: tuple[float, float]
+    styki: dict[str, tuple[float, float]]
+    ziemia_przy: str | None
+
+
+@dataclass(frozen=True)
+class UkladKafla:
+    """Jedna deklaracja proporcji kafla łącznika (``kafelStanu.uklad`` manifestu) — znacznik
+    rodzaju aparatu przy styku stałym, nóż, symbol ziemi i rozmieszczenie rodzajów. Wszystkie
+    łączniki pola biorą rozmiar znacznika, margines, odstęp od noża, kąt położenia otwartego
+    i rozmiar ziemi z tej deklaracji, więc proporcje są te same w każdym rodzaju i stanie.
+    """
+
+    bok_znacznika: float
+    udzial_znacznika: tuple[float, float]
+    margines_znacznika: float
+    odstep: float
+    strefa_styku: float
+    kat_otwarty: float
+    zasieg_nieustalony: float
+    szerokosc_ziemi: float
+    pion_ziemi: float
+    rodzaje: dict[str, RodzajUkladuKafla]
+    powod: str
+
+
+def _punkt(v: Sequence[Any], co: str) -> tuple[float, float]:
+    if len(v) != 2:
+        raise BladImportu(f"{co}: punkt musi mieć dwie współrzędne")
+    return (float(v[0]), float(v[1]))
+
+
+def uklad_kafla(
+    manifest: dict[str, Any], kafel: KafelStanu | None
+) -> UkladKafla | None:
+    deklaracja = (manifest.get("kafelStanu") or {}).get("uklad")
+    if deklaracja is None:
+        return None
+    if kafel is None:
+        raise BladImportu("kafelStanu.uklad: układ kafla bez kafla stanu")
+    powod = _powod(deklaracja, "kafelStanu.uklad", "układ kafla")
+    zn = deklaracja["znacznik"]
+    bok = float(zn["bokQet"])
+    udzial = (float(zn["udzial"][0]), float(zn["udzial"][1]))
+    if not 0 < udzial[0] < udzial[1] < 1:
+        raise BladImportu(
+            f"kafelStanu.uklad: przedział udziału znacznika {list(udzial)} błędny"
+        )
+    u = bok / kafel.wysokosc
+    if not udzial[0] - 1e-9 <= u <= udzial[1] + 1e-9:
+        raise BladImportu(
+            f"kafelStanu.uklad: znacznik {bok * 0.4:.2f} j.św. to {u:.3f} boku kafla — poza "
+            f"[{udzial[0]}; {udzial[1]}] (za mały albo za duży)"
+        )
+    margines = float(zn["marginesQet"])
+    odstep = float(zn["odstepOdNozaQet"])
+    strefa = float(zn["strefaStykuQet"])
+    if margines < 0 or odstep < 0 or strefa <= 0:
+        raise BladImportu("kafelStanu.uklad: margines, odstęp i strefa styku nieujemne")
+    noz = deklaracja["noz"]
+    kat = float(noz["katOtwarty"])
+    zasieg = float(noz["zasiegNieustalony"])
+    if not 0 < kat < 90:
+        raise BladImportu(
+            f"kafelStanu.uklad: kąt położenia otwartego {kat}° poza (0; 90)"
+        )
+    if not 0 < zasieg < 1:
+        raise BladImportu(
+            f"kafelStanu.uklad: zasięg położenia nieustalonego {zasieg} poza (0; 1)"
+        )
+    ziemia = deklaracja["ziemia"]
+    szer_ziemi = float(ziemia["szerokoscQet"])
+    pion = float(ziemia["pionQet"])
+    if szer_ziemi <= 0 or pion <= 0:
+        raise BladImportu("kafelStanu.uklad: szerokość i pion symbolu ziemi dodatnie")
+    os_x = kafel.wysokosc / 2
+    rodzaje: dict[str, RodzajUkladuKafla] = {}
+    for nazwa, r in sorted(deklaracja["rodzaje"].items()):
+        przegub = _punkt(r["przegub"], f"kafelStanu.uklad.{nazwa}.przegub")
+        styki = {
+            pol: _punkt(v, f"kafelStanu.uklad.{nazwa}.styki.{pol}")
+            for pol, v in sorted(r["styki"].items())
+        }
+        if set(styki) - set(STYKI) or "closed" not in styki:
+            raise BladImportu(
+                f"kafelStanu.uklad.{nazwa}: styki {sorted(styki)} spoza {STYKI}"
+            )
+        zamk = styki["closed"]
+        # Zawias u dołu, styk stały u góry, nóż pionowy = zamknięty (wzorzec HMI e²TANGO).
+        if not (abs(przegub[0] - os_x) <= 1e-9 and abs(zamk[0] - os_x) <= 1e-9):
+            raise BladImportu(
+                f"kafelStanu.uklad.{nazwa}: przegub i styk zamknięcia poza osią toru"
+            )
+        if not zamk[1] < przegub[1]:
+            raise BladImportu(
+                f"kafelStanu.uklad.{nazwa}: styk zamknięcia nie leży nad przegubem"
+            )
+        if "earthed" in styki:
+            e = styki["earthed"]
+            kat_e = normalizuj_kat(
+                kat_kierunku(przegub, e) - kat_kierunku(przegub, zamk)
+            )
+            if not kat < kat_e < 180:
+                raise BladImportu(
+                    f"kafelStanu.uklad.{nazwa}: położenie otwarte {kat}° nie leży między "
+                    f"zamkniętym (0°) a uziemionym ({kat_e:.1f}°)"
+                )
+        ziemia_przy = r.get("ziemiaPrzy")
+        if ziemia_przy not in (None, "przegub", "earthed") or (
+            ziemia_przy == "earthed" and "earthed" not in styki
+        ):
+            raise BladImportu(
+                f"kafelStanu.uklad.{nazwa}: przyłączenie ziemi {ziemia_przy!r}"
+            )
+        for co, q in [("przegub", przegub), *styki.items()]:
+            if not (0 <= q[0] <= kafel.wysokosc and 0 <= q[1] <= kafel.wysokosc):
+                raise BladImportu(f"kafelStanu.uklad.{nazwa}: {co} poza kaflem")
+        rodzaje[nazwa] = RodzajUkladuKafla(
+            przegub=przegub, styki=styki, ziemia_przy=ziemia_przy
+        )
+    return UkladKafla(
+        bok_znacznika=bok,
+        udzial_znacznika=udzial,
+        margines_znacznika=margines,
+        odstep=odstep,
+        strefa_styku=strefa,
+        kat_otwarty=kat,
+        zasieg_nieustalony=zasieg,
+        szerokosc_ziemi=szer_ziemi,
+        pion_ziemi=pion,
+        rodzaje=rodzaje,
+        powod=powod,
+    )
+
+
+def przeksztalc(r: Rysunek, f: Any, skala_dlugosci: float) -> Rysunek:
+    """Rysunek po podobieństwie ``f`` (punkt → punkt) o skali długości ``skala_dlugosci`` —
+    kształt bez zmian (jednokładność, przesunięcie, obrót noża)."""
+    return replace(
+        r,
+        punkty=[f(q) for q in r.punkty],
+        promien=r.promien * skala_dlugosci,
+        rozmiar=r.rozmiar * skala_dlugosci,
+        luk_probki=[f(q) for q in r.luk_probki],
+    )
+
+
+Ksztalt = tuple[str, tuple[float, float], Any]
+
+
+def _ksztalty(r: Rysunek) -> list[Ksztalt]:
+    """Rysunek jako odcinki i okręgi (linia środkowa kreski) — do pomiaru odstępów."""
+    if r.rodzaj == "line":
+        return [("odcinek", r.punkty[0], r.punkty[1])]
+    if r.rodzaj == "polygon":
+        pts = list(r.punkty) + ([r.punkty[0]] if r.zamkniety else [])
+        return [("odcinek", a, b) for a, b in zip(pts, pts[1:], strict=False)]
+    if r.rodzaj == "circle":
+        return [("okrag", r.punkty[0], r.promien)]
+    if r.rodzaj == "arc":
+        pr = r.luk_probki
+        return [("odcinek", a, b) for a, b in zip(pr, pr[1:], strict=False)]
+    if r.rodzaj == "letter":
+        (x0, y0), (x1, y1) = obwiednia([r])
+        naroza = [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+        return [("odcinek", a, b) for a, b in zip(naroza, naroza[1:], strict=False)]
+    raise BladImportu(f"kształt {r.rodzaj!r} bez pomiaru odstępu")
+
+
+def _odl_punkt_odcinek(
+    p: tuple[float, float], a: tuple[float, float], b: tuple[float, float]
+):
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    dl2 = dx * dx + dy * dy
+    t = (
+        0.0
+        if dl2 == 0
+        else max(0.0, min(1.0, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / dl2))
+    )
+    return math.dist(p, (a[0] + t * dx, a[1] + t * dy))
+
+
+def _przecinaja(a, b, c, d) -> bool:
+    def orient(p, q, r) -> float:
+        return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+
+    o1, o2, o3, o4 = orient(a, b, c), orient(a, b, d), orient(c, d, a), orient(c, d, b)
+    return (o1 * o2 < 0) and (o3 * o4 < 0)
+
+
+def _odl_ksztaltow(k1: Ksztalt, k2: Ksztalt) -> float:
+    if k1[0] == "okrag" and k2[0] == "odcinek":
+        k1, k2 = k2, k1
+    if k1[0] == "odcinek" and k2[0] == "odcinek":
+        a, b, c, d = k1[1], k1[2], k2[1], k2[2]
+        if _przecinaja(a, b, c, d):
+            return 0.0
+        return min(
+            _odl_punkt_odcinek(a, c, d),
+            _odl_punkt_odcinek(b, c, d),
+            _odl_punkt_odcinek(c, a, b),
+            _odl_punkt_odcinek(d, a, b),
+        )
+    if k1[0] == "odcinek":
+        (a, b), (c, r) = (k1[1], k1[2]), (k2[1], k2[2])
+        dmin = _odl_punkt_odcinek(c, a, b)
+        dmax = max(math.dist(a, c), math.dist(b, c))
+        if dmin <= r <= dmax:
+            return 0.0
+        return dmin - r if r < dmin else r - dmax
+    (c1, r1), (c2, r2) = (k1[1], k1[2]), (k2[1], k2[2])
+    d = math.dist(c1, c2)
+    if d >= r1 + r2:
+        return d - r1 - r2
+    if d <= abs(r1 - r2):
+        return abs(r1 - r2) - d
+    return 0.0
+
+
+def _poza_kolem(
+    r: Rysunek, srodek: tuple[float, float], promien: float
+) -> list[Rysunek]:
+    """Linia noża bez części leżącej w kole (strefa styku albo przegubu) — odcinki poza kołem."""
+    if r.rodzaj != "line":
+        raise BladImportu("strefa styku: prymityw noża nie jest linią")
+    (a, b) = r.punkty
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    fx, fy = a[0] - srodek[0], a[1] - srodek[1]
+    aa = dx * dx + dy * dy
+    bb = 2 * (fx * dx + fy * dy)
+    cc = fx * fx + fy * fy - promien * promien
+    delta = bb * bb - 4 * aa * cc
+    if aa == 0 or delta <= 0:
+        return [r]
+    t1 = (-bb - math.sqrt(delta)) / (2 * aa)
+    t2 = (-bb + math.sqrt(delta)) / (2 * aa)
+    wynik = []
+    for lo, hi in ((0.0, min(t1, 1.0)), (max(t2, 0.0), 1.0)):
+        if hi - lo > 1e-9:
+            wynik.append(
+                replace(
+                    r,
+                    punkty=[
+                        (a[0] + lo * dx, a[1] + lo * dy),
+                        (a[0] + hi * dx, a[1] + hi * dy),
+                    ],
+                )
+            )
+    return wynik
+
+
+def odleglosc_rysunkow(g1: Sequence[Rysunek], g2: Sequence[Rysunek]) -> float:
+    """Najmniejsza odległość linii środkowych dwóch grup rysunku (∞ dla grupy pustej)."""
+    k1 = [k for r in g1 for k in _ksztalty(r)]
+    k2 = [k for r in g2 for k in _ksztalty(r)]
+    return min((_odl_ksztaltow(a, b) for a in k1 for b in k2), default=math.inf)
+
+
+def _przeciecia_z_osia(rysunki: Sequence[Rysunek], os_x: float) -> list[float]:
+    """Wysokości, na których rysunek przecina pionową oś toru ``x = os_x``."""
+    ys: list[float] = []
+    for r in rysunki:
+        for k in _ksztalty(r):
+            if k[0] == "odcinek":
+                (a, b) = (k[1], k[2])
+                if min(a[0], b[0]) - 1e-9 <= os_x <= max(a[0], b[0]) + 1e-9:
+                    if abs(a[0] - b[0]) <= 1e-9:
+                        ys += [a[1], b[1]]
+                    else:
+                        t = (os_x - a[0]) / (b[0] - a[0])
+                        ys.append(a[1] + t * (b[1] - a[1]))
+            else:
+                (c, rr) = (k[1], k[2])
+                dx = abs(c[0] - os_x)
+                if dx <= rr + 1e-9:
+                    h = math.sqrt(max(rr * rr - dx * dx, 0.0))
+                    ys += [c[1] - h, c[1] + h]
+    return ys
+
+
+def uloz_kafel_lacznika(
+    wpis: dict[str, Any],
+    elementy: dict[str, Element],
+    skala: float,
+    raster: float,
+    kafel: KafelStanu,
+    stopien: StopienSymboli | None,
+    uklad: UkladKafla,
+) -> dict[str, Any]:
+    """Łącznik w JEDNOLITYM kaflu stanu wg wzorca HMI e²TANGO (decyzja właściciela 2026-10-30):
+    zawias noża u dołu, styk stały u góry, nóż pionowy = zamknięty, ukośny = otwarty; przy
+    styku stałym ZNACZNIK rodzaju aparatu („×” wyłącznik, „○” odłącznik, kreska z okręgiem
+    rozłącznik, kreska uziemnik) w jednym rozmiarze; symbol ziemi pod uziemnikiem, skierowany
+    w dół, na końcu pionu odgałęzienia; osprzęt = wyłącznie napęd (atrybut łącznika).
+
+    Geometria pochodzi z prymitywów źródła QET — każdy prymityw ma rolę (nóż, znacznik styku,
+    ziemia, osprzęt) albo jawne pominięcie z powodem; rolę rozmieszcza przekształcenie
+    zachowujące kształt (podobieństwo noża: przegub źródła → przegub układu, koniec ostrza →
+    styk zamknięcia; jednokładność znacznika i ziemi do rozmiaru z ``kafelStanu.uklad``;
+    przesunięcie osprzętu do przegubu). Przewody toru generuje układ: od portu górnego do
+    pierwszego punktu znacznika styku zamknięcia na osi toru i od przegubu do portu dolnego.
+    """
+    ident = str(wpis["symbolId"])
+    deklaracja = wpis["ukladKafla"]
+    for klucz in ("skalaRysunku", "noz", "portyWewnatrzGabarytu", "zaciskiWewnetrzne"):
+        if wpis.get(klucz) is not None:
+            raise BladImportu(
+                f"{ident}: {klucz} zbędne w układzie kafla — rozmiar z układu"
+            )
+    rodzaj = uklad.rodzaje.get(str(deklaracja.get("rodzaj")))
+    if rodzaj is None:
+        raise BladImportu(
+            f"{ident}: rodzaj układu kafla {deklaracja.get('rodzaj')!r} nieznany"
+        )
+    bok = kafel.wysokosc
+    os_x = bok / 2
+    H = rodzaj.przegub
+    C = rodzaj.styki["closed"]
+
+    skladniki = [
+        Skladnik(
+            element=elementy[str(s["element"])],
+            obrot=int(s["obrot"]),
+            przesuniecie=(float(s["przesuniecie"][0]), float(s["przesuniecie"][1])),
+        )
+        for s in wpis["skladniki"]
+    ]
+    for s in skladniki:
+        if s.obrot not in OBROT_KIERUNKU:
+            raise BladImportu(f"{ident}: obrót {s.obrot} poza wielokrotnością 90°")
+    zrodlowe = prymitywy_skladnikow(wpis, skladniki, ident)
+
+    # Role prymitywów: każdy prymityw źródła ma DOKŁADNIE jedną rolę albo jawne pominięcie.
+    role: dict[tuple[int, int], str] = {}
+
+    def przypisz(si: int, pi: int, rola: str) -> None:
+        if not 0 <= si < len(zrodlowe) or not 0 <= pi < len(zrodlowe[si]):
+            raise BladImportu(
+                f"{ident}: {rola} — prymityw {pi} składnika {si} poza źródłem"
+            )
+        if zrodlowe[si][pi].rodzaj == "pominiety":
+            raise BladImportu(
+                f"{ident}: {rola} — prymityw {pi} składnika {si} pominięty"
+            )
+        if (si, pi) in role:
+            raise BladImportu(f"{ident}: prymityw {pi} składnika {si} ma dwie role")
+        role[(si, pi)] = rola
+
+    noz_d = deklaracja["noz"]
+    si_noza = int(noz_d["skladnik"])
+    for pi in noz_d["prymitywy"]:
+        przypisz(si_noza, int(pi), "noz")
+    znaczniki_d = list(deklaracja.get("znaczniki", []))
+    for i, z in enumerate(znaczniki_d):
+        if z.get("rodzaj") not in RODZAJE_ZNACZNIKOW:
+            raise BladImportu(f"{ident}: rodzaj znacznika {z.get('rodzaj')!r} nieznany")
+        if z.get("styk") not in rodzaj.styki:
+            raise BladImportu(
+                f"{ident}: znacznik przy styku {z.get('styk')!r} spoza układu"
+            )
+        for pi in z["prymitywy"]:
+            przypisz(int(z["skladnik"]), int(pi), f"znacznik{i}")
+    styki_zn = [z["styk"] for z in znaczniki_d]
+    for styk in rodzaj.styki:
+        if styki_zn.count(styk) != 1:
+            raise BladImportu(
+                f"{ident}: styk {styk} ma {styki_zn.count(styk)} znaczników — wymagany dokładnie "
+                "jeden (brak znacznika przerywa import)"
+            )
+    rodzaj_przy = {z["styk"]: z["rodzaj"] for z in znaczniki_d}
+    ziemia_d = deklaracja.get("ziemia")
+    styk_ziemi = {"przegub": "closed", "earthed": "earthed"}.get(
+        str(rodzaj.ziemia_przy)
+    )
+    for styk, rz in rodzaj_przy.items():
+        if (rz == "uziemnik") != (styk == styk_ziemi):
+            raise BladImportu(
+                f"{ident}: znacznik uziemnika wyłącznie przy styku, do którego przyłączona jest "
+                f"ziemia (styk {styk}: {rz})"
+            )
+    if (ziemia_d is None) != (rodzaj.ziemia_przy is None):
+        raise BladImportu(
+            f"{ident}: symbol ziemi wyłącznie w rodzaju z przyłączeniem ziemi"
+        )
+    if ziemia_d is not None:
+        for pi in ziemia_d["prymitywy"]:
+            przypisz(int(ziemia_d["skladnik"]), int(pi), "ziemia")
+    osprzet_si: set[int] = set()
+    for o in wpis.get("osprzet", []):
+        si = int(o["skladnik"])
+        _powod(o, ident, "osprzęt")
+        osprzet_si.add(si)
+        for pi, p in enumerate(zrodlowe[si] if 0 <= si < len(zrodlowe) else []):
+            if p.rodzaj != "pominiety":
+                przypisz(si, pi, "osprzet")
+    for si, prymitywy in enumerate(zrodlowe):
+        for pi, p in enumerate(prymitywy):
+            if p.rodzaj != "pominiety" and (si, pi) not in role:
+                raise BladImportu(
+                    f"{ident}: prymityw {pi} składnika {si} bez roli w układzie kafla — "
+                    "przypisz rolę albo pomiń z powodem"
+                )
+
+    def rysunki(
+        rola: str, kolejnosc: Sequence[tuple[int, int]] | None = None
+    ) -> list[Rysunek]:
+        klucze = (
+            kolejnosc
+            if kolejnosc is not None
+            else sorted(k for k, v in role.items() if v == rola)
+        )
+        wynik = []
+        for si, pi in klucze:
+            r = zloz_prymityw(zrodlowe[si][pi], skladniki[si], "glif")
+            if r is not None:
+                wynik.append(r)
+        return wynik
+
+    # Nóż: podobieństwo przegub źródła → przegub układu, koniec ostrza → styk zamknięcia.
+    s_n = skladniki[si_noza]
+    p0 = s_n.punkt(_punkt(noz_d["przegub"], f"{ident}: przegub"))
+    p1 = s_n.punkt(_punkt(noz_d["koniec"], f"{ident}: koniec noża"))
+    noz_zr = rysunki("noz", [(si_noza, int(pi)) for pi in noz_d["prymitywy"]])
+    if any(r.rodzaj != "line" for r in noz_zr):
+        raise BladImportu(f"{ident}: nóż składa się wyłącznie z linii źródła")
+    ostrze = noz_zr[0]
+    if not (
+        (_blisko(ostrze.punkty[0], p0, 1e-6) and _blisko(ostrze.punkty[1], p1, 1e-6))
+        or (_blisko(ostrze.punkty[1], p0, 1e-6) and _blisko(ostrze.punkty[0], p1, 1e-6))
+    ):
+        raise BladImportu(
+            f"{ident}: przegub i koniec noża nie są końcami ostrza źródła"
+        )
+    w = complex(C[0] - H[0], C[1] - H[1]) / complex(p1[0] - p0[0], p1[1] - p0[1])
+
+    def podobienstwo_noza(q: tuple[float, float]) -> tuple[float, float]:
+        z = complex(H[0], H[1]) + w * complex(q[0] - p0[0], q[1] - p0[1])
+        return (z.real, z.imag)
+
+    noz = [przeksztalc(r, podobienstwo_noza, abs(w)) for r in noz_zr]
+
+    # Znaczniki: jednokładność do boku znacznika, kotwica z tabeli rodzajów.
+    znaczniki: list[tuple[dict[str, Any], list[Rysunek]]] = []
+    for i, z in enumerate(znaczniki_d):
+        rys = rysunki(f"znacznik{i}")
+        x0, y0, x1, y1 = prostokat(obwiednia(rys))
+        wym = max(x1 - x0, y1 - y0)
+        if wym <= 0:
+            raise BladImportu(f"{ident}: znacznik {z['rodzaj']} bez wymiaru")
+        sigma = uklad.bok_znacznika / wym
+        styk = rodzaj.styki[z["styk"]]
+        if RODZAJE_ZNACZNIKOW[z["rodzaj"]] == "srodek":
+            a = ((x0 + x1) / 2, (y0 + y1) / 2)
+        else:
+            dx, dy = H[0] - styk[0], H[1] - styk[1]
+            if abs(dx) > 1e-9 and abs(dy) > 1e-9:
+                raise BladImportu(f"{ident}: przegub nie leży na osi styku {z['styk']}")
+            if dy > 1e-9:
+                a = ((x0 + x1) / 2, y1)
+            elif dy < -1e-9:
+                a = ((x0 + x1) / 2, y0)
+            elif dx > 0:
+                a = (x1, (y0 + y1) / 2)
+            else:
+                a = (x0, (y0 + y1) / 2)
+
+        def jednokladnosc(
+            q: tuple[float, float],
+            a: tuple[float, float] = a,
+            styk: tuple[float, float] = styk,
+            sigma: float = sigma,
+        ) -> tuple[float, float]:
+            return (styk[0] + sigma * (q[0] - a[0]), styk[1] + sigma * (q[1] - a[1]))
+
+        umieszczone = [przeksztalc(r, jednokladnosc, sigma) for r in rys]
+        if z["rodzaj"] == "uziemnik":
+            # Kreska styku uziemnika: jedna linia prostopadła do noża w położeniu na styku.
+            if len(umieszczone) != 1 or umieszczone[0].rodzaj != "line":
+                raise BladImportu(f"{ident}: znacznik uziemnika = jedna kreska styku")
+            (a1, b1) = umieszczone[0].punkty
+            n = (styk[0] - H[0], styk[1] - H[1])
+            if abs((b1[0] - a1[0]) * n[0] + (b1[1] - a1[1]) * n[1]) > 1e-6:
+                raise BladImportu(
+                    f"{ident}: kreska styku uziemnika nie jest prostopadła do noża"
+                )
+        znaczniki.append((z, umieszczone))
+
+    # Ziemia: jednokładność do szerokości z układu, górna (najszersza) kreska na końcu pionu
+    # odgałęzienia pod punktem przyłączenia; kreski malejące w dół.
+    ziemia: list[Rysunek] = []
+    kotwica_ziemi: tuple[float, float] | None = None
+    if ziemia_d is not None:
+        rys = rysunki("ziemia")
+        for r in rys:
+            if r.rodzaj != "line" or abs(r.punkty[0][1] - r.punkty[1][1]) > 1e-9:
+                raise BladImportu(
+                    f"{ident}: symbol ziemi = wyłącznie kreski poziome źródła"
+                )
+        rys.sort(key=lambda r: r.punkty[0][1])
+        szer = [abs(r.punkty[0][0] - r.punkty[1][0]) for r in rys]
+        if len(rys) < 3 or any(b >= a for a, b in zip(szer, szer[1:], strict=False)):
+            raise BladImportu(
+                f"{ident}: symbol ziemi skierowany w górę albo niepełny — kreski {szer} muszą "
+                "maleć w dół (najszersza u góry, przy pionie odgałęzienia)"
+            )
+        sigma = uklad.szerokosc_ziemi / szer[0]
+        gora = rys[0]
+        a = ((gora.punkty[0][0] + gora.punkty[1][0]) / 2, gora.punkty[0][1])
+        if rodzaj.ziemia_przy == "przegub":
+            kotwica_ziemi = H
+        else:
+            kreska = next(
+                r for z, rr in znaczniki if z["styk"] == "earthed" for r in rr
+            )
+            kotwica_ziemi = max(kreska.punkty, key=lambda q: q[1])
+        cel = (kotwica_ziemi[0], kotwica_ziemi[1] + uklad.pion_ziemi)
+
+        def jednokladnosc_ziemi(q: tuple[float, float]) -> tuple[float, float]:
+            return (cel[0] + sigma * (q[0] - a[0]), cel[1] + sigma * (q[1] - a[1]))
+
+        ziemia = [Rysunek(rodzaj="line", punkty=[kotwica_ziemi, cel])] + [
+            przeksztalc(r, jednokladnosc_ziemi, sigma) for r in rys
+        ]
+
+    # Osprzęt (napęd): złożenie źródła przesunięte tak, że kotwica napędu leży w przegubie.
+    osprzet: list[Rysunek] = []
+    if osprzet_si:
+        kotwica = _punkt(deklaracja["osprzetKotwica"], f"{ident}: kotwica osprzętu")
+        t = (H[0] - kotwica[0], H[1] - kotwica[1])
+        osprzet = [
+            przeksztalc(r, lambda q: (q[0] + t[0], q[1] + t[1]), 1.0)
+            for r in rysunki("osprzet")
+        ]
+    elif deklaracja.get("osprzetKotwica") is not None:
+        raise BladImportu(f"{ident}: kotwica osprzętu bez osprzętu")
+
+    # Porty toru: górny przy styku stałym, dolny przy przegubie (brak dolnego — uziemnik).
+    wykorzystane: set[tuple[int, float, float]] = set()
+
+    def zacisk_zrodla(si: int, xy: Sequence[float]) -> tuple[tuple[float, float], str]:
+        s = skladniki[si]
+        for zc in s.element.zaciski:
+            if (zc.x, zc.y) == (float(xy[0]), float(xy[1])):
+                wykorzystane.add((si, zc.x, zc.y))
+                return s.punkt((zc.x, zc.y)), OBROT_KIERUNKU[s.obrot][zc.kierunek]
+        raise BladImportu(f"{ident}: składnik {si} nie ma zacisku {list(xy)}")
+
+    oczekiwane_porty = ["top"] + ([] if rodzaj.ziemia_przy == "przegub" else ["bottom"])
+    porty: list[tuple[str, tuple[float, float], str]] = []
+    for p in wpis["porty"]:
+        nazwa = str(p["name"])
+        punkt_zr, kier = zacisk_zrodla(int(p["skladnik"]), p["zacisk"])
+        if int(p["skladnik"]) != si_noza:
+            raise BladImportu(f"{ident}: port {nazwa} z zacisku spoza składnika noża")
+        przy_styku = math.dist(punkt_zr, p1) < math.dist(punkt_zr, p0)
+        if (nazwa, kier, przy_styku) not in (
+            ("top", "N", True),
+            ("bottom", "S", False),
+        ):
+            raise BladImportu(
+                f"{ident}: port {nazwa} ({kier}) nie odpowiada zaciskowi źródła — górny przy "
+                "styku stałym (N), dolny przy przegubie (S)"
+            )
+        porty.append((nazwa, (os_x, 0.0) if nazwa == "top" else (os_x, bok), kier))
+    if [n for n, _, _ in porty] != oczekiwane_porty:
+        raise BladImportu(
+            f"{ident}: porty {[n for n, _, _ in porty]} ≠ {oczekiwane_porty}"
+        )
+    for w_ in wpis.get("zaciskiPozaTorem", []):
+        _powod(w_, ident, f"zacisk poza torem {w_.get('zacisk')}")
+        zacisk_zrodla(int(w_["skladnik"]), w_["zacisk"])
+    for si, s in enumerate(skladniki):
+        for zc in s.element.zaciski:
+            if (si, zc.x, zc.y) not in wykorzystane:
+                raise BladImportu(
+                    f"{ident}: zacisk źródła {(zc.x, zc.y)} bez przypisania"
+                )
+    wtorne: list[tuple[str, tuple[float, float], str]] = []
+    for p in wpis.get("portyWtorne", []):
+        _powod(p, ident, f"port wtórny {p['name']}")
+        q = _punkt(p["punkt"], f"{ident}: port wtórny {p['name']}")
+        kier = str(p.get("dir"))
+        na_krawedzi = {
+            "N": abs(q[1]) <= 1e-9,
+            "S": abs(q[1] - bok) <= 1e-9,
+            "W": abs(q[0]) <= 1e-9,
+            "E": abs(q[0] - bok) <= 1e-9,
+        }.get(kier)
+        if not na_krawedzi:
+            raise BladImportu(
+                f"{ident}: port wtórny {p['name']} poza krawędzią kafla {kier}"
+            )
+        wtorne.append((str(p["name"]), q, kier))
+    for nazwa, q, _ in porty + wtorne:
+        if not (_na_rastrze(q[0], 0.0, raster) and _na_rastrze(q[1], 0.0, raster)):
+            raise BladImportu(f"{ident}: port {nazwa} poza rastrem zacisków QET")
+
+    # Przewody toru z układu.
+    zamk = next(rr for z, rr in znaczniki if z["styk"] == "closed")
+    wejscia = [y for y in _przeciecia_z_osia(zamk, os_x) if y <= C[1] + 1e-9]
+    if not wejscia:
+        raise BladImportu(f"{ident}: znacznik styku zamknięcia nie przecina osi toru")
+    przewody = [
+        Rysunek(
+            rodzaj="line", punkty=[(os_x, 0.0), (os_x, min(wejscia))], rola="przewod"
+        )
+    ]
+    if "bottom" in oczekiwane_porty:
+        przewody.append(Rysunek(rodzaj="line", punkty=[H, (os_x, bok)], rola="przewod"))
+
+    # Położenia noża: zamknięty 0°, otwarty — kąt z układu (w stronę przeciwną do znacznika
+    # nad osią), nieustalony — połowa drogi z zasięgiem z układu, uziemiony — kąt na zestyk.
+    katy = {"closed": 0.0, "open": uklad.kat_otwarty, "unknown": uklad.kat_otwarty / 2}
+    zasiegi = {"closed": 1.0, "open": 1.0, "unknown": uklad.zasieg_nieustalony}
+    if "earthed" in rodzaj.styki:
+        e = rodzaj.styki["earthed"]
+        katy["earthed"] = normalizuj_kat(kat_kierunku(H, e) - kat_kierunku(H, C))
+        zasiegi["earthed"] = math.dist(H, e) / math.dist(H, C)
+    polozenia = {
+        pol: [
+            obroc_rysunek(noz_w_zasiegu(r, zasiegi[pol], H), katy[pol], H) for r in noz
+        ]
+        for pol in POLOZENIA
+        if pol in katy
+    }
+
+    # Mieszczenie w kaflu: rysunek z marginesem kafla, znacznik (z grubością kreski) z marginesem
+    # znacznika.
+    m = kafel.margines
+    tresc = [q for rys in polozenia.values() for q in obwiednia(rys)]
+    tresc += obwiednia([r for _, rr in znaczniki for r in rr]) + obwiednia(
+        ziemia + osprzet
+    )
+    t_min_x, t_min_y, t_max_x, t_max_y = prostokat(tresc)
+    if (
+        t_min_x < m - 1e-9
+        or t_min_y < m - 1e-9
+        or t_max_x > bok - m + 1e-9
+        or t_max_y > bok - m + 1e-9
+    ):
+        raise BladImportu(f"{ident}: rysunek łącznika nie mieści się w kaflu stanu")
+    mz = uklad.margines_znacznika + kafel.kreska / 2
+    for z, rr in znaczniki:
+        x0, y0, x1, y1 = prostokat(obwiednia(rr))
+        if (
+            x0 < mz - 1e-9
+            or y0 < mz - 1e-9
+            or x1 > bok - mz + 1e-9
+            or y1 > bok - mz + 1e-9
+        ):
+            raise BladImportu(
+                f"{ident}: znacznik {z['rodzaj']} bliżej krawędzi kafla niż margines "
+                f"{uklad.margines_znacznika * skala:.1f} j.św."
+            )
+
+    # Odstępy: linia środkowa ≥ kreska glifu + odstęp, poza strefą styku, na którym nóż leży
+    # w danym położeniu, i strefą przegubu (sprzężenie napędu, pion ziemi uziemnika).
+    minimum = kafel.kreska + uklad.odstep
+
+    def sprawdz_odstep(opis: str, g1: Sequence[Rysunek], g2: Sequence[Rysunek]) -> None:
+        d = odleglosc_rysunkow(g1, g2)
+        if d < minimum - 1e-9:
+            raise BladImportu(
+                f"{ident}: {opis} — odstęp linii {d * skala:.2f} j.św. < {minimum * skala:.2f} "
+                "(znacznik nachodzi na nóż albo rysunek się styka)"
+            )
+
+    def bez_strefy(
+        rys: Sequence[Rysunek], srodek: tuple[float, float]
+    ) -> list[Rysunek]:
+        return [q for r in rys for q in _poza_kolem(r, srodek, uklad.strefa_styku)]
+
+    for pol, rys in sorted(polozenia.items()):
+        for z, rr in znaczniki:
+            noz_pol = (
+                bez_strefy(rys, rodzaj.styki[z["styk"]]) if z["styk"] == pol else rys
+            )
+            sprawdz_odstep(f"nóż ({pol}) i znacznik {z['rodzaj']}", noz_pol, rr)
+        if ziemia:
+            noz_pol = bez_strefy(rys, H) if rodzaj.ziemia_przy == "przegub" else rys
+            sprawdz_odstep(f"nóż ({pol}) i symbol ziemi", noz_pol, ziemia)
+        if osprzet:
+            sprawdz_odstep(f"nóż ({pol}) i napęd", bez_strefy(rys, H), osprzet)
+    for i, (z1, r1) in enumerate(znaczniki):
+        for z2, r2 in znaczniki[i + 1 :]:
+            sprawdz_odstep(f"znaczniki {z1['rodzaj']} i {z2['rodzaj']}", r1, r2)
+        if ziemia:
+            ziemia_z = ziemia[1:] if z1["rodzaj"] == "uziemnik" else ziemia
+            sprawdz_odstep(f"znacznik {z1['rodzaj']} i symbol ziemi", r1, ziemia_z)
+        if osprzet:
+            sprawdz_odstep(f"znacznik {z1['rodzaj']} i napęd", r1, osprzet)
+    if ziemia and osprzet:
+        sprawdz_odstep("symbol ziemi i napęd", ziemia, osprzet)
+
+    # Stopień: nóż i znaczniki (aparat łączeniowy) w każdym położeniu; ziemia i napęd poza miarą.
+    rys_znacznikow = [r for _, rr in znaczniki for r in rr]
+    udzialy = {
+        pol: wysokosc_glifu(rys_znacznikow + rys) / (stopien.bok if stopien else bok)
+        for pol, rys in polozenia.items()
+    }
+    if stopien is not None:
+        sprawdz_stopien(ident, udzialy, stopien.kafel)
+
+    def swiat(q: tuple[float, float]) -> tuple[float, float]:
+        return (q[0] * skala, q[1] * skala)
+
+    def ts_(r: Rysunek, noz_stanu: bool = False) -> dict[str, Any]:
+        return prymityw_ts_swiata(r, swiat, skala, ident, noz_stanu)
+
+    def punkt_ts(q: tuple[float, float]) -> dict[str, float]:
+        x, y = swiat(q)
+        return {"x": zaokr(x), "y": zaokr(y)}
+
+    wszystko = tresc + obwiednia(przewody) + [q for _, q, _ in porty + wtorne]
+    glif = [q for rys in polozenia.values() for q in obwiednia(rys)] + obwiednia(
+        rys_znacznikow
+    )
+    wynik: dict[str, Any] = {
+        "id": ident,
+        "namePl": str(wpis["namePl"]),
+        "zlozenie": wpis.get("zlozenie"),
+        "szerokosc": zaokr(bok * skala),
+        "wysokosc": zaokr(bok * skala),
+        "porty": [{"name": n, **punkt_ts(q), "dir": k} for n, q, k in porty],
+        "portyWtorne": [{"name": n, **punkt_ts(q), "dir": k} for n, q, k in wtorne],
+        "doprowadzenia": [],
+        "obrys": prostokat_ts_swiata(wszystko, swiat),
+        "glif": prostokat_ts_swiata(glif, swiat),
+        "kafel": {
+            "x": 0,
+            "y": 0,
+            "width": zaokr(bok * skala),
+            "height": zaokr(bok * skala),
+        },
+        "przewody": [ts_(r) for r in przewody],
+        "stale": [],
+        "osprzet": [ts_(r) for r in osprzet],
+        "noz": {
+            **{"cx": zaokr(H[0] * skala), "cy": zaokr(H[1] * skala)},
+            "katy": {k: zaokr(katy[k]) for k in POLOZENIA if k in katy},
+            "zasiegi": {k: zaokr(zasiegi[k]) for k in POLOZENIA if k in zasiegi},
+            "prymitywy": [ts_(r, noz_stanu=True) for r in noz],
+        },
+        "znaczniki": [
+            {
+                "rodzaj": z["rodzaj"],
+                "styk": z["styk"],
+                "kotwica": punkt_ts(rodzaj.styki[z["styk"]]),
+                "prymitywy": [ts_(r) for r in rr],
+            }
+            for z, rr in znaczniki
+        ],
+        "ziemia": (
+            {"kotwica": punkt_ts(kotwica_ziemi), "prymitywy": [ts_(r) for r in ziemia]}
+            if kotwica_ziemi is not None
+            else None
+        ),
+        "zrodla": [
+            {
+                "sciezka": s.element.sciezka,
+                "upstreamBlobSha": s.element.upstream_sha,
+                "sha256": s.element.sha256,
+            }
+            for s in skladniki
+        ],
+    }
+    wynik["_udzialy"] = udzialy
+    return wynik
 
 
 def _fill(r: Rysunek) -> str:
@@ -1266,7 +2130,11 @@ def ts(wartosc: Any, wciecie: int = 0) -> str:
             return "[]"
         if all(not isinstance(v, dict | list) for v in wartosc):
             return "[" + ", ".join(ts(v) for v in wartosc) + "]"
-        return "[\n" + "".join(f"{odstep}  {ts(v, wciecie + 1)},\n" for v in wartosc) + f"{odstep}]"
+        return (
+            "[\n"
+            + "".join(f"{odstep}  {ts(v, wciecie + 1)},\n" for v in wartosc)
+            + f"{odstep}]"
+        )
     if isinstance(wartosc, dict):
         if not wartosc:
             return "{}"
@@ -1275,7 +2143,9 @@ def ts(wartosc: Any, wciecie: int = 0) -> str:
             return "{ " + ", ".join(f"{k}: {ts(v)}" for k, v in wartosc.items()) + " }"
         return (
             "{\n"
-            + "".join(f"{odstep}  {k}: {ts(v, wciecie + 1)},\n" for k, v in wartosc.items())
+            + "".join(
+                f"{odstep}  {k}: {ts(v, wciecie + 1)},\n" for k, v in wartosc.items()
+            )
             + f"{odstep}}}"
         )
     raise BladImportu(f"wartość {wartosc!r} bez odwzorowania TS")
@@ -1297,7 +2167,11 @@ NAGLOWEK = """/**
  * zamkniętym i uziemionym koniec noża leży na styku stałym).
  * Jednokładność rysunku (`skalaRysunku` manifestu) przenosi kształt elementu bez zmian; role prymitywów: `przewody`
  * (kreska przewodu toru), `stale` i `noz` (rysunek aparatu — kreska glifu `QET_KRESKA_GLIFU`),
- * `osprzet` (napęd, cewka wyłączająca — kreska glifu).
+ * `osprzet` (napęd — kreska glifu).
+ * Łącznik z położeniem (kafel stanu, `kafelStanu.uklad` manifestu, wzorzec HMI e²TANGO): zawias noża
+ * u dołu, styk stały u góry, nóż pionowy = zamknięty; przy styku stałym `znaczniki` rodzaju aparatu
+ * (`QET_ZNACZNIK_STYKU`, kotwice `QET_KOTWICE_ZNACZNIKOW`) i `ziemia` — symbol uziemienia skierowany
+ * w dół, na końcu pionu odgałęzienia (`QET_ZIEMIA_KAFLA`).
  */
 import type { SymbolPort } from '../../core/grid';
 import type { CadPrimitive } from '../cadSymbolRegistry';
@@ -1320,6 +2194,31 @@ export interface QetNozSymbolu {
   /** Zasięg noża w położeniu — ułamek długości noża źródła: koniec dalszy od przegubu leży
    *  w odległości `zasieg` × długość (ZAMKNIĘTY/UZIEMIONY — dokładnie na styku stałym). */
   readonly zasiegi: Readonly<Partial<Record<QetPolozenieNoza, number>>>;
+  readonly prymitywy: readonly CadPrimitive[];
+}
+
+/** Rodzaj aparatu rozpoznawany po znaczniku przy styku stałym (wzorzec HMI e²TANGO). */
+export type QetRodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik';
+
+export interface QetPunkt {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Znacznik rodzaju aparatu przy styku stałym: `kotwica` = punkt styku, na którym spoczywa nóż
+ *  w położeniu `styk` (zamkniętym albo uziemionym). */
+export interface QetZnacznikStyku {
+  readonly rodzaj: QetRodzajZnacznika;
+  readonly styk: 'closed' | 'earthed';
+  readonly kotwica: QetPunkt;
+  readonly prymitywy: readonly CadPrimitive[];
+}
+
+/** Symbol uziemienia łącznika: `kotwica` = punkt przyłączenia (przegub uziemnika albo dolny koniec
+ *  kreski zestyku uziemiającego); pierwszy prymityw to pion odgałęzienia, dalej kreski malejące
+ *  w dół. */
+export interface QetZiemiaSymbolu {
+  readonly kotwica: QetPunkt;
   readonly prymitywy: readonly CadPrimitive[];
 }
 
@@ -1364,11 +2263,15 @@ export interface QetSymbolPolaSn {
   readonly kafel: QetProstokat | null;
   /** Przewody toru i obwodu wtórnego w gabarycie (kreska przewodu). */
   readonly przewody: readonly CadPrimitive[];
-  /** Rysunek aparatu poza nożem (kreska glifu). */
+  /** Rysunek aparatu symbolu toru (kreska glifu); łącznik z kaflem stanu — pusty. */
   readonly stale: readonly CadPrimitive[];
-  /** Osprzęt łącznika: napęd silnikowy, cewka wyłączająca (kreska glifu). */
+  /** Osprzęt łącznika: napęd (atrybut łącznika, kreska glifu). */
   readonly osprzet: readonly CadPrimitive[];
   readonly noz: QetNozSymbolu | null;
+  /** Znaczniki rodzaju aparatu przy stykach stałych łącznika (pusta lista — symbol toru). */
+  readonly znaczniki: readonly QetZnacznikStyku[];
+  /** Symbol uziemienia skierowany w dół (uziemnik, łącznik trójpołożeniowy) albo `null`. */
+  readonly ziemia: QetZiemiaSymbolu | null;
   readonly zrodla: readonly QetZrodloSymbolu[];
 }
 
@@ -1379,6 +2282,22 @@ export const QET_BOK_KAFLA_STANU = {bokKafla};
 /** Kreska glifu aparatu [jednostki świata, skala bazowa LOD2] — `kafelStanu.kreskaGlifuQet`
  *  × skala, proporcjonalna do boku kafla stanu (bok/24); przewody mają kreskę przewodu. */
 export const QET_KRESKA_GLIFU = {kreskaGlifu};
+
+/** Znacznik rodzaju aparatu przy styku stałym [jednostki świata, skala bazowa LOD2] —
+ *  `kafelStanu.uklad.znacznik` × skala (decyzja właściciela 2026-10-30): `bok` = większy wymiar
+ *  znacznika (linia środkowa), `udzial` = dopuszczalny przedział boku / bok kafla, `margines` =
+ *  najmniejsza odległość tuszu znacznika od krawędzi kafla, `odstep` = najmniejsza odległość tuszu
+ *  znacznika od tuszu noża poza strefą styku, `strefa` = promień strefy styku (wokół punktu, w którym
+ *  nóż spoczywa na styku, i wokół przegubu). Kreska znacznika = `QET_KRESKA_GLIFU` (kreska noża). */
+export const QET_ZNACZNIK_STYKU = {znacznikStyku} as const;
+
+/** Kotwica znacznika względem punktu styku: `srodek` — środek obwiedni znacznika w punkcie styku,
+ *  `od_przegubu` — bok obwiedni zwrócony do przegubu w punkcie styku. */
+export const QET_KOTWICE_ZNACZNIKOW = {kotwiceZnacznikow} as const;
+
+/** Symbol uziemienia łącznika [jednostki świata, skala bazowa LOD2]: szerokość górnej (najszerszej)
+ *  kreski i długość pionu odgałęzienia od punktu przyłączenia. */
+export const QET_ZIEMIA_KAFLA = {ziemiaKafla} as const;
 
 /** Odmiana kroju, której metrykami importer liczy obwiednię i środek liter symboli — odmiana
  *  rysowana przez `CadPrimitiveLayer` (waga `WAGA_LITERY_SYMBOLU`, `cad/CadSymbol.tsx`). */
@@ -1400,9 +2319,11 @@ class SymboleManifestu:
     skala: float
     kafel: KafelStanu | None
     stopien: StopienSymboli | None
+    uklad: UkladKafla | None
     symbole: list[dict[str, Any]]
     #: Stopień glifu każdego symbolu: wysokość rysunku aparatu wzdłuż osi toru / bok kafla stanu
-    #: w każdym położeniu noża (miara, którą ``zloz_symbol`` sprawdza z ``stopienSymboli``).
+    #: w każdym położeniu noża (miara, którą ``zloz_symbol`` i ``uloz_kafel_lacznika`` sprawdzają
+    #: z ``stopienSymboli``).
     udzialy: dict[str, dict[str, float]]
 
 
@@ -1421,10 +2342,19 @@ def zloz_symbole_manifestu() -> SymboleManifestu:
         elementy[str(wpis["id"])] = wczytaj_element(wpis)
     kafel = kafel_stanu(manifest, raster)
     stopien = stopien_symboli(manifest, kafel)
-    symbole = [
-        zloz_symbol(w, elementy, skala, raster, kafel if w.get("noz") else None, stopien)
-        for w in manifest["symbole"]
-    ]
+    uklad = uklad_kafla(manifest, kafel)
+    symbole = []
+    for w in manifest["symbole"]:
+        if w.get("ukladKafla") is not None:
+            if kafel is None or uklad is None:
+                raise BladImportu(
+                    f"{w['symbolId']}: układ kafla bez deklaracji kafelStanu.uklad"
+                )
+            symbole.append(
+                uloz_kafel_lacznika(w, elementy, skala, raster, kafel, stopien, uklad)
+            )
+        else:
+            symbole.append(zloz_symbol(w, elementy, skala, raster, stopien))
     udzialy = {str(s["id"]): s.pop("_udzialy") for s in symbole}
     identyfikatory = [s["id"] for s in symbole]
     if len(set(identyfikatory)) != len(identyfikatory):
@@ -1437,6 +2367,7 @@ def zloz_symbole_manifestu() -> SymboleManifestu:
         skala=skala,
         kafel=kafel,
         stopien=stopien,
+        uklad=uklad,
         symbole=symbole,
         udzialy=udzialy,
     )
@@ -1463,15 +2394,47 @@ def generuj() -> str:
     ).replace("{pochodzenie}", ts(pochodzenie))
     tresc = tresc.replace(
         "{bokKafla}", liczba_ts(kafel.wysokosc * skala) if kafel is not None else "null"
-    ).replace("{kreskaGlifu}", liczba_ts(kafel.kreska * skala) if kafel is not None else "null")
+    ).replace(
+        "{kreskaGlifu}",
+        liczba_ts(kafel.kreska * skala) if kafel is not None else "null",
+    )
+    uklad = zlozone.uklad
+    if uklad is None:
+        raise BladImportu("kafelStanu.uklad: brak deklaracji układu kafla łączników")
+    tresc = tresc.replace(
+        "{znacznikStyku}",
+        ts(
+            {
+                "bok": zaokr(uklad.bok_znacznika * skala),
+                "udzial": [uklad.udzial_znacznika[0], uklad.udzial_znacznika[1]],
+                "margines": zaokr(uklad.margines_znacznika * skala),
+                "odstep": zaokr(uklad.odstep * skala),
+                "strefa": zaokr(uklad.strefa_styku * skala),
+            }
+        ),
+    )
+    tresc = tresc.replace("{kotwiceZnacznikow}", ts(dict(RODZAJE_ZNACZNIKOW)))
+    tresc = tresc.replace(
+        "{ziemiaKafla}",
+        ts(
+            {
+                "szerokosc": zaokr(uklad.szerokosc_ziemi * skala),
+                "pion": zaokr(uklad.pion_ziemi * skala),
+            }
+        ),
+    )
     tresc = tresc.replace("{odmianaLiter}", WAGA_TEKSTU_QET)
-    tresc = tresc.replace("{symbole}", "".join(f"  {s['id']}: {ts(s, 1)},\n" for s in symbole))
+    tresc = tresc.replace(
+        "{symbole}", "".join(f"  {s['id']}: {ts(s, 1)},\n" for s in symbole)
+    )
     return tresc
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--sprawdz", action="store_true", help="porównaj z plikiem, bez zapisu")
+    parser.add_argument(
+        "--sprawdz", action="store_true", help="porównaj z plikiem, bez zapisu"
+    )
     args = parser.parse_args(argv)
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     cel = KORZEN / str(manifest["wyjscie"])
@@ -1482,7 +2445,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
     if args.sprawdz:
         if not cel.exists() or cel.read_text(encoding="utf-8") != tresc:
-            print(f"{cel.relative_to(KORZEN)} rozjechany z generatorem — uruchom bez --sprawdz")
+            print(
+                f"{cel.relative_to(KORZEN)} rozjechany z generatorem — uruchom bez --sprawdz"
+            )
             return 1
         print(f"{cel.relative_to(KORZEN)} zgodny z generatorem")
         return 0
