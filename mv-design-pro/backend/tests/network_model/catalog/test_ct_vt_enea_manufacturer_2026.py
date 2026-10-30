@@ -45,7 +45,7 @@ def test_enea_30_ct_wymagania_5a_5b_5c_5d_z_rdzeniami() -> None:
     assert {x["params"]["construction"] for x in items} == {
         "SUPPORT", "RING_PHASE_CT"
     }
-    assert {x["params"]["ith_ka_1s"] for x in items} == {8.0, 16.0}
+    assert {x["params"]["ith_ka_1s"] for x in items} == {2.0, 8.0, 16.0}
 
 
 def test_ct_legacy_zostaja_bez_nowych_kluczy_i_roundtrip() -> None:
