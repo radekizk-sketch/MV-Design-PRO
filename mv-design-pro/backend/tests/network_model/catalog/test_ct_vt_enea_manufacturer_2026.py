@@ -14,7 +14,7 @@ from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CTType, VTType
 
 
-def test_enea_30_ct_wymagania_5a_5b_5c_5d_z_rdzeniami() -> None:
+def test_enea_36_ct_wymagania_5a_5b_5c_5d_z_rdzeniami() -> None:
     items = get_all_enea_ct_profiles()
     assert len(items) == 36
     assert len({x["id"] for x in items}) == 30
