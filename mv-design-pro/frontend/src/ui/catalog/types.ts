@@ -501,9 +501,9 @@ export interface CTCatalogType extends CatalogType {
    * z literą P ⇒ `protection`, klasa liczbowa ⇒ `metering`. `null`/brak = nie da się
    * ustalić (klasa nieznana albo zapis złożony opisujący dwa rdzenie).
    *
-   * `dual` katalog referencyjny wystawi dopiero z DANĄ producenta o konstrukcji
-   * dwurdzeniowej — dziś żaden z 12 typów jej nie ma, więc warunek 87T pozostaje
-   * nierozstrzygalny (jawny brak danych, nie luka kontraktu).
+   * Dla przekładnika wielordzeniowego należy odczytać `secondary_cores`,
+   * zamiast przypisywać wszystkie rdzenie do jednego pola `application`.
+   * Stare rekordy bez tej struktury pozostają modelami referencyjnymi.
    */
   application?: 'protection' | 'metering' | 'dual' | null;
   /**
@@ -511,6 +511,11 @@ export interface CTCatalogType extends CatalogType {
    * literze P — IEC 61869-2 § 3.4.201). Rdzeń pomiarowy jej nie ma (`null`).
    */
   accuracy_limit_factor?: number | null;
+  um_kv?: number | null;
+  construction?: string | null;
+  core_count?: number | null;
+  primary_taps_a?: readonly number[] | null;
+  secondary_cores?: readonly Record<string, unknown>[] | null;
 }
 
 /**
@@ -531,6 +536,45 @@ export interface VTCatalogType extends CatalogType {
   burden_va?: number | null;
   /** Czy przekładnik ma uzwojenie resztkowe do pomiaru napięcia zerowego. */
   has_residual_winding?: boolean | null;
+  um_kv?: number | null;
+  primary_connection?: string | null;
+  secondary_windings?: readonly Record<string, unknown>[] | null;
+}
+
+/** Rodzina producenta CT/VT — nie skonfigurowany i nieprzypisywalny aparat. */
+export interface InstrumentManufacturerFamilyCatalogType extends CatalogType {
+  model_family: string;
+  transformer_kind: 'CT' | 'VT' | 'CT_SENSOR' | 'VT_SENSOR' | 'ZERO_SEQUENCE';
+  mounting: string;
+  voltage_domain: 'SN' | 'nN';
+  record_kind: 'MANUFACTURER_FAMILY_NOT_SKU';
+  catalog_status: 'REFERENCYJNY_V1';
+  source_reference: string;
+  verification_note: string;
+  um_kv?: number;
+  primary_a_min?: number;
+  primary_a_max?: number;
+  secondary_current_options_a?: number[];
+  core_count_max?: number;
+  secondary_windings_max?: number;
+  accuracy_options?: string[];
+  burden_options_va?: number[];
+  ith_range_ka?: number[];
+  residual_capability?: boolean;
+}
+
+/** Ferranti / zero-sequence current sensor 3I0 (nie klasyczny CT fazowy). */
+export interface FerrantiCatalogType extends CatalogType {
+  manufacturer: string;
+  model: string;
+  measurement_kind: 'ZERO_SEQUENCE_3I0';
+  construction: string;
+  turns_ratio: string;
+  window_diameter_mm?: number | null;
+  secondary_interface?: string | null;
+  test_winding?: boolean | null;
+  thermal_short_circuit_current_ka?: number | null;
+  thermal_short_circuit_duration_s?: number | null;
 }
 
 /**
@@ -733,7 +777,7 @@ export type CatalogNamespace =
 export type TypeCategory = 'LINE' | 'HV_OVERHEAD_CONDUCTOR' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
-  | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
+  | 'CT' | 'VT' | 'FERRANTI' | 'INSTRUMENT_FAMILY' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
   | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 
 /**

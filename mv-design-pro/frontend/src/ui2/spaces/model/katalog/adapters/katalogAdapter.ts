@@ -124,6 +124,9 @@ export const KATEGORIE: readonly MetadanaKategorii[] = [
     poleParametrow: [
       'ratio_primary_a',
       'ratio_secondary_a',
+      'um_kv',
+      'construction',
+      'core_count',
       'accuracy_class',
       'burden_va',
       'ith_ka_1s',
@@ -142,6 +145,8 @@ export const KATEGORIE: readonly MetadanaKategorii[] = [
     poleParametrow: [
       'ratio_primary_v',
       'ratio_secondary_v',
+      'um_kv',
+      'primary_connection',
       'accuracy_class',
       'accuracy_class_metering',
       'burden_va',

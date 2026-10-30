@@ -16,14 +16,31 @@ def test_ct_vt_catalog_has_industrial_series_width_and_metadata() -> None:
 
     for item in ct_types:
         data = item.to_dict()
-        assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
+        if data["id"].startswith("ct-abb-tpu-") or data["id"] == "ct-abb-tpu70-63-tabliczka-przyklad-2024":
+            # Zidentyfikowana tabliczka w oficjalnej instrukcji ABB,
+            # ale nie aktualny numer zamówieniowy konkretnego wyrobu.
+            assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+            assert data["core_count"] in (2, 4)
+            assert "library.e.abb.com" in data["source_reference"]
+        else:
+            assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
         assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
         assert data["source_reference"]
         assert data["contract_version"] == "2.0"
 
     for item in vt_types:
         data = item.to_dict()
-        assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
+        if data["id"].startswith(("vt-abb-udz24-1-", "vt-esitas-")):
+            # Dane rodziny producenta są potwierdzone, lecz kombinacja uzwojeń
+            # pozostaje konfiguracją doborową, nie zweryfikowaną kartą SKU.
+            assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+            assert data["secondary_windings"]
+            assert (
+                "new.abb.com" in data["source_reference"]
+                or "astat.pl" in data["source_reference"]
+            )
+        else:
+            assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
         assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
         assert data["source_reference"]
         assert data["contract_version"] == "2.0"

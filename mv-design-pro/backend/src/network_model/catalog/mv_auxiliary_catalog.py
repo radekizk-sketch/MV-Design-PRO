@@ -1,6 +1,14 @@
 from __future__ import annotations
 
 from .mv_converter_catalog import ZRODLO_MODELU_REFERENCYJNEGO
+from .mv_ct_abb_tpu_standard import get_abb_tpu6_standard_types
+from .mv_vt_esitas_verified import get_all_esitas_vt_confirmed_sku
+from .mv_instrument_transformers_full import (
+    get_all_enea_ct_profiles,
+    get_abb_tpu_nameplate_example,
+    get_all_enea_vt_profiles,
+    get_all_abb_udz_vt_profiles,
+)
 from .lv_cable_nkt import get_all_nkt_lv_cable_types
 from .lv_cable_nkt_pvc import get_all_nkt_yky_lv_cable_types
 from .lv_cable_nkt_yaky import get_all_nkt_yaky_lv_cable_types
@@ -1613,7 +1621,7 @@ def get_all_ct_types() -> list[dict]:
                 ),
             },
         },
-    ]
+    ] + get_all_enea_ct_profiles() + get_abb_tpu_nameplate_example() + get_abb_tpu6_standard_types()
 
 
 def get_all_vt_types() -> list[dict]:
@@ -1916,7 +1924,7 @@ def get_all_vt_types() -> list[dict]:
                 ),
             },
         },
-    ]
+    ] + get_all_enea_vt_profiles() + get_all_abb_udz_vt_profiles() + get_all_esitas_vt_confirmed_sku()
 
 
 def get_all_protection_device_types() -> list[dict]:

@@ -15,6 +15,8 @@ echo "[KATALOG] testy danych NKT/ENEA, CT i kontroli jakości"
 python -m pytest -q \
   backend/tests/network_model/catalog/test_cable_line_catalog_width.py \
   backend/tests/network_model/catalog/test_cable_manufacturer_catalogs_2026.py \
+  backend/tests/network_model/catalog/test_ct_vt_enea_manufacturer_2026.py \
+  backend/tests/network_model/catalog/test_ct_vt_manufacturers_poland_2026.py \
   backend/tests/network_model/test_lv_catalog_p02.py \
   backend/tests/network_model/catalog/test_catalog_global_completeness_report.py \
   backend/tests/network_model/catalog/test_protection_ct_vt_v1_completeness.py \

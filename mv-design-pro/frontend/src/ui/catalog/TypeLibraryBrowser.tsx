@@ -37,6 +37,8 @@ const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'LOAD', label: 'Typy obciążeń', icon: '◔' },
   { id: 'CT', label: 'Typy przekładników prądowych', icon: '◎' },
   { id: 'VT', label: 'Typy przekładników napięciowych', icon: '◌' },
+  { id: 'FERRANTI', label: 'Przekładniki Ferrantiego 3I₀', icon: '◎' },
+  { id: 'INSTRUMENT_FAMILY', label: 'Rodziny przekładników producentów', icon: '◈' },
   { id: 'MEASUREMENT_TRANSFORMER', label: 'Typy przekładników pomiarowych', icon: '◍' },
   { id: 'PV_INVERTER', label: 'Typy falowników źródeł fotowoltaicznych', icon: '☀' },
   { id: 'BESS_INVERTER', label: 'Typy falowników magazynów energii', icon: '▣' },
@@ -90,8 +92,37 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   ratio_secondary_a: 'Przekładnia wtórna [A]',
   ratio_primary_v: 'Przekładnia pierwotna [V]',
   ratio_secondary_v: 'Przekładnia wtórna [V]',
+  turns_ratio: 'Przekładnia zwojowa czujnika 3I₀',
+  window_diameter_mm: 'Średnica okna [mm]',
+  secondary_interface: 'Interfejs przekaźnika',
+  test_winding: 'Uzwojenie testowe',
+  thermal_short_circuit_current_ka: 'Prąd cieplny [kA]',
+  thermal_short_circuit_duration_s: 'Czas prądu cieplnego [s]',
+  model_family: 'Rodzina producenta',
+  transformer_kind: 'Rodzaj przekładnika',
+  mounting: 'Miejsce montażu',
+  voltage_domain: 'Domena napięciowa',
+  record_kind: 'Typ rekordu',
+  primary_a_min: 'Minimalny prąd pierwotny rodziny [A]',
+  primary_a_max: 'Maksymalny prąd pierwotny rodziny [A]',
+  secondary_current_options_a: 'Dostępne prądy wtórne [A]',
+  core_count_max: 'Maks. liczba rdzeni w rodzinie',
+  secondary_windings_max: 'Maks. liczba uzwojeń wtórnych VT',
+  accuracy_options: 'Dostępne klasy w rodzinie',
+  burden_options_va: 'Opcje mocy [VA]',
+  ith_range_ka: 'Zakres dostępnego Ith [kA]',
+  residual_capability: 'Dostępne warianty resztkowe',
   accuracy_class: 'Klasa dokładności',
   burden_va: 'Moc obciążeniowa [VA]',
+  um_kv: 'Najwyższe napięcie urządzenia Um [kV]',
+  core_count: 'Liczba rdzeni',
+  construction: 'Konstrukcja przekładnika',
+  primary_connection: 'Połączenie pierwotne',
+  idyn_ka_peak: 'Wytrzymałość dynamiczna Idyn [kA]',
+  ith_ka_1s: 'Wytrzymałość cieplna Ith [kA/1 s]',
+  fs_safety_factor: 'Współczynnik bezpieczeństwa FS',
+  accuracy_limit_factor: 'Graniczna liczba dokładności ALF',
+  has_residual_winding: 'Uzwojenie resztkowe 3U₀',
   p_kw: 'Moc czynna P [kW]',
   q_kvar: 'Moc bierna Q [kvar]',
   cos_phi: 'cos phi',
@@ -272,6 +303,9 @@ function getGenericDetailEntries(type: CatalogListItem): Array<{ label: string; 
     'rx_ratio_min',
     // Propozycje wartości roboczych (V12K-351) mają własną sekcję — nie są daną karty.
     'wartosci_robocze',
+    // Osobna tabela struktury rdzeni i uzwojeń (bez [object Object]).
+    'secondary_cores',
+    'secondary_windings',
   ]);
   const presentKeys = Object.keys(record).filter((key) => !hiddenKeys.has(key) && record[key] != null && record[key] !== '');
   const orderedKeys = [
@@ -405,7 +439,11 @@ export function TypeLibraryBrowser({
 
   const handleSelectType = (typeId: string) => {
     setSelectedTypeId(typeId);
-    onSelectType?.(typeId, activeTab);
+    // Rodzina nie jest skończonym modelem; nie wolno wysłać jej
+    // jako typ fizycznego CT/VT do grafu projektu.
+    if (activeTab !== 'INSTRUMENT_FAMILY') {
+      onSelectType?.(typeId, activeTab);
+    }
   };
 
   return (
@@ -597,6 +635,10 @@ function TypeDetailsPanel({
         </div>
       </div>
 
+      {category === 'CT' || category === 'VT' || category === 'MEASUREMENT_TRANSFORMER' ? (
+        <InstrumentTransformerWindings type={type} />
+      ) : null}
+
       {category === 'MV_APPARATUS' ? (
         <WartosciRoboczePozycji propozycje={(type as MVApparatusType).wartosci_robocze ?? []} />
       ) : null}
@@ -653,6 +695,65 @@ function WartosciRoboczePozycji({
         </ul>
       )}
     </div>
+  );
+}
+
+/** Kanoniczne dane wielordzeniowe CT i uzwojeń VT — bez domysłów o klasie 3P. */
+function InstrumentTransformerWindings({ type }: { type: CatalogListItem }) {
+  const item = type as unknown as Record<string, unknown>;
+  const isCurrent = Array.isArray(item.secondary_cores);
+  const raw = isCurrent ? item.secondary_cores : item.secondary_windings;
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+
+  const roleLabel: Record<string, string> = {
+    BILLING: 'Pomiar rozliczeniowy',
+    METERING: 'Pomiar',
+    LOCAL_METERING: 'Pomiar lokalny',
+    LOCAL_OR_PROTECTION: 'Pomiar lokalny / zabezpieczenie',
+    PROTECTION: 'Zabezpieczenie',
+    RESIDUAL_3U0: 'Uzwojenie resztkowe 3U₀',
+    UNSPECIFIED: 'Funkcja do potwierdzenia',
+  };
+  const connectionLabel: Record<string, string> = {
+    STAR_PER_PHASE_BANK: 'Gwiazda (układ trójfazowy)',
+    OPEN_DELTA_THREE_PHASE_BANK: 'Otwarty trójkąt (układ trójfazowy)',
+    TO_CONFIRM: 'Połączenie do potwierdzenia',
+  };
+  const show = (v: unknown): string | null => typeof v === 'number' || typeof v === 'string'
+    ? String(v).replace('.', ',')
+    : null;
+  return (
+    <section className="space-y-3" data-testid="type-library-instrument-windings">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
+        {isCurrent ? 'Rdzenie przekładnika prądowego' : 'Uzwojenia przekładnika napięciowego'}
+      </h3>
+      <div className="grid grid-cols-1 gap-2">
+        {raw.map((winding: unknown, pos: number) => {
+          if (!winding || typeof winding !== 'object' || Array.isArray(winding)) return null;
+          const w = winding as Record<string, unknown>;
+          const role = typeof w.role === 'string' ? (roleLabel[w.role] ?? w.role) : 'Funkcja nieokreślona';
+          const connection = typeof w.connection === 'string'
+            ? (connectionLabel[w.connection] ?? w.connection) : null;
+          const parts = [
+            show(w.accuracy_class) ? `kl. ${show(w.accuracy_class)}` : null,
+            show(w.burden_va) ? `${show(w.burden_va)} VA` : null,
+            show(w.secondary_a) ? `${show(w.secondary_a)} A` : null,
+            show(w.rated_voltage_v) ? `${show(w.rated_voltage_v)} V` : null,
+            show(w.fs) ? `FS ${show(w.fs)}` : null,
+            show(w.alf) ? `ALF ${show(w.alf)}` : null,
+            connection,
+          ].filter((value): value is string => Boolean(value));
+          return (
+            <div key={pos} className="rounded-md border border-gray-200 p-3 text-sm">
+              <div className="font-medium text-gray-800">Nr {show(w.index) ?? String(pos + 1)} — {role}</div>
+              <div className="mt-1 text-gray-600">
+                {parts.length ? parts.join(' · ') : 'Dane szczegółowe do potwierdzenia kartą wyrobu'}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
