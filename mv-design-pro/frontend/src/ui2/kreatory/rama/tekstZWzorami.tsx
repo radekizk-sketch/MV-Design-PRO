@@ -65,15 +65,21 @@ const ZNAKI_POLECEN: Readonly<Record<string, string>> = {
   in: '∈',
 };
 
+/** Operatory i relacje — w odczycie otoczone spacją (`2 \cdot I` → `2 · I`). */
+const OPERATORY = new Set(['cdot', 'times', 'leq', 'le', 'geq', 'ge', 'neq', 'approx', 'pm', 'to', 'in', 'subseteq']);
+
 /** Polecenia LaTeX-a, które tylko formatują (krój, tekst) — w odczycie znikają. */
 const POLECENIA_FORMATU = new Set(['mathrm', 'text', 'mathit', 'mathbf', 'operatorname', 'left', 'right']);
 
 function latexNaTekst(latex: string): string {
   return latex
     .replace(/\\[,;:! ]/g, ' ')
-    .replace(/\\([a-zA-Z]+)\s*/g, (_cale, polecenie: string) =>
-      POLECENIA_FORMATU.has(polecenie) ? '' : (ZNAKI_POLECEN[polecenie] ?? polecenie),
-    )
+    .replace(/\\([%_&#])/g, '$1')
+    .replace(/\\([a-zA-Z]+)\s*/g, (_cale, polecenie: string) => {
+      if (POLECENIA_FORMATU.has(polecenie)) return '';
+      const znak = ZNAKI_POLECEN[polecenie] ?? polecenie;
+      return OPERATORY.has(polecenie) ? ` ${znak} ` : znak;
+    })
     .replace(/[{}_^]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
