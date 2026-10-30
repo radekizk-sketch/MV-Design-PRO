@@ -7,7 +7,7 @@ Dwie klasy wpisów, których NIE wolno mieszać:
 - **Rodzina producenta:** dopuszczalne kombinacje z publikacji producenta. Dopóki nie ma osobnego numeru zamówieniowego/DTR, status nadal REFERENCYJNY_V1. NIE nazywamy jej potwierdzonym wyrobem.
 
 W bazie wyjściowej było **14 przekładników CT** (12 modeli referencyjnych plus 2 sieciowe ENEA 5/B) oraz **13 VT**.
-Po aktualizacji PR #511: **103 CT** (70 wcześniej, 13 kanonicznych ENEA wieloprzekładniowych, 3 ENEA nN i 17 ABB KOKM 1), **37 VT** (6 nowych ENEA 5/E-F, 9 ABB UDZ 24-1, 3 ESITAS VTB i 6 RITZ VES) oraz **5 Ferranti 3I0** w osobnym katalogu.
+Po aktualizacji PR #511: **181 CT** (70 wcześniej, 13 kanonicznych ENEA wieloprzekładniowych, 3 ENEA nN, 17 ABB KOKM 1 oraz 78 projektowych SN/nN), **37 VT** (6 nowych ENEA 5/E-F, 9 ABB UDZ 24-1, 3 ESITAS VTB i 6 RITZ VES) oraz **5 Ferranti 3I0** w osobnym katalogu.
 Liczby dotyczą katalogu z gałęzi bazowej PR #508; PR jest na nią nałożony.
 
 **Aktualizacja 30.10.2026:** zał. 5/A-D wymaga przekładników
@@ -122,11 +122,15 @@ Szczegóły, źródła i zasady w:
 
 ## Technika wdrożenia i Ubuntu
 
-- `get_default_mv_catalog().list_ct_types()`: 103 modele CT fazowe/profile wymagań, w tym 13 wieloprzekładniowych z `primary_taps_a`.
+- `get_default_mv_catalog().list_ct_types()`: 181 modeli CT fazowych/profili wymagań/szablonów projektowych, w tym 13 wieloprzekładniowych z `primary_taps_a`.
 - `get_default_mv_catalog().list_vt_types()`: 37 VT.
 - `GET /api/catalog/ferranti-types`: 5 osobnych sensorów 3I0; 57 rodzin 15 producentów w katalogu doborowym.
 - Nowe opcjonalne pola `secondary_cores`, `core_count`, `um_kv`, `primary_taps_a`, `secondary_windings`, `primary_connection` są przekazywane `from_dict → to_dict → REST` bez naruszania starych rekordów.
 - Dotychczasowe ID CT/VT nie są zmieniane, tylko dodano nowe.
 - Odbiór: `bash scripts/catalog_audit_ubuntu.sh` (wymaga Python 3.11 i zależności repo).
 
-**Nie oznaczać 103 CT jako 103 pełnych produktów producenta.** Większość nowych profili to formalne wymagania standardu ENEA. Prawdziwy wybór produkcyjny potrzebuje DTR/numeru zamówieniowego potwierdzającego wszystkie rdzenie, uzwojenia, Ith, Idyn, ALF/FS i rzeczywiste obciążenie.
+**Nie oznaczać 181 CT jako 181 pełnych produktów producenta.** Większość nowych profili to formalne wymagania standardu ENEA. Prawdziwy wybór produkcyjny potrzebuje DTR/numeru zamówieniowego potwierdzającego wszystkie rdzenie, uzwojenia, Ith, Idyn, ALF/FS i rzeczywiste obciążenie.
+
+## Szablony kombinacji CT SN/nN
+
+Dodano 78 wariantów projektowych: 48 SN i 30 nN (1 A wtórne, dwa rdzenie: pomiar i EAZ). Są to wyłącznie szablony doboru, **nie SKU**. Zob. [KOMBINACJE_CT_PROJEKTOWE_SN_NN_2026.md](KOMBINACJE_CT_PROJEKTOWE_SN_NN_2026.md).

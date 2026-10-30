@@ -20,6 +20,10 @@ def test_ct_vt_catalog_has_industrial_series_width_and_metadata() -> None:
             assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
             assert data["core_count"] == 2
             assert "zwarpol.com" in data["source_reference"]
+        elif data["id"].startswith("ct-project-"):
+            assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
+            assert data["core_count"] == 2
+            assert "SZABLON PROJEKTOWY" in data["verification_note"]
         elif data["id"].startswith("ct-abb-kokm1-"):
             assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
             assert data["core_count"] == 1
