@@ -511,6 +511,11 @@ export interface CTCatalogType extends CatalogType {
    * literze P — IEC 61869-2 § 3.4.201). Rdzeń pomiarowy jej nie ma (`null`).
    */
   accuracy_limit_factor?: number | null;
+  um_kv?: number | null;
+  construction?: string | null;
+  core_count?: number | null;
+  primary_taps_a?: readonly number[] | null;
+  secondary_cores?: readonly Record<string, unknown>[] | null;
 }
 
 /**
@@ -531,6 +536,9 @@ export interface VTCatalogType extends CatalogType {
   burden_va?: number | null;
   /** Czy przekładnik ma uzwojenie resztkowe do pomiaru napięcia zerowego. */
   has_residual_winding?: boolean | null;
+  um_kv?: number | null;
+  primary_connection?: string | null;
+  secondary_windings?: readonly Record<string, unknown>[] | null;
 }
 
 /**
