@@ -85,7 +85,7 @@ def test_rodziny_innych_producentow_oddzielne_od_ct_vt_i_nieprzypisywalne() -> N
         assert family["catalog_status"] == "REFERENCYJNY_V1"
         assert family["source_reference"].startswith(("KPB", "RITZ", "ZELAP", "ELMOR", "ALCE",
                 "ASTAT", "PFIFFNER", "PLESSE", "ZWARPOL", "Łukasiewicz", "SPIE",
-                "ZOE", "TESAR", "KONČAR", "POLCONTACT"))
+                "ZOE", "TESAR", "KONČAR", "POLCONTACT", "ABB"))
     tesar = [r for r in families if r["manufacturer"] == "TESAR Polska"]
     assert {r["model_family"] for r in tesar} == {"AD11", "FD11"}
     kpb_ctso = next(r for r in families if r["manufacturer"] == "KPB Intra" and r["model_family"] == "CTSO 25")
