@@ -1543,14 +1543,19 @@ i rozmiarów, decyzje do architekta: podłoga LOD1, człon wysuwny, rodzina kano
 konfliktów `UX04-KRESKA-PIKTOGRAMU-KAFLA`, wzmianki o cewce wyłączającej poprawione (tu i w
 `docs/sld/SLD_CAD_SPEC_V3.md` §17.6).
 
-**W toku (polecenia sesji głównej 2026-10-30).** (3) Zrzuty ux04 i tablica rodzajów × stanów w obu
-motywach. (4) Przekładnik wieloprzekładniowy — wybrany zaczep w modelu i u konsumentów. (5) Decyzje
-1–3 (Ferranti i koniec toru, opisy przy symbolach, blok przekaźnika i zakładka inspektora).
+**Rozstrzygnięcia architekta 2026-10-30 — stan.** Wykonane: pkt 1 podłoga 8 px LOD1 (`c7e3d337d`),
+pkt 2 uziemiony trójpołożeniowy zielony, pkt 3 człon wysuwny end-to-end (`ea8404b02`), pkt 5 kolor v2
+i romb sprzęgła z jednej funkcji (`26a7bcc6c`), przekładnik Ferrantiego bez kreski i odejście kablowe
+kreskowane ze strzałką w dół (`d04f67373`). Znany wcześniej czerwony
+`scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` jest zielony (41).
 
-**Znane czerwone.** `scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` (2 — wariant Z.10 bez
-przekładnika Ferrantiego: oznaczenie P1 znika z warstwy etykiet) — naprawa w pkt (5).
+**W toku.** Zaczep przekładnika wieloprzekładniowego (pole ENM, inspektor, wartość robocza
+`ESTIMATED`, opis na kanwie, konsumenci); opisy przekładników przy symbolach z testem kolizji;
+blok przekaźnika LOD2 (≤4 kody ANSI + „+N", natywny klik → panel zabezpieczeń pola); pkt 4 rodzina
+kanoniczna (pomiar w §11.14); tablica łączników z wierszami wysuwnymi; zrzuty e2e; bramki końcowe.
 
-**Pierwszy krok następcy.** Pkt (3): zrzuty ux04 i tablica rodzajów × stanów.
+**Pierwszy krok następcy.** Zaczep przekładnika: `BayPrimaryDevice` (CT), parser zaczepów
+z `rdzenie[].przekladnia`, operacja `set_bay_equipment`, `dane_przyjete_wyposazenia`.
 
 ### 11.13. Kafel łącznika: stan → kolor → geometria (jedno źródło)
 
