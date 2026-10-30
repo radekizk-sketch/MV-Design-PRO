@@ -323,3 +323,17 @@ def test_etango_model_identifier_is_not_relay_rated_current(
         assert entry["rated_current_a"] is None
         assert entry["analytical_library_ref"] == entry["id"]
         assert entry["verification_status"] == "NIEWERYFIKOWANY"
+
+
+def test_new_etango_250_450_are_selectable_as_real_catalog_types(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/catalog/mv-protection-device-types")
+    assert response.status_code == 200
+    devices = {item["id"]: item for item in response.json()}
+    for device_id in ("EM_E2TANGO_250", "EM_E2TANGO_450"):
+        entry = devices[device_id]
+        assert entry["rated_current_a"] is None
+        assert entry["analytical_library_ref"] is None
+        assert entry["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
+        assert entry["source_reference"].startswith("Elektrometal Energetyka")
