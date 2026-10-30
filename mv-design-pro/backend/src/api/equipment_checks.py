@@ -39,14 +39,16 @@ from network_model.solvers.equipment_checks.vt_burden_voltage_drop import (
     kategoria_z_klasy,
 )
 from pydantic import BaseModel, Field
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu, WynikWymagania
 
 router = APIRouter(prefix="/api/solver", tags=["equipment-checks"])
 
-#: Werdykt kryterium wyposazenia w kontrakcie HTTP — DOKLADNIE stale `STATUS_PASS`,
+#: Kod zastany kryterium wyposazenia w kontrakcie HTTP — DOKLADNIE stale `STATUS_PASS`,
 #: `STATUS_FAIL`, `STATUS_UNAVAILABLE` z `network_model/solvers/equipment_checks/slad.py`
-#: (rdzen solvera zamrozony, wiec typ stoi tu, a zgodnosc obu zapisow przypina test
+#: (zgodnosc obu zapisow przypina test
 #: `tests/api/test_equipment_checks_api.py::test_typ_statusu_sprawdzenia_to_dokladnie_stale_sladu`).
-#: Werdykt bez rekordu wyjasnienia — do migracji (inwentarz C34, fala WW-3).
+#: Kod jest PROJEKCJA rekordu werdyktu wyjasnialnego niesionego obok (pole ``ocena``
+#: i ``wyjasnienie``, karta WERDYKT-MIGRACJA-190) — nigdy samodzielnym komunikatem.
 StatusSprawdzenia = Literal["PASS", "FAIL", "UNAVAILABLE"]
 
 
@@ -95,6 +97,9 @@ class CtBurdenResponse(BaseModel):
     status: StatusSprawdzenia
     status_obciazenia: StatusSprawdzenia
     status_nasycenia: StatusSprawdzenia
+    #: Rekord werdyktu wyjasnialnego (poziom W: obciazenie × nasycenie) — zrodlo statusow.
+    ocena: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     rezystancja_przewodow_ohm: float | None = None
     moc_przewodow_va: float | None = None
     moc_aparatow_va: float | None = None
@@ -141,6 +146,7 @@ def sprawdz_bilans_ct(request: CtBurdenRequest) -> CtBurdenResponse:
             rct_ohm=pozycja.rct_ohm,
             alf_wymagany=request.alf_wymagany,
             moc_stykow_va=request.moc_stykow_va,
+            nazwa_pl=f"przekładnik prądowy {pozycja.name}",
         )
     )
 
@@ -148,6 +154,8 @@ def sprawdz_bilans_ct(request: CtBurdenRequest) -> CtBurdenResponse:
         status=wynik.status,
         status_obciazenia=wynik.status_obciazenia,
         status_nasycenia=wynik.status_nasycenia,
+        ocena=wynik.ocena,
+        wyjasnienie=wynik.wyjasnienie,
         rezystancja_przewodow_ohm=wynik.rezystancja_przewodow_ohm,
         moc_przewodow_va=wynik.moc_przewodow_va,
         moc_aparatow_va=wynik.moc_aparatow_va,
@@ -192,6 +200,9 @@ class VtBurdenResponse(BaseModel):
     status: StatusSprawdzenia
     status_obciazenia: StatusSprawdzenia
     status_spadku: StatusSprawdzenia
+    #: Rekord werdyktu wyjasnialnego (poziom W: obciazenie × zmiana napiecia) — zrodlo statusow.
+    ocena: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     rezystancja_przewodow_ohm: float | None = None
     moc_aparatow_va: float | None = None
     moc_stykow_va: float | None = None
@@ -261,6 +272,7 @@ def sprawdz_bilans_vt(request: VtBurdenRequest) -> VtBurdenResponse:
                 VtDeviceBurden(nazwa=o.nazwa, moc_va=o.moc_va) for o in request.obciazenia_aparatow
             ),
             moc_stykow_va=request.moc_stykow_va,
+            nazwa_pl=f"przekładnik napięciowy {pozycja.name}",
         )
     )
 
@@ -268,6 +280,8 @@ def sprawdz_bilans_vt(request: VtBurdenRequest) -> VtBurdenResponse:
         status=wynik.status,
         status_obciazenia=wynik.status_obciazenia,
         status_spadku=wynik.status_spadku,
+        ocena=wynik.ocena,
+        wyjasnienie=wynik.wyjasnienie,
         rezystancja_przewodow_ohm=wynik.rezystancja_przewodow_ohm,
         moc_aparatow_va=wynik.moc_aparatow_va,
         moc_stykow_va=wynik.moc_stykow_va,
@@ -301,6 +315,9 @@ class CableAgingRequest(BaseModel):
 
 class CableAgingResponse(BaseModel):
     status: StatusSprawdzenia
+    #: Rekord werdyktu wyjasnialnego (θ_pracy ≤ θ_zn) — zrodlo statusu.
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
     roznica_temperatur_c: float | None = None
     wspolczynnik_starzenia: float | None = None
     wzgledna_zywotnosc: float | None = None
@@ -342,11 +359,14 @@ def sprawdz_starzenie_kabla(request: CableAgingRequest) -> CableAgingResponse:
             temperatura_pracy_c=request.temperatura_pracy_c,
             temperatura_znamionowa_c=temperatura_znamionowa,
             typ_izolacji=izolacja,
+            nazwa_pl=f"kabel {nazwa}",
         )
     )
 
     return CableAgingResponse(
         status=wynik.status,
+        ocena=wynik.ocena,
+        wyjasnienie=wynik.wyjasnienie,
         roznica_temperatur_c=wynik.roznica_temperatur_c,
         wspolczynnik_starzenia=wynik.wspolczynnik_starzenia,
         wzgledna_zywotnosc=wynik.wzgledna_zywotnosc,

@@ -33,11 +33,23 @@ const WIAZANIA_PRZEKLADNIKI = JSON.parse(
   ),
 ) as {
   przekladnik_pradowy: {
-    wynik: { kryteria: { kod: string; wymagane: string | null; dostepne: string | null }[] };
+    wynik: {
+      kryteria: {
+        kod: string;
+        wymagane: string | null;
+        dostepne: string | null;
+        ocena: { etykieta: { etykieta_pl: string } };
+      }[];
+    };
   };
 };
 const WIAZANIA_KRYTERIUM_PRZEKLADNI = WIAZANIA_PRZEKLADNIKI.przekladnik_pradowy.wynik.kryteria.find(
   (kryterium) => kryterium.kod === 'ct.przekladnia',
+)!;
+//: Etykieta kryterium cieplnego z REKORDU werdyktu wyjaśnialnego tej samej fixtury —
+//: ekran pokazuje etykietę rekordu, nie przemapowany status.
+const WIAZANIA_KRYTERIUM_CIEPLNE = WIAZANIA_PRZEKLADNIKI.przekladnik_pradowy.wynik.kryteria.find(
+  (kryterium) => kryterium.kod === 'ct.wytrzymalosc_cieplna',
 )!;
 const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/kreatory'));
@@ -387,7 +399,11 @@ test.describe('kreatory:screenshot', () => {
       `dostępne: ${WIAZANIA_KRYTERIUM_PRZEKLADNI.dostepne}`,
     );
     await expect(page.getByTestId('kryterium-werdykt-ct.wytrzymalosc_cieplna')).toHaveText(
-      'brak danej',
+      WIAZANIA_KRYTERIUM_CIEPLNE.ocena.etykieta.etykieta_pl,
+    );
+    await expect(page.getByTestId('kryterium-werdykt-ct.wytrzymalosc_cieplna')).toHaveAttribute(
+      'data-status',
+      'NIE_OCENIONO',
     );
     // Zdanie podsumowujace NIE MOZE oglosic potwierdzenia przy niekompletnych danych.
     await expect(page.getByTestId('dobor-przekladnik-pradowy-podsumowanie')).toContainText(

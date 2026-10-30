@@ -329,6 +329,63 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             ),
             audit_ref="karta WYTRZYMALOSC-PRAD-POLA (2026-10)",
         ),
+        # Kryteria wyposażenia stacji (karta WERDYKT-MIGRACJA-190): rekordy werdyktu
+        # wyjaśnialnego składane w `network_model/solvers/equipment_checks/oceny.py`.
+        CapabilityEvidence(
+            capability_id="aparatura.przekladnik_pradowy_bilans_nasycenie",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Bilans mocy obwodu wtórnego i nasycenie przekładnika prądowego: moc "
+                "obliczeniowa z rezystancji przewodów miedzianych w 20 °C i poborów aparatów, "
+                "efektywny współczynnik graniczny ALF_eff = ALF·(S_n+S_w)/(S_2obl+S_w) "
+                "(network_model/solvers/equipment_checks/ct_burden_saturation.py). Reaktancja "
+                "przewodów, składowa nieokresowa i remanencja są pominięte, a zgodności "
+                "z pomiarem obwodu nie wykazano — wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta KD-3; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="aparatura.przekladnik_napieciowy_bilans_spadek",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Bilans mocy obwodu wtórnego i zmiana napięcia na przewodach przekładnika "
+                "napięciowego: prąd wtórny z mocy aparatów, spadek na rezystancji pętli "
+                "przewodów miedzianych w 20 °C (network_model/solvers/equipment_checks/"
+                "vt_burden_voltage_drop.py). Limit zmiany napięcia jest założeniem "
+                "inżynierskim programu, a zgodności z pomiarem obwodu nie wykazano — wynik nie "
+                "jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta KD-3; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="aparatura.dobor_przekladnika",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Dobór typu przekładnika prądowego i napięciowego pola: zestawienie wymagań "
+                "toru (prąd roboczy z tabliczki, I_k″ i i_p z biegu IEC 60909, napięcie "
+                "i uziemienie sieci z modelu, wejścia przekaźnika z katalogu) z danymi "
+                "znamionowymi pozycji katalogu (domain/dobor_przekladnika.py). Zgodności "
+                "z badaniem typu przekładnika nie wykazano — wynik nie jest dowodem "
+                "regulacyjnym."
+            ),
+            audit_ref="karta E21-4; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
+            capability_id="kabel.starzenie_izolacji",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Względna szybkość starzenia izolacji kabla regułą Montsingera "
+                "V = 2^((θ_pracy − θ_zn)/10) przy stałej temperaturze pracy żyły "
+                "(network_model/solvers/equipment_checks/cable_thermal_aging.py). Reguła jest "
+                "przybliżeniem zależności Arrheniusa, temperatura pracy pochodzi od projektanta "
+                "— wynik nie jest dowodem regulacyjnym."
+            ),
+            audit_ref="karta KD-3; karta WERDYKT-MIGRACJA-190",
+        ),
         # Analizy specjalistyczne V12.6 (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, odcinek 3): ocena
         # kryteriów rekordami werdyktu wyjaśnialnego (`application/analyses/v126_oceny.py`).
         # Rdzeń V12.6 nie ma wyroczni ani sieci referencyjnej — żadna zdolność nie jest

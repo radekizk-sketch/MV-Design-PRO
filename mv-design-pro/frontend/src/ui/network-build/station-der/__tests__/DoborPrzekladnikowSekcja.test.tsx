@@ -13,71 +13,35 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { wyczyscRejestrGotowosci } from '../../../../ui2/kryteria';
 import { zdanieKodowBezRejestru } from '../../../../ui2/kryteria/rejestrGotowosci';
-import { DoborPrzekladnikowSekcja } from '../DoborPrzekladnikowSekcja';
+import FIXTURA from '../../../../harness-fixtures/generated/wiazania_scena_przekladniki.json';
+import {
+  DoborPrzekladnikowSekcja,
+  type DoborPrzekladnikow,
+  type KryteriumDoboru,
+  type WynikDoboru,
+} from '../DoborPrzekladnikowSekcja';
 
-const ODPOWIEDZ = {
-  generator_ref: 'DER-1',
-  bay_ref: 'BAY-1',
-  wejscia: {
-    napiecie_sieci_v: 20000.0,
-    prad_roboczy_a: 154.0,
-    ik_ka: null,
-    ip_ka: null,
-    run_ref_zwarciowy: null,
-    tryb_uziemienia: 'petersen_coil',
-    zrodlo_napiecia_zerowego: 'otwarty_trojkat_vt',
-    zrodlo_wejsc_urzadzenia: 'szereg_preferowany_IEC_60255_1',
-  },
-  przekladnik_pradowy: {
-    catalog_ref: 'ct_200_5_5p10_10va_abb',
-    nazwa: 'CT 200/5 A kl. 5P10 10 VA',
-    wynik: {
-      kryteria: [
-        {
-          kod: 'ct.przekladnia',
-          nazwa_pl: 'Przekładnia wobec prądu roboczego toru',
-          podstawa_pl: 'Prąd pierwotny przekładnika musi pokryć prąd roboczy toru.',
-          werdykt: 'spelnione',
-          wymagane: '154.0 A',
-          dostepne: '200.0 A',
-          komentarz_pl: null,
-          kody_gotowosci: [],
-          slad: [],
-        },
-        {
-          kod: 'ct.wytrzymalosc_cieplna',
-          nazwa_pl: 'Wytrzymałość cieplna zwarciowa',
-          podstawa_pl: 'Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).',
-          werdykt: 'brak_danych',
-          wymagane: null,
-          dostepne: '20.0 kA / 1 s',
-          komentarz_pl: 'Brakuje prądu zwarciowego, czasu jego trwania albo prądu cieplnego.',
-          kody_gotowosci: [],
-          slad: [],
-        },
-        {
-          kod: 'ct.alf',
-          nazwa_pl: 'Nasycenie rdzenia (bilans mocy wtórnej)',
-          podstawa_pl: 'S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)',
-          werdykt: 'brak_danych',
-          wymagane: null,
-          dostepne: null,
-          komentarz_pl: 'Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój).',
-          kody_gotowosci: ['ct.secondary_circuit_missing'],
-          slad: [],
-        },
-      ],
-      dobor_potwierdzony: false,
-      liczba_niespelnionych: 0,
-      liczba_bez_danych: 1,
+//: Odpowiedź końcówki doboru wygenerowana przez BACKEND (`eksport_fixtur_harnessu.py
+//: --tylko wiazania_scena_przekladniki`, pilnowana przez `tests/ci/test_fixtury_harnessu.py`)
+//: — rekordy werdyktu wyjaśnialnego są realne, nie ręcznie zmyślone w teście.
+const ODPOWIEDZ = FIXTURA as unknown as DoborPrzekladnikow;
+const KRYTERIA_CT = ODPOWIEDZ.przekladnik_pradowy.wynik!.kryteria;
+
+function kryterium(kod: string): KryteriumDoboru {
+  const znalezione = KRYTERIA_CT.find((k) => k.kod === kod);
+  if (!znalezione) throw new Error(`fixtura bez kryterium ${kod}`);
+  return znalezione;
+}
+
+function zWynikiem(wynik: Partial<WynikDoboru>): DoborPrzekladnikow {
+  return {
+    ...ODPOWIEDZ,
+    przekladnik_pradowy: {
+      ...ODPOWIEDZ.przekladnik_pradowy,
+      wynik: { ...ODPOWIEDZ.przekladnik_pradowy.wynik!, ...wynik },
     },
-  },
-  przekladnik_napieciowy: {
-    catalog_ref: null,
-    nazwa: null,
-    wynik: null,
-  },
-};
+  };
+}
 
 const originalFetch = global.fetch;
 
@@ -133,8 +97,10 @@ describe('DoborPrzekladnikowSekcja — rachunek zamiast nazwy katalogowej', () =
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
 
     const rachunek = await screen.findByTestId('kryterium-rachunek-ct.przekladnia');
-    expect(rachunek.textContent).toContain('wymagane: 154.0 A');
-    expect(rachunek.textContent).toContain('dostępne: 200.0 A');
+    expect(rachunek.textContent).toContain(`wymagane: ${kryterium('ct.przekladnia').wymagane}`);
+    expect(rachunek.textContent).toContain(`dostępne: ${kryterium('ct.przekladnia').dostepne}`);
+    // Liczby po polsku (przecinek dziesiętny) — tekst przychodzi z reguły domenowej.
+    expect(rachunek.textContent).toContain('38,49 A');
 
     const wiersz = screen.getByTestId('kryterium-ct.przekladnia');
     expect(wiersz.textContent).toContain('Prąd pierwotny przekładnika musi pokryć');
@@ -144,7 +110,15 @@ describe('DoborPrzekladnikowSekcja — rachunek zamiast nazwy katalogowej', () =
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
 
     const werdykt = await screen.findByTestId('kryterium-werdykt-ct.wytrzymalosc_cieplna');
-    expect(werdykt.textContent).toContain('brak danej');
+    // Etykieta Z REKORDU backendu, status maszynowy wyłącznie jako atrybut.
+    const ocena = kryterium('ct.wytrzymalosc_cieplna').ocena;
+    expect(werdykt.textContent).toBe(ocena.etykieta.etykieta_pl);
+    expect(werdykt.getAttribute('data-status')).toBe('NIE_OCENIONO');
+    expect(werdykt.textContent).not.toContain('NIE_OCENIONO');
+    // Karta rekordu nazywa, czego brakuje (brak danych ≠ spełnia).
+    const karta = screen.getByTestId('kryterium-ocena-ct.wytrzymalosc_cieplna');
+    expect(ocena.wyjasnienie.czego_brakuje.length).toBeGreaterThan(0);
+    expect(karta.textContent).toContain(ocena.wyjasnienie.zdanie_pl);
 
     const podsumowanie = screen.getByTestId('dobor-przekladnik-pradowy-podsumowanie');
     expect(podsumowanie.textContent).toContain('niepotwierdzony');
@@ -155,11 +129,22 @@ describe('DoborPrzekladnikowSekcja — rachunek zamiast nazwy katalogowej', () =
 
   it('brak zakończonego przebiegu zwarciowego jest nazwany w danych wejściowych', async () => {
     // Bez tego projektant nie wie, DLACZEGO część kryteriów nie ma werdyktu.
+    zamontuj({
+      ...ODPOWIEDZ,
+      wejscia: { ...ODPOWIEDZ.wejscia, ik_ka: null, ip_ka: null, run_ref_zwarciowy: null },
+    });
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
     const wejscia = await screen.findByTestId('dobor-wejscia');
     expect(wejscia.textContent).toContain('brak zakończonego przebiegu');
-    expect(wejscia.textContent).toContain('prąd roboczy toru 154 A');
-    expect(wejscia.textContent).toContain('napięcie sieci 20.0 kV');
+    expect(wejscia.textContent).toContain('prąd roboczy toru 38 A');
+    expect(wejscia.textContent).toContain('napięcie sieci 15,0 kV');
+  });
+
+  it('dane wejściowe z przebiegu zwarciowego są liczbami po polsku', async () => {
+    render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
+    const wejscia = await screen.findByTestId('dobor-wejscia');
+    expect(wejscia.textContent).toContain('Ik″ 9,04 kA z obliczeń zwarciowych');
+    expect(wejscia.textContent).not.toMatch(/\d\.\d+ (kV|kA|A)\b/);
   });
 
   it('brak wiązania to NIE jest niespełnione kryterium', async () => {
@@ -169,18 +154,15 @@ describe('DoborPrzekladnikowSekcja — rachunek zamiast nazwy katalogowej', () =
   });
 
   it('dobór potwierdzony jest ogłaszany DOPIERO przy komplecie kryteriów', async () => {
-    zamontuj({
-      ...ODPOWIEDZ,
-      przekladnik_pradowy: {
-        ...ODPOWIEDZ.przekladnik_pradowy,
-        wynik: {
-          kryteria: [ODPOWIEDZ.przekladnik_pradowy.wynik.kryteria[0]],
-          dobor_potwierdzony: true,
-          liczba_niespelnionych: 0,
-          liczba_bez_danych: 0,
-        },
-      },
-    });
+    zamontuj(
+      zWynikiem({
+        kryteria: [kryterium('ct.przekladnia')],
+        informacje: [],
+        dobor_potwierdzony: true,
+        liczba_niespelnionych: 0,
+        liczba_bez_danych: 0,
+      }),
+    );
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
     const podsumowanie = await screen.findByTestId('dobor-przekladnik-pradowy-podsumowanie');
     expect(podsumowanie.textContent).toContain('Wszystkie kryteria spełnione');
@@ -213,20 +195,107 @@ describe('DoborPrzekladnikowSekcja — rachunek zamiast nazwy katalogowej', () =
     // KLASA (E2E-FULL-FIX-3, 2026-09-10): atrapa harnessu sprzed W3-B nie niosła
     // `kody_gotowosci`/`slad`; `kryterium.slad.length` na `undefined` wywracało całą
     // kartę gotowości wytwórcy. Kształt kryterium jest SPRAWDZANY, nie zakładany.
-    const kryteriaBezPolW3B = ODPOWIEDZ.przekladnik_pradowy.wynik.kryteria.map(
+    const kryteriaBezPolW3B = KRYTERIA_CT.map(
       ({ kody_gotowosci: _kody, slad: _slad, ...reszta }) => reszta,
     );
-    zamontuj({
-      ...ODPOWIEDZ,
-      przekladnik_pradowy: {
-        ...ODPOWIEDZ.przekladnik_pradowy,
-        wynik: { ...ODPOWIEDZ.przekladnik_pradowy.wynik, kryteria: kryteriaBezPolW3B },
-      },
-    });
+    zamontuj(zWynikiem({ kryteria: kryteriaBezPolW3B as unknown as KryteriumDoboru[] }));
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
     const blad = await screen.findByTestId('dobor-blad');
     expect(blad.textContent).toContain('nieoczekiwany kształt');
     expect(screen.queryByTestId('dobor-przekladnik-pradowy')).toBeNull();
+  });
+
+  it('kryterium bez rekordu werdyktu (sam status) to nazwany błąd kształtu', async () => {
+    // Kontrakt werdyktu wyjaśnialnego: status bez wyjaśnienia jest błędem kontraktu,
+    // nie stanem do pokazania. Odpowiedź w starym kształcie (`werdykt` zamiast `ocena`)
+    // nie może się wyrenderować jako goły napis statusu.
+    const kryteriaStare = KRYTERIA_CT.map(({ ocena: _ocena, wyjasnienie: _w, ...reszta }) => ({
+      ...reszta,
+      werdykt: 'spelnione',
+    }));
+    zamontuj(zWynikiem({ kryteria: kryteriaStare as unknown as KryteriumDoboru[] }));
+    render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
+    const blad = await screen.findByTestId('dobor-blad');
+    expect(blad.textContent).toContain('nieoczekiwany kształt');
+  });
+});
+
+describe('DoborPrzekladnikowSekcja — werdykt wyjaśnialny (iloczyn: status × tekst karty)', () => {
+  beforeEach(() => zamontuj());
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.restoreAllMocks();
+    wyczyscRejestrGotowosci();
+  });
+
+  //: Iloczyn cech: każde kryterium fixtury (spełnione / nieocenione z brakiem danej /
+  //: z kodem gotowości) × treść karty (etykieta z rekordu, zdanie, brak surowych kodów,
+  //: brak None/true, liczby po polsku).
+  it.each(KRYTERIA_CT.map((k) => [k.kod, k.ocena.status_maszynowy] as const))(
+    'kryterium %s (%s) pokazuje etykietę i kartę rekordu bez surowych kodów',
+    async (kod) => {
+      render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
+      const ocena = kryterium(kod).ocena;
+      const plakietka = await screen.findByTestId(`kryterium-werdykt-${kod}`);
+      expect(plakietka.textContent).toBe(ocena.etykieta.etykieta_pl);
+      expect(plakietka.getAttribute('data-status')).toBe(ocena.status_maszynowy);
+      const karta = screen.getByTestId(`kryterium-ocena-${kod}`);
+      expect(karta.textContent).toContain(ocena.wyjasnienie.zdanie_pl);
+      const wiersz = screen.getByTestId(`kryterium-${kod}`).textContent ?? '';
+      for (const surowy of [
+        'SPELNIA', 'NIE_SPELNIA', 'NIE_OCENIONO', 'BRAK_DOWODU', 'NIEPELNY', 'ESTIMATED',
+        'PASS', 'FAIL', 'UNAVAILABLE', 'UPROSZCZONY_BEZ_RCT', 'None', 'null', 'undefined',
+      ]) {
+        expect(wiersz).not.toContain(surowy);
+      }
+      expect(wiersz).not.toMatch(/\btrue\b|\bfalse\b/);
+      expect(wiersz).not.toMatch(/\d\.\d+ ?(A|kA|VA|kV|%|Ω)\b/);
+    },
+  );
+
+  it('fixtura obejmuje oba stany: spełnione i nieocenione z powodu braku danej', () => {
+    // Strażnik iloczynu: bez obu stanów test parametryczny wyżej sprawdzałby jeden.
+    const statusy = new Set(KRYTERIA_CT.map((k) => k.ocena.status_maszynowy));
+    expect(statusy.has('SPELNIA')).toBe(true);
+    expect(statusy.has('NIE_OCENIONO')).toBe(true);
+  });
+
+  it('kryterium niespełnione pokazuje etykietę rekordu NIE_SPELNIA', async () => {
+    // Stan „niespełnione" nie występuje w scenie fixtury — rekord przestawiony na
+    // niespełnienie (etykieta poziomu K z `werdykt/etykiety.py`) zachowuje resztę
+    // wyjaśnienia; ekran musi pokazać ETYKIETĘ rekordu, nie własny napis.
+    const bazowe = kryterium('ct.przekladnia');
+    const niespelnione: KryteriumDoboru = {
+      ...bazowe,
+      ocena: {
+        ...bazowe.ocena,
+        status_maszynowy: 'NIE_SPELNIA',
+        etykieta: { etykieta_pl: 'Kryterium naruszone', semantyka: 'negatywna' },
+      } as KryteriumDoboru['ocena'],
+    };
+    zamontuj(zWynikiem({ kryteria: [niespelnione], liczba_niespelnionych: 1 }));
+    render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
+    const plakietka = await screen.findByTestId('kryterium-werdykt-ct.przekladnia');
+    expect(plakietka.textContent).toBe('Kryterium naruszone');
+    expect(plakietka.getAttribute('data-status')).toBe('NIE_SPELNIA');
+    const podsumowanie = screen.getByTestId('dobor-przekladnik-pradowy-podsumowanie');
+    expect(podsumowanie.textContent).toContain('1 kryteriów niespełnionych');
+  });
+
+  it('pozycje informacyjne są osobną listą BEZ statusu', async () => {
+    render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
+    const lista = await screen.findByTestId('dobor-przekladnik-pradowy-informacje');
+    const informacje = ODPOWIEDZ.przekladnik_pradowy.wynik!.informacje;
+    expect(informacje.length).toBeGreaterThan(0);
+    for (const informacja of informacje) {
+      const wiersz = screen.getByTestId(`informacja-${informacja.kod}`);
+      expect(wiersz.textContent).toContain(informacja.nazwa_pl);
+      expect(wiersz.querySelector('[data-status]')).toBeNull();
+      // Informacja nie jest kryterium — nie ma plakietki werdyktu.
+      expect(screen.queryByTestId(`kryterium-werdykt-${informacja.kod}`)).toBeNull();
+    }
+    expect(lista.textContent).toContain('bez oceny zgodności');
   });
 });
 
@@ -273,47 +342,33 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
 
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
     const wiersz = await screen.findByTestId('kryterium-ct.alf');
-    expect(wiersz.textContent).toContain('brak danej');
+    expect(wiersz.textContent).toContain(kryterium('ct.alf').ocena.etykieta.etykieta_pl);
     const czipy = await screen.findByTestId('kryterium-kody-gotowosci-ct.alf');
     expect(czipy.textContent).toBe(zdanieKodowBezRejestru(1));
     expect(czipy.textContent).not.toContain('ct.secondary_circuit_missing');
   });
 
   it('ślad WHITE BOX jest rozwijalny i pokazuje kroki z jądra', async () => {
-    zamontuj({
-      ...ODPOWIEDZ,
-      przekladnik_pradowy: {
-        ...ODPOWIEDZ.przekladnik_pradowy,
-        wynik: {
-          kryteria: [
-            {
-              kod: 'ct.alf',
-              nazwa_pl: 'Nasycenie rdzenia (bilans mocy wtórnej)',
-              podstawa_pl: 'S2obl = S_aparatow + I2n²·Rp',
-              werdykt: 'spelnione',
-              wymagane: 'ALF_eff ≥ 9.0',
-              dostepne: 'ALF_eff 15.5 (UPROSZCZONY_BEZ_RCT; S2obl 6.4 VA / Sn 10.0 VA)',
-              komentarz_pl: null,
-              kody_gotowosci: [],
-              slad: [
-                {
-                  step: 1,
-                  key: 'ct_rezystancja_przewodow',
-                  title: 'Rezystancja przewodów obwodu wtórnego',
-                  formula_latex: 'R_p = \\frac{2 \\rho L}{s}',
-                  // Kontrakt pól kroku (karta DOWOD-CIEPLNY): LaTeX goły w `substitution_latex`.
-                  substitution_latex: 'R_p = 0{,}14\\ \\Omega',
-                  notes: 'Współczynnik 2 wynika z obwodu dwuprzewodowego.',
-                },
-              ],
-            },
-          ],
-          dobor_potwierdzony: true,
-          liczba_niespelnionych: 0,
-          liczba_bez_danych: 0,
-        },
-      },
-    });
+    zamontuj(
+      zWynikiem({
+        kryteria: [
+          {
+            ...kryterium('ct.alf'),
+            slad: [
+              {
+                step: 1,
+                key: 'ct_rezystancja_przewodow',
+                title: 'Rezystancja przewodów obwodu wtórnego',
+                formula_latex: 'R_p = \\frac{2 \\rho L}{s}',
+                // Kontrakt pól kroku (karta DOWOD-CIEPLNY): LaTeX goły w `substitution_latex`.
+                substitution_latex: 'R_p = 0{,}14\\ \\Omega',
+                notes: 'Współczynnik 2 wynika z obwodu dwuprzewodowego.',
+              },
+            ],
+          },
+        ],
+      }),
+    );
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
 
     const slad = await screen.findByTestId('kryterium-slad-ct.alf');
@@ -328,7 +383,8 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
     zamontujZRejestrem();
     render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
 
-    await screen.findByTestId('kryterium-ct.przekladnia');
-    expect(screen.queryByTestId('kryterium-slad-ct.przekladnia')).toBeNull();
+    await screen.findByTestId('kryterium-ct.wytrzymalosc_cieplna');
+    expect(kryterium('ct.wytrzymalosc_cieplna').slad).toHaveLength(0);
+    expect(screen.queryByTestId('kryterium-slad-ct.wytrzymalosc_cieplna')).toBeNull();
   });
 });

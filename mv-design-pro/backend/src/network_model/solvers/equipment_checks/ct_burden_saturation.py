@@ -49,16 +49,16 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from network_model.solvers.equipment_checks.oceny import kod_statusu, ocena_bilansu_ct
 from network_model.solvers.equipment_checks.slad import (
     STATUS_FAIL,
     STATUS_PASS,
-    STATUS_UNAVAILABLE,
     dodatnia,
     liczba_tex,
     nieujemna,
     wartosc,
-    werdykt_zbiorczy,
 )
+from werdykt import WyjasnienieWerdyktu, WynikWymagania
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CT_SECONDARY_CIRCUIT_MISSING = "ct.secondary_circuit_missing"
@@ -132,25 +132,29 @@ class CtBurdenInput:
     #: Moc tracona na stykach i zaciskach [VA] — TYLKO gdy podana jawnie.
     moc_stykow_va: float | None = None
     rezystywnosc_ohm_mm2_per_m: float = REZYSTYWNOSC_MIEDZI_20C
+    #: Nazwa przekładnika w rekordzie oceny (pozycja katalogowa albo oznaczenie pola).
+    nazwa_pl: str = "przekładnik prądowy"
 
 
 @dataclass(frozen=True)
 class CtBurdenResult:
     """Wynik bilansu wtornego i nasycenia CT (WHITE BOX).
 
-    ``status`` = NIEDOSTEPNY oznacza brak podstawy do oceny (patrz
-    ``readiness_codes``); nie wolno go czytac jako spelnienia kryterium.
-
-    ``status`` jest ZLOZENIEM obu werdyktow czastkowych regula
-    ``slad.werdykt_zbiorczy`` (FAIL > NIEDOSTEPNY > PASS), wiec NIEDOSTEPNE
-    nasycenie nie moze dac zbiorczego PASS wydanego na samym obciazeniu.
+    ``ocena`` — rekord werdyktu wyjaśnialnego (poziom W) z dwoma kryteriami składowymi:
+    obciążenia (S2obl ≤ Sn) i nasycenia (ALF_eff ≥ ALF_wym); ``wyjasnienie`` = jego
+    wyjaśnienie. Kody ``status*`` są PROJEKCJĄ statusów maszynowych tych rekordów
+    (``oceny.kod_statusu``: naruszenie > nierozstrzygnięte > spełnione), więc nieoceniony
+    człon (brak ALF_wym, rdzeń bez klasy zabezpieczeniowej) nie daje zbiorczego PASS
+    wydanego na samym obciążeniu. ``UNAVAILABLE`` nie jest spełnieniem kryterium.
     """
 
     status: str
-    #: Werdykt bilansu obciazenia (S2obl ≤ Sn) — dostepny bez znajomosci ALF.
+    #: Kod kryterium obciążenia (S2obl ≤ Sn) — projekcja oceny składowej.
     status_obciazenia: str
-    #: Werdykt nasycenia (ALF_eff ≥ ALF_wym) — NIEDOSTEPNY bez wymagania.
+    #: Kod kryterium nasycenia (ALF_eff ≥ ALF_wym) — projekcja oceny składowej.
     status_nasycenia: str
+    ocena: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     rezystancja_przewodow_ohm: float | None
     moc_przewodow_va: float | None
     moc_aparatow_va: float | None
@@ -220,10 +224,18 @@ def check_ct_burden_saturation(data: CtBurdenInput) -> CtBurdenResult:
         braki.append(READINESS_CT_ACCURACY_LIMIT_MISSING)
 
     if i2n is None or dlugosc is None or przekroj is None or rho is None or sn is None:
+        ocena = ocena_bilansu_ct(
+            nazwa_pl=data.nazwa_pl,
+            moc_obliczeniowa_va=None,
+            moc_znamionowa_va=sn,
+            alf_efektywny=None,
+            alf_wymagany=alf_wym,
+            obwod_kompletny=not (i2n is None or dlugosc is None or przekroj is None or rho is None),
+            alf_znany=alf is not None,
+            wariant_uproszczony=False,
+        )
         return CtBurdenResult(
-            status=STATUS_UNAVAILABLE,
-            status_obciazenia=STATUS_UNAVAILABLE,
-            status_nasycenia=STATUS_UNAVAILABLE,
+            **_statusy(ocena),
             rezystancja_przewodow_ohm=None,
             moc_przewodow_va=None,
             moc_aparatow_va=None,
@@ -244,7 +256,6 @@ def check_ct_burden_saturation(data: CtBurdenInput) -> CtBurdenResult:
     moc_stykow = styki or 0.0
     s2obl = moc_aparatow + moc_przewodow + moc_stykow
     wykorzystanie = s2obl / sn
-    status_obciazenia = STATUS_PASS if s2obl <= sn else STATUS_FAIL
 
     # --- Efektywny wspolczynnik graniczny -------------------------------------
     if rct is not None:
@@ -257,25 +268,31 @@ def check_ct_burden_saturation(data: CtBurdenInput) -> CtBurdenResult:
 
     alf_eff: float | None = None
     zapas: float | None = None
-    status_nasycenia = STATUS_UNAVAILABLE
     if alf is not None and (s2obl + sw) > 0.0:
         alf_eff = alf * (sn + sw) / (s2obl + sw)
         if alf_wym is None:
             braki.append(READINESS_CT_REQUIRED_ALF_MISSING)
         else:
             zapas = alf_eff - alf_wym
-            status_nasycenia = STATUS_PASS if alf_eff >= alf_wym else STATUS_FAIL
 
-    # Werdykt LACZNY skladany wspolna regula rodziny: FAIL > NIEDOSTEPNY > PASS.
-    # Poprzednio brak podstawy do oceny nasycenia (np. nieznane ALF_wym albo rdzen
-    # bez klasy zabezpieczeniowej) znikal z werdyktu, bo zbiorczy status wychodzil
-    # PASS z samego bilansu obciazenia — zielone na POLICZONEJ POLOWIE kryterium.
-    status = werdykt_zbiorczy(status_obciazenia, status_nasycenia)
+    # Werdykt w REKORDZIE: dwa kryteria składowe, kody zastane są ich projekcją (naruszenie >
+    # nierozstrzygnięte > spełnione). Brak podstawy do oceny nasycenia (nieznane ALF_wym,
+    # rdzeń bez klasy zabezpieczeniowej) nie znika z werdyktu — zbiorczy kod nie jest PASS
+    # wydanym na POLICZONEJ POŁOWIE kryterium.
+    ocena = ocena_bilansu_ct(
+        nazwa_pl=data.nazwa_pl,
+        moc_obliczeniowa_va=s2obl,
+        moc_znamionowa_va=sn,
+        alf_efektywny=alf_eff,
+        alf_wymagany=alf_wym,
+        obwod_kompletny=True,
+        alf_znany=alf is not None,
+        wariant_uproszczony=rct is None,
+    )
+    statusy = _statusy(ocena)
 
     return CtBurdenResult(
-        status=status,
-        status_obciazenia=status_obciazenia,
-        status_nasycenia=status_nasycenia,
+        **statusy,
         rezystancja_przewodow_ohm=rp_ohm,
         moc_przewodow_va=moc_przewodow,
         moc_aparatow_va=moc_aparatow,
@@ -304,12 +321,23 @@ def check_ct_burden_saturation(data: CtBurdenInput) -> CtBurdenResult:
             wariant=wariant,
             alf_eff=alf_eff,
             alf_wymagany=alf_wym,
-            status_obciazenia=status_obciazenia,
-            status_nasycenia=status_nasycenia,
             pozycje=data.obciazenia_aparatow,
         ),
         assumptions=_zalozenia(rezystywnosc=rho, wariant=wariant),
     )
+
+
+def _statusy(ocena: WynikWymagania) -> dict[str, Any]:
+    """Kody zastane wyniku i rekord — kody są projekcją statusów maszynowych ocen (jedno
+    źródło rozstrzygnięcia: rekord)."""
+    obciazenie, nasycenie = ocena.oceny_skladowe
+    return {
+        "status": kod_statusu(ocena.oceny_skladowe),
+        "status_obciazenia": kod_statusu((obciazenie,)),
+        "status_nasycenia": kod_statusu((nasycenie,)),
+        "ocena": ocena,
+        "wyjasnienie": ocena.wyjasnienie,
+    }
 
 
 def _slad_ct(
@@ -330,8 +358,6 @@ def _slad_ct(
     wariant: str,
     alf_eff: float | None,
     alf_wymagany: float | None,
-    status_obciazenia: str,
-    status_nasycenia: str,
     pozycje: tuple[CtDeviceBurden, ...],
 ) -> tuple[dict[str, Any], ...]:
     """Kroki dowodowe bilansu CT (kanon pieciu pol).
@@ -419,7 +445,6 @@ def _slad_ct(
             ),
             "result": {
                 "wykorzystanie": wartosc(wykorzystanie, "", "Wykorzystanie mocy znamionowej"),
-                "werdykt": {"value": status_obciazenia, "unit": "", "label": "Werdykt obciążenia"},
             },
             "notes": (
                 "Przekroczenie mocy znamionowej pogarsza dokładność i obniża efektywny "
@@ -492,11 +517,6 @@ def _slad_ct(
                 ),
                 "result": {
                     "zapas": wartosc(alf_eff - alf_wymagany, "", "Zapas współczynnika"),
-                    "werdykt": {
-                        "value": status_nasycenia,
-                        "unit": "",
-                        "label": "Werdykt nasycenia",
-                    },
                 },
                 "notes": (
                     "Wymaganie wynika z funkcji zabezpieczeniowych pola (krotność prądu "

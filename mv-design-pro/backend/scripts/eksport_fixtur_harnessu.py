@@ -67,6 +67,15 @@ from api.canonical_run_views import (  # noqa: E402
     get_power_flow_result,
     get_power_flow_trace,
 )
+from api.equipment_checks import (  # noqa: E402
+    CableAgingRequest,
+    CtBurdenRequest,
+    ObciazenieAparatu,
+    VtBurdenRequest,
+    sprawdz_bilans_ct,
+    sprawdz_bilans_vt,
+    sprawdz_starzenie_kabla,
+)
 from api.generators import (  # noqa: E402
     get_der_instrument_transformers,
     get_der_protection_functions,
@@ -1120,6 +1129,64 @@ def rodzaje_wielkosci_zwarciowych_aparatury() -> dict[str, Any]:
             }
             for rodzaj in sorted(RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.values())
         },
+    }
+
+
+def kryteria_wyposazenia_scena_rekordy() -> dict[str, Any]:
+    """Odpowiedzi końcówek kryteriów wyposażenia (``POST /api/solver/{ct-burden-check,
+    vt-burden-check,cable-thermal-aging}``) — TE SAME funkcje końcówek, iloczyn stanów
+    rekordu werdyktu wyjaśnialnego: spełnia × nie spełnia × brak danych × wartość robocza
+    (karta WERDYKT-MIGRACJA-190). Karmi test komponentów ``ui2/kryteria`` — rekord
+    renderowany wspólną kartą werdyktu, bez ręcznie pisanych atrap rekordu."""
+    ct_ref = "ct_1000_5_5p20_20va_abb"
+    obwod = {"dlugosc_przewodu_m": 25.0, "przekroj_przewodu_mm2": 4.0}
+    aparat = [ObciazenieAparatu(nazwa="przekaźnik", moc_va=3.5)]
+
+    def ct(**kw: Any) -> dict[str, Any]:
+        return sprawdz_bilans_ct(CtBurdenRequest(ct_catalog_ref=ct_ref, **kw)).model_dump(
+            mode="json"
+        )
+
+    def vt(ref: str, **kw: Any) -> dict[str, Any]:
+        return sprawdz_bilans_vt(VtBurdenRequest(vt_catalog_ref=ref, **kw)).model_dump(mode="json")
+
+    def kabel(temperatura: float | None) -> dict[str, Any]:
+        return sprawdz_starzenie_kabla(
+            CableAgingRequest(
+                cable_catalog_ref="cable-base-epr-al-1c-120", temperatura_pracy_c=temperatura
+            )
+        ).model_dump(mode="json")
+
+    return {
+        "ct_spelnia": ct(**obwod, obciazenia_aparatow=aparat, alf_wymagany=10.0),
+        "ct_nie_spelnia": ct(
+            **obwod,
+            obciazenia_aparatow=[ObciazenieAparatu(nazwa="zespół aparatów", moc_va=40.0)],
+            alf_wymagany=30.0,
+        ),
+        "ct_brak_alf_wymaganego": ct(**obwod, obciazenia_aparatow=aparat),
+        "ct_brak_obwodu": ct(obciazenia_aparatow=aparat, alf_wymagany=10.0),
+        "vt_spelnia": vt(
+            "vt_10kv_100v_05_abb",
+            dlugosc_przewodu_m=40.0,
+            przekroj_przewodu_mm2=2.5,
+            obciazenia_aparatow=[ObciazenieAparatu(nazwa="licznik", moc_va=12.0)],
+        ),
+        "vt_nie_spelnia": vt(
+            "vt_10kv_100v_05_abb",
+            dlugosc_przewodu_m=400.0,
+            przekroj_przewodu_mm2=1.5,
+            obciazenia_aparatow=[ObciazenieAparatu(nazwa="licznik", moc_va=25.0)],
+        ),
+        "vt_kategoria_nierozpoznana": vt(
+            "vt_15kv_100v_3p_abb",
+            dlugosc_przewodu_m=40.0,
+            przekroj_przewodu_mm2=2.5,
+            obciazenia_aparatow=[ObciazenieAparatu(nazwa="licznik", moc_va=12.0)],
+        ),
+        "kabel_spelnia": kabel(80.0),
+        "kabel_nie_spelnia": kabel(100.0),
+        "kabel_brak_temperatury": kabel(None),
     }
 
 
@@ -5260,6 +5327,7 @@ FIXTURY: dict[str, Any] = {
     "katalog_analiz_v126": katalog_analiz_v126,
     "kody_metryk_wynikow": kody_metryk_wynikow,
     "rodzaje_wielkosci_zwarciowych_aparatury": rodzaje_wielkosci_zwarciowych_aparatury,
+    "kryteria_wyposazenia_scena_rekordy": kryteria_wyposazenia_scena_rekordy,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
     "identyfikatory_grafu": identyfikatory_grafu,

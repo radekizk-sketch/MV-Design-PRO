@@ -29,9 +29,9 @@ import {
   KRYTERIA_STRINGS as T,
   etykietaKategoriiUzwojenia,
   etykietaWariantuAlf,
-  etykietaWerdyktu,
   fmtLiczba,
 } from './strings';
+import { KartaWerdyktu } from '../wyniki/wzorzec/KartaWerdyktu';
 
 export interface ObwodWtorny {
   readonly dlugosc_m: number | null;
@@ -214,14 +214,9 @@ export function SekcjaBilansuCtVt({
               <Wiersz etykieta={T.ctRezystancja} wartosc={fmtLiczba(ct.rezystancja_przewodow_ohm, 'Ω')} />
               <Wiersz etykieta={T.ctAlfEfektywny} wartosc={fmtLiczba(ct.alf_efektywny, '', 2)} />
               <Wiersz etykieta={T.ctWariant} wartosc={etykietaWariantuAlf(ct.wariant_alf)} />
-              <Wiersz
-                etykieta={T.ctWerdyktObciazenia}
-                wartosc={etykietaWerdyktu(ct.status_obciazenia)}
-              />
-              <Wiersz
-                etykieta={T.ctWerdyktNasycenia}
-                wartosc={etykietaWerdyktu(ct.status_nasycenia)}
-              />
+              <div data-testid={`mvd-kryteria-ct-ocena-${testidSufiks}`}>
+                <KartaWerdyktu rekord={ct.ocena} />
+              </div>
               {brakiCt.length > 0 ? (
                 <ul className="mvd-kryteria__braki" data-testid={`mvd-kryteria-ct-braki-${testidSufiks}`}>
                   {brakiCt.map((tekst) => (
@@ -262,11 +257,9 @@ export function SekcjaBilansuCtVt({
                 etykieta={T.vtKategoria}
                 wartosc={etykietaKategoriiUzwojenia(vt.kategoria_uzwojenia, vt.klasa_dokladnosci)}
               />
-              <Wiersz
-                etykieta={T.vtWerdyktObciazenia}
-                wartosc={etykietaWerdyktu(vt.status_obciazenia)}
-              />
-              <Wiersz etykieta={T.vtWerdyktSpadku} wartosc={etykietaWerdyktu(vt.status_spadku)} />
+              <div data-testid={`mvd-kryteria-vt-ocena-${testidSufiks}`}>
+                <KartaWerdyktu rekord={vt.ocena} />
+              </div>
               {brakiVt.length > 0 ? (
                 <ul className="mvd-kryteria__braki" data-testid={`mvd-kryteria-vt-braki-${testidSufiks}`}>
                   {brakiVt.map((tekst) => (

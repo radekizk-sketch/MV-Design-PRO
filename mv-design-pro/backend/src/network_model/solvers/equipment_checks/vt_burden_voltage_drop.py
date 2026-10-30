@@ -34,16 +34,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from network_model.solvers.equipment_checks.oceny import kod_statusu, ocena_bilansu_vt
 from network_model.solvers.equipment_checks.slad import (
     STATUS_FAIL,
     STATUS_PASS,
-    STATUS_UNAVAILABLE,
     dodatnia,
     liczba_tex,
     nieujemna,
     wartosc,
-    werdykt_zbiorczy,
 )
+from werdykt import WyjasnienieWerdyktu, WynikWymagania
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_VT_SECONDARY_CIRCUIT_MISSING = "vt.secondary_circuit_missing"
@@ -118,23 +118,27 @@ class VtBurdenInput:
     obciazenia_aparatow: tuple[VtDeviceBurden, ...] = ()
     moc_stykow_va: float | None = None
     rezystywnosc_ohm_mm2_per_m: float = REZYSTYWNOSC_MIEDZI_20C
+    #: Nazwa przekładnika w rekordzie oceny (pozycja katalogowa albo oznaczenie pola).
+    nazwa_pl: str = "przekładnik napięciowy"
 
 
 @dataclass(frozen=True)
 class VtBurdenResult:
     """Wynik bilansu wtornego i zmiany napiecia obwodu VT (WHITE BOX).
 
-    ``status`` = NIEDOSTEPNY oznacza brak podstawy do oceny (patrz
-    ``readiness_codes``); nie wolno go czytac jako spelnienia kryterium.
-
-    ``status`` jest ZLOZENIEM obu werdyktow czastkowych regula
-    ``slad.werdykt_zbiorczy`` (FAIL > NIEDOSTEPNY > PASS), wiec NIEDOSTEPNY
-    werdykt zmiany napiecia nie moze dac zbiorczego PASS z samego obciazenia.
+    ``ocena`` — rekord werdyktu wyjaśnialnego (poziom W) z kryteriami obciążenia
+    (S2obl ≤ Sn) i zmiany napięcia (ΔU% ≤ limit kategorii); ``wyjasnienie`` = jego
+    wyjaśnienie. Kody ``status*`` są PROJEKCJĄ statusów maszynowych tych rekordów
+    (``oceny.kod_statusu``: naruszenie > nierozstrzygnięte > spełnione), więc nieoceniona
+    zmiana napięcia (nierozpoznana kategoria uzwojenia) nie daje zbiorczego PASS z samego
+    obciążenia. ``UNAVAILABLE`` nie jest spełnieniem kryterium.
     """
 
     status: str
     status_obciazenia: str
     status_spadku: str
+    ocena: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
     rezystancja_przewodow_ohm: float | None
     moc_aparatow_va: float | None
     moc_stykow_va: float | None
@@ -189,10 +193,17 @@ def check_vt_burden_voltage_drop(data: VtBurdenInput) -> VtBurdenResult:
         braki.append(READINESS_VT_WINDING_CATEGORY_MISSING)
 
     if u2n is None or dlugosc is None or przekroj is None or rho is None or sn is None:
+        ocena = ocena_bilansu_vt(
+            nazwa_pl=data.nazwa_pl,
+            moc_obliczeniowa_va=None,
+            moc_znamionowa_va=sn,
+            delta_u_procent=None,
+            limit_delta_u_procent=None if kategoria is None else LIMIT_DELTA_U_PROCENT[kategoria],
+            kategoria_pl=None if kategoria is None else ETYKIETA_KATEGORII_PL[kategoria],
+            obwod_kompletny=not (u2n is None or dlugosc is None or przekroj is None or rho is None),
+        )
         return VtBurdenResult(
-            status=STATUS_UNAVAILABLE,
-            status_obciazenia=STATUS_UNAVAILABLE,
-            status_spadku=STATUS_UNAVAILABLE,
+            **_statusy(ocena),
             rezystancja_przewodow_ohm=None,
             moc_aparatow_va=None,
             moc_stykow_va=None,
@@ -211,29 +222,28 @@ def check_vt_burden_voltage_drop(data: VtBurdenInput) -> VtBurdenResult:
     moc_stykow = styki or 0.0
     s2obl = moc_aparatow + moc_stykow
     wykorzystanie = s2obl / sn
-    status_obciazenia = STATUS_PASS if s2obl <= sn else STATUS_FAIL
 
     prad_a = s2obl / u2n
     delta_u_v = prad_a * rp_ohm
     delta_u_procent = delta_u_v / u2n * 100.0
 
-    if kategoria is None:
-        limit = None
-        status_spadku = STATUS_UNAVAILABLE
-    else:
-        limit = LIMIT_DELTA_U_PROCENT[kategoria]
-        status_spadku = STATUS_PASS if delta_u_procent <= limit else STATUS_FAIL
+    limit = None if kategoria is None else LIMIT_DELTA_U_PROCENT[kategoria]
 
-    # Werdykt LACZNY skladany wspolna regula rodziny: FAIL > NIEDOSTEPNY > PASS.
-    # Poprzednio nierozpoznana kategoria uzwojenia (limit NIE przyjety) znikala z
-    # werdyktu, bo zbiorczy status wychodzil PASS z samego bilansu obciazenia —
-    # ekran pokazywal zielone kryterium, ktorego polowy nikt nie sprawdzil.
-    status = werdykt_zbiorczy(status_obciazenia, status_spadku)
+    # Werdykt w REKORDZIE: dwa kryteria składowe, kody zastane są ich projekcją. Nierozpoznana
+    # kategoria uzwojenia (limit NIE przyjęty) nie znika z werdyktu — zbiorczy kod nie jest
+    # PASS z samego bilansu obciążenia.
+    ocena = ocena_bilansu_vt(
+        nazwa_pl=data.nazwa_pl,
+        moc_obliczeniowa_va=s2obl,
+        moc_znamionowa_va=sn,
+        delta_u_procent=delta_u_procent,
+        limit_delta_u_procent=limit,
+        kategoria_pl=None if kategoria is None else ETYKIETA_KATEGORII_PL[kategoria],
+        obwod_kompletny=True,
+    )
 
     return VtBurdenResult(
-        status=status,
-        status_obciazenia=status_obciazenia,
-        status_spadku=status_spadku,
+        **_statusy(ocena),
         rezystancja_przewodow_ohm=rp_ohm,
         moc_aparatow_va=moc_aparatow,
         moc_stykow_va=styki,
@@ -261,8 +271,6 @@ def check_vt_burden_voltage_drop(data: VtBurdenInput) -> VtBurdenResult:
             delta_u_procent=delta_u_procent,
             limit=limit,
             kategoria=kategoria,
-            status_obciazenia=status_obciazenia,
-            status_spadku=status_spadku,
             pozycje=data.obciazenia_aparatow,
         ),
         assumptions=(
@@ -275,6 +283,19 @@ def check_vt_burden_voltage_drop(data: VtBurdenInput) -> VtBurdenResult:
             )
         ),
     )
+
+
+def _statusy(ocena: WynikWymagania) -> dict[str, Any]:
+    """Kody zastane wyniku i rekord — kody są projekcją statusów maszynowych ocen (jedno
+    źródło rozstrzygnięcia: rekord)."""
+    obciazenie, spadek = ocena.oceny_skladowe
+    return {
+        "status": kod_statusu(ocena.oceny_skladowe),
+        "status_obciazenia": kod_statusu((obciazenie,)),
+        "status_spadku": kod_statusu((spadek,)),
+        "ocena": ocena,
+        "wyjasnienie": ocena.wyjasnienie,
+    }
 
 
 def _slad_vt(
@@ -294,8 +315,6 @@ def _slad_vt(
     delta_u_procent: float,
     limit: float | None,
     kategoria: str | None,
-    status_obciazenia: str,
-    status_spadku: str,
     pozycje: tuple[VtDeviceBurden, ...],
 ) -> tuple[dict[str, Any], ...]:
     """Kroki dowodowe bilansu VT (kanon pieciu pol); slad nie liczy nic od nowa."""
@@ -326,7 +345,6 @@ def _slad_vt(
             "result": {
                 "s2obl_va": wartosc(s2obl_va, "VA", "Moc obliczeniowa uzwojenia"),
                 "wykorzystanie": wartosc(wykorzystanie, "", "Wykorzystanie mocy znamionowej"),
-                "werdykt": {"value": status_obciazenia, "unit": "", "label": "Werdykt obciążenia"},
             },
             "notes": f"Odbiorniki w obwodzie: {wykaz}.",
         },
@@ -434,11 +452,6 @@ def _slad_vt(
                 ),
                 "result": {
                     "zapas_procent": wartosc(limit - delta_u_procent, "%", "Zapas do limitu"),
-                    "werdykt": {
-                        "value": status_spadku,
-                        "unit": "",
-                        "label": "Werdykt zmiany napięcia",
-                    },
                 },
                 "notes": (
                     "Limit wynika z kategorii uzwojenia: 0,5 % dla pomiarowego "

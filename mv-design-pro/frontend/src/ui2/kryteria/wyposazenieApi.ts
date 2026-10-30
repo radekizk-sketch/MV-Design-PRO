@@ -14,9 +14,19 @@
  * Kształt odpowiedzi jest SPRAWDZANY, nie zakładany (precedens V12K-262:
  * rzutowanie `as` przepuszczało każdą odpowiedź, a pierwszy odczyt pola wywracał
  * ekran).
+ *
+ * WERDYKT WYJAŚNIALNY. Kryteria CT, VT i starzenia niosą rekord `ocena` (poziom W albo
+ * K) z `wyjasnienie` — ekran pokazuje go WYŁĄCZNIE wspólną kartą `KartaWerdyktu`. Kod
+ * `status` jest projekcją rekordu dla filtrów i nigdy nie trafia do tekstu.
  */
 
-/** Werdykt kryterium. `UNAVAILABLE` = brak podstawy do oceny (patrz kody). */
+import type {
+  OcenaKryterium,
+  WyjasnienieWerdyktu,
+  WynikWymagania,
+} from '../wyniki/wzorzec/werdykt';
+
+/** Kod zastany kryterium (projekcja rekordu). `UNAVAILABLE` = brak podstawy do oceny. */
 export type WerdyktKryterium = 'PASS' | 'FAIL' | 'UNAVAILABLE';
 
 /** Krok śladu WHITE BOX (kanon pięciu pól). */
@@ -43,6 +53,9 @@ export interface BilansCtOdpowiedz {
   readonly status: WerdyktKryterium;
   readonly status_obciazenia: WerdyktKryterium;
   readonly status_nasycenia: WerdyktKryterium;
+  /** Rekord W: kryterium obciążenia × kryterium nasycenia. */
+  readonly ocena: WynikWymagania;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly rezystancja_przewodow_ohm: number | null;
   readonly moc_przewodow_va: number | null;
   readonly moc_aparatow_va: number | null;
@@ -66,6 +79,9 @@ export interface BilansVtOdpowiedz {
   readonly status: WerdyktKryterium;
   readonly status_obciazenia: WerdyktKryterium;
   readonly status_spadku: WerdyktKryterium;
+  /** Rekord W: kryterium obciążenia × kryterium zmiany napięcia. */
+  readonly ocena: WynikWymagania;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly rezystancja_przewodow_ohm: number | null;
   readonly moc_aparatow_va: number | null;
   readonly moc_obliczeniowa_va: number | null;
@@ -87,6 +103,9 @@ export interface BilansVtOdpowiedz {
 
 export interface StarzenieKablaOdpowiedz {
   readonly status: WerdyktKryterium;
+  /** Rekord K: θ_pracy ≤ θ_zn (współczynnik starzenia V ≤ 1). */
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly roznica_temperatur_c: number | null;
   readonly wspolczynnik_starzenia: number | null;
   readonly wzgledna_zywotnosc: number | null;
@@ -100,6 +119,7 @@ export interface StarzenieKablaOdpowiedz {
 }
 
 export interface StratyTransformatoraOdpowiedz {
+  /** Stan rachunku (wykonany / brak danych) — NIE werdykt: straty nie mają kryterium. */
   readonly status: WerdyktKryterium;
   readonly straty_jalowe_kw: number | null;
   readonly straty_obciazeniowe_kw: number | null;
@@ -132,10 +152,28 @@ function maKsztaltWyniku(dane: unknown): dane is { status: WerdyktKryterium } {
   );
 }
 
+/** Rekord werdyktu ma kształt rekordu (kryterium_id albo wymaganie_id + etykieta +
+ *  wyjaśnienie) — kryterium bez rekordu nie trafia na ekran jako gołe słowo statusu. */
+function maRekordOceny(dane: unknown): boolean {
+  if (typeof dane !== 'object' || dane === null) return false;
+  const d = dane as Record<string, unknown>;
+  const ocena = d.ocena as Record<string, unknown> | null | undefined;
+  return (
+    typeof ocena === 'object'
+    && ocena !== null
+    && (typeof ocena.kryterium_id === 'string' || typeof ocena.wymaganie_id === 'string')
+    && typeof ocena.etykieta === 'object'
+    && typeof ocena.wyjasnienie === 'object'
+    && typeof d.wyjasnienie === 'object'
+    && d.wyjasnienie !== null
+  );
+}
+
 async function wyslij<T>(
   sciezka: string,
   payload: Record<string, unknown>,
   signal?: AbortSignal,
+  zRekordem = true,
 ): Promise<T> {
   const odpowiedz = await fetch(sciezka, {
     method: 'POST',
@@ -147,7 +185,7 @@ async function wyslij<T>(
     throw new Error(`Nie udało się policzyć kryterium (HTTP ${odpowiedz.status}).`);
   }
   const dane: unknown = await odpowiedz.json();
-  if (!maKsztaltWyniku(dane)) {
+  if (!maKsztaltWyniku(dane) || (zRekordem && !maRekordOceny(dane))) {
     throw new Error('Wynik kryterium ma nieoczekiwany kształt — sprawdź wersję API.');
   }
   return dane as T;
@@ -200,5 +238,6 @@ export function pobierzStratyTransformatora(
     '/api/solver/transformer-losses',
     { ...zadanie },
     signal,
+    false,
   );
 }

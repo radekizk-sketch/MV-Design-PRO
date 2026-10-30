@@ -20,10 +20,12 @@ ZASADY WSPOLNE (CLAUDE.md):
     uwagi), wartosci posrednie, zalozenia i jednostki;
   * ZERO FABRYKACJI — brak danej daje status NIEDOSTEPNY i kod gotowosci, nigdy
     wartosc zastepcza ani „typowa" stala z tablic;
-  * WERDYKT ZBIORCZY — kryterium o kilku czlonach (CT: obciazenie × nasycenie,
-    VT: obciazenie × zmiana napiecia) sklada werdykt jedna wspolna regula
-    ``slad.werdykt_zbiorczy``: FAIL > NIEDOSTEPNY > PASS. Zbiorczy PASS przy
-    czlonie NIEDOSTEPNYM byl zielonym werdyktem na policzonej POLOWIE kryterium;
+  * WERDYKT WYJASNIALNY — kazde kryterium niesie rekord (``oceny.py``: co oceniono,
+    kryterium, wynik z jednostka, limit z podstawa, margines, przyczyna, dowod, zakres);
+    kryterium o kilku czlonach (CT: obciazenie × nasycenie, VT: obciazenie × zmiana
+    napiecia) to rekord W skladany regula W kontraktu, a kod zastany ``status`` jest
+    projekcja rekordu (naruszenie > nierozstrzygniete > spelnione). Zbiorczy PASS przy
+    czlonie nieocenionym bylby zielonym werdyktem na policzonej POLOWIE kryterium;
   * DANE ZNAMIONOWE Z KATALOGU — moduly przyjmuja je jako WEJSCIE; wiazanie
     katalogowe (``catalog_ref`` → pozycja) robi warstwa koncowki, dzieki czemu
     solver zostaje funkcja czysta i deterministyczna.

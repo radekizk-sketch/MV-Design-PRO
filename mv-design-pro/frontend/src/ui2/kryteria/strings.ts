@@ -28,8 +28,6 @@ export const KRYTERIA_STRINGS = {
   ctWariant: 'Wariant rachunku',
   ctWariantPelny: 'pełny (z rezystancją uzwojenia wtórnego)',
   ctWariantUproszczony: 'uproszczony (bez rezystancji uzwojenia — wynik optymistyczny)',
-  ctWerdyktObciazenia: 'Werdykt obciążenia',
-  ctWerdyktNasycenia: 'Werdykt nasycenia',
   ctPozycja: 'Pozycja katalogowa',
 
   // Bilans VT
@@ -56,8 +54,6 @@ export const KRYTERIA_STRINGS = {
   vtKategoriaPomiarowa: 'pomiarowa',
   vtKategoriaZabezpieczeniowa: 'zabezpieczeniowa',
   vtKategoriaNieustalona: 'nieustalona — brak klasy tego uzwojenia w danych katalogowych',
-  vtWerdyktObciazenia: 'Werdykt obciążenia',
-  vtWerdyktSpadku: 'Werdykt zmiany napięcia',
   vtPozycja: 'Pozycja katalogowa',
 
   // Starzenie kabla
@@ -71,7 +67,6 @@ export const KRYTERIA_STRINGS = {
   kabelRoznica: 'Różnica temperatur ΔT',
   kabelWspolczynnik: 'Współczynnik starzenia',
   kabelZywotnosc: 'Względna żywotność',
-  kabelWerdykt: 'Werdykt',
 
   // Straty transformatora
   trafoTytul: 'Straty i optymalny współczynnik obciążenia',
@@ -85,7 +80,6 @@ export const KRYTERIA_STRINGS = {
   trafoBetaOpt: 'Optymalny współczynnik obciążenia',
   trafoStratyOpt: 'Straty w punkcie optymalnym',
   trafoUdzialJalowych: 'Udział strat jałowych',
-  trafoWerdykt: 'Stan rachunku',
 
   // Krzywe koordynacji dobranego przekaźnika (powiązanie kanon ↔ biblioteka)
   krzyweTytul: 'Charakterystyki dobranego zabezpieczenia',
@@ -96,9 +90,6 @@ export const KRYTERIA_STRINGS = {
   krzyweLista: 'Charakterystyki czasowo-prądowe',
 
   // Wspólne
-  werdyktPass: 'spełnione',
-  werdyktFail: 'przekroczenie',
-  werdyktNiedostepny: 'brak podstawy do oceny',
   zalozeniaTytul: 'Założenia rachunku',
   wzorTytul: 'Wzór odniesienia',
   ladowanie: 'Liczenie kryterium…',
@@ -106,13 +97,6 @@ export const KRYTERIA_STRINGS = {
   brakPozycji: 'Wskaż pozycję katalogową, żeby zobaczyć kryterium.',
   brakDanych: 'Uzupełnij dane, żeby zobaczyć wynik:',
 } as const;
-
-/** Etykieta PL werdyktu (kod statusu NIGDY nie trafia do tekstu). */
-export function etykietaWerdyktu(status: string): string {
-  if (status === 'PASS') return KRYTERIA_STRINGS.werdyktPass;
-  if (status === 'FAIL') return KRYTERIA_STRINGS.werdyktFail;
-  return KRYTERIA_STRINGS.werdyktNiedostepny;
-}
 
 /**
  * Etykieta PL kategorii uzwojenia, Z KTÓREJ wzięty jest limit ΔU — razem z klasą

@@ -40,52 +40,469 @@
           "kod": "ct.przekladnia",
           "nazwa_pl": "Przekładnia wobec prądu roboczego toru",
           "podstawa_pl": "Prąd pierwotny przekładnika musi pokryć prąd roboczy toru.",
-          "werdykt": "spelnione",
-          "wymagane": "38.5 A",
-          "dostepne": "200.0 A",
+          "ocena": {
+            "kryterium_id": "ct.przekladnia",
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "przekładnik prądowy",
+              "opis_pl": "Przekładnik prądowy pola — typ katalogowy „CT 200/5 A kl. 5P10 10 VA”"
+            },
+            "kryterium": {
+              "opis_pl": "Prąd roboczy toru nie większy od znamionowego prądu pierwotnego",
+              "warunek_latex": "I_{rob} \\le I_{1n}",
+              "relacja": "NIE_WIECEJ",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "podstawa": {
+              "rodzaj": "NORMA",
+              "dokument": "IEC 61869-2 (przekładniki prądowe)",
+              "wydanie": "2012",
+              "jednostka_redakcyjna": "wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa)",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": null,
+              "technologia": null,
+              "modul_istniejacy": null,
+              "dotyczy": true,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wynik": {
+              "wielkosc_pl": "prąd roboczy toru",
+              "symbol_latex": "I_{rob}",
+              "wartosc": {
+                "wartosc": 38.490017946,
+                "jednostka": "A"
+              },
+              "punkt_krytyczny_pl": "przekładnik prądowy",
+              "chwila_s": null,
+              "metoda": "OBLICZENIE"
+            },
+            "limit": {
+              "wartosc": {
+                "wartosc": 200.0,
+                "jednostka": "A"
+              },
+              "pasmo": null,
+              "obwiednia": null,
+              "jednostka_obwiedni": null,
+              "podstawa": {
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "dokument": "karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA”",
+                "wydanie": "pozycja katalogu typów programu",
+                "jednostka_redakcyjna": "znamionowy prąd pierwotny I_1n",
+                "status": "WSKAZANE",
+                "uwagi_pl": null
+              },
+              "zakres_stosowalnosci_pl": "znamionowy prąd pierwotny przekładnika",
+              "wersja_profilu": null
+            },
+            "margines": {
+              "wartosc": {
+                "wartosc": 161.509982054,
+                "jednostka": "A"
+              },
+              "definicja_latex": "m = x_{\\lim} - x",
+              "punkt_pl": "przekładnik prądowy",
+              "skala": {
+                "wartosc": 200.0,
+                "jednostka": "A"
+              },
+              "skala_rodzaj": "LIMIT",
+              "wzgledny": 0.80754991027,
+              "niedefiniowalny": false,
+              "powod_pl": null
+            },
+            "niepewnosc": {
+              "wartosc": null,
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            },
+            "status_maszynowy": "SPELNIA",
+            "kompletnosc_dowodu": "NIEPELNY",
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Prąd roboczy toru nie większy od znamionowego prądu pierwotnego (przekładnik prądowy) — kryterium spełnione. Prąd roboczy toru: 38,49 A wobec wymaganych ≤ 200 A wg znamionowy prąd pierwotny I_1n „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA”” (margines +161,5 A, punkt: przekładnik prądowy, względnie +80,75 % wartości granicznej).",
+              "przyczyna_pl": null,
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA””, wydanie pozycja katalogu typów programu, znamionowy prąd pierwotny I_1n (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+              ]
+            },
+            "dowod": {
+              "metoda": "OBLICZENIE",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "domain/dobor_przekladnika.py",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "opis_pl": "Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu.",
+              "technologia": null,
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": [
+                "składowa nieokresowa prądu zwarciowego i remanencja rdzenia",
+                "dokładność pomiaru w zakresie przeciążeniowym"
+              ]
+            },
+            "slad": [
+              {
+                "run_id": null,
+                "wersja_silnika": null,
+                "krok": "ct.przekladnia",
+                "opis_pl": "Przekładnia wobec prądu roboczego toru — zestawienie wymagania z typem"
+              }
+            ]
+          },
+          "wyjasnienie": {
+            "zdanie_pl": "Prąd roboczy toru nie większy od znamionowego prądu pierwotnego (przekładnik prądowy) — kryterium spełnione. Prąd roboczy toru: 38,49 A wobec wymaganych ≤ 200 A wg znamionowy prąd pierwotny I_1n „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA”” (margines +161,5 A, punkt: przekładnik prądowy, względnie +80,75 % wartości granicznej).",
+            "przyczyna_pl": null,
+            "czego_brakuje": [],
+            "zastrzezenia": [
+              "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA””, wydanie pozycja katalogu typów programu, znamionowy prąd pierwotny I_1n (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+            ]
+          },
+          "wymagane": "38,49 A",
+          "dostepne": "200 A",
           "komentarz_pl": null,
           "kody_gotowosci": [],
-          "slad": []
-        },
-        {
-          "kod": "ct.wykorzystanie_przekladni",
-          "nazwa_pl": "Wykorzystanie przekładni",
-          "podstawa_pl": "Przy bardzo niskim wykorzystaniu zakresu rośnie błąd względny pomiaru (praktyka projektowa, nie wymaganie normy).",
-          "werdykt": "informacja",
-          "wymagane": "≥ 20% prądu pierwotnego",
-          "dostepne": "19%",
-          "komentarz_pl": "Rozważ przekładnik o niższym prądzie pierwotnym.",
-          "kody_gotowosci": [],
-          "slad": []
+          "slad": [
+            {
+              "step": 1,
+              "key": "ct.przekladnia",
+              "title": "Przekładnia wobec prądu roboczego toru",
+              "formula_latex": "I_{rob} \\le I_{1n}",
+              "inputs": {
+                "wymagane": {
+                  "value": "38,49 A",
+                  "unit": "",
+                  "label": "Wymagane przez tor"
+                },
+                "dostepne": {
+                  "value": "200 A",
+                  "unit": "",
+                  "label": "Dostępne w typie"
+                }
+              },
+              "substitution": "",
+              "result": {},
+              "notes": "Prąd pierwotny przekładnika musi pokryć prąd roboczy toru."
+            }
+          ]
         },
         {
           "kod": "ct.rodzaj_rdzenia",
           "nazwa_pl": "Rodzaj rdzenia",
           "podstawa_pl": "Funkcje zabezpieczeniowe wymagają rdzenia zabezpieczeniowego (IEC 61869-2).",
-          "werdykt": "spelnione",
+          "ocena": {
+            "kryterium_id": "ct.rodzaj_rdzenia",
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "przekładnik prądowy",
+              "opis_pl": "Przekładnik prądowy pola — typ katalogowy „CT 200/5 A kl. 5P10 10 VA”"
+            },
+            "kryterium": {
+              "opis_pl": "Rdzeń zabezpieczeniowy (klasa z literą P) dla funkcji zabezpieczeń",
+              "warunek_latex": "",
+              "relacja": "LOGICZNE",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "podstawa": {
+              "rodzaj": "NORMA",
+              "dokument": "IEC 61869-2 (przekładniki prądowe)",
+              "wydanie": "2012",
+              "jednostka_redakcyjna": "wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa)",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": null,
+              "technologia": null,
+              "modul_istniejacy": null,
+              "dotyczy": true,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wynik": {
+              "wielkosc_pl": "rodzaj rdzenia wg klasy dokładności",
+              "symbol_latex": "",
+              "wartosc": {
+                "wartosc": 1.0,
+                "jednostka": "1"
+              },
+              "punkt_krytyczny_pl": "klasa 5P10 — rdzeń zabezpieczeniowy",
+              "chwila_s": null,
+              "metoda": "OBLICZENIE"
+            },
+            "limit": null,
+            "margines": {
+              "wartosc": null,
+              "definicja_latex": null,
+              "punkt_pl": "klasa 5P10 — rdzeń zabezpieczeniowy",
+              "skala": null,
+              "skala_rodzaj": null,
+              "wzgledny": null,
+              "niedefiniowalny": true,
+              "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny."
+            },
+            "niepewnosc": {
+              "wartosc": null,
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            },
+            "status_maszynowy": "SPELNIA",
+            "kompletnosc_dowodu": "NIEPELNY",
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Rdzeń zabezpieczeniowy (klasa z literą P) dla funkcji zabezpieczeń (przekładnik prądowy) — kryterium spełnione. Rodzaj rdzenia wg klasy dokładności: klasa 5P10 — rdzeń zabezpieczeniowy (stan wymagany wg wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) „IEC 61869-2 (przekładniki prądowe)”).",
+              "przyczyna_pl": null,
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+              ]
+            },
+            "dowod": {
+              "metoda": "OBLICZENIE",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "domain/dobor_przekladnika.py",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "opis_pl": "Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu.",
+              "technologia": null,
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": [
+                "składowa nieokresowa prądu zwarciowego i remanencja rdzenia",
+                "dokładność pomiaru w zakresie przeciążeniowym"
+              ]
+            },
+            "slad": [
+              {
+                "run_id": null,
+                "wersja_silnika": null,
+                "krok": "ct.rodzaj_rdzenia",
+                "opis_pl": "Rodzaj rdzenia — zestawienie wymagania z typem"
+              }
+            ]
+          },
+          "wyjasnienie": {
+            "zdanie_pl": "Rdzeń zabezpieczeniowy (klasa z literą P) dla funkcji zabezpieczeń (przekładnik prądowy) — kryterium spełnione. Rodzaj rdzenia wg klasy dokładności: klasa 5P10 — rdzeń zabezpieczeniowy (stan wymagany wg wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) „IEC 61869-2 (przekładniki prądowe)”).",
+            "przyczyna_pl": null,
+            "czego_brakuje": [],
+            "zastrzezenia": [
+              "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+            ]
+          },
           "wymagane": "rdzeń zabezpieczeniowy (klasa z literą P)",
           "dostepne": "5P10",
           "komentarz_pl": null,
           "kody_gotowosci": [],
-          "slad": []
-        },
-        {
-          "kod": "ct.alf_katalogowy",
-          "nazwa_pl": "ALF katalogowy wobec prądu zwarciowego",
-          "podstawa_pl": "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego (IEC 61869-2) — nie rozstrzyga nasycenia rdzenia.",
-          "werdykt": "informacja",
-          "wymagane": "ALF ≥ 45.2 (Ik″ 9.04 kA / In 200 A)",
-          "dostepne": "ALF 10",
-          "komentarz_pl": "Nasycenie rdzenia zależy od rzeczywistego obciążenia obwodu wtórnego (S2obl) — rozstrzyga je kryterium „Nasycenie rdzenia” (ct.alf) niżej, nie ten warunek konieczny.",
-          "kody_gotowosci": [],
-          "slad": []
+          "slad": [
+            {
+              "step": 1,
+              "key": "ct.rodzaj_rdzenia",
+              "title": "Rodzaj rdzenia",
+              "formula_latex": "",
+              "inputs": {
+                "wymagane": {
+                  "value": "rdzeń zabezpieczeniowy (klasa z literą P)",
+                  "unit": "",
+                  "label": "Wymagane przez tor"
+                },
+                "dostepne": {
+                  "value": "5P10",
+                  "unit": "",
+                  "label": "Dostępne w typie"
+                }
+              },
+              "substitution": "klasa 5P10 — rdzeń zabezpieczeniowy",
+              "result": {},
+              "notes": "Funkcje zabezpieczeniowe wymagają rdzenia zabezpieczeniowego (IEC 61869-2)."
+            }
+          ]
         },
         {
           "kod": "ct.alf",
           "nazwa_pl": "Nasycenie rdzenia (bilans mocy wtórnej)",
           "podstawa_pl": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
-          "werdykt": "brak_danych",
-          "wymagane": "ALF_eff ≥ 45.2",
+          "ocena": {
+            "kryterium_id": "przekladnik_pradowy.nasycenie",
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "przekładnik prądowy",
+              "opis_pl": "Uzwojenie zabezpieczeniowe przekładnika prądowego pola"
+            },
+            "kryterium": {
+              "opis_pl": "Efektywny współczynnik graniczny dokładności nie mniejszy od wymaganego przez funkcje zabezpieczeniowe pola",
+              "warunek_latex": "ALF_{eff} \\ge ALF_{wym}",
+              "relacja": "NIE_MNIEJ",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "podstawa": {
+              "rodzaj": "NORMA",
+              "dokument": "IEC 61869-2 (przekładniki prądowe)",
+              "wydanie": "2012",
+              "jednostka_redakcyjna": "5.6 — moc znamionowa i współczynnik graniczny dokładności uzwojenia zabezpieczeniowego",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": null,
+              "technologia": null,
+              "modul_istniejacy": null,
+              "dotyczy": true,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wynik": null,
+            "limit": {
+              "wartosc": {
+                "wartosc": 45.1994991352,
+                "jednostka": "1"
+              },
+              "pasmo": null,
+              "obwiednia": null,
+              "jednostka_obwiedni": null,
+              "podstawa": {
+                "rodzaj": "ZALOZENIE_PROJEKTOWE",
+                "dokument": "wymaganie funkcji zabezpieczeniowych pola",
+                "wydanie": "bieżący stan modelu sieci",
+                "jednostka_redakcyjna": "ALF_wym = I_k,max / I_1n (krotność prądu zwarciowego względem prądu pierwotnego)",
+                "status": "WSKAZANE",
+                "uwagi_pl": null
+              },
+              "zakres_stosowalnosci_pl": "krotność prądu zwarciowego względem prądu pierwotnego przekładnika",
+              "wersja_profilu": null
+            },
+            "margines": null,
+            "niepewnosc": {
+              "wartosc": null,
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            },
+            "status_maszynowy": "NIE_OCENIONO",
+            "kompletnosc_dowodu": "NIEPELNY",
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "etykieta": {
+              "etykieta_pl": "Ocena niewykonana",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Efektywny współczynnik graniczny dokładności nie mniejszy od wymaganego przez funkcje zabezpieczeniowe pola (przekładnik prądowy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Dane obwodu wtórnego przekładnika prądowego (prąd znamionowy wtórny, długość i przekrój przewodów) — uzupełnij obwód w kroku przekładników kreatora stacji). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Dane obwodu wtórnego przekładnika prądowego (prąd znamionowy wtórny, długość i przekrój przewodów) — uzupełnij obwód w kroku przekładników kreatora stacji)",
+              "czego_brakuje": [
+                "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                "Dane obwodu wtórnego przekładnika prądowego (prąd znamionowy wtórny, długość i przekrój przewodów) — uzupełnij obwód w kroku przekładników kreatora stacji."
+              ],
+              "zastrzezenia": [
+                "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, 5.6 — moc znamionowa i współczynnik graniczny dokładności uzwojenia zabezpieczeniowego (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „wymaganie funkcji zabezpieczeniowych pola”, wydanie bieżący stan modelu sieci, ALF_wym = I_k,max / I_1n (krotność prądu zwarciowego względem prądu pierwotnego) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Obwód wtórny dwuprzewodowy jednego uzwojenia przekładnika; rezystancja przewodów miedzianych w 20 °C (IEC 60228), reaktancja przewodów pominięta — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; nagrzewanie przewodów obwodu wtórnego ponad 20 °C."
+              ]
+            },
+            "dowod": {
+              "metoda": "OBLICZENIE",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": null,
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "opis_pl": "Obwód wtórny dwuprzewodowy jednego uzwojenia przekładnika; rezystancja przewodów miedzianych w 20 °C (IEC 60228), reaktancja przewodów pominięta.",
+              "technologia": null,
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": [
+                "składowa nieokresowa prądu zwarciowego i remanencja rdzenia",
+                "nagrzewanie przewodów obwodu wtórnego ponad 20 °C"
+              ]
+            },
+            "slad": []
+          },
+          "wyjasnienie": {
+            "zdanie_pl": "Efektywny współczynnik graniczny dokładności nie mniejszy od wymaganego przez funkcje zabezpieczeniowe pola (przekładnik prądowy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Dane obwodu wtórnego przekładnika prądowego (prąd znamionowy wtórny, długość i przekrój przewodów) — uzupełnij obwód w kroku przekładników kreatora stacji). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Dane obwodu wtórnego przekładnika prądowego (prąd znamionowy wtórny, długość i przekrój przewodów) — uzupełnij obwód w kroku przekładników kreatora stacji)",
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Dane obwodu wtórnego przekładnika prądowego (prąd znamionowy wtórny, długość i przekrój przewodów) — uzupełnij obwód w kroku przekładników kreatora stacji."
+            ],
+            "zastrzezenia": [
+              "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, 5.6 — moc znamionowa i współczynnik graniczny dokładności uzwojenia zabezpieczeniowego (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „wymaganie funkcji zabezpieczeniowych pola”, wydanie bieżący stan modelu sieci, ALF_wym = I_k,max / I_1n (krotność prądu zwarciowego względem prądu pierwotnego) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Obwód wtórny dwuprzewodowy jednego uzwojenia przekładnika; rezystancja przewodów miedzianych w 20 °C (IEC 60228), reaktancja przewodów pominięta — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; nagrzewanie przewodów obwodu wtórnego ponad 20 °C."
+            ]
+          },
+          "wymagane": "ALF_eff ≥ 45,2",
           "dostepne": null,
           "komentarz_pl": "Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej",
           "kody_gotowosci": [
@@ -97,9 +514,132 @@
           "kod": "ct.wytrzymalosc_cieplna",
           "nazwa_pl": "Wytrzymałość cieplna zwarciowa",
           "podstawa_pl": "Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).",
-          "werdykt": "brak_danych",
+          "ocena": {
+            "kryterium_id": "ct.wytrzymalosc_cieplna",
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "przekładnik prądowy",
+              "opis_pl": "Przekładnik prądowy pola — typ katalogowy „CT 200/5 A kl. 5P10 10 VA”"
+            },
+            "kryterium": {
+              "opis_pl": "Równoważny prąd cieplny 1 s zwarcia nie większy od znamionowego krótkotrwałego prądu cieplnego przekładnika",
+              "warunek_latex": "I_k'' \\sqrt{t_k} \\le I_{th}",
+              "relacja": "NIE_WIECEJ",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "podstawa": {
+              "rodzaj": "NORMA",
+              "dokument": "IEC 61869-2 (przekładniki prądowe)",
+              "wydanie": "2012",
+              "jednostka_redakcyjna": "wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa)",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": null,
+              "technologia": null,
+              "modul_istniejacy": null,
+              "dotyczy": true,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wynik": null,
+            "limit": {
+              "wartosc": {
+                "wartosc": 20.0,
+                "jednostka": "kA"
+              },
+              "pasmo": null,
+              "obwiednia": null,
+              "jednostka_obwiedni": null,
+              "podstawa": {
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "dokument": "karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA”",
+                "wydanie": "pozycja katalogu typów programu",
+                "jednostka_redakcyjna": "znamionowy krótkotrwały prąd cieplny I_th (1 s)",
+                "status": "WSKAZANE",
+                "uwagi_pl": null
+              },
+              "zakres_stosowalnosci_pl": "znamionowy krótkotrwały prąd cieplny 1 s",
+              "wersja_profilu": null
+            },
+            "margines": null,
+            "niepewnosc": {
+              "wartosc": null,
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            },
+            "status_maszynowy": "NIE_OCENIONO",
+            "kompletnosc_dowodu": "NIEPELNY",
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "etykieta": {
+              "etykieta_pl": "Ocena niewykonana",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Równoważny prąd cieplny 1 s zwarcia nie większy od znamionowego krótkotrwałego prądu cieplnego przekładnika (przekładnik prądowy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Prąd zwarciowy początkowy z biegu IEC 60909, czas trwania zwarcia albo prąd cieplny przekładnika z katalogu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Prąd zwarciowy początkowy z biegu IEC 60909, czas trwania zwarcia albo prąd cieplny przekładnika z katalogu)",
+              "czego_brakuje": [
+                "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                "Prąd zwarciowy początkowy z biegu IEC 60909, czas trwania zwarcia albo prąd cieplny przekładnika z katalogu."
+              ],
+              "zastrzezenia": [
+                "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA””, wydanie pozycja katalogu typów programu, znamionowy krótkotrwały prąd cieplny I_th (1 s) (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+              ]
+            },
+            "dowod": {
+              "metoda": "OBLICZENIE",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "domain/dobor_przekladnika.py",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "opis_pl": "Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu.",
+              "technologia": null,
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": [
+                "składowa nieokresowa prądu zwarciowego i remanencja rdzenia",
+                "dokładność pomiaru w zakresie przeciążeniowym"
+              ]
+            },
+            "slad": []
+          },
+          "wyjasnienie": {
+            "zdanie_pl": "Równoważny prąd cieplny 1 s zwarcia nie większy od znamionowego krótkotrwałego prądu cieplnego przekładnika (przekładnik prądowy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Prąd zwarciowy początkowy z biegu IEC 60909, czas trwania zwarcia albo prąd cieplny przekładnika z katalogu). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Prąd zwarciowy początkowy z biegu IEC 60909, czas trwania zwarcia albo prąd cieplny przekładnika z katalogu)",
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Prąd zwarciowy początkowy z biegu IEC 60909, czas trwania zwarcia albo prąd cieplny przekładnika z katalogu."
+            ],
+            "zastrzezenia": [
+              "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA””, wydanie pozycja katalogu typów programu, znamionowy krótkotrwały prąd cieplny I_th (1 s) (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+            ]
+          },
           "wymagane": null,
-          "dostepne": "20.0 kA / 1 s",
+          "dostepne": "20 kA / 1 s",
           "komentarz_pl": "Brakuje prądu zwarciowego, czasu jego trwania albo prądu cieplnego przekładnika.",
           "kody_gotowosci": [],
           "slad": []
@@ -108,34 +648,491 @@
           "kod": "ct.wytrzymalosc_dynamiczna",
           "nazwa_pl": "Wytrzymałość dynamiczna",
           "podstawa_pl": "Idyn ≥ ip — siły elektrodynamiczne od prądu szczytowego (IEC 61869-2).",
-          "werdykt": "spelnione",
-          "wymagane": "19.57 kA",
-          "dostepne": "50.0 kA",
+          "ocena": {
+            "kryterium_id": "ct.wytrzymalosc_dynamiczna",
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "przekładnik prądowy",
+              "opis_pl": "Przekładnik prądowy pola — typ katalogowy „CT 200/5 A kl. 5P10 10 VA”"
+            },
+            "kryterium": {
+              "opis_pl": "Prąd udarowy zwarcia nie większy od znamionowego prądu dynamicznego",
+              "warunek_latex": "i_p \\le I_{dyn}",
+              "relacja": "NIE_WIECEJ",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "podstawa": {
+              "rodzaj": "NORMA",
+              "dokument": "IEC 61869-2 (przekładniki prądowe)",
+              "wydanie": "2012",
+              "jednostka_redakcyjna": "wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa)",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": null,
+              "technologia": null,
+              "modul_istniejacy": null,
+              "dotyczy": true,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wynik": {
+              "wielkosc_pl": "prąd udarowy zwarcia",
+              "symbol_latex": "i_p",
+              "wartosc": {
+                "wartosc": 19.5665606525,
+                "jednostka": "kA"
+              },
+              "punkt_krytyczny_pl": "przekładnik prądowy",
+              "chwila_s": null,
+              "metoda": "OBLICZENIE"
+            },
+            "limit": {
+              "wartosc": {
+                "wartosc": 50.0,
+                "jednostka": "kA"
+              },
+              "pasmo": null,
+              "obwiednia": null,
+              "jednostka_obwiedni": null,
+              "podstawa": {
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "dokument": "karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA”",
+                "wydanie": "pozycja katalogu typów programu",
+                "jednostka_redakcyjna": "znamionowy prąd dynamiczny I_dyn",
+                "status": "WSKAZANE",
+                "uwagi_pl": null
+              },
+              "zakres_stosowalnosci_pl": "znamionowy prąd dynamiczny przekładnika",
+              "wersja_profilu": null
+            },
+            "margines": {
+              "wartosc": {
+                "wartosc": 30.4334393475,
+                "jednostka": "kA"
+              },
+              "definicja_latex": "m = x_{\\lim} - x",
+              "punkt_pl": "przekładnik prądowy",
+              "skala": {
+                "wartosc": 50.0,
+                "jednostka": "kA"
+              },
+              "skala_rodzaj": "LIMIT",
+              "wzgledny": 0.60866878695,
+              "niedefiniowalny": false,
+              "powod_pl": null
+            },
+            "niepewnosc": {
+              "wartosc": null,
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            },
+            "status_maszynowy": "SPELNIA",
+            "kompletnosc_dowodu": "NIEPELNY",
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Prąd udarowy zwarcia nie większy od znamionowego prądu dynamicznego (przekładnik prądowy) — kryterium spełnione. Prąd udarowy zwarcia: 19,57 kA wobec wymaganych ≤ 50 kA wg znamionowy prąd dynamiczny I_dyn „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA”” (margines +30,43 kA, punkt: przekładnik prądowy, względnie +60,87 % wartości granicznej).",
+              "przyczyna_pl": null,
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA””, wydanie pozycja katalogu typów programu, znamionowy prąd dynamiczny I_dyn (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+              ]
+            },
+            "dowod": {
+              "metoda": "OBLICZENIE",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "domain/dobor_przekladnika.py",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "opis_pl": "Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu.",
+              "technologia": null,
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": [
+                "składowa nieokresowa prądu zwarciowego i remanencja rdzenia",
+                "dokładność pomiaru w zakresie przeciążeniowym"
+              ]
+            },
+            "slad": [
+              {
+                "run_id": null,
+                "wersja_silnika": null,
+                "krok": "ct.wytrzymalosc_dynamiczna",
+                "opis_pl": "Wytrzymałość dynamiczna — zestawienie wymagania z typem"
+              }
+            ]
+          },
+          "wyjasnienie": {
+            "zdanie_pl": "Prąd udarowy zwarcia nie większy od znamionowego prądu dynamicznego (przekładnik prądowy) — kryterium spełnione. Prąd udarowy zwarcia: 19,57 kA wobec wymaganych ≤ 50 kA wg znamionowy prąd dynamiczny I_dyn „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA”” (margines +30,43 kA, punkt: przekładnik prądowy, względnie +60,87 % wartości granicznej).",
+            "przyczyna_pl": null,
+            "czego_brakuje": [],
+            "zastrzezenia": [
+              "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA””, wydanie pozycja katalogu typów programu, znamionowy prąd dynamiczny I_dyn (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+            ]
+          },
+          "wymagane": "19,57 kA",
+          "dostepne": "50 kA",
           "komentarz_pl": null,
           "kody_gotowosci": [],
-          "slad": []
+          "slad": [
+            {
+              "step": 1,
+              "key": "ct.wytrzymalosc_dynamiczna",
+              "title": "Wytrzymałość dynamiczna",
+              "formula_latex": "i_p \\le I_{dyn}",
+              "inputs": {
+                "wymagane": {
+                  "value": "19,57 kA",
+                  "unit": "",
+                  "label": "Wymagane przez tor"
+                },
+                "dostepne": {
+                  "value": "50 kA",
+                  "unit": "",
+                  "label": "Dostępne w typie"
+                }
+              },
+              "substitution": "",
+              "result": {},
+              "notes": "Idyn ≥ ip — siły elektrodynamiczne od prądu szczytowego (IEC 61869-2)."
+            }
+          ]
         },
         {
           "kod": "ct.prad_wtorny",
           "nazwa_pl": "Zgodność prądu wtórnego z wejściem przekaźnika",
           "podstawa_pl": "Prąd wtórny przekładnika musi być jedną z wartości znamionowych wejścia prądowego urządzenia (IEC 60255-1).",
-          "werdykt": "spelnione",
+          "ocena": {
+            "kryterium_id": "ct.prad_wtorny",
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "przekładnik prądowy",
+              "opis_pl": "Przekładnik prądowy pola — typ katalogowy „CT 200/5 A kl. 5P10 10 VA”"
+            },
+            "kryterium": {
+              "opis_pl": "Znamionowy prąd wtórny przekładnika równy jednej z wartości znamionowych wejścia prądowego urządzenia",
+              "warunek_latex": "",
+              "relacja": "LOGICZNE",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "podstawa": {
+              "rodzaj": "NORMA",
+              "dokument": "IEC 60255-1 (przekaźniki pomiarowe i urządzenia zabezpieczeniowe)",
+              "wydanie": "2009",
+              "jednostka_redakcyjna": "znamionowe wartości wejść pomiarowych prądowych i napięciowych",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": null,
+              "technologia": null,
+              "modul_istniejacy": null,
+              "dotyczy": true,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wynik": {
+              "wielkosc_pl": "zgodność prądu wtórnego z wejściem urządzenia",
+              "symbol_latex": "",
+              "wartosc": {
+                "wartosc": 1.0,
+                "jednostka": "1"
+              },
+              "punkt_krytyczny_pl": "prąd wtórny 5 A wobec wejść 1 A / 5 A",
+              "chwila_s": null,
+              "metoda": "OBLICZENIE"
+            },
+            "limit": null,
+            "margines": {
+              "wartosc": null,
+              "definicja_latex": null,
+              "punkt_pl": "prąd wtórny 5 A wobec wejść 1 A / 5 A",
+              "skala": null,
+              "skala_rodzaj": null,
+              "wzgledny": null,
+              "niedefiniowalny": true,
+              "powod_pl": "Kryterium logiczne nie ma marginesu skalarnego — o wyniku decyduje stan logiczny."
+            },
+            "niepewnosc": {
+              "wartosc": null,
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            },
+            "status_maszynowy": "SPELNIA",
+            "kompletnosc_dowodu": "NIEPELNY",
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "etykieta": {
+              "etykieta_pl": "Kryterium spełnione — dowód niepełny",
+              "semantyka": "ostrzegawcza"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Znamionowy prąd wtórny przekładnika równy jednej z wartości znamionowych wejścia prądowego urządzenia (przekładnik prądowy) — kryterium spełnione. Zgodność prądu wtórnego z wejściem urządzenia: prąd wtórny 5 A wobec wejść 1 A / 5 A (stan wymagany wg znamionowe wartości wejść pomiarowych prądowych i napięciowych „IEC 60255-1 (przekaźniki pomiarowe i urządzenia zabezpieczeniowe)”).",
+              "przyczyna_pl": null,
+              "czego_brakuje": [],
+              "zastrzezenia": [
+                "Podstawa „IEC 60255-1 (przekaźniki pomiarowe i urządzenia zabezpieczeniowe)”, wydanie 2009, znamionowe wartości wejść pomiarowych prądowych i napięciowych (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+              ]
+            },
+            "dowod": {
+              "metoda": "OBLICZENIE",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "domain/dobor_przekladnika.py",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "opis_pl": "Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu.",
+              "technologia": null,
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": [
+                "składowa nieokresowa prądu zwarciowego i remanencja rdzenia",
+                "dokładność pomiaru w zakresie przeciążeniowym"
+              ]
+            },
+            "slad": [
+              {
+                "run_id": null,
+                "wersja_silnika": null,
+                "krok": "ct.prad_wtorny",
+                "opis_pl": "Zgodność prądu wtórnego z wejściem przekaźnika — zestawienie wymagania z typem"
+              }
+            ]
+          },
+          "wyjasnienie": {
+            "zdanie_pl": "Znamionowy prąd wtórny przekładnika równy jednej z wartości znamionowych wejścia prądowego urządzenia (przekładnik prądowy) — kryterium spełnione. Zgodność prądu wtórnego z wejściem urządzenia: prąd wtórny 5 A wobec wejść 1 A / 5 A (stan wymagany wg znamionowe wartości wejść pomiarowych prądowych i napięciowych „IEC 60255-1 (przekaźniki pomiarowe i urządzenia zabezpieczeniowe)”).",
+            "przyczyna_pl": null,
+            "czego_brakuje": [],
+            "zastrzezenia": [
+              "Podstawa „IEC 60255-1 (przekaźniki pomiarowe i urządzenia zabezpieczeniowe)”, wydanie 2009, znamionowe wartości wejść pomiarowych prądowych i napięciowych (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+            ]
+          },
           "wymagane": "1 A / 5 A",
           "dostepne": "5 A",
           "komentarz_pl": "Podstawa danych o wejściu: szereg_preferowany_IEC_60255_1.",
           "kody_gotowosci": [],
-          "slad": []
+          "slad": [
+            {
+              "step": 1,
+              "key": "ct.prad_wtorny",
+              "title": "Zgodność prądu wtórnego z wejściem przekaźnika",
+              "formula_latex": "",
+              "inputs": {
+                "wymagane": {
+                  "value": "1 A / 5 A",
+                  "unit": "",
+                  "label": "Wymagane przez tor"
+                },
+                "dostepne": {
+                  "value": "5 A",
+                  "unit": "",
+                  "label": "Dostępne w typie"
+                }
+              },
+              "substitution": "prąd wtórny 5 A wobec wejść 1 A / 5 A",
+              "result": {},
+              "notes": "Prąd wtórny przekładnika musi być jedną z wartości znamionowych wejścia prądowego urządzenia (IEC 60255-1)."
+            }
+          ]
         },
         {
           "kod": "ct.obciazalnosc",
           "nazwa_pl": "Obciążalność wobec obwodu wtórnego",
           "podstawa_pl": "Moc znamionowa rdzenia ≥ obciążenie obwodu (przewody + urządzenie).",
-          "werdykt": "brak_danych",
+          "ocena": {
+            "kryterium_id": "ct.obciazalnosc",
+            "przedmiot": {
+              "element_ref": null,
+              "nazwa_pl": "przekładnik prądowy",
+              "opis_pl": "Przekładnik prądowy pola — typ katalogowy „CT 200/5 A kl. 5P10 10 VA”"
+            },
+            "kryterium": {
+              "opis_pl": "Obciążenie obwodu wtórnego nie większe od mocy znamionowej uzwojenia",
+              "warunek_latex": "S_{obw} \\le S_n",
+              "relacja": "NIE_WIECEJ",
+              "warunek_wstepny_pl": null,
+              "warunek_wstepny_podstawa": null
+            },
+            "podstawa": {
+              "rodzaj": "NORMA",
+              "dokument": "IEC 61869-2 (przekładniki prądowe)",
+              "wydanie": "2012",
+              "jednostka_redakcyjna": "wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa)",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "stosowalnosc": {
+              "typ_modulu": null,
+              "technologia": null,
+              "modul_istniejacy": null,
+              "dotyczy": true,
+              "powod_pl": "wielkość wyznaczona w biegu dla tego obiektu modelu",
+              "podstawa": null,
+              "warunek_wstepny_nieuruchomiony": false
+            },
+            "wynik": null,
+            "limit": {
+              "wartosc": {
+                "wartosc": 10.0,
+                "jednostka": "VA"
+              },
+              "pasmo": null,
+              "obwiednia": null,
+              "jednostka_obwiedni": null,
+              "podstawa": {
+                "rodzaj": "KATALOG_PRODUCENTA",
+                "dokument": "karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA”",
+                "wydanie": "pozycja katalogu typów programu",
+                "jednostka_redakcyjna": "moc znamionowa rdzenia S_n",
+                "status": "WSKAZANE",
+                "uwagi_pl": null
+              },
+              "zakres_stosowalnosci_pl": "moc znamionowa uzwojenia z karty katalogowej",
+              "wersja_profilu": null
+            },
+            "margines": null,
+            "niepewnosc": {
+              "wartosc": null,
+              "metoda_pl": null,
+              "nie_dotyczy": true,
+              "powod_pl": "wielkość wyznaczona wzorem zamkniętym z danych modelu — niepewność numeryczna nie dotyczy, niepewność danych wejściowych wyraża status danych rekordu"
+            },
+            "status_maszynowy": "NIE_OCENIONO",
+            "kompletnosc_dowodu": "NIEPELNY",
+            "powody_niepelnosci": [
+              "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
+            ],
+            "etykieta": {
+              "etykieta_pl": "Ocena niewykonana",
+              "semantyka": "neutralna"
+            },
+            "wyjasnienie": {
+              "zdanie_pl": "Obciążenie obwodu wtórnego nie większe od mocy znamionowej uzwojenia (przekładnik prądowy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Obciążenie obwodu wtórnego jest daną projektową — podaj sumę rezystancji przewodów i poboru urządzenia). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Obciążenie obwodu wtórnego jest daną projektową — podaj sumę rezystancji przewodów i poboru urządzenia)",
+              "czego_brakuje": [
+                "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+                "Obciążenie obwodu wtórnego jest daną projektową — podaj sumę rezystancji przewodów i poboru urządzenia."
+              ],
+              "zastrzezenia": [
+                "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Podstawa „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA””, wydanie pozycja katalogu typów programu, moc znamionowa rdzenia S_n (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+                "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+                "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+              ]
+            },
+            "dowod": {
+              "metoda": "OBLICZENIE",
+              "poziom": "UNVALIDATED_MODEL",
+              "rodzaj_twierdzenia": "STATIC_CALCULATION",
+              "status_modelu": "NIE_DOTYCZY",
+              "status_danych": {
+                "stan": "ZWALIDOWANE",
+                "dane_przyjete": []
+              },
+              "odniesienie": "domain/dobor_przekladnika.py",
+              "w_domenie_walidacji": null,
+              "domena_pl": null
+            },
+            "zakres_waznosci": {
+              "rodzaj_analizy": "SHORT_CIRCUIT",
+              "opis_pl": "Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu.",
+              "technologia": null,
+              "model_urzadzenia": null,
+              "symetria_zaklocenia": null,
+              "parametry_sieci": [],
+              "regulator": null,
+              "ograniczniki": [],
+              "wykluczenia": [
+                "składowa nieokresowa prądu zwarciowego i remanencja rdzenia",
+                "dokładność pomiaru w zakresie przeciążeniowym"
+              ]
+            },
+            "slad": []
+          },
+          "wyjasnienie": {
+            "zdanie_pl": "Obciążenie obwodu wtórnego nie większe od mocy znamionowej uzwojenia (przekładnik prądowy) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Obciążenie obwodu wtórnego jest daną projektową — podaj sumę rezystancji przewodów i poboru urządzenia). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "przyczyna_pl": "brak wyznaczonej wielkości ocenianej (Obciążenie obwodu wtórnego jest daną projektową — podaj sumę rezystancji przewodów i poboru urządzenia)",
+            "czego_brakuje": [
+              "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+              "Obciążenie obwodu wtórnego jest daną projektową — podaj sumę rezystancji przewodów i poboru urządzenia."
+            ],
+            "zastrzezenia": [
+              "Podstawa „IEC 61869-2 (przekładniki prądowe)”, wydanie 2012, wymagania znamionowe przekładnika prądowego (prąd pierwotny, rdzeń zabezpieczeniowy, prąd cieplny i dynamiczny, moc znamionowa) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Podstawa „karta katalogowa pozycji „CT 200/5 A kl. 5P10 10 VA””, wydanie pozycja katalogu typów programu, moc znamionowa rdzenia S_n (katalog producenta): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
+              "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
+              "Zakres ważności: Dobór typu przekładnika prądowego wobec wymagań toru: prąd roboczy z tabliczki, prąd zwarciowy początkowy i udarowy z biegu IEC 60909, dane znamionowe z katalogu — wynik nie obejmuje: składowa nieokresowa prądu zwarciowego i remanencja rdzenia; dokładność pomiaru w zakresie przeciążeniowym."
+            ]
+          },
           "wymagane": null,
           "dostepne": "10 VA",
           "komentarz_pl": "Obciążenie obwodu wtórnego jest daną projektową — podaj sumę rezystancji przewodów i poboru urządzenia.",
           "kody_gotowosci": [],
           "slad": []
+        }
+      ],
+      "informacje": [
+        {
+          "kod": "ct.wykorzystanie_przekladni",
+          "nazwa_pl": "Wykorzystanie przekładni",
+          "podstawa_pl": "Przy bardzo niskim wykorzystaniu zakresu rośnie błąd względny pomiaru (praktyka projektowa, nie wymaganie normy).",
+          "wymagane": "≥ 20 % prądu pierwotnego",
+          "dostepne": "19,25 %",
+          "komentarz_pl": "Rozważ przekładnik o niższym prądzie pierwotnym."
+        },
+        {
+          "kod": "ct.alf_katalogowy",
+          "nazwa_pl": "ALF katalogowy wobec prądu zwarciowego",
+          "podstawa_pl": "Warunek KONIECZNY ALF ≥ Ik″/I1n, bez obciążenia wtórnego (IEC 61869-2) — nie rozstrzyga nasycenia rdzenia.",
+          "wymagane": "ALF ≥ 45,2 (Ik″ 9,04 kA / In 200 A)",
+          "dostepne": "ALF 10",
+          "komentarz_pl": "Nasycenie rdzenia zależy od rzeczywistego obciążenia obwodu wtórnego (S2obl) — rozstrzyga je kryterium „Nasycenie rdzenia” (ct.alf) niżej, nie ten warunek konieczny."
         }
       ],
       "dobor_potwierdzony": false,

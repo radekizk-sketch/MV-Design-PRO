@@ -8,8 +8,11 @@
  * inżynierskiej". Nazwa nie jest dowodem doboru — dowodem jest RACHUNEK.
  *
  * CO POKAZUJE. Dla każdego kryterium: nazwę, podstawę normową, wartość WYMAGANĄ przez
- * tor i wartość DOSTĘPNĄ w typie, werdykt i skutek niespełnienia. Brak danej jest
- * TRZECIM STANEM — widocznym, nazwanym i blokującym potwierdzenie doboru.
+ * tor i wartość DOSTĘPNĄ w typie oraz rekord werdyktu wyjaśnialnego (`ocena`,
+ * kontrakt `docs/domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md`) — etykieta i karta
+ * z rekordu backendu, bez przemapowania statusu na tekst w tym pliku. Brak danej jest
+ * TRZECIM STANEM — widocznym, nazwanym i blokującym potwierdzenie doboru. Pozycje
+ * informacyjne (praktyka projektowa, warunek konieczny) są osobną listą BEZ statusu.
  *
  * ZERO REGUŁY I ZERO FIZYKI W PREZENTACJI: wszystkie werdykty, rachunki i wymagania
  * przychodzą z reguły domenowej (`domain/dobor_przekladnika.py`) przez endpoint
@@ -23,14 +26,15 @@
 import { useEffect, useState } from 'react';
 
 import { MathInline } from '../../proof/MathRenderer';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../../ui2/wyniki/wzorzec/KartaWerdyktu';
+import type { OcenaKryterium, WyjasnienieWerdyktu } from '../../../ui2/wyniki/wzorzec/werdykt';
 
 import {
+  fmtLiczba,
   komunikatyKodow,
   pobierzRejestrGotowosci,
   type WpisRejestruGotowosci,
 } from '../../../ui2/kryteria';
-
-export type WerdyktKryterium = 'spelnione' | 'niespelnione' | 'informacja' | 'brak_danych';
 
 /** Krok śladu WHITE BOX jądra (kanon pięciu pól) — ten sam kształt, co ekran
  *  bilansu CT/VT (`ui2/kryteria/wyposazenieApi.ts::KrokSladu`). */
@@ -50,7 +54,9 @@ export interface KryteriumDoboru {
   readonly kod: string;
   readonly nazwa_pl: string;
   readonly podstawa_pl: string;
-  readonly werdykt: WerdyktKryterium;
+  /** Rekord werdyktu wyjaśnialnego kryterium — jedyne źródło statusu i jego tekstu. */
+  readonly ocena: OcenaKryterium;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
   readonly wymagane: string | null;
   readonly dostepne: string | null;
   readonly komentarz_pl: string | null;
@@ -59,8 +65,19 @@ export interface KryteriumDoboru {
   readonly slad: readonly KrokSladuDoboru[];
 }
 
+/** Pozycja informacyjna doboru — BEZ statusu (nie jest kryterium oceny). */
+export interface InformacjaDoboru {
+  readonly kod: string;
+  readonly nazwa_pl: string;
+  readonly podstawa_pl: string;
+  readonly wymagane: string | null;
+  readonly dostepne: string | null;
+  readonly komentarz_pl: string | null;
+}
+
 export interface WynikDoboru {
   readonly kryteria: readonly KryteriumDoboru[];
+  readonly informacje: readonly InformacjaDoboru[];
   readonly dobor_potwierdzony: boolean;
   readonly liczba_niespelnionych: number;
   readonly liczba_bez_danych: number;
@@ -124,6 +141,7 @@ function maKsztaltGniazda(wartosc: unknown): boolean {
   const wynik = gniazdo.wynik as Record<string, unknown>;
   return (
     Array.isArray(wynik.kryteria)
+    && Array.isArray(wynik.informacje)
     && typeof wynik.dobor_potwierdzony === 'boolean'
     && wynik.kryteria.every(maKsztaltKryterium)
   );
@@ -141,22 +159,26 @@ function maKsztaltKryterium(wartosc: unknown): boolean {
   const kryterium = wartosc as Record<string, unknown>;
   return (
     typeof kryterium.kod === 'string'
+    && maKsztaltOceny(kryterium.ocena)
     && Array.isArray(kryterium.kody_gotowosci)
     && Array.isArray(kryterium.slad)
   );
 }
 
-export function werdyktPl(werdykt: WerdyktKryterium): string {
-  switch (werdykt) {
-    case 'spelnione':
-      return 'spełnione';
-    case 'niespelnione':
-      return 'niespełnione';
-    case 'informacja':
-      return 'do rozważenia';
-    case 'brak_danych':
-      return 'brak danej';
-  }
+/** Rekord oceny musi nieść etykietę i wyjaśnienie — inaczej ekran nie ma czego pokazać
+ *  (status bez wyjaśnienia jest błędem kontraktu, nie stanem do wyświetlenia). */
+function maKsztaltOceny(wartosc: unknown): boolean {
+  if (typeof wartosc !== 'object' || wartosc === null) return false;
+  const ocena = wartosc as Record<string, unknown>;
+  const etykieta = ocena.etykieta as Record<string, unknown> | null | undefined;
+  return (
+    typeof ocena.status_maszynowy === 'string'
+    && typeof etykieta === 'object'
+    && etykieta !== null
+    && typeof etykieta.etykieta_pl === 'string'
+    && typeof ocena.wyjasnienie === 'object'
+    && ocena.wyjasnienie !== null
+  );
 }
 
 /**
@@ -175,12 +197,6 @@ function podsumowaniePl(wynik: WynikDoboru): string {
     czesci.push(`${wynik.liczba_bez_danych} kryteriów bez kompletu danych`);
   }
   return `Dobór niepotwierdzony: ${czesci.join(', ')}.`;
-}
-
-function klasaWerdyktu(werdykt: WerdyktKryterium): string {
-  if (werdykt === 'niespelnione') return 'text-scada-alarm';
-  if (werdykt === 'brak_danych') return 'text-scada-grounded';
-  return 'text-scada-muted';
 }
 
 function Gniazdo({
@@ -238,12 +254,12 @@ function Gniazdo({
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="text-sm text-scada-text">{kryterium.nazwa_pl}</span>
-              <span
-                className={`text-xs ${klasaWerdyktu(kryterium.werdykt)}`}
-                data-testid={`kryterium-werdykt-${kryterium.kod}`}
-              >
-                {werdyktPl(kryterium.werdykt)}
-              </span>
+              <EtykietaWerdyktu
+                etykieta={kryterium.ocena.etykieta}
+                status={kryterium.ocena.status_maszynowy}
+                testid={`kryterium-werdykt-${kryterium.kod}`}
+                zwarta
+              />
             </div>
             {(kryterium.wymagane !== null || kryterium.dostepne !== null) && (
               <p className="text-xs text-scada-muted" data-testid={`kryterium-rachunek-${kryterium.kod}`}>
@@ -252,8 +268,13 @@ function Gniazdo({
             )}
             <p className="text-xs text-scada-muted">{kryterium.podstawa_pl}</p>
             {kryterium.komentarz_pl !== null && (
-              <p className={`text-xs ${klasaWerdyktu(kryterium.werdykt)}`}>{kryterium.komentarz_pl}</p>
+              <p className="text-xs text-scada-muted">{kryterium.komentarz_pl}</p>
             )}
+            {/* Rekord werdyktu: co oceniono, wobec czego, wynik, limit z podstawą, margines,
+                przyczyna, dowód i zakres ważności — prezentowany wyłącznie przez kartę. */}
+            <div className="mt-1" data-testid={`kryterium-ocena-${kryterium.kod}`}>
+              <KartaWerdyktu rekord={kryterium.ocena} />
+            </div>
             {/* Karta W3-B: kody gotowości jako czipy — akcja naprawcza (ekran bilansu
                 CT/VT / kreator) jest nazwana w kanonicznym komunikacie PL kodu, nie
                 zmyślona tutaj. Kod bez odpowiednika w rejestrze jest pomijany (zero
@@ -303,6 +324,30 @@ function Gniazdo({
           </li>
         ))}
       </ul>
+
+      {gniazdo.wynik.informacje.length > 0 && (
+        <div data-testid={`dobor-${prefiks}-informacje`}>
+          <h5 className="text-xs font-semibold text-scada-text">
+            Informacje projektowe (bez oceny zgodności)
+          </h5>
+          <ul className="space-y-1">
+            {gniazdo.wynik.informacje.map((informacja) => (
+              <li key={informacja.kod} data-testid={`informacja-${informacja.kod}`}>
+                <span className="text-xs text-scada-text">{informacja.nazwa_pl}</span>
+                {(informacja.wymagane !== null || informacja.dostepne !== null) && (
+                  <p className="text-xs text-scada-muted">
+                    wymagane: {informacja.wymagane ?? '—'} · dostępne: {informacja.dostepne ?? '—'}
+                  </p>
+                )}
+                <p className="text-xs text-scada-muted">{informacja.podstawa_pl}</p>
+                {informacja.komentarz_pl !== null && (
+                  <p className="text-xs text-scada-muted">{informacja.komentarz_pl}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </article>
   );
 }
@@ -407,13 +452,13 @@ export function DoborPrzekladnikowSekcja({
               żeby projektant wiedział, dlaczego część kryteriów nie ma werdyktu. */}
           {[
             wejscia.napiecie_sieci_v !== null
-              ? `napięcie sieci ${(wejscia.napiecie_sieci_v / 1000).toFixed(1)} kV`
+              ? `napięcie sieci ${fmtLiczba(wejscia.napiecie_sieci_v / 1000, 'kV', 1)}`
               : 'napięcie sieci nieznane',
             wejscia.prad_roboczy_a !== null
-              ? `prąd roboczy toru ${wejscia.prad_roboczy_a.toFixed(0)} A`
+              ? `prąd roboczy toru ${fmtLiczba(wejscia.prad_roboczy_a, 'A', 0)}`
               : 'prąd roboczy toru nieznany',
             wejscia.ik_ka !== null
-              ? `Ik″ ${wejscia.ik_ka.toFixed(2)} kA z obliczeń zwarciowych`
+              ? `Ik″ ${fmtLiczba(wejscia.ik_ka, 'kA', 2)} z obliczeń zwarciowych`
               : 'prądy zwarciowe: brak zakończonego przebiegu',
           ].join(' · ')}
         </p>

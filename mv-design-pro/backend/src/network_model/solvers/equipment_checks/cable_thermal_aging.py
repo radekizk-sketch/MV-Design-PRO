@@ -34,14 +34,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from network_model.solvers.equipment_checks.oceny import kod_statusu, ocena_starzenia_kabla
 from network_model.solvers.equipment_checks.slad import (
     STATUS_FAIL,
     STATUS_PASS,
-    STATUS_UNAVAILABLE,
     dodatnia,
     liczba_tex,
     wartosc,
 )
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CABLE_INSULATION_DATA_MISSING = "cable.insulation_data_missing"
@@ -65,17 +66,23 @@ class CableThermalAgingInput:
     temperatura_pracy_c: float | None
     temperatura_znamionowa_c: float | None
     typ_izolacji: str | None = None
+    #: Nazwa kabla w rekordzie oceny (pozycja katalogowa).
+    nazwa_pl: str = "kabel"
 
 
 @dataclass(frozen=True)
 class CableThermalAgingResult:
     """Wynik oceny starzenia izolacji kabla (WHITE BOX).
 
-    ``status`` = PASS oznacza prace w temperaturze nie wyzszej od znamionowej
-    (wspolczynnik starzenia ≤ 1), FAIL — prace przyspieszajaca starzenie.
+    ``ocena`` — rekord werdyktu wyjaśnialnego (kryterium θ_pracy ≤ θ_zn, równoważne
+    współczynnikowi starzenia V ≤ 1); ``wyjasnienie`` = jego wyjaśnienie. ``status`` jest
+    PROJEKCJĄ statusu maszynowego rekordu (``oceny.kod_statusu``): ``PASS`` — praca nie
+    przyspiesza starzenia, ``FAIL`` — przyspiesza, ``UNAVAILABLE`` — brak podstawy oceny.
     """
 
     status: str
+    ocena: OcenaKryterium
+    wyjasnienie: WyjasnienieWerdyktu
     roznica_temperatur_c: float | None
     wspolczynnik_starzenia: float | None
     wzgledna_zywotnosc: float | None
@@ -103,9 +110,19 @@ def check_cable_thermal_aging(data: CableThermalAgingInput) -> CableThermalAging
     if theta_pracy is None:
         braki.append(READINESS_CABLE_OPERATING_TEMPERATURE_MISSING)
 
+    ocena = ocena_starzenia_kabla(
+        nazwa_pl=data.nazwa_pl,
+        temperatura_pracy_c=theta_pracy,
+        temperatura_znamionowa_c=theta_zn,
+        izolacja_znana=izolacja is not None,
+    )
+    status = kod_statusu((ocena,))
+
     if theta_zn is None or izolacja is None or theta_pracy is None:
         return CableThermalAgingResult(
-            status=STATUS_UNAVAILABLE,
+            status=status,
+            ocena=ocena,
+            wyjasnienie=ocena.wyjasnienie,
             roznica_temperatur_c=None,
             wspolczynnik_starzenia=None,
             wzgledna_zywotnosc=None,
@@ -117,10 +134,11 @@ def check_cable_thermal_aging(data: CableThermalAgingInput) -> CableThermalAging
     delta_t = theta_pracy - theta_zn
     wspolczynnik = 2.0 ** (delta_t / KROK_MONTSINGERA_C)
     zywotnosc = 1.0 / wspolczynnik
-    status = STATUS_PASS if wspolczynnik <= 1.0 else STATUS_FAIL
 
     return CableThermalAgingResult(
         status=status,
+        ocena=ocena,
+        wyjasnienie=ocena.wyjasnienie,
         roznica_temperatur_c=delta_t,
         wspolczynnik_starzenia=wspolczynnik,
         wzgledna_zywotnosc=zywotnosc,
@@ -134,7 +152,6 @@ def check_cable_thermal_aging(data: CableThermalAgingInput) -> CableThermalAging
             delta_t_c=delta_t,
             wspolczynnik=wspolczynnik,
             zywotnosc=zywotnosc,
-            status=status,
         ),
         assumptions=(
             "Regula Montsingera („regula 10 stopni”): kazde +10 °C ponad temperature "
@@ -157,7 +174,6 @@ def _slad_starzenia(
     delta_t_c: float,
     wspolczynnik: float,
     zywotnosc: float,
-    status: str,
 ) -> tuple[dict[str, Any], ...]:
     """Kroki dowodowe reguly Montsingera; slad nie liczy nic od nowa."""
     return (
@@ -200,7 +216,6 @@ def _slad_starzenia(
             ),
             "result": {
                 "wspolczynnik": wartosc(wspolczynnik, "", "Współczynnik starzenia"),
-                "werdykt": {"value": status, "unit": "", "label": "Werdykt"},
             },
             "notes": (
                 "V > 1 oznacza starzenie szybsze niż znamionowe; V = 2 — dwukrotnie "

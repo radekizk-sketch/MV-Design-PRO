@@ -157,58 +157,9 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "api.equipment_checks:CableAgingResponse.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C34 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.equipment_checks:CtBurdenResponse.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C34 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.equipment_checks:CtBurdenResponse.status_nasycenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C34 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.equipment_checks:CtBurdenResponse.status_obciazenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C34 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "api.equipment_checks:TransformerLossesResponse.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C34 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.equipment_checks:VtBurdenResponse.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C34 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.equipment_checks:VtBurdenResponse.status_obciazenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C34 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "api.equipment_checks:VtBurdenResponse.status_spadku",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C34 (MIGRACJA): migracja (plan §8).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Stan rachunku strat transformatora (PASS = rachunek wykonany, UNAVAILABLE = brak danych katalogowych) — nie ocenia żadnego kryterium względem limitu, więc nie jest werdyktem; ekran go nie pokazuje (ui2/kryteria/SekcjaKartyKatalogu.tsx bez wiersza stanu rachunku). Karta WERDYKT-MIGRACJA-190.",
    "wiersz_inwentarza": "C34"
   },
   {
@@ -430,13 +381,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.dobor_przekladnika:Kryterium.werdykt",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C35 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C35"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "domain.eligibility_models:AnalysisEligibilityResult.status",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Stan gotowości analizy (`EligibilityStatus` ELIGIBLE/INELIGIBLE z bramki gotowości, przyczyna w `blockers`) — inwentarz C54 (ENUM_WEWNETRZNY: enumy procesu i dowodu, `domain/eligibility_models.py:51`), plan AB §8 F15; nie ocena wobec kryterium inżynierskiego — słowo `eligible` należy do słownika karty A.1, stąd wpis.",
@@ -486,59 +430,10 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.equipment_checks.cable_thermal_aging:CableThermalAgingResult.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A9 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "A9 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.equipment_checks.ct_burden_saturation:CtBurdenResult.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A7 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A7"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.equipment_checks.ct_burden_saturation:CtBurdenResult.status_nasycenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A7 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A7"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.equipment_checks.ct_burden_saturation:CtBurdenResult.status_obciazenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A7 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A7"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "network_model.solvers.equipment_checks.transformer_losses:TransformerLossesResult.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A10 opisuje ten plik, nie ten symbol.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Stan rachunku strat transformatora (PASS = rachunek wykonany, UNAVAILABLE = brak danych katalogowych) — brak kryterium i limitu, więc to enum wykonania rachunku, nie werdykt. Karta WERDYKT-MIGRACJA-190.",
    "wiersz_inwentarza": "A10 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.equipment_checks.vt_burden_voltage_drop:VtBurdenResult.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A8 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A8"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.equipment_checks.vt_burden_voltage_drop:VtBurdenResult.status_obciazenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A8 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A8"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.equipment_checks.vt_burden_voltage_drop:VtBurdenResult.status_spadku",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A8 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A8"
   },
   {
    "sprawdzenie": "1_backend",
@@ -612,34 +507,6 @@
   },
   {
    "sprawdzenie": "2_http",
-   "tozsamosc": "openapi:CableAgingResponse.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Otypowanie pól statusu `api/equipment_checks.py` jako `StatusSprawdzenia` (karta AB-1a Pakiet E2) odsłoniło werdykt PASS/FAIL/UNAVAILABLE w kontrakcie HTTP — ta sama powierzchnia co wpisy 1_backend inwentarza C34 („PASS = policzono” w stratach transformatora); migracja fala WW-3, plan AB §8.",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "2_http",
-   "tozsamosc": "openapi:CtBurdenResponse.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Otypowanie pól statusu `api/equipment_checks.py` jako `StatusSprawdzenia` (karta AB-1a Pakiet E2) odsłoniło werdykt PASS/FAIL/UNAVAILABLE w kontrakcie HTTP — ta sama powierzchnia co wpisy 1_backend inwentarza C34 („PASS = policzono” w stratach transformatora); migracja fala WW-3, plan AB §8.",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "2_http",
-   "tozsamosc": "openapi:CtBurdenResponse.status_nasycenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Otypowanie pól statusu `api/equipment_checks.py` jako `StatusSprawdzenia` (karta AB-1a Pakiet E2) odsłoniło werdykt PASS/FAIL/UNAVAILABLE w kontrakcie HTTP — ta sama powierzchnia co wpisy 1_backend inwentarza C34 („PASS = policzono” w stratach transformatora); migracja fala WW-3, plan AB §8.",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "2_http",
-   "tozsamosc": "openapi:CtBurdenResponse.status_obciazenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Otypowanie pól statusu `api/equipment_checks.py` jako `StatusSprawdzenia` (karta AB-1a Pakiet E2) odsłoniło werdykt PASS/FAIL/UNAVAILABLE w kontrakcie HTTP — ta sama powierzchnia co wpisy 1_backend inwentarza C34 („PASS = policzono” w stratach transformatora); migracja fala WW-3, plan AB §8.",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "2_http",
    "tozsamosc": "openapi:NcRfgPtpireeTestResult.verdict",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Ta sama wartość co `NcRfgPtpireeTestResult.verdict` solvera w kontrakcie HTTP V2: schemat niesie obok `ocena` (`OcenaKryterium` z `WyjasnienieWerdyktu`), a enum jest wyprowadzany jedną funkcją `werdykt_maszynowy(ocena)` (odbiór Pakietu C 2026-09-23).",
@@ -655,29 +522,8 @@
   {
    "sprawdzenie": "2_http",
    "tozsamosc": "openapi:TransformerLossesResponse.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Otypowanie pól statusu `api/equipment_checks.py` jako `StatusSprawdzenia` (karta AB-1a Pakiet E2) odsłoniło werdykt PASS/FAIL/UNAVAILABLE w kontrakcie HTTP — ta sama powierzchnia co wpisy 1_backend inwentarza C34 („PASS = policzono” w stratach transformatora); migracja fala WW-3, plan AB §8.",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "2_http",
-   "tozsamosc": "openapi:VtBurdenResponse.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Otypowanie pól statusu `api/equipment_checks.py` jako `StatusSprawdzenia` (karta AB-1a Pakiet E2) odsłoniło werdykt PASS/FAIL/UNAVAILABLE w kontrakcie HTTP — ta sama powierzchnia co wpisy 1_backend inwentarza C34 („PASS = policzono” w stratach transformatora); migracja fala WW-3, plan AB §8.",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "2_http",
-   "tozsamosc": "openapi:VtBurdenResponse.status_obciazenia",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Otypowanie pól statusu `api/equipment_checks.py` jako `StatusSprawdzenia` (karta AB-1a Pakiet E2) odsłoniło werdykt PASS/FAIL/UNAVAILABLE w kontrakcie HTTP — ta sama powierzchnia co wpisy 1_backend inwentarza C34 („PASS = policzono” w stratach transformatora); migracja fala WW-3, plan AB §8.",
-   "wiersz_inwentarza": "C34"
-  },
-  {
-   "sprawdzenie": "2_http",
-   "tozsamosc": "openapi:VtBurdenResponse.status_spadku",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Otypowanie pól statusu `api/equipment_checks.py` jako `StatusSprawdzenia` (karta AB-1a Pakiet E2) odsłoniło werdykt PASS/FAIL/UNAVAILABLE w kontrakcie HTTP — ta sama powierzchnia co wpisy 1_backend inwentarza C34 („PASS = policzono” w stratach transformatora); migracja fala WW-3, plan AB §8.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Migawka OpenAPI pola stanu rachunku strat transformatora — enum wykonania rachunku bez kryterium (patrz api.equipment_checks:TransformerLossesResponse.status). Karta WERDYKT-MIGRACJA-190.",
    "wiersz_inwentarza": "C34"
   },
   {
@@ -1200,13 +1046,6 @@
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "frontend/src/ui2/kryteria/strings.ts:KRYTERIA_STRINGS.werdyktPass",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D61 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D61"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
    "tozsamosc": "frontend/src/ui2/oze/kompensacja/strings.ts:KOMPENSACJA_STRINGS.werdyktNieSpelnia",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Etykiety „spełnia / nie spełnia” doboru kompensacji w interfejsie (bool `spelnia_*` z backendu → tekst) — inwentarz C20/D18, fala WW-4, plan AB §8.",
@@ -1508,20 +1347,6 @@
   },
   {
    "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/network-build/station-der/DoborPrzekladnikowSekcja.tsx:klasaWerdyktu",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E41 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E41"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui/network-build/station-der/DoborPrzekladnikowSekcja.tsx:werdyktPl",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E41 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "E41"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
    "tozsamosc": "frontend/src/ui/sld/v3/canvas/overlay.ts:statusNakladkiZRekordu",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Karta W5-E-TTIT (2026-10-15): status maszynowy rekordu W werdyktu TT/IT → wewnętrzny 3-stanowy styl plakietki nakładki SWZ na rysunku nN (`SwzVerdictStatus`: kolor i glif, wspólny z plakietkami TN). Żaden tekst dla człowieka nie pochodzi z tej mapy: przyczyna plakietki to `wyjasnienie.zdanie_pl` rekordu, a ocenę z etykietą backendu pokazuje karta obwodu (`EtykietaWerdyktu`). Każdy status poza SPELNIA/NIE_SPELNIA daje styl nierozstrzygalny — nigdy „spełnia” bez podstawy.",
@@ -1561,13 +1386,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D64 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "D64"
-  },
-  {
-   "sprawdzenie": "6c_mapa_statusu",
-   "tozsamosc": "frontend/src/ui2/kryteria/strings.ts:etykietaWerdyktu",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D61 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "D61"
   },
   {
    "sprawdzenie": "6c_mapa_statusu",

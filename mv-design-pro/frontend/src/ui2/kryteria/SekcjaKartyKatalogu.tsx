@@ -28,7 +28,8 @@ import {
   pobierzRejestrGotowosci,
   type WpisRejestruGotowosci,
 } from './rejestrGotowosci';
-import { KRYTERIA_STRINGS as T, etykietaWerdyktu, fmtLiczba } from './strings';
+import { KRYTERIA_STRINGS as T, fmtLiczba } from './strings';
+import { KartaWerdyktu } from '../wyniki/wzorzec/KartaWerdyktu';
 
 function Wiersz({ etykieta, wartosc }: { etykieta: string; wartosc: string }): JSX.Element {
   return (
@@ -139,7 +140,9 @@ export function SekcjaStarzeniaKabla({
             wartosc={fmtLiczba(wynik.wspolczynnik_starzenia, '')}
           />
           <Wiersz etykieta={T.kabelZywotnosc} wartosc={fmtLiczba(wynik.wzgledna_zywotnosc, '')} />
-          <Wiersz etykieta={T.kabelWerdykt} wartosc={etykietaWerdyktu(wynik.status)} />
+          <div data-testid="mvd-kryteria-starzenie-ocena">
+            <KartaWerdyktu rekord={wynik.ocena} />
+          </div>
           {braki.length > 0 ? (
             <ul className="mvd-kryteria__braki" data-testid="mvd-kryteria-starzenie-braki">
               {braki.map((tekst) => (
@@ -247,7 +250,6 @@ export function SekcjaStratTransformatora({
             etykieta={T.trafoUdzialJalowych}
             wartosc={fmtLiczba(wynik.udzial_strat_jalowych, '')}
           />
-          <Wiersz etykieta={T.trafoWerdykt} wartosc={etykietaWerdyktu(wynik.status)} />
           {braki.length > 0 ? (
             <ul className="mvd-kryteria__braki" data-testid="mvd-kryteria-straty-braki">
               {braki.map((tekst) => (

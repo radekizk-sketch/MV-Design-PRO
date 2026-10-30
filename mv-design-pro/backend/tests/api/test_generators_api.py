@@ -1282,19 +1282,34 @@ def test_dobor_przekladnikow_jest_RACHUNKIEM_a_nie_nazwa_katalogowa(app_client) 
         assert wynik["kryteria"], f"{gniazdo}: dobor bez ani jednego kryterium"
         for kryterium in wynik["kryteria"]:
             assert kryterium["podstawa_pl"].strip(), kryterium["kod"]
-            assert kryterium["werdykt"] in (
-                "spelnione",
-                "niespelnione",
-                "informacja",
-                "brak_danych",
-            )
+            # Status kryterium jest WYLACZNIE rekordem werdyktu wyjasnialnego (kontrakt
+            # KONTRAKT_WERDYKTU_WYJASNIALNEGO) — surowego pola statusu juz nie ma.
+            assert "werdykt" not in kryterium, kryterium["kod"]
+            ocena = kryterium["ocena"]
+            assert ocena["status_maszynowy"] in (
+                "SPELNIA",
+                "NIE_SPELNIA",
+                "NIEJEDNOZNACZNY",
+                "NIE_OCENIONO",
+                "BRAK_DOWODU",
+                "BRAK_PODSTAWY",
+            ), kryterium["kod"]
+            assert ocena["wyjasnienie"]["zdanie_pl"].strip(), kryterium["kod"]
+            assert ocena["etykieta"]["etykieta_pl"].strip(), kryterium["kod"]
+        # Pozycje informacyjne sa osobna lista BEZ statusu (nie sa kryterium oceny).
+        for informacja in wynik["informacje"]:
+            assert "ocena" not in informacja and "werdykt" not in informacja
 
     # Bez zakonczonego przebiegu zwarciowego Ik'' i ip NIE ISTNIEJA — kryteria
     # zwarciowe musza to nazwac, a dobor NIE MOZE byc potwierdzony.
     assert dane["wejscia"]["ik_ka"] is None
     assert dane["wejscia"]["run_ref_zwarciowy"] is None
     prad = dane["przekladnik_pradowy"]["wynik"]
-    bez_danych = {k["kod"] for k in prad["kryteria"] if k["werdykt"] == "brak_danych"}
+    bez_danych = {
+        k["kod"]
+        for k in prad["kryteria"]
+        if k["ocena"]["status_maszynowy"] not in ("SPELNIA", "NIE_SPELNIA")
+    }
     assert {"ct.alf", "ct.wytrzymalosc_cieplna", "ct.wytrzymalosc_dynamiczna"} <= bez_danych
     assert prad["dobor_potwierdzony"] is False
 
@@ -1302,7 +1317,7 @@ def test_dobor_przekladnikow_jest_RACHUNKIEM_a_nie_nazwa_katalogowa(app_client) 
     # wartosc bez pochodzenia bylaby nieodroznialna od zmyslonej.
     assert dane["wejscia"]["zrodlo_wejsc_urzadzenia"]
     prad_wtorny = next(k for k in prad["kryteria"] if k["kod"] == "ct.prad_wtorny")
-    assert prad_wtorny["werdykt"] == "spelnione"
+    assert prad_wtorny["ocena"]["status_maszynowy"] == "SPELNIA"
     assert "szereg_preferowany" in (prad_wtorny["komentarz_pl"] or "")
 
 
@@ -1388,7 +1403,9 @@ def test_dobor_ct_uzywa_obwodu_wtornego_z_pomiaru_modelu(app_client) -> None:
     ct_alf = next(
         k for k in dane["przekladnik_pradowy"]["wynik"]["kryteria"] if k["kod"] == "ct.alf"
     )
-    assert ct_alf["werdykt"] == "brak_danych"
+    # Brak danych nigdy nie jest rozstrzygnięciem — rekord nazywa, czego brakuje.
+    assert ct_alf["ocena"]["status_maszynowy"] not in ("SPELNIA", "NIE_SPELNIA")
+    assert ct_alf["ocena"]["wyjasnienie"]["czego_brakuje"]
     assert "ct.required_alf_missing" in ct_alf["kody_gotowosci"]
     # Bilans wtorny SAM w sobie JEST policzony (obwod przyszedl z modelu, nie
     # z powietrza) — dowod w sladzie WHITE BOX, nie w liczbie zapisanej na sztywno.
@@ -1456,7 +1473,9 @@ def test_dobor_ct_bez_pomiaru_w_polu_zostaje_brak_danych_obwodu(app_client) -> N
     ct_alf = next(
         k for k in dane["przekladnik_pradowy"]["wynik"]["kryteria"] if k["kod"] == "ct.alf"
     )
-    assert ct_alf["werdykt"] == "brak_danych"
+    # Brak danych nigdy nie jest rozstrzygnięciem — rekord nazywa, czego brakuje.
+    assert ct_alf["ocena"]["status_maszynowy"] not in ("SPELNIA", "NIE_SPELNIA")
+    assert ct_alf["ocena"]["wyjasnienie"]["czego_brakuje"]
     assert "ct.secondary_circuit_missing" in ct_alf["kody_gotowosci"]
     assert ct_alf["dostepne"] is None
 

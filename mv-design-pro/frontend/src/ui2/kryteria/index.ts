@@ -5,7 +5,7 @@ export {
   pobierzKrzywePrzekaznika,
   type KrzywePrzekaznika,
 } from './SekcjaKrzywychPrzekaznika';
-export { KRYTERIA_STRINGS, etykietaWariantuAlf, etykietaWerdyktu, fmtLiczba } from './strings';
+export { KRYTERIA_STRINGS, etykietaWariantuAlf, fmtLiczba } from './strings';
 export {
   komunikatyKodow,
   pobierzRejestrGotowosci,

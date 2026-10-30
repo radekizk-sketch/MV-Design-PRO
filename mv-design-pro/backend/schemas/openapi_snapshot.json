@@ -1453,6 +1453,9 @@
       "title": "Formula Ref",
       "type": "string"
      },
+     "ocena": {
+      "$ref": "#/components/schemas/OcenaKryterium"
+     },
      "pozycja_katalogowa": {
       "title": "Pozycja Katalogowa",
       "type": "string"
@@ -1524,6 +1527,9 @@
       ],
       "title": "Wspolczynnik Starzenia"
      },
+     "wyjasnienie": {
+      "$ref": "#/components/schemas/WyjasnienieWerdyktu"
+     },
      "wzgledna_zywotnosc": {
       "anyOf": [
        {
@@ -1538,6 +1544,8 @@
     },
     "required": [
      "status",
+     "ocena",
+     "wyjasnienie",
      "formula_ref",
      "pozycja_katalogowa"
     ],
@@ -3093,6 +3101,9 @@
       ],
       "title": "Moc Znamionowa Va"
      },
+     "ocena": {
+      "$ref": "#/components/schemas/WynikWymagania"
+     },
      "pozycja_katalogowa": {
       "title": "Pozycja Katalogowa",
       "type": "string"
@@ -3171,6 +3182,9 @@
       "title": "White Box Trace",
       "type": "array"
      },
+     "wyjasnienie": {
+      "$ref": "#/components/schemas/WyjasnienieWerdyktu"
+     },
      "wykorzystanie_mocy": {
       "anyOf": [
        {
@@ -3198,6 +3212,8 @@
      "status",
      "status_obciazenia",
      "status_nasycenia",
+     "ocena",
+     "wyjasnienie",
      "formula_ref",
      "pozycja_katalogowa"
     ],
@@ -16224,6 +16240,9 @@
       ],
       "title": "Napiecie Wtorne V"
      },
+     "ocena": {
+      "$ref": "#/components/schemas/WynikWymagania"
+     },
      "pozycja_katalogowa": {
       "title": "Pozycja Katalogowa",
       "type": "string"
@@ -16291,6 +16310,9 @@
       "title": "White Box Trace",
       "type": "array"
      },
+     "wyjasnienie": {
+      "$ref": "#/components/schemas/WyjasnienieWerdyktu"
+     },
      "wykorzystanie_mocy": {
       "anyOf": [
        {
@@ -16307,6 +16329,8 @@
      "status",
      "status_obciazenia",
      "status_spadku",
+     "ocena",
+     "wyjasnienie",
      "formula_ref",
      "pozycja_katalogowa"
     ],

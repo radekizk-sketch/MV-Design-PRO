@@ -21,9 +21,15 @@ from __future__ import annotations
 
 import pytest
 from api.main import app
-from domain.dobor_przekladnika import CtDeviceBurden, WymaganiaToru, sprawdz_dobor_ct
+from domain.dobor_przekladnika import (
+    WARIANT_ALF_PL,
+    CtDeviceBurden,
+    WymaganiaToru,
+    sprawdz_dobor_ct,
+)
 from fastapi.testclient import TestClient
 from network_model.catalog.repository import get_default_mv_catalog
+from werdykt import format_liczba
 
 #: Realny wpis katalogu po rozbudowie z V12K-254 (CT 200/5 A kl. 5P10 10 VA).
 CT_200_5P10 = {
@@ -67,6 +73,13 @@ def kryterium(wynik, kod: str):
     return next(k for k in wynik.kryteria if k.kod == kod)
 
 
+def informacja(wynik, kod: str):
+    """Pozycja informacyjna (bez statusu) — karta WERDYKT-MIGRACJA-190: praktyka projektowa
+    i warunek konieczny nie są kryteriami oceny, więc nie niosą słowa werdyktu."""
+    assert all(k.kod != kod for k in wynik.kryteria), f"{kod} nie może być kryterium"
+    return next(i for i in wynik.informacje if i.kod == kod)
+
+
 def tor_kompletny(**nadpisania) -> WymaganiaToru:
     baza = {
         "prad_roboczy_a": 154.0,  # 4 MVA / (√3 · 15 kV)
@@ -93,7 +106,7 @@ class TestDoborKompletny:
         assert wynik.bez_danych == []
         # `ct.alf_katalogowy` jest INFORMACJA, wiec nie blokuje potwierdzenia —
         # ale MUSI byc obecne (karta W3-B: dwa wpisy, nie jeden).
-        assert kryterium(wynik, "ct.alf_katalogowy").werdykt == "informacja"
+        assert informacja(wynik, "ct.alf_katalogowy").dostepne
         assert kryterium(wynik, "ct.alf").werdykt == "spelnione"
 
     def test_kazde_kryterium_ma_JAWNY_RACHUNEK_i_podstawe(self) -> None:
@@ -101,7 +114,7 @@ class TestDoborKompletny:
         wynik = sprawdz_dobor_ct(CT_200_5P10, tor_kompletny())
         for k in wynik.kryteria:
             assert k.podstawa_pl.strip(), f"{k.kod} bez podstawy"
-            if k.werdykt in ("spelnione", "niespelnione", "informacja"):
+            if k.werdykt in ("spelnione", "niespelnione"):
                 assert k.wymagane, f"{k.kod} bez wartosci wymaganej"
                 assert k.dostepne, f"{k.kod} bez wartosci dostepnej"
 
@@ -112,9 +125,8 @@ class TestKryteriaZwarciowe:
         # KONIECZNY nie jest spelniony, ale kryterium NIE orzeka nasycenia samo:
         # to defekt, ktory karta W3-B zamyka (dawne "niespelnione" bez podstawy).
         wynik = sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(ik_ka=6.0))
-        k = kryterium(wynik, "ct.alf_katalogowy")
-        assert k.werdykt == "informacja"
-        assert "ALF ≥ 30.0" in (k.wymagane or "")
+        k = informacja(wynik, "ct.alf_katalogowy")
+        assert "ALF ≥ 30 " in (k.wymagane or "")
         assert "ALF 10" in (k.dostepne or "")
         assert "ct.alf" in (k.komentarz_pl or "")
 
@@ -124,9 +136,11 @@ class TestKryteriaZwarciowe:
         wynik = sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(ik_ka=6.0))
         k = kryterium(wynik, "ct.alf")
         assert k.werdykt == "niespelnione"
-        assert "ALF_eff ≥ 30.0" in (k.wymagane or "")
+        assert "ALF_eff ≥ 30" in (k.wymagane or "")
         assert "ALF_eff" in (k.dostepne or "")
-        assert "UPROSZCZONY_BEZ_RCT" in (k.dostepne or "")
+        # Wariant opisany po polsku — kod wariantu solvera nie jest tekstem dla inżyniera.
+        assert WARIANT_ALF_PL["UPROSZCZONY_BEZ_RCT"] in (k.dostepne or "")
+        assert "UPROSZCZONY_BEZ_RCT" not in (k.dostepne or "")
         assert k.slad, "ct.alf powinno niesc slad WHITE BOX z jadra"
 
     def test_wytrzymalosc_cieplna_liczona_z_czasu_zwarcia(self) -> None:
@@ -146,7 +160,7 @@ class TestKryteriaZwarciowe:
             "ct.wytrzymalosc_cieplna",
         )
         assert k.werdykt == "niespelnione"
-        assert "25.98" in (k.wymagane or "")
+        assert "25,98" in (k.wymagane or "")
 
     def test_wytrzymalosc_dynamiczna_wobec_pradu_szczytowego(self) -> None:
         assert (
@@ -179,8 +193,8 @@ class TestKryteriaToru:
         wynik = sprawdz_dobor_ct(
             {**CT_200_5P10, "ratio_primary_a": 2000.0}, tor_kompletny(prad_roboczy_a=38.5)
         )
-        k = kryterium(wynik, "ct.wykorzystanie_przekladni")
-        assert k.werdykt == "informacja"
+        k = informacja(wynik, "ct.wykorzystanie_przekladni")
+        assert k.dostepne == "1,925 %"
         # Informacja NIE psuje werdyktu doboru — inaczej ekran krzyczalby o niczym.
         assert wynik.niespelnione == []
 
@@ -215,16 +229,22 @@ class TestBrakDanychJestTrzecimStanem:
     def test_brak_pradu_zwarciowego_NIE_udaje_zgodnosci(self) -> None:
         wynik = sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(ik_ka=None, ip_ka=None))
         for kod in (
-            "ct.alf_katalogowy",
             "ct.alf",
             "ct.wytrzymalosc_cieplna",
             "ct.wytrzymalosc_dynamiczna",
         ):
             assert kryterium(wynik, kod).werdykt == "brak_danych", kod
+            # Brak danych ≠ spełnia: rekord nie jest SPELNIA i nazywa brak.
+            assert kryterium(wynik, kod).ocena.status_maszynowy != "SPELNIA", kod
+            assert kryterium(wynik, kod).wyjasnienie.czego_brakuje, kod
+        # Warunek konieczny ALF bez prądu zwarciowego nazywa brak w informacji.
+        assert "Brakuje prądu zwarciowego" in (
+            informacja(wynik, "ct.alf_katalogowy").komentarz_pl or ""
+        )
         # Dobor NIE jest potwierdzony, mimo ze nic nie jest „niespelnione".
         assert wynik.dobor_potwierdzony is False
         assert wynik.niespelnione == []
-        assert len(wynik.bez_danych) == 4
+        assert len(wynik.bez_danych) == 3
 
     def test_brak_obciazenia_obwodu_nazywa_DANA_PROJEKTOWA_do_podania(self) -> None:
         k = kryterium(
@@ -279,7 +299,10 @@ class TestNasycenieRdzeniaIloczynCech:
         # ale wariant MUSI byc nazwany UPROSZCZONY (wynik optymistyczny).
         k = kryterium(sprawdz_dobor_ct(CT_200_5P10, tor_kompletny()), "ct.alf")
         assert k.werdykt == "spelnione"
-        assert "UPROSZCZONY_BEZ_RCT" in (k.dostepne or "")
+        assert WARIANT_ALF_PL["UPROSZCZONY_BEZ_RCT"] in (k.dostepne or "")
+        # Wartość robocza R_ct = 0 (ESTIMATED) — spełnienie z dowodem NIEPEŁNYM.
+        assert k.ocena.kompletnosc_dowodu == "NIEPELNY"
+        assert [d.jakosc.value for d in k.ocena.dowod.status_danych.dane_przyjete] == ["ESTIMATED"]
         assert "ct.winding_resistance_missing" in k.kody_gotowosci
 
     def test_obwod_zapisany_rct_w_katalogu_daje_wariant_pelny(self) -> None:
@@ -287,7 +310,7 @@ class TestNasycenieRdzeniaIloczynCech:
         ct_z_rct = {**CT_200_5P10, "rct_ohm": 0.3}
         k = kryterium(sprawdz_dobor_ct(ct_z_rct, tor_kompletny()), "ct.alf")
         assert k.werdykt == "spelnione"
-        assert "PELNY_IEC61869_2" in (k.dostepne or "")
+        assert WARIANT_ALF_PL["PELNY_IEC61869_2"] in (k.dostepne or "")
         assert "ct.winding_resistance_missing" not in k.kody_gotowosci
 
     def test_alf_z_klasy_gdy_pole_katalogu_puste(self) -> None:
@@ -295,8 +318,7 @@ class TestNasycenieRdzeniaIloczynCech:
         # accuracy_class="5P10" -> jadro wyprowadza 10). Ik'': znane.
         bez_alf_pola = {**CT_200_5P10, "accuracy_limit_factor": None}
         wynik = sprawdz_dobor_ct(bez_alf_pola, tor_kompletny())
-        katalogowe = kryterium(wynik, "ct.alf_katalogowy")
-        assert katalogowe.werdykt == "informacja"
+        katalogowe = informacja(wynik, "ct.alf_katalogowy")
         assert "wyprowadzony z klasy" in (katalogowe.dostepne or "")
         assert kryterium(wynik, "ct.alf").werdykt == "spelnione"
 
@@ -305,7 +327,7 @@ class TestNasycenieRdzeniaIloczynCech:
         # Ik'': znane.
         bez_alf = {**CT_100_POMIAROWY}
         wynik = sprawdz_dobor_ct(bez_alf, tor_kompletny(prady_wejsc_przekaznika_a=(1.0,)))
-        assert kryterium(wynik, "ct.alf_katalogowy").werdykt == "brak_danych"
+        assert informacja(wynik, "ct.alf_katalogowy").dostepne is None
         k = kryterium(wynik, "ct.alf")
         assert k.werdykt == "brak_danych"
         assert "ct.accuracy_limit_missing" in k.kody_gotowosci
@@ -313,7 +335,7 @@ class TestNasycenieRdzeniaIloczynCech:
     def test_ik_brak_daje_brak_danych_na_obu_kryteriach(self) -> None:
         # obwod: zapisany. Rct: brak. ALF: z pola. Ik'': BRAK.
         wynik = sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(ik_ka=None))
-        assert kryterium(wynik, "ct.alf_katalogowy").werdykt == "brak_danych"
+        assert "Brakuje" in (informacja(wynik, "ct.alf_katalogowy").komentarz_pl or "")
         k = kryterium(wynik, "ct.alf")
         assert k.werdykt == "brak_danych"
         assert "ct.required_alf_missing" in k.kody_gotowosci
@@ -374,7 +396,92 @@ class TestParytetKtWynikJadraIEndpointuHttp:
         wynik = sprawdz_dobor_ct(pozycja, tor)
         k = kryterium(wynik, "ct.alf")
 
-        assert z_http["wariant_alf"] in (k.dostepne or "")
-        assert f"{z_http['alf_efektywny']:.1f}" in (k.dostepne or "")
+        assert WARIANT_ALF_PL[z_http["wariant_alf"]] in (k.dostepne or "")
+        assert format_liczba(z_http["alf_efektywny"]) in (k.dostepne or "")
         mapa_status = {"PASS": "spelnione", "FAIL": "niespelnione", "UNAVAILABLE": "brak_danych"}
         assert k.werdykt == mapa_status[z_http["status_nasycenia"]]
+        # Ten sam rekord kryterium nasycenia na ekranie bilansu i w doborze (jedno źródło).
+        assert k.ocena.model_dump(mode="json")["status_maszynowy"] == (
+            z_http["ocena"]["oceny_skladowe"][1]["status_maszynowy"]
+        )
+
+
+# ---------------------------------------------------------------------------
+# Werdykt wyjaśnialny — iloczyn cech (karta WERDYKT-MIGRACJA-190)
+# ---------------------------------------------------------------------------
+
+_SUROWE_TOKENY = (
+    "SPELNIA",
+    "NIE_SPELNIA",
+    "NIE_OCENIONO",
+    "BRAK_DOWODU",
+    "BRAK_PODSTAWY",
+    "NIEPELNY",
+    "ESTIMATED",
+    "UPROSZCZONY_BEZ_RCT",
+    "PELNY_Z_RCT",
+    "None",
+    "True",
+    "False",
+)
+
+#: Sceny iloczynu: komplet danych (spełnia), przekładnia za mała (nie spełnia), brak prądu
+#: zwarciowego (brak danych), brak R_ct w katalogu (wartość robocza ESTIMATED w ``ct.alf``).
+_SCENY_DOBORU = [
+    ("spelnia", CT_200_5P10, {}),
+    ("nie_spelnia", CT_200_5P10, {"prad_roboczy_a": 420.0}),
+    ("brak_danych", CT_200_5P10, {"ik_ka": None, "ip_ka": None}),
+    ("wartosc_robocza", CT_200_5P10, {}),
+]
+
+
+def _teksty_rekordu(rekord: dict) -> list[str]:
+    w = rekord["wyjasnienie"]
+    return [
+        w["zdanie_pl"],
+        w.get("przyczyna_pl") or "",
+        *w.get("czego_brakuje", ()),
+        *w.get("zastrzezenia", ()),
+        rekord["etykieta"]["etykieta_pl"],
+    ]
+
+
+@pytest.mark.parametrize(
+    ("opis", "przekladnik", "nadpisania"), _SCENY_DOBORU, ids=[s[0] for s in _SCENY_DOBORU]
+)
+def test_kryteria_doboru_niosa_rekord_iloczyn(opis, przekladnik, nadpisania) -> None:
+    import re
+
+    wynik = sprawdz_dobor_ct(przekladnik, tor_kompletny(**nadpisania))
+    statusy = {k.kod: k.ocena.status_maszynowy for k in wynik.kryteria}
+    for k in wynik.kryteria:
+        slownik = k.to_dict()
+        # Surowego pola statusu nie ma; status jest wyłącznie w rekordzie.
+        assert "werdykt" not in slownik
+        rekord = slownik["ocena"]
+        assert slownik["wyjasnienie"] == rekord["wyjasnienie"]
+        # Para (werdykt zastany, status rekordu) — jedno źródło rozstrzygnięcia.
+        oczekiwany = {"SPELNIA": "spelnione", "NIE_SPELNIA": "niespelnione"}.get(
+            rekord["status_maszynowy"], "brak_danych"
+        )
+        assert k.werdykt == oczekiwany, k.kod
+        if rekord["status_maszynowy"] not in ("SPELNIA", "NIE_SPELNIA"):
+            assert rekord["wyjasnienie"]["czego_brakuje"], k.kod
+        for tekst in _teksty_rekordu(rekord):
+            for surowy in _SUROWE_TOKENY:
+                assert not re.search(rf"\b{surowy}\b", tekst), (k.kod, surowy, tekst)
+            assert not re.search(r"\d\.\d+\s?(A|kA|VA|s)\b", tekst), (k.kod, tekst)
+    if opis == "spelnia":
+        assert set(statusy.values()) == {"SPELNIA"}
+        assert wynik.dobor_potwierdzony is True
+    elif opis == "nie_spelnia":
+        assert statusy["ct.przekladnia"] == "NIE_SPELNIA"
+        assert wynik.dobor_potwierdzony is False
+    elif opis == "brak_danych":
+        assert statusy["ct.wytrzymalosc_dynamiczna"] not in ("SPELNIA", "NIE_SPELNIA")
+        assert wynik.dobor_potwierdzony is False
+    else:
+        alf = kryterium(wynik, "ct.alf").ocena.model_dump(mode="json")
+        przyjete = alf["dowod"]["status_danych"]["dane_przyjete"]
+        assert any(d["jakosc"] == "ESTIMATED" for d in przyjete)
+        assert alf["kompletnosc_dowodu"] == "NIEPELNY"

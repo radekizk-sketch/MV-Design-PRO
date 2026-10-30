@@ -12,9 +12,9 @@ pol ``formula_latex``/``substitution_latex``, jako LaTeX GOLY (bez ``$$``); pole
 ``scripts/slad_proza_bez_latex_guard.py`` (predykat) i
 ``tests/ci/test_slad_proza_bez_latex.py`` (przebieg producentow).
 
-Z tego samego powodu mieszka tu REGULA SKLADANIA WERDYKTOW (`werdykt_zbiorczy`)
-obok stalych `STATUS_*`: kryteria wieloczlonowe (CT, VT) skladaja werdykt zbiorczy
-jedna funkcja, a nie wlasnymi kopiami warunku.
+Stale ``STATUS_*`` to KODY ZASTANE kontraktu HTTP kryteriow wyposazenia. Nie sa
+rozstrzygnieciem: rozstrzyga rekord werdyktu wyjasnialnego (``oceny.py``), a kod jest
+jego projekcja (``oceny.kod_statusu``) — bez drugiej kopii warunku i reguly skladania.
 """
 
 from __future__ import annotations
@@ -22,37 +22,11 @@ from __future__ import annotations
 import math
 from typing import Any
 
-#: Werdykty kryteriow. ``NIEDOSTEPNY`` znaczy BRAK PODSTAWY do oceny (patrz kody
-#: gotowosci wyniku) i NIE WOLNO go czytac jako spelnienia kryterium.
+#: Kody zastane kryteriow (projekcja rekordu). ``UNAVAILABLE`` znaczy BRAK PODSTAWY do oceny
+#: (patrz kody gotowosci wyniku) i NIE WOLNO go czytac jako spelnienia kryterium.
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
 STATUS_UNAVAILABLE = "UNAVAILABLE"
-
-
-def werdykt_zbiorczy(*czastkowe: str) -> str:
-    """Zloz werdykty czastkowe jednego kryterium w werdykt zbiorczy.
-
-    PORZADEK: ``FAIL`` > ``NIEDOSTEPNY`` > ``PASS``.
-
-    FAIL wygrywa z NIEDOSTEPNYM, bo udowodnione naruszenie nie staje sie
-    „nierozstrzygnietym" przez to, ze innej wielkosci zabraklo. NIEDOSTEPNY
-    wygrywa z PASS, bo zielony werdykt wydany na POLICZONEJ POLOWIE kryterium
-    przepuszcza dobor, ktorego nikt nie sprawdzil — a projektant czyta go tak
-    samo jak spelnienie calosci (bilans CT bez wymaganego ALF, bilans VT bez
-    rozpoznanej kategorii uzwojenia).
-
-    Funkcja jest WSPOLNA dla calej rodziny: kazde kryterium o werdykcie
-    wieloczlonowym sklada go tutaj, zeby dwa moduly nie rozjechaly sie w regule.
-    """
-    if not czastkowe:
-        # Kryterium bez ani jednego werdyktu czastkowego nie ma czego skladac.
-        # Ciche PASS byloby dokladnie tym falszem, ktoremu ta funkcja zapobiega.
-        raise ValueError("werdykt zbiorczy wymaga co najmniej jednego werdyktu czastkowego")
-    if STATUS_FAIL in czastkowe:
-        return STATUS_FAIL
-    if STATUS_UNAVAILABLE in czastkowe:
-        return STATUS_UNAVAILABLE
-    return STATUS_PASS
 
 
 def wartosc(value: float | None, unit: str, label: str) -> dict[str, Any]:
