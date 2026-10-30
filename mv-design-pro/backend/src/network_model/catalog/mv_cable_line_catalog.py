@@ -365,19 +365,34 @@ NOTA_KABLI_POLSKICH_DEKLAROWANYCH = (
 
 
 def _cable_records_with_quality() -> list[dict[str, Any]]:
-    operator_records = [
+    # Historyczne 4 identyfikatory sa zachowane dla istniejacych projektow.
+    # Zadnego z ich oznaczen nie ma w aktualnej tab. 3 ENEA 03.2026.
+    # Nie wolno ich prezentowac jako aktualnego standardu ENEA.
+    legacy_operator_records = [
         _with_catalog_quality(
             _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable"),
-            source_reference=ENEA_OPERATOR_CABLE_SOURCE_REFERENCE,
-            verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
-            catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
+            source_reference=ENEA_KABLE_SN_2026_SOURCE_REFERENCE,
+            verification_status=CatalogVerificationStatus.REFERENCYJNY.value,
+            catalog_status=CatalogStatus.REFERENCYJNY_V1.value,
             verification_note=(
-                "Pozycja priorytetowa OSD dla projektanta. Nie oznacza pełnej "
-                "oficjalnej weryfikacji ENEA bez dołączonego source_ref dokumentu operatora."
+                "Rekord historyczny zachowany dla starych projektów. Oznaczenie/przekrój "
+                "NIE występuje w aktualnej tabeli 3 standardu ENEA 03.2026. "
+                "Nie wybierać do nowej inwestycji ENEA; zamiast niego wybierz "
+                "zweryfikowany wariant XRUHAKXS1 70/25, 150/25 lub 240/25."
             ),
         )
         for record in CABLE_ENEA_OPERATOR_STANDARD_TYPES
     ]
+    for legacy in legacy_operator_records:
+        legacy["name"] = legacy["name"].replace(
+            "ENEA Operator standard - ", "Profil historyczny — "
+        )
+        legacy["params"].pop("manufacturer", None)
+        legacy["params"]["standard"] = "Profil historyczny (poza ENEA 03.2026 tab. 3)"
+    operator_records = [
+        _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable")
+        for record in CABLE_ENEA_2026_NKT_TYPES
+    ] + legacy_operator_records
     base_records = [
         _with_catalog_quality(
             _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable"),
@@ -1988,6 +2003,99 @@ CABLE_ENEA_OPERATOR_STANDARD_TYPES: list[dict[str, Any]] = [
         },
     },
 ]
+
+
+# Obowiazujacy od 01.07.2026 standard ENEA: tab. 3 dopuszcza kable
+# XUHAKXS1/XRUHAKXS1/XnUHAKXS1/XnRUHAKXS1 o zyle roboczej 70, 150, 240 mm2
+# i powrotnej 25 mm2, U0/U = 12/20 kV. Nie jest to katalog producenta!
+ENEA_KABLE_SN_2026_URL = (
+    "https://www.operator.enea.pl/media/4774/uslugi-dystrybucyjne/"
+    "elektroenergetyczne-linie-kablowe-sn-obowiazuje-od-01072026pdf.pdf"
+)
+NKT_XRUHAKXS1_KARTA_URL = (
+    "https://sklep.enexon.pl/amfile/file/download/file/708137/product/8814/"
+)
+ENEA_KABLE_SN_2026_SOURCE_REFERENCE = (
+    "ENEA Operator, Elektroenergetyczne linie kablowe SN, wer. 03.2026,"
+    " zatw. uchwałą 202/2026, obowiązuje 01.07.2026, pkt 4.2.2, tab. 3: "
+    + ENEA_KABLE_SN_2026_URL
+)
+NKT_XRUHAKXS1_2026_SOURCE_REFERENCE = (
+    ENEA_KABLE_SN_2026_SOURCE_REFERENCE
+    + " || NKT, XRUHAKXS1 12/20 kV, CTL00109 rev. 4,"
+    " s. 1-3 (dane wyrobu): " + NKT_XRUHAKXS1_KARTA_URL
+)
+
+
+def _kabel_nkt_zgodny_z_enea_2026(
+    *, przekroj: int, r20: float, pojemnosc_uf: float, indukcyjnosc_mh: float,
+    iz_ziemia_trojkat_a: float, ith_fazowy_ka: float,
+) -> dict[str, Any]:
+    """Wariant z tab. 3 ENEA i karty NKT; reaktancja X=2*pi*50*L (uklad trojkat)."""
+    import math
+
+    if przekroj not in (70, 150, 240):
+        raise ValueError("Przekrój nie występuje w tab. 3 ENEA 03.2026")
+    return {
+        "id": f"cable-enea-2026-nkt-xruhakxs1-{przekroj}-25",
+        "name": f"NKT XRUHAKXS1 1×{przekroj}/25 mm² 12/20 kV (ENEA 03.2026)",
+        "params": {
+            "manufacturer": "NKT",
+            "trade_name": f"XRUHAKXS1 1x{przekroj}/25",
+            "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "return_conductor_material": "CU",
+            "return_conductor_cross_section_mm2": 25.0,
+            "return_conductor_ith_1s_a": 5000.0,
+            "return_conductor_jth_1s_a_per_mm2": 200.0,
+            "cross_section_mm2": float(przekroj),
+            "number_of_cores": 1,
+            "r_ohm_per_km": r20,
+            "x_ohm_per_km": round(math.tau * 50.0 * indukcyjnosc_mh / 1000.0, 6),
+            "c_nf_per_km": pojemnosc_uf * 1000.0,
+            "rated_current_a": iz_ziemia_trojkat_a,
+            "ith_1s_a": ith_fazowy_ka * 1000.0,
+            "jth_1s_a_per_mm2": JTH_AL_XLPE,
+            "voltage_rating_kv": 20.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "standard": "ENEA Operator SN 03.2026, tab. 3; PN-HD 620 10-R",
+            "source_reference": NKT_XRUHAKXS1_2026_SOURCE_REFERENCE,
+            "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+            "catalog_status": "PRODUKCYJNY_V1",
+            "contract_version": CATALOG_CONTRACT_VERSION,
+            "verification_note": (
+                "R20/C/L/Ith/Iz z NKT CTL00109 rev. 4 (L w trójkąt, f=50 Hz). "
+                "Iz dotyczy gruntu 20°C, rezystywności 1,0 K m/W, "
+                "głębokości 0,7 m, obciążenia 0,7, kabli w trójkąt. "
+                "Ith żyły powrotnej 5 kA/1 s z tabeli NKT; "
+                "R0/X0 i rezystancja powrotna z założeń modelu, "
+                "nie z dokumentacji producenta. "
+                "Zgodność typ/przekrój z ENEA nie stanowi zatwierdzenia "
+                "całego projektu ani gwarancji obciążalności w innych warunkach."
+            ),
+        },
+    }
+
+
+CABLE_ENEA_2026_NKT_TYPES: list[dict[str, Any]] = [
+    _kabel_nkt_zgodny_z_enea_2026(
+        przekroj=70, r20=0.443, pojemnosc_uf=0.19,
+        indukcyjnosc_mh=0.42, iz_ziemia_trojkat_a=260,
+        ith_fazowy_ka=6.6,
+    ),
+    _kabel_nkt_zgodny_z_enea_2026(
+        przekroj=150, r20=0.206, pojemnosc_uf=0.25,
+        indukcyjnosc_mh=0.37, iz_ziemia_trojkat_a=398,
+        ith_fazowy_ka=14.2,
+    ),
+    _kabel_nkt_zgodny_z_enea_2026(
+        przekroj=240, r20=0.125, pojemnosc_uf=0.29,
+        indukcyjnosc_mh=0.35, iz_ziemia_trojkat_a=523,
+        ith_fazowy_ka=22.7,
+    ),
+]
+
 
 CABLE_INCOMPLETE_TYPES: list[dict[str, Any]] = [
     {
