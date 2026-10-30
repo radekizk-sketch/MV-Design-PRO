@@ -10,7 +10,7 @@ import math
 from network_model.catalog.lv_cable_nkt import get_all_nkt_lv_cable_types
 from network_model.catalog.lv_cable_nkt_pvc import get_all_nkt_yky_lv_cable_types
 from network_model.catalog.lv_cable_nkt_yaky import get_all_nkt_yaky_lv_cable_types
-from network_model.catalog.mv_cable_tfk_full import get_all_tfk_1220_cable_types, get_all_tfk_1830_cable_types
+from network_model.catalog.mv_cable_tfk_full import get_all_tfk_8715_cable_types, get_all_tfk_1220_cable_types, get_all_tfk_1830_cable_types
 from network_model.catalog.mv_cable_line_catalog import (
     CABLE_NKT_PELNY_ODBIORCA_TYPES,
     get_all_cable_types,
