@@ -556,6 +556,7 @@ export interface InstrumentManufacturerFamilyCatalogType extends CatalogType {
   primary_a_max?: number;
   secondary_current_options_a?: number[];
   core_count_max?: number;
+  secondary_windings_max?: number;
   accuracy_options?: string[];
   burden_options_va?: number[];
   ith_range_ka?: number[];
