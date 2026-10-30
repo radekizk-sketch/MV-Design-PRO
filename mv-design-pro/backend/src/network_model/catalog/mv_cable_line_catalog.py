@@ -2086,7 +2086,12 @@ def _kabel_nkt_zgodny_z_enea_2026(
                 "R0/X0 i rezystancja powrotna z założeń modelu, "
                 "nie z dokumentacji producenta. "
                 "Zgodność typ/przekrój z ENEA nie stanowi zatwierdzenia "
-                "całego projektu ani gwarancji obciążalności w innych warunkach."
+                "całego projektu ani gwarancji obciążalności w innych warunkach. "
+                "ENEA tab. 2 wymaga klasy CPR Eca w stacjach z obsługą "
+                "wewnętrzną lub budynkach stacji 110 kV/SN, a Fca dopuszcza "
+                "dla rowów i stacji z obsługą zewnętrzną: klasę CPR "
+                "konkretnego wariantu sprawdź w jego aktualnej DoP. "
+                "Wymagana także weryfikacja powłoki HDPE z pkt 4.2.1."
             ),
         },
     }
