@@ -78,11 +78,11 @@ describe('zbudujParametry — obiekt uziomu', () => {
     const parametry = zbudujParametry({
       rodzaj: 'earthing_safety',
       pola: {},
-      uziom: { gpz_ref: 'GPZ-1', rho1_ohm_m: '120', width_m: '' },
+      uziom: { bus_ref: 'bus/gpz-sn', rho1_ohm_m: '120', width_m: '' },
       metody: [],
       wiersze: {},
     });
-    expect(parametry).toEqual({ earthing: { gpz_ref: 'GPZ-1', rho1_ohm_m: 120 } });
+    expect(parametry).toEqual({ earthing: { bus_ref: 'bus/gpz-sn', rho1_ohm_m: 120 } });
   });
 
   it('pusty uziom nie tworzy klucza `earthing`', () => {

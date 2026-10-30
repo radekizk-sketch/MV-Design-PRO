@@ -5,7 +5,12 @@
 
 export const APARATURA_STRINGS = {
   tytul: 'Wytrzymałość aparatury w punkcie zwarcia',
-  cel: 'Porównaj prądy zwarcia w punkcie zabudowy każdego pola tej stacji (ip → I_dyn, Ith → I_th, Ib albo I″k → zdolność wyłączania I_cu) ze znamionami jego aparatów.',
+  // Symbole w `$…$` składa KaTeX (`TekstZWzorami`) — nie zapis ASCII z podkreślnikiem.
+  cel:
+    'Porównaj prądy zwarcia w punkcie zabudowy każdego pola tej stacji ze znamionami jego '
+    + 'aparatów: $i_{p}$ z $I_{\\mathrm{dyn}}$, $I_{\\mathrm{th}}$ z prądem cieplnym '
+    + 'krótkotrwałym aparatu, $I_{b}$ albo $I^{\\prime\\prime}_{k}$ ze zdolnością wyłączania '
+    + '$I_{\\mathrm{cu}}$.',
   akcja: 'Sprawdź aparaturę w punkcie zwarcia',
   akcjaPonow: 'Sprawdź ponownie',
   pracuje: 'Sprawdzanie wytrzymałości…',

@@ -131,6 +131,12 @@ export interface WielkoscGlowna {
   readonly odniesienieSciezka?: string;
   /** Etykieta odniesienia, np. „dopuszczalne", „tolerancja". */
   readonly odniesienieEtykieta?: string;
+  /**
+   * Postać wartości: domyślnie liczba (wspólny formater); `tekst` — zdanie solvera dla
+   * projektanta z symbolami jako `$…$` (składane przez `TekstZWzorami`), np. uzasadnienie
+   * wyboru prądu uziomowego.
+   */
+  readonly postac?: 'tekst';
 }
 
 /** Kolumna tabeli obiektów. */
@@ -140,6 +146,11 @@ export interface KolumnaObiektu {
   readonly jednostka?: string;
   /** Kolumna statusu — renderowana jako chip werdyktu wg `mapa`. */
   readonly mapaStatusu?: MapaWerdyktu;
+  /**
+   * Postać komórki: domyślnie liczba/wartość słownikowa; `latex` — wzór LaTeX solvera
+   * (`MathInline`); `tekst` — zdanie z symbolami jako `$…$` (`TekstZWzorami`).
+   */
+  readonly postac?: 'latex' | 'tekst';
 }
 
 /** Tabela obiektów analizy (per węzeł / gałąź / aparat / silnik). */
@@ -411,13 +422,43 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
         odniesienieSciezka: 'u_step_allowable_v',
         odniesienieEtykieta: 'dopuszczalne',
       },
+      // Prąd zwarcia doziemnego stacji przed redukcją — z modelu (EN 50522 tab. 1) albo
+      // nadpisanie projektanta; uzasadnienie wyboru niesie solver (karta UX-04).
+      {
+        sciezka: 'i_f_ka',
+        etykieta: 'Prąd zwarcia doziemnego stacji przed redukcją',
+        jednostka: 'kA',
+      },
+      {
+        sciezka: 'prad_uziomowy.uzasadnienie_pl',
+        etykieta: 'Podstawa prądu zwarcia doziemnego',
+        postac: 'tekst',
+      },
       { sciezka: 'r_g_ohm', etykieta: 'Rezystancja uziomu stacji', jednostka: 'Ω' },
       { sciezka: 'gpr_kv', etykieta: 'Wzrost potencjału uziomu (GPR)', jednostka: 'kV' },
       { sciezka: 'i_g_ka', etykieta: 'Prąd odprowadzany przez uziom', jednostka: 'kA' },
       { sciezka: 'split_factor', etykieta: 'Współczynnik podziału prądu zwarciowego' },
       { sciezka: 'fault_clearing_time_s', etykieta: 'Czas wyłączenia zwarcia', jednostka: 's' },
     ],
-    tabele: [],
+    tabele: [
+      {
+        // Przypadki zwarcia doziemnego stacji (strona SN i WN) wg sposobu pracy punktu
+        // neutralnego — miarodajny jest największy (EN 50522 tab. 1).
+        sciezka: 'prad_uziomowy.przypadki',
+        tytul: 'Przypadki zwarcia doziemnego stacji (EN 50522 tab. 1)',
+        kluczRef: 'bus_ref',
+        etykietaRef: 'Szyna stacji',
+        kolumny: [
+          { klucz: 'strona', etykieta: 'Strona' },
+          { klucz: 'tryb_pl', etykieta: 'Punkt neutralny' },
+          { klucz: 'wielkosc_latex', etykieta: 'Wielkość miarodajna', postac: 'latex' },
+          { klucz: 'prad_a', etykieta: 'Prąd', jednostka: 'A' },
+          { klucz: 'opis_pl', etykieta: 'Reguła', postac: 'tekst' },
+          { klucz: 'brak_pl', etykieta: 'Brak wyniku', postac: 'tekst' },
+        ],
+        tylkoGdyObecna: true,
+      },
+    ],
     nastepnyKrok:
       'Przy przekroczeniu: zagęść siatkę uziomową, dołóż uziomy pionowe albo ułóż '
       + 'warstwę tłucznia o wyższej rezystywności — i przelicz ponownie.',

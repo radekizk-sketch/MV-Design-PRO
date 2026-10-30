@@ -558,6 +558,19 @@ describe('EkranSkladowych — doziemienie sieci SN wg sposobu pracy punktu neutr
       'założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN.',
     );
     expect(screen.getByTestId('mvd-skladowe-doziemienie-niepelny')).toHaveTextContent(T.doziemienieNiepelny);
+    // Etykiety wielkości niosą symbole jako wzory składane przez KaTeX (`$I_C$`, `$U_f$`, `$k$`),
+    // nigdy zapis ASCII ani surowy `$` — każda poza prądem w miejscu doziemienia (bez symbolu).
+    const etykiety = Array.from(
+      screen.getByTestId('mvd-skladowe-doziemienie-wartosci').querySelectorAll('[data-testid] > dt'),
+    );
+    expect(etykiety.length).toBeGreaterThanOrEqual(9);
+    for (const etykieta of etykiety) {
+      const klucz = etykieta.parentElement?.getAttribute('data-testid') ?? '';
+      expect(etykieta.textContent ?? '', klucz).not.toContain('$');
+      if (klucz !== 'mvd-skladowe-doziemienie-prad') {
+        expect(etykieta.querySelector('.katex'), klucz).not.toBeNull();
+      }
+    }
   });
 
   it('ślad WHITE BOX doziemienia: kroki nazywają model, wzór i podstawienie przez KaTeX, proza poza KaTeX-em', async () => {

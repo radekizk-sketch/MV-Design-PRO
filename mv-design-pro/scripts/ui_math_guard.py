@@ -62,28 +62,19 @@ BACKEND_PLIKI = (
     ROOT / "backend" / "src" / "application" / "analyses" / "werdykt_projektowy.py",
 )
 
-#: Zapadka — SUFIT liczby wystapien (pomiar 2026-09-16, karta V12.7, PO
-#: poprawkach precyzji skanu — usuniecie interpolacji `${...}` z template
-#: literali TS i wylaczenie docstringow Pythona ze skanu — I PO naprawie
-#: wszystkich wystapien w zakresie karty: 2x zbedne echo ASCII wzoru w
-#: `warunek_pl` ekranu akademickiego (uziemienie, U_dot/U_kr — wzor jest juz
-#: nad tym tekstem jako czysty KaTeX, echo usuniete), 3x `symbol_latex=I^2 t`
-#: → `I^{2} t` (jawne klamry, kanoniczny zapis). 9 rezydualnych wystapien to:
-#:   (a) 6x ekrany SPOZA zakresu karty V12.7 (kreatory/**, oze/obszar,
-#:       oze/osd, spaces/projekt/arkusz, wyniki/estymacja, wyniki/ssci —
-#:       odrebne okno z wlasnym modelem danych, patrz naglowek
-#:       `ui2/wyniki/akademickie/api.ts` — , wyniki/zwarcia/aparatura) —
-#:       naprawa wymagalaby redesignu ekranow, ktore karta V12.7 jawnie
-#:       wylacza z zakresu („NIE: redesign, NIE: zmiany nawigacji");
-#:   (b) 3x `v126_katalog.py` pola NIGDY nie renderowane jako surowy tekst:
-#:       `wartosc_graniczna` (str) uzywane wylacznie gdy `typeof === 'number'`
-#:       jest false, a wtedy UI renderuje `wzor_latex`+`wzor_opis_pl`, NIE tę
-#:       wartosc (kryteria U_dot,dop i U_kr,dop karty uziomu); `DanaZModelu.nazwa_pl`
-#:       to lista wymaganych pol karty katalogowej ogranicznikow (prosty tekst
-#:       opisowy, nie wzor). Numerow linii tu nie podajemy — dryfuja przy edycji.
-#: Nie podnosic bez pomiaru; obnizyc przy kazdej naprawie rezydualnego
-#: wystapienia (nawet spoza karty V12.7 — kolejna karta obejmujaca dany ekran).
-PIN = 9
+#: Zapadka — SUFIT liczby wystapien. Pomiar 2026-10-30 (karta
+#: UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5): 0. Wszystkie 9 rezydualnych
+#: wystapien z pomiaru 2026-09-16 naprawiono u zrodla: wzory sladu obszaru PQ
+#: i odpowiedzi OSD (`formula_latex`) sa czystym LaTeX-em z proza w `\text{}`;
+#: proza z symbolami (estymacja, SSCI, weryfikacja aparatury, opis kolumn
+#: importu arkusza) niesie symbole jako `$...$` skladane przez `TekstZWzorami`
+#: albo nazwy kolumn w `<code>`; proza katalogu analiz specjalistycznych
+#: (`v126_katalog.py`) niesie symbole jako `$...$`, a ekran skladany przez
+#: `TekstZWzorami` (pin tresci: `tests/test_v126_katalog_analiz.py::
+#: test_proza_katalogu_niesie_symbole_wylacznie_jako_wzory_inline`); identyfikator
+#: wewnetrzny `WielkoscGlowna.symbol` nie niesie juz przecinka w indeksie.
+#: Kazde nowe wystapienie czerwieni strażnik — naprawiasz je u zrodla.
+PIN = 0
 
 #: Pliki/katalogi wylaczone ze skanu ui2/** (testy same niosa fixture'y ASCII
 #: nie renderowane na ekranie — to samo wylaczenie co forbidden_ui_terms_guard).
@@ -221,17 +212,7 @@ def skanuj_py(plik: Path) -> list[tuple[int, str, str]]:
 #: wystapienia z uzasadnieniem. KAZDY wpis to jedna kontrolowana pozycja, nie
 #: maskowanie klasy — nowe wystapienie SPOZA tej listy zuzywa PIN normalnie.
 #: Nie liczy sie do PIN (wypisywany osobno, dla jawnosci).
-WYJATKI_ZNANE: frozenset[tuple[str, int]] = frozenset(
-    {
-        # `WielkoscGlowna.symbol` (pierwszy pozycyjny argument) jest
-        # identyfikatorem WEWNETRZNYM uzywanym wylacznie jako React `key`
-        # (zweryfikowane grepem `\.symbol\b` w EkranAnalizAkademickich.tsx —
-        # trzy uzycia, wszystkie w `key={...}`), nigdy nie renderowany jako
-        # tekst. Widoczny zapis symbolu idzie WYLACZNIE przez `symbol_latex`
-        # (pole obok, patrz `WielkoscGlowna.to_dict`).
-        ("backend/src/application/analyses/v126_katalog.py", 479),
-    }
-)
+WYJATKI_ZNANE: frozenset[tuple[str, int]] = frozenset()
 
 
 def wyjatki_osierocone(root: Path) -> list[str]:

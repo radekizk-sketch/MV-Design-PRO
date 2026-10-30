@@ -37,7 +37,7 @@
     },
     "earthing_safety": {
       "earthing": {
-        "gpz_ref": "bus_hv",
+        "bus_ref": "bus_sn_main",
         "rho1_ohm_m": 100,
         "rho2_ohm_m": 300,
         "h1_m": 2,
@@ -47,7 +47,6 @@
         "buried_depth_m": 0.7,
         "rods_total_length_m": 60,
         "split_factor": 0.6,
-        "fault_current_ka": 8,
         "fault_clearing_time_s": 0.5,
         "surface_layer_rho_ohm_m": 3000,
         "surface_layer_derating": 0.7
@@ -144,7 +143,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -247,7 +246,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -292,9 +291,19 @@
         },
         {
           "kod": "parametr.earthing",
-          "opis_pl": "Dane uziomu stacji podane przez projektanta (geometria siatki, grunt, prąd i czas zwarcia, warstwa powierzchniowa)",
+          "opis_pl": "Dane uziomu stacji podane przez projektanta (geometria siatki, grunt, czas zwarcia, warstwa powierzchniowa)",
           "spelniony": true,
           "elementy": [],
+          "blokujacy": true,
+          "klucz_parametru": "earthing"
+        },
+        {
+          "kod": "model.prad_uziomowy",
+          "opis_pl": "Prąd zwarcia doziemnego stacji „GPZ” z modelu (EN 50522 tab. 1, 2 z 2 przypadków policzonych)",
+          "spelniony": true,
+          "elementy": [
+            "bus_sn_main"
+          ],
           "blokujacy": true,
           "klucz_parametru": "earthing"
         }
@@ -328,7 +337,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -340,6 +349,20 @@
           "nazwa_pl": "Częstotliwość sieci",
           "wartosc_pl": "brak w modelu — solver przyjmie 50 Hz jako wartość domyślną",
           "elementy": []
+        },
+        {
+          "nazwa_pl": "Prąd zwarcia doziemnego stacji — sieć SN 15 kV — Szyna SN",
+          "wartosc_pl": "$\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$ = 294,1 A",
+          "elementy": [
+            "bus_sn_main"
+          ]
+        },
+        {
+          "nazwa_pl": "Prąd zwarcia doziemnego stacji — sieć WN 110 kV — GPZ 110 kV",
+          "wartosc_pl": "$I''_{k1}$ = 13560 A",
+          "elementy": [
+            "bus_hv"
+          ]
         },
         {
           "nazwa_pl": "Szyny z mocą zwarciową źródła",
@@ -410,7 +433,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -509,7 +532,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -561,7 +584,7 @@
         },
         {
           "kod": "parametr.breaker_rated_voltage_kv",
-          "opis_pl": "Napięcie znamionowe wyłącznika U_r",
+          "opis_pl": "Napięcie znamionowe wyłącznika",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
@@ -629,7 +652,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -658,7 +681,7 @@
       "proponowane": {
         "breaker_rated_voltage_kv": {
           "wartosc": 17.5,
-          "zrodlo_pl": "napięcie najwyższe urządzenia U_m sieci SN 15 kV (17.5 kV, IEC 60038 tab. 3–5; U_r aparatu = U_m, IEC 62271-1)"
+          "zrodlo_pl": "napięcie najwyższe urządzenia $U_m$ sieci SN 15 kV (17,5 kV, IEC 60038 tab. 3–5; $U_r$ aparatu $= U_m$, IEC 62271-1)"
         }
       },
       "powod_wycofania_pl": null
@@ -713,7 +736,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
@@ -727,10 +750,17 @@
           "elementy": []
         },
         {
-          "nazwa_pl": "Szyny z mocą zwarciową źródła",
-          "wartosc_pl": "1",
+          "nazwa_pl": "Szyny z impedancją zastępczą sieci (macierz Z-bus IEC 60909)",
+          "wartosc_pl": "8",
           "elementy": [
-            "bus_hv"
+            "bus_hv",
+            "bus_sn_main",
+            "bus_sn_b",
+            "bus_sn_c",
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         }
       ],
@@ -830,7 +860,7 @@
           ]
         },
         {
-          "nazwa_pl": "Transformatory (S_n, u_k)",
+          "nazwa_pl": "Transformatory ($S_n$, $u_k$)",
           "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",

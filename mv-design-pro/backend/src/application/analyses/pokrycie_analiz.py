@@ -10,7 +10,10 @@ z tego, co FAKTYCZNIE istnieje w magazynie biegów:
 - raport normatywny → ``NormativeEvaluator`` na dostępnych dowodach
   (pozycje bez dowodu uczciwie NIEOBLICZONE — zero fabrykacji),
 - analiza zabezpieczeń i krzywe I–t → ``None``: dowody zabezpieczeniowe nie
-  są produkowane z żadnego przebiegu kanonicznego (uczciwy brak, obniża wynik).
+  są produkowane z żadnego przebiegu kanonicznego (uczciwy brak, obniża wynik),
+- bezpieczeństwo uziomu stacji → zakończony bieg V12.6 ``earthing_safety`` z napięciami
+  rażeniowymi (``_uziom_oceniony``; karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5 — dawny
+  pakiet dowodu P19 nie miał producenta, więc luka uziemienia była nie do zamknięcia).
 
 Wynik (``CoverageScoreView``): łączna punktacja 0–100, lista braków po polsku
 (``missing_items``) i luki krytyczne (``critical_gaps``). Widok mówi wprost,
@@ -41,6 +44,25 @@ def _najnowszy_zakonczony_pf(biegi: list[CanonicalRun]) -> CanonicalRun | None:
     if not zakonczone:
         return None
     return max(zakonczone, key=lambda bieg: (bieg.created_at, str(bieg.id)))
+
+
+#: Rodzaj biegu V12.6 bezpieczeństwa uziomu w rejestrze biegów (``api.v126_academic``).
+RODZAJ_BIEGU_UZIOMU = "v126:earthing_safety"
+
+
+def _uziom_oceniony(biegi: list[CanonicalRun]) -> bool:
+    """Czy przypadek ma zakończony bieg bezpieczeństwa uziomu stacji z napięciami
+    rażeniowymi (``gpr_kv`` w wyniku — bieg z prądem zwarcia doziemnego stacji z modelu albo
+    nadpisanym; wynik „dane niekompletne” nie zamyka luki)."""
+    for bieg in biegi:
+        if bieg.analysis_type != RODZAJ_BIEGU_UZIOMU or bieg.status != "FINISHED":
+            continue
+        zapis = bieg.raw_result or {}
+        koperta = zapis.get("result") if isinstance(zapis, dict) else None
+        wynik = koperta.get("result") if isinstance(koperta, dict) else None
+        if isinstance(wynik, dict) and wynik.get("gpr_kv") is not None:
+            return True
+    return False
 
 
 def build_pokrycie_view(case_id: str, *, nazwa_przypadku: str) -> dict[str, Any]:
@@ -80,6 +102,7 @@ def build_pokrycie_view(case_id: str, *, nazwa_przypadku: str) -> dict[str, Any]
         protection_curves_it=None,
         sensitivity=wrazliwosc,
         recommendations=rekomendacje,
+        uziom_oceniony=_uziom_oceniony(biegi),
     )
 
     return {

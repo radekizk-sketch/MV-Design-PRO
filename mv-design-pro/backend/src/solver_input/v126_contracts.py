@@ -3,11 +3,20 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from enm.bateria_kondensatorow import parametry_baterii
-from enm.mapping import impedancja_zrodla_sieciowego
-from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
+from enm.mapping import (
+    impedancja_zrodla_sieciowego,
+    map_enm_to_network_graph,
+    ref_to_graph_id,
+)
+from enm.models import (
+    GEN_TYPES_PRZEKSZTALTNIKOWE,
+    Cable,
+    EnergyNetworkModel,
+    OverheadLine,
+)
 from enm.nazwy_elementow import nazwa_elementu, zbuduj_indeks_nazw
 from enm.skladowa_zerowa_galezi import napiecia_szyn_kv, skladowa_zerowa_galezi
 from enm.slownik_komunikatow import opis_bledu_walidacji
@@ -25,13 +34,28 @@ from network_model.catalog.wartosci_robocze import (
     PROPOZYCJE_NIEZAWODNOSCI,
     element_niezawodnosci,
 )
-from network_model.core.uziemienie import TRYB_DOZIEMIENIA_TYPU, TrybDoziemienia
+from network_model.core.uziemienie import (
+    TRYB_DOZIEMIENIA_TYPU,
+    StanAwsc,
+    TrybDoziemienia,
+)
 from network_model.core.voltage_factor import dobierz_c
-from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
+from network_model.odmowa_danych import (
+    OdmowaDanychError,
+    OdmowaNazwana,
+    odmowa_rdzenia_b01,
+)
 from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
-from network_model.pochodne.pasma_napieciowe import napiecie_najwyzsze_sieci_kv, pasmo_napieciowe
-from network_model.solvers.doziemienie_sn import ETYKIETA_PL_TRYBU, PunktNeutralnyDoziemienia
+from network_model.pochodne.pasma_napieciowe import (
+    napiecie_najwyzsze_sieci_kv,
+    pasmo_napieciowe,
+)
+from network_model.solvers.doziemienie_sn import (
+    ETYKIETA_PL_TRYBU,
+    PunktNeutralnyDoziemienia,
+)
+from network_model.solvers.short_circuit_core import build_zbus
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -89,13 +113,29 @@ class V126BusInput(_WejscieV126):
     #: ``fault_level_mva`` jako daną przyjętą). Pola addytywne — poza odciskiem, gdy `None`.
     source_r_ohm: float | None = Field(default=None, ge=0)
     source_x_ohm: float | None = Field(default=None, gt=0)
+    #: Impedancja zastępcza sieci (Thévenin) w szynie Z_th = R_th + jX_th [Ω] przy 50 Hz,
+    #: odniesiona do napięcia znamionowego szyny — przekątna macierzy Z-bus sieci zwarciowej
+    #: IEC 60909 składowej zgodnej z KANONICZNEGO budowniczego admitancji
+    #: (`short_circuit_core.build_zbus` → `AdmittanceMatrixBuilder`: przekładnia
+    #: transformatorów, K_T §6.3.3, Z_Q eq. 6, maszyny Z″), liczona w moście
+    #: (`impedancje_zastepcze_szyn`) wyłącznie dla analiz, które ją czytają
+    #: (`ANALIZY_IMPEDANCJI_ZASTEPCZEJ`: przepustowość i rozruch silnika). `None` = szyna
+    #: w wyspie bez impedancji do odniesienia (brak źródła sieciowego i maszyny) albo
+    #: analiza, która jej nie czyta. Pola addytywne — poza odciskiem, gdy `None`.
+    thevenin_r_ohm: float | None = Field(default=None, ge=0)
+    thevenin_x_ohm: float | None = Field(default=None)
 
     @model_serializer(mode="wrap")
     def _bez_pustej_impedancji_zrodla(
         self, handler: SerializerFunctionWrapHandler
     ) -> dict[str, Any]:
         dane: dict[str, Any] = handler(self)
-        for pole in ("source_r_ohm", "source_x_ohm"):
+        for pole in (
+            "source_r_ohm",
+            "source_x_ohm",
+            "thevenin_r_ohm",
+            "thevenin_x_ohm",
+        ):
             if dane.get(pole) is None:
                 dane.pop(pole, None)
         return dane
@@ -249,9 +289,15 @@ class V126MotorInput(_WejscieV126):
 class V126EarthingInput(_WejscieV126):
     """Uziom stacji (IEEE Std 80) — dane projektanta. Pola liczone są WYMAGANE: dawne wartości
     domyślne (ρ = 100 Ω·m, siatka 60 × 40 m, 10 kA, 0,5 s) liczyły uziom, którego nikt nie
-    opisał. ``rho2_ohm_m``/``h1_m`` (grunt dwuwarstwowy) solver tylko przenosi do wyniku."""
+    opisał. ``rho2_ohm_m``/``h1_m`` (grunt dwuwarstwowy) solver tylko przenosi do wyniku.
 
-    gpz_ref: str = "GPZ"
+    ``bus_ref`` — szyna stacji w modelu (dawne ``gpz_ref`` z domyślnym napisem „GPZ" nie
+    wskazywało niczego w modelu). Prąd zwarcia doziemnego przed redukcją przychodzi z MODELU
+    (``V126AcademicInput.prad_uziomowy`` — przypadki EN 50522 tab. 1 składane w
+    ``application.analyses.v126_prad_uziomowy``); ``fault_current_ka`` jest wyłącznie
+    nadpisaniem projektanta (dana przyjęta, kompletność dowodu NIEPELNY)."""
+
+    bus_ref: str = Field(min_length=1)
     rho1_ohm_m: float = Field(gt=0)
     rho2_ohm_m: float | None = Field(default=None, gt=0)
     h1_m: float | None = Field(default=None, gt=0)
@@ -261,10 +307,53 @@ class V126EarthingInput(_WejscieV126):
     buried_depth_m: float = Field(gt=0)
     rods_total_length_m: float = Field(ge=0)
     split_factor: float = Field(gt=0, le=1)
-    fault_current_ka: float = Field(gt=0)
+    fault_current_ka: float | None = Field(default=None, gt=0)
     fault_clearing_time_s: float = Field(gt=0)
     surface_layer_rho_ohm_m: float = Field(gt=0)
     surface_layer_derating: float = Field(gt=0)
+
+
+class V126PrzypadekPraduUziomowegoInput(_WejscieV126):
+    """Jeden przypadek zwarcia doziemnego, którego prąd odprowadza uziom stacji (EN 50522:2010
+    tab. 1) — wielkości Z MODELU, bez wyboru wielkości miarodajnej (wybiera solver V12.6).
+
+    ``strona`` — sieć SN stacji (galwanicznie połączona sieć jej szyny SN) albo sieć WN
+    stacji (szyna WN w tej samej stacji). Strona SN: ``tryb`` i ``stan_awsc`` — sposób pracy
+    punktu neutralnego sieci (``UziemienieSekcji.tryb_doziemienia``), ``prad_doziemienia_a`` —
+    prąd solvera doziemienia sieci (I_C sieci izolowanej, I_res skompensowanej, I_F
+    rezystorowej), ``i_l_a`` — prąd dławików, ``dlawik_w_stacji`` — dławik gaszący sieci jest
+    przyłączony w tej stacji (EN 50522 tab. 1 rozróżnia instalacje z dławikiem i bez).
+    ``ikss_a`` — I″k1 rdzenia IEC 60909 (scenariusz MAX) największy wśród szyn stacji tej
+    sieci; ``None`` poza siecią uziemioną przez małą impedancję. Przyczyny braku i dane
+    przyjęte osobno dla obu wielkości (``*_doziemienia`` — solver doziemienia sieci SN,
+    ``*_ikss`` — rdzeń IEC 60909): wielkość miarodajną wybiera solver V12.6, więc przyczynę
+    i dane przyjęte bierze z tej samej wielkości (predykaty parami)."""
+
+    strona: Literal["SN", "WN"]
+    nazwa_pl: str
+    bus_ref: str
+    tryb: TrybDoziemienia | None = None
+    stan_awsc: StanAwsc = "spoczynek"
+    prad_doziemienia_a: float | None = Field(default=None, ge=0)
+    i_l_a: float | None = Field(default=None, ge=0)
+    ikss_a: float | None = Field(default=None, ge=0)
+    dlawik_w_stacji: bool = False
+    brak_doziemienia_pl: str | None = None
+    brak_ikss_pl: str | None = None
+    dane_przyjete_doziemienia: list[DanaPrzyjeta] = Field(default_factory=list)
+    dane_przyjete_ikss: list[DanaPrzyjeta] = Field(default_factory=list)
+
+
+class V126PradUziomowyInput(_WejscieV126):
+    """Prąd zwarcia doziemnego stacji z modelu: przypadki stron SN i WN stacji szyny
+    ``bus_ref`` (``application.analyses.v126_prad_uziomowy.prad_uziomowy_z_modelu``).
+    ``brak_pl`` — przyczyna, gdy model nie daje żadnego przypadku (szyna spoza modelu, stacja
+    bez sieci SN ani WN, odmowa danych wejścia zwarciowego)."""
+
+    bus_ref: str
+    nazwa_stacji_pl: str
+    przypadki: list[V126PrzypadekPraduUziomowegoInput] = Field(default_factory=list)
+    brak_pl: str | None = None
 
 
 class V126InsulationInput(_WejscieV126):
@@ -473,6 +562,9 @@ class V126AcademicInput(_WejscieV126):
     converters: list[V126ConverterInput] = Field(default_factory=list)
     motors: list[V126MotorInput] = Field(default_factory=list)
     earthing: V126EarthingInput | None = None
+    #: Prąd zwarcia doziemnego stacji uziomu z modelu (EN 50522 tab. 1) — wyłącznie dla
+    #: analizy bezpieczeństwa uziomu ze wskazaną szyną stacji.
+    prad_uziomowy: V126PradUziomowyInput | None = None
     insulation: list[V126InsulationInput] = Field(default_factory=list)
     parameters: dict[str, Any] = Field(default_factory=dict)
     shunt_capacitors: list[V126ShuntCapacitorInput] = Field(default_factory=list)
@@ -491,8 +583,9 @@ class V126AcademicInput(_WejscieV126):
         # baterie — gdy model je ma. Zapis wejścia, `input_hash` i ziarno losowania (hosting
         # capacity) pozostałych analiz i modeli bez baterii bajtowo bez zmian.
         dane: dict[str, Any] = handler(self)
-        if dane.get("uziemienie_sn") is None:
-            dane.pop("uziemienie_sn", None)
+        for pole_opcjonalne in ("uziemienie_sn", "prad_uziomowy"):
+            if dane.get(pole_opcjonalne) is None:
+                dane.pop(pole_opcjonalne, None)
         for pole in _POLA_V126_POZA_ODCISKIEM_GDY_PUSTE:
             if dane.get(pole) == []:
                 del dane[pole]
@@ -507,6 +600,49 @@ ANALIZY_UZIEMIENIA_SN: frozenset[V126AnalysisType] = frozenset(
         V126AnalysisType.TRANSIENT_TRV,
     }
 )
+
+
+#: Analizy V12.6, które czytają impedancję zastępczą sieci w szynie (`V126BusInput.thevenin_*`).
+ANALIZY_IMPEDANCJI_ZASTEPCZEJ: frozenset[V126AnalysisType] = frozenset(
+    {V126AnalysisType.HOSTING_CAPACITY, V126AnalysisType.MOTOR_STARTING}
+)
+
+
+def impedancje_zastepcze_szyn(enm: EnergyNetworkModel) -> dict[str, dict[str, float]]:
+    """Z_th szyn modelu [Ω] z KANONICZNEGO budowniczego sieci zwarciowej (decyzja O-26:
+    bez czwartego budowniczego admitancji) — `{ref szyny: {thevenin_r_ohm, thevenin_x_ohm}}`.
+
+    Graf IR modelu (`enm.mapping.map_enm_to_network_graph`, scenariusz MAX) bez wysp bez
+    impedancji do odniesienia (`NetworkGraph.wezly_bez_impedancji_do_odniesienia` — ten sam
+    predykat co graf solvera zwarć), macierz `short_circuit_core.build_zbus`:
+    Z_th = Z_bus[k,k]·Z_b,k, Z_b,k = U_n,k²/S_b. Macierz niesie przekładnię transformatora
+    (impedancja widziana z szyny nN zawiera sieć SN sprowadzoną przez (U_rTLV/U_rTHV)²),
+    współczynnik korekcyjny K_T (IEC 60909-0:2016 §6.3.3, eq. 12a), Z_Q zasilania
+    systemowego (§6.2.1 eq. 6, ze współczynnikiem c) i impedancje Z″ maszyn wirujących;
+    admitancje poprzeczne gałęzi są pominięte (§5.2 f). Szyna spoza grafu solvera (wyspa
+    bez źródła sieciowego i maszyny) nie ma wpisu — solver melduje brak nazwany.
+    Odmowa danych rdzenia (macierz osobliwa) przechodzi jako `OdmowaDanychError`."""
+    graf = map_enm_to_network_graph(enm)
+    bez_odniesienia = graf.wezly_bez_impedancji_do_odniesienia()
+    if bez_odniesienia:
+        graf = graf.podgraf(wezel for wezel in graf.nodes if wezel not in bez_odniesienia)
+    if not graf.nodes:
+        return {}
+    with odmowa_rdzenia_b01():
+        budowniczy, z_bus = build_zbus(graf)
+    indeks = budowniczy.node_id_to_index
+    wynik: dict[str, dict[str, float]] = {}
+    for bus in enm.buses:
+        wezel = ref_to_graph_id(bus.ref_id)
+        k = indeks.get(wezel)
+        if k is None:
+            continue
+        z_th = complex(z_bus[k, k]) * budowniczy.get_zbase_ohm(wezel)
+        wynik[bus.ref_id] = {
+            "thevenin_r_ohm": max(z_th.real, 0.0),
+            "thevenin_x_ohm": z_th.imag,
+        }
+    return wynik
 
 
 def uziemienie_sn_v126(enm: EnergyNetworkModel) -> V126UziemienieSnInput:
@@ -1599,6 +1735,11 @@ def build_v126_input_from_enm(
                     )
                 )
 
+    # Impedancja zastępcza szyn — wyłącznie dla analiz, które ją czytają (graf IR i macierz
+    # Z-bus nie są budowane dla pozostałych analiz V12.6; ich wejście bez zmian).
+    zastepcze = (
+        impedancje_zastepcze_szyn(enm) if analysis_type in ANALIZY_IMPEDANCJI_ZASTEPCZEJ else {}
+    )
     buses = [
         V126BusInput(
             ref=bus.ref_id,
@@ -1613,6 +1754,7 @@ def build_v126_input_from_enm(
                 (source.sk3_mva for source in enm.sources if source.bus_ref == bus.ref_id), None
             ),
             **_impedancja_zrodla_szyny(enm, bus.ref_id, bus.voltage_kv, wyspy_nn),
+            **zastepcze.get(bus.ref_id, {}),
         )
         for bus in enm.buses
     ]

@@ -52,7 +52,7 @@ describe('Etap 9 — ProofSurface + ReportSurface', () => {
   });
 
   describe('ProofSurface (E-36)', () => {
-    it('renderuje 12 typów Proof Pack z polskimi etykietami', () => {
+    it('renderuje 11 typów Proof Pack z polskimi etykietami', () => {
       render(<WorkspaceSurfaceRouter region="main" />);
       expect(screen.getByTestId('proof-surface')).toBeInTheDocument();
       expect(screen.getByTestId('proof-pack-list')).toBeInTheDocument();
@@ -69,11 +69,14 @@ describe('Etap 9 — ProofSurface + ReportSurface', () => {
         'LOAD_CURRENTS_OVERLOAD',
         'LOSSES_ENERGY',
         'PROTECTION_OVERCURRENT',
-        'EARTHING_GROUND_FAULT_SN',
       ];
       for (const type of expectedTypes) {
         expect(screen.getByTestId(`proof-pack-${type}`)).toBeInTheDocument();
       }
+      // Lista ZAMKNIĘTA: pakiet dowodu uziemienia SN (bez producenta) skasowany — ocena
+      // uziomu stacji żyje w analizie bezpieczeństwa uziomu (ślad i dowód biegu V12.6).
+      expect(screen.getByTestId('proof-pack-list').children).toHaveLength(expectedTypes.length);
+      expect(screen.queryByTestId('proof-pack-EARTHING_GROUND_FAULT_SN')).toBeNull();
     });
 
     it('zawiera polskie nagłówki "Uzasadnienie inżynierskie obliczeń"', () => {

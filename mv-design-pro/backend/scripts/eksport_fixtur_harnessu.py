@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import dataclasses
 import json
 import re
 import sys
@@ -85,7 +86,6 @@ from api.protection_coordination import (  # noqa: E402
 )
 from api.protection_runs import get_protection_run_results, list_protection_runs  # noqa: E402
 from api.v126_academic import (  # noqa: E402
-    _with_parameter_payloads,
     _wycofanie_v126,
     get_v126_catalog,
     get_v126_proof,
@@ -93,6 +93,7 @@ from api.v126_academic import (  # noqa: E402
     get_v126_result,
     get_v126_ssci_stability,
     get_v126_trace,
+    wejscie_solvera_v126,
 )
 from application.analyses.arc_flash_view import build_arc_flash_view  # noqa: E402
 from application.analyses.certyfikat_zgodnosci import (  # noqa: E402
@@ -235,10 +236,7 @@ from network_model.solvers.cable_voltage_drop import (  # noqa: E402
     compute_cable_rated_current,
 )
 from network_model.solvers.ncrfg_ptpiree.contracts import NcRfgPtpireeRunRequest  # noqa: E402
-from solver_input.v126_contracts import (  # noqa: E402
-    V126AnalysisType,
-    build_v126_input_from_enm,
-)
+from solver_input.v126_contracts import V126AnalysisType  # noqa: E402
 
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
 from tests.ci.tolerancja_fikstur import (  # noqa: E402
@@ -1168,7 +1166,10 @@ PARAMETRY_SCENY_AKADEMICKIE: dict[str, dict[str, Any]] = {
     "ssci_impedance": {"ssci_converter_ref": REF_FALOWNIKA_SCENY_AKADEMICKIEJ},
     "earthing_safety": {
         "earthing": {
-            "gpz_ref": "bus_hv",
+            # Szyna SN stacji GPZ — stacja ma stronę SN (sieć skompensowana) i WN (110 kV):
+            # prąd zwarcia doziemnego przychodzi z MODELU (EN 50522 tab. 1, większy z przypadków
+            # stron), bez nadpisania projektanta (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5).
+            "bus_ref": "bus_sn_main",
             "rho1_ohm_m": 100,
             "rho2_ohm_m": 300,
             "h1_m": 2,
@@ -1178,7 +1179,6 @@ PARAMETRY_SCENY_AKADEMICKIE: dict[str, dict[str, Any]] = {
             "buried_depth_m": 0.7,
             "rods_total_length_m": 60,
             "split_factor": 0.6,
-            "fault_current_ka": 8,
             "fault_clearing_time_s": 0.5,
             "surface_layer_rho_ohm_m": 3000,
             "surface_layer_derating": 0.7,
@@ -2574,6 +2574,104 @@ def skladowe_scena_migawka() -> dict[str, Any]:
         }
     )
     return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_SKLADOWE})
+
+
+# ---------------------------------------------------------------------------
+# Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5) — scena „wyniki-skladowe-doziemienie":
+# ekran E-29 na TEJ SAMEJ sieci w czterech sposobach pracy punktu neutralnego SN.
+# ---------------------------------------------------------------------------
+
+
+def _bieg_sposobu_doziemienia(sposob: str) -> tuple[Any, str]:
+    """Bieg zwarcia doziemnego (SC_1F, scenariusz MAX, zwarcie metaliczne) szyny SN stacji
+    sieci wyroczni ręcznej czterech sposobów pracy punktu neutralnego — GPZ 110/15 kV
+    (S″kQ = 3000 MVA, R/X = 0,1), 2 km kabla SN z B′0, zespół uziemiający sekcji wg sposobu
+    (``tests/enm/test_doziemienie_tryby_punktu_neutralnego.py``: ``SPOSOBY``,
+    ``WARIANT_TRYBU``, ``_z_odcinkami``; sieć z ``tests/enm/test_skladowa_zerowa_zu.py::_siec``).
+    Ta sama sieć i ta sama ścieżka biegu co ``test_ta_sama_siec_cztery_sposoby_z_wyroczni_
+    recznej`` — scena pokazuje liczby, które wyrocznia ręczna potwierdza; budowniczy sieci jest
+    jeden (testy), a nie kopiowany do skryptu. Zwraca (bieg, stabilny ``run_id``)."""
+    from tests.enm import test_skladowa_zerowa_zu as zu  # noqa: PLC0415
+    from tests.enm.test_doziemienie_tryby_punktu_neutralnego import (  # noqa: PLC0415
+        ODCINKI,
+        WARIANT_TRYBU,
+        _z_odcinkami,
+    )
+
+    run_id = f"run-sc-scena-doziemienie-{sposob}"
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        migawka = _z_odcinkami(zu._siec(WARIANT_TRYBU[sposob]), ODCINKI["kabel"])
+        szyna = zu._szyny(migawka)[0]
+        przypadek = zu._przypadek(migawka, szyna=szyna)
+        # Identyfikator scenariusza zwarciowego (`new_fault_scenario`: uuid4) wchodzi do
+        # `input_hash` i `proof_ref` biegu — stały z `run_id` sceny (zmierzone: dwa wywołania
+        # różniły się 44 polami, wyłącznie pochodnymi tego identyfikatora).
+        assert przypadek.fault_spec is not None
+        przypadek = przypadek.model_copy(
+            update={
+                "fault_spec": dataclasses.replace(
+                    przypadek.fault_spec,
+                    scenario_id=uuid5(
+                        NAMESPACE_URL, "mv-design-pro:harness:" + run_id + ":zwarcie"
+                    ),
+                )
+            }
+        )
+        enm = EnergyNetworkModel.model_validate(migawka)
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        with _zamrozona_tozsamosc_biegu(uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + run_id)):
+            set_enm(CASE_ID_HARNESSU, enm)
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="short_circuit_sn",
+                    options={"fault_type": "SC_1F"},
+                    scenariusz=przypadek,
+                ).id
+            )
+        if run.status != "FINISHED":
+            raise SystemExit(
+                f"[fixtury] bieg doziemienia sposobu {sposob} nie powiódł się: {run.error_message}"
+            )
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        return run, run_id
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def doziemienie_sposoby_scena() -> dict[str, Any]:
+    """Komplet odpowiedzi końcówek biegu 1F dla KAŻDEGO sposobu pracy punktu neutralnego
+    (izolowany, kompensowany, rezystor, bezpośredni): ``wynik`` —
+    ``GET /api/analysis-runs/{id}/results/short-circuit`` (``build_short_circuit_results_
+    response``), ``slad`` — ``…/results/trace`` (``build_extended_trace_response``),
+    ``migawka`` — ``…/snapshot`` (``_catalog_completed_snapshot`` + ``canonicalize_json``);
+    te same funkcje co końcówki API i scena E-29. Ekran pokazuje z nich sekcję doziemienia
+    z modelem sposobu, wartościami i „Śladem obliczenia” (kroki WHITE BOX z ``*_latex``)."""
+    from tests.enm.test_doziemienie_tryby_punktu_neutralnego import SPOSOBY  # noqa: PLC0415
+
+    komplet: dict[str, Any] = {}
+    for sposob in SPOSOBY:
+        run, run_id = _bieg_sposobu_doziemienia(sposob)
+        mapa = {str(run.id): run_id}
+        komplet[sposob] = {
+            "wynik": _ustabilizuj_identyfikatory(build_short_circuit_results_response(run), mapa),
+            "slad": _ustabilizuj_identyfikatory(build_extended_trace_response(run), mapa),
+            "migawka": _ustabilizuj_identyfikatory(
+                canonicalize_json(
+                    {
+                        "run_id": str(run.id),
+                        "snapshot_id": run.snapshot_hash,
+                        "snapshot": _catalog_completed_snapshot(run.snapshot),
+                    }
+                ),
+                mapa,
+            ),
+        }
+    return komplet
 
 
 #: Regulator OLTC transformatora `tr_hv_sn` sieci złotej — sieć złota BAZOWA nie
@@ -4419,11 +4517,7 @@ def _biegi_sceny_akademickiej() -> dict[str, Any]:
             )
             if not ocen_gotowosc_v126(enm, rodzaj, parametry).potwierdzona:
                 continue
-            model = _with_parameter_payloads(
-                build_v126_input_from_enm(enm, parameters=parametry, analysis_type=rodzaj),
-                parametry,
-                enm,
-            )
+            model = wejscie_solvera_v126(enm, rodzaj, parametry)
             stabilny = f"{RUN_ID_SCENY_AKADEMICKIEJ}-{rodzaj.value}"
             with _zamrozona_tozsamosc_biegu(
                 uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + stabilny)
@@ -5302,6 +5396,7 @@ FIXTURY: dict[str, Any] = {
     "skladowe_scena_wynik": skladowe_scena_wynik,
     "skladowe_scena_slad": skladowe_scena_slad,
     "skladowe_scena_migawka": skladowe_scena_migawka,
+    "doziemienie_sposoby_scena": doziemienie_sposoby_scena,
     "zbieznosc_scena_naglowek": zbieznosc_scena_naglowek,
     "zbieznosc_scena_wynik": zbieznosc_scena_wynik,
     "zbieznosc_scena_slad": zbieznosc_scena_slad,

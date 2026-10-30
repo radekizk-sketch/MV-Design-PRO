@@ -20,6 +20,7 @@
 import { useState } from 'react';
 import './ssci.css';
 import { useAppStateStore } from '../../../ui/app-state';
+import { TekstZWzorami } from '../../kreatory/rama';
 import {
   fetchStabilnoscSsci,
   utworzPrzebiegSsci,
@@ -352,7 +353,9 @@ export function EkranSsci({ szczegolyAudytowe }: EkranSsciProps) {
       />
 
       <section className="mvd-ssci-akcja-sekcja">
-        <p className="mvd-ssci-pole-opis">{S.uruchomOpis}</p>
+        <p className="mvd-ssci-pole-opis">
+          <TekstZWzorami tekst={S.uruchomOpis} />
+        </p>
         <div className="mvd-ssci-akcje">
           <button
             type="button"

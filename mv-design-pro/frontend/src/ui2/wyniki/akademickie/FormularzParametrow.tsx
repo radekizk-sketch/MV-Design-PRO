@@ -17,6 +17,7 @@
 import { useState, type ChangeEvent } from 'react';
 
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { TekstZWzorami } from '../../kreatory/rama';
 import { nazwaObiektuZMigawki, useNazwaObiektu } from '../wzorzec/useNazwaObiektu';
 import type { GotowoscAnalizy, KartaKatalogu } from './api';
 import { AKADEMICKIE_STRINGS as S } from './strings';
@@ -440,12 +441,16 @@ export function FormularzParametrow({
                     // Karta #145: klucz kontraktu (`earthing.rho1_ohm_m`) nie jest tekstem
                     // dla projektanta — wiersz nazywa daną po polsku, z jednostką i opisem.
                     <tr key={parametr.klucz}>
-                      <td>{parametr.nazwa_pl}</td>
+                      <td>
+                        <TekstZWzorami tekst={parametr.nazwa_pl} />
+                      </td>
                       <td className="mvd-num">{parametr.jednostka}</td>
                       <td>
                         <OdznakaWymagania wymagane={parametr.wymagane} />
                       </td>
-                      <td>{parametr.opis_pl}</td>
+                      <td>
+                        <TekstZWzorami tekst={parametr.opis_pl} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>

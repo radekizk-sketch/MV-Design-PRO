@@ -37,6 +37,7 @@ import './aparatura.css';
 import { useAppStateStore } from '../../../../ui/app-state';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { TekstZWzorami } from '../../../kreatory/rama';
 import { KartaWerdyktu } from '../../wzorzec';
 import { fmtCzas, fmtKA, fmtLiczba } from '../strings';
 import {
@@ -324,7 +325,9 @@ export function WeryfikacjaAparatury({
           <h3 className="mvd-apar-tytul">
             {T.tytul} — <span className="mvd-apar-punkt">{punktNazwa}</span>
           </h3>
-          <p className="mvd-apar-cel">{T.cel}</p>
+          <p className="mvd-apar-cel">
+            <TekstZWzorami tekst={T.cel} />
+          </p>
         </div>
         <button
           type="button"

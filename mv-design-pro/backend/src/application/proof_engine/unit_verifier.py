@@ -433,22 +433,6 @@ class UnitVerifier:
             "inputs": {"P_{loss}": "kW", "t": "h"},
             "output": "kWh",
         },
-        # P19: Earthing / Ground Fault (SN)
-        "EQ_EARTH_001": {
-            "rule": "V / Ω = A",
-            "inputs": {"U_{0}": "V", "Z_{E}": "Ω"},
-            "output": "A",
-        },
-        "EQ_EARTH_002": {
-            "rule": "A + A = A",
-            "inputs": {"I_{u}": "A", "I_{p}": "A"},
-            "output": "A",
-        },
-        "EQ_EARTH_003": {
-            "rule": "A · Ω = V",
-            "inputs": {"I_{u}": "A", "R_{u}": "Ω"},
-            "output": "V",
-        },
     }
 
     @classmethod

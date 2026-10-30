@@ -33,7 +33,8 @@ export const SSCI_STRINGS = {
   uruchomPonownie: 'Uruchom ponownie',
   uruchomOpis:
     'Analiza powstaje z committed ENM aktywnego przypadku: pola karty falownika '
-    + '(pasma regulatora prądu, PLL, filtr) tworzą Z_conv, a moc zwarciowa węzła — Z_grid.',
+    + '(pasma regulatora prądu, PLL, filtr) tworzą $Z_{\\mathrm{conv}}$, a moc zwarciowa węzła — '
+    + '$Z_{\\mathrm{grid}}$.',
 
   // Stany biegu
   ladowanie: 'Trwa analiza stabilności SSCI…',

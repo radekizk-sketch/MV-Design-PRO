@@ -425,7 +425,7 @@ def test_most_ustawia_customer_count_tylko_poprawnym_wpisom_zero_pozostalym() ->
 
 
 # ---------------------------------------------------------------------------
-# 5. Uziom stacji (11 kluczy wymaganych)
+# 5. Uziom stacji (10 liczb wymaganych + szyna stacji; prąd z modelu albo nadpisanie)
 # ---------------------------------------------------------------------------
 
 _UZIOM_KOMPLETNY: dict[str, float] = {
@@ -436,14 +436,15 @@ _UZIOM_KOMPLETNY: dict[str, float] = {
     "buried_depth_m": 0.6,
     "rods_total_length_m": 40.0,
     "split_factor": 0.65,
-    "fault_current_ka": 10.0,
     "fault_clearing_time_s": 0.5,
     "surface_layer_rho_ohm_m": 2500.0,
     "surface_layer_derating": 0.74,
 }
+#: Szyna SN stacji GPZ złotej sieci (stacja z szyną WN 110 kV i SN 15 kV).
+_SZYNA_STACJI = "bus_sn_main"
 
 
-def test_uziom_brak_parametru_wymienia_wszystkie_11_kluczy_po_polsku() -> None:
+def test_uziom_brak_parametru_wymienia_wszystkie_10_liczb_po_polsku() -> None:
     """Komunikat cytuje KATALOG (`nazwa_parametru_pl`), nie surowe klucze Pythona
     — `rho1_ohm_m` na ekranie łamałoby `prezentacja.straznik.test.tsx`."""
     enm = build_golden_enm()
@@ -455,30 +456,76 @@ def test_uziom_brak_parametru_wymienia_wszystkie_11_kluczy_po_polsku() -> None:
     assert _WZORZEC_IDENTYFIKATORA_Z_PODKRESLENIEM.search(warunek.opis_pl) is None, warunek.opis_pl
     assert "Rezystywność warstwy górnej gruntu" in warunek.opis_pl
     assert "Długość uziomu kratowego" in warunek.opis_pl
+    # Prąd zwarcia doziemnego nie jest brakiem formularza — przychodzi z modelu.
+    assert "Prąd zwarcia doziemnego" not in warunek.opis_pl
+    szyna = next(w for w in wynik.warunki if w.kod == "parametr.earthing.bus_ref")
+    assert szyna.spelniony is False
     assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
 
 
-def test_uziom_komplet_11_kluczy_jest_potwierdzony() -> None:
+def test_uziom_komplet_bez_pradu_jest_potwierdzony_pradem_z_modelu() -> None:
+    """Złota sieć: stacja GPZ ma sieć SN izolowaną (I_C) i szynę WN 110 kV (I″k1) — prąd
+    przychodzi z modelu, formularz go nie wymaga (dawniej wymagał 10 kA z powietrza)."""
     enm = build_golden_enm()
     wynik = ocen_gotowosc_v126(
-        enm, V126AnalysisType.EARTHING_SAFETY, {"earthing": dict(_UZIOM_KOMPLETNY)}
+        enm,
+        V126AnalysisType.EARTHING_SAFETY,
+        {"earthing": {**_UZIOM_KOMPLETNY, "bus_ref": _SZYNA_STACJI}},
     )
     assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
+    prad = next(w for w in wynik.warunki if w.kod == "model.prad_uziomowy")
+    assert prad.spelniony is True
+    assert "z modelu" in prad.opis_pl and "2 z 2" in prad.opis_pl
+    assert prad.elementy == (_SZYNA_STACJI,)
+    dane = {d.nazwa_pl: d.wartosc_pl for d in wynik.dane_z_modelu}
+    assert any("sieć SN 15 kV" in k and v.startswith("I_C = ") for k, v in dane.items()), dane
+    assert any("sieć WN 110 kV" in k and v.startswith("I″k1 = ") for k, v in dane.items()), dane
 
 
 @pytest.mark.parametrize("brakujacy_klucz", list(_UZIOM_KOMPLETNY))
 def test_uziom_brak_jednego_klucza_wymienia_dokladnie_ta_polska_nazwe(brakujacy_klucz: str) -> None:
     enm = build_golden_enm()
-    niekompletny = dict(_UZIOM_KOMPLETNY)
+    niekompletny: dict[str, object] = {**_UZIOM_KOMPLETNY, "bus_ref": _SZYNA_STACJI}
     del niekompletny[brakujacy_klucz]
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.EARTHING_SAFETY, {"earthing": niekompletny})
     assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
     warunek = next(w for w in wynik.warunki if w.kod == "parametr.earthing")
     nazwa_pl = nazwa_parametru_pl("earthing_safety", f"earthing.{brakujacy_klucz}")
-    # Pozostałe 10 kluczy są kompletne -> komunikat wymienia DOKŁADNIE polską
+    # Pozostałe 9 kluczy są kompletne -> komunikat wymienia DOKŁADNIE polską
     # nazwę tego jednego brakującego parametru (nie surowy klucz Pythona).
     assert warunek.opis_pl == f"Brak danych uziomu stacji: {nazwa_pl}"
     assert brakujacy_klucz not in warunek.opis_pl
+
+
+def test_uziom_szyna_spoza_modelu_blokuje_z_przyczyna() -> None:
+    enm = build_golden_enm()
+    wynik = ocen_gotowosc_v126(
+        enm,
+        V126AnalysisType.EARTHING_SAFETY,
+        {"earthing": {**_UZIOM_KOMPLETNY, "bus_ref": "szyna-ktorej-nie-ma"}},
+    )
+    prad = next(w for w in wynik.warunki if w.kod == "model.prad_uziomowy")
+    assert prad.spelniony is False
+    assert "nie należy do modelu" in prad.opis_pl
+    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
+
+
+@pytest.mark.parametrize("nadpisanie", [None, 4.0])
+def test_uziom_stacja_nn_bez_pradu_z_modelu_odblokowuje_tylko_nadpisanie(
+    nadpisanie: float | None,
+) -> None:
+    """Stacja „B" złotej sieci ma szynę SN (I_C z modelu); szyna nN sama (gdy stacja byłaby
+    wyłącznie nN) nie daje przypadku. Iloczyn: prąd z modelu × nadpisanie projektanta — gdy
+    model daje prąd, warunek spełniony z nadpisaniem i bez; nadpisanie zmienia opis."""
+    enm = build_golden_enm()
+    uziom: dict[str, object] = {**_UZIOM_KOMPLETNY, "bus_ref": "bus_sn_b"}
+    if nadpisanie is not None:
+        uziom["fault_current_ka"] = nadpisanie
+    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.EARTHING_SAFETY, {"earthing": uziom})
+    prad = next(w for w in wynik.warunki if w.kod == "model.prad_uziomowy")
+    assert prad.spelniony is True
+    assert ("wartość projektanta" in prad.opis_pl) is (nadpisanie is not None)
+    assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
 
 
 # ---------------------------------------------------------------------------

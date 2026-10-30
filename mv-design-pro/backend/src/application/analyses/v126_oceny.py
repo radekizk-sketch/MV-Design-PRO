@@ -187,7 +187,8 @@ Z_PRAD_RESZTKOWY = ZalozenieKryterium(
     "Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani "
     "rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — "
     "ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu "
-    "i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje.",
+    "i zakazuje pracy w rezonansie — prąd dławika równy prądowi pojemnościowemu sieci "
+    "(s. 30), wartości dopuszczalnej nie podaje.",
     _PROG_PRADU_RESZTKOWEGO_PCT,
     "%",
 )
@@ -677,7 +678,7 @@ _ZAKRES_UZIOMU = ZakresWaznosci(
 
 
 def oceny_uziomu(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
-    ref = ladunek.get("gpz_ref")
+    ref = ladunek.get("bus_ref")
     # Stacja nazwana nazwą z modelu; identyfikator spoza migawki daje jawny brak
     # (`SPOZA_MODELU`), nigdy siebie samego w zdaniu dla człowieka.
     ma_ref = isinstance(ref, str) and bool(ref)
@@ -727,7 +728,7 @@ def oceny_uziomu(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
             przedmiot=przedmiot,
             zdolnosc_id=ID_UZIOM,
             bieg=bieg,
-            dane=(),
+            dane=_dane(ladunek.get("dane_przyjete")),
             zakres=_ZAKRES_UZIOMU,
             krok="ieee80_sverak",
         )
@@ -967,7 +968,7 @@ def oceny_detekcji(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                     "Przekaźnik ma każdą funkcję metody detekcji zalecanej dla sposobu pracy "
                     "punktu neutralnego sieci"
                 ),
-                warunek_latex=r"F_{\mathrm{wym}} \subseteq F_{\mathrm{przekaźnika}}",
+                warunek_latex=r"F_{\mathrm{wym}} \subseteq F_{\text{przekaźnika}}",
                 relacja="LOGICZNE",
             ),
             podstawa=Z_METODA_DETEKCJI.podstawa,

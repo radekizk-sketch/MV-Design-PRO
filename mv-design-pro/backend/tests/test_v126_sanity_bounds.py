@@ -266,6 +266,7 @@ class TestV126SanityWithRealInputs:
     def test_earthing_with_data_verified(self) -> None:
         # Komplet danych uziomu — pola wymagane kontraktu (bez uziomu domyślnego).
         uziom = V126EarthingInput(
+            bus_ref="B1",
             rho1_ohm_m=100.0,
             length_m=60.0,
             width_m=40.0,
@@ -313,8 +314,20 @@ class TestV126SanityWithRealInputs:
 
     def test_motor_starting_credible_motor_verified(self) -> None:
         # Silnik 15 kV dopasowany do szyny B2 (15 kV) — zapad napięcia w granicach wiarygodności.
-        model = _input().model_copy(
+        # Impedancja zastępcza sieci w B2 (dana wejścia; w biegu z modelu liczy ją most):
+        # Z_Q = 15²/250 MVA z R/X ≈ 0,15 plus kabel 4 km · (0,206 + j0,118) Ω/km.
+        wejscie = _input()
+        szyny = [
+            (
+                bus.model_copy(update={"thevenin_r_ohm": 0.959, "thevenin_x_ohm": 1.363})
+                if bus.ref == "B2"
+                else bus
+            )
+            for bus in wejscie.buses
+        ]
+        model = wejscie.model_copy(
             update={
+                "buses": szyny,
                 "motors": [
                     V126MotorInput(
                         ref="M1",
@@ -329,7 +342,7 @@ class TestV126SanityWithRealInputs:
                         critical_slip=0.2,
                         load_start_torque_pu=0.6,
                     )
-                ]
+                ],
             }
         )
         res = _run_model(V126AnalysisType.MOTOR_STARTING, model)

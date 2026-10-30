@@ -25,6 +25,7 @@ import { rodzajPrezentowany } from '../nieprezentowane';
 import { AKADEMICKIE_STRINGS as S } from '../strings';
 import {
   CASE_ID,
+  fragmentyProzy,
   GOTOWOSC,
   KATALOG,
   ODPOWIEDZI,
@@ -97,7 +98,9 @@ describe('EkranAnalizAkademickich — stany wejściowe i katalog kart', () => {
       const el = await screen.findByTestId(`mvd-akad-karta-${pozycja.kod}`);
       expect(el).toHaveTextContent(pozycja.nazwa_pl);
       expect(el).toHaveTextContent(pozycja.pytanie_pl.slice(0, 40));
-      expect(el).toHaveTextContent(pozycja.zakres_pl.slice(0, 40));
+      // Zakres niesie symbole jako `$…$` — na ekranie proza + wzory KaTeX, bez surowego `$`.
+      for (const fragment of fragmentyProzy(pozycja.zakres_pl)) expect(el).toHaveTextContent(fragment);
+      expect(el.textContent ?? '').not.toContain('$');
     }
     for (const pozycja of KATALOG.filter((k) => !k.prezentowany)) {
       expect(screen.queryByTestId(`mvd-akad-karta-${pozycja.kod}`)).toBeNull();
@@ -201,7 +204,9 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
     const g = gotowosc('transient_trv');
     const zModelu = screen.getByTestId('mvd-akad-dane-z-modelu');
     await waitFor(() => expect(zModelu).toHaveTextContent(g.dane_z_modelu[0].nazwa_pl));
-    expect(zModelu).toHaveTextContent(g.dane_z_modelu[0].wartosc_pl);
+    for (const fragment of fragmentyProzy(g.dane_z_modelu[0].wartosc_pl)) {
+      expect(zModelu).toHaveTextContent(fragment);
+    }
     // Elementy modelu nazwane jak na schemacie (most referencja → nazwa), nie referencjami.
     expect(zModelu).toHaveTextContent(nazwaZMigawki('bus_hv'));
     expect(zModelu.textContent ?? '').not.toContain('bus_hv');
@@ -213,7 +218,13 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
     // Propozycja z modelu (napięcie znamionowe wyłącznika) — z nazwanym źródłem.
     const propozycja = g.proponowane.breaker_rated_voltage_kv;
     expect(propozycja).toBeTruthy();
-    expect(screen.getByTestId('mvd-akad-dane-propozycje')).toHaveTextContent(propozycja.zrodlo_pl);
+    const propozycje = screen.getByTestId('mvd-akad-dane-propozycje');
+    for (const fragment of fragmentyProzy(propozycja.zrodlo_pl)) {
+      expect(propozycje).toHaveTextContent(fragment);
+    }
+    // Symbole źródła propozycji ($U_m$, $U_r$) złożone przez KaTeX, nie surowy zapis.
+    expect(propozycje.querySelectorAll('.katex').length).toBeGreaterThanOrEqual(2);
+    expect(propozycje.textContent ?? '').not.toContain('$');
     const domyslne = screen.getByTestId('mvd-akad-dane-domyslne');
     if (k.dane.domyslne_solvera.length > 0) {
       expect(domyslne).toHaveTextContent(k.dane.domyslne_solvera[0].nazwa_pl);

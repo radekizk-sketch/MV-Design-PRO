@@ -182,10 +182,17 @@ def test_karta_e40_mowi_prawde_o_metodzie() -> None:
 # ILOCZYN CECH: rodzaj analizy (E-40 vs rodzaj, który czyta moc zwarciową) × powierzchnia
 # twierdzenia o danych (karta katalogu vs gotowość „dane z modelu"). Tor harmoniczny nie czyta
 # mocy zwarciowej, więc ŻADNA powierzchnia E-40 nie może jej wymieniać jako danej analizy;
-# rodzaj, który ją czyta, nadal ją wymienia (kontrola dodatnia — mechanizm nie zniknął).
+# rodzaj, który ją czyta, nadal ją wymienia (kontrola dodatnia — mechanizm nie zniknął):
+# impedancja sieci SSCI bierze Z_Q szyny albo jej moc zwarciową. Rozruch silnika czyta od karty
+# UX-04/POLE-ZU-SKLADOWA-ZEROWA (commit 5) impedancję zastępczą sieci w szynie (przekątna
+# macierzy Z-bus IEC 60909), nie moc zwarciową — więc też jej nie wymienia.
 @pytest.mark.parametrize(
     ("rodzaj", "wymienia_moc_zwarciowa"),
-    [(_PQ, False), (V126AnalysisType.MOTOR_STARTING, True)],
+    [
+        (_PQ, False),
+        (V126AnalysisType.SSCI_IMPEDANCE, True),
+        (V126AnalysisType.MOTOR_STARTING, False),
+    ],
 )
 def test_gotowosc_nie_twierdzi_ze_e40_czyta_moc_zwarciowa(
     rodzaj: V126AnalysisType, wymienia_moc_zwarciowa: bool

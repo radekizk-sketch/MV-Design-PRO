@@ -26,6 +26,7 @@ modułu (reguła KLASA §4: „deklaracja bez testu = fałszywa pewność"):
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -347,6 +348,71 @@ def test_katalog_latex_bez_pustych_symboli_i_warunkow() -> None:
             assert podstawa.warunek_latex.strip() != "", (karta.kod, podstawa.symbol)
             if isinstance(podstawa.wartosc_graniczna, str):
                 assert podstawa.wzor_latex.strip() != "", (karta.kod, podstawa.symbol)
+
+
+#: Symbol z indeksem dolnym zapisany ASCII (`U_c`, `ρ_s`, `Z_grid`, `TOV_10s`) — w prozie
+#: ekranu pojawiłby się z podkreślnikiem zamiast indeksu.
+_SYMBOL_ASCII = re.compile(r"(?<![\w.\[\]])[A-Za-zΔρθφα]{1,4}_[A-Za-z0-9{]")
+#: Pola katalogu, które NIE są prozą ekranu (identyfikatory kontraktu, jednostki, LaTeX).
+_POLA_NIE_PROZA = frozenset(
+    {"kod", "klucz", "symbol", "katalog_odniesienia", "jednostka", "zakres_oceny"}
+)
+
+
+def _teksty_prozy(obiekt: object, sciezka: str) -> list[tuple[str, str]]:
+    if isinstance(obiekt, dict):
+        wynik: list[tuple[str, str]] = []
+        for klucz, wartosc in obiekt.items():
+            if klucz in _POLA_NIE_PROZA or "latex" in klucz:
+                continue
+            wynik.extend(_teksty_prozy(wartosc, f"{sciezka}.{klucz}"))
+        return wynik
+    if isinstance(obiekt, list):
+        return [t for i, w in enumerate(obiekt) for t in _teksty_prozy(w, f"{sciezka}[{i}]")]
+    return [(sciezka, obiekt)] if isinstance(obiekt, str) else []
+
+
+def test_proza_katalogu_niesie_symbole_wylacznie_jako_wzory_inline() -> None:
+    """Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5 (strażnik `ui_math_guard`, PIN = 0):
+    symbol w prozie katalogu jest zapisem `$…$` (ekran składa go przez `TekstZWzorami`
+    → KaTeX), nigdy ASCII z podkreślnikiem. Iloczyn: KAŻDA karta × KAŻDE pole prozy
+    `to_dict()` (pytanie, zakres, wielkości, warunki, granice słowne, opisy wzorów, dane
+    z modelu, parametry projektanta, domyślne solvera, źródła z rejestru założeń, uwagi).
+    Ograniczniki `$` są parzyste — nieparzysty rozbiłby podział tekstu na wzory."""
+    naruszenia: list[str] = []
+    for karta in KATALOG_ANALIZ_V126:
+        for sciezka, tekst in _teksty_prozy(karta.to_dict(), karta.kod):
+            if tekst.count("$") % 2 != 0:
+                naruszenia.append(f"{sciezka}: nieparzysta liczba '$' — {tekst!r}")
+            poza_wzorami = re.sub(r"\$[^$]*\$", " ", tekst)
+            symbole = _SYMBOL_ASCII.findall(poza_wzorami)
+            if symbole:
+                naruszenia.append(f"{sciezka}: {symbole} — {tekst!r}")
+    assert naruszenia == []
+
+
+def test_nazwa_parametru_bez_wzorow_bo_trafia_do_komunikatow_gotowosci() -> None:
+    """`ParametrUzytkownika.nazwa_pl` trafia też do komunikatów gotowości
+    (`nazwa_parametru_pl` → `v126_gotowosc.py`), które ekran wypisuje wprost — zapis `$…$`
+    pokazałby się tam dosłownie. Nazwa parametru jest więc prozą bez wzorów."""
+    for karta in KATALOG_ANALIZ_V126:
+        for parametr in karta.od_uzytkownika:
+            assert "$" not in parametr.nazwa_pl, (karta.kod, parametr.klucz)
+            assert not _SYMBOL_ASCII.search(parametr.nazwa_pl), (
+                karta.kod,
+                parametr.klucz,
+            )
+
+
+def test_wykrywacz_symbolu_ascii_lapie_dawny_zapis() -> None:
+    """Iniekcja: dawne napisy katalogu sprzed naprawy są wykrywane, zapis `$…$` nie."""
+    for dawny in (
+        "(U_c, U_r, U_res, wytrzymałość",
+        "ρ_s — rezystywność",
+        "TOV_10s ≥ U_TOV",
+    ):
+        assert _SYMBOL_ASCII.search(re.sub(r"\$[^$]*\$", " ", dawny)), dawny
+    assert not _SYMBOL_ASCII.search(re.sub(r"\$[^$]*\$", " ", "($U_c$, $U_{\\mathrm{res}}$)"))
 
 
 # ---------------------------------------------------------------------------

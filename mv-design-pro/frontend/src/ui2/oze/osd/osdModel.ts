@@ -234,8 +234,8 @@ function opisBiegu(bieg: BiegOsd): string {
 /**
  * Adapter śladu symulacji → kroki `SladAnalizy` (KrokSladuSily). Trzy kroki:
  * (1) nadpisanie nastawu źródła (co i jak zmieniono), (2) podsumowanie biegu
- * bazowego, (3) podsumowanie biegu z poleceniem. Wzory jako zapis symboliczny
- * (ASCII), spójnie ze śladem pulpitu OZE. Zero ocen — treści wprost z backendu.
+ * bazowego, (3) podsumowanie biegu z poleceniem. Wzory w czystym LaTeX-u (KaTeX,
+ * `SladAnalizy`), spójnie ze śladem pulpitu OZE. Zero ocen — treści wprost z backendu.
  */
 export function krokiSladuOsd(widok: WidokOdpowiedziOsd): KrokSladuSily[] {
   const { whitebox: wb, parameters: par } = widok;

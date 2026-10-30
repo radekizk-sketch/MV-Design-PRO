@@ -50,7 +50,7 @@
           },
           {
             "nazwa_pl": "Parametry transformatorów",
-            "elementy_pl": "transformatory (S_n, u_k)"
+            "elementy_pl": "transformatory ($S_n$, $u_k$)"
           },
           {
             "nazwa_pl": "Widmo harmoniczne i moc znamionowa przekształtników",
@@ -108,19 +108,19 @@
         },
         {
           "symbol": "L(f)",
-          "nazwa_pl": "Wzmocnienie pętli mniejszej Z_grid/Z_conv",
+          "nazwa_pl": "Wzmocnienie pętli mniejszej $Z_{\\mathrm{grid}}/Z_{\\mathrm{conv}}$",
           "jednostka": "-",
           "symbol_latex": "L(f) = Z_{\\mathrm{grid}}(f)/Z_{\\mathrm{conv}}(f)"
         },
         {
-          "symbol": "Re Z_conv,min",
+          "symbol": "Re Z_conv_min",
           "nazwa_pl": "Najmniejsza rezystancja wyjściowa przekształtnika",
           "jednostka": "Ω",
           "symbol_latex": "\\min\\ \\mathrm{Re}\\,Z_{\\mathrm{conv}}"
         }
       ],
       "podstawa_oceny": [],
-      "bez_podstawy_pl": "Ta analiza dostarcza tablice impedancji. Ocena stabilności (kryterium impedancyjne Nyquista wg Sun 2011 / Wen 2016) nie jest wykonywana — impedancja sieci Z_grid(f) liczona jest bez przekładni transformatora; okno „Stabilność SSCI” pokazuje wyjaśnienie i metryki wyłącznie jako materiał audytowy.",
+      "bez_podstawy_pl": "Ta analiza dostarcza tablice impedancji. Ocena stabilności (kryterium impedancyjne Nyquista wg Sun 2011 / Wen 2016) nie jest wykonywana — impedancja sieci $Z_{\\mathrm{grid}}(f)$ liczona jest bez przekładni transformatora; okno „Stabilność SSCI” pokazuje wyjaśnienie i metryki wyłącznie jako materiał audytowy.",
       "dane": {
         "z_modelu": [
           {
@@ -161,7 +161,7 @@
         "nazwa_pl": "Uziemienia, punkt neutralny i izolacja"
       },
       "pytanie_pl": "Czy przy zwarciu doziemnym napięcia rażenia na terenie stacji nie zagrażają człowiekowi?",
-      "zakres_pl": "Uziom kratowy jednej stacji: geometria siatki i uziomów pionowych, grunt dwuwarstwowy, warstwa powierzchniowa; rażenie dotykowe i krokowe przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia.",
+      "zakres_pl": "Uziom kratowy jednej stacji wskazanej szyną modelu: geometria siatki i uziomów pionowych, grunt dwuwarstwowy, warstwa powierzchniowa; rażenie dotykowe i krokowe przy prądzie zwarcia doziemnego odprowadzanym przez uziom w czasie wyłączenia. Prąd z modelu wg sposobu pracy punktu neutralnego (EN 50522 tab. 1: sieć izolowana $I_C$, skompensowana $I_{\\mathrm{res}}$ albo $\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$ z dławikiem w stacji, uziemiona przez małą impedancję $I''_{k1}$), przypadek najniekorzystniejszy stron SN i WN stacji; wartość projektanta zastępuje go jako dana przyjęta.",
       "wielkosci_glowne": [
         {
           "symbol": "R_g",
@@ -200,24 +200,24 @@
           "symbol": "U_dot",
           "jednostka": "V",
           "warunek_pl": "wartość dopuszczalna liczona z rezystywności warstwy powierzchniowej, jej współczynnika redukcji i czasu wyłączenia zwarcia (ciało 70 kg) — wzór obok",
-          "wartosc_graniczna": "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f",
+          "wartosc_graniczna": "$U_{\\mathrm{dot,dop}}$ z danych uziomu — wzór obok",
           "zrodlo_pl": "założenie inżynierskie Z-4 programu — Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "U_{\\mathrm{dot}}",
           "warunek_latex": "U_{\\mathrm{dot}} \\leq U_{\\mathrm{dot,dop}}",
           "wzor_latex": "U_{\\mathrm{dot,dop}} = \\left(1000 + 1{,}5\\, C_s\\, \\rho_s\\right)\\cdot \\dfrac{0{,}157}{\\sqrt{t_f}}",
-          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg (praktyka IEEE 80, metoda Sveraka)."
+          "wzor_opis_pl": "$\\rho_s$ — rezystywność warstwy powierzchniowej [Ω·m]; $C_s$ — współczynnik redukcji warstwy powierzchniowej; $t_f$ — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg (praktyka IEEE 80, metoda Sveraka)."
         },
         {
           "wielkosc_pl": "Napięcie krokowe",
           "symbol": "U_kr",
           "jednostka": "V",
           "warunek_pl": "wartość dopuszczalna liczona jak dla napięcia dotykowego, ze współczynnikiem 6 zamiast 1,5 — wzór obok",
-          "wartosc_graniczna": "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f",
+          "wartosc_graniczna": "$U_{\\mathrm{kr,dop}}$ z danych uziomu — wzór obok",
           "zrodlo_pl": "założenie inżynierskie Z-5 programu — Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "U_{\\mathrm{kr}}",
           "warunek_latex": "U_{\\mathrm{kr}} \\leq U_{\\mathrm{kr,dop}}",
           "wzor_latex": "U_{\\mathrm{kr,dop}} = \\left(1000 + 6\\, C_s\\, \\rho_s\\right)\\cdot \\dfrac{0{,}157}{\\sqrt{t_f}}",
-          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg (praktyka IEEE 80, metoda Sveraka)."
+          "wzor_opis_pl": "$\\rho_s$ — rezystywność warstwy powierzchniowej [Ω·m]; $C_s$ — współczynnik redukcji warstwy powierzchniowej; $t_f$ — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg (praktyka IEEE 80, metoda Sveraka)."
         }
       ],
       "bez_podstawy_pl": null,
@@ -225,11 +225,11 @@
         "z_modelu": [],
         "od_uzytkownika": [
           {
-            "klucz": "earthing.gpz_ref",
-            "nazwa_pl": "Oznaczenie stacji",
+            "klucz": "earthing.bus_ref",
+            "nazwa_pl": "Szyna stacji",
             "jednostka": "-",
-            "wymagane": false,
-            "opis_pl": ""
+            "wymagane": true,
+            "opis_pl": "Szyna stacji w modelu — z niej solver bierze sieci SN i WN stacji, których zwarcie doziemne odprowadza uziom."
           },
           {
             "klucz": "earthing.rho1_ohm_m",
@@ -296,10 +296,10 @@
           },
           {
             "klucz": "earthing.fault_current_ka",
-            "nazwa_pl": "Prąd zwarcia doziemnego",
+            "nazwa_pl": "Prąd zwarcia doziemnego (nadpisanie)",
             "jednostka": "kA",
-            "wymagane": true,
-            "opis_pl": ""
+            "wymagane": false,
+            "opis_pl": "Domyślnie z modelu wg sposobu pracy punktu neutralnego (EN 50522 tab. 1: $I_C$, $I_{\\mathrm{res}}$, $\\sqrt{I_L^2 + I_{\\mathrm{res}}^2}$ albo $I''_{k1}$, przypadek najniekorzystniejszy stron SN i WN stacji); wartość wpisana zastępuje prąd z modelu jako dana przyjęta."
           },
           {
             "klucz": "earthing.fault_clearing_time_s",
@@ -379,7 +379,7 @@
           "wielkosc_pl": "Margines ochrony izolacji",
           "symbol": "M_BIL",
           "jednostka": "%",
-          "warunek_pl": "M_BIL = (BIL − U_res)/U_res·100 ≥ granica, w każdym miejscu zainstalowania",
+          "warunek_pl": "$M_{\\mathrm{BIL}} = (\\mathrm{BIL} - U_{\\mathrm{res}})/U_{\\mathrm{res}} \\cdot 100\\,\\%$ nie mniejszy od granicy, w każdym miejscu zainstalowania",
           "wartosc_graniczna": 20.0,
           "zrodlo_pl": "założenie inżynierskie Z-3 programu — Zapas ochrony z praktyki koordynacji izolacji (IEC 60071-2 — wartość liczbowa marginesu nie jest potwierdzona w programie; wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "M_{\\mathrm{BIL}}",
@@ -391,24 +391,24 @@
           "wielkosc_pl": "Przepięcie dorywcze przy doziemieniu",
           "symbol": "U_c",
           "jednostka": "kV",
-          "warunek_pl": "U_TOV = k·U_m/√3; sieć izolowana i kompensowana (doziemienie długotrwałe): U_c ≥ U_TOV; sieć z rezystorem i uziemiona bezpośrednio (doziemienie wyłączane): U_c ≥ U_m/√3 oraz wytrzymałość TOV 10 s ≥ U_TOV",
+          "warunek_pl": "$U_{\\mathrm{TOV}} = k\\,U_m/\\sqrt{3}$; sieć izolowana i kompensowana (doziemienie długotrwałe): $U_c \\geq U_{\\mathrm{TOV}}$; sieć z rezystorem i uziemiona bezpośrednio (doziemienie wyłączane): $U_c \\geq U_m/\\sqrt{3}$ oraz wytrzymałość $\\mathrm{TOV}_{10\\,\\mathrm{s}} \\geq U_{\\mathrm{TOV}}$",
           "wartosc_graniczna": "k z solvera doziemienia sieci (sposób pracy punktu neutralnego)",
           "zrodlo_pl": "założenie inżynierskie Z-1 programu — Reguła doboru ograniczników ZnO z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).; założenie inżynierskie Z-2 programu — Reguła z praktyki IEC 60099-5 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "U_c",
           "warunek_latex": "U_c \\geq U_{\\mathrm{TOV}} \\ \\text{albo}\\ \\left(U_c \\geq \\dfrac{U_m}{\\sqrt{3}} \\wedge \\mathrm{TOV}_{10\\,\\mathrm{s}} \\geq U_{\\mathrm{TOV}}\\right)",
           "wzor_latex": "U_{\\mathrm{TOV}} = k\\,\\dfrac{U_m}{\\sqrt{3}}",
-          "wzor_opis_pl": "k — współczynnik zwarcia doziemnego sieci (U_fazy zdrowej/U_f) z solvera doziemienia wg sposobu pracy punktu neutralnego; U_m — napięcie najwyższe sieci [kV]; U_c — napięcie trwałej pracy ogranicznika [kV]; TOV_10s — wytrzymałość ogranicznika na przepięcie dorywcze 10 s [kV]."
+          "wzor_opis_pl": "$k$ — współczynnik zwarcia doziemnego sieci (napięcie fazy zdrowej odniesione do $U_f$) z solvera doziemienia wg sposobu pracy punktu neutralnego; $U_m$ — napięcie najwyższe sieci [kV]; $U_c$ — napięcie trwałej pracy ogranicznika [kV]; $\\mathrm{TOV}_{10\\,\\mathrm{s}}$ — wytrzymałość ogranicznika na przepięcie dorywcze 10 s [kV]."
         }
       ],
       "bez_podstawy_pl": null,
       "dane": {
         "z_modelu": [
           {
-            "nazwa_pl": "Ograniczniki przepięć i ich karty katalogowe (U_c, U_r, U_res, wytrzymałość TOV 10 s)",
+            "nazwa_pl": "Ograniczniki przepięć i ich karty katalogowe ($U_c$, $U_r$, $U_{\\mathrm{res}}$, wytrzymałość TOV 10 s)",
             "elementy_pl": "aparaty pierwotne pól i stacji"
           },
           {
-            "nazwa_pl": "Napięcie najwyższe sieci U_m",
+            "nazwa_pl": "Napięcie najwyższe sieci $U_m$",
             "elementy_pl": "poziom napięcia szyny albo karta ogranicznika"
           },
           {
@@ -421,7 +421,7 @@
           {
             "klucz": "arrester_mcov_kv",
             "nazwa_pl": "Dobór wstępny ogranicznika bez karty katalogowej",
-            "wartosc": "U_c = wymagane wg czasu doziemienia (przy doziemieniu wyłączanym U_c dobrane tak, by TOV_10s ≥ U_TOV); U_r = 1,2·U_c; U_res = 4,0·U_c; TOV_10s = 1,4·U_c (skrajne stosunki ograniczników ZnO SN katalogu programu, zachowawczo)",
+            "wartosc": "$U_c$ wymagane wg czasu doziemienia (przy doziemieniu wyłączanym $U_c$ dobrane tak, by $\\mathrm{TOV}_{10\\,\\mathrm{s}} \\geq U_{\\mathrm{TOV}}$); $U_r = 1{,}2\\,U_c$; $U_{\\mathrm{res}} = 4{,}0\\,U_c$; $\\mathrm{TOV}_{10\\,\\mathrm{s}} = 1{,}4\\,U_c$ (skrajne stosunki ograniczników ZnO SN katalogu programu, zachowawczo)",
             "jednostka": "kV",
             "uzasadnienie_pl": "Wartości robocze WYŁĄCZNIE przy braku karty ogranicznika — każda jest daną przyjętą wiersza o jakości szacowanej, a ocena ma kompletność dowodu NIEPEŁNY."
           },
@@ -469,12 +469,12 @@
           "symbol": "F_wym",
           "jednostka": "-",
           "warunek_pl": "każda funkcja metody zalecanej dla sposobu pracy punktu neutralnego jest w wyposażeniu przekaźnika wskazanym przez projektanta",
-          "wartosc_graniczna": "F_wym ⊆ F_przekaźnika",
+          "wartosc_graniczna": "$F_{\\mathrm{wym}} \\subseteq F_{\\text{przekaźnika}}$",
           "zrodlo_pl": "założenie inżynierskie Z-8 programu — Tabela decyzyjna z praktyki zabezpieczeń ziemnozwarciowych sieci SN — bez wartości normowej.",
           "symbol_latex": "F_{\\mathrm{wym}}",
-          "warunek_latex": "F_{\\mathrm{wym}} \\subseteq F_{\\mathrm{przekaźnika}}",
-          "wzor_latex": "F_{\\mathrm{wym}} \\subseteq F_{\\mathrm{przekaźnika}}",
-          "wzor_opis_pl": "F_wym — funkcje metody zalecanej (metoda złożona 51N+67N wymaga obu funkcji, 51N/50N — obu funkcji); F_przekaźnika — funkcje wskazane przez projektanta. Granica nie jest liczbą — jest porównaniem zbiorów."
+          "warunek_latex": "F_{\\mathrm{wym}} \\subseteq F_{\\text{przekaźnika}}",
+          "wzor_latex": "F_{\\mathrm{wym}} \\subseteq F_{\\text{przekaźnika}}",
+          "wzor_opis_pl": "$F_{\\mathrm{wym}}$ — funkcje metody zalecanej (metoda złożona 51N+67N wymaga obu funkcji, 51N/50N — obu funkcji); $F_{\\text{przekaźnika}}$ — funkcje wskazane przez projektanta. Granica nie jest liczbą — jest porównaniem zbiorów."
         }
       ],
       "bez_podstawy_pl": null,
@@ -556,9 +556,9 @@
           "wielkosc_pl": "Prąd resztkowy (sieć kompensowana)",
           "symbol": "I_res/I_C",
           "jednostka": "%",
-          "warunek_pl": "I_res = √(I_w² + (I_C − I_L)²) dławika modelu (I_L, I_w z impedancji punktów neutralnych w ruchu) ≤ udział prądu pojemnościowego",
+          "warunek_pl": "$I_{\\mathrm{res}} = \\sqrt{I_w^2 + (I_C - I_L)^2}$ dławika modelu ($I_L$, $I_w$ z impedancji punktów neutralnych w ruchu) ≤ udział prądu pojemnościowego",
           "wartosc_graniczna": 10.0,
-          "zrodlo_pl": "założenie inżynierskie Z-6 programu — Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie I_L = I_C (s. 30), wartości dopuszczalnej nie podaje.",
+          "zrodlo_pl": "założenie inżynierskie Z-6 programu — Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie — prąd dławika równy prądowi pojemnościowemu sieci (s. 30), wartości dopuszczalnej nie podaje.",
           "symbol_latex": "I_{\\mathrm{res}}/I_C",
           "warunek_latex": "I_{\\mathrm{res}}/I_C \\leq 10\\%",
           "wzor_latex": "",
@@ -568,13 +568,13 @@
           "wielkosc_pl": "Energia w rezystorze (sieć uziemiona przez rezystor)",
           "symbol": "E",
           "jednostka": "J",
-          "warunek_pl": "E_k = I_th²·R·t_wył ≤ E_n = I_n²·R·t_n rezystora (I_th = I_R,k·√(m+n), I_R,k = c_max·U_f/|R + Z_0,TU/3|)",
-          "wartosc_graniczna": "E ≤ E_n",
+          "warunek_pl": "$E_k = I_{\\mathrm{th}}^2 R\\, t_{\\text{wył}} \\leq E_n = I_n^2 R\\, t_n$ rezystora ($I_{\\mathrm{th}} = I_{R,k}\\sqrt{m+n}$, $I_{R,k} = c_{\\max} U_f/\\left|R + Z_{0,\\mathrm{TU}}/3\\right|$)",
+          "wartosc_graniczna": "$E \\leq E_n$",
           "zrodlo_pl": "założenie inżynierskie Z-7 programu — Znamionowanie czasowe rezystorów uziemiających z praktyki IEEE C57.32 (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
           "symbol_latex": "E",
           "warunek_latex": "E \\leq E_n",
           "wzor_latex": "E_k = I_{\\mathrm{th}}^2 \\cdot R \\cdot t_{\\text{wył}} \\leq E_n = I_n^2 \\cdot R \\cdot t_n\\text{,}\\quad I_{R,k} = \\dfrac{c_{\\max} U_f}{\\left|R + Z_{0,\\mathrm{TU}}/3\\right|}",
-          "wzor_opis_pl": "I_R,k — największy prąd rezystora przy doziemieniu metalicznym wg IEC 60909-0 (c_max z tab. 1, droga zerowa gałęzi uziemiającej Z_0,TU/3 + R) [A]; I_th = I_R,k·√(m+n) — prąd cieplny zastępczy (IEC 60909-0 §12) [A]; R — rezystancja rezystora zespołu uziemiającego [Ω]; t_wył — czas wyłączenia zwarcia doziemnego [s]; I_n, t_n — prąd znamionowy rezystora i dopuszczalny czas jego przepływu [A, s] (IEEE Std C57.32)."
+          "wzor_opis_pl": "$I_{R,k}$ — największy prąd rezystora przy doziemieniu metalicznym wg IEC 60909-0 ($c_{\\max}$ z tab. 1, droga zerowa gałęzi uziemiającej $Z_{0,\\mathrm{TU}}/3 + R$) [A]; $I_{\\mathrm{th}} = I_{R,k}\\sqrt{m+n}$ — prąd cieplny zastępczy (IEC 60909-0 §12) [A]; $R$ — rezystancja rezystora zespołu uziemiającego [Ω]; $t_{\\text{wył}}$ — czas wyłączenia zwarcia doziemnego [s]; $I_n$, $t_n$ — prąd znamionowy rezystora i dopuszczalny czas jego przepływu [A, s] (IEEE Std C57.32)."
         }
       ],
       "bez_podstawy_pl": null,
@@ -624,7 +624,7 @@
         "nazwa_pl": "Aparatura i stany przejściowe"
       },
       "pytanie_pl": "Czy napięcie powrotne po przerwaniu prądu zwarciowego mieści się pod obwiednią wytrzymałości wyłącznika?",
-      "zakres_pl": "Wyłącznik o napięciu znamionowym U_r; przebieg napięcia powrotnego 2–100 µs wobec obwiedni wytrzymałości; udar załączania transformatora i zalecenie blokady różnicowej; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci izolowanej.",
+      "zakres_pl": "Wyłącznik o napięciu znamionowym $U_r$; przebieg napięcia powrotnego 2–100 µs wobec obwiedni wytrzymałości; udar załączania transformatora i zalecenie blokady różnicowej; ryzyko ferrorezonansu z pojemności doczepnej gałęzi sieci izolowanej.",
       "wielkosci_glowne": [
         {
           "symbol": "u_TRV_max",
@@ -646,11 +646,11 @@
         }
       ],
       "podstawa_oceny": [],
-      "bez_podstawy_pl": "Obwiednia wytrzymałości wyłącznika na napięcie powrotne wynika z parametrów u_c, t_3 tablic IEC 62271-100 dla napięcia znamionowego wyłącznika — tablice nie są danymi programu, więc kryterium nie ma podstawy (rekord oceny „brak podstawy”); przebieg napięcia powrotnego jest wynikiem bez oceny.",
+      "bez_podstawy_pl": "Obwiednia wytrzymałości wyłącznika na napięcie powrotne wynika z parametrów $u_c$, $t_3$ tablic IEC 62271-100 dla napięcia znamionowego wyłącznika — tablice nie są danymi programu, więc kryterium nie ma podstawy (rekord oceny „brak podstawy”); przebieg napięcia powrotnego jest wynikiem bez oceny.",
       "dane": {
         "z_modelu": [
           {
-            "nazwa_pl": "Napięcie najwyższe urządzenia U_m sieci SN (proponowane U_r wyłącznika, IEC 60038 / IEC 62271-1)",
+            "nazwa_pl": "Napięcie najwyższe urządzenia $U_m$ sieci SN (proponowane $U_r$ wyłącznika, IEC 60038 / IEC 62271-1)",
             "elementy_pl": "sieci SN, szyny"
           },
           {
@@ -668,7 +668,7 @@
             "nazwa_pl": "Napięcie znamionowe wyłącznika",
             "jednostka": "kV",
             "wymagane": false,
-            "opis_pl": "Puste = napięcie najwyższe urządzenia U_m sieci SN modelu (IEC 60038 tab. 3–5; U_r aparatu = U_m, IEC 62271-1)."
+            "opis_pl": "Puste = napięcie najwyższe urządzenia $U_m$ sieci SN modelu (IEC 60038 tab. 3–5; $U_r$ aparatu równe $U_m$, IEC 62271-1)."
           },
           {
             "klucz": "trv_natural_frequency_hz",
@@ -710,7 +710,7 @@
         "nazwa_pl": "Aparatura i stany przejściowe"
       },
       "pytanie_pl": "Czy silnik ruszy pod obciążeniem i czy jego rozruch nie zapadnie napięcia na szynie poniżej dopuszczalnego?",
-      "zakres_pl": "Silniki podane przez projektanta (model sieci nie zawiera silników), każdy na wskazanej szynie, rozruch bezpośredni; zapad z impedancji zastępczej sieci w węźle silnika (przekątna macierzy impedancyjnej z impedancją zasilania systemowego); szyna zasilana przez transformator nie ma zapadu — macierz analizy nie ma przekładni transformatora (nazwany brak w wyniku).",
+      "zakres_pl": "Silniki podane przez projektanta (model sieci nie zawiera silników), każdy na wskazanej szynie, rozruch bezpośredni; zapad z impedancji zastępczej sieci w węźle silnika — przekątna macierzy impedancyjnej sieci zwarciowej IEC 60909 (impedancja zasilania systemowego, przekładnia i współczynnik $K_T$ transformatorów, maszyny wirujące), więc szyna SN za transformatorem i szyna nN mają zapad; szyna w wyspie bez źródła — nazwany brak w wyniku.",
       "wielkosci_glowne": [
         {
           "symbol": "I_r",
@@ -742,7 +742,7 @@
           "wielkosc_pl": "Zapad napięcia na szynie",
           "symbol": "ΔU",
           "jednostka": "%",
-          "warunek_pl": "ΔU ≤ granica przy prądzie rozruchowym k_LR·I_n",
+          "warunek_pl": "$\\Delta U$ ≤ granica przy prądzie rozruchowym $k_{\\mathrm{LR}}\\,I_n$",
           "wartosc_graniczna": 15.0,
           "zrodlo_pl": "założenie inżynierskie Z-9 programu — Granica z praktyki projektowania rozruchu silników SN — bez wartości normowej; zapad dopuszczalny zależy od odbiorów szyny i warunków operatora.",
           "symbol_latex": "\\Delta U",
@@ -754,32 +754,32 @@
           "wielkosc_pl": "Czas rozruchu",
           "symbol": "t_r",
           "jednostka": "s",
-          "warunek_pl": "t_r ≤ t_utyku (dopuszczalny czas utyku podany przy prądzie zablokowanego wirnika)",
-          "wartosc_graniczna": "t_r ≤ t_utyku",
+          "warunek_pl": "$t_r \\leq t_{\\mathrm{utyku}}$ (dopuszczalny czas utyku podany przy prądzie zablokowanego wirnika)",
+          "wartosc_graniczna": "$t_r \\leq t_{\\mathrm{utyku}}$",
           "zrodlo_pl": "założenie inżynierskie Z-10 programu — Reguła cieplna rozruchu bezpośredniego — porównanie czasów z karty silnika.",
           "symbol_latex": "t_r",
           "warunek_latex": "t_r \\leq t_{\\mathrm{utyku}}",
           "wzor_latex": "t_r \\leq t_{\\mathrm{utyku}}",
-          "wzor_opis_pl": "t_r — czas rozruchu napędu [s]; t_utyku — dopuszczalny czas utyku silnika z karty silnika [s]. Granica jest daną silnika, nie stałą liczbą."
+          "wzor_opis_pl": "$t_r$ — czas rozruchu napędu [s]; $t_{\\mathrm{utyku}}$ — dopuszczalny czas utyku silnika z karty silnika [s]. Granica jest daną silnika, nie stałą liczbą."
         },
         {
           "wielkosc_pl": "Moment rozruchowy",
           "symbol": "M_r",
           "jednostka": "j.w.",
-          "warunek_pl": "M_r ≥ M_obciążenia przy rozruchu",
-          "wartosc_graniczna": "M_r ≥ M_obc",
+          "warunek_pl": "$M_r \\geq M_{\\mathrm{obc}}$ — moment obciążenia przy rozruchu",
+          "wartosc_graniczna": "$M_r \\geq M_{\\mathrm{obc}}$",
           "zrodlo_pl": "założenie inżynierskie Z-11 programu — Warunek ruszenia napędu — bez wartości normowej.",
           "symbol_latex": "M_r",
           "warunek_latex": "M_r \\geq M_{\\mathrm{obc}}",
           "wzor_latex": "M_r \\geq M_{\\mathrm{obc}}",
-          "wzor_opis_pl": "M_r — moment rozruchowy silnika w jednostkach względnych; M_obc — moment obciążenia napędzanego mechanizmu przy rozruchu, w tych samych jednostkach. Granica nie jest stałą liczbą — jest porównaniem dwóch wielkości z tego samego biegu."
+          "wzor_opis_pl": "$M_r$ — moment rozruchowy silnika w jednostkach względnych; $M_{\\mathrm{obc}}$ — moment obciążenia napędzanego mechanizmu przy rozruchu, w tych samych jednostkach. Granica nie jest stałą liczbą — jest porównaniem dwóch wielkości z tego samego biegu."
         }
       ],
       "bez_podstawy_pl": null,
       "dane": {
         "z_modelu": [
           {
-            "nazwa_pl": "Impedancje gałęzi i impedancja zasilania systemowego Z_Q (sieć zasilająca)",
+            "nazwa_pl": "Impedancje gałęzi i impedancja zasilania systemowego $Z_Q$ (sieć zasilająca)",
             "elementy_pl": "linie, kable, aparaty łączeniowe, źródło sieci nadrzędnej"
           }
         ],
@@ -863,7 +863,7 @@
           },
           {
             "klucz": "motors[].rated_power_factor",
-            "nazwa_pl": "Znamionowy współczynnik mocy cos φ_n",
+            "nazwa_pl": "Znamionowy współczynnik mocy (cos φ)",
             "jednostka": "-",
             "wymagane": false,
             "opis_pl": "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana przyjęta wyniku)."

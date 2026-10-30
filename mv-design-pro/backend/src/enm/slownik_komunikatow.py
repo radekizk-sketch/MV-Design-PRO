@@ -270,7 +270,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "protection_codes": "Kody zabezpieczeń pola",  # stacja/strings.ts pomiarKody
     # Formularz danych analizy akademickiej (uziom stacji, silniki) — kontekst sekcji
     # ``parameters`` wejścia solvera v126 (`api/v126_academic._with_parameter_payloads`).
-    "v126_uziom:gpz_ref": "Oznaczenie stacji",  # ui2/wyniki/akademickie/parametry.ts gpz_ref
+    "v126_uziom:bus_ref": "Szyna stacji",  # ui2/wyniki/akademickie/parametry.ts bus_ref
     "v126_uziom:rho1_ohm_m": "Rezystywność warstwy górnej",  # ui2/wyniki/akademickie/parametry.ts rho1_ohm_m
     "v126_uziom:rho2_ohm_m": "Rezystywność warstwy dolnej",  # ui2/wyniki/akademickie/parametry.ts rho2_ohm_m
     "v126_uziom:h1_m": "Grubość warstwy górnej",  # ui2/wyniki/akademickie/parametry.ts h1_m
@@ -280,7 +280,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "v126_uziom:buried_depth_m": "Głębokość ułożenia",  # ui2/wyniki/akademickie/parametry.ts buried_depth_m
     "v126_uziom:rods_total_length_m": "Sumaryczna długość prętów",  # ui2/wyniki/akademickie/parametry.ts rods_total_length_m
     "v126_uziom:split_factor": "Współczynnik podziału prądu",  # ui2/wyniki/akademickie/parametry.ts split_factor
-    "v126_uziom:fault_current_ka": "Prąd zwarcia doziemnego",  # ui2/wyniki/akademickie/parametry.ts fault_current_ka
+    "v126_uziom:fault_current_ka": "Prąd zwarcia doziemnego (nadpisanie)",  # ui2/wyniki/akademickie/parametry.ts fault_current_ka
     "v126_uziom:fault_clearing_time_s": "Czas wyłączenia zwarcia",  # ui2/wyniki/akademickie/parametry.ts fault_clearing_time_s
     "v126_uziom:surface_layer_rho_ohm_m": "Rezystywność warstwy powierzchniowej",  # ui2/wyniki/akademickie/parametry.ts surface_layer_rho_ohm_m
     "v126_uziom:surface_layer_derating": "Współczynnik redukcji warstwy powierzchniowej",  # ui2/wyniki/akademickie/parametry.ts surface_layer_derating
