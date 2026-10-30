@@ -26,6 +26,7 @@ from network_model.catalog.sekcje_modelu import (
     SKLADNIKI_SEKCJI,
     dane_typu,
     dowod_certyfikatu_ptpiree,
+    etykieta_pola_sekcji,
     sekcje_typu,
 )
 from network_model.catalog.types import CatalogNamespace, CatalogVerificationStatus
@@ -220,7 +221,9 @@ def test_sonda_typu_referencyjnego(katalog: CatalogRepository, przestrzen: str) 
     }
     fundamental = oceny["fundamental"]
     assert "deklaracja producenta nie jest walidacją" in fundamental.powod_pl
-    migotanie = [d for d in fundamental.dane_przyjete if d.nazwa_pl == "flicker_c"]
+    migotanie = [
+        d for d in fundamental.dane_przyjete if d.nazwa_pl == etykieta_pola_sekcji("flicker_c")
+    ]
     assert migotanie and migotanie[0].jakosc is not None
     assert migotanie[0].jakosc.value == "ESTIMATED"
     assert "k_sc" in oceny["short_circuit"].powod_pl
@@ -228,7 +231,9 @@ def test_sonda_typu_referencyjnego(katalog: CatalogRepository, przestrzen: str) 
     assert harmonic["emisja"].status == "UNKNOWN"
     assert "karty widmowej" in harmonic["emisja"].powod_pl
     assert harmonic["parametry_z_conv"].status == "UNVALIDATED"
-    assert "ESTIMATED" in harmonic["parametry_z_conv"].powod_pl
+    # Jakość w zdaniu słowem (etykieta ``FieldQuality``), kod jakości zostaje w polu ``jakosc``.
+    assert "o jakości „oszacowane”" in harmonic["parametry_z_conv"].powod_pl
+    assert "ESTIMATED" not in harmonic["parametry_z_conv"].powod_pl
     assert "TC-GCC-DNVGL-SE-0124-07526-1" in oceny["certification"].powod_pl
 
 

@@ -34,6 +34,7 @@ from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
 from network_model.catalog.rodzaje_aparatury import (
+    NAZWY_RODZAJOW_APARATU_PL,
     WIELKOSCI_ZWARCIOWE_APARATU_SN,
     WIELKOSCI_ZWARCIOWE_LACZNIKA,
     wielkosc_zwarciowa_aparatu_sn_dotyczy,
@@ -670,7 +671,8 @@ def _waliduj_tor_maszyny(obiekt: Any) -> None:
         odmowa_twarda(
             "KAT-T-042",
             f"Pola toru maszyny ({', '.join(sorted(obecne))}) dotyczą wyłącznie turbin "
-            f"wiatrowych, a pozycja '{obiekt.id}' jest rodzaju {obiekt.kind.value}.",
+            f"wiatrowych, a pozycja '{obiekt.id}' to "
+            f"{NAZWY_RODZAJOW_PRZEKSZTALTNIKA_PL[obiekt.kind]}.",
         )
     for nazwa in _POLA_LICZBOWE_TORU_MASZYNY:
         wartosc = obecne.get(nazwa)
@@ -1746,16 +1748,15 @@ def _sprawdz_wielkosci_zwarciowe(
         if not dotyczy(rodzaj, pole):
             odmowa_twarda(
                 "KAT-T-050",
-                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — tej wielkości "
-                "rodzaj aparatu z definicji normy nie ma; „nie dotyczy” zapisuje się jako "
-                "None, rozstrzyga rodzaj.",
+                f"Aparat '{item_id}' ({NAZWY_RODZAJOW_APARATU_PL[rodzaj]}) ma "
+                f"{pole}={wartosc!r} kA — tej wielkości rodzaj aparatu z definicji normy nie "
+                "ma; „nie dotyczy” zapisuje się jako None, rozstrzyga rodzaj.",
             )
         if not math.isfinite(wartosc) or wartosc <= 0:
             odmowa_twarda(
                 "KAT-T-050",
-                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — prąd zwarciowy "
-                "aparatu jest dodatni; brak danej z karty zapisuje się jako None, nigdy "
-                "jako 0.",
+                f"Aparat '{item_id}' ma {pole}={wartosc!r} kA — prąd zwarciowy aparatu jest "
+                "dodatni; brak danej z karty zapisuje się jako None, nigdy jako 0.",
             )
 
 
@@ -1882,6 +1883,14 @@ class ConverterKind(Enum):
     PV = "PV"
     WIND = "WIND"
     BESS = "BESS"
+
+
+#: Rodzaj przekształtnika W TEKŚCIE odmowy rekordu katalogu (kod zostaje w polu ``kind``).
+NAZWY_RODZAJOW_PRZEKSZTALTNIKA_PL: dict[ConverterKind, str] = {
+    ConverterKind.PV: "falownik fotowoltaiczny",
+    ConverterKind.WIND: "przekształtnik turbiny wiatrowej",
+    ConverterKind.BESS: "przekształtnik magazynu energii",
+}
 
 
 @dataclass(frozen=True)
@@ -3884,8 +3893,8 @@ class LVRcdType:
         if self.rcd_type not in RODZAJE_PRADU_ROZNICOWEGO_RCD:
             odmowa_twarda(
                 "KAT-T-045",
-                f"RCD '{self.id}': rodzaj prądu różnicowego {self.rcd_type!r} spoza słownika "
-                f"{RODZAJE_PRADU_ROZNICOWEGO_RCD}.",
+                f"RCD „{self.id}”: rodzaj prądu różnicowego „{self.rcd_type}” spoza oznaczeń "
+                f"typów IEC 60755 ({', '.join(RODZAJE_PRADU_ROZNICOWEGO_RCD)}).",
             )
         for nazwa, wartosc in (
             ("prąd znamionowy I_n [A]", self.in_a),

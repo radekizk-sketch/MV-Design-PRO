@@ -133,6 +133,11 @@ ANALIZA_DOZWOLONE_Z_SOLVEROW: dict[str, frozenset[str]] = {
     # Typ wyniku rozpływu FROZEN v1 — czytany przez rozkład segmentów profilu napięć
     # (`analysis/voltage_profile/segment_decomposition.py`), bez `build_power_flow_result_v1`.
     "network_model.solvers.power_flow_result": frozenset({"PowerFlowResultV1"}),
+    # Kontrakt WEJŚCIA karty przekształtnika Z_conv(f) solvera SSCI (krotka par pole → nazwa
+    # pola, dane bez obliczeń) — jedno źródło nazw pól karty dla opisu braków SSCI
+    # (`analysis/ssci_stability/models.py::OPISY_BRAKOW_SSCI_PL`); druga kopia nazw w warstwie
+    # analizy byłaby drugą prawdą kontraktu karty.
+    "network_model.solvers.v126_academic": frozenset({"POLA_KARTY_ZCONV"}),
 }
 
 

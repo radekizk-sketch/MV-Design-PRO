@@ -90,6 +90,7 @@ class V126AnalizaWycofanaResponse(BaseModel):
 # zdolnością solvera — GET historycznych biegów (trasy niżej) je odtwarza.
 _ANALIZY_WYCOFANE: dict[V126AnalysisType, dict[str, Any]] = {
     V126AnalysisType.HOSTING_CAPACITY: {
+        "nazwa_pl": "zdolność przyłączeniowa źródeł",
         "zamiennik": [
             {
                 "trasa": "GET /api/oze-analysis/hosting-capacity",
@@ -99,6 +100,7 @@ _ANALIZY_WYCOFANE: dict[V126AnalysisType, dict[str, Any]] = {
         "powod_pl": ("lokalna impedancja Thevenina bez sprzężenia sieci; " "kanon = pełny rozpływ"),
     },
     V126AnalysisType.OPF_LOSS_LCC: {
+        "nazwa_pl": "optymalizacja strat i koszt cyklu życia",
         "zamiennik": [
             {
                 "trasa": "POST /api/solver/transformer-losses",
@@ -131,7 +133,7 @@ def _wycofanie_v126(analysis_type: V126AnalysisType) -> dict[str, Any] | None:
         "code": "v126.analysis_withdrawn",
         "analysis_type": analysis_type.value,
         "message_pl": (
-            f"Rodzaj analizy „{analysis_type.value}” zszedł z powierzchni V12.6 "
+            f"Analiza „{dane['nazwa_pl']}” zeszła z powierzchni V12.6 "
             "— duplikuje kanon liczony gdzie indziej."
         ),
         "zamiennik": dane["zamiennik"],

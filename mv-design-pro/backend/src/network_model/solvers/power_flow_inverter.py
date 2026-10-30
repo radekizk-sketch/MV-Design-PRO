@@ -360,8 +360,10 @@ def inverter_q_seed(
     missing = sorted(idx for idx in inv_table if idx not in records)
     if missing:
         raise ValueError(
-            f"Q(U) inverter buses {missing} have no shaping record: the volt-var "
-            "recompute set and the shaping set have drifted apart"
+            "Węzły falowników z charakterystyką Q(U) o indeksach "
+            f"{', '.join(f'{i:d}' for i in missing)} nie mają rekordu "
+            "kształtowania mocy biernej: zbiór węzłów przeliczanych charakterystyką Q(U) "
+            "i zbiór rekordów kształtowania rozeszły się"
         )
     return {idx: records[idx].q_source_pu for idx in inv_table}
 

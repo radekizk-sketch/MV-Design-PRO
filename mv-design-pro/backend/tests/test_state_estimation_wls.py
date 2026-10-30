@@ -517,3 +517,24 @@ def test_wls_on_graph_built_ybus_recovers_state() -> None:
     assert res.converged is True
     assert res.v_magnitudes[ib] == pytest.approx(v_true[ib], abs=1e-4)
     assert res.v_angles_rad[ib] == pytest.approx(theta_true[ib], abs=1e-4)
+
+
+def test_odmowa_pomiaru_nazywa_rodzaj_slowami() -> None:
+    """Rodzaj pomiaru w zdaniu odmowy słowami (kod zostaje w polu ``meas_type``): słownik
+    rdzenia równy wyliczeniu, a odmowa obu gałęzi (przepływ bez węzła j, iniekcja z węzłem j)
+    nie niesie kodu rodzaju."""
+    import pytest
+    from network_model.solvers.state_estimation_wls import (
+        NAZWY_RODZAJOW_POMIARU_PL,
+        Measurement,
+        MeasurementType,
+    )
+
+    assert set(NAZWY_RODZAJOW_POMIARU_PL) == set(MeasurementType)
+    for rodzaj in MeasurementType:
+        przeplyw = rodzaj in (MeasurementType.P_FLOW, MeasurementType.Q_FLOW)
+        with pytest.raises(ValueError) as blad:
+            Measurement(rodzaj, 0, 1.0, 0.01, bus_j=None if przeplyw else 1)
+        tekst = str(blad.value)
+        assert NAZWY_RODZAJOW_POMIARU_PL[rodzaj] in tekst
+        assert rodzaj.value not in tekst

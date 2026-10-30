@@ -51,6 +51,7 @@ from enm.models import (
     Transformer,
 )
 from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
+from enm.slownik_komunikatow import nazwa_rodzaju_generatora
 from enm.validator import ENMValidator, ValidationResult
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from network_model.pochodne import (
@@ -500,7 +501,7 @@ def import_from_eq_tp(
     if stacje:
         ostrzezenia_elementow.append(
             f"Stacje nieodtworzone ({len(stacje)}): profil EQ nie niesie rodzaju stacji "
-            "(station_type) ani przynależności szyn do stacji — model wymaga obu; "
+            "ani przynależności szyn do stacji — model wymaga obu; "
             "stacje trzeba zdefiniować po imporcie."
         )
 
@@ -683,14 +684,16 @@ def _rodzaj_generatora(
     rodzaje = sorted(set(klasy_jednostek))
     if len(rodzaje) != 1:
         ostrzezenia.append(
-            f"Przekształtnik {name}: jednostki {', '.join(rodzaje) or 'brak'} — rodzaj źródła "
-            "nieokreślony (gen_type puste), uzupełnij przed obliczeniami."
+            f"Przekształtnik {name}: klasy jednostek CIM {', '.join(rodzaje) or 'brak'} — rodzaj "
+            "źródła nieokreślony (pole rodzaju źródła w modelu puste), uzupełnij przed "
+            "obliczeniami."
         )
         return None
     if rodzaje[0] == "PowerElectronicsWindUnit":
         ostrzezenia.append(
             f"Przekształtnik wiatrowy {name}: profil EQ nie odróżnia typu 3 (DFIG) od typu 4 "
-            "— przyjęto przekształtnik pełny (wind_inverter); zweryfikuj rodzaj turbiny."
+            f"— przyjęto rodzaj źródła {nazwa_rodzaju_generatora('wind_inverter')} "
+            "(przekształtnik pełny); zweryfikuj rodzaj turbiny."
         )
     return _RODZAJ_Z_JEDNOSTKI[rodzaje[0]]
 

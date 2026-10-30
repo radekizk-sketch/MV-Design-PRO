@@ -44,9 +44,9 @@ import io
 import json
 from typing import Any
 
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.protection_settings.zacisk_zabezpieczenia import zaciski_galezi
 from domain.canonical_operations import READINESS_CODES
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     CanonicalRun,
     build_branch_results,
@@ -362,7 +362,7 @@ def _porownaj_punkt(
             wiersz["werdykt"] = _BRAK_WYNIKU
             wiersz["slad_pl"] = [
                 f"Brak kompletu danych modelowych dla węzła '{nazwa}' "
-                "(u_pu lub napięcie znamionowe)."
+                "(napięcie w jednostkach względnych z wyniku rozpływu lub napięcie znamionowe)."
             ]
             return wiersz
         model = u_pu * u_n
@@ -516,13 +516,15 @@ def build_zgodnosc_powykonawcza_view(
     obecne = {p["wielkosc"] for p in znormalizowane}
     if "U" in obecne and napiecie_pct is None:
         raise OdmowaDanychError(
-            "Brak jawnej tolerancji napięcia (tolerancje.napiecie_pct). Nie przyjęto "
+            "Brak jawnej tolerancji porównania napięcia (dopuszczalna różnica pomiaru i "
+            "obliczenia w %). Nie przyjęto "
             "wartości domyślnej — brak udokumentowanego źródła normatywnego; podaj "
             "tolerancję jawnie."
         )
     if (obecne & {"P", "Q"}) and moc_pct is None:
         raise OdmowaDanychError(
-            "Brak jawnej tolerancji mocy (tolerancje.moc_pct). Nie przyjęto wartości "
+            "Brak jawnej tolerancji porównania mocy (dopuszczalna różnica pomiaru i "
+            "obliczenia w %). Nie przyjęto wartości "
             "domyślnej — brak udokumentowanego źródła normatywnego; podaj tolerancję "
             "jawnie."
         )

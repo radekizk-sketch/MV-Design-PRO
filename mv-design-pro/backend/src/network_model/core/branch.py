@@ -127,8 +127,8 @@ class Branch:
                 )
         else:
             raise ValueError(
-                "Rodzaj gałęzi musi być podany tekstem albo wartością słownika rodzajów "
-                f"gałęzi, otrzymano {raw_type!r}"
+                "Rodzaj gałęzi musi być podany tekstem (linia napowietrzna, kabel albo "
+                "transformator) albo wartością słownika rodzajów gałęzi"
             )
 
         # Dispatch to appropriate subclass
@@ -136,8 +136,10 @@ class Branch:
             return LineBranch._from_dict(data, branch_type)
         elif branch_type == BranchType.TRANSFORMER:
             return TransformerBranch._from_dict(data)
-        else:
-            raise ValueError(f"Nieobsłużony rodzaj gałęzi: {branch_type.value}")
+        raise AssertionError(
+            "Błąd programu: rodzaj gałęzi ze słownika bez klasy gałęzi — "
+            "`test_kazdy_rodzaj_galezi_ma_klase_i_admitancje` przypina komplet"
+        )
 
     def validate(self) -> bool:
         """

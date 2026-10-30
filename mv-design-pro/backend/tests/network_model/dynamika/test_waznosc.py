@@ -60,7 +60,7 @@ def test_stan_powyzej_gornego_zakresu_konczy_sie_odmowa() -> None:
         sprawdz_zakresy_waznosci(
             np.array([0.9001]), dolne, gorne, ("BESS1.soc_pu",), nastawy(), 0.5
         )
-    assert "granica gorna 0.9" in str(blad.value)
+    assert "granica górna 0.9" in str(blad.value)
 
 
 def test_stan_w_zakresie_i_stan_bez_zakresu_przechodza() -> None:

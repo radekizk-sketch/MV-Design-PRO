@@ -262,7 +262,7 @@ def _indeksacja(wezly: tuple[WezelDynamiki, ...]) -> tuple[tuple[str, ...], dict
         powtorzone = sorted({ident for ident in identy if identy.count(ident) > 1})
         raise OdmowaDynamiki(
             KOD_SIEC_NIESPOJNA,
-            f"Powtórzone identyfikatory węzłów: {powtorzone}.",
+            f"Powtórzone identyfikatory węzłów: {', '.join(powtorzone)}.",
             wezly=tuple(powtorzone),
         )
     return identy, {ident: pozycja for pozycja, ident in enumerate(identy)}

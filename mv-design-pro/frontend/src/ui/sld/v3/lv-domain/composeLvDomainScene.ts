@@ -52,6 +52,7 @@ import type {
   UpstreamEquivalentSnapshot,
 } from './types';
 import { RASTER, TOKENY_GEOMETRII as T, doRastra, plFixed, plNumber } from './visualGrammar';
+import { opisyBrakowDanychNn } from './opisyBrakowDanychNn';
 
 // ---------------------------------------------------------------------------
 // Typy sceny.
@@ -194,9 +195,7 @@ export function anchorIdentityLabel(
 export function anchorDetailLabel(rownowaznik: UpstreamEquivalentSnapshot | undefined): string | null {
   if (!rownowaznik) return null;
   if (rownowaznik.status !== 'OK') {
-    const powod = rownowaznik.missing_data.length
-      ? rownowaznik.missing_data.map((kod) => OPIS_BRAKU_ROWNOWAZNIKA_PL[kod] ?? kod).join('; ')
-      : 'brak danych';
+    const powod = opisyBrakowDanychNn(rownowaznik.missing_data) ?? 'brak danych';
     return `Sk″/Ik″ SN: brak danych — ${powod}`;
   }
   const sk = rownowaznik.sk_mva != null ? `Sk″ SN = ${plFixed(rownowaznik.sk_mva, 1)} MVA` : 'Sk″ SN = —';
@@ -271,18 +270,6 @@ function deviceStateOf(device: LvDomainDevice | undefined): LvDeviceState {
 const LABEL_RESERVE_RIGHT = 112;
 const LABEL_RESERVE_TOP = 40;
 const LABEL_RESERVE_BOTTOM = 48;
-
-/** Kody `missing_data` równoważnika SN → opis po polsku (kod zostaje w
- *  danych; etykieta nie pokazuje angielskiego identyfikatora technicznego). */
-const OPIS_BRAKU_ROWNOWAZNIKA_PL: Readonly<Record<string, string>> = {
-  upstream_network_topology_invalid:
-    'topologia sieci SN niepoprawna (źródło poza szyną modelu) — równoważnik nieobliczalny',
-  upstream_network_singular: 'sieć SN osobliwa — brak drogi do źródła',
-  upstream_hv_bus: 'szyna SN transformatora poza rozwiązywalną siecią',
-  route: 'brak trasy do źródła w aktualnej topologii',
-  transformer: 'brak transformatora',
-  vector_group: 'brak grupy połączeń transformatora',
-};
 
 interface Slot {
   readonly ref: string;

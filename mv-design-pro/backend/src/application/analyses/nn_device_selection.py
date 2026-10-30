@@ -372,7 +372,7 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
             uzasadnienie_pl=(
                 "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
                 "długozwłocznej Ir/tr w katalogu — I2 nie do wyznaczenia bez fabrykacji "
-                "(ten rekord katalogu nie niesie `ir_range`/`tr_range`)."
+                "(ten rekord katalogu nie niesie zakresu nastaw prądu Ir ani zwłoki tr)."
             ),
             wartosci={"limit_a": limit},
         )

@@ -108,6 +108,7 @@ from application.analyses.warunki_przylaczenia import (
 from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
 from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from domain.canonical_operations import opisy_kodow_gotowosci_pl
+from domain.opis_przebiegu import stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, list_runs_for_case
 from enm.hash import compute_enm_hash
 from enm.nazwy_elementow import opis_bez_nazwy
@@ -1588,9 +1589,11 @@ def _ocen_zrodlo(
         # projektanta (poczekaj kontra napraw dane i uruchom ponownie).
         w_toku = bieg.status in ("CREATED", "RUNNING")
         opis = (
-            f"Bieg {etykieta} jest w toku (status: {bieg.status}) — wynik jeszcze nie istnieje."
+            f"Bieg {etykieta} jest w toku (stan: {stan_przebiegu_pl(bieg.status)}) — wynik "
+            "jeszcze nie istnieje."
             if w_toku
-            else f"Bieg {etykieta} nie zakończył się poprawnie (status: {bieg.status})."
+            else f"Bieg {etykieta} nie zakończył się poprawnie (stan: "
+            f"{stan_przebiegu_pl(bieg.status)})."
         )
         return (
             ZrodloWerdyktu(

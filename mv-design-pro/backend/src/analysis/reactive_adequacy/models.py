@@ -48,6 +48,20 @@ VERDICT_ADEQUATE = "wystarczająca rezerwa Q"
 VERDICT_EXHAUSTED = "rezerwa Q wyczerpana"
 VERDICT_NO_DATA = "dane niekompletne"
 
+#: Braki danych oceny (``missing_data`` źródła i widoku) → nazwa wielkości dla projektanta.
+#: Lustro frontu: ``frontend/src/ui2/oze/pulpit/strings.ts`` (``BRAKI_DANYCH_Q``); komplet
+#: wobec bramek wejść i parytet przypina ``tests/analysis/test_reactive_adequacy.py::
+#: test_braki_danych_q_kompletne_i_w_lustrze``.
+BRAKI_DANYCH_Q_PL: dict[str, str] = {
+    "power_flow_not_converged": "zbieżny wynik rozpływu mocy",
+    "bus_voltages": "napięcia węzłów z rozpływu mocy",
+    "controllable_sources": "źródło z regulacją mocy biernej",
+    "q_actual_mvar": "aktualna moc bierna źródła (z rozpływu mocy)",
+    "q_min_mvar": "dolna granica mocy biernej regulatora (Q_min)",
+    "q_max_mvar": "górna granica mocy biernej regulatora (Q_max)",
+    "q_limits_inconsistent": "spójne granice regulatora (Q_min nie większa niż Q_max)",
+}
+
 
 @dataclass(frozen=True)
 class ReactiveAdequacyContext:

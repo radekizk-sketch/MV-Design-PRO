@@ -475,7 +475,7 @@ class EquipmentProofGenerator:
         equation = _equation(
             "EQ_P12_002",
             r"D_{req} = \{U_{req}, I_k'', I_b, i_p, I_{dyn}, I_{th}, t_k, t_b, i_{DC}\}",
-            "Dane wymagane z P11 (key_results)",
+            "Dane wymagane z wyników obliczeń zwarciowych IEC 60909",
             "PN-EN 60909",
             (
                 _symbol("D_{req}", "—", "Zestaw danych wymaganych", "required"),

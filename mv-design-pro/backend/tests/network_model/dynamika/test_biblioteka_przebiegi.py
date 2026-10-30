@@ -885,7 +885,7 @@ def test_magazyn_wychodzacy_poza_zakres_naladowania_konczy_bieg_odmowa(
     assert blad.value.kod == KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY, opis
     assert blad.value.szczegoly["adresy"] == ("BESS1.soc_pu",), opis
     tresc = str(blad.value)
-    assert f"granica {'dolna' if p_pu > 0.0 else 'gorna'} {granica}" in tresc, opis
+    assert f"granica {'dolna' if p_pu > 0.0 else 'górna'} {granica}" in tresc, opis
     # Odmowa MUSI padac na PIERWSZYM kroku za granica, nie na koncu horyzontu. Dowod
     # nie z zegara, tylko z PRZEKROCZENIA: w jednym kroku stan moze odjechac najwyzej
     # o `|dSOC/dt| * dt = (25000/0,93)/(20000*3600) * 0,002 = 7,5e-07`. Wieksze

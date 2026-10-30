@@ -87,7 +87,7 @@
       "kwargs": {},
       "siec": "golden"
     },
-    "sha256": "42dec16fd80e87919e6f1bde230a73ac03ae511730f118b0e04eccf59fe9f408"
+    "sha256": "aa7c6584df1798756347b26cf955fe445e44f995e4a48c2ccb1776855466a24e"
   },
   "kontyngencje_n1/golden/zakres": {
     "parametry": {
@@ -103,7 +103,7 @@
       "kwargs": {},
       "siec": "pierscien"
     },
-    "sha256": "2ef1a570bb95c448afb14c4932bdd7e12e68efe695664db8d8dbf96204fe8a49"
+    "sha256": "1aac3364da9a2df1cbaef2815e42a0d7142e08c943a88f0d254165886c9dcda3"
   },
   "kontyngencje_n1/pierscien/zakres": {
     "parametry": {

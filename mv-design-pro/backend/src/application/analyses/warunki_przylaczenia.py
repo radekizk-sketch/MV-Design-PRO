@@ -48,7 +48,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
 from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from network_model.odmowa_danych import OdmowaDanychError

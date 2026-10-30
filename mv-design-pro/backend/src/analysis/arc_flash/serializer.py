@@ -74,6 +74,7 @@ def result_to_dict(result: ArcFlashResult) -> dict[str, Any]:
         "ppe_table_provenance": result.ppe_table_provenance,
         "why_pl": result.why_pl,
         "missing_data": list(result.missing_data),
+        "missing_data_pl": list(result.missing_data_pl),
         "white_box": [white_box_to_dict(step) for step in result.white_box],
     }
 

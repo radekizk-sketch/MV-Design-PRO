@@ -149,9 +149,19 @@ describe('SekcjaPetlaZwarcia', () => {
   });
 
   it('brak danych transformatora → uczciwy komunikat z listą braków', async () => {
-    mockFetch({ status: 'brak danych', network_system: 'TN-S', missing_data: ['uk_percent'] });
+    // Iniekcja: pole transformatora i pozycja z przedrostkiem elementu — tekst nazywa
+    // wielkość i miejsce (lustro `opis_braku_danych_nn`), nigdy kod maszynowy.
+    mockFetch({
+      status: 'brak danych',
+      network_system: 'TN-S',
+      missing_data: ['uk_percent', 'odplyw_3:rcd'],
+    });
     render(<SekcjaPetlaZwarcia stationRef="stn-1" />);
     await waitFor(() => expect(screen.getByTestId('mvd-insp-petla-brak')).toBeInTheDocument());
-    expect(screen.getByTestId('mvd-insp-petla-brak')).toHaveTextContent('uk_percent');
+    const brak = screen.getByTestId('mvd-insp-petla-brak');
+    expect(brak).toHaveTextContent('„Napięcie zwarcia uk”');
+    expect(brak).toHaveTextContent('brak wyłącznika różnicowoprądowego obwodu (element odplyw_3)');
+    expect(brak.textContent).not.toContain('uk_percent');
+    expect(brak.textContent).not.toContain(':rcd');
   });
 });

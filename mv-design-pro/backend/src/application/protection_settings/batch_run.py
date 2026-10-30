@@ -70,7 +70,6 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.autorytet_biegu_zwarciowego import blokady_zakresu_biegu
 from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.protection_settings.engine import (
@@ -84,6 +83,7 @@ from application.protection_settings.zacisk_zabezpieczenia import (
     ZrodloZacisku,
     rozstrzygnij_zacisk,
 )
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,

@@ -35,6 +35,7 @@ from typing import Any, Literal
 from enm.migrations.punkt_przylaczenia_der import (
     KLUCZ_KANONICZNY as KLUCZ_PUNKTU_PRZYLACZENIA,
 )
+from enm.slownik_komunikatow import NAZWY_TECHNOLOGII_ZRODLA_PL
 from network_model.pochodne import mw_na_kw
 
 StatusOsi = Literal["ready", "partial", "blocked", "not_applicable"]
@@ -83,6 +84,18 @@ ETYKIETY_OSI_PL: dict[str, str] = {
 PROG_87T_KW = 1600.0
 
 _EKRAN_DLA_RODZAJU: dict[str, str] = {"PV": "E-21", "BESS": "E-22", "FW": "E-23"}
+
+#: Strona przyłączenia DER słowami (zdania blokad gotowości) — kompletność wobec
+#: ``StronaPrzylaczenia`` przypina ``tests/domain/test_der_readiness.py::
+#: test_strony_i_rodzaje_der_maja_polskie_nazwy``.
+NAZWY_STRONY_PRZYLACZENIA_PL: dict[str, str] = {
+    "SN": "po stronie SN",
+    "nN": "po stronie nN",
+    "dedicated_transformer": "przez transformator dedykowany",
+    "at_zksn": "w złączu kablowym SN",
+    "at_branch_pole": "na słupie odgałęźnym linii SN",
+    "at_cable_joint": "w mufie kabla SN",
+}
 
 _STRONY_WYMAGAJACE_ANTI_ISLANDING: frozenset[str] = frozenset(
     {"nN", "at_zksn", "at_branch_pole", "at_cable_joint"}
@@ -325,7 +338,7 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
         if we.device_catalog_ref is None:
             dodaj(
                 "der.device_catalog.missing",
-                "Brak katalogu urządzenia (falownik / PCS / turbina).",
+                "Brak katalogu urządzenia (falownik, przekształtnik magazynu albo turbina).",
                 "inverters",
             )
         if we.bus_przylaczenia_ref is None:
@@ -393,7 +406,8 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
         ):
             dodaj(
                 "der.anti_islanding.required",
-                f"DER {we.der_kind} po stronie {we.connection_side} wymaga zabezpieczeń "
+                f"Źródło {NAZWY_TECHNOLOGII_ZRODLA_PL[we.der_kind]} przyłączone "
+                f"{NAZWY_STRONY_PRZYLACZENIA_PL[we.connection_side]} wymaga zabezpieczeń "
                 "anti-islanding (27/59/81U/81O — IEEE 1547 / NC RfG Art. 14). "
                 "Brak zabezpieczeń uniemożliwia ochronę przed pracą wyspową.",
                 "topology",

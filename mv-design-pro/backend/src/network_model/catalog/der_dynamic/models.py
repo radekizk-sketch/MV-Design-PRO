@@ -42,6 +42,26 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 DerKind = Literal["PV", "BESS", "FW"]
 InverterControlMode = Literal["grid_following", "grid_forming"]
 WindIecType = Literal["type_1", "type_2", "type_3", "type_4"]
+#: Rodzaj maszyny i przekształcenia turbiny wiatrowej (wywołanie resolvera profilu).
+WindConverterType = Literal["SCIG", "WRIG", "DFIG", "full_converter"]
+
+#: Wartości wyliczeń W ZDANIU uzasadnienia resolvera (kod zostaje w polach wywołania) —
+#: komplet wobec ``Literal`` przypina ``tests/catalog/test_der_dynamic.py``.
+NAZWY_RODZAJOW_DER_PL: dict[str, str] = {
+    "PV": "źródło fotowoltaiczne",
+    "BESS": "magazyn energii",
+    "FW": "turbina wiatrowa",
+}
+NAZWY_TRYBOW_STEROWANIA_PL: dict[str, str] = {
+    "grid_following": "przekształtnik nadążny (grid-following)",
+    "grid_forming": "przekształtnik tworzący sieć (grid-forming)",
+}
+NAZWY_PRZEKSZTALCEN_TURBINY_PL: dict[str, str] = {
+    "SCIG": "maszyna indukcyjna klatkowa",
+    "WRIG": "maszyna indukcyjna pierścieniowa",
+    "DFIG": "maszyna dwustronnie zasilana",
+    "full_converter": "pełny przekształtnik",
+}
 GfmControl = Literal["droop", "vsm"]
 
 #: Rodzina `ParametryDynamiczne` (`enm.dynamika_modele`) docelowa dla `to_parametry_dynamiczne`

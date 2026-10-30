@@ -153,7 +153,7 @@ from typing import Any
 from analysis.energy_validation.models import EnergyValidationConfig
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
     ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,
@@ -670,7 +670,7 @@ def _kryteria(config: EnergyValidationConfig) -> dict[str, Any]:
                 "Gałąź: obciążalność długotrwała (prąd znamionowy odcinka) z danych "
                 "elementu w modelu sieci. Transformator: moc znamionowa jednostki. "
                 "Brak wartości = kryterium pominięte jawnie (pozycja na liście "
-                "kryteria_pominiete), nigdy wartość zastępcza."
+                "kryteriów pominiętych), nigdy wartość zastępcza."
             ),
         },
         "napiecie": {
@@ -707,7 +707,7 @@ def _kryteria(config: EnergyValidationConfig) -> dict[str, Any]:
             "definicja_pl": (
                 "Dotkliwość = krotka liczników (odbiory bez zasilania, przeciążenia, "
                 "naruszenia napięciowe). Ranking sortuje tę krotkę malejąco w podanej "
-                "kolejności kategorii, przy remisie rosnąco po element_ref. Bez wag, "
+                "kolejności kategorii, przy remisie rosnąco po identyfikatorze elementu. Bez wag, "
                 "bez liczby złożonej."
             ),
             "kolejnosc_kategorii": [

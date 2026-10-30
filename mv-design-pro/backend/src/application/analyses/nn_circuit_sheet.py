@@ -578,12 +578,12 @@ def _i2t_dla_kabla(
     if ith_ka is None:
         return _brak(
             "Brak Ith (prąd zwarciowy ekwiwalentny cieplnie) — wymaga biegu zwarciowego "
-            "IEC 60909 (parametr żądania short_circuit_run_id)."
+            "IEC 60909 wskazanego w żądaniu karty obwodu."
         )
     if fault_duration_s is None:
         return _brak(
-            "Brak czasu wyłączenia zwarcia (fault_duration_s) — wymaga analizy koordynacji "
-            "zabezpieczeń (poza zakresem tej karty); podaj jako parametr żądania."
+            "Brak czasu wyłączenia zwarcia — wymaga analizy koordynacji zabezpieczeń (poza "
+            "zakresem tej karty); podaj go w żądaniu karty obwodu."
         )
     wynik = check_conductor_thermal_withstand(
         ConductorThermalInput(
@@ -614,7 +614,8 @@ def _i2t_dla_kabla(
             "margines_procent": wynik.margin_percent,
             "prad_dopuszczalny_a": wynik.admissible_current_a,
         },
-        "IEC 60949 / IEC 60364-4-43 §434 (I²t<=k²S², check_conductor_thermal_withstand)",
+        "IEC 60949 / IEC 60364-4-43 §434 (I²t<=k²S², sprawdzenie wytrzymałości cieplnej "
+        "przewodu)",
         dane_przyjete,
     )
 
@@ -875,7 +876,7 @@ def _build_row(
     ik_max_sekcja = (
         _wartosc(ikss_ka, zrodlo_ik_max_pl, dane_ik_max)
         if ikss_ka is not None
-        else _brak("Brak biegu zwarciowego IEC 60909 (parametr short_circuit_run_id) dla punktu.")
+        else _brak("Brak biegu zwarciowego IEC 60909 wskazanego w żądaniu karty obwodu dla punktu.")
     )
     if dobor_wejscie is not None:
         ik_min_sekcja = _wartosc(
@@ -925,7 +926,7 @@ def _build_row(
                     "nastawa_n": n_krotnosc,
                     "ir_a": ir_a,
                 },
-                f"materialized_params gałęzi '{root_branch_ref}' (Catalog Binding)",
+                f"parametry materializowane z katalogu dla gałęzi '{root_branch_ref}'",
             )
             zapas_sekcja = (
                 _nierozstrzygalne(f"Ib nieustalone — {ib_odmowa_pl}")
@@ -933,7 +934,10 @@ def _build_row(
                 else (
                     _wartosc((ir_a - ib_a) / ir_a * 100.0, "(Ir−Ib)/Ir", dane_ib)
                     if ir_a is not None and ir_a != 0
-                    else _nierozstrzygalne("Ir nierozwiązane (MCCB bez ir_range materializacji).")
+                    else _nierozstrzygalne(
+                        "Ir nierozwiązane (wyłącznik MCCB bez zakresu nastawy Ir w parametrach "
+                        "katalogowych)."
+                    )
                 )
             )
 
@@ -1082,8 +1086,8 @@ def _build_row(
     # --- ΔU -----------------------------------------------------------
     if load_flow_run is None:
         delta_u_sekcja = _brak(
-            "Brak biegu rozpływu mocy (parametr load_flow_run_id) — uruchom rozpływ, żeby "
-            "zobaczyć ΔU."
+            "Brak biegu rozpływu mocy wskazanego w żądaniu karty obwodu — uruchom rozpływ, "
+            "żeby zobaczyć ΔU."
         )
     elif path is None:
         delta_u_sekcja = _brak(route_error or "Trasa nierozwiązywalna.")

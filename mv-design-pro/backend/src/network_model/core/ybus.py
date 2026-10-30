@@ -321,4 +321,7 @@ class AdmittanceMatrixBuilder:
             y_shunt_per_end_pu = 0.0 + 0.0j
             return y_series_pu, y_shunt_per_end_pu, ratio
 
-        raise ValueError(f"Unsupported branch type: {branch.branch_type}")
+        raise AssertionError(
+            "Błąd programu: gałąź spoza klas `LineBranch`/`TransformerBranch` — "
+            "`test_kazdy_rodzaj_galezi_ma_klase_i_admitancje` przypina komplet"
+        )

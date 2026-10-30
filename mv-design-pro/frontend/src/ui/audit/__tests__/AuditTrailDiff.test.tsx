@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AuditTrailDiff, computeDiff } from '../AuditTrailDiff';
 import type { OperationHistoryEntry } from '../elementHistory';
+import { WZORZEC_STRINGS } from '../../../ui2/wyniki/wzorzec/strings';
 
 describe('computeDiff', () => {
   it('detects changed fields', () => {
@@ -26,9 +27,14 @@ describe('computeDiff', () => {
     expect(diff[0].label).toContain('Moc znamionowa');
   });
 
-  it('unknown field → label = key', () => {
+  // Intencja: pole spoza słownika etykiet nadal ma wiersz różnicy, ale jego etykieta to uczciwe
+  // zdanie, nie klucz maszynowy (strażnik `kodyZamiastOpisow`, reguła R2 „powrót do kodu”);
+  // klucz zostaje w polu `key` wpisu.
+  it('nieznane pole → etykieta „wartość spoza słownika”, klucz tylko w polu key', () => {
     const diff = computeDiff({}, { customField: 'val' });
-    expect(diff[0].label).toBe('customField');
+    expect(diff[0].key).toBe('customField');
+    expect(diff[0].label).toBe(WZORZEC_STRINGS.wartoscSpozaSlownika);
+    expect(diff[0].label).not.toContain('customField');
   });
 
   it('sortowanie: zmienione pierwsze, potem alfabet PL', () => {

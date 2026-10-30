@@ -715,7 +715,13 @@ def _powod_niedostepnosci_pasma_pl(kod: str | None) -> str | None:
             "kotwicy) zakończyło się błędem solvera — sprawdź dane katalogowe i "
             "topologię sieci albo uruchom bieg tego scenariusza osobno."
         )
-    return f"Pasmo MIN/MAX niedostępne (kod: {kod})."
+    # Zbiór kodów producenta (`enm/canonical_analysis.py::pasmo_min_max_zwarcia`) jest
+    # zamknięty i cały w słowniku wyżej; gałąź chroni przed kodem w zdaniu przy przyszłym
+    # producencie bez wpisu (kod zostaje w polu maszynowym `powod_niedostepnosci`).
+    return (
+        "Pasmo MIN/MAX niedostępne z przyczyny, której aplikacja nie opisuje słowami — "
+        "uruchom bieg przeciwnego scenariusza osobno."
+    )
 
 
 def _strona_pasma_zwarcia(bieg: CanonicalRun | None, zrodlo: str | None) -> dict[str, Any] | None:

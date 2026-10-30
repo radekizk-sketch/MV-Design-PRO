@@ -252,7 +252,7 @@ def create_network_snapshot(
     if resolved_model_id is None:
         resolved_model_id = graph.network_model_id
     if resolved_model_id is None:
-        raise ValueError("NetworkModel id is required to create a snapshot.")
+        raise ValueError("Utworzenie migawki sieci wymaga identyfikatora modelu sieci.")
     graph.network_model_id = resolved_model_id
 
     # P10a: Compute deterministic fingerprint

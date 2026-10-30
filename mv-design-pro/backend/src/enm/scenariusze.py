@@ -868,7 +868,8 @@ class ScenariuszDynamiczny(BaseModel):
         powtorzone = sorted({ident for ident in identy if identy.count(ident) > 1})
         if powtorzone:
             raise ValueError(
-                f"Scenariusz dynamiczny: detektory o powtórzonych identyfikatorach {powtorzone} "
+                "Scenariusz dynamiczny: powtórzone identyfikatory detektorów "
+                f"{', '.join(powtorzone)} "
                 "— przekroczenie nie miałoby jednoznacznego adresu."
             )
         return self

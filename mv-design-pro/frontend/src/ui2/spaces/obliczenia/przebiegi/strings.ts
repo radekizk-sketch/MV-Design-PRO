@@ -15,6 +15,7 @@
 
 import type { ExecutionAnalysisType, RunStatus } from '../../../../ui/study-cases/types';
 import { ANALYSIS_TYPE_LABELS, RUN_STATUS_LABELS } from '../../../../ui/study-cases/types';
+import { etykietaZeSlownika } from '../../../wyniki/wzorzec/slownikWyliczen';
 
 export { ANALYSIS_TYPE_LABELS, RUN_STATUS_LABELS };
 
@@ -148,10 +149,10 @@ export function formatOdcisk(hash: string): string {
 
 /** Etykieta PL analizy — z istniejącego słownika (bez fallbacku „zgadywanego"). */
 export function etykietaAnalizy(typ: ExecutionAnalysisType): string {
-  return ANALYSIS_TYPE_LABELS[typ] ?? typ;
+  return etykietaZeSlownika(ANALYSIS_TYPE_LABELS, typ);
 }
 
 /** Etykieta PL statusu przebiegu — z istniejącego słownika. */
 export function etykietaStatusu(status: RunStatus): string {
-  return RUN_STATUS_LABELS[status] ?? status;
+  return etykietaZeSlownika(RUN_STATUS_LABELS, status);
 }

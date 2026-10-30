@@ -63,10 +63,14 @@ class OdmowaNazwana(OdmowaDanychError):
     def __init__(
         self, komunikat: str, *, kod: str, dane: Mapping[str, object] | None = None
     ) -> None:
+        # Kontrakt konstruktora — naruszenie to błąd programu (wołający), nie danych
+        # projektanta: ``AssertionError`` (odpowiedź 500 i dziennik), nie odmowa 422.
         if not kod.strip():
-            raise ValueError("Odmowa nazwana wymaga niepustego kodu maszynowego.")
+            raise AssertionError("Odmowa nazwana wymaga niepustego kodu maszynowego.")
         if kod in komunikat:
-            raise ValueError(f"Kod maszynowy {kod!r} nie należy do treści zdania dla projektanta.")
+            raise AssertionError(
+                f"Kod maszynowy {kod!r} nie należy do treści zdania dla projektanta."
+            )
         super().__init__(komunikat)
         self.kod = kod
         self.dane: Mapping[str, object] = MappingProxyType(dict(dane or {}))

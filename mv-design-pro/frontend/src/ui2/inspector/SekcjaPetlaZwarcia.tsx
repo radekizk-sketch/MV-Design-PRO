@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../ui/app-state';
+import { opisyBrakowDanychNn } from '../../ui/sld/v3/lv-domain/opisyBrakowDanychNn';
 
 interface KomponentPetli {
   readonly label: string;
@@ -213,7 +214,7 @@ export function SekcjaPetlaZwarcia({ stationRef }: { stationRef: string }) {
         <p className="mvd-insp-petla-info" data-testid="mvd-insp-petla-brak" data-kod-odmowy={d.kod_odmowy ?? undefined}>
           {d.kod_odmowy && d.reason_pl
             ? `${d.reason_pl} (kod odmowy: ${d.kod_odmowy})`
-            : `Brak danych do wyznaczenia pętli: ${(d.missing_data ?? []).join(', ') || '—'}. Uzupełnij transformator i układ uziemienia w kreatorze stacji.`}
+            : `Brak danych do wyznaczenia pętli: ${opisyBrakowDanychNn(d.missing_data) ?? 'brak opisu przyczyny w odpowiedzi'}. Uzupełnij transformator i układ uziemienia w kreatorze stacji.`}
         </p>
       ) : null}
     </section>

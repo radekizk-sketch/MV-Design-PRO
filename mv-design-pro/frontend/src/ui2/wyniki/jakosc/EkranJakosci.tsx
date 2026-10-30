@@ -915,7 +915,7 @@ function SzczegolArcFlash({
       <p className="mvd-jakosc-szczegol-why">{wynik.why_pl}</p>
       {wynik.missing_data.length > 0 && (
         <p className="mvd-jakosc-szczegol-brak" data-testid="mvd-jakosc-af-braki">
-          {JAKOSC_STRINGS.szczegolBrakDanych}: {wynik.missing_data.join(', ')}
+          {JAKOSC_STRINGS.szczegolBrakDanych}: {wynik.missing_data_pl.join('; ')}
         </p>
       )}
       {wynik.provenance_caveat_pl && (

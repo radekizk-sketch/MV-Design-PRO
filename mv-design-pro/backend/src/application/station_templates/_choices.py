@@ -395,7 +395,7 @@ KOMPENSATOR_OPTIONS_20 = (
 
 DER_PV_NN = DerKindSpec(
     kind="PV",
-    label_pl="Falownik PV nN (LV-side)",
+    label_pl="Falownik PV po stronie nN",
     catalog_options=PV_NN_OPTIONS,
     default_count=1,
     default_p_mw_each=0.01,

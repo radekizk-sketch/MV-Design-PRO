@@ -358,7 +358,10 @@ def list_station_templates(
         except ValueError as exc:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unknown category '{category}'. Valid: {[c.value for c in TemplateCategory]}",
+                detail=(
+                    f"Nieznana kategoria szablonu stacji „{category}” — dozwolone wartości "
+                    f"parametru zapytania: {', '.join(c.value for c in TemplateCategory)}."
+                ),
             ) from exc
         templates = list_templates_by_category(cat_enum)
     else:

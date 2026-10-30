@@ -85,8 +85,8 @@ from werdykt import (
     ocen_kryterium,
     zagreguj_wymaganie,
 )
+from werdykt.kontrakt import NAZWA_STANU_ZRODLA_PL
 from werdykt.proweniencja import ClaimKind, EvidenceTier
-from werdykt.wyjasnienie import NAZWA_STANU_ZRODLA_PL
 
 #: Kryteria koordynacji statycznej nastaw (plan AB O-32) przypisane do wymagań profilu.
 #: Przypięte testem: każdy identyfikator wymagania istnieje w katalogu wymagań profilu.

@@ -170,7 +170,11 @@ from network_model.solvers.dynamika.urzadzenia import (
     zbuduj_urzadzenie,
     zbuduj_zrodlo_testowe,
 )
-from network_model.solvers.dynamika.urzadzenia.fabryka import RODZINY_OBSLUGIWANE
+from network_model.solvers.dynamika.urzadzenia.fabryka import (
+    NAZWY_RODZIN_KONTRAKTU_PL,
+    RODZINY_OBSLUGIWANE,
+    lista_rodzin_pl,
+)
 from network_model.solvers.power_flow_newton_internal import transformer_phase_shift_rad
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 
@@ -327,17 +331,21 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
     for trafo in enm.transformers:
         powiazania.append((trafo.ref_id, trafo.hv_bus_ref))
         powiazania.append((trafo.ref_id, trafo.lv_bus_ref))
-    wiszace = tuple(
-        sorted(f"{ref_id} -> {bus_ref}" for ref_id, bus_ref in powiazania if bus_ref not in szyny)
+    wiszace_pary = sorted(
+        (ref_id, bus_ref) for ref_id, bus_ref in powiazania if bus_ref not in szyny
     )
+    wiszace = tuple(f"{ref_id} -> {bus_ref}" for ref_id, bus_ref in wiszace_pary)
     if wiszace:
+        opis_wiszacych = "; ".join(
+            f"element {ref_id} wskazuje szynę {bus_ref}" for ref_id, bus_ref in wiszace_pary
+        )
         braki.append(
             BrakDynamiki(
                 kod=KOD_ELEMENT_BEZ_SZYNY,
                 komunikat_pl=(
                     "Element modelu wskazuje szynę, której model nie ma — bieg czasowy "
                     "liczyłby sieć inną niż zapisana (przy budowie grafu taki element jest "
-                    f"pomijany bez śladu). Wiszące referencje: {', '.join(wiszace)}."
+                    f"pomijany bez śladu). Wiszące referencje: {opis_wiszacych}."
                 ),
                 elementy=wiszace,
             )
@@ -358,20 +366,24 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
         )
 
     bez_modelu: list[str] = []
+    opisy_bez_modelu: list[str] = []
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         parametry: ParametryDynamiczne | None = gen.dynamika
         if parametry is None:
             continue
         if parametry.rodzina not in RODZINY_OBSLUGIWANE:
             bez_modelu.append(f"{gen.ref_id} ({parametry.rodzina})")
+            opisy_bez_modelu.append(
+                f"źródło {gen.ref_id} — " f"„{NAZWY_RODZIN_KONTRAKTU_PL[parametry.rodzina]}”"
+            )
     if bez_modelu:
         braki.append(
             BrakDynamiki(
                 kod=KOD_RODZINA_BEZ_MODELU,
                 komunikat_pl=(
                     "Biblioteka urządzeń dynamicznych nie ma modelu elektrycznego dla "
-                    f"zadeklarowanej rodziny parametrów: {', '.join(bez_modelu)}. Rodziny "
-                    f"z modelem: {', '.join(RODZINY_OBSLUGIWANE)}."
+                    f"zadeklarowanej rodziny parametrów: {'; '.join(opisy_bez_modelu)}. "
+                    f"Rodziny z modelem: {lista_rodzin_pl(RODZINY_OBSLUGIWANE)}."
                 ),
                 elementy=tuple(bez_modelu),
             )
@@ -396,7 +408,7 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
                 komunikat_pl=(
                     "Bieg dynamiki czasowej wymaga modelu dynamicznego KAŻDEGO odbioru "
                     "(profil z katalogu profili odbiorów: napięcie przejścia do stałej "
-                    "impedancji i pomiar częstotliwości). Brak modelu: "
+                    "impedancji i pomiar częstotliwości). Brak modelu dla odbiorów: "
                     f"{', '.join(bez_bloku_odbioru)}."
                 ),
                 elementy=bez_bloku_odbioru,
@@ -715,7 +727,8 @@ def nastawy_z_opcji(options: dict[str, Any], scenariusz: ScenariuszDynamiczny) -
     if brakujace:
         raise OdmowaWejsciaDynamiki(
             KOD_NASTAWY_BRAK,
-            f"Opcje biegu nie niosą nastaw numerycznych: {', '.join(brakujace)}",
+            "Opcje biegu nie niosą nastaw numerycznych: "
+            f"{', '.join(f'`{pole}`' for pole in brakujace)}",
             elementy=brakujace,
         )
     nadmiarowe = tuple(sorted(set(surowe) - set(POLA_NASTAW)))
@@ -948,8 +961,8 @@ def harmonogram_z_scenariusza(
         elif isinstance(zdarzenie, Synchronizacja):
             raise OdmowaWejsciaDynamiki(
                 KOD_ZDARZENIE_NIEOBSLUGIWANE,
-                f"Zdarzenie {zdarzenie.rodzaj!r} w chwili {zdarzenie.t_s} s jest w kontrakcie "
-                "danych, ale rdzeń dynamiki czasowej go nie wykonuje — bieg z takim "
+                f"Synchronizacja źródła w chwili {zdarzenie.t_s} s jest w kontrakcie "
+                "danych, ale rdzeń dynamiki czasowej jej nie wykonuje — bieg z takim "
                 "harmonogramem liczyłby INNY scenariusz niż zapisany",
                 elementy=(zdarzenie.rodzaj,),
             )
@@ -1107,11 +1120,10 @@ def zloz_widok_sieci(
                 )
             )
         else:
-            raise OdmowaWejsciaDynamiki(
-                KOD_GALAZ_NIEOBSLUGIWANA,
-                f"Gałąź {branch.ref_id!r} rodzaju {branch.type!r} nie ma odwzorowania w "
-                "modelu pi rdzenia dynamiki",
-                elementy=(branch.ref_id,),
+            raise AssertionError(
+                f"Błąd programu: gałąź {branch.ref_id!r} spoza zamkniętej unii `Branch` "
+                "(linia, kabel, łącznik, bezpiecznik) — test "
+                "`test_unia_galezi_zamknieta_dla_adaptera_dynamiki` przypina komplet"
             )
 
     for trafo in sorted(enm.transformers, key=lambda t: t.ref_id):

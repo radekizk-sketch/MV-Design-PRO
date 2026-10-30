@@ -70,7 +70,6 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.prad_zwarciowy_galezi import (
     galaz_bez_opublikowanego_wkladu,
 )
@@ -86,7 +85,12 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
 from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from application.twin_key import klucz_twin_dla_przypadku
 from domain.canonical_operations import opisy_kodow_gotowosci_pl
-from enm.canonical_analysis import CanonicalRun, pobierz_rozplyw_biegu
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from enm.canonical_analysis import (
+    NAZWY_WIELKOSCI_WIERSZA_ZWARCIOWEGO_PL,
+    CanonicalRun,
+    pobierz_rozplyw_biegu,
+)
 from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.hash import compute_enm_hash
 from enm.klucz_twin import PrzypadekBezProjektuError
@@ -499,23 +503,6 @@ def _aktualnosc_wobec_modelu(
     }
 
 
-#: Wielkości wiersza wyniku zwarciowego wymagane do oceny cieplnej — nazwy dla komunikatu
-#: o uszkodzonym zapisie (karta #145: komunikat nie niesie klucza zapisu).
-_WIELKOSCI_WIERSZA_PL: dict[str, str] = {
-    "c_factor": "współczynnik napięciowy c",
-    "un_v": "napięcie znamionowe sieci Un",
-    "ikss_a": "prąd zwarciowy początkowy I″k",
-    "ip_a": "prąd zwarciowy udarowy ip",
-    "ith_a": "prąd zastępczy cieplny I_th",
-    "sk_mva": "moc zwarciowa S″k",
-    "rx_ratio": "stosunek R/X",
-    "kappa": "współczynnik udaru κ",
-    "tk_s": "czas trwania zwarcia Tk",
-    "ib_a": "prąd wyłączeniowy symetryczny Ib",
-    "tb_s": "czas wyłączania tb",
-}
-
-
 def _wymagane_pole_sc(payload: dict[str, Any], klucz: str) -> float:
     """Wymagane pole liczbowe zapisanego wiersza wyniku zwarciowego.
 
@@ -528,9 +515,12 @@ def _wymagane_pole_sc(payload: dict[str, Any], klucz: str) -> float:
     """
     wartosc = payload.get(klucz)
     if wartosc is None:
+        nazwa = NAZWY_WIELKOSCI_WIERSZA_ZWARCIOWEGO_PL.get(
+            klucz, "wielkość spoza słownika aplikacji"
+        )
         raise AssertionError(
             "Zapis wyniku zwarciowego tego przebiegu nie ma jednej z wymaganych wielkości "
-            f"({_WIELKOSCI_WIERSZA_PL.get(klucz, 'wielkość spoza słownika aplikacji')}) — "
+            f"({nazwa}) — "
             "zapis jest uszkodzony, ocena wytrzymałości cieplnej nie może się na nim oprzeć."
         )
     return float(wartosc)

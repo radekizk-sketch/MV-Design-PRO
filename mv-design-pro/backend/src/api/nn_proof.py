@@ -16,6 +16,7 @@ from typing import Any, Literal
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
 from api.odmowa_http import OdmowaHttpError
+from application.analyses.fault_loop.service import opis_braku_danych_nn
 from application.proof_engine.lv_circuit_verification_binding import (
     zbuduj_wejscie_dowodu_obwodu_nn,
 )
@@ -166,7 +167,9 @@ def download_lv_circuit_verification_pack(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=(
                 wynik.get("reason_pl")
-                or f"Brak danych do pakietu dowodowego: {', '.join(wynik.get('missing_data', []))}"
+                or "Brak danych do pakietu dowodowego: "
+                + "; ".join(opis_braku_danych_nn(kod) for kod in wynik.get("missing_data", []))
+                + "."
             ),
         )
 

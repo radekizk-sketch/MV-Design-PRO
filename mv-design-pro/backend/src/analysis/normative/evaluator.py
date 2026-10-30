@@ -14,7 +14,7 @@ from analysis.normative.models import (
 )
 from analysis.normative.rule_registry import RULES, NormativeRule
 from analysis.normative.serializer import sort_items
-from application.proof_engine.types import ProofDocument, ProofValue
+from application.proof_engine.types import ProofDocument, ProofValue, nazwa_rodzaju_dowodu_pl
 
 
 class NormativeEvaluator:
@@ -94,7 +94,10 @@ def _missing_proof_item(rule: NormativeRule) -> NormativeItem:
         limit_value=None,
         limit_unit=None,
         margin=None,
-        why_pl=("Brak dowodu (ProofDocument) dla pakietu " f"{rule.proof_type.value}."),
+        why_pl=(
+            "Brak dowodu matematycznego dla pakietu "
+            f"„{nazwa_rodzaju_dowodu_pl(rule.proof_type)}”."
+        ),
         requires=requires,
     )
 
@@ -470,7 +473,7 @@ def _missing_key_item(
         limit_value=None,
         limit_unit=None,
         margin=None,
-        why_pl="Brak wymaganych danych w ProofDocument.",
+        why_pl="Dowód matematyczny nie niesie danych wymaganych przez regułę.",
         requires=(key,),
     )
 

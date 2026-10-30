@@ -399,3 +399,16 @@ class TestSolverInputProvenance:
         length_traces = [t for t in env.trace if "length_km" in t.field_path]
         for trace in length_traces:
             assert trace.source_kind == "DERIVED"
+
+
+def test_uzasadnienia_stopnia_dowodu_bez_sciezek_kodu() -> None:
+    """Deklaracja ``CapabilityEvidence.rationale_pl`` („polskie zdania … bez ścieżek kodu
+    i odsyłaczy do kart — te niesie ``audit_ref``”) przypięta testem: żadne uzasadnienie
+    rejestru zdolności nie niesie ścieżki modułu ani nazwy pliku."""
+    import re
+
+    from solver_input.provenance import _DYNAMIC_CAPABILITY_EVIDENCE
+
+    for zdolnosc, dowod in _DYNAMIC_CAPABILITY_EVIDENCE.items():
+        sciezka = re.search(r"\.py\b|\b[a-z_]{3,}/[a-z_]{3,}/", dowod.rationale_pl)
+        assert sciezka is None, (zdolnosc, dowod.rationale_pl)

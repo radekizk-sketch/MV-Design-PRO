@@ -115,8 +115,9 @@ ZPUE_WLOSZCZOWA__ROTOBLOK = SwitchgearFamily(
         "Certyfikat IEL. Typowe pola: liniowe (RL1, RL4), transformatorowe "
         "(RT1, RWT, RWT3, RWTp14), sprzęgła (RS1L, RS4), pomiarowe (RP1), "
         "odgromnikowe (RO1), potrzeb własnych (RTpwł4, RTpwł 25kVA). "
-        "Status repo_verified — dane z publicznej strony produktu, NIE "
-        "official_catalog (wymaga oficjalnego PDF od producenta)."
+        "Stan źródła: weryfikacja na danych publicznych — dane z publicznej strony produktu, nie "
+        "oficjalny "
+        "katalog producenta (wymaga oficjalnego PDF od producenta)."
     ),
 )
 
@@ -186,7 +187,7 @@ ELEKTROMETAL__E2ALPHA = SwitchgearFamily(
         "powietrzna, pojedynczy system szyn. Napięcia 12/17.5/24 kV, prąd "
         "znamionowy 630-2000 A (szyna do 2500 A), krótkotrwały do 31.5 kA "
         "(12/17.5 kV) lub 25 kA (24 kV). Klasy LSC2B + PM + AFLR + IP4X/IP54. "
-        "Konstrukcja Al-Zn 2-3 mm. Status repo_verified."
+        "Konstrukcja Al-Zn 2-3 mm. Stan źródła: weryfikacja na danych publicznych."
     ),
 )
 
@@ -265,8 +266,8 @@ ABB__UNIGEAR_ZS1 = SwitchgearFamily(
         "wysuwna (withdrawable), arc-proof. Katalog 1VCP000138 REV I (odczyt "
         "2026-08-14): rated voltage 7,2/12/17,5/24 kV — klasy urządzenia, prąd "
         "znamionowy do 4000 A, krótkotrwały do 63 kA. Konfiguracje single/double "
-        "busbar/double level. Standardy IEC, GB/DL, CSA, GOST. Status "
-        "repo_verified — dane z portfolio page; pełne parametry techniczne "
+        "busbar/double level. Standardy IEC, GB/DL, CSA, GOST. Stan źródła: weryfikacja "
+        "na danych publicznych — dane z portfolio page; pełne parametry techniczne "
         "wymagają oficjalnej karty produktu ABB."
     ),
 )
@@ -327,7 +328,7 @@ ABB__SAFERING = SwitchgearFamily(
         "SafeRing — Ring Main Unit (RMU) ABB, izolacja SF6, sealed-for-life. "
         "Napięcia 12-24 kV, prąd znamionowy 630 A, krótkotrwały do 21 kA/1s "
         "(moduł C: 16 kA przy 24 kV). 18 konfiguracji modułowych. Standard "
-        "IEC 62271-200. Status repo_verified."
+        "IEC 62271-200. Stan źródła: weryfikacja na danych publicznych."
     ),
 )
 
@@ -399,7 +400,8 @@ SIEMENS__NXAIR = SwitchgearFamily(
         "wysuwna. Katalog (odczyt 2026-08-14): rated voltage 7,2/12/17,5 kV "
         "(NXAIR) oraz 24 kV (NXAIR M) — klasy urządzenia. Prąd znamionowy do 4000 A, "
         "krótkotrwały do 40 kA (NXAIR), 25 kA (NXAIR M dla 24 kV). Klasyfikacja "
-        "IAC A FLR + LSC 2B + PM. Standard IEC 62271-200. Status repo_verified."
+        "IAC A FLR + LSC 2B + PM. Standard IEC 62271-200. Stan źródła: weryfikacja na danych "
+        "publicznych."
     ),
 )
 
@@ -477,7 +479,7 @@ SIEMENS__8DJH = SwitchgearFamily(
         "zestawienie bloków fabrycznych z szerokościami — bloki są "
         "przepisane do rejestru konfiguracji fabrycznych. Odmiana 8DJH "
         "Compact (bloki bez rozszerzenia szyn) jest osobnym wyrobem i NIE "
-        "wchodzi do tej rodziny. Status repo_verified."
+        "wchodzi do tej rodziny. Stan źródła: weryfikacja na danych publicznych."
     ),
 )
 
@@ -555,7 +557,7 @@ SCHNEIDER__SM6_24 = SwitchgearFamily(
         "cała seria SM6 obejmuje 7,2/12/17,5/24 kV. Szyny w izolacji "
         "powietrznej, aparaty łączeniowe SF6/próżnia. Prąd znamionowy "
         "400–1250 A, krótkotrwały do 25 kA/1s. Dodana w programie Reference "
-        "Engine V1. Status repo_verified — dane z publicznej strony "
+        "Engine V1. Stan źródła: weryfikacja na danych publicznych — dane z publicznej strony "
         "produktowej; pełne parametry wymagają oficjalnej karty katalogowej."
     ),
 )
@@ -613,8 +615,9 @@ ZPUE_WLOSZCZOWA__TPM = SwitchgearFamily(
         "roboczym 20 kV (dwa różne parametry, dwa pola), prąd znamionowy "
         "szyn zbiorczych 630 A, prąd znamionowy pola transformatorowego 125 A, "
         "dopuszczalny prąd zwarciowy 25*/20/16 kA (3 s), prąd szczytowy 50 kA, "
-        "odporność na łuk elektryczny 20 kA. Status repo_verified — dane z "
-        "publicznej karty produktu, NIE official_catalog (wymaga oficjalnego "
+        "odporność na łuk elektryczny 20 kA. Stan źródła: weryfikacja na danych publicznych — dane "
+        "z "
+        "publicznej karty produktu, nie oficjalny katalog producenta (wymaga oficjalnego "
         "PDF od producenta)."
     ),
 )
@@ -675,7 +678,7 @@ ZPUE_WLOSZCZOWA__TPM_AIR = SwitchgearFamily(
         "kable do 630 mm². Jednostki funkcjonalne karty: L (rozłącznik liniowy "
         "630 A), T (rozłącznik z bezpiecznikami 250 A), W (wyłącznik 630 A), "
         "S (sprzęgło), M840 (pomiar z przekładnikami prądowymi i napięciowymi). "
-        "Status repo_verified."
+        "Stan źródła: weryfikacja na danych publicznych."
     ),
 )
 
@@ -736,7 +739,7 @@ ZPUE_WLOSZCZOWA__ROTOBLOK_AIR = SwitchgearFamily(
         "2026-08-14): napięcie znamionowe 24 kV (najwyższe napięcie urządzenia "
         "25 kV), prąd znamionowy szyn 630 A, prąd zwarciowy do 16 kA (1 s), "
         "prąd szczytowy do 50 kA, IAC 16 kA (1 s), napięcie udarowe 125/145 kV, "
-        "IP3X. Status repo_verified."
+        "IP3X. Stan źródła: weryfikacja na danych publicznych."
     ),
 )
 
@@ -797,7 +800,7 @@ ZPUE_WLOSZCZOWA__ROTOBLOK_VCB = SwitchgearFamily(
         "Karta (odczyt 2026-08-14): napięcie nominalne sieci 20 kV, najwyższe "
         "napięcie urządzeń 25 kV, prąd znamionowy szyn 630 A, prąd "
         "zwarciowy do 16 kA (3 s) / do 20 kA (1 s), prąd szczytowy do 50 kA, "
-        "IAC AFLR do 16 kA (1 s). Status repo_verified."
+        "IAC AFLR do 16 kA (1 s). Stan źródła: weryfikacja na danych publicznych."
     ),
 )
 
@@ -866,8 +869,8 @@ ZPUE_WLOSZCZOWA__RELF = SwitchgearFamily(
         "(człon wysuwny), izolacja powietrzna, IP4X, klasa łuku IAC AFLR, "
         "LSC2B (LSC2 dla 36 kV). Karta (odczyt 2026-08-14): napięcia do 36 kV, "
         "prądy szyn do 4000 A, prąd zwarciowy 31,5 kA / 3 s, w wariancie 12 kV "
-        "do 40 kA / 3 s. Normy PN-EN 62271-1, PN-EN 62271-200. Status "
-        "repo_verified."
+        "do 40 kA / 3 s. Normy PN-EN 62271-1, PN-EN 62271-200. Stan źródła: weryfikacja "
+        "na danych publicznych."
     ),
 )
 
@@ -935,7 +938,8 @@ ZPUE_WLOSZCZOWA__RELF_2S = SwitchgearFamily(
         "wyłącznik, stycznik, rozłącznik, zespół przekładników albo blok "
         "bezpiecznikowy. Karta (odczyt 2026-08-14): napięcie 12 kV, prądy szyn "
         "630-2500 A, prąd zwarciowy 31,5 kA / 3 s, prąd szczytowy 80 kA, "
-        "IAC AFLR 31,5 kA / 1 s. Norma PN-EN 62271-200. Status repo_verified."
+        "IAC AFLR 31,5 kA / 1 s. Norma PN-EN 62271-200. Stan źródła: weryfikacja na danych "
+        "publicznych."
     ),
 )
 
@@ -1011,7 +1015,8 @@ ZPUE_WLOSZCZOWA__RXD = SwitchgearFamily(
         "12/36 kV przy napięciu roboczym 6(10)/30 kV, prądy "
         "szyn 630/1250 A, prąd zwarciowy 25 kA / 3 s, prąd szczytowy 63 kA, "
         "IAC AFLR 25 kA / 1 s (wariant 12 kV) oraz 20 kA / 1 s (wariant "
-        "36 kV). Normy PN-EN 62271-1, PN-EN 62271-200. Status repo_verified."
+        "36 kV). Normy PN-EN 62271-1, PN-EN 62271-200. Stan źródła: weryfikacja na danych "
+        "publicznych."
     ),
 )
 
@@ -1072,8 +1077,9 @@ ABB__SAFEPLUS = SwitchgearFamily(
         "modułowe i półmodułowe, czym różni się od bloków SafeRing. Ulotka "
         "1VDD006001 (odczyt 2026-08-14): rated voltage 12/17,5/24 kV — klasy "
         "urządzenia, 630/1250 A, prąd zwarciowy "
-        "25 kA / 1 s oraz 20 kA / 3 s. Status repo_verified — dane z publicznej "
-        "strony produktowej i ulotki, NIE official_catalog."
+        "25 kA / 1 s oraz 20 kA / 3 s. Stan źródła: weryfikacja na danych publicznych — dane z "
+        "publicznej "
+        "strony produktowej i ulotki, nie oficjalny katalog producenta."
     ),
 )
 
@@ -1138,7 +1144,7 @@ ABB__UNISEC = SwitchgearFamily(
         "wariant UniSec Air jest bez SF6 (aparat GSec Air, suche powietrze). "
         "Strona produktowa (odczyt 2026-08-14) deklaruje klasę do 24 kV, a "
         "parametry prądowe i zwarciowe podaje wyłącznie dla wariantu UniSec "
-        "Air (630 A, 20 kA). Status requires_catalog — rodzina NIE jest "
+        "Air (630 A, 20 kA). Stan źródła: wymaga katalogu producenta — rodzina NIE jest "
         "oferowana w konfiguratorze do czasu podpięcia oficjalnej karty "
         "katalogowej z kompletem klas prądowych i zwarciowych; brak danych "
         "jest zadeklarowany wprost (puste listy), nigdy zgadywany."
@@ -1200,8 +1206,9 @@ SCHNEIDER__RM6 = SwitchgearFamily(
         "i promieniowe. Katalog AMTED398032EN (odczyt 2026-08-14): rated "
         "voltage Ur 12/17,5/24 kV — klasy urządzenia, 630 A, "
         "prąd zwarciowy do 21 kA, odporność na łuk wewnętrzny do 20 kA AFLR. "
-        "Status repo_verified — dane z publicznej strony produktowej, NIE "
-        "official_catalog."
+        "Stan źródła: weryfikacja na danych publicznych — dane z publicznej strony produktowej, "
+        "nie oficjalny "
+        "katalog producenta."
     ),
 )
 
@@ -1260,8 +1267,8 @@ SCHNEIDER__RM_AIRSET = SwitchgearFamily(
         "voltage Ur 12/24 kV — klasy urządzenia, 630 A, "
         "20 kA / 1 s (warianty również 20 kA / 3 s), jednostki funkcjonalne "
         "I (rozłącznik), B/Q (rozłącznik z bezpiecznikami), konfiguracje 3- i "
-        "4-funkcyjne. Status repo_verified — dane z publicznych stron "
-        "produktowych, NIE official_catalog."
+        "4-funkcyjne. Stan źródła: weryfikacja na danych publicznych — dane z publicznych stron "
+        "produktowych, nie oficjalny katalog producenta."
     ),
 )
 

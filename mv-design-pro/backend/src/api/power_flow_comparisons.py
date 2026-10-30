@@ -317,17 +317,17 @@ def create_power_flow_comparison(
     except PowerFlowRunWrongTypeError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Bieg {e.run_id} nie jest biegiem rozpływu mocy (rodzaj: {e.analysis_type})",
+            detail=str(e),
         ) from e
     except PowerFlowRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bieg rozpływu mocy {e.run_id} nie jest zakończony (stan: {e.status}).",
+            detail=str(e),
         ) from e
     except PowerFlowProjectMismatchError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Runs należą do różnych projektów: {e.run_a_project} vs {e.run_b_project}",
+            detail=str(e),
         ) from e
     except PowerFlowComparisonError as e:
         raise HTTPException(

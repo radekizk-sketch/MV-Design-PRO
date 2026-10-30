@@ -63,9 +63,10 @@ def test_kazdy_zestaw_ma_udokumentowana_podstawe() -> None:
 def test_zalozenie_zestawu_ziemnego_niesie_rozbicie_i_podstawe() -> None:
     """Slad WHITE BOX musi dac sie obronic: trzy wspolczynniki, iloczyn i skad pochodza."""
     zalozenie = ZIEMIA_3_KABLE_200MM.zalozenie_pl()
-    assert "f_grunt = 0.9" in zalozenie
-    assert "f_wiazka = 1.01" in zalozenie
-    assert "f_grupa = 0.82" in zalozenie
+    assert "współczynnik temperatury gruntu = 0.9" in zalozenie
+    assert "współczynnik ułożenia w wiązce = 1.01" in zalozenie
+    assert "współczynnik grupowania = 0.82" in zalozenie
+    assert "f_grunt" not in zalozenie  # nazwa pola rekordu nie trafia do zdania
     assert "0.7454" in zalozenie
     assert "MT880" in zalozenie
 

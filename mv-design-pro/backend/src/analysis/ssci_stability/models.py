@@ -47,6 +47,7 @@ from typing import Any
 from analysis.odcisk_kontekstu import odcisk_kontekstu
 from application.ocena_niewykonana import ocena_niewykonana, rekord_json
 from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
+from network_model.solvers.v126_academic import POLA_KARTY_ZCONV
 from werdykt import (
     ClaimKind,
     EvidenceTier,
@@ -200,9 +201,27 @@ _OPIS_BRAKU_MODELU_PL: dict[str, str] = {
 }
 
 
+#: Komplet braków nazywanych przez solver SSCI (``missing_fields``: przekształtnik w modelu,
+#: szyna przyłączenia, pola karty Z_conv(f) z ``POLA_KARTY_ZCONV`` solvera) → opis dla
+#: projektanta. Lustro frontu: ``frontend/src/ui2/wyniki/ssci/strings.ts``
+#: (``OPISY_BRAKOW_SSCI``); kompletność i parytet przypina
+#: ``tests/analysis/test_ssci_stability.py::test_opisy_brakow_ssci_kompletne_i_w_lustrze``.
+OPISY_BRAKOW_SSCI_PL: dict[str, str] = {
+    **_OPIS_BRAKU_MODELU_PL,
+    **{pole: f"Pole karty przekształtnika: {opis}." for pole, opis in POLA_KARTY_ZCONV},
+}
+
+
 def _opis_braku_danych(pole: str) -> str:
-    """Brak nazwany przez solver (``missing_fields``) jako pozycja „czego brakuje"."""
-    return _OPIS_BRAKU_MODELU_PL.get(pole, f"Pole karty przekształtnika: {pole}.")
+    """Brak nazwany przez solver (``missing_fields``) jako pozycja „czego brakuje" —
+    słownik jest kompletny wobec solvera, więc kod spoza niego to błąd programu."""
+    opis = OPISY_BRAKOW_SSCI_PL.get(pole)
+    if opis is None:
+        raise AssertionError(
+            f"Błąd programu: brak SSCI {pole!r} spoza `OPISY_BRAKOW_SSCI_PL` — "
+            "`test_opisy_brakow_ssci_kompletne_i_w_lustrze` przypina komplet"
+        )
+    return opis
 
 
 def ocena_ssci_niewykonana(

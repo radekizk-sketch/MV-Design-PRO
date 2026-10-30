@@ -20,6 +20,7 @@ from api.canonical_run_views import (
     build_short_circuit_results_response,
 )
 from api.v125_contracts import build_export_artifact, build_export_policy, resolve_proof_pack_ref
+from application.analyses.fault_loop.service import opis_braku_danych_nn
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
 from application.dokumentacja_wykonawcza import (
     PROFIL_DOKUMENTACJI_WYKONAWCZEJ,
@@ -1548,7 +1549,12 @@ def build_nn_circuit_report_section(
         "ik_min_a": (
             ik_min_a
             if ik_min_a is not None
-            else "niedostępne — " + str(swz_view.get("reason_pl") or swz_view.get("missing_data"))
+            else "niedostępne — "
+            + (
+                swz_view.get("reason_pl")
+                or "; ".join(opis_braku_danych_nn(kod) for kod in swz_view.get("missing_data", []))
+                or "brak wyniku pętli zwarcia minimalnego"
+            )
         ),
         "provenance": provenance,
     }
@@ -1566,8 +1572,8 @@ def build_nn_circuit_report_section(
         delta_u = {
             "status": "niedostępne",
             "reason_pl": (
-                "ΔU (łańcuch) wymaga wyniku biegu rozpływu (vdrop_chain_binding / "
-                "pakiet VDROP) — nie jest dostarczony bez wskazanego przebiegu."
+                "ΔU (łańcuch) wymaga wyniku biegu rozpływu mocy (pakiet dowodowy spadku "
+                "napięcia) — nie jest dostarczony bez wskazanego przebiegu."
             ),
             "provenance": provenance,
         }
@@ -1587,7 +1593,10 @@ def build_nn_circuit_report_section(
     else:
         dobor = {
             "status": "niedostępne",
-            "reason_pl": "Dobór wymaga ib_a i iz_prime_a jako parametrów wejściowych.",
+            "reason_pl": (
+                "Dobór wymaga prądu obliczeniowego I_B obwodu i obciążalności "
+                "skorygowanej Iz′ przewodu jako parametrów wejściowych."
+            ),
             "provenance": provenance,
         }
 

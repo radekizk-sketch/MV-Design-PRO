@@ -47,7 +47,6 @@ from analysis.sensitivity.builder import SensitivityBuilder
 from analysis.voltage_profile.builder import VoltageProfileBuilder
 from analysis.voltage_profile.models import VoltageProfileContext, VoltageProfileView
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 
 # Jedno źródło odtwarzania wyniku FROZEN i grafu ze snapshotu przebiegu
 # (KLASA-NIE-INSTANCJA: druga kopia mapowania byłaby defektem oczekującym
@@ -63,6 +62,7 @@ from application.proof_engine.proof_generator import (
     ProofGenerator,
 )
 from application.proof_engine.types import LoadElementKind, ProofDocument
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
 from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy

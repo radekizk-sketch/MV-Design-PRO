@@ -59,7 +59,6 @@ from application.analyses.lv_domain.upstream_equivalent import (
 )
 from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.swz.service import build_swz_view
 from application.analyses.wytrzymalosc_aparatury_pol import widok_wytrzymalosci_z_biegu
 from application.cgmes.kompletnosc import ModelNiekompletnyDlaCgmesError
@@ -76,6 +75,7 @@ from application.topologia_zasilenia import (
     zbuduj_tor_elementu,
 )
 from domain.canonical_operations import resolve_operation_name
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import (
     build_short_circuit_results,

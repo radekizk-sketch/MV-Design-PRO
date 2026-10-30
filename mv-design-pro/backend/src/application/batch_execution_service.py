@@ -78,6 +78,7 @@ from domain.run_batch import (
     RunBatchStatus,
     compute_batch_input_hash,
     new_run_batch,
+    stan_serii_pl,
 )
 from enm.canonical_analysis import ODMOWY_OBLICZENIA_BIEGU, CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
@@ -122,7 +123,10 @@ class BatchNotPendingError(BatchExecutionError):
     """Seria przebiegów nie jest w stanie CREATED."""
 
     def __init__(self, batch_id: str, status: str) -> None:
-        super().__init__(f"Seria {batch_id} ma status {status} — wymagany CREATED")
+        super().__init__(
+            f"Seria {batch_id} jest w stanie „{stan_serii_pl(status)}” — uruchomić można "
+            f"wyłącznie serię w stanie „{stan_serii_pl(RunBatchStatus.CREATED)}”."
+        )
         self.batch_id = batch_id
         self.status = status
 

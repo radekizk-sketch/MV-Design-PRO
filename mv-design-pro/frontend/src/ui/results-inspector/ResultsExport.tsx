@@ -14,6 +14,7 @@ import type {
   RunHeader,
   ShortCircuitRow,
 } from './types';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 interface ExportData {
   activeTab: ResultsInspectorTab;
@@ -107,7 +108,7 @@ function formatFlags(flags: string[]): string {
   if (!flags || flags.length === 0) {
     return '';
   }
-  return flags.map((flag) => FLAG_LABELS[flag] ?? flag).join(', ');
+  return flags.map((flag) => etykietaZeSlownika(FLAG_LABELS, flag)).join(', ');
 }
 
 function formatDate(isoDate: string): string {

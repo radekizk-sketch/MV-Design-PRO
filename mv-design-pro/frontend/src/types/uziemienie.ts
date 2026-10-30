@@ -1,3 +1,5 @@
+import { etykietaZeSlownika } from '../ui2/wyniki/wzorzec/slownikWyliczen';
+
 /**
  * Słowniki uziemienia — JEDNO miejsce dla literałów, które front dzieli z backendem
  * (karta W5-A, `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md` §1 p. 1–4).
@@ -37,7 +39,7 @@ export const ETYKIETA_PL_PUNKTU_NEUTRALNEGO: Readonly<Record<TypPunktuNeutralneg
 /** Etykieta PL typu punktu neutralnego; `null`/nieznany token = „nieokreślony w modelu". */
 export function etykietaPunktuNeutralnegoPL(typ: string | null | undefined): string {
   if (typ == null) return 'punkt neutralny nieokreślony w modelu';
-  return (ETYKIETA_PL_PUNKTU_NEUTRALNEGO as Record<string, string>)[typ] ?? typ;
+  return etykietaZeSlownika(ETYKIETA_PL_PUNKTU_NEUTRALNEGO, typ);
 }
 
 /** Punkty neutralne IMPEDANCYJNE — składowa dominująca (R rezystora / X dławika) jest wymagana. */

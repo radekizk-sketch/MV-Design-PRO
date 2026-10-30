@@ -32,6 +32,15 @@ from werdykt.proweniencja import FieldQuality
 KOMPLET_POMIARU: tuple[str, ...] = ("metoda", "rozdzielczosc_hz", "okno", "agregacja", "podstawa")
 #: Pole wymagane dodatkowo dla dziedziny supraharmonicznej (pasmo rozdzielczości analizatora).
 POLE_SUPRAHARMONICZNE: Literal["rbw_hz"] = "rbw_hz"
+#: Nazwa pola kompletu pomiaru W TEKŚCIE odmowy (klucz zostaje w ``braki_kompletu``).
+NAZWY_POL_POMIARU_PL: dict[str, str] = {
+    "metoda": "metoda pomiaru",
+    "rozdzielczosc_hz": "rozdzielczość częstotliwościowa",
+    "okno": "okno pomiaru",
+    "agregacja": "agregacja wyników",
+    "podstawa": "podstawa pomiaru (dokument)",
+    "rbw_hz": "pasmo rozdzielczości (RBW)",
+}
 
 
 class OknoPomiaru(KontraktDziedziny):
@@ -126,6 +135,7 @@ class ParametryPomiaru(KontraktDziedziny):
 
 __all__ = [
     "KOMPLET_POMIARU",
+    "NAZWY_POL_POMIARU_PL",
     "POLE_SUPRAHARMONICZNE",
     "AgregacjaPomiaru",
     "KalibracjaPomiaru",

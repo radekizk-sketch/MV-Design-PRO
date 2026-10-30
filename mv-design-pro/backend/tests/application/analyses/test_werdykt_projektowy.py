@@ -134,7 +134,9 @@ def test_bieg_nieudany_niesie_wlasny_powod() -> None:
 
     pozycje = _pozycje_po_id(werdykt)
     assert pozycje[KRYTERIUM_PWP_MOC].powod_kod == POWOD_BIEG_NIEUDANY
-    assert "FAILED" in (pozycje[KRYTERIUM_PWP_MOC].powod_pl or "")
+    # Stan biegu słowami (`stan_przebiegu_pl`), kod `FAILED` wyłącznie w polu maszynowym.
+    assert "(stan: zakończony błędem)" in (pozycje[KRYTERIUM_PWP_MOC].powod_pl or "")
+    assert "FAILED" not in (pozycje[KRYTERIUM_PWP_MOC].powod_pl or "")
 
 
 def test_bieg_w_toku_nie_jest_biegiem_nieudanym() -> None:

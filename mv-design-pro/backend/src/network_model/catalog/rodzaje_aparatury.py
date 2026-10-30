@@ -53,6 +53,23 @@ RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA: dict[str, str] = {
     "FUSE": "ROZLACZNIK_BEZPIECZNIKOWY",
     "RECLOSER": "REKLOZER",
 }
+#: Rodzaj aparatu W TEKŚCIE odmowy rekordu katalogu (kod zostaje w polu rekordu): każdy
+#: rodzaj aparatury łączeniowej i każdy rodzaj aparatu SN projekcji — komplet przypina
+#: ``tests/network_model/catalog/test_rodzaje_aparatury_nazwy.py``.
+NAZWY_RODZAJOW_APARATU_PL: dict[str, str] = {
+    "CIRCUIT_BREAKER": "wyłącznik",
+    "LOAD_SWITCH": "rozłącznik",
+    "DISCONNECTOR": "odłącznik",
+    "EARTH_SWITCH": "uziemnik",
+    "FUSE": "bezpiecznik",
+    "RECLOSER": "reklozer",
+    "WYLACZNIK": "wyłącznik",
+    "ROZLACZNIK": "rozłącznik",
+    "ODLACZNIK": "odłącznik",
+    "UZIEMNIK": "uziemnik",
+    "ROZLACZNIK_BEZPIECZNIKOWY": "rozłącznik z bezpiecznikami",
+    "REKLOZER": "reklozer",
+}
 #: Pole projekcji aparatu SN ← pole rekordu łącznika (te same wielkości zwarciowe).
 POLE_LACZNIKA_Z_POLA_APARATU_SN: dict[str, str] = {
     "breaking_capacity_ka": "ik_ka",

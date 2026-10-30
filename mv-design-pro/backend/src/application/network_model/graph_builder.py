@@ -17,7 +17,7 @@ def build_network_graph(
     network_model_id: str,
 ) -> NetworkGraph:
     if not network_model_id:
-        raise NetworkModelInvariantError("NetworkModel id is required to build graph.")
+        raise NetworkModelInvariantError("Budowa grafu sieci wymaga identyfikatora modelu sieci.")
     graph = NetworkGraph(network_model_id=network_model_id)
     for node in nodes:
         node_data = node_payload_builder(node)

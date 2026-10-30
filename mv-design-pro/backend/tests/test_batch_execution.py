@@ -651,7 +651,9 @@ class TestExecuteBatch:
         assert first.json()["status"] == "FINISHED"
         second = wykonaj_serie(client, batch["batch_id"])
         assert second.status_code == 409
-        assert "wymagany CREATED" in second.json()["detail"]
+        assert "w stanie „zakończony”" in second.json()["detail"]
+        assert "FINISHED" not in second.json()["detail"]
+        assert "CREATED" not in second.json()["detail"]
 
     def test_wykonanie_nieznanej_serii_404(self):
         response = wykonaj_serie(client, uuid4())
@@ -1127,3 +1129,16 @@ def test_bieg_ze_scenariusza_odmowa_409_a_blad_programu_500_przez_handler_global
     if kod_http == 500:
         assert odpowiedz.json()["detail"] == "Wewnętrzny błąd serwera"
         assert odpowiedz.json()["error_type"] == typ.__name__
+
+
+def test_kazdy_stan_serii_ma_polska_nazwe() -> None:
+    """Każdy człon ``RunBatchStatus`` ma nazwę po polsku bez kodu; wartość spoza słownika
+    daje uczciwe zdanie (nie kod)."""
+    from domain.opis_przebiegu import STAN_SPOZA_SLOWNIKA_PL
+    from domain.run_batch import NAZWY_STANOW_SERII_PL, RunBatchStatus, stan_serii_pl
+
+    assert set(NAZWY_STANOW_SERII_PL) == set(RunBatchStatus)
+    for stan in RunBatchStatus:
+        nazwa = stan_serii_pl(stan)
+        assert nazwa and stan.value not in nazwa, (stan, nazwa)
+    assert stan_serii_pl("NOWY_STAN") == STAN_SPOZA_SLOWNIKA_PL

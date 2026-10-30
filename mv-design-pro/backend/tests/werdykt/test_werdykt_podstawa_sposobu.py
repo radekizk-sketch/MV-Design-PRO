@@ -28,9 +28,8 @@ from werdykt import (
     blok_wymagania,
     decyzja,
 )
-from werdykt.kontrakt import KOLEJNOSC_METOD
+from werdykt.kontrakt import KOLEJNOSC_METOD, NAZWA_STANU_ZRODLA_PL
 from werdykt.proweniencja import POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA, ClaimKind, EvidenceTier
-from werdykt.wyjasnienie import NAZWA_STANU_ZRODLA_PL
 
 from tests.werdykt import fabryki as f
 

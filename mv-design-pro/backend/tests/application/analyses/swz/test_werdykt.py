@@ -334,3 +334,33 @@ class TestOcenSwzWkladkaGgIniekcjaBramkiTWymaganego:
         without_gate = ocen_swz(ik1_min_a=1000.0, u0_v=230.0, aparat=aparat)
         assert without_gate.status == SwzStatus.NIEROZSTRZYGALNE
         assert without_gate.ia_wymagane_a is None
+
+
+def test_kazdy_typ_aparatu_ma_nazwe() -> None:
+    """Każdy typ aparatu werdyktu SWZ ma nazwę po polsku; typ spoza słownika daje opis,
+    nie kod (odmowa NIEROZSTRZYGALNE cytuje rodzaj słowami)."""
+    from application.analyses.swz.werdykt import (
+        _TYPY_APARATU_DOZWOLONE,
+        NAZWY_TYPOW_APARATU_SWZ_PL,
+        nazwa_typu_aparatu_swz_pl,
+    )
+
+    assert set(NAZWY_TYPOW_APARATU_SWZ_PL) == set(_TYPY_APARATU_DOZWOLONE)
+    assert "_" not in nazwa_typu_aparatu_swz_pl("WKLADKA_GG")
+    assert nazwa_typu_aparatu_swz_pl("RCBO_X") == "aparat rodzaju spoza słownika werdyktu SWZ"
+
+
+def test_rodzaj_obwodu_jednym_predykatem_dla_tn_i_tt_it() -> None:
+    """Rodzaj obwodu (odbiorczy/rozdzielczy) wchodzi wprost do zdań werdyktu TN i TT/IT —
+    ``rodzaj_obwodu_dla_aparatu`` jest JEDYNYM miejscem walidacji i zwraca wyłącznie słowa
+    ``RODZAJE_OBWODU``; rodzaj spoza słownika odrzuca tak samo dla obu układów."""
+    from application.analyses.swz.werdykt import RODZAJE_OBWODU, rodzaj_obwodu_dla_aparatu
+
+    wyniki = {
+        rodzaj_obwodu_dla_aparatu(in_a, jawny)
+        for in_a in (None, 16.0, 400.0)
+        for jawny in (None, *RODZAJE_OBWODU)
+    }
+    assert wyniki == set(RODZAJE_OBWODU)
+    with pytest.raises(ValueError, match="Rodzaj obwodu musi być"):
+        rodzaj_obwodu_dla_aparatu(16.0, "final")

@@ -40,6 +40,7 @@ from application.v126_artifacts import (
 )
 from domain.canonical_operations import READINESS_CODES
 from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
+from domain.opis_przebiegu import RODZAJE_PRZEBIEGU_PL, rodzaj_przebiegu_pl
 from enm.adapter_dynamiki import (
     KLUCZ_BIEGU_ROZPLYWU,
     KOD_PUNKT_PRACY_BRAK,
@@ -634,7 +635,22 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
         # `ExecutionAnalysisType` (FROZEN, `domain/execution.py`) nie ma
         # odpowiednika V12.6, więc etykieta jest własna, nie z tego wyliczenia.
         return f"V126_{run.analysis_type.removeprefix('v126:').upper()}"
-    raise ValueError(f"Unsupported canonical analysis type: {run.analysis_type}")
+    if run.analysis_type not in RODZAJE_PRZEBIEGU_PL:
+        raise ValueError(
+            f"Rodzaj przebiegu {run.analysis_type!r} spoza słownika aplikacji — rejestr "
+            f"biegów zna wyłącznie: {_lista_rodzajow_przebiegu()}."
+        )
+    raise AssertionError(
+        "Błąd programu: rodzaj przebiegu ze słownika aplikacji bez typu wykonania — "
+        "`test_kazdy_rodzaj_przebiegu_ma_typ_wykonania_i_wykonawce` przypina komplet"
+    )
+
+
+def _lista_rodzajow_przebiegu() -> str:
+    """Rodzaje przebiegu słowami projektanta (biegi V12.6 — prefiks ``v126:``)."""
+    return ", ".join(f"„{nazwa}”" for nazwa in RODZAJE_PRZEBIEGU_PL.values()) + (
+        " oraz biegi pakietu akademickiego V12.6"
+    )
 
 
 #: Mapowanie statusu DOMENOWEGO biegu na status KONTRAKTU HTTP — JEDYNE zrodlo prawdy.
@@ -1010,8 +1026,9 @@ def _validate_protection_sc_reference(
     sc_run_id_raw = normalized_options.get("sc_run_id")
     if not sc_run_id_raw:
         raise OdmowaDanychError(
-            "Analiza zabezpieczeń wymaga options.sc_run_id (identyfikator "
-            "zakończonego biegu zwarciowego, którego prąd Ik'' interpretuje ocena)"
+            "Analiza zabezpieczeń wymaga wskazania zakończonego biegu zwarciowego, "
+            "którego prąd Ik'' interpretuje ocena — wybierz bieg zwarciowy w ustawieniach "
+            "analizy"
         )
     # Partia integracji 10: identyfikator biegu źródłowego w polu `dane` odmowy, nigdy
     # w treści (projektant wybiera bieg z listy, nie zna jego identyfikatora).
@@ -1378,8 +1395,9 @@ def _wykonaj_analize_biegu(
     """
     if graf is not None and run.analysis_type != "PF":
         raise ValueError(
-            "Gotowy graf sieci przyjmuje wyłącznie rozpływ mocy; dla analizy "
-            f"{run.analysis_type!r} graf buduje wykonawca z migawki biegu."
+            "Gotowy graf sieci przyjmuje wyłącznie rozpływ mocy; dla przebiegu "
+            f"„{rodzaj_przebiegu_pl(run.analysis_type)}” graf buduje wykonawca z migawki "
+            "biegu."
         )
     if run.analysis_type == "PF":
         _execute_power_flow(run, graf, uow_factory=uow_factory)
@@ -1395,8 +1413,16 @@ def _wykonaj_analize_biegu(
         _execute_protection(run, uow_factory)
     elif run.analysis_type.startswith("v126:"):
         _execute_v126(run)
+    elif run.analysis_type not in RODZAJE_PRZEBIEGU_PL:
+        raise ValueError(
+            f"Rodzaj przebiegu {run.analysis_type!r} spoza słownika aplikacji — wykonawca "
+            f"biegów zna wyłącznie: {_lista_rodzajow_przebiegu()}."
+        )
     else:
-        raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
+        raise AssertionError(
+            "Błąd programu: rodzaj przebiegu ze słownika aplikacji bez wykonawcy — "
+            "`test_kazdy_rodzaj_przebiegu_ma_typ_wykonania_i_wykonawce` przypina komplet"
+        )
 
 
 #: Nazwana ODMOWA OBLICZENIA biegu (karta #151) — JEDNO źródło dla każdego miejsca,
@@ -2491,6 +2517,23 @@ def _zalozenie_czasu_tb_roboczego(
 #: zmieniły się od biegu — wtedy wkłady nie należą do tego biegu i są ODMAWIANE.
 _POLA_SPOJNOSCI_WKLADOW: tuple[str, ...] = ("ikss_a", "ip_a", "ith_a", "sk_mva", "kappa")
 
+#: Wielkości zapisanego wiersza wyniku zwarciowego → nazwy dla komunikatu (karta #145:
+#: komunikat nie niesie klucza zapisu) — jedno źródło dla bramki spójności wkładów
+#: (``_POLA_SPOJNOSCI_WKLADOW``) i oceny cieplnej przewodów.
+NAZWY_WIELKOSCI_WIERSZA_ZWARCIOWEGO_PL: dict[str, str] = {
+    "c_factor": "współczynnik napięciowy c",
+    "un_v": "napięcie znamionowe sieci Un",
+    "ikss_a": "prąd zwarciowy początkowy I″k",
+    "ip_a": "prąd zwarciowy udarowy ip",
+    "ith_a": "prąd zastępczy cieplny I_th",
+    "sk_mva": "moc zwarciowa S″k",
+    "rx_ratio": "stosunek R/X",
+    "kappa": "współczynnik udaru κ",
+    "tk_s": "czas trwania zwarcia Tk",
+    "ib_a": "prąd wyłączeniowy symetryczny Ib",
+    "tb_s": "czas wyłączania tb",
+}
+
 
 def _policz_rozplyw_punktu_na_zadanie(
     run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
@@ -2537,7 +2580,9 @@ def _policz_rozplyw_punktu_na_zadanie(
     if rozjazd:
         raise ValueError(
             "Wkłady gałęziowe na żądanie niespójne z biegiem "
-            f"{run.id} (punkt {fault_node_id}, pola {rozjazd}): dane wejściowe biegu "
+            f"{run.id} (punkt {fault_node_id}, wielkości: "
+            f"{', '.join(NAZWY_WIELKOSCI_WIERSZA_ZWARCIOWEGO_PL[p] for p in rozjazd)}): dane "
+            "wejściowe biegu "
             "(migawka, opcje, konfiguracja audytu 2) zmieniły się od jego wykonania — "
             "uruchom analizę ponownie."
         )

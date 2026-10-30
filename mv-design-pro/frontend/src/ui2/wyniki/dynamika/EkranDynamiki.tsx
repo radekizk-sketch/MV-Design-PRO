@@ -698,7 +698,7 @@ function Wynik({
           { etykieta: T.audytCzas, wartosc: fmtLiczba(w.czas_obliczen_s, 4) },
           ...Object.entries(wynik.tozsamosc)
             .filter(([k]) => k !== 'wersja_solvera')
-            .map(([k, v]) => ({ etykieta: T.audytOdcisk[k] ?? k, wartosc: v })),
+            .map(([k, v]) => ({ etykieta: etykietaZeSlownika(T.audytOdcisk, k), wartosc: v })),
         ]}
       />
     </div>

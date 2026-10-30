@@ -54,6 +54,7 @@ const AF_FIXTURE: ArcFlashResponse = {
       provenance_caveat_pl: 'Wynik na współczynnikach open-source — wymaga weryfikacji z normą.',
       why_pl: 'Energia incydentu wyznaczona wg IEEE 1584-2018.',
       missing_data: [],
+      missing_data_pl: [],
       white_box: [
         {
           symbol: 'E',

@@ -805,7 +805,7 @@ class XlsxNetworkImporter:
                     szyny,
                     arkusz=ARKUSZ_TRAFO,
                     kolumna_szyny="szyna_LV",
-                    nosnik_pl="transformator zasilający sieć nN (szyna LV)",
+                    nosnik_pl="transformator zasilający sieć nN (szyna strony nN)",
                 )
             )
             if transformator["szyna_HV"] == transformator["szyna_LV"]:
@@ -1388,12 +1388,12 @@ class XlsxNetworkImporter:
                 if u_hv is None:
                     u_hv = napiecia_szyn[transformator["szyna_HV"]]
                     przyjete.append(
-                        f"U_HV = napięcie szyny {transformator['szyna_HV']} ({u_hv:g} kV)"
+                        f"napięcie strony GN = napięcie szyny {transformator['szyna_HV']} ({u_hv:g} kV)"
                     )
                 if u_lv is None:
                     u_lv = napiecia_szyn[transformator["szyna_LV"]]
                     przyjete.append(
-                        f"U_LV = napięcie szyny {transformator['szyna_LV']} ({u_lv:g} kV)"
+                        f"napięcie strony DN = napięcie szyny {transformator['szyna_LV']} ({u_lv:g} kV)"
                     )
                 if przyjete:
                     ostrzezenia.append(

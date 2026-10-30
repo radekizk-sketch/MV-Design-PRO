@@ -950,8 +950,16 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # wejściowy składa topologię GPZ-MODEL z mapą `wartosci_robocze` kabli SN karty
     # LINIA-110). Jedyne liście różne od obu stron to te dwa odciski. Wynik kontyngencji =
     # wynik UI/UX (GPZ-MODEL).
-    "gn01_promieniowa": "63af4b10b849707308af6ac179b091097cdc245dddc887ef732a152e8b9f2826",
-    "gn03_pierscien": "d05d59143f677beab95dfd3e7a1f0b8fe971ac59d946b550349e2cafe06817c8",
+    # 2026-10-30 (karta komunikatów bez kodów, commit 3): gn01 63af4b10… → edf27ae6…, gn03
+    # d05d5914… → 00d06959…. Pełne widoki z kodu bazy `21a236756` (odtwarzają dokładnie
+    # poprzednie piny) i po karcie porównane liść po liściu: zbiór kluczy identyczny, różnią
+    # się WYŁĄCZNIE dwa teksty dla projektanta w `parameters.kryteria`
+    # (`obciazenie.zrodlo_obciazalnosci_pl`: „kryteriów pominiętych” zamiast klucza
+    # `kryteria_pominiete`; `ranking.definicja_pl`: „identyfikatorze elementu” zamiast klucza
+    # `element_ref`) i `input_hash`, który obejmuje `kryteria`. Enumeracja kontyngencji,
+    # dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "edf27ae6a435d418994340f39b96b06504f13bec1a5dad13a508fa1a5891924a",
+    "gn03_pierscien": "00d06959d23b1179cb2fe507a9cdc4b54647bec4398abc43e83d7aa55846c4b9",
 }
 
 

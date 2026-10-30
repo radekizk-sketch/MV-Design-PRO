@@ -132,8 +132,8 @@ def build_min_scenario_graph(graph: NetworkGraph) -> MinScenarioGraphResult:
                         theta_k_c=None,
                         r_theta_ohm_per_km=None,
                         reason=(
-                            "R bez korekty temperaturowej — brak theta_k "
-                            "(short_circuit_temperature_c) w danych katalogowych"
+                            "R bez korekty temperaturowej — brak dopuszczalnej temperatury "
+                            "przewodu przy zwarciu θ_k w danych katalogowych"
                         ),
                     )
                 )

@@ -85,6 +85,15 @@ _SNAKE = re.compile(
 )
 #: Kod ``WIELKIE_LITERY_Z_PODKRESLNIKIEM``.
 _WIELKIE_KODY = re.compile(r"(?<![\w./-])[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+(?![\w-])")
+#: Kod kropkowy kanonu gotowości i walidacji (``source.sk_min_missing``,
+#: ``przeksztaltnik.karta_ssci``): człony małymi literami rozdzielone kropką, co najmniej
+#: jeden z podkreślnikiem — człon po kropce nie jest łapany przez ``_SNAKE`` (wykluczenie
+#: poprzedzającej kropki chroni nazwy plików i ścieżek).
+_KOD_KROPKOWY = re.compile(
+    r"(?<![\w./-])[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+(?![\w-]|" + _ROZSZERZENIA_PLIKOW + ")"
+)
+#: Nazwa pliku (ostatni człon to rozszerzenie) — zapis formatu, nie kod kanonu.
+_PLIK_KROPKOWY = re.compile(r"\.(?:yaml|yml|json|csv|xlsx|xls|txt|zip|pdf|docx|py|ts|tsx|md)$")
 #: Fragment kodu w odwróconych apostrofach (zapis dokumentacji kodu, nie zdania).
 _ODWROCONE = re.compile(r"`[^`]+`")
 #: Słowo pisane wielkimi literami (kandydat na kod wartości bez podkreślnika).
@@ -161,68 +170,70 @@ SKROTY_INZYNIERSKIE: frozenset[str] = frozenset(
     }
 )
 
-#: Symbole wielkości fizycznych z indeksem dolnym — zapis inżynierski, nie pole kontraktu
-#: (``R_N`` rezystancja uziemienia punktu neutralnego, ``k_j`` współczynnik jednoczesności).
-SYMBOLE_INZYNIERSKIE: frozenset[str] = frozenset(
-    {
-        "R_N",
-        "X_N",
-        "Z_N",
-        "Z_T",
-        "Z_T0",
-        "Z_E",
-        "U_n",
-        "P_n",
-        "S_n",
-        "k_j",
-        "k_obc",
-        "k_sc",
-        "k_pf",
-        "k_qf",
-        "R_s",
-        "Z_m",
-        "a_P",
-        "b_P",
-        "c_P",
-        "a_Q",
-        "b_Q",
-        "c_Q",
-        # IEC 60909-0: współczynnik napięciowy c_max, prąd udarowy i_p, czas wyłączenia t_b,
-        # czas trwania zwarcia t_k; IEC 62271-1 / 60909-0 §4.8: czas znamionowy t_th.
-        "c_max",
-        "i_p",
-        "t_b",
-        "t_k",
-        "t_th",
-        # IEC 60076-1: napięcie zwarcia u_k transformatora.
-        "u_k",
-        # PN-HD 60364-4-43 / 60364-5-52: prąd obliczeniowy I_B obwodu.
-        "I_B",
-        # PN-HD 60364-4-41 §411.5 (układ TT): rezystancje uziemień R_A i R_B; IEC 60909-0
-        # §3.6 / PN-HD 60364 (układ IT): susceptancja doziemna b_0 odcinka.
-        "R_A",
-        "R_B",
-        "b_0",
-        # IEC 60947-2 (wyzwalacz elektroniczny): zwłoka długozwłoczna t_r i krótkozwłoczna t_sd.
-        "t_r",
-        "t_sd",
-        # IEC 60255-151: minimalny czas zwłoki t_min krzywej zależnej.
-        "t_min",
-        # Pasmo częstotliwości wpisu karty widmowej (IEC 61000-4-7): f_min, f_max.
-        "f_min",
-        "f_max",
-        # IEC 61000-2-2 / EN 50160 / IEEE 519: wielkości odniesienia limitu w procentach —
-        # napięcie składowej podstawowej U_1, napięcie znamionowe U_N, deklarowane U_C, prąd
-        # obciążenia I_L, prąd znamionowy I_N.
-        "U_1",
-        "U_N",
-        "U_C",
-        "I_L",
-        "I_N",
-        # IEC 60364-4-41 / IEC 61008-1: czas zadziałania (wyłączenia) zabezpieczenia t_a.
-        "t_a",
-    }
-)
+#: Symbole wielkości fizycznych z indeksem dolnym — zapis inżynierski, nie pole kontraktu.
+#: JEDNA lista: symbol → podstawa (norma albo dokument źródłowy i oznaczenie wielkości);
+#: każdy wpis musi wystąpić w tekście dla projektanta w ``src`` i nieść odwołanie do normy
+#: (``test_symbole_inzynierskie_maja_podstawe_i_sa_zywe``).
+SYMBOLE_INZYNIERSKIE: dict[str, str] = {
+    "R_N": "IEC 60909-0:2016 §6.3.3 — rezystancja R_N impedancji uziemienia punktu neutralnego",
+    "X_N": "IEC 60909-0:2016 §6.3.3 — reaktancja X_N impedancji uziemienia punktu neutralnego",
+    "Z_N": "IEC 60909-0:2016 §6.3.3 — impedancja uziemienia punktu neutralnego Z_N (3·Z_N w Z_(0))",
+    "Z_Q": "IEC 60909-0:2016 §6.2 wzór (1) — impedancja zwarciowa sieci zasilającej Z_Q",
+    "Z_T": "IEC 60909-0:2016 §6.3.1 wzór (7) — impedancja zwarciowa transformatora Z_T",
+    "Z_T0": "IEC 60909-0:2016 §6.3.1 — impedancja składowej zerowej transformatora Z_T0 (Z_(0)T)",
+    "Z_E": "PN-HD 60364-4-41 §411.4 / IEC 61936-1 §10 — impedancja uziemienia Z_E",
+    "U_n": "IEC 60038 / IEC 60909-0:2016 §3.13 — napięcie znamionowe sieci U_n",
+    "P_n": "IEC 61400-27-1 / rozporządzenie 2016/631 art. 2 — moc znamionowa czynna P_n",
+    "S_n": "IEC 60076-1 §3.4.3 / IEC 60034-1 — moc znamionowa pozorna S_n",
+    "k_j": "N SEP-E-002 / PN-HD 60364-3 — współczynnik jednoczesności k_j obciążenia",
+    "k_obc": "IEC 60076-7 §7 — współczynnik obciążenia (przeciążalności) transformatora k_obc",
+    "k_sc": "IEC 60909-0:2016 §6.9 — krotność prądu zwarciowego przekształtnika k_sc = I_k''/I_rG",
+    "k_pf": "IEEE Task Force „Load representation for dynamic performance” (1993) — k_pf",
+    "k_qf": "IEEE Task Force „Load representation for dynamic performance” (1993) — k_qf",
+    "R_s": "IEC 60909-0:2016 §6.3 / Fortescue — rezystancja własna R_s gałęzi wielofazowej",
+    "Z_m": "IEC 60909-0:2016 §6.3 / Fortescue — impedancja wzajemna Z_m faz gałęzi",
+    "a_P": "IEEE Std 1110 / model ZIP (CIGRE TB 566) — udział stałoimpedancyjny a_P mocy P",
+    "b_P": "IEEE Std 1110 / model ZIP (CIGRE TB 566) — udział stałoprądowy b_P mocy P",
+    "c_P": "IEEE Std 1110 / model ZIP (CIGRE TB 566) — udział stałomocowy c_P mocy P",
+    "a_Q": "IEEE Std 1110 / model ZIP (CIGRE TB 566) — udział stałoimpedancyjny a_Q mocy Q",
+    "b_Q": "IEEE Std 1110 / model ZIP (CIGRE TB 566) — udział stałoprądowy b_Q mocy Q",
+    "c_Q": "IEEE Std 1110 / model ZIP (CIGRE TB 566) — udział stałomocowy c_Q mocy Q",
+    "c_max": "IEC 60909-0:2016 tab. 1 — współczynnik napięciowy c_max",
+    "c_min": "IEC 60909-0:2016 tab. 1 — współczynnik napięciowy c_min",
+    "i_p": "IEC 60909-0:2016 §8.1 — prąd udarowy i_p",
+    "t_b": "IEC 60909-0:2016 §9.1 — minimalny czas wyłączenia t_b",
+    "t_k": "IEC 60909-0:2016 §10 — czas trwania zwarcia t_k",
+    "t_th": "IEC 62271-1 §5.6 / IEC 60909-0:2016 §4.8 — czas znamionowy t_th prądu cieplnego",
+    "u_k": "IEC 60076-1 §3.7.1 — napięcie zwarcia u_k transformatora",
+    "I_B": "PN-HD 60364-4-43 §433.1 — prąd obliczeniowy I_B obwodu",
+    "R_A": "PN-HD 60364-4-41 §411.5.3 — rezystancja uziemienia R_A części przewodzących (TT)",
+    "R_B": "PN-HD 60364-4-41 §411.5 — rezystancja uziemienia R_B punktu neutralnego (TT)",
+    "b_0": "IEC 60909-0:2016 §3.6 / PN-HD 60364-4-41 §411.6 — susceptancja doziemna b_0 (IT)",
+    "t_r": "IEC 60947-2 zał. K — zwłoka długozwłoczna t_r wyzwalacza elektronicznego",
+    "t_sd": "IEC 60947-2 zał. K — zwłoka krótkozwłoczna t_sd wyzwalacza elektronicznego",
+    "t_min": "PN-EN 60255-151 §5 — minimalny czas zwłoki t_min krzywej zależnej",
+    "f_min": "IEC 61000-4-7 — dolna granica f_min pasma częstotliwości wpisu widma",
+    "f_max": "IEC 61000-4-7 — górna granica f_max pasma częstotliwości wpisu widma",
+    "U_1": "IEC 61000-2-2 / EN 50160 — napięcie składowej podstawowej U_1",
+    "U_N": "EN 50160 §3 — napięcie znamionowe U_N",
+    "U_C": "EN 50160 §3 — napięcie deklarowane U_C",
+    "I_L": "IEEE Std 519-2022 §3 — prąd obciążenia I_L",
+    "I_N": "IEC 61000-3-12 / IEEE Std 519-2022 — prąd znamionowy I_N",
+    "t_a": "PN-HD 60364-4-41 §411.3.2 / IEC 61008-1 — czas zadziałania zabezpieczenia t_a",
+    "D_AFB": "IEEE Std 1584-2018 §4.11 — granica łuku elektrycznego D_AFB",
+    "t_f": "IEEE Std 80-2013 §16.2 — czas trwania prądu rażeniowego t_f",
+    "t_wym": "PN-HD 60364-4-41 §411.3.2.2 tab. 41.1 — wymagany czas samoczynnego wyłączenia t_wym",
+    "K_G": "IEC 60909-0:2016 §6.6.1 — współczynnik korekcyjny impedancji generatora K_G",
+    "K_T": "IEC 60909-0:2016 §6.3.3 — współczynnik korekcyjny impedancji transformatora K_T",
+    "R_M": "IEC 60909-0:2016 §6.8 — rezystancja R_M silnika asynchronicznego",
+    "Z_M": "IEC 60909-0:2016 §6.8 — impedancja Z_M silnika asynchronicznego",
+    "I_LR": "IEC 60909-0:2016 §6.8 — prąd rozruchowy (zablokowanego wirnika) I_LR silnika",
+    "R_L": "IEC 60909-0:2016 §6.3.1 wzór (11) — rezystancja przewodu linii R_L w temperaturze",
+    "U_0": "PN-HD 60364-4-41 §411.4.4 — napięcie fazowe względem ziemi U_0",
+    "I_E": "IEC 61936-1 §10 — prąd uziomowy I_E",
+    "k_cz": "PN-EN 60255-151 / wytyczne PTPiREE doboru nastaw — współczynnik czułości k_cz",
+    "k_b": "PN-EN 60255-151 / wytyczne PTPiREE doboru nastaw — współczynnik bezpieczeństwa k_b",
+}
 
 
 def _znane_kody_wartosci() -> frozenset[str]:
@@ -248,12 +259,52 @@ def _znane_kody_wartosci() -> frozenset[str]:
 ZNANE_KODY_WARTOSCI = _znane_kody_wartosci()
 
 
+#: Dopisek kodu PO polskim zdaniu — rozstrzygnięcie architekta 2026-10-29: kod jest dowodem
+#: audytowym wyłącznie jako dopisek ``(<etykieta>: <kod>)`` na KOŃCU tekstu, którego zdanie
+#: obywa się bez kodu. Etykieta nazywa rodzaj kodu słowami; każda ma podstawę i test
+#: żywotności (``test_dopiski_kodu_sa_zywe``). Kod w innym miejscu tekstu albo dopisek o
+#: etykiecie spoza listy pozostaje naruszeniem.
+DOPISKI_KODU: dict[str, str] = {
+    "kod reguły": (
+        "twarda reguła katalogu `KAT-T-…` (`network_model/catalog/niezmienniki_katalogu.py::"
+        "odmowa_twarda`) — rozstrzygnięcie architekta 2026-10-29, przypięte "
+        "`test_kod_reguly_katalogu_jest_dopiskiem_po_zdaniu`"
+    ),
+    "kod gotowości": (
+        "kod rejestru gotowości `READINESS_CODES` (`domain/readiness_codes.py`) w pozycji "
+        "listy braków gotowości i w odmowie biegu złożenia wejścia — ten sam kod co pole "
+        "maszynowe odmowy (`kod`), czytany przez audyt bramek fizycznych"
+    ),
+    "kod odmowy": (
+        "kod rejestru odmów rdzenia dynamiki `KODY_ODMOW` (`network_model/solvers/dynamika/"
+        "kontrakty.py`) — treść bez kodu niesie pole `komunikat` odmowy"
+    ),
+}
+_DOPISEK_KODU = re.compile(r"\((?P<etykieta>kod [^:()]+):\s*(?P<kod>⟨⟩|[\w.\-]+)\s*\)\s*\.?\s*$")
+
+
+def bez_dopisku_kodu(tekst: str) -> str:
+    """Tekst bez końcowego dopisku kodu ``(<etykieta z DOPISKI_KODU>: <kod>)`` — dopisek jest
+    dowodem audytowym po zdaniu, nie treścią zdania (ta sama reguła co strażnik statyczny
+    ``test_klucze_pol_w_komunikatach_src._w_dopisku_kodu``). Dopisek o etykiecie spoza listy
+    zostaje w tekście i jest kodem jak każdy inny."""
+    dopisek = _DOPISEK_KODU.search(tekst)
+    if dopisek is None or dopisek.group("etykieta") not in DOPISKI_KODU:
+        return tekst
+    return tekst[: dopisek.start()]
+
+
 def kody_w_tekscie(tekst: str) -> list[str]:
-    """Tokeny kodu w tekście dla projektanta (pusta lista = tekst czysty)."""
+    """Tokeny kodu w tekście dla projektanta (pusta lista = tekst czysty). Kod w dopisku
+    po zdaniu (``bez_dopisku_kodu``) nie jest treścią zdania."""
+    tekst = bez_dopisku_kodu(tekst)
     znalezione: list[str] = []
     for token in (*_SNAKE.findall(tekst), *_WIELKIE_KODY.findall(tekst)):
         if token not in SYMBOLE_INZYNIERSKIE:
             znalezione.append(token)
+    znalezione.extend(
+        k for k in _KOD_KROPKOWY.findall(tekst) if "_" in k and not _PLIK_KROPKOWY.search(k)
+    )
     znalezione.extend(_ODWROCONE.findall(tekst))
     for slowo in _WIELKIE_SLOWO.findall(tekst):
         if slowo in ZNANE_KODY_WARTOSCI and slowo not in SKROTY_INZYNIERSKIE:
@@ -270,6 +321,20 @@ def test_skroty_i_symbole_nie_sa_kodami_wartosci_zabronionymi() -> None:
     assert kody_w_tekscie("rola LINIA_IN") == ["LINIA_IN"]
 
 
+@pytest.mark.parametrize("etykieta", sorted(DOPISKI_KODU))
+def test_dopisek_kodu_po_zdaniu_nie_jest_kodem_zdania(etykieta: str) -> None:
+    """Iloczyn: etykieta dopisku (każda z ``DOPISKI_KODU``) × położenie kodu (wyłącznie
+    w dopisku / także w zdaniu) × etykieta spoza listy. Kod w dopisku na końcu tekstu nie jest
+    treścią zdania (sprawdzenie w biegu = strażnik statyczny); ten sam kod w zdaniu albo
+    dopisek o nieznanej etykiecie pozostaje kodem."""
+    zdanie = "Krok całkowania leży poza granicami nastaw."
+    assert kody_w_tekscie(f"{zdanie} ({etykieta}: dynamika.nastawy_sprzeczne)") == []
+    assert kody_w_tekscie(f"{zdanie} ({etykieta}: dynamika.nastawy_sprzeczne).") == []
+    w_zdaniu = f"Odmowa dynamika.nastawy_sprzeczne. ({etykieta}: dynamika.nastawy_sprzeczne)"
+    assert kody_w_tekscie(w_zdaniu) == ["dynamika.nastawy_sprzeczne"]
+    assert kody_w_tekscie(f"{zdanie} (kod pola: u_n_kv)") == ["u_n_kv"]
+
+
 # ---------------------------------------------------------------------------
 # 1. Strażnik klasy — AST na modułach komunikatów operacji
 # ---------------------------------------------------------------------------
@@ -281,7 +346,9 @@ class ZakresModulu:
 
     ``wywolania`` — gdy niepuste, skanowane są wyłącznie argumenty wywołań o tych nazwach
     (moduł niesie też teksty, które nie są komunikatami operacji — uzasadnienie w
-    ``powod``). ``slowa_kluczowe`` — to samo dla argumentów nazwanych.
+    ``powod``). ``slowa_kluczowe`` — to samo dla argumentów nazwanych; ``klucze_slownika``
+    — wartości słownika pod tym kluczem (``{"reason_pl": …}``, ``wynik["reason_pl"] = …``);
+    ``listy`` — elementy dokładane do listy komunikatów o tej nazwie (``bledy.append(…)``).
     """
 
     sciezka: str
@@ -289,6 +356,8 @@ class ZakresModulu:
     wywolania: frozenset[str] = frozenset()
     slowa_kluczowe: frozenset[str] = frozenset()
     funkcje: frozenset[str] = frozenset()
+    klucze_slownika: frozenset[str] = frozenset()
+    listy: frozenset[str] = frozenset()
 
 
 #: INWENTARZ KLASY — każdy moduł, którego tekst trafia do projektanta w odpowiedzi
@@ -558,15 +627,64 @@ def _poza_komunikatem(wezel: ast.AST, rodzice: dict[int, ast.AST]) -> bool:
     return False
 
 
-def _w_zakresie(wezel: ast.AST, rodzice: dict[int, ast.AST], zakres: ZakresModulu) -> bool:
-    if not (zakres.wywolania or zakres.slowa_kluczowe or zakres.funkcje):
+#: Metody dokładające element do listy komunikatów.
+_DOKLADAJACE_DO_LISTY: frozenset[str] = frozenset({"append", "extend", "insert", "add"})
+
+
+def _w_kanale_wprost(wezel: ast.AST, rodzice: dict[int, ast.AST], zakres: ZakresModulu) -> bool:
+    if not (
+        zakres.wywolania
+        or zakres.slowa_kluczowe
+        or zakres.funkcje
+        or zakres.klucze_slownika
+        or zakres.listy
+    ):
         return True
-    for przodek, _dziecko in _przodkowie(wezel, rodzice):
+    for przodek, dziecko in _przodkowie(wezel, rodzice):
+        if zakres.klucze_slownika and isinstance(przodek, ast.Dict):
+            if any(
+                wartosc is dziecko
+                and isinstance(klucz, ast.Constant)
+                and klucz.value in zakres.klucze_slownika
+                for klucz, wartosc in zip(przodek.keys, przodek.values, strict=True)
+            ):
+                return True
+        if (
+            zakres.klucze_slownika
+            and isinstance(przodek, ast.Assign)
+            and przodek.value is dziecko
+            and any(
+                isinstance(cel, ast.Subscript)
+                and isinstance(cel.slice, ast.Constant)
+                and cel.slice.value in zakres.klucze_slownika
+                for cel in przodek.targets
+            )
+        ):
+            return True
+        if (
+            zakres.listy
+            and isinstance(przodek, ast.Call)
+            and isinstance(przodek.func, ast.Attribute)
+            and przodek.func.attr in _DOKLADAJACE_DO_LISTY
+            and isinstance(przodek.func.value, ast.Name)
+            and przodek.func.value.id in zakres.listy
+        ):
+            return True
         if (
             zakres.wywolania
             and isinstance(przodek, ast.Call)
             and _nazwa_wywolania(przodek) in zakres.wywolania
         ):
+            return True
+        if (
+            zakres.wywolania
+            and isinstance(przodek, ast.Call)
+            and _wywolanie_konstruktora_bazy(przodek)
+            and _klasa_otaczajaca(przodek, rodzice) in zakres.wywolania
+        ):
+            # ``super().__init__(f"…")`` w konstruktorze wyjątku z kanału: tekst przekazany
+            # klasie bazowej JEST treścią wyjątku (``str(wyjątek)``) — ten sam kanał co
+            # argument wywołania klasy.
             return True
         if (
             zakres.slowa_kluczowe
@@ -581,6 +699,163 @@ def _w_zakresie(wezel: ast.AST, rodzice: dict[int, ast.AST], zakres: ZakresModul
         ):
             return True
     return False
+
+
+def _wywolanie_konstruktora_bazy(wywolanie: ast.Call) -> bool:
+    """``super().__init__(…)`` albo ``Baza.__init__(self, …)``."""
+    funkcja = wywolanie.func
+    if not (isinstance(funkcja, ast.Attribute) and funkcja.attr == "__init__"):
+        return False
+    cel = funkcja.value
+    return (
+        isinstance(cel, ast.Call) and isinstance(cel.func, ast.Name) and cel.func.id == "super"
+    ) or isinstance(cel, ast.Name)
+
+
+def _klasa_otaczajaca(wezel: ast.AST, rodzice: dict[int, ast.AST]) -> str | None:
+    """Nazwa klasy, w której metodzie stoi ``wezel`` (``None`` poza klasą)."""
+    przodek = rodzice.get(id(wezel))
+    while przodek is not None and not isinstance(przodek, ast.ClassDef):
+        przodek = rodzice.get(id(przodek))
+    return przodek.name if isinstance(przodek, ast.ClassDef) else None
+
+
+#: Głębokość śledzenia tekstu do kanału przez zmienną lokalną, parametr funkcji i wynik
+#: funkcji modułu (``komunikat = f"…"; raise X(komunikat)``, ``_odmowa(tekst=f"…")``,
+#: ``return f"…"`` w funkcji, której wynik idzie do kanału). Trzy przejścia obejmują
+#: łańcuch „zmienna → parametr pomocnika → kanał” z zapasem jednego kroku.
+GLEBOKOSC_PRZEPLYWU = 3
+#: Metody dokładające element do listy lokalnej, przez którą tekst płynie dalej do kanału.
+_DOKLADAJACE_DO_LISTY_PRZEPLYWU: frozenset[str] = frozenset({"append", "insert", "add"})
+
+
+def _nazwa_funkcji_wywolania(wywolanie: ast.Call) -> str | None:
+    funkcja = wywolanie.func
+    if isinstance(funkcja, ast.Attribute):
+        return funkcja.attr
+    return funkcja.id if isinstance(funkcja, ast.Name) else None
+
+
+class _PrzeplywModulu:
+    """Indeks modułu dla śledzenia tekstu do kanału: definicje funkcji po nazwie,
+    wywołania po nazwie, odczyty nazw w funkcji. Budowany raz na drzewo modułu."""
+
+    def __init__(self, drzewo: ast.AST, rodzice: dict[int, ast.AST], zakres: ZakresModulu):
+        self.rodzice = rodzice
+        self.zakres = zakres
+        self.funkcje: dict[str, list[ast.FunctionDef | ast.AsyncFunctionDef]] = {}
+        self.wywolania: dict[str, list[ast.Call]] = {}
+        self._odczyty: dict[int, dict[str, list[ast.Name]]] = {}
+        self._wynik: dict[tuple[int, int], bool] = {}
+        for wezel in ast.walk(drzewo):
+            if isinstance(wezel, ast.FunctionDef | ast.AsyncFunctionDef):
+                self.funkcje.setdefault(wezel.name, []).append(wezel)
+            elif isinstance(wezel, ast.Call):
+                nazwa = _nazwa_funkcji_wywolania(wezel)
+                if nazwa is not None:
+                    self.wywolania.setdefault(nazwa, []).append(wezel)
+
+    def odczyty(self, funkcja: ast.AST, nazwa: str) -> list[ast.Name]:
+        indeks = self._odczyty.get(id(funkcja))
+        if indeks is None:
+            indeks = {}
+            for wezel in ast.walk(funkcja):
+                if isinstance(wezel, ast.Name) and isinstance(wezel.ctx, ast.Load):
+                    indeks.setdefault(wezel.id, []).append(wezel)
+            self._odczyty[id(funkcja)] = indeks
+        return indeks.get(nazwa, [])
+
+    def funkcja_zawierajaca(self, wezel: ast.AST) -> ast.AST | None:
+        for przodek, _dziecko in _przodkowie(wezel, self.rodzice):
+            if isinstance(przodek, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+                return przodek
+            if isinstance(przodek, ast.ClassDef):
+                return None
+        return None
+
+    def parametry_wywolania(
+        self, wywolanie: ast.Call, argument: ast.AST
+    ) -> list[tuple[ast.AST, str]]:
+        """(funkcja modułu, nazwa parametru), do których trafia ``argument`` wywołania."""
+        nazwa = _nazwa_funkcji_wywolania(wywolanie)
+        wynik: list[tuple[ast.AST, str]] = []
+        for definicja in self.funkcje.get(nazwa or "", []):
+            if isinstance(argument, ast.keyword):
+                if argument.arg is not None:
+                    wynik.append((definicja, argument.arg))
+                continue
+            if argument not in wywolanie.args:
+                continue
+            pozycyjne = [a.arg for a in (*definicja.args.posonlyargs, *definicja.args.args)]
+            if (
+                pozycyjne
+                and pozycyjne[0] in {"self", "cls"}
+                and isinstance(wywolanie.func, ast.Attribute)
+            ):
+                pozycyjne = pozycyjne[1:]
+            indeks = wywolanie.args.index(argument)  # type: ignore[arg-type]
+            if indeks < len(pozycyjne):
+                wynik.append((definicja, pozycyjne[indeks]))
+        return wynik
+
+    def w_zakresie(self, wezel: ast.AST, glebokosc: int = 0) -> bool:
+        klucz = (id(wezel), glebokosc)
+        if klucz not in self._wynik:
+            self._wynik[klucz] = False  # cykl (rekurencja funkcji) nie jest kanałem
+            self._wynik[klucz] = self._oblicz(wezel, glebokosc)
+        return self._wynik[klucz]
+
+    def _oblicz(self, wezel: ast.AST, glebokosc: int) -> bool:
+        if _w_kanale_wprost(wezel, self.rodzice, self.zakres):
+            return True
+        if glebokosc >= GLEBOKOSC_PRZEPLYWU:
+            return False
+        nastepne: list[ast.AST] = []
+        for przodek, dziecko in _przodkowie(wezel, self.rodzice):
+            if isinstance(przodek, ast.Assign | ast.AnnAssign | ast.AugAssign):
+                if przodek.value is dziecko:
+                    cele = przodek.targets if isinstance(przodek, ast.Assign) else [przodek.target]
+                    funkcja = self.funkcja_zawierajaca(przodek)
+                    if funkcja is not None:
+                        for cel in cele:
+                            if isinstance(cel, ast.Name):
+                                nastepne.extend(self.odczyty(funkcja, cel.id))
+                break
+            if (
+                isinstance(przodek, ast.Call)
+                and dziecko in przodek.args
+                and isinstance(przodek.func, ast.Attribute)
+                and przodek.func.attr in _DOKLADAJACE_DO_LISTY_PRZEPLYWU
+                and isinstance(przodek.func.value, ast.Name)
+            ):
+                # Element dokładany do listy lokalnej: lista idzie dalej (``missing.append(
+                # f"…")`` → ``missing_fields_pl=missing``) — odczyty listy w tej funkcji.
+                funkcja = self.funkcja_zawierajaca(przodek)
+                if funkcja is not None:
+                    nastepne.extend(self.odczyty(funkcja, przodek.func.value.id))
+                break
+            if isinstance(przodek, ast.Call) and (
+                dziecko in przodek.args or dziecko in przodek.keywords
+            ):
+                for definicja, parametr in self.parametry_wywolania(przodek, dziecko):
+                    nastepne.extend(self.odczyty(definicja, parametr))
+                if nastepne:
+                    break
+            if isinstance(przodek, ast.Return):
+                funkcja = self.funkcja_zawierajaca(przodek)
+                if isinstance(funkcja, ast.FunctionDef | ast.AsyncFunctionDef):
+                    nastepne.extend(self.wywolania.get(funkcja.name, []))
+                break
+            if isinstance(przodek, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                break
+        return any(self.w_zakresie(dalej, glebokosc + 1) for dalej in nastepne)
+
+
+def _w_zakresie(wezel: ast.AST, przeplyw: _PrzeplywModulu) -> bool:
+    """Tekst w kanale komunikatu: wprost (argument wywołania kanału, wartość klucza,
+    element listy komunikatów, ciało funkcji-kanału) albo przez zmienną lokalną, parametr
+    funkcji modułu lub wynik funkcji modułu, które trafiają do kanału (``GLEBOKOSC_PRZEPLYWU``)."""
+    return przeplyw.w_zakresie(wezel)
 
 
 def _interpolacja_identyfikatora(wyrazenie: ast.expr) -> str | None:
@@ -725,6 +1000,7 @@ def teksty_komunikatow(
     w zakresie kanału, poza docstringiem, asercją i dziennikiem)."""
     docstringi = _docstringi(drzewo)
     rodzice = _rodzice(drzewo)
+    przeplyw = _PrzeplywModulu(drzewo, rodzice, zakres)
     w_fstringach = {
         id(czesc)
         for wezel in ast.walk(drzewo)
@@ -751,7 +1027,7 @@ def teksty_komunikatow(
             continue
         if not _LUDZKI.search(stale):
             continue
-        if not _w_zakresie(wezel, rodzice, zakres) or _poza_komunikatem(wezel, rodzice):
+        if not _w_zakresie(wezel, przeplyw) or _poza_komunikatem(wezel, rodzice):
             continue
         yield TekstKomunikatu(wezel, tekst, wstawki), rodzice
 

@@ -29,7 +29,7 @@ from typing import Any
 
 import numpy as np
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel

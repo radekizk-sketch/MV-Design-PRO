@@ -141,6 +141,8 @@ def graf_z_modelu_legacy(
             if koniec not in napiecia:
                 raise OdmowaMigracji(f"{element}: węzeł '{koniec}' nie istnieje w modelu zastanym")
         params: Mapping[str, Any] = galaz.get("params_jsonb") or galaz.get("params") or {}
+        if rodzaj not in (*_TYP_ENM_GALEZI_ZASTANEJ, "transformer"):
+            raise OdmowaMigracji(f"{element}: nieznany rodzaj gałęzi '{rodzaj}'")
         if rodzaj in ("line", "line_overhead", "cable"):
             type_ref = params.get("type_ref")
             dlugosc_m = km_na_m(_liczba(params, "length_km", element=element))
@@ -200,7 +202,7 @@ def graf_z_modelu_legacy(
             odcinki.append(
                 EdgeSpec(identyfikator, od, do, catalog_ref, dlugosc_m, "LINIA", nazwa_galezi)
             )
-        elif rodzaj == "transformer":
+        else:  # rodzaj == "transformer" — jedyny pozostały rodzaj po bramce wyżej
             type_ref = params.get("type_ref")
             if type_ref:
                 if type_ref not in katalog.transformer_types:
@@ -241,8 +243,6 @@ def graf_z_modelu_legacy(
             transformatory.append(
                 TransformatorSpec(identyfikator, od, do, catalog_ref, name=nazwa_galezi)
             )
-        else:
-            raise OdmowaMigracji(f"{element}: nieznany rodzaj gałęzi '{rodzaj}'")
 
     rekordy_zrodel: list[ZrodloSpec] = []
     for zrodlo in zrodla:

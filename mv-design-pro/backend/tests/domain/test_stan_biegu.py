@@ -90,14 +90,14 @@ def test_stan_biegu_przyjmuje_kazdy_stan_slownika(stan: str) -> None:
     ],
 )
 def test_stan_biegu_odrzuca_wartosc_spoza_slownika(wartosc: str) -> None:
-    with pytest.raises(ValueError, match="Nieznany stan biegu"):
+    with pytest.raises(ValueError, match="nie należy do słownika stanów"):
         stan_biegu(wartosc)
 
 
 def test_pozycja_serii_z_danych_odrzuca_nieznany_stan() -> None:
     """Odczyt pozycji z bazy/archiwum nie przepuszcza dowolnego tekstu do kontraktu HTTP."""
     dane = {**_POZYCJA, "status": "PENDING"}
-    with pytest.raises(ValueError, match="Nieznany stan biegu"):
+    with pytest.raises(ValueError, match="nie należy do słownika stanów"):
         RunBatchItem.from_dict(dane)
 
 
@@ -134,5 +134,5 @@ def test_proweniencja_z_danych_zachowuje_stan(stan: str) -> None:
 
 
 def test_proweniencja_z_danych_odrzuca_nieznany_stan() -> None:
-    with pytest.raises(ValueError, match="Nieznany stan biegu"):
+    with pytest.raises(ValueError, match="nie należy do słownika stanów"):
         RunProvenance.from_dict({**_PROWENIENCJA, "status": "DONE"})

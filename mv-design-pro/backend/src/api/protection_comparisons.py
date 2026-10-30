@@ -244,17 +244,17 @@ def create_protection_comparison(
     except ProtectionRunWrongTypeError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Bieg {e.run_id} nie jest biegiem zabezpieczeń (rodzaj: {e.analysis_type})",
+            detail=str(e),
         ) from e
     except ProtectionRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bieg analizy zabezpieczeń {e.run_id} nie jest zakończony (stan: {e.status}).",
+            detail=str(e),
         ) from e
     except ProtectionProjectMismatchError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Runs należą do różnych projektów: {e.run_a_project} vs {e.run_b_project}",
+            detail=str(e),
         ) from e
     except ProtectionComparisonError as e:
         raise HTTPException(

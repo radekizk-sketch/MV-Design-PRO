@@ -49,6 +49,7 @@ import {
 } from '../sld/v2/station-rozdzielnia/contract';
 import type { SelectedElement } from '../types';
 import type { TechCardKind, TechCardSubject } from './types';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 type SnapshotLike = EnergyNetworkModel | null | undefined;
 
@@ -527,7 +528,7 @@ function regulacjaQFields(generator: Generator): CardField[] {
   const meta = (generator.meta ?? {}) as Record<string, unknown>;
   const controlMode = typeof meta.control_mode === 'string' ? meta.control_mode : null;
   if (!controlMode) return [];
-  const label = DER_CONTROL_MODE_LABEL_PL[controlMode] ?? controlMode;
+  const label = etykietaZeSlownika(DER_CONTROL_MODE_LABEL_PL, controlMode);
   const fields: CardField[] = [{ key: 'tryb_regulacji_q', label: 'Tryb regulacji Q', value: label }];
   if (controlMode === 'STALY_COS_PHI' && typeof meta.cos_phi === 'number') {
     fields.push({ key: 'cos_phi_nastawa', label: 'Nastawa cosφ', value: meta.cos_phi });

@@ -202,6 +202,11 @@ def test_dwa_zrodla_w_jednej_wyspie_odmowa_nazwana_w_assemblerze() -> None:
     assert blad.value.elementy == ("src", "src2")
     assert KOD_WIELE_ZRODEL_W_WYSPIE in str(blad.value)
     assert READINESS_CODES[KOD_WIELE_ZRODEL_W_WYSPIE].message_pl in str(blad.value)
+    # Wyspa i źródła nazwane nazwami z modelu; identyfikatory zostają w ``elementy``.
+    nazwy_zrodel = {z.ref_id: z.name for z in enm.sources}
+    for ref in ("src", "src2"):
+        assert f"źródło „{nazwy_zrodel[ref]}”" in str(blad.value)
+    assert "'src'" not in str(blad.value) and " src2" not in str(blad.value)
     assert isinstance(blad.value, ValueError)  # wykonawca biegu: status FAILED z powodem
     with pytest.raises(OdmowaWejsciaRozplywu):
         _rozplyw(enm)

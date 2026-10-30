@@ -231,6 +231,11 @@ class TestKodyAudytu:
         assert len(info) == 1
         assert info[0]["severity"] == "INFO"
         assert info[0]["element_refs"] == ["tr1", "tr2"]
+        # Zdanie nazywa transformatory nazwami z modelu; identyfikatory elementów i składowej
+        # sieci SN zostają w polach maszynowych (``element_refs``).
+        tresc = info[0]["message_pl"]
+        assert "tr1" not in tresc and "tr2" not in tresc, tresc
+        assert tresc.startswith("Transformatory „"), tresc
 
     def test_11_niepoprawne_przylaczenie_transformatora(self) -> None:
         enm = zbuduj_stacje_nn()

@@ -18,9 +18,11 @@ from zipfile import ZipFile
 import pytest
 from application.proof_engine.equation_registry import EquationRegistry
 from application.proof_engine.packs.lv_circuit_verification import (
+    _KINDY_DOZWOLONE,
     KIND_FUSE_SWITCH,
     KIND_MCB,
     KIND_MCCB,
+    NAZWY_RODZAJU_URZADZENIA_NN_PL,
     STATUS_NIE_DOTYCZY,
     STATUS_NIE_SPELNIA,
     STATUS_NIEROZSTRZYGALNE,
@@ -272,6 +274,11 @@ def test_dwa_zdania_zdolnosci_wylaczania_iloczyn_cech(
     assert wynik.goly_aparat_status == oczek_goly
     # Dwa RÓŻNE zdania — nigdy identyczny tekst (byłoby to jedno pole pod dwiema nazwami)
     assert wynik.zdanie_kombinacja_pl != wynik.zdanie_goly_aparat_pl
+    # Zdania niosą rodzaj aparatu i status słowami — kod przestrzeni katalogu (``MCB``
+    # samodzielnie, ``FUSE_SWITCH``) i status maszynowy (``NIE_DOTYCZY``) zostają w polach.
+    for zdanie in (wynik.zdanie_kombinacja_pl, wynik.zdanie_goly_aparat_pl):
+        assert "NIE_DOTYCZY" not in zdanie and "FUSE_SWITCH" not in zdanie, zdanie
+        assert "NIEROZSTRZYGALNE" not in zdanie, zdanie
 
 
 def test_pack_krok6_niesie_oba_zdania_w_key_results() -> None:
@@ -282,7 +289,7 @@ def test_pack_krok6_niesie_oba_zdania_w_key_results() -> None:
     kombinacja = doc.summary.key_results["zdanie_kombinacja_pl"].value
     goly = doc.summary.key_results["zdanie_goly_aparat_pl"].value
     assert "kombinacja" in kombinacja.lower() or "Icond" in kombinacja
-    assert "NIE_DOTYCZY" in goly
+    assert goly.startswith("Nie dotyczy — ")
 
 
 def test_mcb_bez_wkladki_nigdy_nie_dostaje_zdania_kombinacji_pozytywnego() -> None:
@@ -390,3 +397,52 @@ def test_zip_manifest_niesie_proof_type_lv_circuit_verification() -> None:
 def test_artifact_id_jest_uuid_gdy_niepodany() -> None:
     doc = LVCircuitVerificationProofPack.generate(_input())
     assert isinstance(doc.artifact_id, UUID)
+
+
+def test_rodzaje_i_statusy_maja_polskie_nazwy() -> None:
+    """Każdy dozwolony rodzaj urządzenia ma polską nazwę, a wniosek zdania zdolności
+    wyłączania powstaje w tej samej gałęzi co status — iloczyn cech: rodzaj aparatu ×
+    dana katalogowa (jest / brak) × Ik″max (brak / poniżej / powyżej zdolności). Wniosek nigdy
+    nie jest kodem statusu, zdanie rozstrzygnięte niesie go dosłownie, a każdy z czterech
+    statusów zdania jest osiągnięty (``KeyError`` w nazwie rodzaju = błąd programu)."""
+    assert set(NAZWY_RODZAJU_URZADZENIA_NN_PL) == set(_KINDY_DOZWOLONE)
+    for opis in NAZWY_RODZAJU_URZADZENIA_NN_PL.values():
+        assert "_" not in opis and opis.strip() == opis, opis
+    osiagniete: set[str] = set()
+    for kind in _KINDY_DOZWOLONE:
+        for dana in (None, 10.0):
+            for ik_max in (None, 5.0, 20.0):
+                urzadzenie = UrzadzenieOchronneNn(
+                    kind,
+                    "u1",
+                    "aparat",
+                    63.0,
+                    klasa_mcb="B" if kind == KIND_MCB else None,
+                    wlasna_zdolnosc_ka=None if kind == KIND_FUSE_SWITCH else dana,
+                    conditional_sc_current_ka=dana if kind == KIND_FUSE_SWITCH else None,
+                )
+                wynik = ocen_zdolnosc_wylaczania_dwa_zdania(urzadzenie=urzadzenie, ik_max_ka=ik_max)
+                for status, wniosek, zdanie in (
+                    (
+                        wynik.kombinacja_status,
+                        wynik.kombinacja_wniosek_pl,
+                        wynik.zdanie_kombinacja_pl,
+                    ),
+                    (
+                        wynik.goly_aparat_status,
+                        wynik.goly_aparat_wniosek_pl,
+                        wynik.zdanie_goly_aparat_pl,
+                    ),
+                ):
+                    osiagniete.add(status)
+                    assert "_" not in wniosek and wniosek.strip() == wniosek, wniosek
+                    assert wniosek != status and wniosek.upper() != wniosek, wniosek
+                    if status in (STATUS_SPELNIA, STATUS_NIE_SPELNIA):
+                        assert wniosek in zdanie, (wniosek, zdanie)
+                        assert ("niewystarczająca" in wniosek) is (status == STATUS_NIE_SPELNIA)
+    assert osiagniete == {
+        STATUS_SPELNIA,
+        STATUS_NIE_SPELNIA,
+        STATUS_NIE_DOTYCZY,
+        STATUS_NIEROZSTRZYGALNE,
+    }

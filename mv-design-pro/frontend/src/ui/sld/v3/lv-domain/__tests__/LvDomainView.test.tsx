@@ -53,6 +53,28 @@ describe('Nagłówek i chrom (§19 dane źródłowe vs wynik)', () => {
     expect(screen.getByTestId('lv-domain-view-root')).toHaveAttribute('data-status', 'brak-danych');
     expect(screen.getByTestId('lv-domain-view-root').textContent).toContain('brak danych');
   });
+
+  it('brak danych nazywa przyczyny słowami i stację nazwą — nigdy kodem braku ani identyfikatorem', () => {
+    // Iniekcja: kody braków (strukturalny, z przedrostkiem równoważnika SN, spoza słownika)
+    // i identyfikator stacji — tekst niesie opisy z lustra `opis_braku_danych_nn` i nazwę.
+    const p = scenariusz('01_single_tr');
+    const graph = {
+      ...p.graph,
+      status: 'brak danych',
+      station_name: 'Stacja Zielona',
+      missing_data: ['lv_bus', 'upstream:TR_1:upstream_network_source', 'kod_spoza_slownika'],
+    } as typeof p.graph;
+    render(<LvDomainView projection={{ ...p, station_ref: 'stn_ref_7', graph }} width={1000} height={700} />);
+    const tekst = screen.getByTestId('lv-domain-view-root').textContent ?? '';
+    expect(tekst).toBe(
+      'Domena nN stacji „Stacja Zielona” — brak danych: stacja bez szyny w paśmie nN; '
+        + 'brak źródła zasilania sieci SN (równoważnik sieci SN transformatora TR_1); '
+        + 'brak danej spoza słownika aplikacji.',
+    );
+    for (const kod of ['lv_bus', 'upstream_network_source', 'kod_spoza_slownika', 'stn_ref_7']) {
+      expect(tekst).not.toContain(kod);
+    }
+  });
 });
 
 describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)', () => {

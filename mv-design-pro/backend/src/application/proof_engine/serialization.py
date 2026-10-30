@@ -177,5 +177,5 @@ def _require_uuid(value: Any) -> UUID:
     if isinstance(value, UUID):
         return value
     if value is None:
-        raise ValueError("UUID value is required")
+        raise ValueError("Brak identyfikatora UUID — odczyt dowodu wymaga identyfikatora.")
     return UUID(str(value))

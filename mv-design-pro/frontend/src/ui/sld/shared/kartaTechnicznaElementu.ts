@@ -56,6 +56,7 @@ import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // ---------------------------------------------------------------------------
 // Kontrakt karty
@@ -494,7 +495,7 @@ function wielkoscZwarciowaAparatu(
 ): string | null {
   if (wartosc !== null) return zapisLiczby(wartosc, 'kA');
   if (rodzaj !== null && !wielkoscAparatuSnDotyczy(rodzaj, pole)) {
-    return `nie dotyczy (${NAZWA_RODZAJU_APARATU_SN_PL[rodzaj] ?? rodzaj})`;
+    return `nie dotyczy (${etykietaZeSlownika(NAZWA_RODZAJU_APARATU_SN_PL, rodzaj)})`;
   }
   return null;
 }

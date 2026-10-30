@@ -78,6 +78,7 @@ from typing import Literal, Self, get_args
 
 from dziedziny.kanon import KontraktDziedziny, naruszenie
 from dziedziny.widmo import (
+    NAZWY_PARAMETROW_DOMENY_PL,
     STANY_USTALONE,
     ModelWybrany,
     ModelZrodlaWidmowego,
@@ -86,7 +87,14 @@ from dziedziny.widmo import (
     WynikWyboruModelu,
 )
 from pydantic import field_validator, model_validator
-from werdykt.kontrakt import DanaPrzyjeta, DziedzinaFizyki, PodstawaWymagania, StatusModelu, Tekst
+from werdykt.kontrakt import (
+    NAZWA_DZIEDZINY_PL,
+    DanaPrzyjeta,
+    DziedzinaFizyki,
+    PodstawaWymagania,
+    StatusModelu,
+    Tekst,
+)
 from werdykt.proweniencja import FieldQuality
 
 # ---------------------------------------------------------------------------
@@ -168,6 +176,29 @@ DOWODY_POMIAROWE: frozenset[RodzajDowodu] = frozenset(("RAPORT_BADAN", "POMIAR")
 DOWODY_CERTYFIKACJI: frozenset[RodzajDowodu] = frozenset(
     ("CERTYFIKAT_ZGODNOSCI", "CERTYFIKAT_MODELU")
 )
+#: Sekcja modelu urządzenia W TEKŚCIE (kod zostaje w polu ``sekcja``).
+ETYKIETA_SEKCJI: Mapping[RodzajSekcjiModelu, str] = MappingProxyType(
+    {
+        "fundamental": "sekcja podstawowa (rozpływ mocy, składowe symetryczne)",
+        "short_circuit": "sekcja zwarciowa",
+        "dynamic": "sekcja dynamiki RMS",
+        "harmonic": "sekcja harmonicznych",
+        "supraharmonic": "sekcja supraharmonicznych",
+        "certification": "sekcja certyfikacji",
+        "measurement": "sekcja pomiarów",
+        "validation": "sekcja walidacji model–pomiar",
+    }
+)
+#: Stan weryfikacji rekordu katalogowego W TEKŚCIE (lustro etykiet frontu
+#: ``ui2/spaces/model/katalog/strings.ts::ETYKIETY_WERYFIKACJI``).
+ETYKIETA_STATUSU_REKORDU: Mapping[StatusWeryfikacjiRekordu, str] = MappingProxyType(
+    {
+        "ZWERYFIKOWANY": "zweryfikowany",
+        "NIEWERYFIKOWANY": "niezweryfikowany",
+        "CZESCIOWO_ZWERYFIKOWANY": "częściowo zweryfikowany",
+        "REFERENCYJNY": "referencyjny",
+    }
+)
 #: Powód stały sekcji walidacji (brak producenta rekordu w tym przyroście).
 POWOD_BRAKU_WALIDACJI = (
     "brak rekordu walidacji model–pomiar (metryki zgodności modelu z pomiarem) — producent "
@@ -210,7 +241,15 @@ class DowodModelu(KontraktDziedziny):
             )
         if len(set(pokrywa)) != len(pokrywa):
             raise ValueError(
-                naruszenie("dowod.pokrywa", f"Pokryte dziedziny powtarzają się: {list(pokrywa)}.")
+                naruszenie(
+                    "dowod.pokrywa",
+                    "Pokryte dziedziny powtarzają się: "
+                    + ", ".join(
+                        NAZWA_DZIEDZINY_PL[d]
+                        for d in sorted({d for d in pokrywa if pokrywa.count(d) > 1})
+                    )
+                    + ".",
+                )
             )
         return tuple(sorted(pokrywa))
 
@@ -223,6 +262,8 @@ class PoleSekcji(KontraktDziedziny):
     """
 
     nazwa: Tekst
+    #: Nazwa pola dla projektanta (opis pola karty) — tekst powodu, nigdy ``nazwa``.
+    etykieta_pl: Tekst
     obecne: bool
     jakosc: FieldQuality | None
 
@@ -231,6 +272,8 @@ class SkladnikSekcji(KontraktDziedziny):
     """Część sekcji (np. emisja i impedancja wewnętrzna sekcji ``harmonic``)."""
 
     nazwa: Tekst
+    #: Nazwa składnika dla projektanta — tekst powodu, nigdy ``nazwa``.
+    etykieta_pl: Tekst
     wymagany: bool
     rodzaj_danych: RodzajDanychSkladnika
     pola: tuple[PoleSekcji, ...] = ()
@@ -243,21 +286,27 @@ class SkladnikSekcji(KontraktDziedziny):
                 raise ValueError(
                     naruszenie(
                         "sekcje.wejscie",
-                        f"Składnik '{self.nazwa}' z danymi w postaci pól wymaga listy pól.",
+                        f"Składnik „{self.etykieta_pl}” z danymi w postaci pól wymaga listy "
+                        "pól.",
                     )
                 )
             if self.modele:
                 raise ValueError(
                     naruszenie(
                         "sekcje.wejscie",
-                        f"Składnik '{self.nazwa}' z danymi w postaci pól nie niesie modeli.",
+                        f"Składnik „{self.etykieta_pl}” z danymi w postaci pól nie niesie "
+                        "modeli.",
                     )
                 )
             nazwy = [p.nazwa for p in self.pola]
             if len(set(nazwy)) != len(nazwy):
+                powtorzone = ", ".join(
+                    sorted({p.etykieta_pl for p in self.pola if nazwy.count(p.nazwa) > 1})
+                )
                 raise ValueError(
                     naruszenie(
-                        "sekcje.wejscie", f"Składnik '{self.nazwa}': pola powtarzają się {nazwy}."
+                        "sekcje.wejscie",
+                        f"Składnik „{self.etykieta_pl}”: pola powtarzają się ({powtorzone}).",
                     )
                 )
         elif self.pola:
@@ -285,15 +334,20 @@ class WejscieStatusuSekcji(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "sekcje.wejscie",
-                    f"Sekcja dowodowa '{self.sekcja}' nie ma składników danych — jej status "
-                    "wynika wyłącznie z rekordów dowodów.",
+                    f"Sekcja dowodowa („{ETYKIETA_SEKCJI[self.sekcja]}”) nie ma składników "
+                    "danych — jej status wynika wyłącznie z rekordów dowodów.",
                 )
             )
         nazwy = [s.nazwa for s in self.skladniki]
         if len(set(nazwy)) != len(nazwy):
             raise ValueError(
                 naruszenie(
-                    "sekcje.wejscie", f"Sekcja '{self.sekcja}': składniki powtarzają nazwy {nazwy}."
+                    "sekcje.wejscie",
+                    f"Sekcja „{ETYKIETA_SEKCJI[self.sekcja]}”: składniki powtarzają się ("
+                    + ", ".join(
+                        sorted({s.etykieta_pl for s in self.skladniki if nazwy.count(s.nazwa) > 1})
+                    )
+                    + ").",
                 )
             )
         return self
@@ -308,6 +362,7 @@ class OcenaSkladnika(KontraktDziedziny):
     """Status jednego składnika z powodem i danymi przyjętymi bez walidacji."""
 
     nazwa: Tekst
+    etykieta_pl: Tekst
     wymagany: bool
     uwzgledniony: bool
     status: StatusSekcji
@@ -360,11 +415,11 @@ def _sufit_jakosci(skladnik: SkladnikSekcji) -> tuple[list[str], list[DanaPrzyje
     for pole in skladnik.pola:
         if not pole.obecne or pole.jakosc is FieldQuality.DATASHEET:
             continue
-        opis = "niezadeklarowana" if pole.jakosc is None else pole.jakosc.value
-        powody.append(f"pole {pole.nazwa} o jakości {opis}")
+        opis = "niezadeklarowana" if pole.jakosc is None else f"„{pole.jakosc.label_pl}”"
+        powody.append(f"pole „{pole.etykieta_pl}” o jakości {opis}")
         przyjete.append(
             DanaPrzyjeta(
-                nazwa_pl=pole.nazwa,
+                nazwa_pl=pole.etykieta_pl,
                 wartosc=None,
                 powod_pl=f"jakość danej {opis} — wartość bez źródła z karty technicznej",
                 jakosc=pole.jakosc,
@@ -377,13 +432,13 @@ def _sufit_jakosci(skladnik: SkladnikSekcji) -> tuple[list[str], list[DanaPrzyje
                     continue
                 powody.append(
                     f"parametr {parametr.nazwa} modelu {model.ident} o jakości "
-                    f"{parametr.jakosc.value}"
+                    f"„{parametr.jakosc.label_pl}”"
                 )
                 przyjete.append(
                     DanaPrzyjeta(
                         nazwa_pl=f"{model.ident}.{parametr.nazwa}",
                         wartosc=parametr.wartosc,
-                        powod_pl=f"jakość danej {parametr.jakosc.value}",
+                        powod_pl=f"jakość danej „{parametr.jakosc.label_pl}”",
                         jakosc=parametr.jakosc,
                     )
                 )
@@ -413,7 +468,7 @@ def _ocena_skladnika(
 ) -> OcenaSkladnika:
     nieobecne_opcjonalne = ""
     if skladnik.rodzaj_danych == "POLA":
-        brakujace = [p.nazwa for p in skladnik.pola if not p.obecne]
+        brakujace = [p.etykieta_pl for p in skladnik.pola if not p.obecne]
         ma_dane = any(p.obecne for p in skladnik.pola)
         # Składnik WYMAGANY bez choćby jednego pola = brak danych sekcji. Składnik
         # OPCJONALNY z danymi jest oceniany na polach OBECNYCH (pola składnika opcjonalnego
@@ -431,6 +486,7 @@ def _ocena_skladnika(
     if brak_danych:
         return OcenaSkladnika(
             nazwa=skladnik.nazwa,
+            etykieta_pl=skladnik.etykieta_pl,
             wymagany=skladnik.wymagany,
             uwzgledniony=uwzgledniony,
             status="UNKNOWN",
@@ -464,8 +520,8 @@ def _ocena_skladnika(
             for d in dowody
         ):
             powod_dowodu = (
-                f"rekord katalogowy {status_rekordu} — dowód bez własnej ustalonej podstawy "
-                "nie podnosi statusu"
+                f"rekord katalogowy {ETYKIETA_STATUSU_REKORDU[status_rekordu]} — dowód bez "
+                "własnej ustalonej podstawy nie podnosi statusu"
             )
         else:
             powod_dowodu = "dane bez rekordu dowodu — deklaracja producenta nie jest walidacją"
@@ -483,6 +539,7 @@ def _ocena_skladnika(
     powod += nieobecne_opcjonalne
     return OcenaSkladnika(
         nazwa=skladnik.nazwa,
+        etykieta_pl=skladnik.etykieta_pl,
         wymagany=skladnik.wymagany,
         uwzgledniony=uwzgledniony,
         status=status,
@@ -516,7 +573,8 @@ def _ocena_sekcji_dowodowej(wejscie: WejscieStatusuSekcji) -> OcenaSekcji:
         status="UNVALIDATED",
         powod_pl=(
             "dowód bez ustalonej podstawy (dokument bez wydania i jednostki redakcyjnej) przy "
-            f"rekordzie katalogowym {wejscie.status_weryfikacji_rekordu}: "
+            "rekordzie katalogowym "
+            f"{ETYKIETA_STATUSU_REKORDU[wejscie.status_weryfikacji_rekordu]}: "
             + ", ".join(d.odniesienie_pl for d in wlasciwe)
         ),
     )
@@ -548,7 +606,7 @@ def status_sekcji(wejscie: WejscieStatusuSekcji) -> OcenaSekcji:
     return OcenaSekcji(
         sekcja=wejscie.sekcja,
         status=najslabszy.status,
-        powod_pl=f"najsłabszy składnik „{najslabszy.nazwa}”: {najslabszy.powod_pl}",
+        powod_pl=f"najsłabszy składnik „{najslabszy.etykieta_pl}”: {najslabszy.powod_pl}",
         skladniki=oceny,
         dane_przyjete=przyjete,
     )
@@ -567,8 +625,9 @@ def status_modelu_z_sekcji(
         return BrakModelu(
             sekcja=ocena.sekcja,
             powod_pl=(
-                f"sekcja dowodowa '{ocena.sekcja}' nie jest modelem urządzenia — certyfikat "
-                "zgodności ani raport badań nie certyfikuje modelu symulacyjnego"
+                f"sekcja dowodowa („{ETYKIETA_SEKCJI[ocena.sekcja]}”) nie jest modelem "
+                "urządzenia — certyfikat zgodności ani raport badań nie certyfikuje modelu "
+                "symulacyjnego"
             ),
             czego_brakuje_pl="model urządzenia w sekcji fizycznej właściwej dla analizy",
         )
@@ -584,15 +643,17 @@ def status_modelu_z_sekcji(
         if isinstance(wybor, PozaDomenaModelu):
             return BrakModelu(
                 sekcja=ocena.sekcja,
-                powod_pl=f"zapytanie poza domeną punktu pomiaru ({wybor.parametr}): "
-                f"{wybor.powod_pl}",
-                czego_brakuje_pl=f"model sekcji {ocena.sekcja} obejmujący punkt pracy",
+                powod_pl="zapytanie poza domeną punktu pomiaru "
+                f"({NAZWY_PARAMETROW_DOMENY_PL[wybor.parametr]}): {wybor.powod_pl}",
+                czego_brakuje_pl=(
+                    f"model obejmujący punkt pracy ({ETYKIETA_SEKCJI[ocena.sekcja]})"
+                ),
             )
         if isinstance(wybor, NiejednoznacznyWybor):
             return BrakModelu(
                 sekcja=ocena.sekcja,
                 powod_pl=wybor.powod_pl,
-                czego_brakuje_pl=f"jednoznaczny model sekcji {ocena.sekcja}",
+                czego_brakuje_pl=f"jednoznaczny model ({ETYKIETA_SEKCJI[ocena.sekcja]})",
             )
         return BrakModelu(
             sekcja=ocena.sekcja,
@@ -600,17 +661,21 @@ def status_modelu_z_sekcji(
                 "status pomiarowy obowiązuje wyłącznie w domenie punktu pomiaru — brak "
                 "zapytania o model (częstotliwość, punkt pracy)"
             ),
-            czego_brakuje_pl=f"zapytanie o model sekcji {ocena.sekcja} w punkcie pracy",
+            czego_brakuje_pl=(
+                f"zapytanie o model w punkcie pracy ({ETYKIETA_SEKCJI[ocena.sekcja]})"
+            ),
         )
     return BrakModelu(
         sekcja=ocena.sekcja,
         powod_pl=ocena.powod_pl,
-        czego_brakuje_pl=f"model sekcji {ocena.sekcja}",
+        czego_brakuje_pl=f"model urządzenia ({ETYKIETA_SEKCJI[ocena.sekcja]})",
     )
 
 
 __all__ = [
     "DOWODY_CERTYFIKACJI",
+    "ETYKIETA_SEKCJI",
+    "ETYKIETA_STATUSU_REKORDU",
     "DOWODY_POMIAROWE",
     "DZIEDZINY_SEKCJI",
     "PORZADEK_SILY",

@@ -43,6 +43,7 @@ import type { SnFieldRole } from '../../../ui/network-build/forms/InsertStationF
 import type { PoleSnWpis } from './stacjaModel';
 import { izolacjaPokrywaSiec, toSamoNapiecieZnamionowe } from '../../model/pasmaNapieciowe';
 import { STACJA_STRINGS as T } from './strings';
+import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
 
 /** Tor konfiguracji rodziny — kontrakt `SwitchgearFamily.tor_konfiguracji`. */
 export type TorKonfiguracji = 'MODULARNY' | 'BLOK_RMU';
@@ -505,7 +506,9 @@ export function polaZBloku(
  * CCF vs CCV to różne bloki), więc karta jednostki musi ją nazywać.
  */
 export function aparaturaJednostkiPl(jednostka: JednostkaBloku): string {
-  return jednostka.apparatus_kinds.map((rodzaj) => NAZWY_APARATU_PL[rodzaj] ?? rodzaj).join(' + ');
+  return jednostka.apparatus_kinds
+    .map((rodzaj) => etykietaZeSlownika(NAZWY_APARATU_PL, rodzaj))
+    .join(' + ');
 }
 
 /** Szerokość bloku w konwencji katalogu; `null` = karta producenta jej nie podaje. */

@@ -379,6 +379,16 @@ def test_niezawodnosc_odrzuca_bledny_wpis_customer_counts(nazwa_przypadku: str, 
     assert warunek.spelniony is False, nazwa_przypadku
     klucz_wpisu = next(iter(wpis))
     assert klucz_wpisu in warunek.elementy, nazwa_przypadku
+    # Zdanie nazywa szynę modelu jej nazwą, a wpis spoza modelu — cytatem identyfikatora
+    # po nazwie rodzaju (nazwy nie ma, bo szyny nie ma).
+    nazwy = {b.ref_id: b.name for b in enm.buses}
+    if klucz_wpisu in nazwy:
+        assert f"szyna „{nazwy[klucz_wpisu]}” — wartość nie jest" in warunek.opis_pl
+        assert klucz_wpisu not in warunek.opis_pl, nazwa_przypadku
+    else:
+        assert (
+            f"szyna o identyfikatorze {klucz_wpisu} — brak takiej szyny w modelu" in warunek.opis_pl
+        )
 
 
 def test_niezawodnosc_wpis_bledny_i_poprawny_jednoczesnie_odrzucony_nie_znika() -> None:

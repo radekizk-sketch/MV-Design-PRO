@@ -543,7 +543,7 @@ class TestModelInvariants:
 
     def test_setpoint_in_requires_multiplier(self) -> None:
         """Setpoint z basis=IN wymaga multiplier."""
-        with pytest.raises(ValueError, match="multiplier"):
+        with pytest.raises(ValueError, match="krotności wartości bazowej"):
             ProtectionSetpoint(
                 basis=ProtectionSetpointBasis.IN,
                 operator=ProtectionSetpointOperator.GT,

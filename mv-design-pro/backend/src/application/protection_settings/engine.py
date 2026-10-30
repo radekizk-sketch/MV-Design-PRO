@@ -780,9 +780,9 @@ class ProtectionSettingsEngine:
         if prog_wejsciowy is None:
             ryzyko = None
             uwagi.append(
-                "Ryzyko blokady ZSZ NIEDOSTĘPNE: brak jawnie podanego progu udziału E-L "
-                "(lokalna_generacja_prog_udzialu_zsz) — silnik nie zgaduje progu bez "
-                "nazwanego źródła."
+                "Ryzyko blokady ZSZ niedostępne: brak jawnie podanego progu udziału lokalnej "
+                "generacji w prądzie zwarciowym (próg udziału dla ZSZ) — silnik nie zgaduje "
+                "progu bez nazwanego źródła."
             )
             trace.append(
                 {
@@ -914,13 +914,13 @@ class ProtectionSettingsEngine:
                 recommendations.append(
                     "Możliwe rozwiązania: obniż współczynnik k_b, zwiększ zapas wobec "
                     "kolejnej strefy selektywności, lub przenieś punkt kolejnego "
-                    "zabezpieczenia (next_bus_id)."
+                    "zabezpieczenia (szynę kolejnej strefy)."
                 )
             else:
                 recommendations.append(
                     "Możliwe rozwiązania: zwiększ przekrój przewodu, skróć czas "
-                    "zadziałania zabezpieczenia (delta_t_s / t_upstream_s), lub "
-                    "wyłącz SPZ."
+                    "zadziałania zabezpieczenia (stopień czasowy Δt albo czas zabezpieczenia "
+                    "nadrzędnego), lub wyłącz SPZ."
                 )
             trace.append(
                 {

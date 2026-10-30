@@ -58,7 +58,7 @@ from application.analyses.protection.catalog.zakresy import (
 from application.analyses.protection.catalog.zakresy import (
     wartosc_w_jednostce_zakresu as wartosc_w_jednostce_zakresu_katalogu,
 )
-from domain.readiness_bridge import opis_kanoniczny
+from domain.canonical_operations import opis_kodu_gotowosci_pl
 from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.mapping import ref_to_graph_id
@@ -1900,7 +1900,7 @@ def wiarygodnosc_punktu(nastawy: NastawyUrzadzenia, prad_a: float) -> Wiarygodno
             nasycenie=nasycenie,
         )
     braki = [
-        opis["canonical_message_pl"] if (opis := opis_kanoniczny(kod)) is not None else kod
+        opis_kodu_gotowosci_pl(kod)
         for kod in wynik.readiness_codes
         if kod != READINESS_CT_WINDING_RESISTANCE_MISSING
     ]

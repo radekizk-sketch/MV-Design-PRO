@@ -142,7 +142,7 @@ def _wiersz_rozplywu(
     """Wiersz tabeli rozpływu z ładunku punktu — kolumny z mapy `KOLUMNY_ROZPLYWU`."""
     obce = sorted(set(rozplyw) - set(KOLUMNY_ROZPLYWU))
     if obce:
-        raise ValueError(f"Klucze spoza klasy ładunku rozpływu punktu: {obce}")
+        raise ValueError(f"Klucze spoza klasy ładunku rozpływu punktu: {', '.join(obce)}")
     if rozplyw.get(KLUCZ_ROZPLYWU) is None:
         raise ValueError(
             f"Rozpływ punktu {fault_node_id} bez wkładów gałęziowych ({KLUCZ_ROZPLYWU}) — "

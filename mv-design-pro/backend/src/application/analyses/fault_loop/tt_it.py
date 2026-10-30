@@ -341,9 +341,9 @@ def dane_sieci_it(
             kod=KOD_BRAK_POJEMNOSCI,
             reason_pl=(
                 "Prąd pierwszego zwarcia doziemnego układu IT płynie przez pojemności doziemne "
-                "sieci — odcinki bez susceptancji zerowej b_0 (pojemności doziemnej) na kilometr: "
-                f"{', '.join(braki) if braki else 'brak odcinków sieci nN'}. Uzupełnij pojemność "
-                "doziemną odcinków (pole b0_siemens_per_km z karty kabla); pojemność nie jest "
+                "sieci — brak susceptancji zerowej b_0 (pojemności doziemnej) na kilometr: "
+                f"{'odcinki ' + ', '.join(braki) if braki else 'brak odcinków sieci nN'}. "
+                "Uzupełnij pojemność doziemną odcinków (dana z karty kabla); pojemność nie jest "
                 "zgadywana."
             ),
             missing_data=[f"{ref}:b0_siemens_per_km" for ref in braki] or ["b0_siemens_per_km"],

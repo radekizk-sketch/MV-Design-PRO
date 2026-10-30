@@ -373,6 +373,31 @@ class LoadFlowBusInput:
     nazwa: str = field(kw_only=True)
 
 
+#: Status obliczeń dowodu (``computed_status``, wartość maszynowa) → tekst wyniku dla
+#: projektanta (``ProofValue.formatted``). Komplet przypina
+#: ``tests/proof_engine/test_load_flow_voltage_proof_p32.py::
+#: test_status_obliczen_dowodu_ma_tekst_dla_projektanta``.
+STATUSY_OBLICZEN_DOWODU_PL: dict[str, str] = {
+    "COMPUTED": "obliczono",
+    "PARTIAL": "obliczono częściowo — część wielkości bez danych",
+    "NOT COMPUTED": "nie obliczono — brak danych",
+}
+
+
+#: Wejścia dowodu spadku napięcia zgłaszane jako braki (``_missing_lf_bus_inputs``,
+#: ``_missing_lf_element_inputs``) → nazwa wielkości w ostrzeżeniu dowodu. Komplet przypina
+#: ``tests/proof_engine/test_load_flow_voltage_proof_p32.py::
+#: test_ostrzezenie_braku_nazywa_wielkosci_i_miejsce``.
+NAZWY_WEJSC_DOWODU_LF_PL: dict[str, str] = {
+    "r_ohm": "rezystancja R gałęzi",
+    "x_ohm": "reaktancja X gałęzi",
+    "p_mw": "moc czynna P",
+    "q_mvar": "moc bierna Q",
+    "u_nom_kv": "napięcie znamionowe Un",
+    "u_ll_kv": "napięcie międzyprzewodowe U z rozpływu mocy",
+}
+
+
 @dataclass
 class LoadFlowElementInput:
     """Dane wejściowe dla elementu w dowodzie P32."""
@@ -523,7 +548,7 @@ class ProofGenerator:
                 missing_sections += 1
                 warnings.append(
                     cls._format_missing_warning(
-                        scope=f"ELEMENT {element.element_id}",
+                        scope=f"element „{element.nazwa}”",
                         missing=missing,
                     )
                 )
@@ -605,7 +630,7 @@ class ProofGenerator:
                 missing_sections += 1
                 warnings.append(
                     cls._format_missing_warning(
-                        scope=f"BUS {bus.bus_id}",
+                        scope=f"szyna „{bus.nazwa}”",
                         missing=missing,
                     )
                 )
@@ -1219,7 +1244,10 @@ class ProofGenerator:
             return ProofType.SC2F_IEC60909
         if fault_type == "SC2FZ":
             return ProofType.SC2FG_IEC60909
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+        raise ValueError(
+            "Nieobsługiwany rodzaj zwarcia niesymetrycznego w dowodzie — obsługiwane: "
+            "zwarcie jednofazowe z ziemią, zwarcie dwufazowe, zwarcie dwufazowe z ziemią."
+        )
 
     @staticmethod
     def _normalize_sc1_fault_type(fault_type: str) -> str:
@@ -4243,11 +4271,10 @@ class ProofGenerator:
 
     @staticmethod
     def _format_missing_warning(scope: str, missing: list[str]) -> str:
-        missing_sorted = ", ".join(sorted(missing))
-        return (
-            f"{scope}: NOT COMPUTED — brak danych: {missing_sorted} | "
-            f"missing_data: [{missing_sorted}]"
-        )
+        """Ostrzeżenie dowodu spadku napięcia: miejsce (nazwa z modelu) i nazwy brakujących
+        wielkości (``NAZWY_WEJSC_DOWODU_LF_PL``) — bez kodów pól wejścia."""
+        opisy = ", ".join(NAZWY_WEJSC_DOWODU_LF_PL[kod] for kod in sorted(missing))
+        return f"{scope}: nie obliczono — brak danych: {opisy}."
 
     @staticmethod
     def _missing_lf_bus_inputs(bus: LoadFlowBusInput) -> list[str]:
@@ -4667,11 +4694,14 @@ class ProofGenerator:
 
     @staticmethod
     def _status_value(symbol: str, status: str, source_key: str) -> ProofValue:
+        """Wartość opisowa wyniku dowodu: ``value`` niesie status maszynowy (agregacja, API),
+        ``formatted`` — tekst dla projektanta (``STATUSY_OBLICZEN_DOWODU_PL`` dla statusu
+        obliczeń, tekst opisowy modelu bez zmian)."""
         return ProofValue(
             symbol=symbol,
             value=status,
             unit="—",
-            formatted=status,
+            formatted=STATUSY_OBLICZEN_DOWODU_PL.get(status, status),
             source_key=source_key,
         )
 

@@ -476,7 +476,7 @@ class TestVerifyArchiveIntegrityRawDict:
         data = archive_to_dict(sample_archive)
         data["project_meta"]["name"] = "ZMANIPULOWANE"
         errors = verify_archive_integrity(data)
-        assert any("project_meta" in e for e in errors)
+        assert any("„metadane projektu”" in e for e in errors)
         assert any("archiwum" in e.lower() for e in errors)  # archive_hash też pęka
 
     def test_tampered_2x_network_model_detected(self):
@@ -487,13 +487,13 @@ class TestVerifyArchiveIntegrityRawDict:
             {"id": "n2", "name": "Dopisany", "node_type": "PQ", "base_kv": 15.0, "attrs_jsonb": {}}
         )
         errors = verify_archive_integrity(data)
-        assert any("network_model" in e for e in errors)
+        assert any("„model sieci formatu 2.x”" in e for e in errors)
 
     def test_tampered_2x_sld_detected_under_sld_diagrams_key(self):
         data = _archiwum_2x()
         data["sld_diagrams"]["diagrams"].append({"id": "d1", "name": "X"})
         errors = verify_archive_integrity(data)
-        assert any("sld_diagrams" in e for e in errors)
+        assert any("„schematy jednokreskowe”" in e for e in errors)
 
     def test_archive_hash_itself_is_verified_not_only_sections(self, sample_archive):
         """Sekcje owszem zgadzają się z ich hashami, ale `archive_hash` jest
@@ -506,11 +506,20 @@ class TestVerifyArchiveIntegrityRawDict:
 
     def test_missing_fingerprints_section_is_named_error_not_crash(self):
         errors = verify_archive_integrity({"project_meta": {}})
-        assert errors and "fingerprints" in errors[0]
+        assert errors and "odcisk" in errors[0]
 
     def test_fingerprints_not_a_dict_is_named_error_not_crash(self):
         errors = verify_archive_integrity({"fingerprints": "not-a-dict"})
-        assert errors and "fingerprints" in errors[0]
+        assert errors and "odcisków archiwum" in errors[0]
+
+    def test_nazwy_sekcji_archiwum_kompletne(self):
+        """Każda sekcja weryfikowana odciskiem ma nazwę dla projektanta — błąd integralności
+        nazywa sekcję słowami, nie kluczem pliku."""
+        from domain.project_archive import _SECTION_HASH_FIELDS, NAZWY_SEKCJI_ARCHIWUM_PL
+
+        assert set(NAZWY_SEKCJI_ARCHIWUM_PL) == {klucz for klucz, _, _ in _SECTION_HASH_FIELDS}
+        for klucz, nazwa in NAZWY_SEKCJI_ARCHIWUM_PL.items():
+            assert klucz not in nazwa and "_" not in nazwa
 
 
 # =============================================================================

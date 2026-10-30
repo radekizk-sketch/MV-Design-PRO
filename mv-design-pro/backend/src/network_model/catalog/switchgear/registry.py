@@ -42,7 +42,7 @@ ZPUE_WLOSZCZOWA = Manufacturer(
         "Dane techniczne mogą pochodzić wyłącznie z oficjalnych katalogów ZPUE "
         "S.A. (Włoszczowa), kart produktów lub dokumentacji zatwierdzonej "
         "przez producenta. Niezweryfikowane wartości nie mogą być oznaczone "
-        "jako 'official_catalog'."
+        "jako dane z oficjalnego katalogu producenta."
     ),
     notes_pl=(
         "Producent rozdzielnic SN i stacji transformatorowych w Polsce. "
@@ -131,8 +131,8 @@ SCHNEIDER_ELECTRIC = Manufacturer(
     notes_pl=(
         "Międzynarodowy producent rozdzielnic SN. Dodany w programie "
         "Reference Engine V1 (specyfikacja silnika referencyjnego, wersja 1) — rodzina SM6-24 "
-        "w rejestrze rodzin ze statusem repo_verified. Status producenta "
-        "requires_catalog do czasu zatwierdzenia oficjalnych kart PDF."
+        "w rejestrze rodzin ze stanem źródła „weryfikacja na danych "
+        "publicznych”. Producent wymaga katalogu do czasu zatwierdzenia oficjalnych kart PDF."
     ),
 )
 

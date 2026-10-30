@@ -59,12 +59,14 @@ def test_odmowa_braku_cennika_przez_api() -> None:
 
 @pytest.mark.parametrize("kod", ["", "   "])
 def test_odmowa_nazwana_wymaga_kodu(kod: str) -> None:
-    with pytest.raises(ValueError):
+    """Kontrakt konstruktora: naruszenie to błąd programu wołającego (``AssertionError``),
+    nie odmowa danych — ``ValueError`` byłby kanałem tekstu dla projektanta."""
+    with pytest.raises(AssertionError):
         OdmowaNazwana("Zdanie.", kod=kod)
 
 
 def test_kod_w_tresci_zdania_odrzucony() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(AssertionError):
         OdmowaNazwana("Odmowa BRAK_CENNIKA dla typu.", kod="BRAK_CENNIKA")
 
 

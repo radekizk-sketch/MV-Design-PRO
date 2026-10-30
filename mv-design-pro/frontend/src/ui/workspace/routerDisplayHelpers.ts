@@ -9,6 +9,7 @@
 import { isInternalElementIdentifier } from '../shared/publicReadinessMessage';
 import { isGenericSegmentName } from '../shared/publicTechnicalLabels';
 import { stripTechnicalSuffix } from '../shell/publicNames';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 export function isInternalIdentifier(value: string): boolean {
   return isInternalElementIdentifier(value);
@@ -63,7 +64,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 export function publicEntityTypeLabel(value: string | null | undefined): string {
   if (!value?.trim()) return 'Aktywny kontekst układu';
   const normalized = value.trim();
-  return ENTITY_TYPE_LABELS[normalized] ?? normalized.replace(/_/g, ' ');
+  return etykietaZeSlownika(ENTITY_TYPE_LABELS, normalized);
 }
 
 const PROOF_TYPE_TAGS: Record<string, string> = {
@@ -82,7 +83,7 @@ const PROOF_TYPE_TAGS: Record<string, string> = {
 };
 
 export function publicProofTypeTag(value: string): string {
-  return PROOF_TYPE_TAGS[value] ?? value;
+  return etykietaZeSlownika(PROOF_TYPE_TAGS, value);
 }
 
 export function formatDateTime(value: string | null | undefined): string {

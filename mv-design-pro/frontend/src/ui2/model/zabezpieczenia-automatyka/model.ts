@@ -13,6 +13,7 @@
 
 import type { FieldReadModelItem } from '../../../ui/field/useFieldReadModel';
 import type { BayProtectionControlUnit, SpzState } from '../../../types/enm';
+import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
 
 /** Wiersz sekcji ZABEZPIECZENIA — pole z (ewentualnym) przypisaniem zabezpieczeń. */
 export interface WierszZabezpieczenia {
@@ -107,7 +108,7 @@ function buildCechy(features: Record<string, boolean>): CechaAutomatyki[] {
     .sort((a, b) => a.localeCompare(b))
     .map((klucz) => ({
       klucz,
-      etykieta: ETYKIETY_CECH[klucz] ?? klucz,
+      etykieta: etykietaZeSlownika(ETYKIETY_CECH, klucz),
       aktywna: features[klucz] === true,
     }));
 }

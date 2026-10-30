@@ -54,6 +54,7 @@ import type { TransformerType } from '../../../ui/catalog/types';
 import { OPIS_PASMA_NN, toSamoNapiecieZnamionowe, wPasmieNn } from '../../model/pasmaNapieciowe';
 import { rodzajZeSkladuPol, type RodzajStacji } from '../../../ui/shared/rodzajStacji';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
+import { etykietaZeSlownika } from '../../wyniki/wzorzec/slownikWyliczen';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
@@ -1010,7 +1011,7 @@ export const ETYKIETY_RODZAJU_APARATU: Readonly<Record<string, string>> = {
 
 /** Nazwa rodzaju aparatu po polsku (nieznany rodzaj = jego kod z katalogu). */
 export function etykietaRodzajuAparatu(deviceKind: string): string {
-  return ETYKIETY_RODZAJU_APARATU[deviceKind] ?? deviceKind;
+  return etykietaZeSlownika(ETYKIETY_RODZAJU_APARATU, deviceKind);
 }
 
 /**

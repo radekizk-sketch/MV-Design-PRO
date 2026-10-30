@@ -24,8 +24,9 @@ import type { OcenaKryterium, PodstawaWymagania } from '../../../../ui2/wyniki/w
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { jestWerdyktemTtIt, type SwzTnVerdict, type SwzTtItVerdict } from '../canvas/overlay';
 import { kodyAnsiPelne, nazwyFunkcjiPl, stanSlowny, wpisAparatu, znakiIecPelne } from './symbolRegistry';
-import type { LvDomainProjectionV1, LvDomainSwzFeederV1, LvEnergizationState } from './types';
+import type { LvDomainProjectionV1, LvDomainSwzFeederV1, LvDomainSwzResponseV1, LvEnergizationState } from './types';
 import { plFixed, type PaletaNn } from './visualGrammar';
+import { etykietaZeSlownika } from '../../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 export interface MetrykaKarty {
   readonly kod: string;
@@ -56,8 +57,16 @@ const SLOWO_STANU_ZASILANIA: Readonly<Record<LvEnergizationState, string>> = {
   MULTISOURCE: 'zasilany wielostronnie',
 };
 
+/** Status odpowiedzi SWZ bez werdyktu (`SwzApiResponse.status`) — słowami, gdy backend nie
+ *  podał zdania odmowy. */
+const SLOWO_STATUSU_SWZ: Readonly<Record<LvDomainSwzResponseV1['status'], string>> = {
+  OK: 'ocena samoczynnego wyłączenia zasilania bez rekordu werdyktu',
+  'brak danych': 'ocena samoczynnego wyłączenia zasilania — brak danych',
+  'nie dotyczy': 'ocena samoczynnego wyłączenia zasilania nie dotyczy tego obwodu',
+};
+
 function slowoStanu(state: LvEnergizationState | undefined): string {
-  return state ? SLOWO_STANU_ZASILANIA[state] ?? state : 'brak danych';
+  return state ? etykietaZeSlownika(SLOWO_STANU_ZASILANIA, state) : 'brak danych';
 }
 
 /** Ton werdyktu TN (3-stanowy werdykt backendu, `SwzTnVerdict.status`) — dług migracji E77
@@ -375,8 +384,8 @@ export function KartaObwoduNn({
           <SekcjaSwzTn swz={swz} paleta={paleta} />
         ) : (
           <div data-testid="lv-domain-feeder-swz-odmowa" data-kod-odmowy={feeder.swz.kod_odmowy ?? undefined} style={{ color: paleta.tonOstrzegawczy, fontSize: 11 }}>
-            {feeder.swz.reason_pl ?? `SWZ: ${feeder.swz.status}`}
-            {feeder.swz.kod_odmowy ? <div style={{ fontFamily: 'monospace', color: paleta.kreskaWygaszona, marginTop: 2 }}>{`kod: ${feeder.swz.kod_odmowy}`}</div> : null}
+            {feeder.swz.reason_pl ?? etykietaZeSlownika(SLOWO_STATUSU_SWZ, feeder.swz.status)}
+            {feeder.swz.kod_odmowy ? <div style={{ fontFamily: 'monospace', color: paleta.kreskaWygaszona, marginTop: 2 }}>{`(kod odmowy: ${feeder.swz.kod_odmowy})`}</div> : null}
           </div>
         )}
       </Sekcja>

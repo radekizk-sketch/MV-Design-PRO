@@ -601,10 +601,17 @@ def _warunki_niezawodnosci(
     suma = sum(b.customer_count for b in model.buses)
     z_odbiorcami = tuple(b.ref for b in model.buses if b.customer_count > 0)
     if odbiorcy.bledne or spoza_modelu:
-        opis = (
-            "Wpisy liczby odbiorców odrzucone (wartość nie jest liczbą całkowitą ≥ 0 albo szyna spoza modelu): "
-            + ", ".join(odbiorcy.bledne + spoza_modelu)
-        )
+        nazwy_szyn = {b.ref_id: b.name for b in enm.buses}
+        odrzucone = [
+            (
+                f"szyna „{nazwy_szyn[ref]}”"
+                if ref in nazwy_szyn
+                else f"szyna o identyfikatorze {ref} spoza modelu"
+            )
+            + " — wartość nie jest liczbą całkowitą ≥ 0"
+            for ref in odbiorcy.bledne
+        ] + [f"szyna o identyfikatorze {ref} — brak takiej szyny w modelu" for ref in spoza_modelu]
+        opis = "Wpisy liczby odbiorców odrzucone: " + "; ".join(odrzucone)
         spelniony = False
         elementy = odbiorcy.bledne + spoza_modelu
     elif suma > 0:

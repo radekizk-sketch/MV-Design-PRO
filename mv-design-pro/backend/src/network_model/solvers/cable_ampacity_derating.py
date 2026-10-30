@@ -134,8 +134,9 @@ class WspolczynnikiObciazalnosci:
             )
         return (
             f"Obciążalność skorygowana dla warunków: {self.etykieta_pl}; "
-            f"f_grunt = {self.f_grunt:g}, f_wiazka = {self.f_wiazka:g}, "
-            f"f_grupa = {self.f_grupa:g}, iloczyn = {self.iloczyn:.4f}. "
+            f"współczynnik temperatury gruntu = {self.f_grunt:g}, współczynnik ułożenia w "
+            f"wiązce = {self.f_wiazka:g}, współczynnik grupowania = {self.f_grupa:g}, "
+            f"iloczyn = {self.iloczyn:.4f}. "
             f"Podstawa: {self.podstawa}."
         )
 
@@ -391,9 +392,9 @@ class WspolczynnikiObciazalnosciNN:
         return (
             f"Obciążalność Iz' skorygowana dla: {opis_srodowiska}, izolacja "
             f"{self.izolacja}, {self.liczba_obwodow} obwód(ów); "
-            f"f_temperatura = {self.f_temperatura:g}, "
-            f"f_rezystywność_gruntu = {self.f_rezystywnosc_gruntu:g}, "
-            f"f_grupowanie = {self.f_grupowanie:g}, iloczyn = {self.iloczyn:.4f}."
+            f"współczynnik temperatury = {self.f_temperatura:g}, "
+            f"współczynnik rezystywności cieplnej gruntu = {self.f_rezystywnosc_gruntu:g}, "
+            f"współczynnik grupowania = {self.f_grupowanie:g}, iloczyn = {self.iloczyn:.4f}."
         )
 
 
@@ -450,7 +451,7 @@ def _wpis_tablicy_grupowania_nn(
         raise OdmowaDanychError(
             f"Brak zweryfikowanej korekty grupowania dla środowiska „{srodowisko}” i "
             f"{liczba_obwodow} obwodów w {TABLICE_NN_PL}. Dostępne liczby obwodów: "
-            f"{', '.join(str(n) for n in dostepne)}. "
+            f"{', '.join(f'{n:d}' for n in dostepne)}. "
             f"{_tablice_nn.OGRANICZENIE_TABLIC_PL}"
         )
     return wpis

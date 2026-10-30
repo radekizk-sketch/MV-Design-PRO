@@ -99,11 +99,21 @@ STAN_ODNIESIENIA_NAPIECIA = "u_odniesienia_pu"
 TRYB_STATYZM = "droop"
 TRYB_MASZYNA_WIRTUALNA = "vsm"
 TRYBY_GFM: tuple[str, ...] = (TRYB_STATYZM, TRYB_MASZYNA_WIRTUALNA)
+#: Tryb pracy W TEKŚCIE odmowy (kod zostaje w polu ``tryb`` odmowy).
+NAZWY_TRYBOW_GFM_PL: dict[str, str] = {
+    TRYB_STATYZM: "statyzm (droop)",
+    TRYB_MASZYNA_WIRTUALNA: "maszyna wirtualna (VSM)",
+}
 
 #: Strategie ograniczenia pradu — wprost z kontraktu ENM.
 STRATEGIA_IMPEDANCJA = "impedancja_wirtualna"
 STRATEGIA_NASYCENIE = "nasycenie_zadania"
 STRATEGIE_GFM: tuple[str, ...] = (STRATEGIA_IMPEDANCJA, STRATEGIA_NASYCENIE)
+#: Strategia ograniczenia W TEKŚCIE odmowy (kod zostaje w polu ``strategia`` odmowy).
+NAZWY_STRATEGII_GFM_PL: dict[str, str] = {
+    STRATEGIA_IMPEDANCJA: "impedancja wirtualna",
+    STRATEGIA_NASYCENIE: "nasycenie zadania prądu",
+}
 
 
 @dataclass(frozen=True)
@@ -394,13 +404,15 @@ def zbuduj_rdzen_gfm(
     if tryb not in TRYBY_GFM:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Tryb przekształtnika tworzącego sieć {tryb!r} spoza zbioru {TRYBY_GFM}",
+            "Tryb pracy przekształtnika tworzącego sieć spoza zbioru trybów rdzenia: "
+            f"{', '.join(NAZWY_TRYBOW_GFM_PL[t] for t in TRYBY_GFM)}",
             tryb=tryb,
         )
     if strategia_ograniczenia not in STRATEGIE_GFM:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Strategia ograniczenia {strategia_ograniczenia!r} spoza zbioru " f"{STRATEGIE_GFM}",
+            "Strategia ograniczenia prądu przekształtnika tworzącego sieć spoza zbioru "
+            f"strategii rdzenia: {', '.join(NAZWY_STRATEGII_GFM_PL[s] for s in STRATEGIE_GFM)}",
             strategia=strategia_ograniczenia,
         )
     if r_wirtualne_pu <= 0.0 and x_wirtualne_pu <= 0.0:

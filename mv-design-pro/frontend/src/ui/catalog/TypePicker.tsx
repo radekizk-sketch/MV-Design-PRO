@@ -8,6 +8,7 @@ import {
   pradKaLubBrakDanych,
   pradLacznikaKatalogu,
 } from './pradZwarciowyKatalogu';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 interface TypePickerProps {
   category: TypeCategory;
@@ -17,7 +18,9 @@ interface TypePickerProps {
   isOpen: boolean;
 }
 
-const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
+// Pełny słownik (Record, nie Partial): kategoria bez etykiety jest błędem kompilacji, a nie
+// zdaniem „wartość spoza słownika” w nagłówku okna wyboru typu.
+const CATEGORY_LABELS: Readonly<Record<TypeCategory, string>> = {
   LINE: 'Linie napowietrzne SN',
   HV_OVERHEAD_CONDUCTOR: 'Przewody linii napowietrznych 110 kV',
   CABLE: 'Kable SN',
@@ -37,7 +40,10 @@ const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
   SYSTEM_SOURCE: 'Zasilanie systemowe SN',
   CONVERTER: 'Konwertery',
   BRANCH_POLE: 'Słupy rozgałęźne SN',
-  ZKSN: 'ZKSN',
+  ZKSN: 'Złącza kablowe SN (ZKSN)',
+  SURGE_ARRESTER: 'Ograniczniki przepięć SN',
+  SHUNT_CAPACITOR: 'Baterie kondensatorów',
+  PTPIREE_CERTIFICATE: 'Certyfikaty PTPiREE',
 };
 
 function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
@@ -155,7 +161,7 @@ export function TypePicker({
         <div className="border-b border-scada-border px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-scada-text">
-              Wybierz typ: {CATEGORY_LABELS[category] ?? category}
+              Wybierz typ: {etykietaZeSlownika(CATEGORY_LABELS, category)}
             </h2>
             <button
               onClick={onClose}

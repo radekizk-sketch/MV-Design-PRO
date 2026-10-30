@@ -426,7 +426,9 @@ class TestValidationErrors:
 
         error = ProtectionRunNotFinishedError("test_run_id", "RUNNING")
         assert "test_run_id" in str(error)
-        assert "RUNNING" in str(error)
+        # Stan biegu słowami (`stan_przebiegu_pl`); kod `RUNNING` wyłącznie w polu maszynowym.
+        assert "(stan: w toku)" in str(error)
+        assert "RUNNING" not in str(error)
 
     def test_project_mismatch_error_message(self):
         """ProtectionProjectMismatchError should have correct message."""

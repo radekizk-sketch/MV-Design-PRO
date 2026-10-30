@@ -300,6 +300,17 @@ _ADAPTER_DYNAMIKI_ZAMIANA_NAZW = (
     "test_odmowa_rdzenia_z_odbiorem_dociera_do_projektanta_z_nazwa`). Identyfikatory SPOZA "
     "migawki (bieg, odcisk migawki, szyna spoza modelu) zostały z treści usunięte w partii 10."
 )
+#: Uzasadnienie odmowy rdzenia dynamiki cytującej miejsce zwarcia (węzeł albo gałąź migawki).
+_RDZEN_DYNAMIKI_MIEJSCE_ZWARCIA = (
+    "Odmowa rdzenia dynamiki `KOD_ZWARCIE_NIEODIZOLOWANE` (`SilnikDynamiki._sprawdz_izolacje`) "
+    "opisuje miejsce zwarcia słowami („w węźle X” / „na gałęzi X (położenie względne g)”, "
+    "karta komunikatów 2026-10-29 — dawniej słownik Pythona `{'wezel': …}`); X jest "
+    "identyfikatorem elementu ISTNIEJĄCEGO w migawce biegu (zdarzenie zwarcia odnalezione "
+    "w sieci rdzenia), a treść ma jedną drogę do projektanta: "
+    "`application.dynamika.odmowy.komunikat_dla_projektanta` zamienia go na nazwę z "
+    "`enm.nazwy_elementow` — ta sama droga co odmowy adaptera (`_ADAPTER_DYNAMIKI_ZAMIANA_NAZW`). "
+    "Rdzeń nie zna nazw elementów (granica importów rdzenia dynamiki)."
+)
 #: Uzasadnienie wspólne odmów katalogu projektu cytujących oznaczenie z arkusza projektanta.
 _OZNACZENIE_Z_ARKUSZA = (
     "Oznaczenie pozycji/karty katalogu projektu WPISAŁ projektant w arkuszu importu — to jego "
@@ -335,8 +346,13 @@ DOZWOLONE: dict[str, tuple[int, str]] = {
         _ADAPTER_DYNAMIKI_ZAMIANA_NAZW,
     ),
     "enm/adapter_dynamiki.py:zloz_widok_sieci:OdmowaWejsciaDynamiki:.ref_id": (
-        5,
+        4,
         _ADAPTER_DYNAMIKI_ZAMIANA_NAZW,
+    ),
+    "network_model/solvers/dynamika/silnik.py:SilnikDynamiki._sprawdz_izolacje:OdmowaDynamiki:"
+    "opis_miejsca": (
+        1,
+        _RDZEN_DYNAMIKI_MIEJSCE_ZWARCIA,
     ),
     "enm/katalog_projektu.py:_katalog_z_klucza:BladKataloguProjektu:zajete": (
         1,

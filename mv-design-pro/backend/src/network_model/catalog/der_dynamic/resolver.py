@@ -28,9 +28,13 @@ from network_model.catalog.der_dynamic.defaults import (
     WIND_DYNAMIC_PROFILES,
 )
 from network_model.catalog.der_dynamic.models import (
+    NAZWY_PRZEKSZTALCEN_TURBINY_PL,
+    NAZWY_RODZAJOW_DER_PL,
+    NAZWY_TRYBOW_STEROWANIA_PL,
     DerDynamicProfile,
     DerKind,
     InverterControlMode,
+    WindConverterType,
 )
 
 ResolutionSource = Literal[
@@ -84,16 +88,23 @@ def _resolve_inverter(
         profile=None,
         source="brak",
         rationale_pl=(
-            f"Brak jawnie wskazanego profilu dynamicznego dla {der_kind} "
-            f"({control_mode}) — ani parametr wywołania, ani wpis katalogu "
-            "przekształtnika nie niesie profile_id. Wskaż profil wprost "
-            "(operator/karta katalogowa) albo profil typowy normy świadomie."
+            "Brak jawnie wskazanego profilu dynamicznego dla rodzaju "
+            f"„{NAZWY_RODZAJOW_DER_PL[der_kind]}” "
+            f"({NAZWY_TRYBOW_STEROWANIA_PL[control_mode]}) — ani parametr wywołania, ani "
+            "wpis katalogu przekształtnika nie wskazuje profilu dynamicznego. Wskaż profil "
+            "wprost (operator/karta katalogowa) albo profil typowy normy świadomie."
         ),
     )
 
 
+def _opis_przeksztalcenia(converter_type: WindConverterType | None) -> str:
+    if converter_type is None:
+        return "rodzaj maszyny nieokreślony"
+    return f"„{NAZWY_PRZEKSZTALCEN_TURBINY_PL[converter_type]}”"
+
+
 def _resolve_wind(
-    converter_type: str | None,
+    converter_type: WindConverterType | None,
     explicit_profile_id: str | None,
     catalog_dynamic_profile_id: str | None,
 ) -> DerDynamicResolution:
@@ -118,9 +129,9 @@ def _resolve_wind(
         profile=None,
         source="brak",
         rationale_pl=(
-            f"Brak jawnie wskazanego profilu dynamicznego turbiny (converter_type="
-            f"'{converter_type}') — ani parametr wywołania, ani wpis katalogu nie "
-            "niesie profile_id."
+            "Brak jawnie wskazanego profilu dynamicznego turbiny "
+            f"({_opis_przeksztalcenia(converter_type)}) — ani parametr wywołania, ani wpis "
+            "katalogu nie wskazuje profilu dynamicznego."
         ),
     )
 
@@ -131,7 +142,7 @@ def resolve_der_dynamic_profile(
     explicit_profile_id: str | None = None,
     catalog_dynamic_profile_id: str | None = None,
     control_mode: InverterControlMode = "grid_following",
-    converter_type: str | None = None,
+    converter_type: WindConverterType | None = None,
 ) -> DerDynamicResolution:
     """Główny entry-point — zwraca profil dynamiczny per DER, TYLKO gdy wybrany jawnie.
 

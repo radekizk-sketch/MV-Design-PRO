@@ -28,7 +28,7 @@ from dziedziny.kanon import KontraktDziedziny, naruszenie
 from dziedziny.sekcje import DowodModelu, RodzajDowodu, StatusWeryfikacjiRekordu
 from dziedziny.widmo import ModelZrodlaWidmowego
 from pydantic import field_validator, model_validator
-from werdykt.kontrakt import DziedzinaFizyki, PodstawaWymagania, Tekst
+from werdykt.kontrakt import NAZWA_DZIEDZINY_PL, DziedzinaFizyki, PodstawaWymagania, Tekst
 
 #: Status katalogu rekordu — wartości ``CatalogStatus`` (parytet przypięty testem).
 StatusKataloguKarty = Literal[
@@ -74,9 +74,11 @@ class KartaWidmowa(KontraktDziedziny):
             )
         identy = [m.ident for m in modele]
         if len(set(identy)) != len(identy):
+            powtorzone = sorted({i for i in identy if identy.count(i) > 1})
             raise ValueError(
                 naruszenie(
-                    "karta.modele_unikalne", f"Modele karty powtarzają identyfikatory: {identy}."
+                    "karta.modele_unikalne",
+                    f"Modele karty powtarzają identyfikatory: {', '.join(powtorzone)}.",
                 )
             )
         return tuple(sorted(modele, key=lambda m: m.ident))
@@ -102,8 +104,9 @@ class KartaWidmowa(KontraktDziedziny):
                 raise ValueError(
                     naruszenie(
                         "karta.dowody",
-                        f"Karta '{self.id}': dowód '{dowod.odniesienie_pl}' pokrywa dziedziny spoza "
-                        f"dziedziny częstotliwości: {spoza}.",
+                        f"Karta „{self.id}”: dowód „{dowod.odniesienie_pl}” pokrywa dziedziny "
+                        "spoza dziedziny częstotliwości: "
+                        f"{', '.join(NAZWA_DZIEDZINY_PL[d] for d in spoza)}.",
                     )
                 )
         return self
@@ -143,8 +146,12 @@ class ModeleWidmoweElementu(KontraktDziedziny):
             )
         identy = [z.karta_id for z in zrodla]
         if len(set(identy)) != len(identy):
+            powtorzone = sorted({i for i in identy if identy.count(i) > 1})
             raise ValueError(
-                naruszenie("karta.materializacja", f"Karty źródłowe powtarzają się: {identy}.")
+                naruszenie(
+                    "karta.materializacja",
+                    f"Karty źródłowe powtarzają się: {', '.join(powtorzone)}.",
+                )
             )
         return tuple(sorted(zrodla, key=lambda z: z.karta_id))
 
@@ -159,11 +166,13 @@ class ModeleWidmoweElementu(KontraktDziedziny):
             )
         identy = [m.ident for m in modele]
         if len(set(identy)) != len(identy):
+            powtorzone = sorted({i for i in identy if identy.count(i) > 1})
             raise ValueError(
                 naruszenie(
                     "karta.materializacja",
-                    f"Modele z różnych kart powtarzają identyfikatory: {identy} — identyfikator "
-                    "modelu musi być unikalny w obrębie elementu.",
+                    "Modele z różnych kart powtarzają identyfikatory: "
+                    f"{', '.join(powtorzone)} — identyfikator modelu musi być unikalny w obrębie "
+                    "elementu.",
                 )
             )
         return tuple(sorted(modele, key=lambda m: m.ident))

@@ -253,8 +253,9 @@ def assert_const_part_is_restorable(
     ]
     if missing:
         raise ValueError(
-            f"ZIP split lost the constant part at bus indices {missing}: "
-            "they are not in the ZIP recompute table"
+            f"Rozdział odbioru na składowe ZIP zgubił składową stałomocową w węzłach "
+            f"o indeksach {', '.join(f'{i:d}' for i in missing)}: nie ma ich w tablicy "
+            "przeliczania składowych ZIP"
         )
 
 

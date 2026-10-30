@@ -38,6 +38,7 @@ from typing import Any, Final
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType, StanBiegu, stan_biegu
+from domain.opis_przebiegu import STAN_SPOZA_SLOWNIKA_PL, stan_przebiegu_pl
 from network_model.odmowa_danych import OdmowaDanychError
 
 #: Statusy POZYCJI serii — DOKLADNIE slownik `CanonicalRun.status`
@@ -74,6 +75,28 @@ class RunBatchStatus(StrEnum):
     CANCELLED = "CANCELLED"
     #: Czesc pozycji FAILED, reszta FINISHED — NIGDY cicho FINISHED (karta §0 C1).
     PARTIAL = "PARTIAL"
+
+
+#: Stan serii po polsku — każdy człon ``RunBatchStatus`` (kompletność przypina
+#: ``tests/test_batch_execution.py::test_kazdy_stan_serii_ma_polska_nazwe``); stany wspólne
+#: z biegiem kanonicznym mają tę samą nazwę co ``domain.opis_przebiegu``.
+NAZWY_STANOW_SERII_PL: dict[RunBatchStatus, str] = {
+    RunBatchStatus.CREATED: stan_przebiegu_pl("CREATED"),
+    RunBatchStatus.QUEUED: stan_przebiegu_pl("QUEUED"),
+    RunBatchStatus.RUNNING: stan_przebiegu_pl("RUNNING"),
+    RunBatchStatus.FINISHED: stan_przebiegu_pl("FINISHED"),
+    RunBatchStatus.FAILED: stan_przebiegu_pl("FAILED"),
+    RunBatchStatus.CANCELLED: stan_przebiegu_pl("CANCELLED"),
+    RunBatchStatus.PARTIAL: "zakończony częściowo (część pozycji zakończona błędem)",
+}
+
+
+def stan_serii_pl(status: object) -> str:
+    """Nazwa stanu serii po polsku (wartość spoza słownika → uczciwe zdanie)."""
+    try:
+        return NAZWY_STANOW_SERII_PL[RunBatchStatus(str(status))]
+    except ValueError:
+        return STAN_SPOZA_SLOWNIKA_PL
 
 
 @dataclass(frozen=True)
@@ -133,7 +156,8 @@ def finalize_batch_status(items: tuple[RunBatchItem, ...]) -> RunBatchStatus:
     if any(s not in ITEM_STATUSES_TERMINALNE for s in statusy):
         raise ValueError(
             "Zamknięcie serii biegów wymaga, żeby każda pozycja była w stanie końcowym "
-            f"(FINISHED/FAILED/CANCELLED); otrzymano: {', '.join(sorted(set(statusy)))}"
+            "(zakończona, zakończona błędem albo anulowana); otrzymano stany: "
+            f"{', '.join(sorted({stan_przebiegu_pl(s) for s in statusy}))}"
         )
     if all(s == ITEM_STATUS_FINISHED for s in statusy):
         return RunBatchStatus.FINISHED

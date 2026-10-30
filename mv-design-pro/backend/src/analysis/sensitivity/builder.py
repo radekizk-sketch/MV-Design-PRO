@@ -8,6 +8,7 @@ from analysis.normative.models import NormativeReport, NormativeStatus
 from analysis.protection_curves_it.models import ProtectionCurvesITView
 from analysis.protection_insight.models import ProtectionInsightItem, ProtectionInsightView
 from analysis.sensitivity.models import (
+    ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL,
     SensitivityContext,
     SensitivityDecision,
     SensitivityDriver,
@@ -109,8 +110,8 @@ def _entries_from_normative(
 ) -> list[SensitivityEntry]:
     entries: list[SensitivityEntry] = []
     mapping = {
-        "NR_P15_001": ("load_q", "Load Q (k_I)", "P20"),
-        "NR_P15_002": ("load_p", "Load P (k_S)", "P20"),
+        "NR_P15_001": ("load_q", ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["load_q"], "P20"),
+        "NR_P15_002": ("load_p", ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["load_p"], "P20"),
     }
     for item in report.items:
         mapped = mapping.get(item.rule_id)
@@ -179,7 +180,7 @@ def _entries_from_protection_curves(
     return [
         _build_entry(
             parameter_id="protection_curve_margin",
-            parameter_label="Protection curve margins",
+            parameter_label=ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["protection_curve_margin"],
             target_id=view.primary_device_id,
             source="C-P22",
             base_margin=base_margin,
@@ -267,7 +268,7 @@ def _entry_from_voltage_row(
     if row.status == VoltageProfileStatus.NOT_COMPUTED or row.delta_pct is None:
         return _build_entry(
             parameter_id="voltage_limit",
-            parameter_label="Voltage limits",
+            parameter_label=ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["voltage_limit"],
             target_id=row.bus_id,
             source="P21",
             base_margin=None,
@@ -291,7 +292,7 @@ def _entry_from_voltage_row(
 
     return _build_entry(
         parameter_id="voltage_limit",
-        parameter_label="Voltage limits",
+        parameter_label=ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["voltage_limit"],
         target_id=row.bus_id,
         source="P21",
         base_margin=base_margin,
@@ -335,7 +336,7 @@ def _entry_from_short_circuit(
 
     return _build_entry(
         parameter_id="short_circuit_level",
-        parameter_label="Short-circuit level",
+        parameter_label=ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["short_circuit_level"],
         target_id=item.primary_device_id,
         source="P22a",
         base_margin=base_margin,
@@ -379,7 +380,7 @@ def _entry_from_protection_settings(
 
     return _build_entry(
         parameter_id="protection_margin",
-        parameter_label="Protection settings margins",
+        parameter_label=ETYKIETY_PARAMETROW_WRAZLIWOSCI_PL["protection_margin"],
         target_id=item.primary_device_id,
         source="P22a",
         base_margin=base_margin,

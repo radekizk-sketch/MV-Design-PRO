@@ -29,7 +29,7 @@ import {
 import { naMetryki, opisRezystancjiUjemnej } from './model';
 import { useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
 import { OcenaNiewykonana, SekcjaAudytowa } from '../wzorzec/OcenaNiewykonana';
-import { POLA_KARTY_SSCI, SSCI_STRINGS as S, fmtGain, type IstotnoscStanu } from './strings';
+import { POLA_KARTY_SSCI, SSCI_STRINGS as S, fmtGain, opisBrakuSsci, type IstotnoscStanu } from './strings';
 
 // ---------------------------------------------------------------------------
 // Elementy wspólne (chip, tag, panel stanu)
@@ -172,7 +172,7 @@ function PanelBrakow({ dane }: { dane: WidokStabilnosciSsci }) {
       <h3 className="mvd-ssci-sekcja-tytul">{S.brakiTytul}</h3>
       <p className="mvd-ssci-pole-opis">{S.brakiOpis}</p>
       <p className="mvd-num mvd-ssci-braki-lista">
-        {S.brakiPola}: {missing.join(', ')}
+        {S.brakiPola}: {missing.map(opisBrakuSsci).join(' ')}
       </p>
     </section>
   );

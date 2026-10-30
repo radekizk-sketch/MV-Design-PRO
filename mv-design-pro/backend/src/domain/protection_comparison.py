@@ -27,6 +27,8 @@ from datetime import UTC, datetime
 from enum import Enum, StrEnum
 from typing import Any
 
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+
 # =============================================================================
 # ENUMS AND TYPES
 # =============================================================================
@@ -572,7 +574,10 @@ class ProtectionRunWrongTypeError(ProtectionComparisonError):
     def __init__(self, run_id: str, analysis_type: str):
         self.run_id = run_id
         self.analysis_type = analysis_type
-        super().__init__(f"Bieg {run_id} nie jest biegiem zabezpieczeń (rodzaj: {analysis_type})")
+        super().__init__(
+            f"Bieg {run_id} nie jest biegiem zabezpieczeń "
+            f"(rodzaj: {rodzaj_przebiegu_pl(analysis_type)})."
+        )
 
 
 class ProtectionRunNotFinishedError(ProtectionComparisonError):
@@ -582,7 +587,8 @@ class ProtectionRunNotFinishedError(ProtectionComparisonError):
         self.run_id = run_id
         self.status = status
         super().__init__(
-            f"Bieg analizy zabezpieczeń {run_id} nie jest zakończony (stan: {status})."
+            f"Bieg analizy zabezpieczeń {run_id} nie jest zakończony "
+            f"(stan: {stan_przebiegu_pl(status)})."
         )
 
 
@@ -592,7 +598,10 @@ class ProtectionProjectMismatchError(ProtectionComparisonError):
     def __init__(self, run_a_project: str, run_b_project: str):
         self.run_a_project = run_a_project
         self.run_b_project = run_b_project
-        super().__init__(f"Runs należą do różnych projektów: {run_a_project} vs {run_b_project}")
+        super().__init__(
+            f"Biegi należą do różnych projektów: projektu {run_a_project} "
+            f"i projektu {run_b_project}."
+        )
 
 
 class ProtectionComparisonNotFoundError(ProtectionComparisonError):

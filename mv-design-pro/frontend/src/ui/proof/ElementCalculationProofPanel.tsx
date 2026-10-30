@@ -14,6 +14,7 @@ import { TRACE_VALUE_CODES, TRACE_VALUE_LABELS, TRACE_VALUE_UNITS } from '../res
 import { rozpakujWartoscSladu } from '../results-inspector/traceValue';
 import { formatWStanie, useDostepnoscEksportuWywodu } from '../results/useDostepnoscEksportuWywodu';
 import { MathRenderer } from './MathRenderer';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 interface ProofSelectedElement {
   id: string;
@@ -153,7 +154,7 @@ export function resolveShortCircuitRowsForElement(
 }
 
 function traceLabel(key: string): string {
-  return TRACE_VALUE_LABELS[key] ?? key
+  return etykietaZeSlownika(TRACE_VALUE_LABELS, key)
     .replace(/_/g, ' ')
     .replace(/\bohm\b/gi, 'Ω')
     .replace(/\bka\b/gi, 'kA')

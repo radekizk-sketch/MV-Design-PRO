@@ -26,6 +26,8 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+
 
 class RunResultState(StrEnum):
     """
@@ -491,7 +493,10 @@ class ProjectMismatchError(ComparisonError):
     def __init__(self, run_a_project: UUID, run_b_project: UUID):
         self.run_a_project = run_a_project
         self.run_b_project = run_b_project
-        super().__init__(f"Runs belong to different projects: {run_a_project} vs {run_b_project}")
+        super().__init__(
+            f"Biegi należą do różnych projektów: projektu {run_a_project} "
+            f"i projektu {run_b_project}."
+        )
 
 
 class AnalysisTypeMismatchError(ComparisonError):
@@ -500,7 +505,10 @@ class AnalysisTypeMismatchError(ComparisonError):
     def __init__(self, type_a: str, type_b: str):
         self.type_a = type_a
         self.type_b = type_b
-        super().__init__(f"Runs have different analysis types: {type_a} vs {type_b}")
+        super().__init__(
+            f"Biegi są różnych rodzajów analizy: {rodzaj_przebiegu_pl(type_a)} "
+            f"i {rodzaj_przebiegu_pl(type_b)} — porównanie wymaga biegów tego samego rodzaju."
+        )
 
 
 class RunNotFoundError(ComparisonError):
@@ -521,15 +529,6 @@ class RunNotFinishedError(ComparisonError):
     def __init__(self, run_id: UUID, status: str):
         self.run_id = run_id
         self.status = status
-        super().__init__(f"Bieg obliczeń {run_id} nie jest zakończony (stan: {status}).")
-
-
-class ResultNotFoundError(ComparisonError):
-    """Raised when results are not found for a run."""
-
-    def __init__(self, run_id: UUID, result_type: str):
-        self.run_id = run_id
-        self.result_type = result_type
         super().__init__(
-            f"Nie znaleziono wyników rodzaju {result_type} dla biegu obliczeń {run_id}."
+            f"Bieg obliczeń {run_id} nie jest zakończony (stan: {stan_przebiegu_pl(status)})."
         )

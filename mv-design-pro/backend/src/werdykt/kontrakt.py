@@ -134,6 +134,115 @@ KrokRegulyW = Literal[
     "SPELNIENIE",
 ]
 
+# ---------------------------------------------------------------------------
+# Nazwy słowników W TEKŚCIE (kod zostaje w polu rekordu; zdanie niesie nazwę)
+# ---------------------------------------------------------------------------
+
+#: Stan źródła podstawy W TEKŚCIE — lustro karty werdyktu (`NAZWA_STANU_ZRODLA_PL` w
+#: ``KartaWerdyktu.tsx``); kod zostaje w polu ``podstawa.status``. Blok dokumentu formalnego
+#: (``werdykt.dokument``) czyta tę samą mapę.
+NAZWA_STANU_ZRODLA_PL: dict[StanZrodla, str] = {
+    "ZWERYFIKOWANE": "zweryfikowane",
+    "WSKAZANE": "wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)",
+    "NIEUSTALONE": "nieustalone",
+}
+
+#: Nazwy metod dowodu w tekście.
+NAZWA_METODY_PL: dict[MetodaDowodu, str] = {
+    "CERTYFIKAT": "certyfikat urządzenia",
+    "RAPORT_Z_TESTU": "raport z testu",
+    "SYMULACJA": "symulacja",
+    "OBLICZENIE": "obliczenie",
+    "DEKLARACJA": "deklaracja",
+    "POMIAR": "pomiar",
+    "OCENA_OPERATORA": "ocena operatora",
+    "DOWOD_LACZONY": "dowód łączony",
+    "BRAK_METODY": "brak metody",
+}
+
+#: Postać limitu wg relacji kryterium W TEKŚCIE (blok dokumentu, walidator rekordu) — lustro karty werdyktu
+#: (`NAZWA_RELACJI_PL` w ``KartaWerdyktu.tsx``: T13, ten sam tekst w interfejsie i dokumencie);
+#: kod relacji zostaje w polu ``kryterium.relacja``.
+NAZWA_RELACJI_PL: dict[Relacja, str] = {
+    "NIE_WIECEJ": "górna granica",
+    "NIE_MNIEJ": "dolna granica",
+    "PASMO": "pasmo dopuszczalne",
+    "OBWIEDNIA_DOLNA": "obwiednia dolna",
+    "OBWIEDNIA_GORNA": "obwiednia górna",
+    "LOGICZNE": "kryterium logiczne",
+}
+#: Rodzaj analizy zakresu ważności W TEKŚCIE (blok dokumentu, walidator rekordu) — lustro karty werdyktu
+#: (`NAZWA_DZIEDZINY_PL`); kod zostaje w polu ``zakres_waznosci.rodzaj_analizy``.
+NAZWA_DZIEDZINY_PL: dict[DziedzinaFizyki, str] = {
+    "POWER_FLOW": "rozpływ mocy",
+    "SHORT_CIRCUIT": "zwarcia",
+    "RMS_DYNAMICS": "dynamika RMS",
+    "SEQUENCE_DOMAIN": "składowe symetryczne",
+    "HARMONIC_FREQUENCY_DOMAIN": "harmoniczne (dziedzina częstotliwości)",
+    "SUPRAHARMONIC_FREQUENCY_DOMAIN": "supraharmoniczne (dziedzina częstotliwości)",
+}
+#: Nazwy rodzajów podstawy.
+NAZWA_RODZAJU_PODSTAWY_PL: dict[RodzajPodstawy, str] = {
+    "ROZPORZADZENIE_UE": "rozporządzenie UE",
+    "NORMA": "norma",
+    "PRAWO_KRAJOWE": "prawo krajowe",
+    "WOS": "wymogi ogólnego stosowania (WOS)",
+    "PROCEDURA_PTPIREE": "procedura PTPiREE",
+    "WIPWC": "WiPWC",
+    "OSD": "wymagania operatora systemu dystrybucyjnego",
+    "KATALOG_PRODUCENTA": "katalog producenta",
+    "ZALOZENIE_PROJEKTOWE": "założenie projektowe",
+    "NIEUSTALONA": "warstwa o nieustalonym pochodzeniu",
+}
+
+
+def nazwa_kroku_reguly(krok: KrokRegulyK | KrokRegulyW) -> str:
+    """Krok reguły K/W W TEKŚCIE walidatora rekordu (kod zostaje w polu ``krok`` reguły).
+    Funkcja, nie mapa: krok ``BRAK_PODSTAWY`` nosi nazwę statusu maszynowego, a jedynym
+    mapowaniem statusu na tekst jest słownik etykiet (``werdykt.etykiety``)."""
+    match krok:
+        case "STOSOWALNOSC":
+            return "stosowalność"
+        case "METODA":
+            return "metoda dowodu"
+        case "WYNIK":
+            return "wynik"
+        case "PODSTAWA":
+            return "podstawa limitu"
+        case "NIEJEDNOZNACZNOSC":
+            return "niejednoznaczność"
+        case "MARGINES":
+            return "margines"
+        case "BRAK_METODY":
+            return "brak metody"
+        case "SKLADOWE_NIE_DOTYCZA":
+            return "składowe nie dotyczą przedmiotu"
+        case "NARUSZENIE":
+            return "naruszenie kryterium"
+        case "NIEOCENIONE":
+            return "kryterium nieocenione"
+        case "BRAK_PODSTAWY":
+            return "brak podstawy"
+        case "POKRYCIE":
+            return "pokrycie programu badań"
+        case "KOMPLETNOSC":
+            return "kompletność dowodu"
+        case "SPELNIENIE":
+            return "spełnienie"
+    raise AssertionError(f"Błąd programu: krok reguły spoza słowników kroków ({krok!r}).")
+
+
+def nazwa_kompletnosci(kompletnosc: KompletnoscDowodu) -> str:
+    """Kompletność dowodu W TEKŚCIE (kod zostaje w polu ``kompletnosc_dowodu``). Funkcja, nie
+    mapa: klucz ``NIE_DOTYCZY`` jest też statusem maszynowym, a jedynym mapowaniem statusu na
+    tekst jest słownik etykiet (``werdykt.etykiety``)."""
+    if kompletnosc == "PELNY":
+        return "pełny"
+    if kompletnosc == "NIEPELNY":
+        return "niepełny"
+    return "nie dotyczy"
+
+
 #: Kanoniczna kolejność metod — każde wyliczenie metod w tekście jest w tej kolejności
 #: (zbiory ``frozenset`` iterują w kolejności zależnej od ziarna skrótu, więc nie wolno
 #: składać z nich tekstu bez sortowania).
@@ -288,7 +397,11 @@ class _Zamrozony(BaseModel):
 
 def _bez_duplikatow(nazwa: str, elementy: tuple[str, ...]) -> None:
     if len(set(elementy)) != len(elementy):
-        raise ValueError(f"Lista {nazwa} zawiera powtórzone pozycje: {list(elementy)}.")
+        powtorzone = sorted({e for e in elementy if elementy.count(e) > 1})
+        raise ValueError(
+            f"Lista {nazwa} zawiera powtórzone pozycje: "
+            f"{'; '.join(f'„{e}”' for e in powtorzone)}."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -320,20 +433,22 @@ class PodstawaWymagania(_Zamrozony):
             brakujace = [
                 nazwa
                 for nazwa, wartosc in (
-                    ("wydanie", self.wydanie),
-                    ("jednostka_redakcyjna", self.jednostka_redakcyjna),
+                    ("wydanie dokumentu", self.wydanie),
+                    ("jednostka redakcyjna", self.jednostka_redakcyjna),
                 )
                 if wartosc is None
             ]
             if brakujace:
                 raise ValueError(
-                    f"Podstawa „{self.dokument}” o stanie {self.status} wymaga pól: "
-                    f"{', '.join(brakujace)} — bez nich stan źródła jest NIEUSTALONE."
+                    f"Podstawa „{self.dokument}” o stanie „{NAZWA_STANU_ZRODLA_PL[self.status]}” "
+                    f"wymaga pól: {', '.join(brakujace)} — bez nich stan źródła jest "
+                    f"„{NAZWA_STANU_ZRODLA_PL['NIEUSTALONE']}”."
                 )
         if self.rodzaj == "NIEUSTALONA" and self.status != "NIEUSTALONE":
             raise ValueError(
-                f"Podstawa rodzaju NIEUSTALONA nie może mieć stanu {self.status} — warstwa bez "
-                "ustalonego pochodzenia ma stan NIEUSTALONE."
+                f"Podstawa rodzaju „{NAZWA_RODZAJU_PODSTAWY_PL['NIEUSTALONA']}” nie może mieć "
+                f"stanu „{NAZWA_STANU_ZRODLA_PL[self.status]}” — warstwa bez ustalonego "
+                f"pochodzenia ma stan „{NAZWA_STANU_ZRODLA_PL['NIEUSTALONE']}”."
             )
         return self
 
@@ -403,7 +518,7 @@ class StatusDowodu(_Zamrozony):
         ):
             raise ValueError(
                 f"Domena walidacji dotyczy wyłącznie biegu (symulacja, obliczenie) — metoda "
-                f"{self.metoda} nie ma domeny walidacji."
+                f"„{NAZWA_METODY_PL[self.metoda]}” nie ma domeny walidacji."
             )
         if (self.w_domenie_walidacji is None) != (self.domena_pl is None):
             raise ValueError(
@@ -420,14 +535,14 @@ class StatusDowodu(_Zamrozony):
         certyfikat = EvidenceTier.TYPE_TEST_CERTIFICATE
         if self.metoda == "CERTYFIKAT" and self.poziom is not certyfikat:
             raise ValueError(
-                f"Dowód certyfikatem urządzenia ma poziom {certyfikat.value} (certyfikat "
-                f"badania typu) — poziom {self.poziom.value} nie opisuje certyfikatu."
+                f"Dowód certyfikatem urządzenia ma poziom „{certyfikat.label_pl}” — poziom "
+                f"„{self.poziom.label_pl}” nie opisuje certyfikatu."
             )
         if self.poziom is certyfikat and self.metoda not in METODY_Z_POZIOMEM_CERTYFIKATU:
             raise ValueError(
-                f"Poziom {certyfikat.value} (certyfikat badania typu) towarzyszy wyłącznie "
-                f"dowodowi certyfikatem albo dowodowi łączonemu ze składową certyfikatu — nie "
-                f"metodzie {self.metoda}."
+                f"Poziom „{certyfikat.label_pl}” towarzyszy wyłącznie dowodowi certyfikatem "
+                "albo dowodowi łączonemu ze składową certyfikatu — nie metodzie "
+                f"„{NAZWA_METODY_PL[self.metoda]}”."
             )
         return self
 
@@ -527,7 +642,8 @@ class Kryterium(_Zamrozony):
     def _warunek_dla_relacji_liczbowej(self) -> Self:
         if self.relacja in RELACJE_LICZBOWE and not self.warunek_latex.strip():
             raise ValueError(
-                f"Kryterium „{self.opis_pl}” o relacji {self.relacja} wymaga warunku w LaTeX."
+                f"Kryterium „{self.opis_pl}” o relacji „{NAZWA_RELACJI_PL[self.relacja]}” "
+                "wymaga warunku w LaTeX."
             )
         if (self.warunek_wstepny_pl is None) != (self.warunek_wstepny_podstawa is None):
             raise ValueError(
@@ -562,9 +678,12 @@ class WynikKryterium(_Zamrozony):
     @model_validator(mode="after")
     def _metoda_wyniku(self) -> Self:
         if self.metoda not in METODY_WYNIKU:
-            dozwolone = ", ".join(m for m in KOLEJNOSC_METOD if m in METODY_WYNIKU)
+            dozwolone = ", ".join(
+                f"„{NAZWA_METODY_PL[m]}”" for m in KOLEJNOSC_METOD if m in METODY_WYNIKU
+            )
             raise ValueError(
-                f"Metoda {self.metoda} nie jest źródłem wielkości wyniku — dozwolone: {dozwolone}."
+                f"Metoda „{NAZWA_METODY_PL[self.metoda]}” nie jest źródłem wielkości wyniku — "
+                f"dozwolone: {dozwolone}."
             )
         return self
 
@@ -624,7 +743,10 @@ class LimitKryterium(_Zamrozony):
                 raise ValueError("Obwiednia wymaga co najmniej dwóch punktów.")
             czasy = [punkt.t_s for punkt in self.obwiednia]
             if any(b <= a for a, b in zip(czasy, czasy[1:], strict=False)):
-                raise ValueError(f"Chwile punktów obwiedni muszą rosnąć ściśle ({czasy}).")
+                raise ValueError(
+                    "Chwile punktów obwiedni muszą rosnąć ściśle ("
+                    f"{', '.join(f'{t:g} s' for t in czasy)})."
+                )
             if self.jednostka_obwiedni is None:
                 raise ValueError("Obwiednia wymaga jednostki wartości.")
         elif self.jednostka_obwiedni is not None:
@@ -756,7 +878,8 @@ class ZakresWaznosci(_Zamrozony):
         bez_jakosci = [p.nazwa_pl for p in self.parametry_sieci if p.jakosc is None]
         if bez_jakosci:
             raise ValueError(
-                f"Parametry sieci bez statusu danych (jakości): {bez_jakosci} — zakres ważności "
+                "Parametry sieci bez statusu danych (jakości): "
+                f"{', '.join(f'„{n}”' for n in bez_jakosci)} — zakres ważności "
                 "podaje parametry sieci ze statusem danych."
             )
         _bez_duplikatow("wykluczeń", self.wykluczenia)
@@ -862,7 +985,8 @@ def _sprawdz_parametry_sieci(zakres: ZakresWaznosci, dowod: StatusDowodu) -> Non
             and parametr not in dowod.status_danych.dane_przyjete
         ):
             raise ValueError(
-                f"Parametr sieci „{parametr.nazwa_pl}” ma jakość {parametr.jakosc} — musi "
+                f"Parametr sieci „{parametr.nazwa_pl}” ma jakość „{parametr.jakosc.label_pl}” "
+                "— musi "
                 "figurować w danych przyjętych dowodu (stan danych „przyjęte bez walidacji”)."
             )
 
@@ -875,10 +999,14 @@ def _sprawdz_braki(
     if czego_brakuje[: len(braki_reguly)] != braki_reguly:
         raise ValueError(
             "Lista braków („czego brakuje”) nie zaczyna się od braków wyprowadzonych regułą: "
-            f"oczekiwano {list(braki_reguly)}, jest {list(czego_brakuje)}."
+            f"oczekiwano {'; '.join(f'„{b}”' for b in braki_reguly) or 'brak'}, jest "
+            f"{'; '.join(f'„{b}”' for b in czego_brakuje) or 'brak'}."
         )
     if status in STATUSY_Z_BRAKAMI and not czego_brakuje:
-        raise ValueError(f"Status {status} wymaga niepustej listy braków („czego brakuje”).")
+        raise ValueError(
+            "Rekord bez rozstrzygnięcia (wynik niejednoznaczny, ocena niewykonana, brak "
+            "podstawy albo brak dowodu) wymaga niepustej listy braków („czego brakuje”)."
+        )
 
 
 class OcenaKryterium(_RekordWerdyktu):
@@ -938,33 +1066,39 @@ class OcenaKryterium(_RekordWerdyktu):
             )
         if self.status_maszynowy != pochodne.status:
             raise ValueError(
-                f"Kryterium {self.kryterium_id}: status {self.status_maszynowy} różni się od "
-                f"statusu reguły {pochodne.status} (krok {pochodne.krok})."
+                f"Kryterium {self.kryterium_id}: status rekordu różni się od statusu "
+                f"wyprowadzonego regułą („{pochodne.etykieta.etykieta_pl}”, krok reguły "
+                f"„{nazwa_kroku_reguly(pochodne.krok)}”)."
             )
         if (self.kompletnosc_dowodu, self.powody_niepelnosci) != (
             pochodne.kompletnosc,
             pochodne.powody,
         ):
             raise ValueError(
-                f"Kryterium {self.kryterium_id}: kompletność dowodu {self.kompletnosc_dowodu} "
-                f"z powodami {list(self.powody_niepelnosci)} różni się od wyprowadzonej "
-                f"{pochodne.kompletnosc} z powodami {list(pochodne.powody)}."
+                f"Kryterium {self.kryterium_id}: kompletność dowodu "
+                f"„{nazwa_kompletnosci(self.kompletnosc_dowodu)}” z powodami "
+                f"{'; '.join(f'„{p}”' for p in self.powody_niepelnosci) or 'brak'} różni się "
+                "od wyprowadzonej "
+                f"„{nazwa_kompletnosci(pochodne.kompletnosc)}” z powodami "
+                f"{'; '.join(f'„{p}”' for p in pochodne.powody) or 'brak'}."
             )
         if self.etykieta != pochodne.etykieta:
             raise ValueError(
-                f"Kryterium {self.kryterium_id}: etykieta {self.etykieta} różni się od etykiety "
-                f"słownika {pochodne.etykieta}."
+                f"Kryterium {self.kryterium_id}: etykieta „{self.etykieta.etykieta_pl}” różni "
+                f"się od etykiety słownika „{pochodne.etykieta.etykieta_pl}”."
             )
         if self.status_maszynowy != "SPELNIA" and self.wyjasnienie.przyczyna_pl is None:
             raise ValueError(
-                f"Kryterium {self.kryterium_id}: status {self.status_maszynowy} wymaga przyczyny."
+                f"Kryterium {self.kryterium_id}: rekord „{self.etykieta.etykieta_pl}” wymaga "
+                "przyczyny."
             )
         _sprawdz_braki(self.status_maszynowy, self.wyjasnienie.czego_brakuje, pochodne.braki)
         if self.wyjasnienie.zastrzezenia != pochodne.zastrzezenia:
             raise ValueError(
                 f"Kryterium {self.kryterium_id}: zastrzeżenia muszą być wyprowadzone z pól "
-                f"rekordu — oczekiwano {list(pochodne.zastrzezenia)}, jest "
-                f"{list(self.wyjasnienie.zastrzezenia)}."
+                "rekordu — oczekiwano "
+                f"{'; '.join(f'„{z}”' for z in pochodne.zastrzezenia) or 'brak'}, jest "
+                f"{'; '.join(f'„{z}”' for z in self.wyjasnienie.zastrzezenia) or 'brak'}."
             )
         return self
 
@@ -999,7 +1133,8 @@ class OcenaKryterium(_RekordWerdyktu):
             }[relacja]
             if postac_wymagana is None:
                 raise ValueError(
-                    f"Kryterium {self.kryterium_id}: postać limitu nie pasuje do relacji {relacja}."
+                    f"Kryterium {self.kryterium_id}: postać limitu nie pasuje do relacji "
+                    f"„{NAZWA_RELACJI_PL[relacja]}”."
                 )
         wynik = self.wynik
         if wynik is not None:
@@ -1040,13 +1175,15 @@ class OcenaKryterium(_RekordWerdyktu):
             if wynik.metoda in METODY_OBLICZENIOWE:
                 if self.zakres_waznosci.rodzaj_analizy is None:
                     raise ValueError(
-                        f"Kryterium {self.kryterium_id}: wynik metody {wynik.metoda} wymaga "
+                        f"Kryterium {self.kryterium_id}: wynik metody „{NAZWA_METODY_PL[wynik.metoda]}” "
+                        "wymaga "
                         "dziedziny fizyki w zakresie ważności — bez niej zakres byłby szerszy "
                         "niż faktyczny."
                     )
                 if not self.slad:
                     raise ValueError(
-                        f"Kryterium {self.kryterium_id}: wynik metody {wynik.metoda} wymaga "
+                        f"Kryterium {self.kryterium_id}: wynik metody „{NAZWA_METODY_PL[wynik.metoda]}” "
+                        "wymaga "
                         "odnośników śladu WHITE BOX."
                     )
 
@@ -1108,19 +1245,24 @@ class WynikWymagania(_RekordWerdyktu):
             pochodne.powody,
         ):
             raise ValueError(
-                f"Wymaganie {self.wymaganie_id}: kompletność dowodu {self.kompletnosc_dowodu} "
-                f"z powodami {list(self.powody_niepelnosci)} różni się od wyprowadzonej "
-                f"{pochodne.kompletnosc} z powodami {list(pochodne.powody)}."
+                f"Wymaganie {self.wymaganie_id}: kompletność dowodu "
+                f"„{nazwa_kompletnosci(self.kompletnosc_dowodu)}” z powodami "
+                f"{'; '.join(f'„{p}”' for p in self.powody_niepelnosci) or 'brak'} różni się "
+                "od wyprowadzonej "
+                f"„{nazwa_kompletnosci(pochodne.kompletnosc)}” z powodami "
+                f"{'; '.join(f'„{p}”' for p in pochodne.powody) or 'brak'}."
             )
         if self.status_maszynowy != pochodne.status:
             raise ValueError(
-                f"Wymaganie {self.wymaganie_id}: status {self.status_maszynowy} różni się od "
-                f"statusu reguły agregacji {pochodne.status} (krok {pochodne.krok})."
+                f"Wymaganie {self.wymaganie_id}: status rekordu różni się od statusu "
+                f"wyprowadzonego regułą agregacji („{pochodne.etykieta.etykieta_pl}”, krok "
+                f"reguły „{nazwa_kroku_reguly(pochodne.krok)}”)."
             )
         if self.kryteria_naruszone != pochodne.naruszone:
             raise ValueError(
-                f"Wymaganie {self.wymaganie_id}: kryteria naruszone {list(self.kryteria_naruszone)}"
-                f" różnią się od wyprowadzonych {list(pochodne.naruszone)}."
+                f"Wymaganie {self.wymaganie_id}: kryteria naruszone "
+                f"{', '.join(f'„{k}”' for k in self.kryteria_naruszone) or 'brak'} różnią się od "
+                f"wyprowadzonych {', '.join(f'„{k}”' for k in pochodne.naruszone) or 'brak'}."
             )
         if self.kryterium_najblizej_granicy != pochodne.najblizej:
             raise ValueError(
@@ -1143,8 +1285,9 @@ class WynikWymagania(_RekordWerdyktu):
         if self.wyjasnienie.zastrzezenia != pochodne.zastrzezenia:
             raise ValueError(
                 f"Wymaganie {self.wymaganie_id}: zastrzeżenia muszą być wyprowadzone z pól "
-                f"rekordu — oczekiwano {list(pochodne.zastrzezenia)}, jest "
-                f"{list(self.wyjasnienie.zastrzezenia)}."
+                "rekordu — oczekiwano "
+                f"{'; '.join(f'„{z}”' for z in pochodne.zastrzezenia) or 'brak'}, jest "
+                f"{'; '.join(f'„{z}”' for z in self.wyjasnienie.zastrzezenia) or 'brak'}."
             )
         skladowe = {ocena.kryterium_id: ocena for ocena in self.oceny_skladowe}
         for kryterium_id in self.kryteria_naruszone:
@@ -1183,7 +1326,8 @@ class WynikWymagania(_RekordWerdyktu):
             raise ValueError(
                 f"Wymaganie {self.wymaganie_id}: oceny składowe są puste wyłącznie przy "
                 "statusie „nie dotyczy” albo sposobie wykazania „brak metody” — sposób "
-                f"{self.sposob_wykazania} wymaga co najmniej jednej oceny składowej."
+                f"„{NAZWA_METODY_PL[self.sposob_wykazania]}” wymaga co najmniej jednej oceny "
+                "składowej."
             )
         if self.sposob_wykazania == "BRAK_METODY" and self.podstawa_sposobu_wykazania is not None:
             raise ValueError(
@@ -1194,18 +1338,21 @@ class WynikWymagania(_RekordWerdyktu):
         if len(set(identyfikatory)) != len(identyfikatory):
             raise ValueError(
                 f"Wymaganie {self.wymaganie_id}: powtórzony identyfikator kryterium składowego "
-                f"({identyfikatory})."
+                f"({', '.join(sorted({i for i in identyfikatory if identyfikatory.count(i) > 1}))})."
             )
         if self.sposob_wykazania not in METODY_WYKAZANIA:
-            dozwolone = ", ".join(m for m in KOLEJNOSC_METOD if m in METODY_WYKAZANIA)
+            dozwolone = ", ".join(
+                f"„{NAZWA_METODY_PL[m]}”" for m in KOLEJNOSC_METOD if m in METODY_WYKAZANIA
+            )
             raise ValueError(
-                f"Wymaganie {self.wymaganie_id}: {self.sposob_wykazania} nie jest sposobem "
-                f"wykazania wymagania — dozwolone: {dozwolone}."
+                f"Wymaganie {self.wymaganie_id}: „{NAZWA_METODY_PL[self.sposob_wykazania]}” "
+                f"nie jest sposobem wykazania wymagania — dozwolone: {dozwolone}."
             )
         if self.dowod.metoda != self.sposob_wykazania:
             raise ValueError(
-                f"Wymaganie {self.wymaganie_id}: metoda dowodu {self.dowod.metoda} różni się od "
-                f"sposobu wykazania {self.sposob_wykazania}."
+                f"Wymaganie {self.wymaganie_id}: metoda dowodu "
+                f"„{NAZWA_METODY_PL[self.dowod.metoda]}” różni się od sposobu wykazania "
+                f"„{NAZWA_METODY_PL[self.sposob_wykazania]}”."
             )
         if (
             self.dowod.poziom is EvidenceTier.TYPE_TEST_CERTIFICATE
@@ -1217,7 +1364,7 @@ class WynikWymagania(_RekordWerdyktu):
         ):
             raise ValueError(
                 f"Wymaganie {self.wymaganie_id}: dowód łączony ma poziom "
-                f"{EvidenceTier.TYPE_TEST_CERTIFICATE.value} bez stosowalnej składowej "
+                f"„{EvidenceTier.TYPE_TEST_CERTIFICATE.label_pl}” bez stosowalnej składowej "
                 "wykazanej certyfikatem — rekord bez certyfikatu nie niesie poziomu certyfikatu."
             )
         self._sprawdz_pokrycie(dotyczy)
@@ -1233,7 +1380,8 @@ class WynikWymagania(_RekordWerdyktu):
             if self.pokrycie_programu != "NIE_DOTYCZY":
                 raise ValueError(
                     f"Wymaganie {self.wymaganie_id}: wymaganie wykazywane "
-                    f"({self.sposob_wykazania}) nie ma programu badań — pokrycie ma status "
+                    f"(„{NAZWA_METODY_PL[self.sposob_wykazania]}”) nie ma programu badań — "
+                    "pokrycie ma status "
                     "„nie dotyczy”."
                 )
         symulacja_w_dowodzie = self.sposob_wykazania == "SYMULACJA" or any(
@@ -1258,7 +1406,8 @@ class WynikWymagania(_RekordWerdyktu):
             if pominiete:
                 raise ValueError(
                     f"Wymaganie {self.wymaganie_id}: zakres ważności agregatu pomija wykluczenia "
-                    f"składnika {ocena.kryterium_id}: {pominiete} — agregat nie może być opisany "
+                    f"składnika {ocena.kryterium_id}: {'; '.join(f'„{w}”' for w in pominiete)} "
+                    "— agregat nie może być opisany "
                     "szerzej niż jego składniki."
                 )
             dziedzina = self.zakres_waznosci.rodzaj_analizy
@@ -1269,7 +1418,8 @@ class WynikWymagania(_RekordWerdyktu):
                 and dziedzina != dziedzina_skladnika
             ):
                 raise ValueError(
-                    f"Wymaganie {self.wymaganie_id}: zakres agregatu ({dziedzina}) inny niż "
-                    f"zakres składnika {ocena.kryterium_id} ({dziedzina_skladnika}) — dla "
+                    f"Wymaganie {self.wymaganie_id}: zakres agregatu "
+                    f"({NAZWA_DZIEDZINY_PL[dziedzina]}) inny niż zakres składnika "
+                    f"{ocena.kryterium_id} ({NAZWA_DZIEDZINY_PL[dziedzina_skladnika]}) — dla "
                     "składników z różnych dziedzin rodzaj analizy agregatu pozostaje pusty."
                 )

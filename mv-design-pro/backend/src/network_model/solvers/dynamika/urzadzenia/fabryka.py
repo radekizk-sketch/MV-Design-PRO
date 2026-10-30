@@ -60,6 +60,7 @@ from .regulatory import (
     zbuduj_stabilizator,
 )
 from .turbina_wiatrowa import (
+    NAZWY_TYPOW_TURBINY_PL,
     TYPY_BEZ_MODELU_ELEKTRYCZNEGO,
     TYPY_ZLOZALNE,
     NastawyCrowbar,
@@ -83,6 +84,29 @@ RODZINY_OBSLUGIWANE: tuple[str, ...] = (
 #: `turbina_wiatrowa`). Sa tu wymienione, zeby odmowa niosla POWOD, a nie tylko
 #: „rodzina nieznana".
 RODZINY_BEZ_MODELU: tuple[str, ...] = TYPY_BEZ_MODELU_ELEKTRYCZNEGO
+
+#: Rodziny urządzeń składanych przez rdzeń (`RODZINY_OBSLUGIWANE`) słowami projektanta —
+#: zbiór RÓWNY rejestrowi rdzenia (test w obie strony: każda pozycja rekordu
+#: `rodziny_urzadzen` ma nazwę, a nazwa rodziny, której rdzeń nie składa, byłaby fantomem).
+NAZWY_RODZIN_PL: dict[str, str] = {
+    "synchroniczna": "maszyna synchroniczna z regulatorami",
+    "przeksztaltnikowa_gfl": "przekształtnik nadążny (grid-following)",
+    "przeksztaltnikowa_gfm": "przekształtnik tworzący sieć (grid-forming)",
+    "magazyn": "magazyn energii z przekształtnikiem",
+    **{typ: NAZWY_TYPOW_TURBINY_PL[typ] for typ in TYPY_ZLOZALNE},
+}
+
+#: Każda rodzina KONTRAKTU ENM (składana i bez modelu elektrycznego) słowami projektanta —
+#: tekst odmowy wymienia rodziny nazwami, kod zostaje w polu ``obslugiwane`` szczegółów.
+NAZWY_RODZIN_KONTRAKTU_PL: dict[str, str] = {
+    **NAZWY_RODZIN_PL,
+    **{typ: NAZWY_TYPOW_TURBINY_PL[typ] for typ in RODZINY_BEZ_MODELU},
+}
+
+
+def lista_rodzin_pl(rodziny: tuple[str, ...]) -> str:
+    """Rodziny w zdaniu odmowy — nazwy projektanta w cudzysłowie, w kolejności rejestru."""
+    return ", ".join(f"„{NAZWY_RODZIN_KONTRAKTU_PL[r]}”" for r in rodziny)
 
 
 @dataclass(frozen=True)
@@ -843,7 +867,7 @@ def zbuduj_urzadzenie(
             KOD_RODZINA_NIEOBSLUGIWANA,
             f"Urządzenie {ident!r} deklaruje rodzinę parametrów dynamicznych "
             f"{rodzina!r}, dla której biblioteka nie ma modelu. Rodziny obsługiwane: "
-            f"{RODZINY_OBSLUGIWANE}",
+            f"{lista_rodzin_pl(RODZINY_OBSLUGIWANE)}",
             urzadzenie=ident,
             rodzina=rodzina,
             obslugiwane=RODZINY_OBSLUGIWANE,
@@ -874,7 +898,7 @@ def moc_znamionowa_rodziny_pu(parametry: ParametryZRodzina, s_bazowa_mva: float)
     raise OdmowaDynamiki(
         KOD_RODZINA_NIEOBSLUGIWANA,
         f"Rodzina {rodzina!r} nie niesie mocy znamionowej w kontrakcie. "
-        f"Rodziny obsługiwane: {RODZINY_OBSLUGIWANE}",
+        f"Rodziny obsługiwane: {lista_rodzin_pl(RODZINY_OBSLUGIWANE)}",
         rodzina=rodzina,
         obslugiwane=RODZINY_OBSLUGIWANE,
     )
@@ -888,6 +912,8 @@ TRYB_GFM_MASZYNA_WIRTUALNA = TRYB_MASZYNA_WIRTUALNA
 
 __all__ = [
     "INWENTARZ_POL",
+    "NAZWY_RODZIN_KONTRAKTU_PL",
+    "NAZWY_RODZIN_PL",
     "RODZINY_BEZ_MODELU",
     "RODZINY_OBSLUGIWANE",
     "TRYB_GFM_MASZYNA_WIRTUALNA",
@@ -895,5 +921,6 @@ __all__ = [
     "PolaRodziny",
     "PunktPracyUrzadzenia",
     "moc_znamionowa_rodziny_pu",
+    "lista_rodzin_pl",
     "zbuduj_urzadzenie",
 ]

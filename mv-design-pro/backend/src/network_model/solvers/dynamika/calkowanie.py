@@ -269,6 +269,20 @@ def _najwieksze_residua(
     return tuple((adresy[int(i)], float(wektor_residuum[int(i)])) for i in kolejnosc)
 
 
+def _opis_residuow(residua: tuple[tuple[str, float], ...]) -> str:
+    """Największe residua W TEKŚCIE odmowy: adres stanu ``element.stan`` zostaje (tłumacz
+    odmów zamienia go na opis stanu z nazwą elementu), adres równania bilansu prądów węzła
+    (``KCL.Re[w]`` / ``KCL.Im[w]``) — słowami; pole maszynowe odmowy niesie adresy bez zmian."""
+    czesci: list[str] = []
+    for adres, wartosc in residua:
+        for przedrostek, czesc in (("KCL.Re[", "rzeczywista"), ("KCL.Im[", "urojona")):
+            if adres.startswith(przedrostek) and adres.endswith("]"):
+                adres = f"bilans prądów węzła {adres[len(przedrostek):-1]} (część {czesc})"
+                break
+        czesci.append(f"{adres}: {wartosc:.3g}")
+    return "; ".join(czesci)
+
+
 def blok_algebry_po_stanie(
     kontekst: KontekstKroku,
     indeks: int,
@@ -636,7 +650,8 @@ class TrapezNiejawny:
                     KOD_KROK_NIEZBIEZNY,
                     f"Żaden nawrót nie obniżył residuum kroku przy t = {t_s} s "
                     f"(dt = {dt_s} s, iteracja {iteracja}, residuum {norma}); "
-                    f"największe residua: {_najwieksze_residua(kontekst, wektor_residuum)}.",
+                    "największe residua: "
+                    f"{_opis_residuow(_najwieksze_residua(kontekst, wektor_residuum))}.",
                     t_s=t_s,
                     dt_s=dt_s,
                     iteracja=iteracja,

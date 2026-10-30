@@ -200,7 +200,7 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                     "jedno źródło sieciowe na wyspę — w wyspie szyn "
                     f"{szyny}{', …' if len(wyspa.szyny) > 5 else ''} "
                     f"są źródła {zrodla} "
-                    "(kod 'source.multiple_grid_sources_in_island')"
+                    "(kod gotowości: source.multiple_grid_sources_in_island)"
                 )
                 blockers.extend(wyspa.zrodla_sieciowe)
                 has_critical_blocker = True
@@ -219,7 +219,7 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 opis_odmowy_agregatu_zip(
                     odmowa, lambda ref: nazwa_po_identyfikatorze(ref, indeks=nazwy_zip)
                 )
-                + f" (kod '{KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY}')"
+                + f" (kod gotowości: {KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY})"
             )
             blockers.extend(odmowa.odbiory)
     for branch in enm.branches:
@@ -236,7 +236,7 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     for gen in enm.generators:
         if _generator_q_mvar_jawne(gen) is None:
             missing.append(
-                f"Q generatora '{nazwa_elementu(gen, 'generators')}' (kod 'generator.q_missing')"
+                f"Q generatora '{nazwa_elementu(gen, 'generators')}' (kod gotowości: generator.q_missing)"
             )
             blockers.append(gen.ref_id)
     # D6: falownik PV bez trybu sterowania (control_mode) => BLOCKER
@@ -254,7 +254,7 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             if card.get("control_mode") is None:
                 missing.append(
                     f"tryb sterowania falownika '{nazwa_elementu(gen, 'generators')}' "
-                    "(kod 'pv.control_mode_missing')"
+                    "(kod gotowości: pv.control_mode_missing)"
                 )
                 blockers.append(gen.ref_id)
 
@@ -355,7 +355,7 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         if gen.catalog_ref is None:
             missing.append(
                 f"katalog konwertera '{nazwa_elementu(gen, 'generators')}' "
-                "(kod 'inverter.k_sc_missing')"
+                "(kod gotowości: inverter.k_sc_missing)"
             )
             blockers.append(gen.ref_id)
         else:
@@ -383,9 +383,9 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     ]
     nota_min = (
         (
-            f" Scenariusz MIN: {len(bez_danych_min)} źródło(-a) bez S''kQmin/I''kQmin "
-            f"({', '.join(bez_danych_min)}) — Z_Q z danych MAX (kod 'source.sk_min_missing', "
-            "założenie niekonserwatywne dla czułości zabezpieczeń)."
+            f" Scenariusz MIN: źródła bez S''kQmin/I''kQmin ({len(bez_danych_min)}: "
+            f"{', '.join(bez_danych_min)}) — impedancja Z_Q przyjęta z danych scenariusza MAX "
+            "(założenie niekonserwatywne dla czułości zabezpieczeń)."
         )
         if bez_danych_min
         else ""
@@ -398,10 +398,11 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             recommended_action_pl=(
                 "Zwarcia można policzyć — WYNIK ROBOCZY. "
                 f"{len(zalozone_k_sc_refs)} konwerter(ów) bez miarodajnej deklaracji k_sc w "
-                "karcie katalogowej dostało wartość domyślną IEC 1,1 (kod 'inverter."
-                "k_sc_default_forbidden') — NIE jest to podstawa doboru aparatury, nastaw "
-                "zabezpieczeń ani pakietu dowodowego. Uzupełnij k_sc z karty producenta albo "
-                "certyfikatu jednostki wytwórczej." + nota_min
+                "karcie katalogowej dostało wartość domyślną IEC 1,1 — NIE jest to podstawa "
+                "doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Uzupełnij k_sc "
+                "z karty producenta albo certyfikatu jednostki wytwórczej."
+                + nota_min
+                + " (kod gotowości: inverter.k_sc_default_forbidden)"
             ),
         )
     return ReadinessTypeReport(
@@ -442,7 +443,7 @@ def _check_asymmetry(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     blockers: list[str] = []
     strukturalna = False
     for odmowa in diagnoza.odmowy:
-        missing.append(f"{READINESS_CODES[odmowa.kod].message_pl} (kod '{odmowa.kod}')")
+        missing.append(f"{READINESS_CODES[odmowa.kod].message_pl} (kod gotowości: {odmowa.kod})")
         blockers.extend(odmowa.elementy)
         strukturalna = strukturalna or odmowa.kod in _ODMOWY_STRUKTURALNE_NIESYMETRII
     return ReadinessTypeReport(
@@ -614,7 +615,7 @@ def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             status="blocked",
             missing_fields_pl=[
                 f"profil FRT/HVRT DER '{nazwa_po_identyfikatorze(ref, indeks=nazwy)}' "
-                "(kod 'der.dynamic_profile_missing')"
+                "(kod gotowości: der.dynamic_profile_missing)"
                 for ref in brakujace_refs
             ],
             blocking_object_refs=brakujace_refs,
@@ -710,12 +711,12 @@ def _check_dynamika_rms(
         }
         nazwy_modelu = zbuduj_indeks_nazw(migawka)
         powody = [
-            f"wytwórca „{stan.nazwa}”: {_powod_braku_modelu(stan)} (kod 'der.dynamika_missing')"
+            f"wytwórca „{stan.nazwa}”: {_powod_braku_modelu(stan)} (kod gotowości: der.dynamika_missing)"
             for stan in stany
             if stan.stan in ("brak", "odmowa")
         ] + [
             f"odbiór „{stan.nazwa}”: {_powod_braku_modelu_odbioru(stan)} "
-            "(kod 'load.dynamika_missing')"
+            "(kod gotowości: load.dynamika_missing)"
             for stan in stany_odbiorow
             if stan.stan in ("brak", "odmowa")
         ]
@@ -726,13 +727,13 @@ def _check_dynamika_rms(
             missing_fields_pl=[
                 *(
                     f"{komunikat_z_nazwami(brak.komunikat_pl, brak.elementy, nazwy_modelu)} "
-                    f"(kod '{brak.kod}')"
+                    f"(kod gotowości: {brak.kod})"
                     for brak in braki
                 ),
                 *powody,
                 *(
                     f"{nazwy[ref]}: kopia modelu dynamicznego nieaktualna wobec wiązania "
-                    f"(kod '{KOD_KOPIA_NIEAKTUALNA}')"
+                    f"(kod gotowości: {KOD_KOPIA_NIEAKTUALNA})"
                     for ref in nieaktualne
                 ),
             ],

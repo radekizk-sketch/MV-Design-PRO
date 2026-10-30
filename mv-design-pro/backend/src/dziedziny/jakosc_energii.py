@@ -87,6 +87,33 @@ WIELKOSCI_PASMOWE: frozenset[WielkoscJakosci] = frozenset(
 )
 #: Etykiety poziomów w komunikatach.
 _ETYKIETA_POZIOMU: dict[PoziomNapieciaWymagania, str] = {"NN": "nN", "SN": "SN", "WN": "WN"}
+#: Rodzaj wymagania słowami (PN-EN 61000-2-2/-2-12, PN-EN 50160, IEC TR 61000-3-6/-3-7).
+ETYKIETA_RODZAJU_WYMAGANIA: dict[RodzajWymaganiaJakosci, str] = {
+    "POZIOM_KOMPATYBILNOSCI": "poziom kompatybilności",
+    "CHARAKTERYSTYKA_NAPIECIA_ZASILANIA": "charakterystyka napięcia zasilania",
+    "POZIOM_PLANOWANIA": "poziom planowania",
+    "LIMIT_EMISJI_PRZYDZIELONY": "limit emisji przydzielony instalacji",
+    "LIMIT_EMISJI_URZADZENIA": "limit emisji urządzenia",
+}
+#: Rodzaj oceny słowami.
+ETYKIETA_RODZAJU_OCENY: dict[RodzajOceny, str] = {
+    "EMISJA_INSTALACJI": "emisja instalacji",
+    "EMISJA_URZADZENIA": "emisja urządzenia",
+    "KOMPATYBILNOSC_SIECI": "kompatybilność sieci",
+}
+#: Punkt pomiaru słowami.
+ETYKIETA_PUNKTU_POMIARU: dict[PunktPomiaruWymagania, str] = {
+    "ZACISKI_ZASILANIA_ODBIORCY": "zaciski zasilania odbiorcy",
+    "PUNKT_PRZYLACZENIA": "punkt przyłączenia",
+    "ZACISKI_URZADZENIA": "zaciski urządzenia",
+    "SZYNA_ZASILAJACA": "szyna zasilająca",
+}
+#: Podmiot wymagania słowami.
+ETYKIETA_PODMIOTU: dict[PodmiotWymagania, str] = {
+    "OSD": "operator systemu dystrybucyjnego",
+    "PODMIOT_PRZYLACZANY": "podmiot przyłączany",
+    "URZADZENIE": "urządzenie",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -165,9 +192,12 @@ class WymaganieJakosciEnergii(KontraktDziedziny):
             )
         czestotliwosci = [p.f_hz for p in tabela]
         if len(set(czestotliwosci)) != len(czestotliwosci):
+            powtorzone = sorted({f for f in czestotliwosci if czestotliwosci.count(f) > 1})
             raise ValueError(
                 naruszenie(
-                    "jakosc.wpis", f"Tabela limitów powtarza częstotliwości: {czestotliwosci} Hz."
+                    "jakosc.wpis",
+                    "Tabela limitów powtarza częstotliwości: "
+                    f"{', '.join(f'{f:g}' for f in powtorzone)} Hz.",
                 )
             )
         return tuple(sorted(tabela, key=lambda p: p.f_hz))
@@ -222,7 +252,8 @@ class WymaganieJakosciEnergii(KontraktDziedziny):
                 naruszenie(
                     "jakosc.wpis",
                     f"Wpis '{self.ident}': limit emisji urządzenia adresowany do podmiotu "
-                    f"{self.podmiot} — limit urządzenia dotyczy urządzenia.",
+                    f"„{ETYKIETA_PODMIOTU[self.podmiot]}” — limit urządzenia dotyczy "
+                    "urządzenia.",
                 )
             )
         return self
@@ -290,7 +321,8 @@ def naruszenia_przenoszenia(
     ocena = przedmiot.rodzaj_oceny
     if rodzaj == "LIMIT_EMISJI_URZADZENIA" and ocena != "EMISJA_URZADZENIA":
         powody.append(
-            "urządzenie ≠ instalacja: limit emisji urządzenia nie jest kryterium oceny " f"{ocena}"
+            "urządzenie ≠ instalacja: limit emisji urządzenia nie jest kryterium oceny "
+            f"„{ETYKIETA_RODZAJU_OCENY[ocena]}”"
         )
     if rodzaj == "LIMIT_EMISJI_PRZYDZIELONY" and ocena == "EMISJA_URZADZENIA":
         powody.append(
@@ -300,17 +332,20 @@ def naruszenia_przenoszenia(
     if rodzaj in RODZAJE_STANU_SIECI and ocena in OCENY_EMISJI:
         powody.append(
             "kompatybilność/charakterystyka ≠ emisja: wpis opisuje stan sieci "
-            f"({rodzaj}), a ocena dotyczy emisji ({ocena})"
+            f"({ETYKIETA_RODZAJU_WYMAGANIA[rodzaj]}), a ocena dotyczy emisji "
+            f"({ETYKIETA_RODZAJU_OCENY[ocena]})"
         )
     if rodzaj in RODZAJE_EMISJI and ocena == "KOMPATYBILNOSC_SIECI":
         powody.append("emisja ≠ kompatybilność: limit emisji nie opisuje stanu sieci")
     if wymaganie.punkt_pomiaru != przedmiot.punkt:
         powody.append(
-            f"punkt pomiaru wpisu ({wymaganie.punkt_pomiaru}) ≠ punkt oceny ({przedmiot.punkt})"
+            f"punkt pomiaru wpisu ({ETYKIETA_PUNKTU_POMIARU[wymaganie.punkt_pomiaru]}) ≠ "
+            f"punkt oceny ({ETYKIETA_PUNKTU_POMIARU[przedmiot.punkt]})"
         )
     if wymaganie.podmiot != przedmiot.podmiot:
         powody.append(
-            f"wymaganie adresowane do {wymaganie.podmiot}, oceniany podmiot {przedmiot.podmiot}"
+            f"wymaganie adresowane do: {ETYKIETA_PODMIOTU[wymaganie.podmiot]}, oceniany "
+            f"podmiot: {ETYKIETA_PODMIOTU[przedmiot.podmiot]}"
         )
     return tuple(powody)
 
@@ -337,6 +372,10 @@ def stosowalnosc_wymagania_jakosci(
 
 
 __all__ = [
+    "ETYKIETA_PODMIOTU",
+    "ETYKIETA_PUNKTU_POMIARU",
+    "ETYKIETA_RODZAJU_OCENY",
+    "ETYKIETA_RODZAJU_WYMAGANIA",
     "OCENY_EMISJI",
     "RODZAJE_EMISJI",
     "RODZAJE_PODSTAWY_WPISU",

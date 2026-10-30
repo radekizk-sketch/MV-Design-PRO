@@ -95,7 +95,7 @@ from application.analyses.konwencja_mocy import (
     moc_kanoniczna_punktu,
     q_netto_po_kompensacji,
 )
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.bateria_kondensatorow import tabliczka_baterii_z_rekordu
 from enm.canonical_analysis import (
     ODMOWY_OBLICZENIA_BIEGU,

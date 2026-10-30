@@ -433,7 +433,9 @@ class TestGetRunResultsEndpoint:
 
         response = client.get(f"/api/execution/runs/{run_id}/results")
         assert response.status_code == 409
-        assert "CREATED" in response.json()["detail"]
+        # Stan obliczenia słowami (`stan_przebiegu_pl`), bez kodu `CREATED`.
+        assert "utworzony, nieuruchomiony" in response.json()["detail"]
+        assert "CREATED" not in response.json()["detail"]
 
     def test_get_results_run_not_found(self, client):
         response = client.get(f"/api/execution/runs/{uuid4()}/results")

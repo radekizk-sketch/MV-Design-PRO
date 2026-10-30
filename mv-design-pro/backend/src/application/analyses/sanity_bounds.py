@@ -62,12 +62,12 @@ from analysis.sanity_bounds.short_circuit_bounds import (
     evaluate_short_circuit_current,
 )
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.power_flow_reconstruction import (
     graf_z_biegu,
     suma_mocy_czynnej_odbiorow_mw,
     wynik_rozplywu_z_biegu,
 )
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza, pola_danych_przyjetych_biegu
 from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn

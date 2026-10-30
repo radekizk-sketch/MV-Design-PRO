@@ -114,6 +114,22 @@ TYPY_ZLOZALNE: tuple[str, ...] = ("wiatr_typ_3", "wiatr_typ_4")
 TYPY_BEZ_MODELU_ELEKTRYCZNEGO: tuple[str, ...] = ("wiatr_typ_1", "wiatr_typ_2")
 #: Typ, dla ktorego crowbar ma sens fizyczny (obwod wirnika DFIG).
 TYP_Z_CROWBAR = "wiatr_typ_3"
+#: Typ turbiny wg IEC 61400-27-1 W TEKŚCIE odmowy (kod zostaje w polu ``typ`` szczegółów):
+#: każdy typ kontraktu ENM (``enm.dynamika_modele.TypIecTurbiny``) — parytet przypina
+#: ``tests/network_model/dynamika/test_nazwy_wariantow_dynamiki.py``.
+NAZWY_TYPOW_TURBINY_PL: dict[str, str] = {
+    "wiatr_typ_1": "turbina wiatrowa typu 1 (maszyna indukcyjna klatkowa wprost na sieci)",
+    "wiatr_typ_2": (
+        "turbina wiatrowa typu 2 (maszyna indukcyjna pierścieniowa z regulowaną rezystancją "
+        "wirnika)"
+    ),
+    "wiatr_typ_3": "turbina wiatrowa typu 3 (maszyna dwustronnie zasilana)",
+    "wiatr_typ_4": "turbina wiatrowa typu 4 (pełny przekształtnik)",
+}
+
+
+def _lista_typow(typy: tuple[str, ...]) -> str:
+    return ", ".join(f"„{NAZWY_TYPOW_TURBINY_PL[t]}”" for t in typy)
 
 
 def sprawdz_typ_turbiny(typ: str) -> None:
@@ -129,18 +145,18 @@ def sprawdz_typ_turbiny(typ: str) -> None:
     if typ in TYPY_BEZ_MODELU_ELEKTRYCZNEGO:
         raise OdmowaDynamiki(
             KOD_WARIANT_BEZ_PARAMETROW,
-            f"Turbina {typ!r} to maszyna indukcyjna przyłączona wprost do sieci. "
-            "Kontrakt nie niesie jej schematu zastępczego (Rs, Xs, Rr, Xr, Xm) ani "
-            "mocy znamionowej, więc prąd węzłowy nie ma z czego powstać. Zlozalne "
-            f"typy: {TYPY_ZLOZALNE}",
+            f"„{NAZWY_TYPOW_TURBINY_PL[typ]}” to maszyna indukcyjna przyłączona wprost do "
+            "sieci. Kontrakt nie niesie jej schematu zastępczego (Rs, Xs, Rr, Xr, Xm) ani "
+            "mocy znamionowej, więc prąd węzłowy nie ma z czego powstać. Typy, które da się "
+            f"złożyć: {_lista_typow(TYPY_ZLOZALNE)}",
             typ=typ,
             zlozalne=TYPY_ZLOZALNE,
         )
     if typ not in TYPY_ZLOZALNE:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Typ turbiny {typ!r} spoza zbioru kontraktu "
-            f"{(*TYPY_BEZ_MODELU_ELEKTRYCZNEGO, *TYPY_ZLOZALNE)}",
+            f"Typ turbiny {typ!r} spoza zbioru kontraktu: "
+            f"{_lista_typow((*TYPY_BEZ_MODELU_ELEKTRYCZNEGO, *TYPY_ZLOZALNE))}",
             typ=typ,
         )
 
@@ -534,15 +550,15 @@ def zbuduj_turbine_wiatrowa(
     if rdzen is None:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Turbina {typ!r} wymaga bloku przekształtnika — bez niego nie ma "
-            "sprzężenia z siecią",
+            f"„{NAZWY_TYPOW_TURBINY_PL[typ]}” wymaga bloku przekształtnika — bez niego nie "
+            "ma sprzężenia z siecią",
             typ=typ,
         )
     if crowbar is not None and typ != TYP_Z_CROWBAR:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
-            f"Crowbar dotyczy wyłącznie {TYP_Z_CROWBAR} (obwód wirnika DFIG), "
-            f"otrzymano {typ!r}",
+            f"Crowbar dotyczy wyłącznie typu „{NAZWY_TYPOW_TURBINY_PL[TYP_Z_CROWBAR]}” "
+            f"(obwód wirnika DFIG), otrzymano „{NAZWY_TYPOW_TURBINY_PL[typ]}”",
             typ=typ,
         )
     if pitch_min_deg >= pitch_max_deg:
@@ -607,6 +623,7 @@ __all__ = [
     "STAN_KATA_LOPAT",
     "STAN_MOCY_AERODYNAMICZNEJ",
     "STAN_PREDKOSCI_WIRNIKA",
+    "NAZWY_TYPOW_TURBINY_PL",
     "TYPY_BEZ_MODELU_ELEKTRYCZNEGO",
     "TYPY_ZLOZALNE",
     "TYP_Z_CROWBAR",

@@ -8,10 +8,10 @@ import json
 from typing import Any
 
 from api.parsowanie_uuid import parsuj_uuid
-from application.analyses.opis_przebiegu import stan_przebiegu_pl
 from application.result_mapping.canonical_run_to_resultset_v1 import (
     build_resultset_v1_from_canonical_run,
 )
+from domain.opis_przebiegu import stan_przebiegu_pl
 from domain.result_contract_v1_schema import generate_schema
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, HTTPException, status

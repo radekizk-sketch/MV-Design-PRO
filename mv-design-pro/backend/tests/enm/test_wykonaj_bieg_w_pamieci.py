@@ -61,7 +61,7 @@ def test_bieg_w_pamieci_liczy_wynik_bez_persystencji_i_bez_zmiany_statusu() -> N
 def test_nieobslugiwany_typ_analizy_podnosi_jawny_blad() -> None:
     kotwica = _kotwica(_siec_promieniowa())
     wariant = _wariant(kotwica, "typ_ktorego_nie_ma", {})
-    with pytest.raises(ValueError, match="Unsupported analysis type"):
+    with pytest.raises(ValueError, match="spoza słownika aplikacji"):
         wykonaj_bieg_w_pamieci(wariant)
 
 

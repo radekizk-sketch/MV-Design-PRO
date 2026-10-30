@@ -25,6 +25,7 @@ from werdykt.kontrakt import (
     SemantykaKoloru,
     StatusWerdyktu,
     Tekst,
+    nazwa_kompletnosci,
 )
 
 
@@ -106,6 +107,10 @@ SLOWNIK_ETYKIET: tuple[PozycjaSlownikaEtykiet, ...] = (
 )
 
 
+#: Poziom rekordu W TEKŚCIE (kod ``K``/``W`` zostaje w polu ``poziom``).
+_NAZWA_POZIOMU_PL: dict[PoziomRekordu, str] = {"K": "kryterium", "W": "wymagania"}
+
+
 def etykieta(
     status: StatusWerdyktu,
     kompletnosc: KompletnoscDowodu | None,
@@ -121,12 +126,14 @@ def etykieta(
     if status == "SPELNIA":
         if kompletnosc not in ("PELNY", "NIEPELNY"):
             raise ValueError(
-                f"Status SPELNIA wymaga kompletności dowodu PELNY albo NIEPELNY (podano "
-                f"{kompletnosc})."
+                "Status „spełnia” wymaga kompletności dowodu "
+                f"„{nazwa_kompletnosci('PELNY')}” albo „{nazwa_kompletnosci('NIEPELNY')}” "
+                "(podano: "
+                f"{'brak' if kompletnosc is None else nazwa_kompletnosci(kompletnosc)})."
             )
         if poziom == "W" and kompletnosc != "PELNY":
             raise ValueError(
-                "Na poziomie wymagania status SPELNIA wymaga dowodu pełnego — przy dowodzie "
+                "Na poziomie wymagania status „spełnia” wymaga dowodu pełnego — przy dowodzie "
                 "niepełnym reguła agregacji (§2.3 pkt 9) daje status „brak dowodu”."
             )
         klucz: KompletnoscDowodu | None = kompletnosc
@@ -135,4 +142,7 @@ def etykieta(
     for pozycja in SLOWNIK_ETYKIET:
         if pozycja.poziom == poziom and pozycja.status == status and pozycja.kompletnosc == klucz:
             return Etykieta(etykieta_pl=pozycja.etykieta_pl, semantyka=pozycja.semantyka)
-    raise ValueError(f"Słownik etykiet nie ma pozycji dla statusu {status} na poziomie {poziom}.")
+    raise ValueError(
+        "Słownik etykiet nie ma pozycji dla tego statusu na poziomie "
+        f"{_NAZWA_POZIOMU_PL[poziom]}."
+    )

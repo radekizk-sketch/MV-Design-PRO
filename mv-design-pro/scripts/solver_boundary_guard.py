@@ -296,6 +296,10 @@ SANCTIONED_CHANGES = {
         "tests/network_model/test_modul_zespolony_platformy.py."
         " Argument `siec_zwarciowa` obowiazkowy (bez wartosci domyslnej); pin "
         "test_ybus.py::test_build_wymaga_jawnej_reprezentacji."
+        " Karta komunikatow (commit 3, 2026-10-29): nieosiagalna galaz admitancji galezi "
+        "spoza `LineBranch`/`TransformerBranch` jako AssertionError bledu programu (dawniej "
+        "ValueError z angielskim tekstem i kodem rodzaju) z testem kompletu "
+        "tests/network_model/core/test_rodzaje_galezi_zamkniete.py. Zero zmian liczb."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
@@ -320,6 +324,15 @@ SANCTIONED_CHANGES = {
         "identyfikatora; te same predykaty w tej samej kolejnosci). Wpis do usuniecia "
         "po scaleniu do main."
     ),
+    "backend/src/network_model/solvers/frt_hvrt/": (
+        "Decyzja B-01 architekta z 2026-10-29 (karta komunikatow, commit 3): w "
+        "`FrtHvrtSolver.validate_input` (contracts.py, linie 80-100) zmienione WYLACZNIE "
+        "teksty `errors.append` (czas trwania zaklocenia, glebokosc zapadu LVRT, napiecie "
+        "wzrostu HVRT po polsku zamiast kluczy `duration`, `voltage_dip_depth_pu`); "
+        "porownanie drzew skladniowych z wymazanymi stalymi str wobec 21a236756 identyczne "
+        "(3 stale zmienione), sonda golden i determinizm bez zmian. Wpis do usuniecia po "
+        "scaleniu do main."
+    ),
     "backend/src/network_model/solvers/state_estimation_wls.py": (
         "B-01 (j) (O-59, plan A/B par. 12.2): prog chi^2 testu J(x) wylacznie z "
         "scipy.stats.chi2.ppf, bez cichej aproksymacji Wilsona-Hilferty'ego; brak scipy = "
@@ -334,6 +347,13 @@ SANCTIONED_CHANGES = {
         "goldeny, hashe i testy determinizmu bez zmian; straznik "
         "tests/enm/test_klucze_pol_w_komunikatach_src.py obejmuje rdzenie z pinem 0. Wpis do "
         "usuniecia po scaleniu do main."
+        " Decyzja B-01 architekta z 2026-10-29 (karta komunikatow, commit 3): w dwoch "
+        "odmowach `Measurement.__post_init__` wyrazenie `{self.meas_type}` WEWNATRZ argumentu "
+        "komunikatu wyjatku zastapione polska nazwa rodzaju pomiaru ze stalej rdzenia "
+        "`NAZWY_RODZAJOW_POMIARU_PL` (rdzen nie importuje warstw wyzszych ani `pochodne/`); "
+        "porownanie drzew skladniowych z wymazanym calym argumentem wywolania wyjatku "
+        "identyczne poza ta jedna dodana stala (typ wyjatku i warunek bez zmian); testy "
+        "liczbowe i determinizm WLS bez zmian."
     ),
     "backend/src/network_model/solvers/v126_academic.py": (
         "O-59 (plan A/B par. 12.2 (d)(k), karta B01-RUNDA-3 i decyzja B-01 partii 9): "
@@ -372,6 +392,12 @@ SANCTIONED_CHANGES = {
         "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
         "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
         "tests/network_model/test_modul_zespolony_platformy.py."
+        " Karta komunikatow (commit 3, 2026-10-29): odmowa rodzaju zwarcia spoza toru SC1 "
+        "po polsku z cytatem odrzuconego rodzaju; dwie nieosiagalne galezie (postac "
+        "kanoniczna bez rodzaju rdzenia, bez pradow skladowych) jako AssertionError bledu "
+        "programu z testem kompletu "
+        "tests/proof_engine/test_sc1_asymmetrical_complete.py::"
+        "test_postaci_kanoniczne_zwarc_niesymetrycznych_zamkniete. Zero zmian liczb."
     ),
     "backend/src/network_model/solvers/fault_loop_iec60364.py": (
         "W5-E-TTIT (O-59 OD-25, D-11-fault_loop-TT-IT): kasacja NotImplementedError dla "

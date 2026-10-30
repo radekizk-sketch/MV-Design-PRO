@@ -422,7 +422,8 @@ def szablony_akcji_dozorow(
     if powtorzone:
         raise OdmowaDynamiki(
             KOD_ZDARZENIE_SPRZECZNE,
-            f"Dozory o powtorzonych identyfikatorach {powtorzone} — pobudzenie i przekroczenie "
+            f"Powtórzone identyfikatory dozorów {', '.join(powtorzone)} — pobudzenie "
+            "i przekroczenie "
             "nie miałyby jednoznacznego adresu",
             dozory=tuple(powtorzone),
         )
@@ -497,9 +498,8 @@ def wpisy_zdarzenia(
         if zdarzenie.typ != TYP_ZWARCIA_TROJFAZOWEGO:
             raise OdmowaDynamiki(
                 KOD_ZWARCIE_NIESYMETRYCZNE,
-                f"Zwarcie typu {zdarzenie.typ!r} w węźle {zdarzenie.wezel!r} wymaga "
-                "składowych symetrycznych — rdzeń liczy wyłącznie zwarcia "
-                f"{TYP_ZWARCIA_TROJFAZOWEGO}",
+                f"Zwarcie niesymetryczne w węźle {zdarzenie.wezel!r} wymaga "
+                "składowych symetrycznych — rdzeń liczy wyłącznie zwarcia trójfazowe",
                 typ=zdarzenie.typ,
                 wezel=zdarzenie.wezel,
             )
@@ -833,8 +833,8 @@ def _wpisy_zwarcia_galezi(
     if zdarzenie.typ != TYP_ZWARCIA_TROJFAZOWEGO:
         raise OdmowaDynamiki(
             KOD_ZWARCIE_NIESYMETRYCZNE,
-            f"Zwarcie typu {zdarzenie.typ!r} w gałęzi {zdarzenie.galaz!r} wymaga składowych "
-            f"symetrycznych — rdzeń liczy wyłącznie zwarcia {TYP_ZWARCIA_TROJFAZOWEGO}",
+            f"Zwarcie niesymetryczne w gałęzi {zdarzenie.galaz!r} wymaga składowych "
+            "symetrycznych — rdzeń liczy wyłącznie zwarcia trójfazowe",
             typ=zdarzenie.typ,
             galaz=zdarzenie.galaz,
         )

@@ -747,8 +747,13 @@ def _wyspy_zasilone(snapshot: dict[str, Any], graph: NetworkGraph) -> list[tuple
     konflikty = [wyspa for wyspa in widok.wyspy if len(wyspa.zrodla_sieciowe) > 1]
     if konflikty:
         opis = "; ".join(
-            f"wyspa szyn [{', '.join(wyspa.szyny[:6])}{', …' if len(wyspa.szyny) > 6 else ''}]: "
-            f"źródła {', '.join(wyspa.zrodla_sieciowe)}"
+            "wyspa: "
+            + ", ".join(opis_elementu(snapshot, szyna, "szyna") for szyna in wyspa.szyny[:6])
+            + (", …" if len(wyspa.szyny) > 6 else "")
+            + " — źródła sieciowe: "
+            + ", ".join(
+                opis_elementu(snapshot, zrodlo, "źródło") for zrodlo in wyspa.zrodla_sieciowe
+            )
             for wyspa in konflikty
         )
         raise OdmowaWejsciaRozplywu(

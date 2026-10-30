@@ -281,7 +281,7 @@ def test_t15_podstawa_ustalona_bez_wydania_albo_jednostki_jest_odrzucana(
     }
     for pole in brakujace:
         del dane[pole]
-    with pytest.raises(ValidationError, match="NIEUSTALONE"):
+    with pytest.raises(ValidationError, match="bez nich stan źródła jest „nieustalone”"):
         PodstawaWymagania.model_validate(dane)
 
 
@@ -308,7 +308,9 @@ def test_t15_podstawa_nieustalona_nie_wymaga_wydania_ani_jednostki() -> None:
 @pytest.mark.parametrize("stan", ["WSKAZANE", "ZWERYFIKOWANE"])
 def test_podstawa_rodzaju_nieustalona_nie_ma_stanu_mocniejszego(stan: str) -> None:
     """Przeetykietowanie warstwy bez pochodzenia na „wskazane" nie podnosi jej stanu."""
-    with pytest.raises(ValidationError, match="NIEUSTALONA"):
+    with pytest.raises(
+        ValidationError, match="Podstawa rodzaju „warstwa o nieustalonym pochodzeniu” nie może mieć"
+    ):
         PodstawaWymagania(
             rodzaj="NIEUSTALONA",
             dokument="Profil zastany",

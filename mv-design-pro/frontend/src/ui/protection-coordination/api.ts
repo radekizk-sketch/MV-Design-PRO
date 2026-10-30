@@ -101,8 +101,12 @@ export async function getCoordinationResult(
   const response = await fetch(`${API_BASE}/${runId}`);
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Not found' }));
-    throw new Error(error.detail || `HTTP ${response.status}`);
+    const error = await response.json().catch(() => ({
+      detail: `Serwer nie zwrócił wyniku koordynacji zabezpieczeń (kod HTTP ${response.status}).`,
+    }));
+    throw new Error(
+      error.detail || `Serwer nie zwrócił wyniku koordynacji zabezpieczeń (kod HTTP ${response.status}).`,
+    );
   }
 
   const payload: unknown = await response.json();

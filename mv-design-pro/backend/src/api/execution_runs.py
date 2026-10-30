@@ -14,6 +14,7 @@ from api.odmowa_http import OdmowaHttpError
 from api.parsowanie_uuid import parsuj_uuid
 from application.execution import BiegNieDoAnulowaniaError, wykonawca_biegow
 from domain.execution import ExecutionAnalysisType, RunStatus
+from domain.opis_przebiegu import stan_przebiegu_pl
 from enm.canonical_analysis import (
     ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
     CanonicalRun,
@@ -163,9 +164,12 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
                 "i przypadku obliczeniowego, którego model niesie nastawy zabezpieczeń."
             ),
         )
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Nieobsługiwany typ analizy: {value.value}",
+    # Każdy rodzaj słownika ma gałąź wyżej (przypina
+    # `tests/api/test_rodzaje_analizy_wykonania.py`) — dotarcie tutaj to defekt programu
+    # (nowy rodzaj bez odwzorowania kanonicznego), nie odmowa danych projektanta.
+    raise AssertionError(
+        "Rodzaj analizy wykonania bez odwzorowania na rodzaj biegu kanonicznego — słownik "
+        "rodzajów i odwzorowanie rozeszły się."
     )
 
 
@@ -333,6 +337,6 @@ def get_run_results(run_id: str) -> dict[str, Any]:
     if run.status != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Wyniki niedostępne - status obliczenia: {run.status}",
+            detail=f"Wyniki niedostępne — stan obliczenia: {stan_przebiegu_pl(run.status)}.",
         )
     return build_execution_result_set(run)

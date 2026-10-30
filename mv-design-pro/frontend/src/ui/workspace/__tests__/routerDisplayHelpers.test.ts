@@ -42,8 +42,8 @@ describe('publicEntityTypeLabel', () => {
     expect(publicEntityTypeLabel('proof_pack')).toBe('Dowody inżynierskie');
   });
 
-  it('fallback przez str.replace(_) dla nieznanych', () => {
-    expect(publicEntityTypeLabel('custom_type')).toBe('custom type');
+  it('typ spoza słownika: uczciwe zdanie, nie kod z podkreślnikami zamienionymi na spacje', () => {
+    expect(publicEntityTypeLabel('custom_type')).toBe('wartość spoza słownika aplikacji');
   });
 
   it('fallback "Aktywny kontekst" gdy puste', () => {
@@ -59,8 +59,8 @@ describe('publicProofTypeTag', () => {
     expect(publicProofTypeTag('Q_U_REGULATION')).toContain('NC RfG');
   });
 
-  it('fallback dla nieznanego', () => {
-    expect(publicProofTypeTag('custom')).toBe('custom');
+  it('typ dowodu spoza słownika: uczciwe zdanie zamiast kodu', () => {
+    expect(publicProofTypeTag('custom')).toBe('wartość spoza słownika aplikacji');
   });
 });
 

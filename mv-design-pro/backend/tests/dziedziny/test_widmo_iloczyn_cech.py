@@ -154,7 +154,7 @@ def oczekiwane_odrzucenia(cechy: dict[str, Any]) -> set[str]:
         elif cechy["pomiar"] == "niepelny":
             odrzucenia.add("bez kompletu parametrów pomiaru")
     elif cechy["pomiar"] == "niepelny" and supra:
-        odrzucenia.add("wymaga pasma rozdzielczości rbw_hz")
+        odrzucenia.add("wymaga pasma rozdzielczości (RBW)")
     if cechy["fsw"] is not None and not supra:
         odrzucenia.add("częstotliwość przełączania dopuszczalna wyłącznie")
     return odrzucenia
@@ -329,7 +329,7 @@ def test_widmo_zmierzone_nie_miesza_pradu_i_napiecia() -> None:
 
 
 def test_podstawa_widma_tylko_producent_albo_zalozenie_projektowe() -> None:
-    with pytest.raises(ValidationError, match="podstawa rodzaju NORMA"):
+    with pytest.raises(ValidationError, match="podstawa rodzaju „norma”"):
         f.model(podstawa=f.podstawa(rodzaj="NORMA"))
     assert f.model(podstawa=f.podstawa(rodzaj="ZALOZENIE_PROJEKTOWE", status="NIEUSTALONE"))
 
@@ -362,3 +362,19 @@ def test_nan_i_nieskonczonosc_sa_odrzucane() -> None:
         f.skladowa(float("inf"))
     with pytest.raises(ValidationError):
         ZakresCzestotliwosci(f_min_hz=0.0, f_max_hz=float("inf"))
+
+
+def test_nazwy_rodzajow_i_baz_widma_kompletne() -> None:
+    """Każdy rodzaj modelu widmowego i każda baza amplitudy ma polską nazwę — odmowy kontraktu
+    widma nie niosą kodu wyliczenia."""
+    from typing import get_args
+
+    from dziedziny.widmo import (
+        NAZWY_ODNIESIEN_AMPLITUDY_PL,
+        NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL,
+        RodzajModeluWidmowego,
+        RodzajOdniesieniaAmplitudy,
+    )
+
+    assert set(NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL) == set(get_args(RodzajModeluWidmowego))
+    assert set(NAZWY_ODNIESIEN_AMPLITUDY_PL) == set(get_args(RodzajOdniesieniaAmplitudy))

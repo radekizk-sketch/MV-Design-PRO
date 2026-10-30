@@ -706,6 +706,22 @@ _SECTION_HASH_FIELDS: tuple[tuple[str, str, str], ...] = (
 )
 
 
+#: Sekcja archiwum W TEKŚCIE błędu integralności (klucz pliku zostaje w formacie) — każda
+#: sekcja `_SECTION_HASH_FIELDS` ma nazwę (test ``test_nazwy_sekcji_archiwum_kompletne``).
+NAZWY_SEKCJI_ARCHIWUM_PL: dict[str, str] = {
+    "project_meta": "metadane projektu",
+    "network_model": "model sieci formatu 2.x",
+    "sld_diagrams": "schematy jednokreskowe",
+    "cases": "przypadki obliczeniowe",
+    "runs": "biegi obliczeń",
+    "results": "wyniki obliczeń",
+    "proofs": "dowody obliczeń",
+    "interpretations": "interpretacje wyników",
+    "issues": "problemy i walidacje modelu",
+    "enm": "model sieci",
+}
+
+
 def verify_archive_integrity(data: dict[str, Any]) -> list[str]:
     """
     Weryfikacja integralności archiwum NA SUROWYM słowniku JSON (§0.3).
@@ -727,7 +743,7 @@ def verify_archive_integrity(data: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     fingerprints = data.get("fingerprints") or {}
     if not isinstance(fingerprints, dict):
-        return ["Błąd integralności: sekcja 'fingerprints' nie jest słownikiem"]
+        return ["Błąd integralności: sekcja odcisków archiwum nie jest słownikiem"]
 
     hashy_sekcji: dict[str, str] = {}
     for section_key, fp_field, archive_hash_key in _SECTION_HASH_FIELDS:
@@ -739,15 +755,15 @@ def verify_archive_integrity(data: dict[str, Any]) -> list[str]:
             continue
         if section_key not in data:
             errors.append(
-                f"Błąd integralności: fingerprints wymaga sekcji '{section_key}', "
-                "a archiwum jej nie zawiera"
+                "Błąd integralności: odciski archiwum wymagają sekcji "
+                f"„{NAZWY_SEKCJI_ARCHIWUM_PL[section_key]}”, a archiwum jej nie zawiera"
             )
             continue
         computed_hash = compute_hash(data[section_key])
         hashy_sekcji[archive_hash_key] = computed_hash
         if computed_hash != stored_hash:
             errors.append(
-                f"Błąd integralności sekcji '{section_key}': "
+                f"Błąd integralności sekcji „{NAZWY_SEKCJI_ARCHIWUM_PL[section_key]}”: "
                 f"oczekiwano {stored_hash}, obliczono {computed_hash}"
             )
 
@@ -760,7 +776,10 @@ def verify_archive_integrity(data: dict[str, Any]) -> list[str]:
                 f"oczekiwano {stored_archive_hash}, obliczono {computed_archive_hash}"
             )
     else:
-        errors.append("Błąd integralności: brak 'archive_hash' w fingerprints")
+        errors.append(
+            "Błąd integralności archiwum: sekcja odcisków nie niesie odcisku całego archiwum — "
+            "integralności zawartości nie da się potwierdzić."
+        )
 
     return errors
 

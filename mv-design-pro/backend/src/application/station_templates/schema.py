@@ -604,21 +604,22 @@ def _liczba_calkowita_skladu(wartosc: object, nazwa_pl: str) -> int:
     return liczba_calkowita_parametru(wartosc, nazwa_pl, klasa_bledu=NieprawidlowySkladDerError)
 
 
-def _moc_jednostki_skladu(wartosc: object, kind: str) -> float:
-    """Nastawa mocy czynnej jednostki [MW] — skończona liczba dodatnia."""
+def _moc_jednostki_skladu(wartosc: object, nazwa_pl: str) -> float:
+    """Nastawa mocy czynnej jednostki [MW] — skończona liczba dodatnia (``nazwa_pl`` —
+    nazwa technologii ze specyfikacji szablonu, ``DerKindSpec.label_pl``)."""
     if isinstance(wartosc, bool) or not isinstance(wartosc, int | float | str):
         raise NieprawidlowySkladDerError(
-            f"Moc jednostki {kind} musi być liczbą w MW (podano: {wartosc!r})."
+            f"Moc jednostki „{nazwa_pl}” musi być liczbą w MW (podano: {wartosc!r})."
         )
     try:
         moc = float(wartosc)
     except ValueError as exc:
         raise NieprawidlowySkladDerError(
-            f"Moc jednostki {kind} musi być liczbą w MW (podano: {wartosc!r})."
+            f"Moc jednostki „{nazwa_pl}” musi być liczbą w MW (podano: {wartosc!r})."
         ) from exc
     if not math.isfinite(moc) or moc <= 0.0:
         raise NieprawidlowySkladDerError(
-            f"Moc jednostki {kind} musi być dodatnia i skończona (podano: {wartosc!r} MW)."
+            f"Moc jednostki „{nazwa_pl}” musi być dodatnia i skończona (podano: {wartosc!r} MW)."
         )
     return moc
 
@@ -646,10 +647,12 @@ def _liczebnosci_der(
         zadeklarowana = params.get(f"der_{spec.kind}_count")
         if (
             zadeklarowana is not None
-            and _liczba_calkowita_skladu(zadeklarowana, f"Liczba jednostek {spec.kind}") != suma
+            and _liczba_calkowita_skladu(zadeklarowana, f"Liczba jednostek „{spec.label_pl}”")
+            != suma
         ):
             raise NieprawidlowySkladDerError(
-                f"Liczba jednostek {spec.kind} nie zgadza się z łączną liczbą modułów DER ({suma})."
+                f"Liczba jednostek „{spec.label_pl}” nie zgadza się z łączną liczbą modułów DER "
+                f"({suma})."
             )
         liczebnosci = [(spec, suma)]
     else:
@@ -658,7 +661,7 @@ def _liczebnosci_der(
                 spec,
                 _liczba_calkowita_skladu(
                     params.get(f"der_{spec.kind}_count", spec.default_count),
-                    f"Liczba jednostek {spec.kind}",
+                    f"Liczba jednostek „{spec.label_pl}”",
                 ),
             )
             for spec in specs
@@ -667,14 +670,16 @@ def _liczebnosci_der(
         if podana_suma is not None:
             podana = _liczba_calkowita_skladu(podana_suma, "Liczba modułów DER")
             if podana != suma:
-                opis = " + ".join(f"{liczba} {spec.kind}" for spec, liczba in liczebnosci)
+                opis = " + ".join(f"{liczba} × „{spec.label_pl}”" for spec, liczba in liczebnosci)
                 raise NieprawidlowySkladDerError(
                     f"Łączna liczba modułów DER ({podana}) nie jest równa sumie liczb jednostek "
                     f"poszczególnych technologii ({opis} = {suma}); określ liczby jawnie."
                 )
     for spec, liczba in liczebnosci:
         if liczba < 0:
-            raise NieprawidlowySkladDerError(f"Liczba jednostek {spec.kind} nie może być ujemna.")
+            raise NieprawidlowySkladDerError(
+                f"Liczba jednostek „{spec.label_pl}” nie może być ujemna."
+            )
     if not granice.min_value <= suma <= granice.max_value:
         raise NieprawidlowySkladDerError(
             f"Łączna liczba modułów DER ({suma}) jest poza zakresem szablonu "
@@ -703,12 +708,12 @@ def rozstrzygnij_sklad_der(
     jednostki: list[JednostkaDer] = []
     for spec, liczba in _liczebnosci_der(template, params):
         p_mw_each = _moc_jednostki_skladu(
-            params.get(f"der_{spec.kind}_p_mw_each", spec.default_p_mw_each), spec.kind
+            params.get(f"der_{spec.kind}_p_mw_each", spec.default_p_mw_each), spec.label_pl
         )
         wskazana = params.get(f"der_{spec.kind}_ref")
         if wskazana is not None and not (isinstance(wskazana, str) and wskazana.strip()):
             raise NieprawidlowySkladDerError(
-                f"Pozycja katalogu {spec.kind} musi być identyfikatorem pozycji "
+                f"Pozycja katalogu jednostki „{spec.label_pl}” musi być identyfikatorem pozycji "
                 f"(podano: {wskazana!r})."
             )
         catalog_ref = (
@@ -959,7 +964,8 @@ def dobor_toru_jednostki_der_sn(
     if not isinstance(napiecie_falownika, int | float) or napiecie_falownika <= 0:
         raise OdmowaDoboruToruDerSnError(
             "converter.un_kv_missing",
-            f"Pozycja {jednostka.catalog_ref} ({jednostka.kind}) nie niesie napięcia "
+            f"Pozycja katalogu {jednostka.catalog_ref} jednostki „{jednostka.spec.label_pl}” "
+            "nie niesie napięcia "
             "znamionowego — nie da się dobrać transformatora blokowego.",
         )
     moc_mva = _moc_wymagana_jednostki_der_mva(
@@ -968,7 +974,8 @@ def dobor_toru_jednostki_der_sn(
     if moc_mva is None or moc_mva <= 0:
         raise OdmowaDoboruToruDerSnError(
             "generator.power_missing",
-            f"Jednostka {jednostka.kind} ({jednostka.catalog_ref}) nie ma mocy wymaganej.",
+            f"Jednostka „{jednostka.spec.label_pl}” (pozycja katalogu {jednostka.catalog_ref}) "
+            "nie ma mocy wymaganej.",
         )
     wynik = dobierz_tor_der_sn(
         moc_pozorna_mva=moc_mva,

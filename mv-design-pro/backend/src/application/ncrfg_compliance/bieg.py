@@ -64,7 +64,8 @@ class NcRfgPtpireeRunResponse(NcRfgPtpireeRunResult):
         ocena = [m.der_ref for m in self.ocena_wymagan]
         if wynik != ocena:
             raise ValueError(
-                f"Ocena wymagań obejmuje moduły {ocena}, a wynik solvera moduły {wynik}."
+                f"Ocena wymagań obejmuje moduły {', '.join(ocena)}, a wynik solvera moduły "
+                f"{', '.join(wynik)} — kolejność i zbiór modułów muszą być te same."
             )
         return self
 

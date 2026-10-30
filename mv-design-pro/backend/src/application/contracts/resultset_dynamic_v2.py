@@ -53,7 +53,7 @@ from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from dziedziny import PozaDziedzinami, dziedziny_rodzaju
 from pydantic import BaseModel, Field, model_validator
 from solver_input.provenance import CapabilityEvidence
-from werdykt.kontrakt import DziedzinaFizyki
+from werdykt.kontrakt import NAZWA_DZIEDZINY_PL, DziedzinaFizyki
 
 RESULTSET_DYNAMIC_CONTRACT: Final[Literal["resultset_dynamic_v2"]] = "resultset_dynamic_v2"
 
@@ -365,11 +365,16 @@ class ResultSetDynamicV2(BaseModel):
             )
         rozne = sorted(k for k, v in self.probki.items() if len(v) != len(self.os_czasu_s))
         if rozne:
-            raise ValueError(f"Szeregi o długości innej niż oś czasu: {rozne[:5]}")
+            raise ValueError(
+                f"Szeregi o długości innej niż oś czasu: {', '.join(rozne[:5])}"
+                + (f" (i {len(rozne) - 5} kolejnych)" if len(rozne) > 5 else "")
+            )
         if self.dziedzina_fizyki != dziedzina_fizyki_dynamiki():
             raise ValueError(
-                f"Dziedzina fizyki wyniku ({self.dziedzina_fizyki}) różna od mapy dziedzin "
-                f"produktu ({dziedzina_fizyki_dynamiki()})"
+                "Dziedzina fizyki wyniku "
+                f"({', '.join(NAZWA_DZIEDZINY_PL[d] for d in self.dziedzina_fizyki)}) różna od "
+                "mapy dziedzin produktu "
+                f"({', '.join(NAZWA_DZIEDZINY_PL[d] for d in dziedzina_fizyki_dynamiki())})"
             )
         return self
 

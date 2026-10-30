@@ -100,7 +100,7 @@ type StylKarty = CSSProperties & Record<'--mvd-werdykt-kolor', string>;
 // Nazwy PL osi dowodu i słowników pomocniczych (NIE statusu werdyktu)
 // ---------------------------------------------------------------------------
 
-/** Lustro `backend/src/werdykt/wyjasnienie.py::NAZWA_METODY_PL` — te same słowa co dokument. */
+/** Lustro `backend/src/werdykt/kontrakt.py::NAZWA_METODY_PL` — te same słowa co dokument. */
 const NAZWA_METODY_PL: Readonly<Record<MetodaDowodu, string>> = {
   CERTYFIKAT: 'certyfikat urządzenia',
   RAPORT_Z_TESTU: 'raport z testu',
@@ -113,7 +113,7 @@ const NAZWA_METODY_PL: Readonly<Record<MetodaDowodu, string>> = {
   BRAK_METODY: 'brak metody',
 };
 
-/** Lustro `backend/src/werdykt/wyjasnienie.py::NAZWA_RODZAJU_PODSTAWY_PL`. */
+/** Lustro `backend/src/werdykt/kontrakt.py::NAZWA_RODZAJU_PODSTAWY_PL`. */
 const NAZWA_RODZAJU_PODSTAWY_PL: Readonly<Record<RodzajPodstawy, string>> = {
   ROZPORZADZENIE_UE: 'rozporządzenie UE',
   NORMA: 'norma',
@@ -150,7 +150,7 @@ const NAZWA_JAKOSCI_PL: Readonly<Record<FieldQuality, string>> = {
   SYSTEM_DEFAULT: 'domyślne techniczne',
 };
 
-/** Stan źródła podstawy — lustro `werdykt.wyjasnienie.NAZWA_STANU_ZRODLA_PL`. */
+/** Stan źródła podstawy — lustro `werdykt.kontrakt.NAZWA_STANU_ZRODLA_PL`. */
 export const NAZWA_STANU_ZRODLA_PL: Readonly<Record<StanZrodla, string>> = {
   ZWERYFIKOWANE: 'zweryfikowane',
   WSKAZANE: 'wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)',

@@ -119,22 +119,6 @@ KOD_DWA_GENERATORY_REGULACJI_NAPIECIA = "mapping.dwa_generatory_regulacji_napiec
 KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA = "mapping.szyna_bilansujaca_z_regulacja_napiecia"
 
 
-def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
-    """Odmowa assemblera dla źródła wskazującego nieistniejącą szynę (odbiór CV-3.3-B).
-
-    Do tej karty oba miejsca składania źródeł (Z_Q składowej zgodnej i Y0)
-    POMIJAŁY takie źródło cichym `continue` — sieć liczyła się bez zasilania,
-    bez śladu i bez kodu gotowości (klasa cichych podstawień A6-12). Walidator
-    ENM zgłasza to jako BLOKADĘ `sources.bus_missing` (kanon
-    `source.connection_missing`); assembler odmawia z nazwą, gdyby ktoś ominął
-    walidację.
-    """
-    return (
-        f"Źródło '{source_ref}' wskazuje nieistniejącą szynę '{bus_ref}' — "
-        "walidator ENM zgłasza `sources.bus_missing`; assembler nie pomija źródeł po cichu."
-    )
-
-
 def _odmowa_zerowej_impedancji_z0(element_pl: str) -> str:
     """Odmowa dla zerowej impedancji składowej zerowej elementu (Y0 = 1/Z0 nie istnieje).
 
@@ -148,11 +132,19 @@ def _odmowa_zerowej_impedancji_z0(element_pl: str) -> str:
     )
 
 
-def _odmowa_elementu_bez_szyny(rodzaj: str, ref_id: str, bus_ref: str) -> str:
-    """Odmowa assemblera dla elementu wskazujacego nieistniejaca szyne.
+def _odmowa_elementu_bez_szyny(rodzaj: str, element: object, bus_ref: str) -> str:
+    """Odmowa assemblera dla elementu (źródło, gałąź, transformator, bateria kondensatorów,
+    wytwórca) wskazującego nieistniejącą szynę — JEDNA treść dla wszystkich rodzajów
+    i obu składań (graf składowej zgodnej i Y0 składowej zerowej). Element nazwany nazwą
+    z modelu; szyny nie ma, więc wskazuje ją identyfikator po nazwie rodzaju.
 
-    TA SAMA KLASA, CO `_odmowa_zrodla_bez_szyny` — domknieta do konca (pomiar
-    2026-09-18, karta W6-3B). Odmowa dla ZRODLA istniala od CV-3.3-B, ale
+    Źródło (odbiór CV-3.3-B): oba miejsca składania źródeł (Z_Q składowej zgodnej i Y0)
+    POMIJAŁY takie źródło cichym `continue` — sieć liczyła się bez zasilania, bez śladu
+    i bez kodu gotowości (klasa cichych podstawień A6-12). Walidator ENM zgłasza to jako
+    BLOKADĘ `sources.bus_missing`; assembler odmawia, gdyby ktoś ominął walidację.
+
+    Gałęzie, transformatory, baterie i wytwórcy (pomiar 2026-09-18, karta W6-3B): odmowa
+    dla ZRODLA istniala od CV-3.3-B, ale
     galezie, transformatory i wytworcy byly nadal pomijane cichym `continue` w
     PIECIU miejscach tego modulu. Skutek jest gorszy niz brak elementu: rozplyw i
     zwarcia licza SIEC INNA NIZ ZAPISANA, bez sladu w wyniku i bez kodu
@@ -161,8 +153,10 @@ def _odmowa_elementu_bez_szyny(rodzaj: str, ref_id: str, bus_ref: str) -> str:
     miejscem, ktore moze powiedziec prawde.
     """
     return (
-        f"{rodzaj} '{ref_id}' wskazuje nieistniejącą szynę '{bus_ref}' — "
-        "assembler nie pomija elementów po cichu, bo bieg liczyłby sieć inną niż zapisana."
+        f"{opis_obiektu(element, rodzaj)} wskazuje szynę o identyfikatorze {bus_ref}, której "
+        "nie ma "
+        "w modelu — assembler nie pomija elementów po cichu, bo bieg liczyłby sieć inną "
+        "niż zapisana."
     )
 
 
@@ -541,7 +535,7 @@ def _assemble_zero_sequence_y0(
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
             brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
-            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Gałąź", branch, brakujaca))
         if from_id not in node_index or to_id not in node_index:
             continue
         from_idx = node_index[from_id]
@@ -629,7 +623,7 @@ def _assemble_zero_sequence_y0(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
         if bus_id not in node_index:
-            raise OdmowaDanychError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Źródło", source, source.bus_ref))
         # Karta FAB-D1 (D7): `bus_voltage`/`ref_to_node_id` powstają z TEGO SAMEGO
         # `enm.buses` (w. 198-199), więc szyna, która przeszła kontrolę `bus_id
         # not in node_index` wyżej, ma zawsze wpis w `bus_voltage` — sentinel
@@ -696,7 +690,7 @@ def _assemble_zero_sequence_y0(
         bus_id = ref_to_node_id.get(bateria.bus_ref)
         if bus_id is None:
             raise OdmowaDanychError(
-                _odmowa_elementu_bez_szyny("Bateria kondensatorów", bateria.ref_id, bateria.bus_ref)
+                _odmowa_elementu_bez_szyny("Bateria kondensatorów", bateria, bateria.bus_ref)
             )
         if bus_id not in node_index:
             continue
@@ -755,9 +749,7 @@ def _assemble_zero_sequence_y0(
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
         if hv_id is None or lv_id is None:
             brakujaca = trafo.hv_bus_ref if hv_id is None else trafo.lv_bus_ref
-            raise OdmowaDanychError(
-                _odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca)
-            )
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Transformator", trafo, brakujaca))
         if hv_id not in node_index or lv_id not in node_index:
             continue
         model = build_transformer_zero_seq_model(trafo)
@@ -1043,7 +1035,7 @@ def _add_generator_sc_sources(
             continue
         node_id = ref_to_node_id.get(gen.bus_ref)
         if node_id is None:
-            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Wytworca", gen.ref_id, gen.bus_ref))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Wytwórca", gen, gen.bus_ref))
         mp = gen.materialized_params or {}
         un_kv = _gen_rated_voltage_kv(gen, mp, bus_voltage_by_ref)
         if un_kv is None:
@@ -1408,6 +1400,18 @@ def map_enm_to_network_graph(
     # Collect source bus refs for SLACK identification
     source_bus_refs: set[str] = {s.bus_ref for s in enm.sources}
 
+    # Odbiór i wytwórca na szynie spoza modelu: ich moc trafiałaby do słownika mocy szyn pod
+    # kluczem szyny, której graf nie ma, i znikała bez śladu — ta sama klasa cichego
+    # pominięcia co gałąź i transformator bez szyny (`_odmowa_elementu_bez_szyny`).
+    szyny_modelu = {b.ref_id for b in enm.buses}
+    odbiory_i_wytworcy = [
+        *(("Odbiór", e, e.bus_ref) for e in sorted(enm.loads, key=lambda e: e.ref_id)),
+        *(("Wytwórca", e, e.bus_ref) for e in sorted(enm.generators, key=lambda e: e.ref_id)),
+    ]
+    for rodzaj, element, bus_ref in odbiory_i_wytworcy:
+        if bus_ref not in szyny_modelu:
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny(rodzaj, element, bus_ref))
+
     # Collect P/Q per bus from loads and generators
     bus_p: dict[str, float] = {}
     bus_q: dict[str, float] = {}
@@ -1579,7 +1583,7 @@ def map_enm_to_network_graph(
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
             brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
-            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Gałąź", branch, brakujaca))
 
         branch_id = _ref_to_uuid(branch.ref_id)
 
@@ -1711,9 +1715,7 @@ def map_enm_to_network_graph(
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
         if hv_id is None or lv_id is None:
             brakujaca = trafo.hv_bus_ref if hv_id is None else trafo.lv_bus_ref
-            raise OdmowaDanychError(
-                _odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca)
-            )
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Transformator", trafo, brakujaca))
 
         tap_changer = _map_tap_changer(trafo.tap_changer, ref_to_node_id)
         # G-STK-6: n identycznych jednostek równoległych → impedancja zastępcza
@@ -1769,7 +1771,7 @@ def map_enm_to_network_graph(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_node_id = ref_to_node_id.get(source.bus_ref)
         if bus_node_id is None:
-            raise OdmowaDanychError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Źródło", source, source.bus_ref))
 
         # Find bus voltage
         bus_voltage_kv = 0.0

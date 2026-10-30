@@ -225,7 +225,8 @@ def generate_bess_modes_proof(
                 "nie da się potwierdzić"
             )
             issues.append(
-                f"Tryb '{mode.label_pl}' wymaga PCS 4-quadrant (PCS DER {der_nazwa}: {powod})."
+                f"Tryb '{mode.label_pl}' wymaga przekształtnika czterokwadrantowego "
+                f"(przekształtnik źródła {der_nazwa}: {powod})."
             )
         if mode.requires_grid_forming and spec.pcs_grid_forming is not True:
             powod = (
@@ -235,7 +236,8 @@ def generate_bess_modes_proof(
                 "nie da się potwierdzić"
             )
             issues.append(
-                f"Tryb '{mode.label_pl}' wymaga PCS grid-forming (PCS DER {der_nazwa}: {powod})."
+                f"Tryb '{mode.label_pl}' wymaga przekształtnika tworzącego sieć "
+                f"(przekształtnik źródła {der_nazwa}: {powod})."
             )
         selected_modes.append(mode.to_dict())
 
@@ -253,9 +255,11 @@ def generate_bess_modes_proof(
 
     pass_status = len(issues) == 0
     summary = (
-        f"OK: DER {der_nazwa} ma {len(selected_modes)} trybów zgodnych ze zdolnościami PCS."
+        f"Źródło {der_nazwa}: wybrane tryby pracy ({len(selected_modes)}) są zgodne ze "
+        "zdolnościami przekształtnika."
         if pass_status
-        else f"BLOKER: DER {der_nazwa} — {len(issues)} problemów z trybami BESS."
+        else f"Źródło {der_nazwa}: tryby pracy magazynu energii niezgodne ze zdolnościami "
+        f"przekształtnika (liczba niezgodności: {len(issues)})."
     )
 
     return Audit2ProofResult(

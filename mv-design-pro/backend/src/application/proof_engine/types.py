@@ -42,6 +42,37 @@ class ProofType(StrEnum):
     OVERHEAD_LINE_PARAMETERS = "OVERHEAD_LINE_PARAMETERS"
 
 
+#: Nazwa rodzaju dowodu dla projektanta (komunikaty oceny normatywnej, raporty) — wartość
+#: ``ProofType`` jest kodem maszynowym i nie stoi w zdaniu. Kompletność wobec wyliczenia
+#: przypina ``tests/proof_engine/test_nazwy_rodzajow_dowodu.py``.
+NAZWY_RODZAJOW_DOWODU_PL: dict[ProofType, str] = {
+    ProofType.SC3F_IEC60909: "zwarcie trójfazowe (IEC 60909)",
+    ProofType.VDROP: "spadek napięcia",
+    ProofType.LOAD_FLOW_VOLTAGE: "napięcia węzłów z rozpływu mocy",
+    ProofType.SC1F_IEC60909: "zwarcie jednofazowe z ziemią (IEC 60909)",
+    ProofType.SC2F_IEC60909: "zwarcie dwufazowe (IEC 60909)",
+    ProofType.SC2FG_IEC60909: "zwarcie dwufazowe z ziemią (IEC 60909)",
+    ProofType.Q_U_REGULATION: "regulacja mocy biernej Q(U)",
+    ProofType.EQUIPMENT_PROOF: "dobór aparatury (wytrzymałość zwarciowa)",
+    ProofType.LOAD_CURRENTS_OVERLOAD: "prądy obciążenia i przeciążenia",
+    ProofType.LOSSES_ENERGY: "straty mocy i energii",
+    ProofType.PROTECTION_OVERCURRENT: "zabezpieczenia nadprądowe",
+    ProofType.EARTHING_GROUND_FAULT_SN: "zwarcie doziemne w sieci SN",
+    ProofType.AUDIT2_BESS_OPERATION_MODES: "tryby pracy magazynu energii",
+    ProofType.AUDIT2_TAP_CHANGER_PLAN: "plan nastaw przełącznika zaczepów",
+    ProofType.AUDIT2_HOSTING_CAPACITY_EXPORT: "zdolność przyłączeniowa (oddawanie mocy)",
+    ProofType.AUDIT2_DEVICE_WITHSTAND: "wytrzymałość zwarciowa urządzeń",
+    ProofType.AUDIT2_VT_GROUNDING_VALIDATION: "uziemienie przekładników napięciowych",
+    ProofType.LV_CIRCUIT_VERIFICATION: "weryfikacja obwodu nN",
+    ProofType.OVERHEAD_LINE_PARAMETERS: "parametry linii napowietrznej z geometrii słupa",
+}
+
+
+def nazwa_rodzaju_dowodu_pl(rodzaj: ProofType) -> str:
+    """Nazwa rodzaju dowodu po polsku (``NAZWY_RODZAJOW_DOWODU_PL``)."""
+    return NAZWY_RODZAJOW_DOWODU_PL[rodzaj]
+
+
 class LoadElementKind(StrEnum):
     """Rodzaj elementu dla P15: LINE, CABLE, TRANSFORMER."""
 

@@ -26,7 +26,7 @@ from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.switchgear import SWITCHGEAR_FAMILY_REGISTRY, SwitchgearFamily
 from network_model.odmowa_pakietu import brak_pakietu_osd
 
-from .models import ReferenceFieldProfile, ReferencePack
+from .models import NAZWY_RODZAJOW_PAKIETU_PL, ReferenceFieldProfile, ReferencePack
 
 _PACKS_DIR = Path(__file__).resolve().parent / "packs"
 
@@ -91,11 +91,11 @@ def _load_packs() -> dict[str, ReferencePack]:
                 )
         elif pack.switchgear_family_ref is not None:
             raise ValueError(
-                f"Pakiet '{pack.pack_id}' (kind={pack.kind}) nie może wskazywać rodziny."
+                f"Pakiet '{pack.pack_id}' ({NAZWY_RODZAJOW_PAKIETU_PL[pack.kind]}) nie może wskazywać rodziny."
             )
         if pack.cell_configurations and pack.kind != "manufacturer":
             raise ValueError(
-                f"Pakiet '{pack.pack_id}' (kind={pack.kind}) nie może nieść "
+                f"Pakiet '{pack.pack_id}' ({NAZWY_RODZAJOW_PAKIETU_PL[pack.kind]}) nie może nieść "
                 "konfiguracji celek — to dane katalogu producenta."
             )
         for cell in pack.cell_configurations:
@@ -110,7 +110,7 @@ def _load_packs() -> dict[str, ReferencePack]:
     for pack in packs.values():
         if (pack.kind == "osd") != (operator_pakietu_osd(pack.pack_id) is not None):
             raise ValueError(
-                f"Pakiet '{pack.pack_id}' (kind={pack.kind}): identyfikator 'osd_<operator>' "
+                f"Pakiet '{pack.pack_id}' ({NAZWY_RODZAJOW_PAKIETU_PL[pack.kind]}): identyfikator 'osd_<operator>' "
                 "z operatorem listy produktu przysługuje wyłącznie pakietom OSD i każdy pakiet "
                 "OSD musi go nieść."
             )
@@ -120,7 +120,7 @@ def _load_packs() -> dict[str, ReferencePack]:
     if packs_with_profiles != [FIELD_PROFILE_PACK_ID]:
         raise ValueError(
             f"Profile pól może nieść wyłącznie pakiet '{FIELD_PROFILE_PACK_ID}' "
-            f"(znaleziono w: {packs_with_profiles})."
+            f"(znaleziono w pakietach: {', '.join(packs_with_profiles) or 'żadnym'})."
         )
     profiles = packs[FIELD_PROFILE_PACK_ID].field_profiles
     profile_ids = [p.profile_id for p in profiles]

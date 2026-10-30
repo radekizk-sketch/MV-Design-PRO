@@ -58,7 +58,10 @@ class RecommendationBuilder:
                 required_delta=None,
                 delta_unit=None,
                 expected_effect=RecommendationEffect.NOT_COMPUTED,
-                confidence_note="NOT COMPUTED: brak danych wejściowych P25/P20.",
+                confidence_note=(
+                    "Nie wyznaczono rekomendacji — brak wyników analizy wrażliwości i oceny "
+                    "normatywnej."
+                ),
             )
             summary = RecommendationSummary(total_entries=1, not_computed_count=1)
             analysis_id = compute_recommendation_id(context, fallback, ())
@@ -140,7 +143,9 @@ def _entries_from_sensitivity(view: SensitivityView) -> list[RecommendationEntry
                     required_delta=None,
                     delta_unit="%",
                     expected_effect=RecommendationEffect.NOT_COMPUTED,
-                    confidence_note="NOT COMPUTED: brak danych wejściowych P25.",
+                    confidence_note=(
+                        "Nie wyznaczono — analiza wrażliwości nie oceniła marginesu kryterium."
+                    ),
                 )
             )
             continue
@@ -149,10 +154,10 @@ def _entries_from_sensitivity(view: SensitivityView) -> list[RecommendationEntry
         required_delta = _required_delta(entry)
         if required_delta is None:
             expected = RecommendationEffect.STILL_FAIL
-            note = "Brak wiarygodnej estymacji Δ z P25 (liniowość niepewna)."
+            note = "Brak wiarygodnej estymacji Δ z analizy wrażliwości (liniowość niepewna)."
         else:
             expected = RecommendationEffect.PASS
-            note = "Wyznaczono na podstawie P25 (liniowa estymacja ±Δ%)."
+            note = "Wyznaczono z analizy wrażliwości (liniowa estymacja ±Δ%)."
         entries.append(
             RecommendationEntry(
                 parameter_id=entry.parameter_id,
@@ -178,10 +183,10 @@ def _entries_from_normative(report: NormativeReport) -> list[RecommendationEntry
         required_delta = _required_limit_delta_pct(item.observed_value, item.limit_value)
         if required_delta is None:
             expected = RecommendationEffect.NOT_COMPUTED
-            note = "NOT COMPUTED: brak obserwacji lub limitu normatywnego."
+            note = "Nie wyznaczono — brak wartości obserwowanej albo limitu normatywnego."
         else:
             expected = RecommendationEffect.PASS
-            note = "Zmiana limitu normatywnego wyznaczona z P20 (post-hoc)."
+            note = "Zmiana limitu normatywnego wyznaczona z oceny normatywnej (po obliczeniach)."
         entries.append(
             RecommendationEntry(
                 parameter_id="normative_limit",

@@ -415,6 +415,8 @@ export interface WynikArcFlash {
   readonly provenance_caveat_pl: string | null;
   readonly why_pl: string;
   readonly missing_data: readonly string[];
+  /** Te same braki co `missing_data`, nazwane przez backend dla projektanta. */
+  readonly missing_data_pl: readonly string[];
   readonly white_box: readonly KrokArcFlash[];
 }
 

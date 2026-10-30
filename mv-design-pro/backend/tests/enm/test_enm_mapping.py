@@ -16,6 +16,7 @@ from enm.models import (
     Generator,
     Load,
     OverheadLine,
+    ShuntCapacitor,
     Source,
     SwitchBranch,
     Transformer,
@@ -1004,5 +1005,146 @@ class TestZrodloBezSzyny:
                 )
             ],
         )
-        with pytest.raises(ValueError, match=r"'s1'.*'b_widmo'"):
+        with pytest.raises(
+            ValueError, match=r"Źródło „Grid” wskazuje szynę o identyfikatorze b_widmo"
+        ):
             map_enm_to_network_graph(enm)
+
+
+def _siec_bazowa(**dodatki) -> EnergyNetworkModel:
+    """Szyna SN zasilana źródłem — tło dla elementu wskazującego nieistniejącą szynę."""
+    return _make_enm(
+        buses=[
+            Bus(ref_id="b1", name="Szyna SN 1", voltage_kv=15),
+            Bus(ref_id="b2", name="Szyna SN 2", voltage_kv=15),
+            Bus(ref_id="b3", name="Szyna nN", voltage_kv=0.4),
+        ],
+        sources=[
+            Source(
+                ref_id="s1",
+                name="Sieć zasilająca",
+                bus_ref="b1",
+                model="short_circuit_power",
+                sk3_mva=200,
+                r0_ohm=0.1,
+                x0_ohm=1.0,
+            )
+        ],
+        **dodatki,
+    )
+
+
+_WISZACE = {
+    "Źródło": lambda: {
+        "sources": [
+            Source(
+                ref_id="s1",
+                name="Sieć zasilająca",
+                bus_ref="b1",
+                model="short_circuit_power",
+                sk3_mva=200,
+                r0_ohm=0.1,
+                x0_ohm=1.0,
+            ),
+            Source(
+                ref_id="s_widmo",
+                name="Źródło zapasowe",
+                bus_ref="b_widmo",
+                model="short_circuit_power",
+                sk3_mva=100,
+            ),
+        ]
+    },
+    "Gałąź": lambda: {
+        "branches": [
+            OverheadLine(
+                ref_id="ln_w",
+                name="Linia do stacji",
+                from_bus_ref="b1",
+                to_bus_ref="b_widmo",
+                length_km=1,
+                r_ohm_per_km=0.4,
+                x_ohm_per_km=0.3,
+                r0_ohm_per_km=1.2,
+                x0_ohm_per_km=0.9,
+            )
+        ]
+    },
+    "Transformator": lambda: {
+        "transformers": [
+            Transformer(
+                ref_id="t_w",
+                name="Transformator stacji",
+                hv_bus_ref="b2",
+                lv_bus_ref="b_widmo",
+                sn_mva=0.63,
+                uhv_kv=15,
+                ulv_kv=0.4,
+                uk_percent=6,
+                pk_kw=7.5,
+                vector_group="Dyn11",
+            )
+        ]
+    },
+    "Bateria kondensatorów": lambda: {
+        "shunt_capacitors": [
+            ShuntCapacitor(
+                ref_id="c_w",
+                name="Bateria kompensacyjna",
+                bus_ref="b_widmo",
+                rated_mvar=1.0,
+                rated_kv=15,
+            )
+        ]
+    },
+    "Odbiór": lambda: {
+        "loads": [
+            Load(ref_id="o_w", name="Odbiór zakładu", bus_ref="b_widmo", p_mw=0.5, q_mvar=0.1)
+        ]
+    },
+    "Wytwórca": lambda: {
+        "generators": [
+            Generator(ref_id="g_w", name="Farma PV", bus_ref="b_widmo", p_mw=1.0, q_mvar=0.0)
+        ]
+    },
+}
+
+#: Rodzaj elementu × składanie, w którym odmowa jest sprawdzana (graf składowej zgodnej
+#: albo Y0 składowej zerowej). Bateria kondensatorów nie wchodzi do grafu składowej zgodnej
+#: jako gałąź, a odbiór i wytwórca nie stampują Y0 — te pary nie istnieją w kodzie.
+_PARY_ODMOW = [
+    ("Źródło", "zgodna"),
+    ("Źródło", "zerowa"),
+    ("Gałąź", "zgodna"),
+    ("Gałąź", "zerowa"),
+    ("Transformator", "zgodna"),
+    ("Transformator", "zerowa"),
+    ("Bateria kondensatorów", "zerowa"),
+    ("Odbiór", "zgodna"),
+    ("Wytwórca", "zgodna"),
+]
+
+
+@pytest.mark.parametrize(("rodzaj", "skladanie"), _PARY_ODMOW)
+def test_element_bez_szyny_odmowa_nazywa_element_i_szyne(rodzaj: str, skladanie: str) -> None:
+    """Iloczyn: rodzaj elementu × składanie sieci. Odmowa nazywa rodzaj i element NAZWĄ
+    z modelu (nie identyfikatorem), a brakującą szynę — identyfikatorem po nazwie rodzaju
+    (nazwy brak, bo szyny brak); element nigdy nie jest pomijany cichym ``continue``."""
+    dodatki = _WISZACE[rodzaj]()
+    enm = _siec_bazowa(**{k: v for k, v in dodatki.items() if k != "sources"})
+    if "sources" in dodatki:
+        enm = enm.model_copy(update={"sources": dodatki["sources"]})
+    nazwa = next(
+        e.name for lista in dodatki.values() for e in lista if "widmo" in str(e.model_dump())
+    )
+    oczekiwane = f"{rodzaj} „{nazwa}” wskazuje szynę o identyfikatorze b_widmo"
+    if skladanie == "zgodna":
+        with pytest.raises(ValueError) as odmowa:
+            map_enm_to_network_graph(enm)
+    else:
+        graf = map_enm_to_network_graph(_siec_bazowa())
+        with pytest.raises(ValueError) as odmowa:
+            build_zero_sequence_zbus(enm, graf)
+    assert str(odmowa.value).startswith(oczekiwane), str(odmowa.value)
+    ref = next(e.ref_id for lista in dodatki.values() for e in lista if e.ref_id != "s1")
+    assert ref not in str(odmowa.value)

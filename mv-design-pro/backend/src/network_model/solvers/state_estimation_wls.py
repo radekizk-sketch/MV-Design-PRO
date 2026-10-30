@@ -74,6 +74,18 @@ class MeasurementType(StrEnum):
     Q_FLOW = "Q_FLOW"  # Q_ij — przepływ mocy biernej w gałęzi (od i do j) [pu]
 
 
+#: Rodzaj pomiaru W TEKŚCIE odmowy (kod zostaje w polu ``meas_type``) — stała rdzenia:
+#: rdzeń nie importuje warstw wyższych ani pakietu ``pochodne`` (decyzja B-01 architekta
+#: 2026-10-29); komplet przypina ``tests/test_state_estimation_wls.py``.
+NAZWY_RODZAJOW_POMIARU_PL: dict[MeasurementType, str] = {
+    MeasurementType.V_MAGNITUDE: "modułu napięcia węzła",
+    MeasurementType.P_INJECTION: "iniekcji mocy czynnej w węźle",
+    MeasurementType.Q_INJECTION: "iniekcji mocy biernej w węźle",
+    MeasurementType.P_FLOW: "przepływu mocy czynnej w gałęzi",
+    MeasurementType.Q_FLOW: "przepływu mocy biernej w gałęzi",
+}
+
+
 @dataclass(frozen=True)
 class Measurement:
     """Pojedynczy pomiar telemetryczny (warstwa wejścia, NIEzależna od solvera).
@@ -101,10 +113,14 @@ class Measurement:
             raise ValueError("Odchylenie standardowe pomiaru σ musi być dodatnie (waga W = 1/σ²).")
         is_flow = self.meas_type in (MeasurementType.P_FLOW, MeasurementType.Q_FLOW)
         if is_flow and self.bus_j is None:
-            raise ValueError(f"Pomiar przepływu {self.meas_type} wymaga węzła końcowego gałęzi j.")
+            raise ValueError(
+                f"Pomiar {NAZWY_RODZAJOW_POMIARU_PL[self.meas_type]} wymaga węzła końcowego "
+                "gałęzi j."
+            )
         if not is_flow and self.bus_j is not None:
             raise ValueError(
-                f"Pomiar {self.meas_type} nie może wskazywać węzła końcowego gałęzi j."
+                f"Pomiar {NAZWY_RODZAJOW_POMIARU_PL[self.meas_type]} nie może wskazywać węzła "
+                "końcowego gałęzi j."
             )
 
 

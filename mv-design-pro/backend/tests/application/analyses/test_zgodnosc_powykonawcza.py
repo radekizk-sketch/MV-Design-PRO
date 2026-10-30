@@ -345,7 +345,7 @@ def test_slad_galezi_bez_zacisku_i_wezla_bez_wyniku_nazywa_element_z_modelu() ->
     )["wiersze"][0]
     assert bez_wyniku["slad_pl"] == [
         "Brak kompletu danych modelowych dla węzła 'Szyna bez nazwy' "
-        "(u_pu lub napięcie znamionowe)."
+        "(napięcie w jednostkach względnych z wyniku rozpływu lub napięcie znamionowe)."
     ]
 
 
@@ -388,14 +388,14 @@ def test_przebieg_niezakonczony_blad() -> None:
 
 
 def test_brak_tolerancji_napiecia_blad() -> None:
-    with pytest.raises(ValueError, match="tolerancji napięcia"):
+    with pytest.raises(ValueError, match="tolerancji porównania napięcia"):
         build_zgodnosc_powykonawcza_view(
             _standardowy_run(), [_pomiar("bus_a", "U", 15.0, "kV")], {}
         )
 
 
 def test_brak_tolerancji_mocy_blad() -> None:
-    with pytest.raises(ValueError, match="tolerancji mocy"):
+    with pytest.raises(ValueError, match="tolerancji porównania mocy"):
         build_zgodnosc_powykonawcza_view(
             _standardowy_run(), [_pomiar("line_1", "P", 0.8, "MW")], {}
         )

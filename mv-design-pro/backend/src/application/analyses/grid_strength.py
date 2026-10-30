@@ -27,8 +27,8 @@ from analysis.grid_strength.models import (
     BusStrengthInput,
     GridStrengthContext,
 )
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.dane_przyjete_galezi import pola_danych_przyjetych_wiersza
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE

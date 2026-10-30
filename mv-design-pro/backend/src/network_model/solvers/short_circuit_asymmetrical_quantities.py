@@ -125,7 +125,10 @@ class SC1AsymmetricalQuantities:
 def normalize_sc1_fault_type(fault_type: str) -> str:
     """Normalizuje typ zwarcia asymetrycznego do postaci kanonicznej."""
     if fault_type not in _FAULT_TYPE_MAPPING:
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+        raise ValueError(
+            f"Rodzaj zwarcia {fault_type!r} spoza toru dowodowego zwarć niesymetrycznych — "
+            "tor liczy zwarcie jednofazowe z ziemią, dwufazowe i dwufazowe z ziemią."
+        )
     return _FAULT_TYPE_MAPPING[fault_type]
 
 
@@ -144,7 +147,10 @@ def _compute_equiv_impedance(
 ) -> complex:
     rodzaj = _RODZAJ_RDZENIA.get(fault_type)
     if rodzaj is None:
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+        raise AssertionError(
+            "Błąd programu: postać kanoniczna rodzaju zwarcia bez rodzaju rdzenia — "
+            "`test_postaci_kanoniczne_zwarc_niesymetrycznych_zamkniete` przypina komplet"
+        )
     if fault_type == "SC2FZ" and z2 + _tor_zerowy(z0, z_f) == 0:
         raise OdmowaDanychError(
             "Suma impedancji składowej przeciwnej i toru składowej zerowej jest równa zeru — "
@@ -183,7 +189,10 @@ def _compute_sequence_currents(
         i2 = -(z0_toru / denominator) * i1
         i0 = -(z2 / denominator) * i1
         return i1, i2, i0
-    raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+    raise AssertionError(
+        "Błąd programu: postać kanoniczna rodzaju zwarcia bez prądów składowych — "
+        "`test_postaci_kanoniczne_zwarc_niesymetrycznych_zamkniete` przypina komplet"
+    )
 
 
 def _compute_phase_currents(

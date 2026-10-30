@@ -2047,7 +2047,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `contract_fields()` na HEAD karty (`git archive`: 4394, pin zgodny) i na drzewie karty
     # (4395). Roznica zbiorow +1, -0: `WejscieZwarcia.siec_zerowa_trace` (slad WHITE BOX budowy
     # Y0/Z0 przekazywany do `raw_result["siec_zerowa"]`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4395." in wyjscie, wyjscie
+    # Karta kanalow tekstu dla projektanta (2026-10-30): 4395 -> 4393 — POMIAR `contract_fields()`
+    # na HEAD karty `21a236756` (`git archive`, z `domain/field_device.py` w zrodlach: 4395, pin
+    # zgodny) i na drzewie karty (4393). Roznica zbiorow -4, +2: `fix_code`, `fix_message_pl`,
+    # `generator_id`, `has_blocking_transformer` znikaja razem z `domain/field_device.py`
+    # (skasowany: zero konsumentow produkcyjnych, wpis zdjety z `CONTRACT_SOURCES`);
+    # `kombinacja_wniosek_pl`, `goly_aparat_wniosek_pl` (`ZdolnoscWylaczaniaDwaZdania` pakietu
+    # dowodu obwodu nN — wniosek zdania slowami zamiast kodu statusu). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4393." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2357,7 +2364,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # bateria_kondensatorow.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na drzewie karty.
         # Karta klasy surowych kluczy pol (2026-10-29): 599 -> 600 (+1 `api/parsowanie_uuid.py` —
         # piec kopii `_parse_uuid` zlaczonych w jedno); dlug i wykluczenia BEZ ZMIAN. POMIAR.
-        "Przeskanowano 600 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta kanalow tekstu dla projektanta (2026-10-30): 600 -> 599 (-1: opis rodzaju i stanu
+        # przebiegu przeniesiony z `application/analyses/opis_przebiegu.py` do `domain/` —
+        # poza korzeniami skanu, bo czyta go takze warstwa domeny). POMIAR guardem.
+        "Przeskanowano 599 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2760,7 +2770,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie galezi UI/UX z programem (2026-10-28): application 255 + 256 − 254 = 257.
         # Napiecie urzadzenia wobec sieci (2026-10-28): application 257 -> 255 (-2 skasowany
         # pakiet `application/validation_problem`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  application: pliki_skanowane=255, dlug=27 plikow/suma 81, "
+        # Karta kanalow tekstu dla projektanta (2026-10-30): application 255 -> 254 (-1
+        # `analyses/opis_przebiegu.py` przeniesiony do `domain/`); dlug i wykluczenia BEZ ZMIAN.
+        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.

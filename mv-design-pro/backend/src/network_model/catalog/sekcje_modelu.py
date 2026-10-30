@@ -49,7 +49,7 @@ from dziedziny.widmo import ModelZrodlaWidmowego
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
 from network_model.catalog.repository import CatalogRepository
-from network_model.catalog.types import POLA_TORU_MASZYNY
+from network_model.catalog.types import POLA_TORU_MASZYNY, etykieta_pola_katalogu_pl
 from network_model.catalog.wartosci_robocze import KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU
 from pydantic import BaseModel, ConfigDict
 from solver_input.provenance import resolve_card_field_quality_map
@@ -420,6 +420,129 @@ class DefinicjaSkladnika:
     @property
     def rodzaj_danych(self) -> RodzajDanychSkladnika:
         return "MODELE_WIDMOWE" if self.widmo is not None else "POLA"
+
+
+#: Nazwa składnika sekcji dla projektanta (tekst powodu statusu sekcji; kod zostaje w polu
+#: ``nazwa``). Komplet wobec ``SKLADNIKI_SEKCJI`` przypina
+#: ``tests/network_model/catalog/test_sekcje_modelu_etykiety.py``.
+ETYKIETY_SKLADNIKOW_PL: Mapping[str, str] = MappingProxyType(
+    {
+        "admitancja_zerowa": "admitancja składowej zerowej",
+        "dlawik_ograniczajacy": "dławik ograniczający prąd załączania",
+        "emisja": "emisja (widmo źródła)",
+        "galaz_poprzeczna": "gałąź poprzeczna (straty jałowe)",
+        "grupa_polaczen": "grupa połączeń",
+        "hierarchia_mocy": "hierarchia mocy (zainstalowana, znamionowa, przyłączeniowa, osiągalna)",
+        "impedancja": "impedancja podłużna",
+        "impedancja_rms": "impedancja do dynamiki RMS",
+        "impedancja_wewnetrzna_z_karty": "impedancja wewnętrzna z karty widmowej",
+        "impedancja_zwarciowa": "impedancja zwarciowa",
+        "krzywa_pq": "krzywa zdolności P-Q",
+        "magazyn": "parametry magazynu energii",
+        "migotanie": "współczynnik migotania",
+        "moc": "moc czynna",
+        "moc_bierna": "moc bierna",
+        "moc_zwarciowa_max": "moc zwarciowa maksymalna",
+        "moc_zwarciowa_min": "moc zwarciowa minimalna",
+        "model_dynamiczny": "model dynamiczny",
+        "model_odbioru": "model napięciowy odbioru",
+        "model_zwarciowy": "model wkładu zwarciowego",
+        "napiecie_znamionowe": "napięcie znamionowe",
+        "obciazalnosc": "obciążalność prądowa",
+        "obciazalnosc_pradowa": "obciążalność prądowa (C-rate)",
+        "parametry_z_conv": "parametry impedancji wewnętrznej przekształtnika",
+        "parametry_znamionowe": "parametry znamionowe",
+        "pojemnosc": "pojemność magazynu",
+        "prad_zwarciowy": "prąd zwarciowy",
+        "przelacznik_zaczepow": "przełącznik zaczepów",
+        "przewod_powrotny": "przewód powrotny",
+        "regulacja": "regulacja mocy biernej i częstotliwości",
+        "rozladowanie": "rozładowanie",
+        "skladowa_zerowa": "impedancja składowej zerowej",
+        "statyzmy_gfm": "statyzmy przekształtnika formującego sieć",
+        "straty": "straty",
+        "tolerancja_pojemnosci": "tolerancja pojemności",
+        "tor_maszyny": "tor maszyny za przekształtnikiem",
+        "udzial_zwarciowy": "udział zwarciowy k_sc",
+        "uklad_polaczen": "układ połączeń",
+        "wytrzymalosc_cieplna": "wytrzymałość cieplna",
+        "zaleznosc_napieciowa_i_czestotliwosciowa": (
+            "zależność napięciowa i częstotliwościowa odbioru"
+        ),
+        "zdolnosc_bierna": "zdolność do generacji mocy biernej",
+        "znamiona_konstrukcyjne": "znamiona konstrukcyjne",
+    }
+)
+#: Nazwa pola sekcji, którego tabliczka katalogowa nie opisuje (``etykieta_pola_katalogu_pl``
+#: zwraca ``None``) — dopełnienie jednego źródła nazw pól w powodzie statusu sekcji.
+_ETYKIETY_POL_SEKCJI_PL: Mapping[str, str] = MappingProxyType(
+    {
+        "b0_siemens_per_km": "susceptancja zerowa B0 [S/km]",
+        "control_delay_ms": "opóźnienie sterowania [ms]",
+        "converter_machine_side_voltage_kv": "napięcie po stronie maszyny przekształtnika [kV]",
+        "converter_topology": "topologia przekształtnika",
+        "cos_phi_mode": "charakter cos φ (indukcyjny/pojemnościowy)",
+        "cosphi": "cos φ zadany",
+        "cosphi_max": "cos φ max",
+        "cosphi_min": "cos φ min",
+        "cosphi_p_points": "charakterystyka cos φ(P)",
+        "current_loop_bandwidth_hz": "pasmo pętli prądowej [Hz]",
+        "droop_p_f_percent": "statyzm P(f) [%]",
+        "droop_q_u_percent": "statyzm Q(U) [%]",
+        "dynamic_profile_id": "profil dynamiczny",
+        "f0_hz": "częstotliwość odniesienia modelu obciążenia [Hz]",
+        "filter_l_pu": "indukcyjność filtra wyjściowego [p.u.]",
+        "filter_r_pu": "rezystancja filtra wyjściowego [p.u.]",
+        "flicker_c": "współczynnik migotania c",
+        "generator_machine_type": "rodzaj maszyny za przekształtnikiem",
+        "generator_rated_power_mw": "moc znamionowa maszyny [MW]",
+        "generator_stator_frequency_max_hz": "maksymalna częstotliwość stojana [Hz]",
+        "generator_stator_voltage_kv": "napięcie stojana [kV]",
+        "ith_1s_a": "prąd cieplny 1 s Ith [A]",
+        "lfsm_allow_increase": "zwiększanie mocy w trybie LFSM",
+        "lfsm_deadband_hz": "strefa nieczułości LFSM [Hz]",
+        "lfsm_droop_pct": "statyzm LFSM [%]",
+        "model_dynamiczny": "model dynamiczny elementu",
+        "p_achievable_mw": "moc osiągalna [MW]",
+        "p_connection_mw": "moc przyłączeniowa [MW]",
+        "p_installed_mw": "moc zainstalowana [MW]",
+        "pll_bandwidth_hz": "pasmo pętli PLL [Hz]",
+        "pn_ac_mw": "moc znamionowa AC [MW]",
+        "pq_curve": "krzywa zdolności P-Q",
+        "q_absorbing": "zdolność poboru mocy biernej",
+        "qu_deadband_high_pu": "górna granica strefy nieczułości Q(U) [p.u.]",
+        "qu_deadband_low_pu": "dolna granica strefy nieczułości Q(U) [p.u.]",
+        "qu_q_max_mvar": "Q max charakterystyki Q(U) [Mvar]",
+        "qu_q_min_mvar": "Q min charakterystyki Q(U) [Mvar]",
+        "qu_slope_pu_per_pu": "nachylenie charakterystyki Q(U) [p.u./p.u.]",
+        "r0_ohm_per_km": "rezystancja zerowa R0 [Ω/km]",
+        "return_conductor_jth_1s_a_per_mm2": "Jth(1 s) żyły powrotnej [A/mm²]",
+        "return_conductor_r_ohm_per_km_20c": "rezystancja żyły powrotnej w 20 °C [Ω/km]",
+        "return_conductor_x_ohm_per_km": "reaktancja żyły powrotnej [Ω/km]",
+        "sc_model": "model wkładu zwarciowego",
+        "sc_pq_split": "podział wkładu zwarciowego na składowe P/Q",
+        "sc_sustained_k": "krotność prądu zwarciowego ustalonego",
+        "sc_transient_k": "krotność prądu zwarciowego przejściowego",
+        "short_circuit_model": "model źródła zwarciowego",
+        "short_circuit_temperature_c": "temperatura dopuszczalna przy zwarciu [°C]",
+        "tap_max": "zaczep maksymalny",
+        "tap_min": "zaczep minimalny",
+        "tap_step_percent": "krok zaczepu [%]",
+        "v0_pu": "napięcie odniesienia modelu obciążenia [p.u.]",
+        "voltage_hv_kv": "napięcie strony GN [kV]",
+        "voltage_lv_kv": "napięcie strony DN [kV]",
+        "voltage_loop_bandwidth_hz": "pasmo pętli napięciowej [Hz]",
+        "x0_ohm_per_km": "reaktancja zerowa X0 [Ω/km]",
+        "z0_reference_bonding": "sposób połączenia żyły powrotnej przy wyznaczeniu Z0",
+    }
+)
+
+
+def etykieta_pola_sekcji(nazwa: str) -> str:
+    """Nazwa pola sekcji dla projektanta: opis tabliczki katalogowej, a gdy go nie ma —
+    dopełnienie ``_ETYKIETY_POL_SEKCJI_PL`` (komplet wobec ``SKLADNIKI_SEKCJI`` przypięty
+    testem; pole spoza obu to błąd programu)."""
+    return etykieta_pola_katalogu_pl(nazwa) or _ETYKIETY_POL_SEKCJI_PL[nazwa]
 
 
 def _s(nazwa: str, wymagany: bool, *pola: str) -> DefinicjaSkladnika:
@@ -823,6 +946,7 @@ def wejscia_sekcji(dane: DaneUrzadzenia) -> tuple[WejscieStatusuSekcji, ...]:
                 skladniki.append(
                     SkladnikSekcji(
                         nazwa=definicja.nazwa,
+                        etykieta_pl=ETYKIETY_SKLADNIKOW_PL[definicja.nazwa],
                         wymagany=definicja.wymagany,
                         rodzaj_danych="MODELE_WIDMOWE",
                         modele=_modele_skladnika(definicja, dane.modele_widmowe),
@@ -839,10 +963,18 @@ def wejscia_sekcji(dane: DaneUrzadzenia) -> tuple[WejscieStatusuSekcji, ...]:
                     jakosc = dane.jakosci_zrodel[nazwa]
                 else:
                     jakosc = jakosci.get(_NAZWA_W_KARCIE.get(nazwa, nazwa))
-                pola.append(PoleSekcji(nazwa=nazwa, obecne=obecne, jakosc=jakosc))
+                pola.append(
+                    PoleSekcji(
+                        nazwa=nazwa,
+                        etykieta_pl=etykieta_pola_sekcji(nazwa),
+                        obecne=obecne,
+                        jakosc=jakosc,
+                    )
+                )
             skladniki.append(
                 SkladnikSekcji(
                     nazwa=definicja.nazwa,
+                    etykieta_pl=ETYKIETY_SKLADNIKOW_PL[definicja.nazwa],
                     wymagany=definicja.wymagany,
                     rodzaj_danych="POLA",
                     pola=tuple(pola),

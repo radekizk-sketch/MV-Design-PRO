@@ -91,6 +91,7 @@ import type {
   LvEnergizationState,
 } from './types';
 import type { TrafienieNn } from './operacjeNn';
+import { opisyBrakowDanychNn } from './opisyBrakowDanychNn';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 } as const;
 const HEADER_ALLOWANCE_PX = 96;
@@ -509,7 +510,8 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
   if (view.status !== 'OK') {
     return (
       <div data-testid="lv-domain-view-root" data-status="brak-danych" style={{ background: paleta.tlo, color: paleta.kreskaBazowa, padding: 24, fontFamily: 'monospace' }}>
-        Domena nN stacji „{projection.station_ref}" — brak danych ({(view.missing_data ?? []).join(', ') || 'nieznany powód'}).
+        {view.station_name ? `Domena nN stacji „${view.station_name}” — brak danych` : 'Domena nN — brak danych'}
+        {`: ${(view.reason_pl ?? opisyBrakowDanychNn(view.missing_data) ?? 'brak opisu przyczyny w odpowiedzi').replace(/\.$/, '')}.`}
       </div>
     );
   }

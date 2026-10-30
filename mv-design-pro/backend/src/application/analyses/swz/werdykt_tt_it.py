@@ -552,11 +552,14 @@ def _kryterium_drugie_zwarcie_it(
         limit=limit,
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
         dowod=_dowod_obliczenia(
-            f"I_d2 = c·U_LL/(2·|Z_s|) w punkcie „{punkt}”", dane_przyjete_petli(wynik, punkt)
+            f"I_d2 = c·U/(2·|Z_s|), U — napięcie międzyprzewodowe sieci (IEC 60364-4-41 "
+            f"§411.6.4), w punkcie „{punkt}”",
+            dane_przyjete_petli(wynik, punkt),
         ),
         zakres_waznosci=_zakres(
             "IT",
-            "Drugie zwarcie doziemne IT: pętla L-PE-L tym samym jądrem co pętla TN, napięcie napędowe U_LL/2",
+            "Drugie zwarcie doziemne IT: pętla L-PE-L tym samym jądrem co pętla TN, napięcie "
+            "napędowe U/2 (U — napięcie międzyprzewodowe sieci)",
         ),
         slad=_slad(
             wynik,

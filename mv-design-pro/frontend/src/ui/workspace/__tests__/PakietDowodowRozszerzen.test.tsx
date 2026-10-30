@@ -56,7 +56,7 @@ const PAKIET: Audit2ProjectProofPackResponse = {
       fail_count: 0,
       proof_count: 5,
       proofs: [
-        ['AUDIT2_BESS_OPERATION_MODES', 'Tryby pracy magazynu energii', 'OK: DER Magazyn Łąkowa ma 1 trybów zgodnych ze zdolnościami PCS.'],
+        ['AUDIT2_BESS_OPERATION_MODES', 'Tryby pracy magazynu energii', 'Źródło Magazyn Łąkowa: 1 trybów pracy zgodnych ze zdolnościami przekształtnika.'],
         ['AUDIT2_DEVICE_WITHSTAND', 'Wytrzymałość zwarciowa aparatury', 'Pole 02: OK: aparatura wytrzymała.'],
         ['AUDIT2_HOSTING_CAPACITY_EXPORT', 'Zdolność przyłączeniowa — eksport wobec importu', 'Eksport normalny: 100 kW eksportowanych do OSD (stosunek 1.20x).'],
         ['AUDIT2_TAP_CHANGER_PLAN', 'Plan regulacji zaczepów transformatora', 'OK: Tap-changer dla transformatora T1 Łąkowa jest zgodny z wymaganiami.'],

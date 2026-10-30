@@ -99,6 +99,7 @@ import {
 import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
 import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
 import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 // =============================================================================
 // Types
@@ -619,7 +620,7 @@ function connectionVariantLabel(variant: string | null | undefined): string {
 }
 
 function formatElementTypeLabel(elementType: string): string {
-  return ELEMENT_TYPE_LABELS[elementType] ?? elementType;
+  return etykietaZeSlownika(ELEMENT_TYPE_LABELS, elementType);
 }
 
 function connectionVariantLabelPl(variant: string | null | undefined): string {

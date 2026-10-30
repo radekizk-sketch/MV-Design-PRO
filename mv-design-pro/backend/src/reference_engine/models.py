@@ -39,6 +39,14 @@ ApparatusKind = Literal[
 ]
 
 PackKind = Literal["norm", "manufacturer", "osd"]
+#: Rodzaj pakietu W TEKŚCIE komunikatu spójności pakietów (kod zostaje w polu ``kind``
+#: pliku ``pack.json``) — komplet wobec ``PackKind`` przypina
+#: ``tests/reference_engine/test_rodzaje_pakietow_nazwy.py``.
+NAZWY_RODZAJOW_PAKIETU_PL: dict[str, str] = {
+    "norm": "pakiet normowy",
+    "manufacturer": "pakiet producencki",
+    "osd": "pakiet operatora sieci dystrybucyjnej",
+}
 
 # Kanon statusów źródła przejęty z catalog.switchgear (reguła nadrzędna
 # rejestru producentów: „nie fabrykuj danych producenta").

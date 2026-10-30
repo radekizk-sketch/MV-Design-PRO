@@ -671,13 +671,15 @@ class DeviceWithstandItem:
             odmowa_twarda(
                 "KAT-T-025",
                 f"Aparat {self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
-                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}.",
+                "szeregu IEC 62271-1 "
+                f"({', '.join(f'{x:g}' for x in IEC_62271_1_SZEREG_I_TH_KA)} kA).",
             )
         if self.i_th_duration_s not in IEC_62271_1_CZASY_ZWARCIA_S:
             odmowa_twarda(
                 "KAT-T-026",
                 f"Aparat {self.id}: czas trwania zwarcia {self.i_th_duration_s} s jest spoza "
-                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}.",
+                "znormalizowanego szeregu IEC 62271-1 "
+                f"({', '.join(f'{x:g}' for x in IEC_62271_1_CZASY_ZWARCIA_S)} s).",
             )
 
     @property
@@ -846,7 +848,8 @@ class PfCurveItem:
             odmowa_twarda(
                 "KAT-T-029",
                 f"Charakterystyka P(f) {self.id}: zakres pracy {self.f_min_hz}-{self.f_max_hz} Hz nie jest "
-                f"zakresem z załącznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}.",
+                f"zakresem z załącznika II tab. 2 ({NC_RFG_ZAKRES_PRACY_HZ[0]:g}–"
+                f"{NC_RFG_ZAKRES_PRACY_HZ[1]:g} Hz).",
             )
 
     def to_dict(self) -> dict:

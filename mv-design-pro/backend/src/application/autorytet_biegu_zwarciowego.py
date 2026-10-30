@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from network_model.core.autorytet_wyniku_zwarciowego import (
     BlokadaAutorytetu,

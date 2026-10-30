@@ -72,6 +72,7 @@ import {
   opisLacznikowPortow,
   pozycjaNormalna,
 } from '../../ui/shared/stanLacznika';
+import { etykietaZeSlownika } from '../wyniki/wzorzec/slownikWyliczen';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
 const KOLEKCJE: ReadonlyArray<{
@@ -223,7 +224,9 @@ const SKLADOWE_DANYCH_LINII_PL: Readonly<Record<string, string>> = {
 function wlasciwosciParametrowZGeometrii(el: OverheadLine): (WierszWlasciwosci | null)[] {
   const p = el.parametry_z_geometrii;
   if (!p) return [];
-  const robocze = (p.wartosci_robocze ?? []).map((k) => SKLADOWE_DANYCH_LINII_PL[k] ?? k);
+  const robocze = (p.wartosci_robocze ?? []).map((k) =>
+    etykietaZeSlownika(SKLADOWE_DANYCH_LINII_PL, k),
+  );
   return [
     wr('Parametry linii', `z geometrii słupa i przewodu z katalogu (${p.metoda} ${p.wersja_metody})`),
     wr(

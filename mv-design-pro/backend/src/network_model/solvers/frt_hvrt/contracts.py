@@ -85,18 +85,18 @@ class FrtHvrtSolverAdapter:
             errors.append("Lista scenariuszy pusta.")
         for sc in solver_input.scenarios:
             if sc.fault_duration_s <= 0:
-                errors.append(f"Scenariusz {sc.scenario_id}: duration <= 0.")
+                errors.append(f"Scenariusz {sc.scenario_id}: czas trwania zakłócenia <= 0.")
             if sc.test_kind == "lvrt":
                 if not (0.0 <= sc.voltage_dip_depth_pu <= 1.0):
                     errors.append(
-                        f"Scenariusz {sc.scenario_id}: LVRT voltage_dip_depth_pu "
-                        f"poza zakresem 0..1."
+                        f"Scenariusz {sc.scenario_id}: głębokość zapadu napięcia LVRT "
+                        f"poza zakresem 0..1 p.u."
                     )
             elif sc.test_kind == "hvrt":
                 if not (1.0 < sc.voltage_dip_depth_pu <= 1.5):
                     errors.append(
-                        f"Scenariusz {sc.scenario_id}: HVRT voltage_dip_depth_pu "
-                        f"poza zakresem 1.0..1.5."
+                        f"Scenariusz {sc.scenario_id}: napięcie wzrostu HVRT "
+                        f"poza zakresem 1.0..1.5 p.u."
                     )
         return len(errors) == 0, errors
 

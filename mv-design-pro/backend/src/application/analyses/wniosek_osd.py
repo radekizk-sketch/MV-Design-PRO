@@ -47,7 +47,6 @@ from application.analyses.certyfikat_zgodnosci import KOMUNIKAT_BEZ_MODULOW, zbi
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.grid_strength import _installed_mva_by_bus
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
-from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.sekcja_zgodnosci_ncrfg import (
     TYTUL_SEKCJI_MODULU,
     dopisz_sekcje_docx,
@@ -63,6 +62,7 @@ from application.ncrfg_compliance import (
     brak_json,
     brak_pl,
 )
+from domain.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.nazwy_elementow import opis_bez_nazwy

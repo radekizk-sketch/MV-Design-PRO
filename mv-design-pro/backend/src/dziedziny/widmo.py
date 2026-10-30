@@ -58,9 +58,17 @@ from dziedziny.kanon import (
     Skonczona,
     naruszenie,
 )
-from dziedziny.pomiar import ParametryPomiaru
+from dziedziny.pomiar import NAZWY_POL_POMIARU_PL, ParametryPomiaru
 from pydantic import field_validator, model_validator
-from werdykt.kontrakt import DziedzinaFizyki, PodstawaWymagania, RodzajPodstawy, Tekst, Wielkosc
+from werdykt.kontrakt import (
+    NAZWA_DZIEDZINY_PL,
+    NAZWA_RODZAJU_PODSTAWY_PL,
+    DziedzinaFizyki,
+    PodstawaWymagania,
+    RodzajPodstawy,
+    Tekst,
+    Wielkosc,
+)
 from werdykt.proweniencja import FieldQuality
 
 # ---------------------------------------------------------------------------
@@ -95,6 +103,46 @@ RodzinaModeluParametrycznego = Literal["Z_conv_literaturowy"]
 ParametrDomeny = Literal[
     "dziedzina", "f_hz", "baza_mocy", "p", "q", "u", "soc", "tryb", "stacjonarnosc"
 ]
+
+#: Parametr domeny modelu W TEKŚCIE (kod zostaje w polu ``PozaDomenaModelu.parametr``).
+NAZWY_PARAMETROW_DOMENY_PL: dict[ParametrDomeny, str] = {
+    "dziedzina": "dziedzina fizyki",
+    "f_hz": "częstotliwość",
+    "baza_mocy": "baza mocy punktu pracy",
+    "p": "moc czynna p",
+    "q": "moc bierna q",
+    "u": "napięcie u",
+    "soc": "stan naładowania SOC",
+    "tryb": "tryb pracy magazynu",
+    "stacjonarnosc": "stacjonarność stanu pracy",
+}
+#: Baza mocy punktu pracy W TEKŚCIE.
+NAZWY_BAZ_MOCY_PL: dict[BazaMocyPunktuPracy, str] = {
+    "S_N_URZADZENIA": "moc pozorna znamionowa urządzenia S_n",
+    "P_N_URZADZENIA": "moc czynna znamionowa urządzenia P_n",
+}
+#: Tryb pracy magazynu W TEKŚCIE.
+NAZWY_TRYBOW_MAGAZYNU_PL: dict[TrybPracyMagazynu, str] = {
+    "LADOWANIE": "ładowanie",
+    "ROZLADOWANIE": "rozładowanie",
+    "POSTOJ": "postój",
+}
+#: Rodzaj modelu widmowego W TEKŚCIE odmowy (kod zostaje w polu ``rodzaj``).
+NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL: dict[RodzajModeluWidmowego, str] = {
+    "CURRENT_SPECTRUM": "widmo prądowe",
+    "VOLTAGE_SPECTRUM": "widmo napięciowe",
+    "NORTON_EQUIVALENT": "równoważnik Nortona",
+    "THEVENIN_EQUIVALENT": "równoważnik Thévenina",
+    "MEASURED_SPECTRUM": "widmo zmierzone",
+    "FREQUENCY_DEPENDENT_EQUIVALENT": "równoważnik zależny od częstotliwości",
+}
+#: Baza amplitudy procentowej W TEKŚCIE odmowy (kod zostaje w ``odniesienie_amplitudy.rodzaj``).
+NAZWY_ODNIESIEN_AMPLITUDY_PL: dict[RodzajOdniesieniaAmplitudy, str] = {
+    "I_N_URZADZENIA": "prąd znamionowy urządzenia",
+    "I_1_W_PUNKCIE_PRACY": "prąd składowej podstawowej w punkcie pracy",
+    "U_1": "napięcie składowej podstawowej",
+    "U_N": "napięcie znamionowe",
+}
 
 #: Rodzaje modeli z częścią źródłową (składowe widma).
 RODZAJE_ZE_ZRODLEM: frozenset[RodzajModeluWidmowego] = frozenset(
@@ -277,9 +325,12 @@ class ModelParametryczny(KontraktDziedziny):
             )
         nazwy = [p.nazwa for p in parametry]
         if len(set(nazwy)) != len(nazwy):
+            powtorzone = sorted({n for n in nazwy if nazwy.count(n) > 1})
             raise ValueError(
                 naruszenie(
-                    "widmo.ksztalt", f"Parametry modelu parametrycznego powtarzają nazwy: {nazwy}."
+                    "widmo.ksztalt",
+                    "Parametry modelu parametrycznego powtarzają nazwy: "
+                    f"{'; '.join(f'„{n}”' for n in powtorzone)}.",
                 )
             )
         return tuple(sorted(parametry, key=lambda p: p.nazwa))
@@ -300,7 +351,8 @@ class OdniesienieAmplitudy(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "widmo.amplituda",
-                    f"Odniesienie amplitudy {self.rodzaj}: podaj wartość bazy ALBO pola karty, "
+                    f"Odniesienie amplitudy „{NAZWY_ODNIESIEN_AMPLITUDY_PL[self.rodzaj]}”: podaj "
+                    "wartość bazy ALBO pola karty, "
                     "z których konsument ją wyliczy — dokładnie jedno z dwóch.",
                 )
             )
@@ -310,15 +362,16 @@ class OdniesienieAmplitudy(KontraktDziedziny):
                 raise ValueError(
                     naruszenie(
                         "widmo.amplituda",
-                        f"Odniesienie amplitudy {self.rodzaj}: jednostka bazy "
-                        f"{self.wartosc.jednostka!r}, oczekiwana {oczekiwana!r}.",
+                        f"Odniesienie amplitudy „{NAZWY_ODNIESIEN_AMPLITUDY_PL[self.rodzaj]}”: "
+                        f"jednostka bazy {self.wartosc.jednostka!r}, oczekiwana {oczekiwana!r}.",
                     )
                 )
             if not self.wartosc.wartosc > 0.0:
                 raise ValueError(
                     naruszenie(
                         "widmo.amplituda",
-                        f"Odniesienie amplitudy {self.rodzaj}: baza musi być dodatnia "
+                        f"Odniesienie amplitudy „{NAZWY_ODNIESIEN_AMPLITUDY_PL[self.rodzaj]}”: baza musi "
+                        "być dodatnia "
                         f"(podano {self.wartosc.wartosc}).",
                     )
                 )
@@ -326,7 +379,9 @@ class OdniesienieAmplitudy(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "widmo.amplituda",
-                    f"Pola karty odniesienia powtarzają się: {list(self.pola_karty)}.",
+                    f"Odniesienie amplitudy „{NAZWY_ODNIESIEN_AMPLITUDY_PL[self.rodzaj]}”: pola "
+                    "karty, z których konsument wylicza bazę, powtarzają się — każde pole "
+                    "wskazuje się raz.",
                 )
             )
         return self
@@ -447,8 +502,8 @@ class ModelZrodlaWidmowego(KontraktDziedziny):
         bledy = bledy_modelu(self)
         if bledy:
             raise ValueError(
-                f"Model widmowy '{self.ident}' ({self.rodzaj}, {self.dziedzina}) odrzucony: "
-                + " | ".join(bledy)
+                f"Model widmowy '{self.ident}' ({NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL[self.rodzaj]}, "
+                f"{NAZWA_DZIEDZINY_PL[self.dziedzina]}) odrzucony: " + " | ".join(bledy)
             )
         return self
 
@@ -489,8 +544,9 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
         bledy.append(
             naruszenie(
                 "widmo.podstawa",
-                f"podstawa rodzaju {model.podstawa.rodzaj} — dane widma pochodzą z karty/raportu "
-                "producenta (KATALOG_PRODUCENTA) albo od inżyniera (ZALOZENIE_PROJEKTOWE)",
+                f"podstawa rodzaju „{NAZWA_RODZAJU_PODSTAWY_PL[model.podstawa.rodzaj]}” — dane "
+                "widma pochodzą z karty albo raportu producenta (katalog producenta) albo od "
+                "inżyniera (założenie projektowe)",
             )
         )
 
@@ -498,7 +554,9 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
     if rodzaj in RODZAJE_ZE_ZRODLEM and not ma_zrodlo:
         bledy.append(
             naruszenie(
-                "widmo.niepuste", f"rodzaj {rodzaj} wymaga niepustej listy składowych źródła"
+                "widmo.niepuste",
+                f"{NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL[rodzaj]} wymaga niepustej listy składowych "
+                "źródła",
             )
         )
     if rodzaj == "FREQUENCY_DEPENDENT_EQUIVALENT":
@@ -525,7 +583,7 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
             naruszenie(
                 "widmo.ksztalt",
                 f"model parametryczny impedancji dopuszczalny wyłącznie dla równoważnika zależnego "
-                f"od częstotliwości (rodzaj {rodzaj})",
+                f"od częstotliwości (model: {NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL[rodzaj]})",
             )
         )
     if rodzaj == "NORTON_EQUIVALENT":
@@ -576,7 +634,8 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
         bledy.append(
             naruszenie(
                 "widmo.ksztalt",
-                f"rodzaj {rodzaj} opisuje wyłącznie źródło — bez części wewnętrznej",
+                f"{NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL[rodzaj]} opisuje wyłącznie źródło — bez "
+                "części wewnętrznej",
             )
         )
 
@@ -586,14 +645,16 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
         bledy.append(
             naruszenie(
                 "widmo.amplituda",
-                f"rodzaj {rodzaj} jest źródłem prądowym — amplituda w A albo % bazy prądu",
+                f"{NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL[rodzaj]} jest źródłem prądowym — amplituda "
+                "w A albo % bazy prądu",
             )
         )
     if rodzaj in RODZAJE_NAPIECIOWE and JEDNOSTKA_PRADU in jednostki:
         bledy.append(
             naruszenie(
                 "widmo.amplituda",
-                f"rodzaj {rodzaj} jest źródłem napięciowym — amplituda w V albo % bazy napięcia",
+                f"{NAZWY_RODZAJOW_MODELU_WIDMOWEGO_PL[rodzaj]} jest źródłem napięciowym — "
+                "amplituda w V albo % bazy napięcia",
             )
         )
     if rodzaj == "MEASURED_SPECTRUM" and {JEDNOSTKA_PRADU, JEDNOSTKA_NAPIECIA} <= jednostki:
@@ -607,8 +668,8 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
         bledy.append(
             naruszenie(
                 "widmo.amplituda",
-                'amplituda w "%" bez nazwanej bazy (odniesienie_amplitudy) — goły procent jest '
-                "niejednoznaczny (% prądu znamionowego ≠ % podstawowej)",
+                'amplituda w "%" bez nazwanej bazy procentu (odniesienie amplitudy) — goły '
+                "procent jest niejednoznaczny (% prądu znamionowego ≠ % podstawowej)",
             )
         )
     if not ma_procent and model.odniesienie_amplitudy is not None:
@@ -645,7 +706,9 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
         if powtorzone:
             bledy.append(
                 naruszenie(
-                    "widmo.czestotliwosc", f"duplikat częstotliwości {nazwa}: {powtorzone} Hz"
+                    "widmo.czestotliwosc",
+                    f"duplikat częstotliwości {nazwa}: "
+                    f"{', '.join(f'{f:g}' for f in powtorzone)} Hz",
                 )
             )
         poza = [f for f in siatka if not model.zakres_czestotliwosci.zawiera(f)]
@@ -655,7 +718,8 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
                     "widmo.czestotliwosc",
                     f"częstotliwości {nazwa} poza zakresem modelu "
                     f"[{model.zakres_czestotliwosci.f_min_hz}; "
-                    f"{model.zakres_czestotliwosci.f_max_hz}] Hz: {poza}",
+                    f"{model.zakres_czestotliwosci.f_max_hz}] Hz: "
+                    f"{', '.join(f'{f:g}' for f in poza)} Hz",
                 )
             )
 
@@ -674,7 +738,7 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
         bledy.append(
             naruszenie(
                 "widmo.faza",
-                "faza składowych podana bez wielkości odniesienia fazy (odniesienie_fazy)",
+                "faza składowych podana bez wielkości odniesienia fazy",
             )
         )
     if model.odniesienie_fazy is not None and all(s.faza_deg is None for s in model.skladowe):
@@ -699,14 +763,15 @@ def bledy_modelu(model: ModelZrodlaWidmowego) -> list[str]:
                 bledy.append(
                     naruszenie(
                         "widmo.pomiar",
-                        f"widmo zmierzone bez kompletu parametrów pomiaru: {list(braki)}",
+                        "widmo zmierzone bez kompletu parametrów pomiaru: "
+                        f"{', '.join(NAZWY_POL_POMIARU_PL[b] for b in braki)}",
                     )
                 )
     elif model.pomiar is not None and supraharmoniczna and model.pomiar.rbw_hz is None:
         bledy.append(
             naruszenie(
                 "widmo.pomiar",
-                "pomiar w dziedzinie supraharmonicznej wymaga pasma rozdzielczości rbw_hz",
+                "pomiar w dziedzinie supraharmonicznej wymaga pasma rozdzielczości (RBW)",
             )
         )
 
@@ -775,7 +840,8 @@ def _poza_punktem_pracy(
     if domena.baza_mocy != zapytanie.baza_mocy:
         return (
             "baza_mocy",
-            f"punkt pracy w bazie {zapytanie.baza_mocy}, model w bazie {domena.baza_mocy}",
+            f"punkt pracy w bazie: {NAZWY_BAZ_MOCY_PL[zapytanie.baza_mocy]}, model w bazie: "
+            f"{NAZWY_BAZ_MOCY_PL[domena.baza_mocy]}",
         )
     if not domena.p.zawiera(zapytanie.p):
         return ("p", f"p = {zapytanie.p} poza przedziałem modelu {domena.p.zapis_pl()}")
@@ -790,13 +856,25 @@ def _poza_punktem_pracy(
         if wartosc is None:
             return (
                 nazwa,
-                f"model deklaruje przedział {nazwa} {przedzial.zapis_pl()}, a punkt pracy "
-                f"nie podaje {nazwa} — przynależność nieustalona",
+                f"model deklaruje przedział ({NAZWY_PARAMETROW_DOMENY_PL[nazwa]}) "
+                f"{przedzial.zapis_pl()}, a punkt pracy go nie podaje — przynależność "
+                "nieustalona",
             )
         if not przedzial.zawiera(wartosc):
-            return (nazwa, f"{nazwa} = {wartosc} poza przedziałem modelu {przedzial.zapis_pl()}")
+            return (
+                nazwa,
+                f"{NAZWY_PARAMETROW_DOMENY_PL[nazwa]} = {wartosc} poza przedziałem modelu "
+                f"{przedzial.zapis_pl()}",
+            )
     if domena.tryb is not None and domena.tryb != zapytanie.tryb:
-        return ("tryb", f"tryb pracy {zapytanie.tryb}, model dla trybu {domena.tryb}")
+        tryb_zapytania = (
+            "nieokreślony" if zapytanie.tryb is None else NAZWY_TRYBOW_MAGAZYNU_PL[zapytanie.tryb]
+        )
+        return (
+            "tryb",
+            f"tryb pracy magazynu: {tryb_zapytania}, model dla trybu: "
+            f"{NAZWY_TRYBOW_MAGAZYNU_PL[domena.tryb]}",
+        )
     return None
 
 
@@ -824,7 +902,7 @@ def wybierz_model(
     if not w_dziedzinie:
         return PozaDomenaModelu(
             parametr="dziedzina",
-            powod_pl=f"brak modelu w dziedzinie {dziedzina}",
+            powod_pl=f"brak modelu w dziedzinie: {NAZWA_DZIEDZINY_PL[dziedzina]}",
         )
     w_zakresie_f = [m for m in w_dziedzinie if m.zakres_czestotliwosci.zawiera(f_hz)]
     if not w_zakresie_f:
@@ -860,6 +938,9 @@ def wybierz_model(
 
 
 __all__ = [
+    "NAZWY_BAZ_MOCY_PL",
+    "NAZWY_PARAMETROW_DOMENY_PL",
+    "NAZWY_TRYBOW_MAGAZYNU_PL",
     "BAZY_NAPIECIOWE",
     "BAZY_PRADOWE",
     "POWOD_FAZY_INTERHARMONICZNEJ",

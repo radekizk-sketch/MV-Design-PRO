@@ -26,7 +26,7 @@ def _sensitivity_view() -> SensitivityView:
     )
     entry_primary = SensitivityEntry(
         parameter_id="load_p",
-        parameter_label="Load P (k_S)",
+        parameter_label="Obciążenie mocą czynną",
         target_id="LINE-1",
         source="P20",
         base_margin=-1.0,
@@ -47,7 +47,7 @@ def _sensitivity_view() -> SensitivityView:
     )
     entry_alt = SensitivityEntry(
         parameter_id="voltage_limit",
-        parameter_label="Voltage limits",
+        parameter_label="Odchyłka napięcia węzła",
         target_id="BUS-1",
         source="P21",
         base_margin=-2.0,
@@ -68,7 +68,7 @@ def _sensitivity_view() -> SensitivityView:
     )
     entry_nc = SensitivityEntry(
         parameter_id="load_q",
-        parameter_label="Load Q (k_I)",
+        parameter_label="Obciążenie mocą bierną",
         target_id="LINE-2",
         source="P20",
         base_margin=None,

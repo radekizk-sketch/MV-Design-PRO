@@ -53,7 +53,8 @@ import ast
 import builtins
 import importlib.util
 import re
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 
@@ -61,11 +62,20 @@ import pytest
 from application.dynamika.odmowy import etykieta_klucza
 
 from tests.enm.test_komunikaty_operacji_bez_kodow import (
+    _ATRYBUT_TEKSTOWY,
+    _DOPISEK_KODU,
     _LUDZKI,
+    DOPISKI_KODU,
+    SKROTY_INZYNIERSKIE,
     SRC,
+    SYMBOLE_INZYNIERSKIE,
     Naruszenie,
     ZakresModulu,
+    _czy_sklejajace,
+    _element_nazwany,
+    _funkcja_nazywajaca,
     _interpolacja_identyfikatora,
+    _korzen_tekstu,
     _poza_komunikatem,
     _rodzice,
     kody_w_tekscie,
@@ -77,35 +87,305 @@ from tests.enm.test_komunikaty_operacji_bez_kodow import (
 KANALY_ZEWNETRZNE: frozenset[str] = frozenset(
     {"ValueError", "HTTPException", "PydanticCustomError"}
 )
+#: Funkcje FORMATUJĄCE treść komunikatu, której wynik trafia do kanału (``ValueError(
+#: naruszenie(regula, tekst))``): wynik funkcji to tekst dla projektanta, więc jej argument
+#: treści jest kanałem jak argument samego wyjątku. ``naruszenie`` (``dziedziny/kanon.py``)
+#: dokleja znacznik reguły kontraktu, który tłumacz błędu walidacji zdejmuje przed pokazaniem
+#: zdania (``enm/slownik_komunikatow.opis_bledu_walidacji``) — zdanie zostaje. Żywotność:
+#: ``test_kanaly_formatujace_sa_zywe``.
+KANALY_FORMATUJACE: frozenset[str] = frozenset({"naruszenie"})
 #: Rekordy komunikatu (pozycje gotowości, kwestie walidacji, ostrzeżenia analiz).
 KANALY_REKORDOW: frozenset[str] = frozenset(
     {"ValidationIssue", "ReadinessIssue", "Ostrzezenie", "Issue", "Problem", "Uwaga"}
 )
-#: Argumenty nazwane, których wartość jest zdaniem dla projektanta.
-KANALY_SLOW: frozenset[str] = frozenset(
-    {
-        "detail",
-        "message",
-        "message_pl",
-        "komunikat",
-        "komunikat_pl",
-        "ostrzezenie",
-        "ostrzezenia",
-        "warning",
-        "warnings",
-        "uwagi",
-        "opis_pl",
-        "powod_pl",
-        "przyczyna",
-        "przyczyna_pl",
-        "naprawa",
-        "naprawa_pl",
-        "fix_hint",
-        "fix_hint_pl",
-        "hint",
-        "podpowiedz",
-    }
+#: Rodzaj kanału treści: ZDANIE — wartość jest zdaniem dla projektanta (komunikat, powód,
+#: podpowiedź, uzasadnienie); ETYKIETA — wartość jest nazwą albo krótkim określeniem
+#: (etykieta, nazwa, odznaka, oznaczenie normy, status słowami), która nie musi być zdaniem.
+ZDANIE = "zdanie"
+ETYKIETA = "etykieta"
+#: JEDNA lista kanałów treści dla projektanta: argument nazwany, klucz słownika
+#: (``{"reason_pl": …}``) i klucz przypisania (``wynik["reason_pl"] = …``) o tej nazwie niesie
+#: tekst, który trafia do API/UI. Każda nazwa z sufiksem ``_pl`` w ``src`` MUSI tu stać
+#: (``test_kanaly_tresci_kompletne_i_zywe`` — nowy kanał bez rodzaju czerwieni test), każdy
+#: wpis musi występować w ``src``. Reguły tekstu (kody, klucze, nazwy klas, identyfikatory,
+#: sklejenia, wartości wyliczeń) obejmują oba rodzaje; reguła „komunikat bez zdania” —
+#: wyłącznie kanały ZDANIE (etykieta „(SZR)”, odznaka „PTPiREE” nie jest zdaniem z natury).
+KANALY_TRESCI: dict[str, str] = {
+    "ability_pl": ETYKIETA,
+    "akcja_naprawcza_pl": ZDANIE,
+    "alias_pl": ETYKIETA,
+    "analysis_label_pl": ETYKIETA,
+    "aparat_pl": ETYKIETA,
+    "assumption_pl": ZDANIE,
+    "at_limit_pl": ZDANIE,
+    "badge_pl": ETYKIETA,
+    "basis_pl": ZDANIE,
+    "bez_podstawy_pl": ZDANIE,
+    "braki_ncrfg_pl": ZDANIE,
+    "braki_pl": ZDANIE,
+    "canonical_message_pl": ZDANIE,
+    "capability_source_pl": ETYKIETA,
+    "catalog_policy_pl": ZDANIE,
+    "category_label_pl": ETYKIETA,
+    "certyfikat_brakujacy_pl": ZDANIE,
+    "certyfikat_odrzucony_pl": ZDANIE,
+    "chroniony_obiekt_pl": ETYKIETA,
+    "claim_kind_pl": ETYKIETA,
+    "conditional_pl": ZDANIE,
+    "conflict_pl": ZDANIE,
+    "curve_label_pl": ETYKIETA,
+    "czego_brakuje_pl": ZDANIE,
+    "decision_reason_pl": ZDANIE,
+    "definicja_pl": ETYKIETA,
+    "derating_assumption_pl": ZDANIE,
+    "description_pl": ZDANIE,
+    "detail": ZDANIE,
+    "detail_pl": ZDANIE,
+    "device_name_pl": ETYKIETA,
+    "display_pl": ETYKIETA,
+    "domena_pl": ETYKIETA,
+    "dzialanie_pl": ETYKIETA,
+    "element_pl": ETYKIETA,
+    "element_type_label_pl": ETYKIETA,
+    "elementy_pl": ZDANIE,
+    "energization_basis_pl": ZDANIE,
+    "error_message_pl": ZDANIE,
+    "error_pl": ZDANIE,
+    "etykieta_do_pl": ETYKIETA,
+    "etykieta_od_pl": ETYKIETA,
+    "etykieta_pl": ETYKIETA,
+    "faza_nieznana_powod_pl": ZDANIE,
+    "fix_hint_pl": ZDANIE,
+    "function_label_pl": ETYKIETA,
+    "goly_aparat_wniosek_pl": ETYKIETA,
+    "granica_temperatury_pl": ZDANIE,
+    "info_pl": ETYKIETA,
+    "kierunek_pl": ETYKIETA,
+    "kind_pl": ETYKIETA,
+    "klasa_transformatora_pl": ETYKIETA,
+    "kombinacja_wniosek_pl": ETYKIETA,
+    "komentarz_pl": ZDANIE,
+    "komunikat": ZDANIE,
+    "komunikat_pl": ZDANIE,
+    "kontekst_sily_sieci_powod_pl": ZDANIE,
+    "kryterium_pl": ETYKIETA,
+    "krzywa_pl": ETYKIETA,
+    "label_pl": ETYKIETA,
+    "library_name_pl": ETYKIETA,
+    "limitation_pl": ZDANIE,
+    "loading_powod_braku_pl": ZDANIE,
+    "mechanizm_pl": ZDANIE,
+    "message": ZDANIE,
+    "message_pl": ZDANIE,
+    "metoda_pl": ETYKIETA,
+    "miejsce_pl": ETYKIETA,
+    "miejsce_pomiaru_pl": ETYKIETA,
+    "missing_data_pl": ZDANIE,
+    "missing_fields_pl": ZDANIE,
+    "naglowek_pl": ETYKIETA,
+    "name_pl": ETYKIETA,
+    "nazwa_operatora_pl": ETYKIETA,
+    "nazwa_pl": ETYKIETA,
+    "nazwa_punktu_pl": ETYKIETA,
+    "nazwa_urzadzenia_pl": ETYKIETA,
+    "new_value_pl": ETYKIETA,
+    "no_module_reason_pl": ZDANIE,
+    "norma_pl": ETYKIETA,
+    "nosnik_pl": ZDANIE,
+    "note_pl": ZDANIE,
+    "notes_pl": ZDANIE,
+    "odeslanie_pl": ETYKIETA,
+    "odniesienie_pl": ETYKIETA,
+    "ograniczenie_pl": ZDANIE,
+    "okres_obserwacji_pl": ETYKIETA,
+    "okreslenie_pl": ETYKIETA,
+    "old_value_pl": ETYKIETA,
+    "operator_name_pl": ETYKIETA,
+    "operator_pl": ETYKIETA,
+    "opis_kryterium_pl": ZDANIE,
+    "opis_pl": ZDANIE,
+    "opis_przedmiotu_pl": ZDANIE,
+    "opis_typu_pl": ZDANIE,
+    "opis_zrodla_pl": ZDANIE,
+    "ostrzezenia": ZDANIE,
+    "over_limit_label_pl": ETYKIETA,
+    "parametry_robocze_pl": ZDANIE,
+    "pasmo_brak_etykieta_pl": ETYKIETA,
+    "pasmo_brak_powod_pl": ZDANIE,
+    "pasmo_q_pl": ETYKIETA,
+    "podstawa_ostrzezenie_pl": ZDANIE,
+    "podstawa_pl": ZDANIE,
+    "podstawa_przekroczenie_pl": ZDANIE,
+    "podstawa_reguly_pl": ZDANIE,
+    "podstawa_t_pomiaru_pl": ZDANIE,
+    "podstawa_u_min_pl": ZDANIE,
+    "podstawa_zakresow_pl": ZDANIE,
+    "pokrycie_pl": ZDANIE,
+    "pokrycie_programu_pl": ZDANIE,
+    "pole_pl": ETYKIETA,
+    "pominiete_pl": ZDANIE,
+    "pominiete_zrodla_pl": ZDANIE,
+    "powod_braku_niepewnosci_pl": ZDANIE,
+    "powod_braku_pl": ZDANIE,
+    "powod_decyzji_pl": ZDANIE,
+    "powod_niedostepnosci_pl": ZDANIE,
+    "powod_pl": ZDANIE,
+    "powod_projektanta_pl": ZDANIE,
+    "powod_stosowalnosci_pl": ZDANIE,
+    "powod_wycofania_pl": ZDANIE,
+    "powody_pl": ZDANIE,
+    "poza_zakresem_pl": ZDANIE,
+    "pozycja_pl": ETYKIETA,
+    "procedure_basis_pl": ZDANIE,
+    "profile_name_pl": ETYKIETA,
+    "proof_status_pl": ETYKIETA,
+    "provenance_caveat_pl": ZDANIE,
+    "provenance_label_pl": ETYKIETA,
+    "przyczyna": ZDANIE,
+    "przyczyna_pl": ZDANIE,
+    "przyjete_pl": ZDANIE,
+    "punkt_krytyczny_pl": ZDANIE,
+    "punkt_pl": ETYKIETA,
+    "punkty_etykieta_pl": ETYKIETA,
+    "pytanie_pl": ZDANIE,
+    "rationale_pl": ZDANIE,
+    "reason_pl": ZDANIE,
+    "recommendations_pl": ZDANIE,
+    "recommended_action_pl": ZDANIE,
+    "regula_pl": ETYKIETA,
+    "report_pl": ZDANIE,
+    "reporting_limitations_pl": ZDANIE,
+    "reporting_status_pl": ETYKIETA,
+    "required_reason_pl": ZDANIE,
+    "result_freshness_reason_pl": ZDANIE,
+    "result_message_pl": ZDANIE,
+    "result_pl": ETYKIETA,
+    "result_status_reason_pl": ZDANIE,
+    "rodzaj_elementu_pl": ETYKIETA,
+    "rodzaj_pl": ETYKIETA,
+    "rodzaj_pradu_pl": ETYKIETA,
+    "rodzaj_przewodu_pl": ETYKIETA,
+    "rodzaj_zwarcia_pl": ETYKIETA,
+    "rola_pl": ETYKIETA,
+    "section_label_pl": ETYKIETA,
+    "sekcja_audytowa_pl": ZDANIE,
+    "skrot_pl": ETYKIETA,
+    "skutek_pl": ETYKIETA,
+    "slad_pl": ZDANIE,
+    "source_note_pl": ZDANIE,
+    "source_pl": ETYKIETA,
+    "stan_pl": ETYKIETA,
+    "status_label_pl": ETYKIETA,
+    "status_pl": ETYKIETA,
+    "statystyka_pl": ETYKIETA,
+    "substitution_pl": ETYKIETA,
+    "summary_pl": ZDANIE,
+    "supply_assumption_pl": ZDANIE,
+    "swz_przyczyna_pl": ZDANIE,
+    "symbol_name_pl": ETYKIETA,
+    "tag_pl": ETYKIETA,
+    "template_name_pl": ETYKIETA,
+    "text_pl": ETYKIETA,
+    "threshold_why_pl": ZDANIE,
+    "tier_pl": ETYKIETA,
+    "title_pl": ETYKIETA,
+    "tozsamosc_pl": ETYKIETA,
+    "tresc_pl": ZDANIE,
+    "typ_nazwa_pl": ETYKIETA,
+    "unit_check_pl": ETYKIETA,
+    "unit_name_pl": ETYKIETA,
+    "unsafe_reason_pl": ZDANIE,
+    "use_case_pl": ZDANIE,
+    "uwaga_pl": ZDANIE,
+    "uwagi": ZDANIE,
+    "uwagi_metody_pl": ZDANIE,
+    "uwagi_pl": ZDANIE,
+    "uzasadnienie_pl": ZDANIE,
+    "verdict_description_pl": ZDANIE,
+    "verdict_pl": ETYKIETA,
+    "voltage_level_pl": ETYKIETA,
+    "warnings": ZDANIE,
+    "wartosc_pl": ETYKIETA,
+    "warunek_pl": ETYKIETA,
+    "warunek_wstepny_pl": ZDANIE,
+    "werdykt_pl": ETYKIETA,
+    "werdykt_sekwencji_pl": ZDANIE,
+    "wezly_strefy_nazwy_pl": ETYKIETA,
+    "why_pl": ZDANIE,
+    "wiarygodnosc_powod_pl": ZDANIE,
+    "wielkosc_pl": ETYKIETA,
+    "window_conflict_pl": ZDANIE,
+    "window_pl": ETYKIETA,
+    "window_recommendations_pl": ZDANIE,
+    "wiodacy_opis_pl": ZDANIE,
+    "wniosek_pl": ZDANIE,
+    "worst_quality_label_pl": ETYKIETA,
+    "wplyw_pl": ZDANIE,
+    "wscr_why_pl": ZDANIE,
+    "wyjasnienie_pl": ZDANIE,
+    "wynik_pl": ETYKIETA,
+    "wzor_opis_pl": ZDANIE,
+    "z0_missing_reason_pl": ZDANIE,
+    "zakres_pl": ETYKIETA,
+    "zakres_stosowalnosci_pl": ZDANIE,
+    "zalozenia_pl": ZDANIE,
+    "zalozenie_pl": ZDANIE,
+    "zawartosc_pl": ETYKIETA,
+    "zdanie_goly_aparat_pl": ZDANIE,
+    "zdanie_kombinacja_pl": ZDANIE,
+    "zdanie_pl": ZDANIE,
+    "zdolnosc_4q_pl": ETYKIETA,
+    "zdolnosc_gfm_pl": ETYKIETA,
+    "zrodlo_k_pl": ETYKIETA,
+    "zrodlo_liczb_pl": ZDANIE,
+    "zrodlo_napiecia_pl": ZDANIE,
+    "zrodlo_obciazalnosci_pl": ZDANIE,
+    "zrodlo_opis_pl": ZDANIE,
+    "zrodlo_pl": ETYKIETA,
+    "zrodlo_pomiaru_pl": ZDANIE,
+    "zrodlo_progu_pl": ZDANIE,
+    "zrodlo_wejsc_pl": ZDANIE,
+}
+#: Argumenty nazwane i klucze słowników niosące tekst dla projektanta (oba rodzaje).
+KANALY_SLOW: frozenset[str] = frozenset(KANALY_TRESCI)
+#: Kanały, których wartość jest ZDANIEM (reguła „komunikat bez zdania”).
+KANALY_ZDANIOWE: frozenset[str] = frozenset(
+    nazwa for nazwa, rodzaj in KANALY_TRESCI.items() if rodzaj == ZDANIE
 )
+#: Listy komunikatów: element dokładany do listy o tej nazwie (``bledy.append("…")``) jest
+#: zdaniem dla projektanta, bo lista wraca do wołającego i trafia do odmowy, rekordu albo
+#: odpowiedzi API (np. ``validate_input`` solvera FRT → ``OdmowaDanychError`` sekwencji
+#: zapadów). Uzasadnienie przy każdej nazwie; żywotność: ``test_listy_komunikatow_zywe``.
+LISTY_KOMUNIKATOW: dict[str, str] = {
+    "errors": "błędy walidacji wejścia (solvery, archiwum, kreator) zwracane wołającemu",
+    "bledy": "błędy walidacji danych (nastawy, szablony, arkusz) zwracane do odmowy",
+    "braki": "braki danych zbierane do kwestii walidacji i gotowości (`ValidationIssue`)",
+    "sprzeczne": "sprzeczności danych zasilania (S_k i I_k minimalne/maksymalne) w kwestii walidacji",
+    "opisy": "opisy przekroczeń zakresu ważności modelu dynamiki wklejane do `OdmowaDynamiki`",
+    "ostrzezenia": "ostrzeżenia analiz i ocen dołączane do wyniku dla projektanta",
+    "warnings": "ostrzeżenia wyników i dowodów (ostrzeżenia biegu, pakietu dowodowego)",
+    "issues": "kwestie walidacji wejścia solvera zwracane do gotowości",
+    "uwagi": "uwagi do nastaw i ocen zabezpieczeń w wyniku",
+    "problemy": "problemy katalogu projektu zwracane do odmowy",
+    "naruszenia": "naruszenia reguł pliku cennika zwracane do odmowy",
+    "notes": "notatki rekordu katalogu w odpowiedzi API",
+    "zastrzezenia": "zastrzeżenia wyjaśnienia werdyktu",
+    "recommendations": "zalecenia okna nastaw w wyniku",
+    "powody": "powody statusu sekcji modelu, stosowalności jakości energii i niepełności dowodu",
+}
+
+
+def zakres_src(sciezka: str, wywolania: frozenset[str] | None = None) -> ZakresModulu:
+    """Zakres tekstów dla projektanta w module ``src``: wywołania kanału, argumenty nazwane
+    i klucze słowników ``KANALY_TRESCI`` oraz elementy list ``LISTY_KOMUNIKATOW``."""
+    return ZakresModulu(
+        sciezka,
+        wywolania=wywolania or kanaly_wywolan(),
+        slowa_kluczowe=KANALY_SLOW,
+        klucze_slownika=KANALY_SLOW,
+        listy=frozenset(LISTY_KOMUNIKATOW),
+    )
+
 
 #: Klasy wyjątków oznaczające DEFEKT PROGRAMU (nie danych projektanta) — poza kanałem.
 BLEDY_PROGRAMU: dict[str, str] = {
@@ -379,7 +659,10 @@ def funkcje_opakowujace_src(kanaly: frozenset[str]) -> frozenset[str]:
 @cache
 def kanaly_wywolan() -> frozenset[str]:
     bezposrednie = frozenset(
-        (klasy_wyjatkow_src() - set(BLEDY_PROGRAMU)) | KANALY_ZEWNETRZNE | KANALY_REKORDOW
+        (klasy_wyjatkow_src() - set(BLEDY_PROGRAMU))
+        | KANALY_ZEWNETRZNE
+        | KANALY_REKORDOW
+        | KANALY_FORMATUJACE
     )
     return bezposrednie | funkcje_opakowujace_src(bezposrednie)
 
@@ -394,9 +677,7 @@ def _tlumaczony(sciezka: str) -> bool:
 def _surowe_naruszenia(
     sciezka: str, plik: Path | None = None, wywolania: frozenset[str] | None = None
 ) -> list[Naruszenie]:
-    zakres = ZakresModulu(
-        sciezka, wywolania=wywolania or kanaly_wywolan(), slowa_kluczowe=KANALY_SLOW
-    )
+    zakres = zakres_src(sciezka, wywolania)
     return [n for n in naruszenia_modulu(zakres, plik) if n.powod.startswith("kod ")]
 
 
@@ -673,7 +954,7 @@ _NAZWA_TYPU = re.compile(r"__name__|__class__|__qualname__")
 #: polska nazwa rodzaju). Lista jest jawna; nowy rodzaj obiektu w komunikacie dopisuje się
 #: tutaj, a nie omija regułę.
 _RODZAJE_OBIEKTOW = re.compile(
-    r"^(?:węz|wez|szyn|gałą|gałę|galaz|galez|transformator|łączni|lacznik|stacj|pol[eau]$|pól"
+    r"^(?:węz|węź|wez|szyn|gałą|gałę|galaz|galez|transformator|łączni|lacznik|stacj|pol[eau]$|pól"
     r"|źródł|zrodl|odbi|moduł|modul|profil|przypad|scenariusz|bieg|przebieg|projek|kryteri"
     r"|wymagani|kart|typ|pozycj|aparat|wkładk|pakiet|rodzin|wzor|szablon|element|blok|seri"
     r"|kopi|krzyw|charakterystyk|urządze|urzadze|generator|zabezpiecz|przekładnik|kab|lini"
@@ -807,7 +1088,7 @@ def naruszenia_nazw_i_identyfikatorow(sciezka: str, plik: Path | None = None) ->
     * ``identyfikator bez rodzaju E`` — identyfikator elementu bez polskiej nazwy rodzaju
       przed nim (``Run nie znaleziony: {run_id}``)."""
     drzewo = _drzewo(plik or SRC / sciezka)
-    zakres = ZakresModulu(sciezka, wywolania=kanaly_wywolan(), slowa_kluczowe=KANALY_SLOW)
+    zakres = zakres_src(sciezka)
     klasy = klasy_src()
     tlumaczony = _tlumaczony(sciezka)
     skazone_funkcji = _nazwy_skazone(drzewo)
@@ -816,8 +1097,9 @@ def naruszenia_nazw_i_identyfikatorow(sciezka: str, plik: Path | None = None) ->
         if isinstance(funkcja, ast.FunctionDef | ast.AsyncFunctionDef):
             for wezel in ast.walk(funkcja):
                 funkcja_wezla[id(wezel)] = funkcja
+    rodzice_modulu = _rodzice(drzewo)
     wynik: list[Naruszenie] = []
-    for komunikat, _rodzice_tekstu in teksty_komunikatow(zakres, drzewo):
+    for komunikat, rodzice_tekstu in teksty_komunikatow(zakres, drzewo):
         wezel, tekst = komunikat.wezel, komunikat.tekst
         stale = tekst.replace(" ⟨⟩ ", " ")
         for nazwa in sorted(
@@ -855,6 +1137,19 @@ def naruszenia_nazw_i_identyfikatorow(sciezka: str, plik: Path | None = None) ->
                 )
                 if not dozwolone:
                     wynik.append(Naruszenie(sciezka, wezel.lineno, f"nazwa typu {zrodlo}", tekst))
+            wyliczenie = _wartosc_wyliczenia(
+                wyrazenie,
+                czesc,
+                sciezka,
+                drzewo,
+                rodzice_tekstu,
+                plik or SRC / sciezka,
+                rodzice_modulu,
+            )
+            if wyliczenie is not None:
+                wynik.append(
+                    Naruszenie(sciezka, wezel.lineno, f"wartość wyliczenia {wyliczenie}", tekst)
+                )
             identyfikator = _interpolacja_identyfikatora(wyrazenie)
             if identyfikator is not None:
                 przed = "".join(
@@ -887,6 +1182,1378 @@ def naruszenia_nazw_i_identyfikatorow(sciezka: str, plik: Path | None = None) ->
             if (wezel.lineno, powod) not in zgloszone:
                 wynik.append(Naruszenie(sciezka, wezel.lineno, powod, komunikat.tekst))
     return wynik
+
+
+# ---------------------------------------------------------------------------
+# Reguła sklejeń: kolekcja wklejona w zdanie — elementy rozstrzygnięte z ich źródła
+# ---------------------------------------------------------------------------
+
+#: Kolekcje sklejane w zdanie, których elementów składnia nie rozstrzyga (lista przychodzi
+#: atrybutem obcego obiektu albo parametrem funkcji), a które SĄ tekstem dla projektanta
+#: albo oznaczeniem normowym — klucz ``moduł:wyrażenie kolekcji``; uzasadnienie wskazuje,
+#: skąd pochodzi tekst (żywotność: ``test_wylaczenia_sklejen_sa_zywe``).
+KOLEKCJE_TEKSTOW_SRC: dict[str, str] = {
+    "api/cloud_backup.py:result.errors": (
+        "błędy `ProjectArchiveService.import_project`: zdania `verify_archive_integrity` "
+        "(`domain/project_archive.py`) i treść błędu archiwum — oba w zakresie strażnika"
+    ),
+    "application/analyses/frt_sekwencja.py:errors": (
+        "zdania walidacji wejścia FRT/HVRT (`frt_hvrt/contracts.py`, kanał `errors.append` "
+        "w zakresie strażnika)"
+    ),
+    "network_model/solvers/frt_hvrt/contracts.py:errors": (
+        "zdania tej samej funkcji walidacji (kanał `errors.append` w zakresie strażnika)"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/engine.py:"
+    "poziomy.lvrt_typy if lvrt else poziomy.hvrt_typy": (
+        "typy modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) — `TypModulu`, "
+        "oznaczenie normowe, nie kod"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/engine.py:odbudowa.required_for_modules": (
+        "typy modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) — `TypModulu`"
+    ),
+    "application/ncrfg_compliance/ocena_wymagan.py:dowod.zakres_typow": (
+        "typy modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) — `TypModulu`"
+    ),
+    "application/ncrfg_compliance/ocena_wymagan.py:poziomy.lvrt_typy": (
+        "typy modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) — `TypModulu`"
+    ),
+    "application/analyses/fault_loop/tt_it.py:braki": (
+        "identyfikatory odcinków (kabel albo linia) bez susceptancji zerowej, zwracane przez "
+        "`pojemnosci_sieci_it` — w zdaniu poprzedzone nazwą rodzaju „odcinki”"
+    ),
+    "application/koszty/lista_materialowa.py:bez_ilosci": (
+        "pole `element` pozycji listy materiałowej — polska nazwa pozycji nadana przez "
+        "`application/analyses/lista_materialowa.py` (np. „Transformator blokowy DER”)"
+    ),
+    "enm/kompilator_grafu.py:korzenie": (
+        "identyfikatory szyn źródłowych grafu wejściowego (parametr wywołującego) — w zdaniu "
+        "po nazwie rodzaju „szyn źródłowych”"
+    ),
+    "application/ncrfg_compliance/ocena_wymagan.py:self.certyfikat.zakres_typow": (
+        "typy modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) z rekordu wykazu "
+        "PTPiREE — `TypModulu` (`model_bridge._zakres_typow`), oznaczenie normowe, nie kod"
+    ),
+    "network_model/core/graph.py:nieznane": (
+        "identyfikatory węzłów spoza grafu (parametr wołającego `wezly`) — w zdaniu po nazwie "
+        "rodzaju „Węzły spoza grafu”"
+    ),
+    "application/ncrfg_compliance/model_bridge.py:nieznane": (
+        "cytat oznaczeń zakresu typów zapisanych w rekordzie wykazu PTPiREE, które nie są "
+        "typem A–D — dana z wykazu, nie kod systemu"
+    ),
+    "analysis/arc_flash/builder.py:opisy": (
+        "opisy brakujących wpisów tablicy IEEE 1584-2018 z `ArcFlashCoefficientTable."
+        "missing_for_pl` (np. „współczynniki prądu łuku dla kotwy 600 V (tab. 1)”) — zdania "
+        "po polsku, kompletność przypina `tests/analysis/test_arc_flash_nazwy_wejsc.py`"
+    ),
+    "application/analyses/sekcja_zgodnosci_ncrfg.py:dowod.zakres_typow": (
+        "typy modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) z rekordu wykazu "
+        "PTPiREE — `TypModulu`, oznaczenie normowe, nie kod"
+    ),
+    "application/koszty/wycena.py:self.nazwy_bez_ceny": (
+        "nazwy pozycji listy materiałowej (`_nazwa_pozycji` → `PozycjaListy.nazwa_pl`)"
+    ),
+    "application/koszty/wycena.py:self.nazwy_niezgodnej_jednostki": (
+        "nazwy pozycji listy materiałowej (`_nazwa_pozycji` → `PozycjaListy.nazwa_pl`)"
+    ),
+    "application/koszty/wycena.py:self.pozycje_bez_typu": (
+        "nazwy pozycji listy materiałowej bez typu katalogowego (`PozycjaListy.nazwa_pl`)"
+    ),
+    "werdykt/wyjasnienie.py:powody_niepelnosci": (
+        "zdania powodów niepełności dowodu z `wyjasnienie.powod_*` (wywołujący: "
+        "`decyzja._powody_niepelnosci`, lista `powody` w zakresie strażnika)"
+    ),
+    "dziedziny/sekcje.py:sufit_powody": (
+        "zdania sufitu jakości z `_sufit_jakosci` (lista `powody` w `LISTY_KOMUNIKATOW` — "
+        "każde zdanie sprawdzane regułami tekstu; etykiety pól z `PoleSekcji.etykieta_pl`)"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/stosowalnosc.py:wymaganie.typy": (
+        "typy modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) — `TypModulu`, "
+        "oznaczenie normowe, nie kod"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/stosowalnosc.py:zdolnosci": (
+        "polskie nazwy zdolności dodatkowych z `_wymagane_zdolnosci_dodatkowe` („praca "
+        "wyspowa”, „rozruch autonomiczny”, „tłumienie oscylacji mocy”) — wynik funkcji, której "
+        "składnia wywołania nie rozstrzyga"
+    ),
+}
+
+#: Kolekcje sklejane w zdanie, których elementy są TOKENAMI FORMATU DANYCH (slug ścieżki
+#: API, nazwa operacji API, nagłówek CSV, wartość słownika pliku YAML katalogu albo cennika,
+#: klucz rekordu pliku modelu) — cytat zapisu formatu jest jedynym precyzyjnym wskazaniem
+#: dla autora danych. Klucz ``moduł:wyrażenie kolekcji`` (żywotność:
+#: ``test_wylaczenia_sklejen_sa_zywe``).
+KOLEKCJE_FORMATU_DANYCH: dict[str, str] = {
+    "api/catalog.py:sorted(pozycje)": "slugi rodzin w ścieżce `GET …/przeglad-wiarygodnosci/{rodzina}`",
+    "api/enm.py:sorted(_OP_DISPATCH.keys())": "nazwy operacji pola `op` żądania API modelu",
+    "application/analyses/odpowiedz_osd.py:sorted(_COMMANDS)": (
+        "wartości pola `command` żądania API odpowiedzi na polecenie OSD"
+    ),
+    "catalog/cenniki/loader.py:KOLEJNOSC_STANOW": "wartości klucza `status` pliku YAML cennika",
+    "catalog/cenniki/loader.py:WALUTY_OBSLUGIWANE": (
+        "kody walut ISO 4217 klucza `waluta` pliku YAML cennika"
+    ),
+    "network_model/catalog/types.py:sorted(TOPOLOGIE_PRZEKSZTALTNIKA)": (
+        "wartości pola topologii przekształtnika w pliku katalogu typów"
+    ),
+    "network_model/catalog/types.py:sorted(obecne)": (
+        "klucze pól toru maszyny (`POLA_TORU_MASZYNY`) w rekordzie pliku katalogu typów — "
+        "autor danych usuwa dokładnie te klucze z rekordu (reguła KAT-T-042)"
+    ),
+    "network_model/catalog/types.py:PRZEZNACZENIA_PRZEWODU": (
+        "wartości pola przeznaczenia przewodu w pliku katalogu typów"
+    ),
+    "network_model/catalog/wartosci_robocze.py:TOLERANCJE_NAPIECIA_NN": (
+        "wartości słownika tolerancji napięcia nN (tabela 1 IEC 60909-0) wpisywane w arkuszu "
+        "i w polu modelu"
+    ),
+    "application/xlsx_import/importer.py:brakujace": (
+        "nagłówki kolumn arkusza importu (tabliczka przewodu albo transformatora) — projektant "
+        "wpisuje dokładnie ten nagłówek, więc komunikat musi go zacytować"
+    ),
+    "infrastructure/cgmes/cgmes_importer.py:rodzaje": (
+        "nazwy klas CIM jednostek przekształtnika (`PowerElectronicsWindUnit`, "
+        "`PhotoVoltaicUnit`, `BatteryUnit`) z importowanego pliku CGMES — cytat zapisu pliku "
+        "po słowach „klasy jednostek CIM”"
+    ),
+    "enm/adapter_dynamiki.py:nadmiarowe": (
+        "klucze opcji biegu podane przez klienta API spoza kontraktu nastaw solvera — cytat "
+        "odrzuconego klucza żądania"
+    ),
+    "domain/canonical_operations.py:aliases": "klucze zastępcze ładunku operacji API modelu",
+    "enm/pola.py:nieznane": "cytat kluczy rekordu pola spoza kontraktu w pliku modelu",
+    "enm/pola.py:zakazane": "cytat kluczy `meta` rekordu pola w pliku modelu",
+    "enm/migrations/field_specs_promocja.py:nieznane": (
+        "cytat kluczy dawnego wpisu pola stacji w pliku modelu przed migracją"
+    ),
+    "api/fault_loop.py:net_type_map": (
+        "wartości pola `network_type` żądania API pętli zwarcia — oznaczenia układu sieci "
+        "wg PN-HD 60364-1 §312.2 (TN-S, TN-C-S, TN-C, TT, IT)"
+    ),
+    "api/fault_loop.py:pa_map": (
+        "wartości pola `protection_arrangement` żądania API pętli zwarcia (PE, PEN — "
+        "oznaczenia przewodów wg PN-HD 60364-5-54; NONE — wartość pola bez przewodu "
+        "ochronnego)"
+    ),
+    "api/station_templates.py:(c.value for c in TemplateCategory)": (
+        "wartości parametru zapytania `category` ścieżki `GET …/station-templates`"
+    ),
+    "infrastructure/persistence/repositories/canonical_run_repository.py:obce": (
+        "klucze ładunku rozpływu punktu spoza kolumn tabeli (`KOLUMNY_ROZPLYWU`) — diagnoza "
+        "niezgodności zapisu z formatem tabeli"
+    ),
+    "application/contracts/resultset_dynamic_v2.py:rozne[:5]": (
+        "klucze szeregów próbek wyniku czasowego (adresy `element.stan` kontraktu ResultSet "
+        "dynamiki v2) — diagnoza niezgodności długości szeregów zapisu"
+    ),
+    "network_model/catalog/types.py:RODZAJE_PRADU_ROZNICOWEGO_RCD": (
+        "wartości pola `rcd_type` pliku katalogu typów — oznaczenia typów RCD wg IEC 60755 / "
+        "IEC 62423 (AC, A, F, B), które autor danych wpisuje"
+    ),
+}
+
+#: Metody tekstu, które wywołane ze stałymi przekształcają zapis, nie treść elementu.
+_PRZEKSZTALCENIA_TEKSTU: frozenset[str] = frozenset(
+    {"replace", "strip", "rstrip", "lstrip", "lower", "upper", "capitalize"}
+)
+#: Wywołania zwracające tę samą kolekcję (porządek, kopia, zbiór).
+_OPAKOWANIA_KOLEKCJI: frozenset[str] = frozenset(
+    {"sorted", "list", "tuple", "set", "frozenset", "reversed", "fromkeys", "w_cudzyslowie"}
+)
+#: Metody dokładające do kolekcji: pojedynczy element albo całą kolekcję.
+_DOKLADAJACE_ELEMENT: frozenset[str] = frozenset({"append", "add", "appendleft"})
+_DOKLADAJACE_KOLEKCJE: frozenset[str] = frozenset({"extend", "update"})
+#: Mapa tekstów po polsku — jej wartości są tekstem dla projektanta (konwencja nazw).
+_MAPA_TEKSTOW = re.compile(r"^(?:NAZWY_\w+|ETYKIETA_PL_\w+|ETYKIETY_\w+|OPISY_\w+|\w+_PL)$")
+#: Samodzielny element pisany wielkimi literami — kod wartości (``FINISHED``, ``PF``),
+#: chyba że jest skrótem inżynierskim albo symbolem wielkości.
+_ELEMENT_WIELKIMI = re.compile(r"^[A-Z][A-Z0-9]+$")
+#: Samodzielny element ``maly_z_podkreslnikiem`` albo ``kebab-case`` — klucz albo kod.
+_ELEMENT_KLUCZ = re.compile(r"^[a-z][a-z0-9]*(?:[_-][a-z0-9]+)+$")
+
+#: Wyrażenie niosące identyfikator elementu (``ref_id``, ``x.edge_id``, ``odbior.ident``) —
+#: wskazanie elementu, dopuszczalne przy polskiej nazwie rodzaju przed listą.
+_ID_ELEMENTU = re.compile(r"(?:^|\.)(?:ref_id|ref|id|ident|\w+_ref|\w+_id)$")
+
+
+@dataclass(frozen=True)
+class _Element:
+    """Element kolekcji: wyrażenie, plik, w którym stoi, i zmienne pętli w jego zasięgu."""
+
+    wyrazenie: ast.expr
+    sciezka: str
+    srodowisko: tuple[tuple[str, tuple[_Element, ...] | None], ...] = ()
+
+    def zmienna(self, nazwa: str) -> tuple[bool, tuple[_Element, ...] | None]:
+        for klucz, wartosc in self.srodowisko:
+            if klucz == nazwa:
+                return True, wartosc
+        return False, None
+
+
+def _kody_poza_formatem(sciezka: str, kody: list[str]) -> list[str]:
+    """Kody tekstu elementu bez tokenów formatu danych modułu, w którym tekst stoi
+    (``TOKENY_FORMATU_DANYCH`` — ten sam wpis co dla tekstu wprost w kanale)."""
+    return [kod for kod in kody if f"{sciezka}:{kod}" not in TOKENY_FORMATU_DANYCH]
+
+
+@cache
+def _rodzice_src(sciezka: str) -> dict[int, ast.AST]:
+    return _rodzice(_drzewo(SRC / sciezka))
+
+
+class _Sklejenia:
+    """Rozstrzyganie elementów kolekcji sklejanej w zdanie z jej źródła w kodzie: literał,
+    wyrażenie listowe, przypisanie, ``append``/``extend``, stała modułu (także importowana),
+    klucze i wartości słownika, ``get_args`` aliasu ``Literal``. Element nierozstrzygnięty
+    jest naruszeniem (strażnik nie zgaduje), chyba że kolekcja ma wpis
+    ``KOLEKCJE_TEKSTOW_SRC``."""
+
+    def __init__(self, sciezka: str, drzewo: ast.Module) -> None:
+        self.sciezka = sciezka
+        self.drzewa: dict[str, ast.Module] = {sciezka: drzewo}
+        self.rodzice: dict[str, dict[int, ast.AST]] = {sciezka: _rodzice(drzewo)}
+
+    # -- pomocnicze ---------------------------------------------------------------
+    def _drzewo_pliku(self, sciezka: str) -> tuple[ast.Module, dict[int, ast.AST]]:
+        if sciezka not in self.drzewa:
+            self.drzewa[sciezka] = _drzewo(SRC / sciezka)
+            self.rodzice[sciezka] = _rodzice_src(sciezka)
+        return self.drzewa[sciezka], self.rodzice[sciezka]
+
+    def _zasiegi(self, wezel: ast.AST, sciezka: str) -> list[ast.AST]:
+        _drzewo_pliku, rodzice = self._drzewo_pliku(sciezka)
+        wynik: list[ast.AST] = []
+        przodek = rodzice.get(id(wezel))
+        while przodek is not None:
+            if isinstance(przodek, ast.FunctionDef | ast.AsyncFunctionDef | ast.Module):
+                wynik.append(przodek)
+            przodek = rodzice.get(id(przodek))
+        return wynik
+
+    @staticmethod
+    def _wezly_zasiegu(zasieg: ast.AST) -> Iterator[ast.AST]:
+        """Węzły zasięgu bez ciał zagnieżdżonych funkcji, klas i lambd (inne zasięgi)."""
+        stos = list(ast.iter_child_nodes(zasieg))
+        while stos:
+            wezel = stos.pop()
+            yield wezel
+            if not isinstance(
+                wezel, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda
+            ):
+                stos.extend(ast.iter_child_nodes(wezel))
+
+    def _srodowisko_petli(
+        self, wezel: ast.AST, sciezka: str, glebokosc: int
+    ) -> tuple[tuple[str, tuple[_Element, ...] | None], ...]:
+        """Zmienne pętli ``for`` otaczających węzeł (w tej samej funkcji)."""
+        _drzewo_pliku, rodzice = self._drzewo_pliku(sciezka)
+        wynik: list[tuple[str, tuple[_Element, ...] | None]] = []
+        przodek = rodzice.get(id(wezel))
+        while przodek is not None and not isinstance(
+            przodek, ast.FunctionDef | ast.AsyncFunctionDef | ast.Module
+        ):
+            if isinstance(przodek, ast.For):
+                wynik += self._wiazania(przodek.target, _Element(przodek.iter, sciezka), glebokosc)
+            przodek = rodzice.get(id(przodek))
+        return tuple(wynik)
+
+    def _wiazania(
+        self, cel: ast.expr, iterowane: _Element, glebokosc: int
+    ) -> list[tuple[str, tuple[_Element, ...] | None]]:
+        """Zmienne celu pętli → elementy iterowanej kolekcji (krotka: pozycja w literale)."""
+        elementy = self.elementy(iterowane, glebokosc + 1)
+        if isinstance(cel, ast.Name):
+            return [(cel.id, None if elementy is None else tuple(elementy))]
+        if isinstance(cel, ast.Tuple):
+            wynik: list[tuple[str, tuple[_Element, ...] | None]] = []
+            for i, czlon in enumerate(cel.elts):
+                if not isinstance(czlon, ast.Name):
+                    continue
+                if elementy is None or not all(
+                    isinstance(e.wyrazenie, ast.Tuple) and len(e.wyrazenie.elts) > i
+                    for e in elementy
+                ):
+                    wynik.append((czlon.id, None))
+                    continue
+                wynik.append(
+                    (
+                        czlon.id,
+                        tuple(
+                            _Element(e.wyrazenie.elts[i], e.sciezka, e.srodowisko)  # type: ignore[attr-defined]
+                            for e in elementy
+                        ),
+                    )
+                )
+            return wynik
+        return []
+
+    def _wartosci_celu_petli(
+        self, petla: ast.For | ast.comprehension, nazwa: str, sciezka: str, glebokosc: int
+    ) -> list[_Element] | None:
+        """Wartości zmiennej pętli: elementy iterowanej kolekcji (cel ``x``) albo pozycja
+        krotek literału (cel ``(a, b)`` po krotce krotek tej samej długości); ``None`` —
+        składnia nie rozstrzyga."""
+        if isinstance(petla.target, ast.Name):
+            return self.elementy(_Element(petla.iter, sciezka), glebokosc + 1)
+        if not isinstance(petla.target, ast.Tuple) or not isinstance(
+            petla.iter, ast.Tuple | ast.List
+        ):
+            return None
+        pozycje = [
+            i for i, c in enumerate(petla.target.elts) if isinstance(c, ast.Name) and c.id == nazwa
+        ]
+        if len(pozycje) != 1:
+            return None
+        wartosci: list[_Element] = []
+        for krotka in petla.iter.elts:
+            if not isinstance(krotka, ast.Tuple | ast.List) or len(krotka.elts) != len(
+                petla.target.elts
+            ):
+                return None
+            wartosci.append(_Element(krotka.elts[pozycje[0]], sciezka))
+        return wartosci
+
+    def _cel_petli(self, wezel: ast.Name, sciezka: str) -> bool:
+        """Czy zmienna jest w najbliższym zasięgu, który ją definiuje, WYŁĄCZNIE celem pętli
+        (``for x in …``, ``for a, b in …``, wyrażenie listowe) — bez przypisania i bez
+        dokładania elementów (``x.append``)."""
+        for zasieg in self._zasiegi(wezel, sciezka):
+            cele = przypisania = 0
+            for w in self._wezly_zasiegu(zasieg):
+                if isinstance(w, ast.For | ast.comprehension) and any(
+                    isinstance(c, ast.Name) and c.id == wezel.id for c in ast.walk(w.target)
+                ):
+                    cele += 1
+                elif (
+                    isinstance(w, ast.Assign | ast.AnnAssign | ast.AugAssign)
+                    and any(
+                        isinstance(c, ast.Name) and c.id == wezel.id
+                        for cel in (w.targets if isinstance(w, ast.Assign) else [w.target])
+                        for c in ast.walk(cel)
+                    )
+                ) or (
+                    isinstance(w, ast.Call)
+                    and isinstance(w.func, ast.Attribute)
+                    and isinstance(w.func.value, ast.Name)
+                    and w.func.value.id == wezel.id
+                ):
+                    przypisania += 1
+            if cele or przypisania:
+                return bool(cele) and not przypisania
+        return False
+
+    def _zrodla_nazwy(
+        self, nazwa: str, wezel: ast.AST, sciezka: str, glebokosc: int
+    ) -> tuple[list[_Element], list[_Element]] | None:
+        """Źródła zmiennej: (całe kolekcje/wartości, pojedyncze elementy dokładane);
+        ``None`` — parametr bez miejsc wywołań, cel pętli, którego składnia nie rozstrzyga
+        (``_wartosci_celu_petli``), albo brak definicji."""
+        for zasieg in self._zasiegi(wezel, sciezka):
+            cale: list[_Element] = []
+            pojedyncze: list[_Element] = []
+            if isinstance(zasieg, ast.FunctionDef | ast.AsyncFunctionDef):
+                argumenty = zasieg.args
+                if nazwa in {
+                    a.arg
+                    for a in (
+                        *argumenty.posonlyargs,
+                        *argumenty.args,
+                        *argumenty.kwonlyargs,
+                        *(x for x in (argumenty.vararg, argumenty.kwarg) if x is not None),
+                    )
+                }:
+                    return self._argumenty_wywolan(zasieg, nazwa, sciezka, glebokosc)
+            for w in self._wezly_zasiegu(zasieg):
+                if isinstance(w, ast.Assign):
+                    for cel in w.targets:
+                        if (
+                            isinstance(cel, ast.Subscript)
+                            and isinstance(cel.value, ast.Name)
+                            and cel.value.id == nazwa
+                            and not isinstance(cel.slice, ast.Slice)
+                        ):
+                            # ``slownik[klucz] = …`` — sklejenie słownika wkleja klucze
+                            pojedyncze.append(
+                                _Element(
+                                    cel.slice,
+                                    sciezka,
+                                    self._srodowisko_petli(w, sciezka, glebokosc),
+                                )
+                            )
+                        elif isinstance(cel, ast.Name) and cel.id == nazwa:
+                            cale.append(
+                                _Element(
+                                    w.value, sciezka, self._srodowisko_petli(w, sciezka, glebokosc)
+                                )
+                            )
+                        elif isinstance(cel, ast.Tuple) and any(
+                            isinstance(c, ast.Name) and c.id == nazwa for c in cel.elts
+                        ):
+                            return None
+                elif (
+                    isinstance(w, ast.AnnAssign | ast.AugAssign)
+                    and isinstance(w.target, ast.Name)
+                    and w.target.id == nazwa
+                    and w.value is not None
+                ):
+                    cale.append(
+                        _Element(w.value, sciezka, self._srodowisko_petli(w, sciezka, glebokosc))
+                    )
+                elif isinstance(w, ast.For | ast.comprehension) and any(
+                    isinstance(c, ast.Name) and c.id == nazwa for c in ast.walk(w.target)
+                ):
+                    wartosci = self._wartosci_celu_petli(w, nazwa, sciezka, glebokosc)
+                    if wartosci is None:
+                        return None
+                    pojedyncze += wartosci
+                elif (
+                    isinstance(w, ast.Call)
+                    and isinstance(w.func, ast.Attribute)
+                    and isinstance(w.func.value, ast.Name)
+                    and w.func.value.id == nazwa
+                    and w.args
+                ):
+                    srodowisko = self._srodowisko_petli(w, sciezka, glebokosc)
+                    if w.func.attr in _DOKLADAJACE_ELEMENT:
+                        pojedyncze.append(_Element(w.args[-1], sciezka, srodowisko))
+                    elif w.func.attr == "insert" and len(w.args) == 2:
+                        pojedyncze.append(_Element(w.args[1], sciezka, srodowisko))
+                    elif w.func.attr in _DOKLADAJACE_KOLEKCJE:
+                        cale.append(_Element(w.args[0], sciezka, srodowisko))
+            if cale or pojedyncze:
+                return cale, pojedyncze
+        zaimportowana = _importy_nazw(sciezka).get(nazwa) if (SRC / sciezka).exists() else None
+        if zaimportowana is not None and glebokosc < 8:
+            plik, nazwa_w_pliku = zaimportowana
+            drzewo, _rodzice_pliku = self._drzewo_pliku(plik)
+            return (
+                self._zrodla_nazwy(nazwa_w_pliku, drzewo.body[0], plik, glebokosc + 1)
+                if drzewo.body
+                else None
+            )
+        return None
+
+    def _argumenty_wywolan(
+        self,
+        funkcja: ast.FunctionDef | ast.AsyncFunctionDef,
+        nazwa: str,
+        sciezka: str,
+        glebokosc: int,
+    ) -> tuple[list[_Element], list[_Element]] | None:
+        """Wartości parametru ``nazwa`` funkcji z jej wywołań w tym samym module (argument
+        pozycyjny, nazwany albo wartość domyślna). ``None`` — funkcja bez wywołań w module
+        (wołana z zewnątrz albo przekazywana dalej) albo wywołanie z ``*args``/``**kwargs``:
+        wartości poza zasięgiem składni."""
+        if glebokosc > 6 or funkcja.name == "__init__":
+            # Parametr konstruktora: wywołaniem jest utworzenie obiektu klasy (często w innym
+            # module), a ``super().__init__(…)`` w tym samym pliku woła konstruktor BAZY — nie
+            # ten — więc wartości parametru są poza zasięgiem składni.
+            return None
+        drzewo, _rodzice_pliku = self._drzewo_pliku(sciezka)
+        argumenty = funkcja.args
+        pozycyjne = [a.arg for a in (*argumenty.posonlyargs, *argumenty.args)]
+        metoda = bool(pozycyjne) and pozycyjne[0] in {"self", "cls"}
+        if metoda:
+            pozycyjne = pozycyjne[1:]
+        if nazwa in {x.arg for x in (argumenty.vararg, argumenty.kwarg) if x is not None}:
+            return None
+        domyslne: dict[str, ast.expr] = {}
+        wszystkie_pozycyjne = [a.arg for a in (*argumenty.posonlyargs, *argumenty.args)]
+        for arg, wartosc in zip(
+            wszystkie_pozycyjne[len(wszystkie_pozycyjne) - len(argumenty.defaults) :],
+            argumenty.defaults,
+            strict=True,
+        ):
+            domyslne[arg] = wartosc
+        for arg, wartosc in zip(argumenty.kwonlyargs, argumenty.kw_defaults, strict=True):
+            if wartosc is not None:
+                domyslne[arg.arg] = wartosc
+        wartosci: list[_Element] = []
+        wywolania = 0
+        for wywolanie in ast.walk(drzewo):
+            if not isinstance(wywolanie, ast.Call):
+                continue
+            cel = wywolanie.func
+            if not (
+                (isinstance(cel, ast.Name) and cel.id == funkcja.name)
+                or (isinstance(cel, ast.Attribute) and cel.attr == funkcja.name and metoda)
+            ):
+                continue
+            wywolania += 1
+            if any(isinstance(a, ast.Starred) for a in wywolanie.args) or any(
+                k.arg is None for k in wywolanie.keywords
+            ):
+                return None
+            podany: ast.expr | None = next(
+                (k.value for k in wywolanie.keywords if k.arg == nazwa), None
+            )
+            if podany is None and nazwa in pozycyjne:
+                pozycja = pozycyjne.index(nazwa)
+                if pozycja < len(wywolanie.args):
+                    podany = wywolanie.args[pozycja]
+            if podany is None:
+                podany = domyslne.get(nazwa)
+            if podany is None:
+                return None
+            wartosci.append(
+                _Element(podany, sciezka, self._srodowisko_petli(wywolanie, sciezka, glebokosc))
+            )
+        if not wywolania:
+            return None
+        return wartosci, []
+
+    def _slownik(self, wyrazenie: ast.expr, element: _Element, glebokosc: int) -> ast.Dict | None:
+        if isinstance(wyrazenie, ast.Dict):
+            return wyrazenie
+        if isinstance(wyrazenie, ast.Name):
+            zrodla = self._zrodla_nazwy(wyrazenie.id, wyrazenie, element.sciezka, glebokosc)
+            if zrodla is None or zrodla[1] or len(zrodla[0]) != 1:
+                return None
+            zrodlo = zrodla[0][0]
+            return self._slownik(zrodlo.wyrazenie, zrodlo, glebokosc + 1)
+        return None
+
+    # -- elementy kolekcji ----------------------------------------------------------
+    def elementy(self, kolekcja: _Element, glebokosc: int = 0) -> list[_Element] | None:
+        """Elementy kolekcji; ``None`` — źródło poza zasięgiem składni."""
+        if glebokosc > 10:
+            return None
+        rdzen = kolekcja.wyrazenie
+        while True:
+            if (
+                isinstance(rdzen, ast.Call)
+                and _nazwa_wywolanej(rdzen) in _OPAKOWANIA_KOLEKCJI
+                and rdzen.args
+            ):
+                rdzen = rdzen.args[0]
+            elif isinstance(rdzen, ast.Subscript) and isinstance(rdzen.slice, ast.Slice):
+                rdzen = rdzen.value
+            else:
+                break
+        w_tym_samym = lambda w: _Element(w, kolekcja.sciezka, kolekcja.srodowisko)  # noqa: E731
+        if isinstance(rdzen, ast.Tuple | ast.List | ast.Set):
+            wynik: list[_Element] = []
+            for czlon in rdzen.elts:
+                if isinstance(czlon, ast.Starred):
+                    czesc = self.elementy(w_tym_samym(czlon.value), glebokosc + 1)
+                    if czesc is None:
+                        return None
+                    wynik += czesc
+                else:
+                    wynik.append(w_tym_samym(czlon))
+            return wynik
+        if isinstance(rdzen, ast.Dict):
+            return [w_tym_samym(k) for k in rdzen.keys if k is not None]
+        if isinstance(rdzen, ast.GeneratorExp | ast.ListComp | ast.SetComp):
+            srodowisko = list(kolekcja.srodowisko)
+            for generator in rdzen.generators:
+                iterowane = _Element(generator.iter, kolekcja.sciezka, tuple(srodowisko))
+                srodowisko = self._wiazania(generator.target, iterowane, glebokosc) + srodowisko
+            return [_Element(rdzen.elt, kolekcja.sciezka, tuple(srodowisko))]
+        if isinstance(rdzen, ast.BinOp) and isinstance(rdzen.op, ast.Add | ast.BitOr | ast.Sub):
+            lewe = self.elementy(w_tym_samym(rdzen.left), glebokosc + 1)
+            if isinstance(rdzen.op, ast.Sub):
+                return lewe
+            prawe = self.elementy(w_tym_samym(rdzen.right), glebokosc + 1)
+            return None if lewe is None or prawe is None else lewe + prawe
+        if isinstance(rdzen, ast.Call) and isinstance(rdzen.func, ast.Attribute):
+            metoda = rdzen.func.attr
+            if metoda in {"keys", "values"}:
+                if (
+                    metoda == "values"
+                    and isinstance(rdzen.func.value, ast.Name)
+                    and _MAPA_TEKSTOW.match(rdzen.func.value.id)
+                ):
+                    return [w_tym_samym(ast.Constant("tekst mapy etykiet po polsku"))]
+                slownik = self._slownik(rdzen.func.value, kolekcja, glebokosc)
+                if slownik is None:
+                    return None
+                czlony = slownik.keys if metoda == "keys" else slownik.values
+                return [w_tym_samym(c) for c in czlony if c is not None]
+        if (
+            isinstance(rdzen, ast.Call)
+            and _nazwa_wywolanej(rdzen) == "map"
+            and len(rdzen.args) == 2
+        ):
+            funkcja = rdzen.args[0]
+            if isinstance(funkcja, ast.Name) and _funkcja_nazywajaca(funkcja.id):
+                return [w_tym_samym(ast.Constant("tekst funkcji nazywającej"))]
+            return None
+        if isinstance(rdzen, ast.Call) and _nazwa_wywolanej(rdzen) == "get_args" and rdzen.args:
+            alias = rdzen.args[0]
+            if isinstance(alias, ast.Name):
+                zrodla = self._zrodla_nazwy(alias.id, alias, kolekcja.sciezka, glebokosc)
+                if zrodla and len(zrodla[0]) == 1 and not zrodla[1]:
+                    literal = zrodla[0][0]
+                    if isinstance(literal.wyrazenie, ast.Subscript):
+                        return self.elementy(
+                            _Element(literal.wyrazenie.slice, literal.sciezka), glebokosc + 1
+                        )
+            return None
+        if isinstance(rdzen, ast.Call) and isinstance(rdzen.func, ast.Name):
+            return self._wynik_funkcji(rdzen.func.id, kolekcja, glebokosc)
+        if isinstance(rdzen, ast.Name):
+            znana, wartosc = kolekcja.zmienna(rdzen.id)
+            if znana:
+                return None  # kolekcja niesiona zmienną pętli — poza zasięgiem składni
+            zrodla = self._zrodla_nazwy(rdzen.id, rdzen, kolekcja.sciezka, glebokosc)
+            if zrodla is None:
+                return None
+            cale, pojedyncze = zrodla
+            wynik = list(pojedyncze)
+            for zrodlo in cale:
+                if isinstance(zrodlo.wyrazenie, ast.Constant) and zrodlo.wyrazenie.value in (
+                    None,
+                    "",
+                ):
+                    continue
+                czesc = self.elementy(zrodlo, glebokosc + 1)
+                if czesc is None:
+                    return None
+                wynik += czesc
+            return wynik
+        return None
+
+    def _wynik_funkcji(
+        self, nazwa: str, wywolanie: _Element, glebokosc: int, *, pojedynczy: bool = False
+    ) -> list[_Element] | None:
+        """Elementy wyniku funkcji ``src`` (ten sam moduł albo import z nazwy): wartości
+        jej instrukcji ``return`` rozstrzygnięte w zasięgu funkcji."""
+        sciezka = wywolanie.sciezka
+        drzewo, _rodzice_pliku = self._drzewo_pliku(sciezka)
+        definicja = next(
+            (
+                w
+                for w in drzewo.body
+                if isinstance(w, ast.FunctionDef | ast.AsyncFunctionDef) and w.name == nazwa
+            ),
+            None,
+        )
+        if definicja is None:
+            zaimportowana = _importy_nazw(sciezka).get(nazwa) if (SRC / sciezka).exists() else None
+            if zaimportowana is None or glebokosc > 8:
+                return None
+            plik, nazwa_w_pliku = zaimportowana
+            return self._wynik_funkcji(
+                nazwa_w_pliku,
+                _Element(wywolanie.wyrazenie, plik),
+                glebokosc + 1,
+                pojedynczy=pojedynczy,
+            )
+        wynik: list[_Element] = []
+        zwroty = [
+            w
+            for w in self._wezly_zasiegu(definicja)
+            if isinstance(w, ast.Return) and w.value is not None
+        ]
+        if not zwroty:
+            return None
+        for zwrot in zwroty:
+            assert zwrot.value is not None
+            if pojedynczy:
+                wynik.append(_Element(zwrot.value, sciezka))
+                continue
+            czesc = self.elementy(_Element(zwrot.value, sciezka), glebokosc + 1)
+            if czesc is None:
+                return None
+            wynik += czesc
+        return wynik
+
+    # -- ocena elementu -----------------------------------------------------------
+    def naruszenie_elementu(self, element: _Element, glebokosc: int = 0) -> str | None:
+        """Powód, dla którego element NIE jest tekstem dla projektanta; ``None`` — czysty."""
+        if glebokosc > 10:
+            return f"element nierozstrzygnięty {ast.unparse(element.wyrazenie)}"
+        wyrazenie = element.wyrazenie
+        dalej = lambda w: self.naruszenie_elementu(  # noqa: E731
+            _Element(w, element.sciezka, element.srodowisko), glebokosc + 1
+        )
+        if isinstance(wyrazenie, ast.Constant):
+            if not isinstance(wyrazenie.value, str):
+                return None
+            tekst = wyrazenie.value.strip()
+            kody = _kody_poza_formatem(element.sciezka, kody_w_tekscie(tekst))
+            if kody:
+                return f"kod {kody[0]}"
+            if f"{element.sciezka}:{tekst}" in TOKENY_FORMATU_DANYCH:
+                return None
+            if (
+                _ELEMENT_WIELKIMI.match(tekst)
+                and tekst not in SKROTY_INZYNIERSKIE
+                and tekst not in SYMBOLE_INZYNIERSKIE
+            ) or _ELEMENT_KLUCZ.match(tekst):
+                return f"kod {tekst}"
+            return None
+        if isinstance(wyrazenie, ast.JoinedStr):
+            stale = "".join(
+                str(c.value) if isinstance(c, ast.Constant) else " ⟨⟩ " for c in wyrazenie.values
+            )
+            kody = _kody_poza_formatem(element.sciezka, kody_w_tekscie(stale))
+            if kody:
+                return f"kod {kody[0]}"
+            for i, czesc in enumerate(wyrazenie.values):
+                if not isinstance(czesc, ast.FormattedValue):
+                    continue
+                wstawka = czesc.value
+                if czesc.format_spec is not None:
+                    continue  # wstawka formatowana liczbowo (``{t:g}``) — wartość, nie kod
+                if isinstance(wstawka, ast.Name):
+                    # Wstawka zmiennej pętli: jej wartości rozstrzygnięte ze źródła muszą być
+                    # tekstem; wartość nierozstrzygnięta przechodzi jak każda inna wstawka
+                    # f-stringu (reguły tekstu czytają wyłącznie stałe części i identyfikatory).
+                    znana, wartosci = element.zmienna(wstawka.id)
+                    if znana and wartosci is not None:
+                        for wartosc in wartosci:
+                            powod = self.naruszenie_elementu(wartosc, glebokosc + 1)
+                            if powod is not None and powod.startswith("kod "):
+                                return powod
+                identyfikator = _interpolacja_identyfikatora(wstawka)
+                if identyfikator is not None:
+                    przed = "".join(
+                        str(c.value) if isinstance(c, ast.Constant) else " ⟨⟩ "
+                        for c in wyrazenie.values[:i]
+                    )
+                    if not ma_nazwe_rodzaju(przed):
+                        return f"identyfikator bez rodzaju {identyfikator}"
+            return None
+        if isinstance(wyrazenie, ast.IfExp):
+            return dalej(wyrazenie.body) or dalej(wyrazenie.orelse)
+        if isinstance(wyrazenie, ast.BoolOp):
+            return next((p for w in wyrazenie.values if (p := dalej(w)) is not None), None)
+        if isinstance(wyrazenie, ast.BinOp) and isinstance(wyrazenie.op, ast.Add):
+            return dalej(wyrazenie.left) or dalej(wyrazenie.right)
+        if isinstance(wyrazenie, ast.BinOp) and isinstance(wyrazenie.op, ast.Mod):
+            return dalej(wyrazenie.left)
+        if isinstance(wyrazenie, ast.Name | ast.Attribute) and _ID_ELEMENTU.search(
+            ast.unparse(wyrazenie)
+        ):
+            return f"identyfikator {ast.unparse(wyrazenie)}"
+        if isinstance(wyrazenie, ast.Name):
+            znana, wartosci = element.zmienna(wyrazenie.id)
+            if znana:
+                if wartosci is None:
+                    return f"element nierozstrzygnięty {wyrazenie.id}"
+                return next(
+                    (
+                        p
+                        for w in wartosci
+                        if (p := self.naruszenie_elementu(w, glebokosc + 1)) is not None
+                    ),
+                    None,
+                )
+            if _element_nazwany(wyrazenie):
+                return None
+            zrodla = self._zrodla_nazwy(wyrazenie.id, wyrazenie, element.sciezka, glebokosc)
+            if zrodla is None:
+                return f"element nierozstrzygnięty {wyrazenie.id}"
+            cale, pojedyncze = zrodla
+            if pojedyncze and not cale and self._cel_petli(wyrazenie, element.sciezka):
+                # Zmienna pętli jako wartość: jej wartościami są elementy iterowanej kolekcji
+                # albo pozycja krotek literału (``_wartosci_celu_petli``).
+                cale, pojedyncze = pojedyncze, []
+            if pojedyncze or not cale:
+                return f"element nierozstrzygnięty {wyrazenie.id}"
+            return next(
+                (p for w in cale if (p := self.naruszenie_elementu(w, glebokosc + 1)) is not None),
+                None,
+            )
+        if isinstance(wyrazenie, ast.Call):
+            if _czy_sklejajace(wyrazenie) and wyrazenie.args:
+                return self.naruszenie_sklejenia(
+                    _Element(wyrazenie.args[0], element.sciezka, element.srodowisko),
+                    glebokosc + 1,
+                )
+            if _nazwa_wywolanej(wyrazenie) in {"str", "repr"} and wyrazenie.args:
+                return dalej(wyrazenie.args[0])
+            if (
+                isinstance(wyrazenie.func, ast.Attribute)
+                and wyrazenie.func.attr in _PRZEKSZTALCENIA_TEKSTU
+                and all(isinstance(a, ast.Constant) for a in wyrazenie.args)
+            ):
+                # Przekształcenie tekstu stałymi (``t.replace(".", ",")``, ``t.rstrip("0")``)
+                # nie tworzy kodu — element jest tym, co przekształcane.
+                return dalej(wyrazenie.func.value)
+            if isinstance(wyrazenie.func, ast.Name) and not _funkcja_nazywajaca(wyrazenie.func.id):
+                # Element z funkcji ``src``: każda wartość jej ``return`` jest elementem.
+                zwroty = self._wynik_funkcji(
+                    wyrazenie.func.id,
+                    _Element(ast.Tuple(elts=[], ctx=ast.Load()), element.sciezka),
+                    glebokosc,
+                    pojedynczy=True,
+                )
+                if zwroty is not None:
+                    return next(
+                        (
+                            p
+                            for w in zwroty
+                            if (p := self.naruszenie_elementu(w, glebokosc + 1)) is not None
+                        ),
+                        None,
+                    )
+            if (
+                isinstance(wyrazenie.func, ast.Attribute)
+                and wyrazenie.func.attr == "format"
+                and isinstance(wyrazenie.func.value, ast.Constant)
+            ):
+                return dalej(wyrazenie.func.value)
+        if (
+            isinstance(wyrazenie, ast.Subscript)
+            and isinstance(wyrazenie.slice, ast.Constant)
+            and _ATRYBUT_TEKSTOWY.search(str(wyrazenie.slice.value))
+        ):
+            return None  # odczyt pola tekstowego rekordu (``opis["canonical_message_pl"]``)
+        if (
+            isinstance(wyrazenie, ast.Call)
+            and isinstance(wyrazenie.func, ast.Attribute)
+            and wyrazenie.func.attr == "get"
+            and wyrazenie.args
+            and isinstance(wyrazenie.args[0], ast.Constant)
+            and _ATRYBUT_TEKSTOWY.search(str(wyrazenie.args[0].value))
+        ):
+            return None  # ten sam odczyt przez ``rekord.get("nazwa_pl")``
+        if (
+            isinstance(wyrazenie, ast.Call)
+            and isinstance(wyrazenie.func, ast.Attribute)
+            and wyrazenie.func.attr == "get"
+            and isinstance(wyrazenie.func.value, ast.Name)
+            and _MAPA_TEKSTOW.match(wyrazenie.func.value.id)
+        ):
+            # Odczyt mapy etykiet: czysty, gdy wartość zastępcza też jest tekstem (zastępczy
+            # surowy klucz ``MAPA.get(k, k)`` wstawiłby kod do zdania).
+            return dalej(wyrazenie.args[1]) if len(wyrazenie.args) > 1 else None
+        if _element_nazwany(wyrazenie):
+            return None
+        if isinstance(wyrazenie, ast.Attribute) and self._atrybut_liczbowy(
+            element.sciezka, wyrazenie.attr
+        ):
+            return None  # liczba (numer odcinka, wartość) — nie kod
+        return f"element nierozstrzygnięty {ast.unparse(wyrazenie)}"
+
+    def _atrybut_liczbowy(self, sciezka: str, nazwa: str) -> bool:
+        """Czy atrybut ``nazwa`` jest w KAŻDEJ klasie modułu, która go deklaruje, polem
+        o adnotacji liczbowej (``int``/``float``) — tekst takiego elementu jest liczbą."""
+        drzewo, _rodzice = self._drzewo_pliku(sciezka)
+        adnotacje = [
+            ast.unparse(w.annotation)
+            for klasa in ast.walk(drzewo)
+            if isinstance(klasa, ast.ClassDef)
+            for w in klasa.body
+            if isinstance(w, ast.AnnAssign)
+            and isinstance(w.target, ast.Name)
+            and w.target.id == nazwa
+        ]
+        return bool(adnotacje) and all(a in {"int", "float"} for a in adnotacje)
+
+    def naruszenie_sklejenia(self, kolekcja: _Element, glebokosc: int = 0) -> str | None:
+        klucz = f"{kolekcja.sciezka}:{ast.unparse(kolekcja.wyrazenie)}"
+        if klucz in KOLEKCJE_TEKSTOW_SRC or klucz in KOLEKCJE_FORMATU_DANYCH:
+            return None
+        elementy = self.elementy(kolekcja, glebokosc)
+        if elementy is None:
+            return f"kolekcja nierozstrzygnięta {ast.unparse(kolekcja.wyrazenie)}"
+        for element in elementy:
+            powod = self.naruszenie_elementu(element, glebokosc + 1)
+            if powod is not None:
+                return powod
+        return None
+
+
+def _tekst_przed(wyrazenie: ast.AST, cel: ast.AST) -> tuple[str, bool]:
+    """Tekst zdania stojący PRZED wywołaniem ``cel`` w wyrażeniu tekstu (łańcuch ``+``,
+    f-string, warunek ``a if c else b``) i czy ``cel`` w nim wystąpił."""
+    if wyrazenie is cel:
+        return "", True
+    if isinstance(wyrazenie, ast.BinOp) and isinstance(wyrazenie.op, ast.Add):
+        lewy, znaleziony = _tekst_przed(wyrazenie.left, cel)
+        if znaleziony:
+            return lewy, True
+        prawy, znaleziony = _tekst_przed(wyrazenie.right, cel)
+        return lewy + prawy, znaleziony
+    if isinstance(wyrazenie, ast.IfExp):
+        for galaz in (wyrazenie.body, wyrazenie.orelse):
+            tekst, znaleziony = _tekst_przed(galaz, cel)
+            if znaleziony:
+                return tekst, True
+        return " ⟨⟩ ", False
+    if isinstance(wyrazenie, ast.JoinedStr):
+        tekst = ""
+        for czesc in wyrazenie.values:
+            if isinstance(czesc, ast.Constant):
+                tekst += str(czesc.value)
+                continue
+            if any(w is cel for w in ast.walk(czesc)):
+                return tekst, True
+            tekst += " ⟨⟩ "
+        return tekst, False
+    if isinstance(wyrazenie, ast.Constant) and isinstance(wyrazenie.value, str):
+        return wyrazenie.value, False
+    if any(w is cel for w in ast.walk(wyrazenie)):
+        return "", True
+    return " ⟨⟩ ", False
+
+
+def naruszenia_sklejen(sciezka: str, plik: Path | None = None) -> list[Naruszenie]:
+    """Kolekcja wklejona w zdanie dla projektanta (``", ".join(…)``, ``lista_pl``) — każdy
+    element musi być tekstem po polsku: element rozstrzygnięty ze źródła kolekcji (literał,
+    wyrażenie listowe, przypisanie, ``append``, stała modułu, klucze słownika) jest
+    sprawdzany regułami tekstu (kod, klucz, identyfikator bez rodzaju); element, którego
+    składnia nie rozstrzyga, jest naruszeniem, chyba że kolekcja ma wpis
+    ``KOLEKCJE_TEKSTOW_SRC`` z uzasadnieniem."""
+    drzewo = _drzewo(plik or SRC / sciezka)
+    zakres = zakres_src(sciezka)
+    sklejenia = _Sklejenia(sciezka, drzewo)
+    tlumaczony = _tlumaczony(sciezka)
+    sprawdzone: set[int] = set()
+    wynik: list[Naruszenie] = []
+    for komunikat, rodzice in teksty_komunikatow(zakres, drzewo):
+        for wywolanie in ast.walk(_korzen_tekstu(komunikat.wezel, rodzice)):
+            if (
+                not isinstance(wywolanie, ast.Call)
+                or not _czy_sklejajace(wywolanie)
+                or not wywolanie.args
+                or id(wywolanie) in sprawdzone
+            ):
+                continue
+            sprawdzone.add(id(wywolanie))
+            if tlumaczony and _zlaczenie_w_apostrofach(wywolanie):
+                continue
+            powod = sklejenia.naruszenie_sklejenia(_Element(wywolanie.args[0], sciezka))
+            przed, _znaleziony = _tekst_przed(_korzen_tekstu(komunikat.wezel, rodzice), wywolanie)
+            if powod is not None and powod.startswith("identyfikator") and ma_nazwe_rodzaju(przed):
+                # Rozstrzygnięcie architekta 2026-10-29: wskazania elementów (identyfikatory)
+                # zostają, gdy przed listą stoi polska nazwa rodzaju („szyn migawki: …”).
+                powod = None
+            if powod is not None:
+                wynik.append(
+                    Naruszenie(
+                        sciezka,
+                        komunikat.wezel.lineno,
+                        f"sklejenie {ast.unparse(wywolanie.args[0])}: {powod}",
+                        komunikat.tekst,
+                    )
+                )
+        for wstawka in ast.walk(_korzen_tekstu(komunikat.wezel, rodzice)):
+            if (
+                isinstance(wstawka, ast.FormattedValue)
+                and id(wstawka) not in sprawdzone
+                and _zapis_kolekcji(wstawka.value, sklejenia, sciezka, plik or SRC / sciezka)
+            ):
+                sprawdzone.add(id(wstawka))
+                wynik.append(
+                    Naruszenie(
+                        sciezka,
+                        komunikat.wezel.lineno,
+                        f"zapis kolekcji {ast.unparse(wstawka.value)}: lista w zapisie Pythona "
+                        "(nawiasy i apostrofy) zamiast sklejenia słowami",
+                        komunikat.tekst,
+                    )
+                )
+    return wynik
+
+
+#: Wywołania tworzące kolekcję — wstawione w f-string dają zapis Pythona (``['a', 'b']``).
+_KONSTRUKTORY_KOLEKCJI = frozenset({"list", "sorted", "tuple", "set", "frozenset", "dict"})
+
+
+@cache
+def _funkcje_zwracajace_kolekcje(plik: Path) -> frozenset[str]:
+    """Funkcje modułu z adnotacją wyniku będącą kolekcją (``-> list[float]``, ``-> tuple[…]``)
+    — ich wynik wstawiony w f-string daje zapis Pythona."""
+    if not plik.exists():
+        return frozenset()
+    wynik: set[str] = set()
+    for wezel in ast.walk(_drzewo(plik)):
+        if isinstance(wezel, ast.FunctionDef | ast.AsyncFunctionDef) and wezel.returns:
+            baza = (
+                wezel.returns.value if isinstance(wezel.returns, ast.Subscript) else wezel.returns
+            )
+            if isinstance(baza, ast.Name) and baza.id in _KONSTRUKTORY_KOLEKCJI - {"sorted"}:
+                wynik.add(wezel.name)
+    return frozenset(wynik)
+
+
+def _postac_kolekcji(wyrazenie: ast.expr, plik: Path) -> bool:
+    """Wywołanie konstruktora kolekcji albo funkcji modułu zwracającej kolekcję, literał
+    albo wyrażenie listowe kolekcji."""
+    if isinstance(wyrazenie, ast.Call) and isinstance(wyrazenie.func, ast.Name):
+        return (
+            wyrazenie.func.id in _KONSTRUKTORY_KOLEKCJI
+            or wyrazenie.func.id in _funkcje_zwracajace_kolekcje(plik)
+        )
+    return isinstance(
+        wyrazenie,
+        ast.List | ast.Tuple | ast.Set | ast.Dict | ast.ListComp | ast.SetComp | ast.DictComp,
+    )
+
+
+def _zapis_kolekcji(wyrazenie: ast.expr, sklejenia: _Sklejenia, sciezka: str, plik: Path) -> bool:
+    """Czy wstawka f-stringu jest kolekcją (wyświetlaną zapisem Pythona): postać kolekcji
+    wprost albo zmienna, której KAŻDE przypisanie (także argument każdego wywołania, gdy
+    zmienna jest parametrem) ma postać kolekcji."""
+    if _postac_kolekcji(wyrazenie, plik):
+        return True
+    if not isinstance(wyrazenie, ast.Name):
+        return False
+    zrodla = sklejenia._zrodla_nazwy(wyrazenie.id, wyrazenie, sciezka, 0)
+    if zrodla is None:
+        return False
+    cale, _pojedyncze = zrodla
+    return bool(cale) and all(
+        _postac_kolekcji(e.wyrazenie, plik if e.sciezka == sciezka else SRC / e.sciezka)
+        for e in cale
+    )
+
+
+#: Zmienna albo atrybut niosący WARTOŚĆ WYLICZENIA (status, stan, rodzaj, tryb, typ, wariant):
+#: kod maszynowy, który w zdaniu dla projektanta zastępuje się polską etykietą (funkcja
+#: etykiety, mapa ``…_PL``). Dozwolona jest wstawka przez funkcję etykiety (wywołanie nie
+#: podlega regule) albo zmienna, której każda wartość rozstrzygnięta ze źródła jest tekstem.
+_ZMIENNA_WYLICZENIA = re.compile(
+    r"(?:^|[._])(?:status|stan|kind|rodzaj|mode|tryb|type|typ|state|kategoria|category"
+    r"|wariant|variant|severity|poziom)$|(?:^|\.)(?:kod|code)$"
+)
+
+
+#: Bazy klas wyliczeń (``enum``) — klasa dziedzicząca po nich (przechodnio) jest wyliczeniem.
+_BAZY_WYLICZEN = frozenset({"Enum", "StrEnum", "IntEnum", "Flag", "IntFlag"})
+#: Wartość wyliczenia będąca SŁOWEM po polsku (małe litery, spacje, łącznik) — wstawiona
+#: w zdanie czyta się jak tekst, nie jak kod (np. ``RODZAJE_OBWODU``: „odbiorczy”).
+_WARTOSC_SLOWNA = re.compile(r"[a-ząćęłńóśźż][a-ząćęłńóśźż \-–]*")
+
+
+def _wartosci_literalu(wezel: ast.expr) -> tuple[str, ...] | None:
+    """Wartości ``Literal["A", "B"]`` (także ``typing.Literal``); ``None`` — nie literał."""
+    if not (isinstance(wezel, ast.Subscript) and ast.unparse(wezel.value).endswith("Literal")):
+        return None
+    elementy = wezel.slice.elts if isinstance(wezel.slice, ast.Tuple) else [wezel.slice]
+    return tuple(str(e.value) for e in elementy if isinstance(e, ast.Constant))
+
+
+@cache
+def _typy_wyliczen_modulu(plik: Path) -> dict[str, tuple[str, ...]]:
+    """Typy wyliczeń ZDEFINIOWANE w module: alias ``X = Literal[…]`` (także ``X: TypeAlias``)
+    i klasa wyliczenia (przechodnio od ``Enum``/``StrEnum``…) → wartości napisowe."""
+    drzewo = _drzewo(plik)
+    typy: dict[str, tuple[str, ...]] = {}
+    klasy = {w.name: w for w in drzewo.body if isinstance(w, ast.ClassDef)}
+    for wezel in drzewo.body:
+        if isinstance(wezel, ast.Assign) and len(wezel.targets) == 1:
+            cel, wartosc = wezel.targets[0], wezel.value
+        elif isinstance(wezel, ast.AnnAssign) and wezel.value is not None:
+            cel, wartosc = wezel.target, wezel.value
+        else:
+            continue
+        wartosci = _wartosci_literalu(wartosc)
+        if isinstance(cel, ast.Name) and wartosci is not None:
+            typy[cel.id] = wartosci
+    wyliczenia: set[str] = set()
+    while True:
+        nowe = {
+            nazwa
+            for nazwa, klasa in klasy.items()
+            if nazwa not in wyliczenia
+            and any(
+                ast.unparse(b).split(".")[-1] in _BAZY_WYLICZEN | wyliczenia for b in klasa.bases
+            )
+        }
+        if not nowe:
+            break
+        wyliczenia |= nowe
+    for nazwa in sorted(wyliczenia):
+        typy[nazwa] = tuple(
+            str(w.value.value)
+            for w in klasy[nazwa].body
+            if isinstance(w, ast.Assign)
+            and isinstance(w.value, ast.Constant)
+            and isinstance(w.value.value, str)
+        )
+    return typy
+
+
+def _plik_modulu(modul: str) -> Path | None:
+    sciezka = SRC.joinpath(*modul.split("."))
+    for kandydat in (sciezka.with_suffix(".py"), sciezka / "__init__.py"):
+        if kandydat.is_file():
+            return kandydat
+    return None
+
+
+def _wartosci_typu(plik: Path, nazwa: str, glebokosc: int = 0) -> tuple[str, ...] | None:
+    """Wartości typu wyliczenia ``nazwa`` widzianego w module ``plik``: definicja w module
+    albo import ``from pakiet import nazwa`` (przechodnio przez reeksport, do 3 skoków);
+    ``None`` — nazwa nie jest typem wyliczenia."""
+    typy = _typy_wyliczen_modulu(plik)
+    if nazwa in typy:
+        return typy[nazwa]
+    if glebokosc >= 3:
+        return None
+    for wezel in _drzewo(plik).body:
+        if isinstance(wezel, ast.ImportFrom) and wezel.module and wezel.level == 0:
+            for alias in wezel.names:
+                if (alias.asname or alias.name) == nazwa:
+                    zrodlo = _plik_modulu(wezel.module)
+                    if zrodlo is not None:
+                        return _wartosci_typu(zrodlo, alias.name, glebokosc + 1)
+    return None
+
+
+def _adnotacja_kodow(plik: Path, adnotacja: ast.expr | None) -> bool:
+    """Czy adnotacja (``X``, ``X | None``, ``Optional[X]``, ``Literal[…]``) jest typem
+    wyliczenia, którego wartości są KODAMI (nie wszystkie są słowem po polsku)."""
+    if adnotacja is None:
+        return False
+    if isinstance(adnotacja, ast.Constant) and isinstance(adnotacja.value, str):
+        try:
+            adnotacja = ast.parse(adnotacja.value, mode="eval").body
+        except SyntaxError:
+            return False
+    if isinstance(adnotacja, ast.BinOp) and isinstance(adnotacja.op, ast.BitOr):
+        czlony = [adnotacja.left, adnotacja.right]
+        bez_none = [c for c in czlony if ast.unparse(c) != "None"]
+        return len(bez_none) == 1 and _adnotacja_kodow(plik, bez_none[0])
+    if isinstance(adnotacja, ast.Subscript) and ast.unparse(adnotacja.value).endswith("Optional"):
+        return _adnotacja_kodow(plik, adnotacja.slice)
+    wartosci = _wartosci_literalu(adnotacja)
+    if wartosci is None and isinstance(adnotacja, ast.Name | ast.Attribute):
+        wartosci = _wartosci_typu(plik, ast.unparse(adnotacja).split(".")[-1])
+    return bool(wartosci) and not all(_WARTOSC_SLOWNA.fullmatch(w) for w in wartosci)
+
+
+def _atrybut_wyliczenia(plik: Path, nazwa: str) -> bool:
+    """Atrybut ``nazwa`` jest w KAŻDEJ klasie modułu, która go deklaruje, polem typu
+    wyliczenia o wartościach-kodach (``punkt_pomiaru: PunktPomiaruWymagania``)."""
+    adnotacje = [
+        w.annotation
+        for klasa in ast.walk(_drzewo(plik))
+        if isinstance(klasa, ast.ClassDef)
+        for w in klasa.body
+        if isinstance(w, ast.AnnAssign) and isinstance(w.target, ast.Name) and w.target.id == nazwa
+    ]
+    return bool(adnotacje) and all(_adnotacja_kodow(plik, a) for a in adnotacje)
+
+
+def _zmienna_wyliczenia(plik: Path, wyrazenie: ast.Name, rodzice: dict[int, ast.AST]) -> bool:
+    """Zmienna lokalna typu wyliczenia o wartościach-kodach: parametr funkcji z taką
+    adnotacją albo zmienna, której KAŻDE przypisanie w funkcji czyta atrybut takiego typu
+    (``ocena = przedmiot.rodzaj_oceny``)."""
+    funkcja = rodzice.get(id(wyrazenie))
+    while funkcja is not None and not isinstance(funkcja, ast.FunctionDef | ast.AsyncFunctionDef):
+        funkcja = rodzice.get(id(funkcja))
+    if funkcja is None:
+        return False
+    argumenty = funkcja.args.posonlyargs + funkcja.args.args + funkcja.args.kwonlyargs
+    for argument in argumenty:
+        if argument.arg == wyrazenie.id:
+            return _adnotacja_kodow(plik, argument.annotation)
+    przypisania = [
+        w
+        for w in ast.walk(funkcja)
+        if isinstance(w, ast.Assign | ast.AnnAssign)
+        and any(
+            isinstance(c, ast.Name) and c.id == wyrazenie.id
+            for c in (w.targets if isinstance(w, ast.Assign) else [w.target])
+        )
+    ]
+    if not przypisania:
+        return False
+    return all(
+        (isinstance(w, ast.AnnAssign) and _adnotacja_kodow(plik, w.annotation))
+        or (isinstance(w.value, ast.Attribute) and _atrybut_wyliczenia(plik, w.value.attr))
+        for w in przypisania
+    )
+
+
+def _test_przynaleznosci(test: ast.expr, zrodlo: str) -> bool:
+    """Test ``<wyrażenie> in A`` / ``<wyrażenie> == "X"`` (także ich alternatywa ``or``)."""
+    if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.Or):
+        return all(_test_przynaleznosci(w, zrodlo) for w in test.values)
+    return (
+        isinstance(test, ast.Compare)
+        and ast.unparse(test.left) == zrodlo
+        and all(isinstance(op, ast.In | ast.Eq) for op in test.ops)
+    )
+
+
+def _lancuch_przynaleznosci(warunek: ast.If, zrodlo: str, rodzice: dict[int, ast.AST]) -> bool:
+    """Gałąź ``else`` łańcucha ``if x in A: … elif x in B: … else: …``, w którym KAŻDY
+    warunek łańcucha jest testem przynależności tego samego wyrażenia — do ``else`` dociera
+    wyłącznie wartość spoza wszystkich zbiorów łańcucha."""
+    while True:
+        if not _test_przynaleznosci(warunek.test, zrodlo):
+            return False
+        rodzic = rodzice.get(id(warunek))
+        if not (
+            isinstance(rodzic, ast.If) and len(rodzic.orelse) == 1 and rodzic.orelse[0] is warunek
+        ):
+            return True
+        warunek = rodzic
+
+
+def _echo_odrzuconej_wartosci(zrodlo: str, wezel: ast.AST, rodzice: dict[int, ast.AST]) -> bool:
+    """Wstawka cytuje wartość, której słownik NIE zna — dane wejściowe projektanta albo
+    klienta API odrzucone właśnie dlatego, że nie są wartością wyliczenia: tekst stoi
+    w gałęzi ``if <wyrażenie> not in …:``, w gałęzi ``else`` łańcucha testów przynależności
+    tego wyrażenia (``_lancuch_przynaleznosci``) albo w obsłudze wyjątku ``try`` parsującego to
+    samo wyrażenie (``Rodzaj(<wyrażenie>)``, ``Rodzaj(<wyrażenie>.lower())``). Ten sam
+    predykat co warunek odmowy — do tekstu dociera wyłącznie wartość spoza zbioru testu,
+    więc zdanie cytuje odrzucone wejście. Granica predykatu: zbiór testu musi być CAŁYM
+    słownikiem wartości (zbiór częściowy — „dozwolone tutaj” — przepuściłby poprawny kod
+    słownika); miejsca ze zbiorem częściowym nazywają wartość etykietą (np.
+    ``domain/geometry_overrides.py`` — operacja i zakres nadpisania słowami)."""
+    dziecko: ast.AST = wezel
+    przodek = rodzice.get(id(wezel))
+    while przodek is not None:
+        if isinstance(przodek, ast.If) and any(dziecko is w for w in przodek.body):
+            for porownanie in ast.walk(przodek.test):
+                if (
+                    isinstance(porownanie, ast.Compare)
+                    and ast.unparse(porownanie.left) == zrodlo
+                    and any(isinstance(op, ast.NotIn) for op in porownanie.ops)
+                ):
+                    return True
+        if (
+            isinstance(przodek, ast.If)
+            and any(dziecko is w for w in przodek.orelse)
+            and _lancuch_przynaleznosci(przodek, zrodlo, rodzice)
+        ):
+            return True
+        if isinstance(przodek, ast.ExceptHandler):
+            proba = rodzice.get(id(przodek))
+            if isinstance(proba, ast.Try):
+                for wywolanie in (w for instr in proba.body for w in ast.walk(instr)):
+                    if isinstance(wywolanie, ast.Call) and any(
+                        ast.unparse(czesc) == zrodlo
+                        for argument in wywolanie.args
+                        for czesc in ast.walk(argument)
+                    ):
+                        return True
+        dziecko, przodek = przodek, rodzice.get(id(przodek))
+    return False
+
+
+#: Zmienne o nazwie wyliczenia, których wartość W ZDANIU jest słowem projektanta, nie kodem
+#: (``moduł:wyrażenie`` → uzasadnienie; żywotność i warunek: ``test_wylaczenia_sklejen_sa_zywe``
+#: oraz test przy wpisie).
+WYLICZENIA_BEZ_ETYKIETY: dict[str, str] = {
+    "application/xlsx_import/importer.py:rodzaj": (
+        "rodzaj odcinka z kolumny arkusza (`LINIA`/`KABEL`) — słowo, które projektant sam "
+        "wpisał w arkuszu; komunikat cytuje jego zapis, żeby wskazał komórkę do poprawy"
+    ),
+    "network_model/solvers/fault_loop_iec60364.py:data.network_type.value": (
+        "oznaczenie układu sieci wg PN-HD 60364-1 §312.2 (TN-S, TN-C-S, TN-C, TT, IT) — "
+        "wartości `NetworkType` są oznaczeniami normy, nie kodami systemu"
+    ),
+    "network_model/solvers/petla_zwarcia_tt_it.py:uklad.value": (
+        "oznaczenie układu sieci wg PN-HD 60364-1 §312.2 (TT, IT) — wartość `NetworkType`"
+    ),
+    "network_model/catalog/types.py:default.value": (
+        "wartość domyślna klucza statusu w pliku katalogu typów (reguły KAT-T-001/002) — "
+        "cytowana obok listy dozwolonych wartości pliku, które autor danych wpisuje"
+    ),
+    "application/analyses/swz/werdykt_tt_it.py:rodzaj": (
+        "rodzaj obwodu PN-HD 60364-4-41 §411.3.2.2/.3 — wartości `RODZAJE_OBWODU` są polskimi "
+        "słowami („odbiorczy”, „rozdzielczy”); jedyne źródło: `rodzaj_obwodu_dla_aparatu`"
+    ),
+    "application/analyses/swz/werdykt.py:rodzaj": (
+        "rodzaj obwodu PN-HD 60364-4-41 §411.3.2.2/.3 — wartości `RODZAJE_OBWODU` są polskimi "
+        "słowami („odbiorczy”, „rozdzielczy”); jedyne źródło: `rodzaj_obwodu_dla_aparatu`"
+    ),
+    "api/generators.py:req.nc_rfg_module": (
+        "typ modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) wpisany przez "
+        "projektanta — oznaczenie normowe, nie kod"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/stosowalnosc.py:typ": (
+        "typ modułu wytwarzania A–D (rozporządzenie 2016/631 art. 5) — `TypModulu`"
+    ),
+    "domain/der_protection_functions.py:kod": (
+        "numer funkcji zabezpieczeniowej wg IEEE C37.2 / ANSI (87BB, 87B, 87L, 87M) — "
+        "oznaczenie normowe, obok opisu słownego funkcji w nawiasie"
+    ),
+    "network_model/solvers/cable_ampacity_derating.py:self.izolacja": (
+        "rodzaj izolacji przewodu PVC / XLPE — oznaczenie materiału izolacji wg IEC 60502 "
+        "i PN-HD 60364-5-52 (tablice obciążalności), nie kod"
+    ),
+    "network_model/solvers/cable_ampacity_derating.py:izolacja": (
+        "rodzaj izolacji przewodu PVC / XLPE — oznaczenie materiału izolacji wg IEC 60502 "
+        "i PN-HD 60364-5-52 (tablice obciążalności), nie kod"
+    ),
+    "enm/pole_katalogowe.py:konfiguracja.code": (
+        "oznaczenie bloku fabrycznego z karty katalogowej producenta (litery jednostek, np. "
+        "„LLT” — linia, linia, transformator) — nazwa handlowa konfiguracji, którą projektant "
+        "widzi w katalogu rozdzielnicy"
+    ),
+    "network_model/catalog/switchgear/family_validation.py:configuration.code": (
+        "oznaczenie bloku fabrycznego z karty katalogowej producenta (litery jednostek, np. "
+        "„LLT”) — obok nazwy bloku `name_pl` i nazwy rodziny"
+    ),
+}
+
+#: Adres stanu urządzenia ``{x.ident}.{stan}`` w module odmów tłumaczonych: tłumacz zamienia
+#: identyfikator na „Nazwę”, a ``„Nazwa”.stan`` na opis stanu (``OPISY_STANOW_PL``,
+#: kompletność przypina ``tests/api/test_dynamika_api.py::
+#: test_opisy_stanow_obejmuja_kazdy_stan_rodzin_urzadzen_rdzenia``).
+_IDENT_URZADZENIA = re.compile(r"(?:^|\.)ident$")
+
+
+def _adres_stanu_tlumaczony(
+    czesc: ast.FormattedValue, sciezka: str, rodzice: dict[int, ast.AST]
+) -> bool:
+    if not _tlumaczony(sciezka):
+        return False
+    napis = rodzice.get(id(czesc))
+    if not isinstance(napis, ast.JoinedStr):
+        return False
+    i = next(k for k, w in enumerate(napis.values) if w is czesc)
+    if i < 2:
+        return False
+    kropka, ident = napis.values[i - 1], napis.values[i - 2]
+    return (
+        isinstance(kropka, ast.Constant)
+        and kropka.value == "."
+        and isinstance(ident, ast.FormattedValue)
+        and _IDENT_URZADZENIA.search(ast.unparse(ident.value)) is not None
+    )
+
+
+def _wartosc_wyliczenia(
+    wyrazenie: ast.expr,
+    czesc: ast.FormattedValue,
+    sciezka: str,
+    drzewo: ast.Module,
+    rodzice: dict[int, ast.AST],
+    plik: Path,
+    rodzice_modulu: dict[int, ast.AST],
+) -> str | None:
+    """Źródło wstawki f-stringu, gdy wstawia WARTOŚĆ WYLICZENIA zamiast etykiety: ``.value``
+    wyliczenia (``{x.kind.value}``) albo zmienna/atrybut o nazwie wyliczenia
+    (``{self.status}``, ``{der_kind}``, ``{control_mode}``), której wartości nie są tekstem
+    po polsku; ``None`` — wstawka czysta (etykieta, liczba, tekst rozstrzygnięty, cytat
+    odrzuconego wejścia — ``_echo_odrzuconej_wartosci``)."""
+    if czesc.format_spec is not None:
+        return None  # wartość formatowana liczbowo
+    zrodlo = ast.unparse(wyrazenie)
+    if f"{sciezka}:{zrodlo}" in WYLICZENIA_BEZ_ETYKIETY:
+        return None
+    if _echo_odrzuconej_wartosci(zrodlo, czesc, rodzice):
+        return None
+    if _adres_stanu_tlumaczony(czesc, sciezka, rodzice):
+        return None
+    if _wstawka_w_dopisku_kodu(czesc, rodzice_modulu):
+        return None  # kod jako dopisek po zdaniu (``DOPISKI_KODU``)
+    if isinstance(wyrazenie, ast.Attribute) and wyrazenie.attr == "value":
+        return zrodlo
+    if (isinstance(wyrazenie, ast.Attribute) and _atrybut_wyliczenia(plik, wyrazenie.attr)) or (
+        isinstance(wyrazenie, ast.Name) and _zmienna_wyliczenia(plik, wyrazenie, rodzice_modulu)
+    ):
+        return zrodlo  # typ wyliczenia o wartościach-kodach z adnotacji (nie z nazwy)
+    if not (isinstance(wyrazenie, ast.Name | ast.Attribute) and _ZMIENNA_WYLICZENIA.search(zrodlo)):
+        return None
+    if isinstance(wyrazenie, ast.Name):
+        powod = _Sklejenia(sciezka, drzewo).naruszenie_elementu(_Element(wyrazenie, sciezka))
+        return None if powod is None else zrodlo
+    return zrodlo
 
 
 def _w_bledzie_programu(wezel: ast.AST, rodzice: dict[int, ast.AST]) -> bool:
@@ -980,30 +2647,45 @@ def naruszenia_tresci_bez_zdania(sciezka: str, plik: Path | None = None) -> list
     pozycje = pozycje_tresci()
     kanaly = kanaly_wywolan()
     wynik: list[Naruszenie] = []
-    for wywolanie in ast.walk(drzewo):
-        if not isinstance(wywolanie, ast.Call):
-            continue
-        nazwa = _nazwa_wywolanej(wywolanie)
+    for wezel in ast.walk(drzewo):
         argumenty: list[ast.expr] = []
-        if nazwa in kanaly:
-            pozycja = pozycje.get(nazwa)
-            if pozycja is not None and len(wywolanie.args) > pozycja:
-                argumenty.append(wywolanie.args[pozycja])
+        if isinstance(wezel, ast.Call):
+            nazwa = _nazwa_wywolanej(wezel)
+            if nazwa in kanaly:
+                pozycja = pozycje.get(nazwa)
+                if pozycja is not None and len(wezel.args) > pozycja:
+                    argumenty.append(wezel.args[pozycja])
+                argumenty += [k.value for k in wezel.keywords if k.arg in _PARAMETRY_TRESCI]
+            argumenty += [k.value for k in wezel.keywords if k.arg in KANALY_ZDANIOWE]
+            if (
+                isinstance(wezel.func, ast.Attribute)
+                and wezel.func.attr in {"append", "insert"}
+                and isinstance(wezel.func.value, ast.Name)
+                and wezel.func.value.id in LISTY_KOMUNIKATOW
+                and wezel.args
+            ):
+                argumenty.append(wezel.args[-1])
+        elif isinstance(wezel, ast.Dict):
             argumenty += [
-                k.value
-                for k in wywolanie.keywords
-                if k.arg in _PARAMETRY_TRESCI or k.arg in KANALY_SLOW
+                wartosc
+                for klucz, wartosc in zip(wezel.keys, wezel.values, strict=True)
+                if isinstance(klucz, ast.Constant) and klucz.value in KANALY_ZDANIOWE
             ]
+        elif isinstance(wezel, ast.Assign) and any(
+            isinstance(cel, ast.Subscript)
+            and isinstance(cel.slice, ast.Constant)
+            and cel.slice.value in KANALY_ZDANIOWE
+            for cel in wezel.targets
+        ):
+            argumenty.append(wezel.value)
         else:
-            argumenty += [k.value for k in wywolanie.keywords if k.arg in KANALY_SLOW]
-        for argument in argumenty:
+            continue
+        for argument in {id(a): a for a in argumenty}.values():
             if isinstance(argument, ast.Starred) or _poza_komunikatem(argument, rodzice):
                 continue
             opis = _bez_zdania(argument)
             if opis is not None:
-                wynik.append(
-                    Naruszenie(sciezka, wywolanie.lineno, f"treść bez zdania {opis}", opis)
-                )
+                wynik.append(Naruszenie(sciezka, argument.lineno, f"treść bez zdania {opis}", opis))
     return wynik
 
 
@@ -1026,6 +2708,60 @@ def _linie_nazw_typow_tlumaczonych(sciezka: str, plik: Path | None = None) -> se
     return wiersze
 
 
+#: Słowa funkcyjne zdania po angielsku i znaczniki zdania po polsku — reguła języka: tekst
+#: dla projektanta z co najmniej dwoma słowami angielskimi i bez żadnego znacznika polskiego
+#: jest komunikatem po angielsku (pomiar 2026-10-29: 14 trafień w ``src``, wszystkie realne).
+_SLOWA_ANGIELSKIE = re.compile(
+    r"\b(?:the|is|are|must|not|for|of|failed|missing|required|unsupported|invalid|cannot"
+    r"|should|with|no|has|have|found|unknown)\b",
+    re.IGNORECASE,
+)
+_ZNACZNIKI_POLSKIE = re.compile(
+    r"[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|\b(?:nie|jest|brak|dla|lub|oraz|się|musi|wymaga|bez|albo|na|w|z|do)\b"
+)
+
+
+def naruszenia_jezyka(sciezka: str, plik: Path | None = None) -> list[Naruszenie]:
+    """Komunikat dla projektanta po angielsku — produkt mówi do projektanta po polsku
+    (kontrakt prezentacji inżynierskiej); błąd programu idzie ``AssertionError``."""
+    drzewo = _drzewo(plik or SRC / sciezka)
+    return [
+        Naruszenie(sciezka, komunikat.wezel.lineno, "komunikat po angielsku", komunikat.tekst)
+        for komunikat, _rodzice_tekstu in teksty_komunikatow(zakres_src(sciezka), drzewo)
+        if len(_SLOWA_ANGIELSKIE.findall(komunikat.tekst)) >= 2
+        and not _ZNACZNIKI_POLSKIE.search(komunikat.tekst)
+    ]
+
+
+def _w_dopisku_kodu(naruszenie: Naruszenie) -> bool:
+    """Kod naruszenia stoi WYŁĄCZNIE w dopisku ``(<etykieta z DOPISKI_KODU>: <kod>)`` na końcu
+    tekstu (reguła „kod” na stałej treści)."""
+    dopisek = _DOPISEK_KODU.search(naruszenie.tekst)
+    if dopisek is None or dopisek.group("etykieta") not in DOPISKI_KODU:
+        return False
+    token = _token_naruszenia(naruszenie)
+    return dopisek.group("kod") == token and token not in naruszenie.tekst[: dopisek.start()]
+
+
+def _wstawka_w_dopisku_kodu(czesc: ast.FormattedValue, rodzice: dict[int, ast.AST]) -> bool:
+    """Wstawka f-stringu jest kodem dopisku ``… (<etykieta z DOPISKI_KODU>: {kod})`` na końcu
+    tekstu: poprzedza ją stała kończąca się ``(<etykieta>: ``, a po niej stoi wyłącznie ``)``
+    (z kropką)."""
+    napis = rodzice.get(id(czesc))
+    if not isinstance(napis, ast.JoinedStr):
+        return False
+    i = next(k for k, w in enumerate(napis.values) if w is czesc)
+    if i == 0 or not isinstance(napis.values[i - 1], ast.Constant):
+        return False
+    przed = str(napis.values[i - 1].value)
+    po = napis.values[i + 1 :]
+    if not (
+        len(po) == 1 and isinstance(po[0], ast.Constant) and str(po[0].value).strip() in {")", ")."}
+    ):
+        return False
+    return any(przed.endswith(f"({etykieta}: ") for etykieta in DOPISKI_KODU)
+
+
 def _token_naruszenia(naruszenie: Naruszenie) -> str:
     """Token kodu z powodu naruszenia reguły tekstowej, pętli albo argumentu
     (``kod bank_nastaw (zmienna pętli sekcja)`` → ``bank_nastaw``)."""
@@ -1045,9 +2781,11 @@ def naruszenia_klasy(sciezka: str, plik: Path | None = None) -> list[Naruszenie]
     ]
     wynik += naruszenia_nazw_i_identyfikatorow(sciezka, plik)
     wynik += naruszenia_tresci_bez_zdania(sciezka, plik)
+    wynik += naruszenia_sklejen(sciezka, plik)
+    wynik += naruszenia_jezyka(sciezka, plik)
     for naruszenie in _surowe_naruszenia(sciezka, plik):
         token = _token_naruszenia(naruszenie)
-        if f"{sciezka}:{token}" in TOKENY_FORMATU_DANYCH:
+        if f"{sciezka}:{token}" in TOKENY_FORMATU_DANYCH or _w_dopisku_kodu(naruszenie):
             continue
         if _tlumaczony(sciezka):
             if token == _ZASTEPNIK and sciezka in INTERPOLOWANE_KLUCZE_TLUMACZONE:
@@ -1078,11 +2816,156 @@ def _poza_klasa(sciezka: str) -> bool:
     )
 
 
+#: Naruszenia reguły wartości wyliczenia, zapisu kolekcji, kodu i języka w rdzeniach
+#: zamrożonych B-01, których naprawa zmienia WYRAŻENIE wstawki komunikatu albo tekst spoza sankcji — decyzja B-01 architekta
+#: 2026-10-29 objęła wyłącznie `frt_hvrt/contracts.py` (teksty) i `state_estimation_wls.py`
+#: (wyrażenie w argumencie wyjątku); poniższe czekają na decyzję B-01 (meldunek commitu 3).
+#: Klucz ``moduł:wiersz`` → wstawka i uzasadnienie. Zbiór DOKŁADNY:
+#: ``test_odmowy_b01_oczekujace_sa_dokladnym_zbiorem`` czerwieni się, gdy wpis zniknie
+#: z kodu (naprawa po decyzji — usuń wpis) albo gdy w rdzeniu B-01 pojawi się nowe naruszenie.
+ODMOWY_B01_OCZEKUJACE: dict[str, str] = {
+    "catalog/profiles/nc_rfg/loader.py:174": (
+        "`{status}` — kod stanu źródła profilu NC RfG w odmowie spójności pozycji; naprawa: "
+        "etykieta stanu źródła zamiast kodu"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:177": (
+        "`{status}` — kod stanu źródła profilu NC RfG w odmowie spójności pozycji"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:207": (
+        "`{self.status}` — kod stanu dokumentu źródłowego w odmowie braku wydania"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:527": (
+        "`{self.pokrycie_zrodlo.rodzaj}` — kod rodzaju warstwy profilu w odmowie reguły pokrycia"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/contracts.py:286": (
+        "`{self.module_type}` — kod typu modułu w odmowie niezgodności klasyfikacji"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/contracts.py:292": (
+        "`{self.der_kind}` — kod technologii DER w odmowie niezgodności rodziny"
+    ),
+    "network_model/solvers/power_flow_newton_internal.py:1496": (
+        "`{branch.branch_type}` — kod rodzaju gałęzi w niedostępnej gałęzi rozdziału typów "
+        "(kandydat na błąd programu z testem zamkniętości jak `core/ybus.py`)"
+    ),
+    "network_model/solvers/short_circuit_core.py:113": (
+        "`{short_circuit_type}` — kod rodzaju zwarcia w niedostępnej gałęzi rozdziału typów"
+    ),
+    "network_model/solvers/short_circuit_core.py:158": (
+        "`{short_circuit_type.value}` — kod rodzaju zwarcia w odmowie braku macierzy Z0; "
+        "treść po angielsku („Z0 bus matrix is required for … fault computation”)"
+    ),
+    "network_model/solvers/short_circuit_core.py:195": (
+        "`{short_circuit_type.value}` — kod rodzaju zwarcia w odmowie braku impedancji Z0; "
+        "treść po angielsku („Z0 is required for … fault computation”)"
+    ),
+    "network_model/solvers/short_circuit_core.py:203": (
+        "`{short_circuit_type}` — kod rodzaju zwarcia w niedostępnej gałęzi rozdziału typów"
+    ),
+    "network_model/solvers/short_circuit_iec60909.py:1246": (
+        "`{short_circuit_type.value}` — kod rodzaju zwarcia w odmowie braku Z0 pętli; treść "
+        "po angielsku („Z0 is required for … loop formula”)"
+    ),
+    "network_model/solvers/short_circuit_core.py:102": (
+        "treść po angielsku „Y-bus is singular; cannot compute Z-bus for short-circuit”"
+    ),
+    "network_model/solvers/short_circuit_iec60909.py:2499": (
+        "treść po angielsku „Z0 bus matrix is required for 1F fault computation”"
+    ),
+    "network_model/solvers/short_circuit_iec60909.py:2560": (
+        "treść po angielsku „Z0 bus matrix is required for 2F+G fault computation”"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:172": (
+        "`{identyfikatory}` — powtórzone pozycje profilu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:294": (
+        "`{sorted(self.progi_kw)}` — progi klasyfikacji modułu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:371": (
+        "`{czasy}` — chwile punktów obwiedni profilu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:466": (
+        "`{sorted(self.parametry)}`, `{sorted(self.jednostki)}` — klucze scenariusza: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:613": (
+        "`{[w.warstwa for w in self.warstwy]}`, `{list(KOLEJNOSC_WARSTW)}` — kody warstw profilu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:677": (
+        "`{dane.get('warstwa')!r}` i `{warstwa}` — kod warstwy profilu w odmowie niezgodności pliku warstwy"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:709": (
+        "`{list(_KOLEJNOSC_STANOW)}` — kody stanów źródła: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:989": (
+        "`{[w.wersja for w in wykaz.wersje]}` — wersje wykazu WiPWC: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:994": (
+        "`{sorted(wersje)}` — wersje wykazu WiPWC: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:1045": (
+        "`{sorted(poza_warstwa)}`, `{sorted(_TECHNOLOGIE_WARSTWY[warstwa])}` — kody technologii: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:1088": (
+        "`{identyfikatory}` — identyfikatory wymagań katalogu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:1092": (
+        "`{nieznane_pokrycie}` — identyfikatory wymagań spoza katalogu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:1098": (
+        "`{bez_prawa}` — identyfikatory wymagań bez wykonania prawa: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "catalog/profiles/nc_rfg/loader.py:1213": (
+        "`{nieznane}` — nieznane grupy profilu: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/contracts.py:247": (
+        "`{rozjazdy}` — klucze pól testu różne od rekordu oceny: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/engine.py:464": (
+        "`{nieznane}`, `{sorted(znane)}` — identyfikatory testów PTPiREE: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "network_model/solvers/ncrfg_ptpiree/engine.py:475": (
+        "`{obce}` — identyfikatory modułów certyfikatów spoza żądania: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ),
+    "network_model/solvers/power_flow_newton_internal.py:534": (
+        "„slack.u_pu outside typical range [0.8, 1.2]” — klucz pola i treść po angielsku w ostrzeżeniu rozpływu"
+    ),
+    "network_model/solvers/v126_academic.py:1413": (
+        "`(b0_siemens_per_km)` — klucz pola pojemności doziemnej w odmowie braku B0 (nazwa wielkości „pojemność doziemna B0” stoi obok)"
+    ),
+    "network_model/solvers/v126_academic.py:1597": (
+        "`(ner_target_earth_fault_current_a)` — klucz pola docelowego prądu doziemienia w odmowie doboru rezystora NER"
+    ),
+}
+
+
 def test_komunikaty_calego_src_bez_kluczy_pol() -> None:
     """KLASA: żaden komunikat odmowy, walidacji ani ostrzeżenia w ``src`` nie niesie klucza
-    pola zamiast nazwy wielkości."""
-    naruszenia = [n for sciezka in _moduly_klasy() for n in naruszenia_klasy(sciezka)]
+    pola zamiast nazwy wielkości (poza dokładnym zbiorem ``ODMOWY_B01_OCZEKUJACE``)."""
+    naruszenia = [
+        n
+        for sciezka in _moduly_klasy()
+        for n in naruszenia_klasy(sciezka)
+        if f"{n.plik}:{n.linia}" not in ODMOWY_B01_OCZEKUJACE
+    ]
     assert not naruszenia, "\n".join(str(n) for n in naruszenia)
+
+
+def test_odmowy_b01_oczekujace_sa_dokladnym_zbiorem() -> None:
+    """Każdy wpis wskazuje rdzeń B-01 i istniejące naruszenie wartości wyliczenia; żadne
+    inne naruszenie w rdzeniach B-01 nie istnieje."""
+    assert all(jest_rdzeniem_b01(wpis.rsplit(":", 1)[0]) for wpis in ODMOWY_B01_OCZEKUJACE)
+    pliki = sorted({wpis.rsplit(":", 1)[0] for wpis in ODMOWY_B01_OCZEKUJACE})
+    w_rdzeniach: dict[str, str] = {
+        f"{n.plik}:{n.linia}": n.powod
+        for sciezka in _moduly_klasy()
+        if jest_rdzeniem_b01(sciezka)
+        for n in naruszenia_klasy(sciezka)
+    }
+    assert set(w_rdzeniach) == set(ODMOWY_B01_OCZEKUJACE), w_rdzeniach
+    assert all(
+        powod.startswith(("wartość wyliczenia", "komunikat po angielsku", "zapis kolekcji", "kod "))
+        for powod in w_rdzeniach.values()
+    ), w_rdzeniach
+    assert pliki
 
 
 def test_kanal_obejmuje_wyjatki_projektu_i_pomija_bledy_programu() -> None:
@@ -1645,7 +3528,9 @@ def test_wylaczenie_odmowy_nazwanej_kod_tylko_w_niezmienniku() -> None:
 
     odmowa = OdmowaNazwana("Brak mocy źródła w modelu.", kod="polecenie_osd.zrodlo_bez_mocy")
     assert "polecenie_osd" not in str(odmowa)
-    with pytest.raises(ValueError, match="nie należy do treści"):
+    # Naruszenie kontraktu konstruktora jest błędem programu (``AssertionError``), nie
+    # odmową danych dla projektanta (commit kodów w komunikatach, 2026-10-29).
+    with pytest.raises(AssertionError, match="nie należy do treści"):
         OdmowaNazwana("Odmowa polecenie_osd.x w zdaniu", kod="polecenie_osd.x")
 
 
@@ -1797,6 +3682,7 @@ def test_odmowa_dynamiki_nazywa_rodzaj_obiektu_slowami() -> None:
         ("Węzeł o ID '", True),
         ("Generator '⟨⟩' (", True),
         ("Wykryto model w projekcie ", True),
+        ("Usunięcie zwarcia w węźle ", True),
         ("Run nie znaleziony: ", False),
         ("Kopia zapasowa nie znaleziona: project=", False),
         ("", False),
@@ -1845,11 +3731,15 @@ def test_regula_nazw_klas_typow_i_identyfikatorow_wykrywa_iniekcje(tmp_path: Pat
         "nazwa typu type(x).__name__",
         "identyfikator bez rodzaju run_id",
         "nazwa typu obce",
+        # _i5 łapie też reguła zapisu kolekcji: krotka w zdaniu bez sklejenia słowami.
+        "zapis kolekcji obce: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia"
+        " słowami",
         "identyfikator bez rodzaju element_id",
     }, powody
     linie = sorted(n.linia - granica for n in naruszenia_klasy(sciezka, kopia) if n.linia > granica)
-    # _i2 (kanał) i _i4 (tekst w zmiennej) — oba przypadki nazwy typu są złapane osobno.
-    assert len(linie) == 6, linie
+    # _i2 (kanał) i _i4 (tekst w zmiennej) — oba przypadki nazwy typu są złapane osobno;
+    # _i5 daje dwa naruszenia w jednej linii (nazwa typu i zapis kolekcji).
+    assert len(linie) == 7, linie
 
 
 def test_nazwa_typu_w_module_tlumaczonym_tylko_w_apostrofach(tmp_path: Path) -> None:
@@ -1948,3 +3838,582 @@ def test_warstwy_nc_rfg_tylko_z_pakietu() -> None:
                 "katalog_operatorow",
             }:
                 raise AssertionError(f"{plik}: podaje katalog warstw NC RfG")
+
+
+# ---------------------------------------------------------------------------
+# Żywotność i kompletność list strażnika (kanały, listy, wyłączenia sklejeń i wyliczeń)
+# ---------------------------------------------------------------------------
+
+_NAZWA_KANALU_PL = re.compile(r"^[a-z][a-z0-9_]*_pl$")
+
+
+def _nazwy_w_miejscach_kanalu(drzewo: ast.Module) -> set[str]:
+    """Nazwy stojące tam, gdzie strażnik czyta kanał treści: argument nazwany, klucz napisowy
+    słownika, klucz napisowy przypisania/odczytu i pole klasy (rekord, model danych)."""
+    nazwy: set[str] = set()
+    for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.keyword) and wezel.arg:
+            nazwy.add(wezel.arg)
+        elif isinstance(wezel, ast.Dict):
+            nazwy.update(
+                k.value
+                for k in wezel.keys
+                if isinstance(k, ast.Constant) and isinstance(k.value, str)
+            )
+        elif (
+            isinstance(wezel, ast.Subscript)
+            and isinstance(wezel.slice, ast.Constant)
+            and isinstance(wezel.slice.value, str)
+        ):
+            nazwy.add(wezel.slice.value)
+        elif isinstance(wezel, ast.ClassDef):
+            nazwy.update(
+                pole.target.id
+                for pole in wezel.body
+                if isinstance(pole, ast.AnnAssign) and isinstance(pole.target, ast.Name)
+            )
+    return nazwy
+
+
+def test_kanaly_tresci_kompletne_i_zywe() -> None:
+    """JEDNA lista kanałów: każdy kanał ma rodzaj ZDANIE albo ETYKIETA i występuje w ``src``
+    w miejscu kanału; każda nazwa ``*_pl`` w miejscu kanału w module klasy jest kanałem
+    (nowe pole tekstu po polsku bez rodzaju czerwieni test)."""
+    assert set(KANALY_TRESCI.values()) <= {ZDANIE, ETYKIETA}
+    assert KANALY_ZDANIOWE <= KANALY_SLOW
+    wszystkie: set[str] = set()
+    bez_rodzaju: dict[str, str] = {}
+    for sciezka in sorted(p.relative_to(SRC).as_posix() for p in SRC.rglob("*.py")):
+        nazwy = _nazwy_w_miejscach_kanalu(_drzewo(SRC / sciezka))
+        wszystkie |= nazwy
+        if _poza_klasa(sciezka):
+            continue
+        for nazwa in nazwy:
+            if _NAZWA_KANALU_PL.match(nazwa) and nazwa not in KANALY_TRESCI:
+                bez_rodzaju.setdefault(nazwa, sciezka)
+    assert not bez_rodzaju, f"pola tekstu po polsku bez rodzaju kanału: {bez_rodzaju}"
+    martwe = sorted(set(KANALY_TRESCI) - wszystkie)
+    assert not martwe, f"kanały bez wystąpienia w src — wpisy zbędne: {martwe}"
+
+
+def _listy_zdan_w_funkcjach() -> dict[str, list[str]]:
+    """Listy, do których funkcja dokłada zdanie po polsku i które ta sama funkcja wkłada do
+    wywołania kanału (odmowa, rekord, ``ValueError``) — nazwa → miejsca wywołań kanału."""
+    kanaly = kanaly_wywolan()
+    wynik: dict[str, list[str]] = {}
+    for sciezka in _moduly_klasy():
+        for funkcja in ast.walk(_drzewo(SRC / sciezka)):
+            if not isinstance(funkcja, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            ze_zdaniem = {
+                w.func.value.id
+                for w in ast.walk(funkcja)
+                if isinstance(w, ast.Call)
+                and isinstance(w.func, ast.Attribute)
+                and w.func.attr in {"append", "insert"}
+                and isinstance(w.func.value, ast.Name)
+                and w.args
+                and isinstance(w.args[-1], ast.Constant | ast.JoinedStr)
+                and _LUDZKI.search(
+                    "".join(
+                        str(c.value)
+                        for c in ast.walk(w.args[-1])
+                        if isinstance(c, ast.Constant) and isinstance(c.value, str)
+                    )
+                )
+            }
+            if not ze_zdaniem:
+                continue
+            for w in ast.walk(funkcja):
+                if isinstance(w, ast.Call) and _nazwa_wywolanej(w) in kanaly:
+                    uzyte = {
+                        n.id
+                        for a in (*w.args, *(k.value for k in w.keywords))
+                        for n in ast.walk(a)
+                        if isinstance(n, ast.Name)
+                    }
+                    for nazwa in sorted(ze_zdaniem & uzyte):
+                        wynik.setdefault(nazwa, []).append(f"{sciezka}:{w.lineno}")
+    return wynik
+
+
+def test_listy_komunikatow_zywe() -> None:
+    """Każda lista komunikatów dostaje w ``src`` zdanie po polsku (wpis żywy), a każda lista
+    zdań wkładana w tej samej funkcji do wywołania kanału jest listą komunikatów
+    (``frt_hvrt/contracts.py`` ``errors`` → ``OdmowaDanychError``; ``enm/validator.py``
+    ``braki`` → ``ValidationIssue``)."""
+    zywe: set[str] = set()
+    for plik in sorted(SRC.rglob("*.py")):
+        for w in ast.walk(_drzewo(plik)):
+            if (
+                isinstance(w, ast.Call)
+                and isinstance(w.func, ast.Attribute)
+                and w.func.attr in {"append", "insert"}
+                and isinstance(w.func.value, ast.Name)
+                and w.func.value.id in LISTY_KOMUNIKATOW
+                and w.args
+                and any(
+                    isinstance(c, ast.Constant)
+                    and isinstance(c.value, str)
+                    and _LUDZKI.search(c.value)
+                    for c in ast.walk(w.args[-1])
+                )
+            ):
+                zywe.add(w.func.value.id)
+    assert not set(LISTY_KOMUNIKATOW) - zywe, set(LISTY_KOMUNIKATOW) - zywe
+    assert all(uzasadnienie.strip() for uzasadnienie in LISTY_KOMUNIKATOW.values())
+    poza = {n: m for n, m in _listy_zdan_w_funkcjach().items() if n not in LISTY_KOMUNIKATOW}
+    assert not poza, f"listy zdań wkładane do kanału bez wpisu LISTY_KOMUNIKATOW: {poza}"
+
+
+@pytest.mark.parametrize(
+    ("tablica", "wpis"),
+    [
+        *(("KOLEKCJE_TEKSTOW_SRC", w) for w in sorted(KOLEKCJE_TEKSTOW_SRC)),
+        *(("KOLEKCJE_FORMATU_DANYCH", w) for w in sorted(KOLEKCJE_FORMATU_DANYCH)),
+        *(("WYLICZENIA_BEZ_ETYKIETY", w) for w in sorted(WYLICZENIA_BEZ_ETYKIETY)),
+    ],
+)
+def test_wylaczenia_sklejen_sa_zywe(
+    tablica: str, wpis: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Każde wyłączenie (kolekcja tekstów, kolekcja tokenów formatu danych, wyliczenie
+    o wartościach będących słowem albo oznaczeniem normy) ma uzasadnienie i wskazuje
+    miejsce, które BEZ wpisu strażnik zgłasza — martwy wpis byłby furtką."""
+    slownik: dict[str, str] = globals()[tablica]
+    assert slownik[wpis].strip()
+    sciezka = wpis.split(":", 1)[0]
+    assert (SRC / sciezka).is_file(), wpis
+    przed = len(naruszenia_klasy(sciezka))
+    monkeypatch.delitem(slownik, wpis)
+    po = len(naruszenia_klasy(sciezka))
+    assert po > przed, f"{tablica}[{wpis!r}]: bez wpisu brak naruszenia — wpis zbędny"
+
+
+def test_wyliczenia_bez_etykiety_maja_wartosci_slowne_albo_normowe() -> None:
+    """Warunek wpisów ``WYLICZENIA_BEZ_ETYKIETY`` i kolekcji oznaczeń normowych: wartości
+    ``NetworkType`` są oznaczeniami układu sieci wg PN-HD 60364-1 §312.2, ``RODZAJE_OBWODU``
+    — polskimi słowami, ``TypModulu`` — typami A–D (rozporządzenie 2016/631 art. 5), klucze
+    ``FUNKCJE_INNEJ_STREFY`` — numerami IEEE C37.2 / ANSI, ``Izolacja`` — PVC / XLPE,
+    oznaczenia bloków fabrycznych — literami jednostek bloku, ``RODZAJE_PRADU_ROZNICOWEGO_RCD``
+    — typami RCD wg IEC 60755 / IEC 62423, ``ProtectionArrangement`` — PE / PEN / NONE.
+    Nowa wartość spoza tych zbiorów czerwieni test (wpis wyłączenia przestaje być prawdą)."""
+    from typing import get_args
+
+    from application.analyses.swz.werdykt import RODZAJE_OBWODU
+    from catalog.profiles.nc_rfg.loader import TypModulu
+    from domain.der_protection_functions import FUNKCJE_INNEJ_STREFY
+    from network_model.catalog.switchgear.factory_configuration import FACTORY_CONFIGURATIONS
+    from network_model.catalog.types import RODZAJE_PRADU_ROZNICOWEGO_RCD
+    from network_model.solvers.cable_ampacity_derating import Izolacja
+    from network_model.solvers.fault_loop_iec60364 import NetworkType, ProtectionArrangement
+
+    assert {t.value for t in NetworkType} <= {"TN-S", "TN-C-S", "TN-C", "TT", "IT"}
+    assert all(re.fullmatch(r"[a-ząćęłńóśźż]+", rodzaj) for rodzaj in RODZAJE_OBWODU)
+    assert set(get_args(TypModulu)) == {"A", "B", "C", "D"}
+    assert all(re.fullmatch(r"\d{2}[A-Z]{1,2}", kod) for kod in FUNKCJE_INNEJ_STREFY)
+    assert set(get_args(Izolacja)) == {"PVC", "XLPE"}
+    assert set(RODZAJE_PRADU_ROZNICOWEGO_RCD) == {"AC", "A", "F", "B"}
+    assert {p.value for p in ProtectionArrangement} == {"PE", "PEN", "NONE"}
+    for blok in FACTORY_CONFIGURATIONS:
+        assert blok.code == "".join(u.unit_code for u in blok.units), blok.configuration_ref
+        assert blok.name_pl.strip(), blok.configuration_ref
+
+
+def test_symbole_inzynierskie_maja_podstawe_i_sa_zywe() -> None:
+    """Każdy symbol inżynierski ma podstawę (norma albo dokument źródłowy i oznaczenie
+    wielkości) i występuje w tekście ``src`` — martwy symbol byłby furtką dla kodu o tym
+    samym zapisie."""
+    normy = re.compile(r"IEC|PN-|EN \d|IEEE|rozporządzenie|PTPiREE|N SEP|CIGRE")
+    teksty = [
+        w.value
+        for plik in sorted(SRC.rglob("*.py"))
+        for w in ast.walk(_drzewo(plik))
+        if isinstance(w, ast.Constant) and isinstance(w.value, str)
+    ]
+    for symbol, podstawa in SYMBOLE_INZYNIERSKIE.items():
+        assert normy.search(podstawa) and symbol in podstawa, symbol
+        wzor = re.compile(rf"(?<!\w){re.escape(symbol)}(?!\w)")
+        assert any(wzor.search(t) for t in teksty), f"{symbol}: brak w src — wpis zbędny"
+
+
+def test_kanaly_formatujace_sa_zywe() -> None:
+    """Każdy kanał formatujący jest funkcją ``src`` z parametrem treści ``tekst``, której
+    wynik niesie tę treść w całości (deklaracja „wynik to tekst dla projektanta”), jest
+    wołany w ``src`` ze zdaniem po polsku, a znacznik reguły, który dokleja, zdejmuje tłumacz
+    błędu walidacji (zdanie zostaje, znacznik — nie)."""
+    from dziedziny.kanon import REGULY_KONTRAKTU, naruszenie
+    from enm.slownik_komunikatow import opis_pozycji_walidacji
+
+    definicje: dict[str, ast.FunctionDef] = {}
+    wolania: dict[str, int] = dict.fromkeys(KANALY_FORMATUJACE, 0)
+    for plik in sorted(SRC.rglob("*.py")):
+        for w in ast.walk(_drzewo(plik)):
+            if isinstance(w, ast.FunctionDef) and w.name in KANALY_FORMATUJACE:
+                definicje[w.name] = w
+            if (
+                isinstance(w, ast.Call)
+                and _nazwa_wywolanej(w) in KANALY_FORMATUJACE
+                and len(w.args) > 1
+                and any(
+                    isinstance(c, ast.Constant)
+                    and isinstance(c.value, str)
+                    and _LUDZKI.search(c.value)
+                    for c in ast.walk(w.args[1])
+                )
+            ):
+                wolania[_nazwa_wywolanej(w)] += 1
+    assert set(definicje) == set(KANALY_FORMATUJACE), definicje
+    for nazwa, funkcja in definicje.items():
+        assert [a.arg for a in funkcja.args.args][1:2] == ["tekst"], nazwa
+        assert wolania[nazwa] > 0, f"{nazwa}: brak wywołań ze zdaniem w src — wpis zbędny"
+    regula = sorted(REGULY_KONTRAKTU)[0]
+    zdanie = "Tabela limitów nie może być pusta"
+    sformatowane = naruszenie(regula, f"{zdanie}.")
+    assert sformatowane.endswith(f"{zdanie}.") and regula in sformatowane
+    opis = opis_pozycji_walidacji(
+        {"type": "value_error", "loc": ("tabela",), "ctx": {"error": sformatowane}}, None
+    )
+    assert zdanie in opis and regula not in opis, opis
+
+
+def test_dopiski_kodu_sa_zywe() -> None:
+    """Każda etykieta dopisku kodu ma podstawę i występuje w ``src`` jako dopisek
+    ``(<etykieta>: {kod})`` na końcu tekstu po zdaniu — martwa etykieta byłaby furtką dla
+    kodu w nawiasie; dopisek nie stoi nigdy w środku zdania."""
+    dopiski: dict[str, int] = dict.fromkeys(DOPISKI_KODU, 0)
+    for plik in sorted(SRC.rglob("*.py")):
+        for w in ast.walk(_drzewo(plik)):
+            if not isinstance(w, ast.Constant) or not isinstance(w.value, str):
+                continue
+            for etykieta in DOPISKI_KODU:
+                if f"({etykieta}: " in w.value:
+                    dopiski[etykieta] += 1
+                    przed = w.value.split(f"({etykieta}: ", 1)[0]
+                    assert przed.strip() == "" or _LUDZKI.search(przed) or przed.endswith(" "), (
+                        plik,
+                        w.value,
+                    )
+    for etykieta, podstawa in DOPISKI_KODU.items():
+        assert etykieta.startswith("kod ") and len(podstawa.strip()) > 40, etykieta
+        assert dopiski[etykieta] > 0, f"{etykieta}: brak dopisku w src — wpis zbędny"
+
+
+#: Iniekcje reguł strażnika (po jednej na regułę): funkcja ``_i_*`` niesie defekt i MUSI
+#: dać dokładnie podane naruszenia; ``_ok_*`` jest jej poprawną postacią i nie daje żadnego.
+_INIEKCJE_SRC = (
+    "\n"
+    "\n"
+    'RODZAJE_INIEKCJI = ("a", "b")\n'
+    'WYNIK_INIEKCJI = {"a": "pierwszy"}\n'
+    "\n"
+    "\n"
+    "def _i_kanal_slownika():\n"
+    '    return {"reason_pl": "Pole u_n_kv musi być dodatnie."}\n'
+    "\n"
+    "\n"
+    "def _i_kanal_listy(errors):\n"
+    '    errors.append("Pole u_n_kv musi być dodatnie.")\n'
+    "\n"
+    "\n"
+    "def _ok_lista_spoza_kanalow(wiersze):\n"
+    '    wiersze.append("Pole u_n_kv musi być dodatnie.")\n'
+    "\n"
+    "\n"
+    "def _i_bez_zdania_kanal_zdaniowy(kod):\n"
+    '    return {"reason_pl": kod}\n'
+    "\n"
+    "\n"
+    "def _ok_bez_zdania_kanal_etykiety(kod):\n"
+    '    return {"alias_pl": kod}\n'
+    "\n"
+    "\n"
+    "def _i_sklejenie_kodow():\n"
+    "    raise ValueError(f\"Brakuje pól: {', '.join(['u_n_kv', 'i_th_ka'])}.\")\n"
+    "\n"
+    "\n"
+    "def _i_sklejenie_nierozstrzygniete(x):\n"
+    "    raise ValueError(f\"Brakuje danych: {', '.join(x.braki)}.\")\n"
+    "\n"
+    "\n"
+    "def _ok_sklejenie_slow():\n"
+    "    raise ValueError(f\"Brakuje danych: {', '.join(['napięcie znamionowe', 'prąd cieplny'])}.\")\n"
+    "\n"
+    "\n"
+    "def _i_cel_petli_z_kodem():\n"
+    '    for pole in ("u_n_kv", "i_th_ka"):\n'
+    "        raise ValueError(f\"Brakuje pól: {', '.join([pole])}.\")\n"
+    "\n"
+    "\n"
+    "def _i_parametr_z_wywolan(pola):\n"
+    "    raise ValueError(f\"Brakuje pól: {', '.join(pola)}.\")\n"
+    "\n"
+    "\n"
+    "def _wolajacy_parametr():\n"
+    '    _i_parametr_z_wywolan(["u_n_kv"])\n'
+    "\n"
+    "\n"
+    "def _i_wartosc_wyliczenia(x):\n"
+    '    raise ValueError(f"Rodzaj {x.kind.value} nie jest obsługiwany przez ten moduł.")\n'
+    "\n"
+    "\n"
+    "def _i_zmienna_wyliczenia(status):\n"
+    '    raise ValueError(f"Stan {status} nie jest dozwolony w tym miejscu.")\n'
+    "\n"
+    "\n"
+    "def _ok_echo_not_in(rodzaj):\n"
+    "    if rodzaj not in RODZAJE_INIEKCJI:\n"
+    '        raise ValueError(f"Rodzaj {rodzaj!r} spoza słownika — dozwolone są inne wartości.")\n'
+    "\n"
+    "\n"
+    "def _ok_echo_else(rodzaj):\n"
+    "    if rodzaj in RODZAJE_INIEKCJI:\n"
+    "        return 1\n"
+    "    elif rodzaj in WYNIK_INIEKCJI:\n"
+    "        return 2\n"
+    "    else:\n"
+    '        raise ValueError(f"Rodzaj {rodzaj!r} spoza słownika — dozwolone są inne wartości.")\n'
+    "\n"
+    "\n"
+    "def _ok_echo_else_zagniezdzone(rodzaj, flaga):\n"
+    "    if rodzaj in RODZAJE_INIEKCJI:\n"
+    "        return 1\n"
+    "    elif flaga:\n"
+    "        return 2\n"
+    "    else:\n"
+    '        raise ValueError(f"Rodzaj {rodzaj!r} spoza słownika — dozwolone są inne wartości.")\n'
+    "\n"
+    "\n"
+    "def _ok_echo_except(rodzaj):\n"
+    "    try:\n"
+    "        int(rodzaj)\n"
+    "    except ValueError:\n"
+    '        raise ValueError(f"Rodzaj {rodzaj!r} nie jest liczbą — popraw wartość w danych.")\n'
+    "\n"
+    "\n"
+    "def _ok_etykieta_wyliczenia(x):\n"
+    '    raise ValueError(f"Rodzaj {NAZWY_RODZAJOW_PL[x.kind]} nie jest obsługiwany przez ten moduł.")\n'
+    "\n"
+    "\n"
+    "def _i_jezyk():\n"
+    '    raise ValueError("Bus voltage is required for the computation of the fault current.")\n'
+    "\n"
+    "\n"
+    "def _ok_jezyk_polski():\n"
+    '    raise ValueError("Napięcie węzła jest wymagane do obliczenia prądu zwarciowego.")\n'
+    "\n"
+    "def _i_przeplyw_zmiennej():\n"
+    '    tresc = "Pole u_n_kv musi być dodatnie."\n'
+    "    raise ValueError(tresc)\n"
+    "\n"
+    "\n"
+    "def _ok_zmienna_poza_kanalem():\n"
+    '    tresc = "Pole u_n_kv musi być dodatnie."\n'
+    "    return len(tresc)\n"
+    "\n"
+    "\n"
+    "def _odmowa_iniekcji(tekst):\n"
+    "    raise ValueError(tekst)\n"
+    "\n"
+    "\n"
+    "def _i_przeplyw_parametru_nazwanego():\n"
+    '    _odmowa_iniekcji(tekst="Pole u_n_kv musi być dodatnie.")\n'
+    "\n"
+    "\n"
+    "def _i_przeplyw_parametru_pozycyjnego():\n"
+    '    _odmowa_iniekcji("Pole u_n_kv musi być dodatnie.")\n'
+    "\n"
+    "\n"
+    "def _i_przeplyw_wyniku_funkcji():\n"
+    '    return "Pole u_n_kv musi być dodatnie."\n'
+    "\n"
+    "\n"
+    "def _wolajacy_wynik():\n"
+    "    raise ValueError(_i_przeplyw_wyniku_funkcji())\n"
+    "\n"
+    "\n"
+    "def _ok_sklejenie_pol_tekstowych(dane):\n"
+    '    raise ValueError("Dane przyjęte: " + "; ".join(str(d.get("nazwa_pl")) for d in dane) + ".")\n'
+    "\n"
+    "\n"
+    "def _i_sklejenie_pol_kluczy(dane):\n"
+    '    raise ValueError("Dane przyjęte: " + "; ".join(str(d.get("klucz")) for d in dane) + ".")\n'
+    "\n"
+    "\n"
+    "\n"
+    'TrybIniekcji = Literal["tryb_a", "tryb_b"]\n'
+    'RodzajSlownyIniekcji = Literal["odbiorczy", "rozdzielczy"]\n'
+    "\n"
+    "\n"
+    "class _KolorIniekcji(StrEnum):\n"
+    '    CZERWONY = "RED_X"\n'
+    '    ZIELONY = "GREEN_X"\n'
+    "\n"
+    "\n"
+    "class _PozycjaIniekcji:\n"
+    "    numer: int\n"
+    "\n"
+    "\n"
+    "class _i_kanal_konstruktora_bazy(ValueError):\n"
+    "    def __init__(self) -> None:\n"
+    '        super().__init__("Pole u_n_kv musi być dodatnie.")\n'
+    "\n"
+    "\n"
+    "def _i_typ_literalu(wartosc: TrybIniekcji):\n"
+    '    raise ValueError(f"Wartość {wartosc} nie pasuje do tego modułu wcale.")\n'
+    "\n"
+    "\n"
+    "def _ok_typ_literalu_slowny(wartosc: RodzajSlownyIniekcji):\n"
+    '    raise ValueError(f"Obwód {wartosc} nie pasuje do tego modułu wcale.")\n'
+    "\n"
+    "\n"
+    "def _i_typ_wyliczenia(barwa: _KolorIniekcji):\n"
+    '    raise ValueError(f"Barwa {barwa} nie pasuje do tego modułu wcale.")\n'
+    "\n"
+    "\n"
+    "def _i_kanal_formatujacy():\n"
+    '    return naruszenie("regula.x", "Pole u_n_kv musi być dodatnie.")\n'
+    "\n"
+    "\n"
+    "def _ok_dopisek_kodu(kod):\n"
+    '    raise ValueError(f"Model nie spełnia reguły katalogu (kod reguły: {kod}).")\n'
+    "\n"
+    "\n"
+    "def _i_kod_poza_dopiskiem(kod):\n"
+    '    raise ValueError(f"Model nie spełnia reguły {kod} katalogu, popraw dane.")\n'
+    "\n"
+    "\n"
+    "def _i_kod_z_kropka():\n"
+    '    raise ValueError("Odmowa nn.brak_rcd dla obwodu odbiorczego w tej stacji.")\n'
+    "\n"
+    "\n"
+    "def _i_zapis_kolekcji(x):\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {sorted(x)}.")\n'
+    "\n"
+    "\n"
+    "def _i_zapis_zmiennej_kolekcji(x):\n"
+    "    lista = [e.nazwa for e in x]\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {lista}.")\n'
+    "\n"
+    "\n"
+    "def _kolekcja_iniekcji() -> list[str]:\n"
+    "    return []\n"
+    "\n"
+    "\n"
+    "def _i_zapis_wyniku_funkcji():\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {_kolekcja_iniekcji()}.")\n'
+    "\n"
+    "\n"
+    "def _ok_liczba_pozycji(x):\n"
+    '    raise ValueError(f"Powtórzone pozycje listy: {len(x)} wpisów do usunięcia.")\n'
+    "\n"
+    "\n"
+    "def _ok_liczby_sklejone(x):\n"
+    "    raise ValueError(f\"Powtórzone częstotliwości: {', '.join(f'{f:g}' for f in x)} Hz.\")\n"
+    "\n"
+    "\n"
+    "def _ok_atrybut_liczbowy(pozycje):\n"
+    "    raise ValueError(f\"Powtórzone numery pozycji: {', '.join(str(p.numer) for p in pozycje)}.\")\n"
+    "\n"
+    "\n"
+    "def _ok_przeksztalcenie_tekstu():\n"
+    "    raise ValueError(\n"
+    "        f\"Brakuje danych: {', '.join(t.replace('-', ' ') for t in ['napięcie znamionowe'])}.\"\n"
+    "    )\n"
+    "\n"
+    "\n"
+    "def _i_przeksztalcenie_kodu():\n"
+    "    raise ValueError(f\"Brakuje danych: {', '.join(t.strip() for t in ['u_n_kv'])}.\")\n"
+)
+_INIEKCJE_DYNAMIKI = (
+    "\n"
+    "\n"
+    "def _ok_adres_stanu(urzadzenie, stan):\n"
+    '    raise ValueError(f"Stan {urzadzenie.ident}.{stan} wyszedł poza zakres ważności modelu.")\n'
+    "\n"
+    "\n"
+    "def _i_stan_bez_adresu(urzadzenie, stan):\n"
+    '    raise ValueError(f"Stan {stan} urządzenia wyszedł poza zakres ważności modelu.")\n'
+)
+_OCZEKIWANE_INIEKCJE: dict[str, list[str]] = {
+    "_i_kanal_slownika": ["kod u_n_kv"],
+    "_i_kanal_listy": ["kod u_n_kv"],
+    "_i_bez_zdania_kanal_zdaniowy": ["treść bez zdania kod"],
+    "_i_sklejenie_kodow": ["sklejenie ['u_n_kv', 'i_th_ka']: kod u_n_kv"],
+    "_i_sklejenie_nierozstrzygniete": ["sklejenie x.braki: kolekcja nierozstrzygnięta x.braki"],
+    "_i_cel_petli_z_kodem": ["sklejenie [pole]: kod u_n_kv"],
+    "_i_parametr_z_wywolan": ["sklejenie pola: kod u_n_kv"],
+    "_i_wartosc_wyliczenia": ["wartość wyliczenia x.kind.value"],
+    "_i_zmienna_wyliczenia": ["wartość wyliczenia status"],
+    "_i_jezyk": ["komunikat po angielsku"],
+    "_i_stan_bez_adresu": ["wartość wyliczenia stan"],
+    "_i_przeplyw_zmiennej": ["kod u_n_kv"],
+    "_i_przeplyw_parametru_nazwanego": ["kod u_n_kv"],
+    "_i_przeplyw_parametru_pozycyjnego": ["kod u_n_kv"],
+    "_i_przeplyw_wyniku_funkcji": ["kod u_n_kv"],
+    "_i_sklejenie_pol_kluczy": [
+        "sklejenie (str(d.get('klucz')) for d in dane): element nierozstrzygnięty d.get('klucz')"
+    ],
+    "_i_kanal_konstruktora_bazy": ["kod u_n_kv"],
+    "_i_typ_literalu": ["wartość wyliczenia wartosc"],
+    "_i_typ_wyliczenia": ["wartość wyliczenia barwa"],
+    "_i_kanal_formatujacy": ["kod u_n_kv"],
+    "_i_kod_poza_dopiskiem": ["wartość wyliczenia kod"],
+    "_i_kod_z_kropka": ["kod nn.brak_rcd"],
+    "_i_zapis_kolekcji": [
+        "zapis kolekcji sorted(x): lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ],
+    "_i_zapis_zmiennej_kolekcji": [
+        "zapis kolekcji lista: lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ],
+    "_i_zapis_wyniku_funkcji": [
+        "zapis kolekcji _kolekcja_iniekcji(): lista w zapisie Pythona (nawiasy i apostrofy) zamiast sklejenia słowami"
+    ],
+    "_i_przeksztalcenie_kodu": ["sklejenie (t.strip() for t in ['u_n_kv']): kod u_n_kv"],
+}
+
+
+def _naruszenia_iniekcji(sciezka: str, dopisek: str, tmp_path: Path) -> dict[str, list[str]]:
+    wzor = SRC / sciezka
+    tresc = wzor.read_text(encoding="utf-8")
+    kopia = tmp_path / f"iniekcja_{Path(sciezka).stem}.py"
+    kopia.write_text(tresc + dopisek, encoding="utf-8")
+    granica = len(tresc.splitlines())
+    funkcje = [
+        (f.lineno, f.end_lineno or f.lineno, f.name)
+        for f in ast.parse(kopia.read_text(encoding="utf-8")).body
+        if isinstance(f, ast.FunctionDef | ast.ClassDef) and f.lineno > granica
+    ]
+    wynik: dict[str, list[str]] = {nazwa: [] for _a, _b, nazwa in funkcje}
+    for naruszenie in naruszenia_klasy(sciezka, kopia):
+        if naruszenie.linia > granica:
+            nazwa = next(n for a, b, n in funkcje if a <= naruszenie.linia <= b)
+            wynik[nazwa].append(naruszenie.powod)
+    return {nazwa: sorted(powody) for nazwa, powody in wynik.items()}
+
+
+def test_iniekcje_regul_strazenika_sa_czerwone(tmp_path: Path) -> None:
+    """Każda reguła strażnika łapie swoją iniekcję i przepuszcza poprawną postać: klucz pola
+    w kanale słownika i listy (lista spoza ``LISTY_KOMUNIKATOW`` — nie), „komunikat bez
+    zdania” wyłącznie w kanale ZDANIE, sklejenie kodów / kolekcji nierozstrzygniętej / celu
+    pętli / parametru rozstrzygniętego z wywołań, wartość wyliczenia (``.value`` i zmienna
+    o nazwie wyliczenia; cytat odrzuconego wejścia ``not in`` / ``else`` łańcucha / ``except``
+    i etykieta — nie), komunikat po angielsku oraz adres stanu urządzenia w module odmów
+    tłumaczonych (``{x.ident}.{stan}`` — nie, sam ``{stan}`` — tak). Reguły commitu kodów
+    w komunikatach: typ ``Literal``/``Enum`` o wartościach-kodach (słowne — nie), kanał
+    formatujący ``naruszenie``, konstruktor bazy wyjątku ``super().__init__``, kod z kropką,
+    kod poza dopiskiem (dopisek ``(kod reguły: …)`` — nie), zapis kolekcji (konstruktor,
+    zmienna, wynik funkcji; liczba elementów i liczby sklejone — nie) oraz przekształcenie
+    tekstu stałymi (element przekształcany sprawdzany jak bez przekształcenia)."""
+    wyniki = {
+        **_naruszenia_iniekcji("network_model/core/graph.py", _INIEKCJE_SRC, tmp_path),
+        **_naruszenia_iniekcji(
+            "network_model/solvers/dynamika/waznosc.py", _INIEKCJE_DYNAMIKI, tmp_path
+        ),
+    }
+    for nazwa, powody in sorted(wyniki.items()):
+        if nazwa.startswith("_i_"):
+            assert powody == _OCZEKIWANE_INIEKCJE[nazwa], (nazwa, powody)
+        elif nazwa.startswith("_ok_"):
+            assert powody == [], (nazwa, powody)
+    assert set(_OCZEKIWANE_INIEKCJE) == {n for n in wyniki if n.startswith("_i_")}

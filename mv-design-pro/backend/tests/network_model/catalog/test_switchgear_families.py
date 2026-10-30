@@ -43,7 +43,9 @@ from network_model.catalog.switchgear import (
     list_switchgear_families,
 )
 from network_model.catalog.switchgear.switchgear_family import (
+    ETYKIETA_STATUSU_RODZINY_PL,
     TOR_KONFIGURACJI_WG_KONSTRUKCJI,
+    SwitchgearFamilyStatus,
 )
 
 
@@ -165,10 +167,16 @@ class TestSwitchgearFamilyRegistry:
         # Intencja bez zmian: nota po polsku MUSI deklarować status źródła
         # rodziny (czytelnik widzi, na czym stoją dane). Po transzy
         # 2026-08-14 dopuszczalne statusy to `repo_verified` albo
-        # `requires_catalog` — nota nazywa ten, który rodzina naprawdę ma.
+        # `requires_catalog` — nota nazywa ten, który rodzina naprawdę ma. Od karty
+        # kodów w komunikatach (2026-10-29) nota nazywa stan SŁOWEM
+        # (`ETYKIETA_STATUSU_RODZINY_PL`), a kod statusu zostaje w polu `status`.
+        assert set(ETYKIETA_STATUSU_RODZINY_PL) == set(get_args(SwitchgearFamilyStatus))
         for family in SWITCHGEAR_FAMILY_REGISTRY.values():
             assert family.notes_pl is not None
-            assert family.status in family.notes_pl, family.switchgear_family_ref
+            assert (
+                f"Stan źródła: {ETYKIETA_STATUSU_RODZINY_PL[family.status]}" in family.notes_pl
+            ), family.switchgear_family_ref
+            assert family.status not in family.notes_pl, family.switchgear_family_ref
 
     def test_list_deterministic(self):
         first = [f.switchgear_family_ref for f in list_switchgear_families()]

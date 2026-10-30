@@ -277,11 +277,11 @@ def _build_upstream_equivalent_snapshot_surowy(
         # równoważnik na danych projektu bez zmian (odcisk projekcji nN bit w bit).
         **_dane_przyjete_kotwicy(dane_przyjete, hv_equiv.parametry_robocze_maszyn),
         "note_pl": (
-            "Równoważnik Thevenina sieci SN w punkcie HV transformatora — "
-            "granica wizualna domeny nN (L2) jest granicą domeny napięciowej "
+            "Równoważnik Thevenina sieci SN po stronie SN transformatora — "
+            "granica wizualna domeny nN jest granicą domeny napięciowej "
             "i projekcji, NIE przerwaniem zależności obliczeniowej: ten "
-            "snapshot jest dokładnie tym wejściem, którym solver pętli "
-            "zwarcia nN liczy stronę SN (application.analyses.fault_loop)."
+            "równoważnik jest dokładnie tym wejściem, którym obliczenie pętli "
+            "zwarcia nN liczy stronę SN."
         ),
     }
 

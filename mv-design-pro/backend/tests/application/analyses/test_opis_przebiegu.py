@@ -13,7 +13,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from application.analyses.opis_przebiegu import (
+from domain.opis_przebiegu import (
     RODZAJ_SPOZA_SLOWNIKA_PL,
     RODZAJE_PRZEBIEGU_PL,
     STAN_SPOZA_SLOWNIKA_PL,
@@ -154,3 +154,41 @@ def test_komunikaty_bramek_nie_wstawiaja_identyfikatora_rodzaju_ani_stanu(modul:
         tekst,
     )
     assert zakazane == [], (modul, zakazane)
+
+
+def test_kazdy_rodzaj_przebiegu_ma_typ_wykonania_i_wykonawce() -> None:
+    """Gałęzie ``AssertionError`` (błąd programu) rejestru typów wykonania i wykonawcy biegu
+    są nieosiągalne dla rodzaju ze słownika: KAŻDY rodzaj ze słownika ma typ wykonania
+    (wywołanie) i gałąź wykonawcy (porównanie w ``_wykonaj_analize_biegu``); rodzaj spoza
+    słownika kończy się zdaniem z cytatem odrzuconego rodzaju, nie kodem systemu."""
+    import ast
+    from types import SimpleNamespace
+
+    from enm.canonical_analysis import ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY
+    from enm.canonical_analysis import _execution_analysis_type_for_run as typ_wykonania
+
+    for rodzaj in RODZAJE_PRZEBIEGU_PL:
+        assert typ_wykonania(SimpleNamespace(analysis_type=rodzaj, options={}))
+    with pytest.raises(ValueError, match="spoza słownika aplikacji") as blad:
+        typ_wykonania(SimpleNamespace(analysis_type="rodzaj_obcy", options={}))
+    assert "„rozpływ mocy”" in str(blad.value)
+
+    drzewo = ast.parse(KANONICZNY.read_text(encoding="utf-8"))
+    wykonawca = next(
+        w
+        for w in ast.walk(drzewo)
+        if isinstance(w, ast.FunctionDef) and w.name == "_wykonaj_analize_biegu"
+    )
+    stale = {"ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY": ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY}
+    galezie = {
+        (
+            porownanie.comparators[0].value
+            if isinstance(porownanie.comparators[0], ast.Constant)
+            else stale[porownanie.comparators[0].id]
+        )
+        for porownanie in ast.walk(wykonawca)
+        if isinstance(porownanie, ast.Compare)
+        and ast.unparse(porownanie.left) == "run.analysis_type"
+        and isinstance(porownanie.ops[0], ast.Eq)
+    }
+    assert galezie == set(RODZAJE_PRZEBIEGU_PL), sorted(galezie ^ set(RODZAJE_PRZEBIEGU_PL))

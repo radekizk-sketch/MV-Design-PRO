@@ -202,7 +202,7 @@ class OdmowaDynamiki(OdmowaDanychError):
             raise AssertionError(
                 f"Kod odmowy {kod!r} spoza rejestru KODY_ODMOW — dopisz go do rejestru."
             )
-        super().__init__(f"{komunikat} (kod: {kod})")
+        super().__init__(f"{komunikat} (kod odmowy: {kod})")
         self.kod = kod
         #: Treść bez kodu — warstwa aplikacji zamienia w niej identyfikatory na nazwy.
         self.komunikat = komunikat

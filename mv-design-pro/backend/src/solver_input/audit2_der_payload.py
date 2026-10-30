@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from enm.slownik_komunikatow import nazwa_technologii_zrodla
 from network_model.catalog.audit2_catalogs import (
     get_bess_operation_mode,
     get_block_transformer,
@@ -90,15 +91,15 @@ def build_der_audit2_payload(
     if bess_operation_mode_refs:
         if der_kind != "BESS":
             issues.append(
-                f"DER {der_kind} nie obsługuje trybów BESS — pole bess_operation_mode_refs "
-                "zostało zignorowane."
+                f"Źródło {der_id} (technologia {nazwa_technologii_zrodla(der_kind)}) nie ma "
+                "trybów pracy magazynu energii — wskazane tryby pracy zostały pominięte."
             )
         else:
             # Deterministyczne sortowanie po id.
             for ref in sorted(set(bess_operation_mode_refs)):
                 mode = get_bess_operation_mode(ref)
                 if mode is None:
-                    issues.append(f"Nieznany tryb BESS: {ref}")
+                    issues.append(f"Tryb pracy magazynu energii {ref} spoza katalogu trybów pracy.")
                 else:
                     bess_modes_payload.append(mode.to_dict())
 
@@ -107,11 +108,16 @@ def build_der_audit2_payload(
     if block_transformer_catalog_ref:
         btr = get_block_transformer(block_transformer_catalog_ref)
         if btr is None:
-            issues.append(f"Nieznany block-trafo: {block_transformer_catalog_ref}")
+            issues.append(
+                f"Transformator blokowy {block_transformer_catalog_ref} spoza katalogu "
+                "transformatorów blokowych."
+            )
         elif der_kind not in btr.applicable_der_kinds:
             issues.append(
-                f"Block-trafo '{btr.id}' nie jest przeznaczony dla DER {der_kind} "
-                f"(applicable: {list(btr.applicable_der_kinds)})."
+                f"Transformator blokowy '{btr.id}' nie jest przeznaczony dla źródła {der_id} "
+                f"(technologia {nazwa_technologii_zrodla(der_kind)}); przeznaczony dla "
+                "technologii: "
+                f"{', '.join(nazwa_technologii_zrodla(k) for k in btr.applicable_der_kinds)}."
             )
         else:
             block_trafo_payload = btr.to_dict()
@@ -121,7 +127,7 @@ def build_der_audit2_payload(
     if pf_curve_ref:
         pf = get_pf_curve(pf_curve_ref)
         if pf is None:
-            issues.append(f"Nieznana krzywa P(f): {pf_curve_ref}")
+            issues.append(f"Krzywa P(f) {pf_curve_ref} spoza katalogu krzywych P(f).")
         else:
             pf_payload = pf.to_dict()
 
@@ -160,7 +166,10 @@ def build_station_audit2_payload(
     if mv_neutral_grounding_ref:
         grounding = get_mv_neutral_grounding(mv_neutral_grounding_ref)
         if grounding is None:
-            issues_global.append(f"Nieznany typ uziemienia: {mv_neutral_grounding_ref}")
+            issues_global.append(
+                f"Typ uziemienia punktu neutralnego {mv_neutral_grounding_ref} spoza katalogu "
+                "sposobów uziemienia."
+            )
         else:
             grounding_payload = grounding.to_dict()
 
@@ -169,7 +178,7 @@ def build_station_audit2_payload(
     for ref in sorted(set(tap_changer_refs or [])):
         tc = get_tap_changer(ref)
         if tc is None:
-            issues_global.append(f"Nieznany tap-changer: {ref}")
+            issues_global.append(f"Przełącznik zaczepów {ref} spoza katalogu przełączników.")
         else:
             tap_changers_payload.append(tc.to_dict())
 
@@ -180,7 +189,10 @@ def build_station_audit2_payload(
             continue
         tc = get_tap_changer(str(tc_ref))
         if tc is None:
-            issues_global.append(f"Nieznany tap-changer dla {tr_id}: {tc_ref}")
+            issues_global.append(
+                f"Przełącznik zaczepów {tc_ref} transformatora {tr_id} spoza katalogu "
+                "przełączników."
+            )
         else:
             tr_to_tc_payload[str(tr_id)] = tc.to_dict()
 

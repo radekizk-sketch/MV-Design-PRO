@@ -18,6 +18,7 @@ import type {
 } from '../protection';
 import type { CurveType, ProtectionCurve } from './types';
 import { CURVE_COLORS } from './types';
+import { etykietaZeSlownika } from '../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 /**
  * Kody braku danych krzywej I-t (z backendu) → uczciwe przyczyny po polsku.
@@ -42,7 +43,7 @@ export function itCurveMissingReasonsPl(codes: readonly string[] | undefined): s
   if (!codes || codes.length === 0) {
     return ['Brak danych krzywej I-t z solvera'];
   }
-  return codes.map((code) => IT_CURVE_MISSING_REASON_PL[code] ?? code);
+  return codes.map((code) => etykietaZeSlownika(IT_CURVE_MISSING_REASON_PL, code));
 }
 
 /**

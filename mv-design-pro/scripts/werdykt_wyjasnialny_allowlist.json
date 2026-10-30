@@ -1403,13 +1403,6 @@
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.audit2_validation:generate_bess_modes_proof.summary:OK",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A36 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "A36 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
    "tozsamosc": "application.proof_engine.packs.audit2_validation:generate_tap_changer_plan_proof.summary:OK",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A36 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
@@ -1435,34 +1428,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C30 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "C30"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:ocen_zdolnosc_wylaczania_dwa_zdania.zdanie_goly:NIE_SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:ocen_zdolnosc_wylaczania_dwa_zdania.zdanie_goly:SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:ocen_zdolnosc_wylaczania_dwa_zdania.zdanie_kombinacja:NIE_SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "6b_tekst_werdyktu",
-   "tozsamosc": "application.proof_engine.packs.lv_circuit_verification:ocen_zdolnosc_wylaczania_dwa_zdania.zdanie_kombinacja:SPELNIA",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C30 opisuje ten plik, nie ten symbol. Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
-   "wiersz_inwentarza": "C30 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "6b_tekst_werdyktu",
@@ -1616,6 +1581,13 @@
    "tozsamosc": "frontend/src/ui/sld/v3/canvas/overlay.ts:statusNakladkiZRekordu",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Karta W5-E-TTIT (2026-10-15): status maszynowy rekordu W werdyktu TT/IT → wewnętrzny 3-stanowy styl plakietki nakładki SWZ na rysunku nN (`SwzVerdictStatus`: kolor i glif, wspólny z plakietkami TN). Żaden tekst dla człowieka nie pochodzi z tej mapy: przyczyna plakietki to `wyjasnienie.zdanie_pl` rekordu, a ocenę z etykietą backendu pokazuje karta obwodu (`EtykietaWerdyktu`). Każdy status poza SPELNIA/NIE_SPELNIA daje styl nierozstrzygalny — nigdy „spełnia” bez podstawy.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "3a_frontend_mapa",
+   "tozsamosc": "frontend/src/ui/sld/v3/lv-domain/KartaObwoduNn.tsx:SLOWO_STATUSU_SWZ",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Karta KANAŁY-PL (2026-10-30): `swz.status` odpowiedzi SWZ odpływu (`SwzApiResponse.status`, wartości `OK` | `brak danych` | `nie dotyczy`) to DOSTĘPNOŚĆ oceny samoczynnego wyłączenia — czy odpowiedź niesie rekord werdyktu TN/TT/IT — a nie ocena kryterium. Mapa jest wyłącznie zastępczym zdaniem, gdy backend nie podał `reason_pl` i nie ma rekordu werdyktu (gałąź odmowy karty obwodu); dotąd w tym miejscu stał surowy kod statusu (`SWZ: OK`). Werdykt i jego wyjaśnienie pochodzą wyłącznie z rekordu backendu w `SekcjaSwzTn`; żaden ton ani etykieta werdyktu nie powstaje z tej mapy.",
    "wiersz_inwentarza": null
   },
   {

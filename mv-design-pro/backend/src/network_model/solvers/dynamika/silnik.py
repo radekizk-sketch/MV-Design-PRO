@@ -1581,6 +1581,7 @@ class SilnikDynamiki:
                 zaciski: tuple[str, ...] = (wpis.ref,)
                 odizolowane = wpis.ref in beznapieciowe
                 miejsce: dict[str, object] = {"wezel": wpis.ref}
+                opis_miejsca = f"w węźle {wpis.ref}"
             else:
                 galaz = galezie[wpis.ref]
                 zaciski = (galaz.wezel_od, galaz.wezel_do)
@@ -1588,6 +1589,9 @@ class SilnikDynamiki:
                     wezel in beznapieciowe for wezel in zaciski
                 )
                 miejsce = {"galaz": wpis.ref, "polozenie_wzgledne": wpis.polozenie_wzgledne}
+                opis_miejsca = (
+                    f"na gałęzi {wpis.ref} (położenie względne {wpis.polozenie_wzgledne:g})"
+                )
             if odizolowane:
                 continue
             zasilany = next(wezel for wezel in zaciski if wezel not in beznapieciowe)
@@ -1605,9 +1609,10 @@ class SilnikDynamiki:
             )
             raise OdmowaDynamiki(
                 KOD_ZWARCIE_NIEODIZOLOWANE,
-                f"Usunięcie zwarcia {miejsce} w t = {t_s} s zadeklarowane jako `izolacja`, ale "
-                f"w stanie po zdarzeniach tej chwili miejsce zwarcia nadal leży w wyspie "
-                f"zasilanej {wyspa} przez {wnoszace}. Żaden aparat nie przerwał prądu zwarcia: "
+                f"Usunięcie zwarcia {opis_miejsca} w t = {t_s} s zadeklarowane jako `izolacja`, "
+                "ale w stanie po zdarzeniach tej chwili miejsce zwarcia nadal leży w wyspie "
+                f"węzłów {', '.join(wyspa)} zasilanej przez urządzenia {', '.join(wnoszace)}. "
+                "Żaden aparat nie przerwał prądu zwarcia: "
                 "dodaj otwarcie gałęzi odcinających miejsce zwarcia w tej chwili albo "
                 "zadeklaruj usunięcie `samoczynne` (idealizacja zwarcia przemijającego).",
                 t_s=t_s,

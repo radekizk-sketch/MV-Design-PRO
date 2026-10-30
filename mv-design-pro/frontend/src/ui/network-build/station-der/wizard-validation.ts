@@ -5,7 +5,7 @@
  *  - validateWizardSelections: catalog_refs muszą istnieć w katalogu
  */
 
-import type { DerKindUnified } from './types';
+import { NAZWA_RODZAJU_DER, type DerKindUnified } from './types';
 
 /**
  * 32-bit FNV-1a hash deterministyczny (taki sam jak w HierarchicalLayout).
@@ -114,7 +114,8 @@ export function validateWizardSelections(
     const allowedDeviceCatalogIds = new Set(context.allowedDeviceCatalogIds ?? []);
     if (!allowedDeviceCatalogIds.has(selections.deviceCatalogRef)) {
       errors.push(
-        `Urządzenie "${selections.deviceCatalogRef}" nie istnieje w katalogu backendu dla DER ${derKind}.`,
+        `Urządzenie "${selections.deviceCatalogRef}" nie istnieje w katalogu backendu dla rodzaju `
+          + `„${NAZWA_RODZAJU_DER[derKind]}”.`,
       );
     }
   }

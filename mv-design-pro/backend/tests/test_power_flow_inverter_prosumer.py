@@ -381,7 +381,7 @@ def test_volt_var_seed_refuses_a_recompute_bus_without_a_shaping_record() -> Non
         )
     }
     assert inverter_q_seed({0: control}, shaping) == {0: 0.05}
-    with pytest.raises(ValueError, match="have no shaping record"):
+    with pytest.raises(ValueError, match="nie mają rekordu"):
         inverter_q_seed({0: control, 1: control}, shaping)
 
 

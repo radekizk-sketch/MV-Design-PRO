@@ -164,7 +164,8 @@ describe('itCurveAdapter', () => {
       expect(powod).not.toBe(kod);
       expect(powod).toMatch(/^Brak|^Próg|^Solver/);
     }
-    // Nieznany kod zwracany bez ukrywania.
-    expect(itCurveMissingReasonsPl(['nieznany_kod'])).toEqual(['nieznany_kod']);
+    // Nieznany kod (nowy kod backendu przed aktualizacją słownika): uczciwe zdanie po
+    // polsku zamiast kodu maszynowego (`etykietaZeSlownika`, jedno miejsce reguły).
+    expect(itCurveMissingReasonsPl(['nieznany_kod'])).toEqual(['wartość spoza słownika aplikacji']);
   });
 });

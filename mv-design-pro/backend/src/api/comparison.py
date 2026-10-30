@@ -22,7 +22,6 @@ from domain.execution import StanBiegu
 from domain.results import (
     AnalysisTypeMismatchError,
     ProjectMismatchError,
-    ResultNotFoundError,
     RunNotFinishedError,
     RunNotFoundError,
 )
@@ -250,20 +249,15 @@ def compare_runs(
     except ProjectMismatchError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Runs należą do różnych projektów: {e.run_a_project} vs {e.run_b_project}",
+            detail=str(e),
         )
     except AnalysisTypeMismatchError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Runs mają różne typy analiz: {e.type_a} vs {e.type_b}",
+            detail=str(e),
         )
     except RunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bieg obliczeń {e.run_id} nie jest zakończony (stan: {e.status}).",
-        )
-    except ResultNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Nie znaleziono wyników rodzaju {e.result_type} dla biegu obliczeń {e.run_id}.",
+            detail=str(e),
         )

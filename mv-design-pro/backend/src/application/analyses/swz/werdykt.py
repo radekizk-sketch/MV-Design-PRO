@@ -26,8 +26,8 @@ bezwarunkowo NIEROZSTRZYGALNY — P0.7 zasilił bramki KONWENCJONALNE gG
 podwójnie zweryfikowane). Werdykt „NIE SPEŁNIA" jest ROZSTRZYGALNY z tych
 bramek: Ik1_min<=Inf ⇒ norma gwarantuje brak stopienia NAWET w (dłuższym)
 czasie umownym normy (1-4h) ⇒ a fortiori nie stopi się w KRÓTSZYM
-t_wymagany SWZ (monotoniczność charakterystyki t-I). Werdykt „SPEŁNIA"
-wymaga OSOBNEJ bramki I-t przy t_wymagany dokładnym (0,1-5 s, inny czas niż
+t_wym SWZ (monotoniczność charakterystyki t-I). Werdykt „SPEŁNIA"
+wymaga OSOBNEJ bramki I-t przy t_wym dokładnym (0,1-5 s, inny czas niż
 umowny normy) — rejestr `protection_lv_curves.
 FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER` jest PUSTY (próba pozyskania podwójnie
 zweryfikowanych wartości podjęta i udokumentowana w tamtym module, bez
@@ -73,6 +73,24 @@ PROG_PRADU_OBWODU_ODBIORCZEGO_A = 63.0
 
 _TYPY_APARATU_DOZWOLONE = ("MCB", "WKLADKA_GG", "MCCB")
 
+#: Rodzaj aparatu zabezpieczającego po polsku — każdy typ werdyktu SWZ (kompletność przypina
+#: ``tests/application/analyses/swz/test_werdykt.py::test_kazdy_typ_aparatu_ma_nazwe``).
+NAZWY_TYPOW_APARATU_SWZ_PL: dict[str, str] = {
+    "MCB": "wyłącznik nadprądowy instalacyjny (MCB)",
+    "WKLADKA_GG": "wkładka bezpiecznikowa gG",
+    "MCCB": "wyłącznik kompaktowy (MCCB)",
+}
+
+
+def nazwa_typu_aparatu_swz_pl(typ: str) -> str:
+    """Rodzaj aparatu zabezpieczającego po polsku (typ spoza słownika → opis ogólny)."""
+    return NAZWY_TYPOW_APARATU_SWZ_PL.get(typ, "aparat rodzaju spoza słownika werdyktu SWZ")
+
+
+#: Rodzaje obwodu PN-HD 60364-4-41 §411.3.2.2 (odbiorczy) i §411.3.2.3 (rozdzielczy) — słowa
+#: polskie, wartości stoją wprost w zdaniach werdyktu SWZ (TN i TT/IT).
+RODZAJE_OBWODU: tuple[str, ...] = ("odbiorczy", "rozdzielczy")
+
 
 def rodzaj_obwodu_dla_aparatu(in_a: float | None, rodzaj_jawny: str | None) -> str:
     """Rodzaj obwodu (odbiorczy/rozdzielczy) — JEDEN predykat dla werdyktu TN i TT/IT.
@@ -83,6 +101,11 @@ def rodzaj_obwodu_dla_aparatu(in_a: float | None, rodzaj_jawny: str | None) -> s
     brak In w śladzie).
     """
     if rodzaj_jawny is not None:
+        if rodzaj_jawny not in RODZAJE_OBWODU:
+            raise ValueError(
+                "Rodzaj obwodu musi być odbiorczy, rozdzielczy albo nieokreślony "
+                "(wtedy wynika z prądu znamionowego aparatu)."
+            )
         return rodzaj_jawny
     return (
         "odbiorczy"
@@ -105,10 +128,10 @@ class AparatZabezpieczajacy:
     ``typ="WKLADKA_GG"`` (karta D2): wymaga ``in_a`` (> 16 A — jedyny
     zweryfikowany zakres G-D2). Bramki KONWENCJONALNE Inf/If (IEC 60269-1)
     rozstrzygają „nie spełnia" wprost (Ik1_min<=Inf); „spełnia" wymaga
-    dodatkowo bramki przy t_wymagany dokładnym — pusta do czasu potwierdzenia
+    dodatkowo bramki przy t_wym dokładnym — pusta do czasu potwierdzenia
     źródłowego (zob. docstring modułu i `protection_lv_curves.
     FUSE_GG_BRAMKA_T_WYMAGANY_MULTIPLIER`), więc pośredni zakres prądów daje
-    NIEROZSTRZYGALNE (fail-closed, nigdy PASS bez dowodu przy t_wymagany).
+    NIEROZSTRZYGALNE (fail-closed, nigdy PASS bez dowodu przy t_wym).
     ``typ="MCCB"`` (karta D1): wymaga ``ii_a`` (nastawa zwarciowa/magnetyczna
     Ii, RESOLWOWANA — wartość absolutna [A], nie zakres) — Ia = ``ii_a``
     wprost (bez interpolacji, Ii jest już konkretną nastawą, nie normatywnym
@@ -269,12 +292,6 @@ def ocen_swz(
         raise ValueError(
             f"Minimalny prąd zwarcia jednofazowego Ik1min musi być ≥ 0, otrzymano {ik1_min_a:g} A."
         )
-    if rodzaj_obwodu not in (None, "odbiorczy", "rozdzielczy"):
-        raise ValueError(
-            "Rodzaj obwodu musi być odbiorczy, rozdzielczy albo nieokreślony "
-            "(wtedy wynika z prądu znamionowego aparatu)."
-        )
-
     trace: list[dict[str, Any]] = []
     pasmo = pasmo_dla_u0(u0_v)
 
@@ -380,7 +397,7 @@ def ocen_swz(
                     "step": "werdykt_gg_nie_spelnia",
                     "method": (
                         "Ik1_min <= Inf ⇒ brak stopienia gwarantowany NAWET w czasie "
-                        "umownym normy (dłuższym niż t_wymagany SWZ) — monotoniczność "
+                        "umownym normy (dłuższym niż t_wym SWZ) — monotoniczność "
                         "charakterystyki t-I gG (mniejszy prąd nigdy nie topi szybciej)"
                     ),
                     "ik1_min_a": ik1_min_a,
@@ -394,7 +411,7 @@ def ocen_swz(
                 f"(wkładka gG {aparat.in_a:g} A, IEC 60269-1, {FUSE_GG_GATE_SOURCE_PL}) — "
                 "norma gwarantuje BRAK stopienia nawet w (dłuższym) czasie umownym normy "
                 f"({bramka_konwencjonalna.t_umowny_s:g} s), więc a fortiori wkładka NIE "
-                f"stopi się w krótszym t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 "
+                f"stopi się w krótszym t_wym={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 "
                 f"{pasmo}) — charakterystyka t-I gG jest monotoniczna. NIE SPEŁNIA."
             )
             return z_danymi_przyjetymi(
@@ -445,9 +462,9 @@ def ocen_swz(
                 }
             )
             przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A >= bramka(t_wymagany={t_wymagany:g} s)="
+                f"Ik1_min={ik1_min_a:.1f} A >= bramka(t_wym={t_wymagany:g} s)="
                 f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — norma gwarantuje "
-                f"stopienie w t_wymagany={t_wymagany:g} s ({rodzaj}, pasmo U0 {pasmo}). "
+                f"stopienie w t_wym={t_wymagany:g} s ({rodzaj}, pasmo U0 {pasmo}). "
                 "SPEŁNIA."
             )
             return z_danymi_przyjetymi(
@@ -470,18 +487,18 @@ def ocen_swz(
                 f"Ik1_min={ik1_min_a:.1f} A > Inf={bramka_konwencjonalna.inf_a:.1f} A "
                 f"(wkładka gG {aparat.in_a:g} A) — norma NIE gwarantuje braku stopienia, ale "
                 f"brak PODWÓJNIE zweryfikowanej bramki czasowo-prądowej przy "
-                f"t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 {pasmo}) w rejestrze "
+                f"t_wym={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 {pasmo}) w rejestrze "
                 f"({FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL}). Bramki Inf/If (G-D2) gwarantują "
                 f"WYŁĄCZNIE zachowanie w czasie umownym normy "
-                f"({bramka_konwencjonalna.t_umowny_s:g} s), NIE w t_wymagany SWZ — nie da "
+                f"({bramka_konwencjonalna.t_umowny_s:g} s), NIE w t_wym SWZ — nie da "
                 "się wyprowadzić werdyktu 'spełnia' bez ekstrapolacji (zakaz §0.2 karty "
                 "P0.7). NIEROZSTRZYGALNE (warunkowe)."
             )
         else:
             przyczyna = (
-                f"Ik1_min={ik1_min_a:.1f} A < bramka(t_wymagany={t_wymagany:g} s)="
+                f"Ik1_min={ik1_min_a:.1f} A < bramka(t_wym={t_wymagany:g} s)="
                 f"{bramka_t_wym_a:.1f} A (wkładka gG {aparat.in_a:g} A) — Ik1_min powyżej "
-                f"Inf, ale poniżej bramki gwarantującej stopienie w t_wymagany={t_wymagany:g} "
+                f"Inf, ale poniżej bramki gwarantującej stopienie w t_wym={t_wymagany:g} "
                 f"s ({rodzaj}, pasmo U0 {pasmo}) — norma nie gwarantuje ani braku, ani "
                 "wystąpienia stopienia w tym przedziale (zakaz interpolacji, §0.2 karty "
                 "P0.7). NIEROZSTRZYGALNE (warunkowe)."
@@ -556,7 +573,7 @@ def ocen_swz(
             {
                 "step": "werdykt",
                 "method": "Ik1_min ≥ Ia ⇒ wyzwolenie zwarciowe (natychmiastowe) gwarantowane "
-                "(<0,1 s < t_wymagany z Tab. 41.1)",
+                "(<0,1 s < t_wym z Tab. 41.1)",
                 "ik1_min_a": ik1_min_a,
                 "ia_a": ia,
                 "margines": margines,
@@ -567,14 +584,14 @@ def ocen_swz(
         przyczyna = (
             f"Ik1_min={ik1_min_a:.1f} A {'≥' if spelnia else '<'} Ia={ia:.1f} A "
             f"(MCCB, nastawa Ii={aparat.ii_a:.1f} A — wyzwolenie zwarciowe natychmiastowe, "
-            f"<0,1 s, IEC 60947-2). Czas wyzwolenia jest poniżej t_wymagany={t_wymagany:g} s "
+            f"<0,1 s, IEC 60947-2). Czas wyzwolenia jest poniżej t_wym={t_wymagany:g} s "
             f"z Tab. 41.1 ({rodzaj}, pasmo U0 {pasmo}), więc kryterium czasowe jest spełnione "
             "automatycznie po spełnieniu kryterium prądowego."
             if spelnia
             else (
                 f"Ik1_min={ik1_min_a:.1f} A < Ia={ia:.1f} A (MCCB, nastawa Ii="
                 f"{aparat.ii_a:.1f} A) — wyzwolenie zwarciowe NIE jest gwarantowane przy tej "
-                f"nastawie; aparat może nie wyłączyć w czasie t_wymagany={t_wymagany:g} s "
+                f"nastawie; aparat może nie wyłączyć w czasie t_wym={t_wymagany:g} s "
                 f"z Tab. 41.1 ({rodzaj}, pasmo U0 {pasmo})."
             )
         )
@@ -607,9 +624,10 @@ def ocen_swz(
             SwzResult(
                 status=SwzStatus.NIEROZSTRZYGALNE,
                 przyczyna_pl=(
-                    f"Typ aparatu '{aparat.typ}' nieobsłużony w werdykcie SWZ karty P0.6 "
-                    f"(obsługiwane: {', '.join(_TYPY_APARATU_DOZWOLONE)}) — brak modelu Ia, "
-                    "nie fabrykacja."
+                    f"Rodzaj aparatu „{nazwa_typu_aparatu_swz_pl(aparat.typ)}” nieobsłużony "
+                    "w werdykcie samoczynnego wyłączenia zasilania (obsługiwane: "
+                    f"{', '.join(NAZWY_TYPOW_APARATU_SWZ_PL[t] for t in _TYPY_APARATU_DOZWOLONE)}"
+                    ") — brak modelu prądu zadziałania Ia, nie fabrykacja."
                 ),
                 ik1_min_a=ik1_min_a,
                 ia_wymagane_a=None,
@@ -656,7 +674,9 @@ def ocen_swz(
     trace.append(
         {
             "step": "ia_gwarantowane_mcb",
-            "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+            "method": (
+                "Ia = górna granica pasma wyzwalania magnetycznego × In (IEC 60898-1, G-D4)"
+            ),
             "in_a": aparat.in_a,
             "klasa_mcb": aparat.klasa_mcb,
             "ia_a": ia,
@@ -666,7 +686,7 @@ def ocen_swz(
         {
             "step": "werdykt",
             "method": "Ik1_min ≥ Ia ⇒ wyzwolenie magnetyczne gwarantowane (chwilowe, <0,1 s "
-            "< t_wymagany z Tab. 41.1)",
+            "< t_wym z Tab. 41.1)",
             "ik1_min_a": ik1_min_a,
             "ia_a": ia,
             "margines": margines,
@@ -678,14 +698,14 @@ def ocen_swz(
         f"Ik1_min={ik1_min_a:.1f} A {'≥' if spelnia else '<'} Ia={ia:.1f} A "
         f"(MCB {aparat.klasa_mcb} {aparat.in_a:g} A, wyzwolenie magnetyczne gwarantowane "
         f"na górnej granicy pasma IEC 60898-1). Czas wyzwolenia magnetycznego jest "
-        f"chwilowy (<0,1 s) — poniżej t_wymagany={t_wymagany:g} s z Tab. 41.1 "
+        f"chwilowy (<0,1 s) — poniżej t_wym={t_wymagany:g} s z Tab. 41.1 "
         f"({rodzaj}, pasmo U0 {pasmo}), więc kryterium czasowe jest spełnione automatycznie "
         "po spełnieniu kryterium prądowego."
         if spelnia
         else (
             f"Ik1_min={ik1_min_a:.1f} A < Ia={ia:.1f} A (MCB {aparat.klasa_mcb} "
             f"{aparat.in_a:g} A) — wyzwolenie magnetyczne NIE jest gwarantowane; "
-            f"aparat może nie wyłączyć w czasie t_wymagany={t_wymagany:g} s z Tab. 41.1 "
+            f"aparat może nie wyłączyć w czasie t_wym={t_wymagany:g} s z Tab. 41.1 "
             f"({rodzaj}, pasmo U0 {pasmo})."
         )
     )

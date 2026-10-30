@@ -40,7 +40,7 @@ def test_build_der_payload_pv_with_bess_modes_emits_warning():
     )
     # PV + BESS modes -> warning, modes ignored.
     assert payload.bess_operation_modes == []
-    assert any("nie obsługuje" in i for i in payload.issues)
+    assert any("nie ma trybów pracy magazynu energii" in i for i in payload.issues)
 
 
 def test_build_der_payload_bess_with_multiple_modes():
@@ -63,7 +63,7 @@ def test_build_der_payload_unknown_block_trafo_emits_issue():
         block_transformer_catalog_ref="btr_unknown",
     )
     assert payload.block_transformer is None
-    assert any("Nieznany block-trafo" in i for i in payload.issues)
+    assert any("Transformator blokowy" in i and "spoza katalogu" in i for i in payload.issues)
 
 
 def test_zaden_transformator_dedykowany_nie_wyklucza_rodzaju_zrodla() -> None:
@@ -91,7 +91,7 @@ def test_build_der_payload_block_trafo_kind_mismatch_emits_issue():
         block_transformer_catalog_ref="btr_pv_15_069_2500",
     )
     assert payload.block_transformer is None
-    assert any("nie jest przeznaczony dla DER WIATRAK" in i for i in payload.issues)
+    assert any("nie jest przeznaczony dla źródła der_001" in i for i in payload.issues)
 
 
 def test_build_station_payload_with_grounding_and_tap_changers():

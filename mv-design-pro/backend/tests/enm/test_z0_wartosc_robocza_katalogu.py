@@ -352,7 +352,7 @@ def test_widok_sekcji_typu_i_elementu_oznacza_z0_robocze_estimated(
     z tego typu (słownik w ``materialized_params``): JEDNA reguła ``jakosci_wartosci_roboczych``,
     parytet typ ↔ element."""
     from application.model_urzadzenia.sekcje_elementu import sekcje_elementu
-    from network_model.catalog.sekcje_modelu import sekcje_typu
+    from network_model.catalog.sekcje_modelu import etykieta_pola_sekcji, sekcje_typu
     from werdykt.proweniencja import FieldQuality
 
     katalog = get_default_mv_catalog()
@@ -364,9 +364,11 @@ def test_widok_sekcji_typu_i_elementu_oznacza_z0_robocze_estimated(
     assert {"r0_ohm_per_km", "x0_ohm_per_km"} <= set(oznaczone)
 
     jakosci_typu = _jakosci_skladowej_zerowej(sekcje_typu(katalog, przestrzen, typ_id))
+    # `nazwa_pl` danej przyjętej to nazwa wielkości dla projektanta (jedno źródło:
+    # `etykieta_pola_sekcji`), nie klucz pola karty.
     assert jakosci_typu == {
-        "r0_ohm_per_km": FieldQuality.ESTIMATED,
-        "x0_ohm_per_km": FieldQuality.ESTIMATED,
+        etykieta_pola_sekcji("r0_ohm_per_km"): FieldQuality.ESTIMATED,
+        etykieta_pola_sekcji("x0_ohm_per_km"): FieldQuality.ESTIMATED,
     }
 
     if przestrzen == "KABEL_SN":

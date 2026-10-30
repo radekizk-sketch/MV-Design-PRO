@@ -2574,19 +2574,19 @@ EQ_QU_005 = EquationDefinition(
         SymbolDefinition(
             symbol="\\Delta U_X",
             unit="%",
-            description_pl="Składowa bierna spadku napięcia (EQ_VDROP_004)",
+            description_pl="Składowa bierna spadku napięcia",
             mapping_key="delta_u_x_percent",
         ),
         SymbolDefinition(
             symbol="\\Delta U",
             unit="%",
-            description_pl="Spadek napięcia na odcinku (EQ_VDROP_005)",
+            description_pl="Spadek napięcia na odcinku",
             mapping_key="delta_u_percent",
         ),
         SymbolDefinition(
             symbol="U",
             unit="kV",
-            description_pl="Napięcie w punkcie (EQ_VDROP_007)",
+            description_pl="Napięcie w punkcie",
             mapping_key="u_kv",
         ),
     ),
@@ -4086,7 +4086,10 @@ class EquationRegistry:
         elif fault_type == "SC2FZ":
             kolejnosc = SC2FZ_STEP_ORDER.copy()
         else:
-            raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+            raise ValueError(
+                "Nieobsługiwany rodzaj zwarcia niesymetrycznego w kolejności kroków dowodu — "
+                "obsługiwane: zwarcie jednofazowe z ziemią, zwarcie dwufazowe, zwarcie dwufazowe z ziemią."
+            )
         if not impedancja_przejscia:
             return kolejnosc
         return [SC1_ZAMIANA_KROKOW_IMPEDANCJA.get(eq_id, eq_id) for eq_id in kolejnosc]

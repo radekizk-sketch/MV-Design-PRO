@@ -24,6 +24,7 @@ import {
   STRINGS,
 } from './strings';
 import type { KatalogPozycja, KategoriaId } from './types';
+import { etykietaZeSlownika } from '../../../wyniki/wzorzec/slownikWyliczen';
 
 export interface KartaTechnicznaProps {
   pozycja: KatalogPozycja;
@@ -43,11 +44,11 @@ function czytajTekst(pozycja: KatalogPozycja, klucz: string): string | null {
 function rodzajBadge(pozycja: KatalogPozycja, kategoria: KategoriaId): string | null {
   if (kategoria === 'APARAT') {
     const kind = czytajTekst(pozycja, 'equipment_kind');
-    return kind ? (ETYKIETY_RODZAJU_APARATU[kind] ?? kind) : null;
+    return kind ? etykietaZeSlownika(ETYKIETY_RODZAJU_APARATU, kind) : null;
   }
   if (kategoria === 'FALOWNIK') {
     const kind = czytajTekst(pozycja, 'kind');
-    return kind ? (ETYKIETY_RODZAJU_FALOWNIKA[kind] ?? kind) : null;
+    return kind ? etykietaZeSlownika(ETYKIETY_RODZAJU_FALOWNIKA, kind) : null;
   }
   return null;
 }
@@ -69,7 +70,7 @@ function zbudujPochodzenie(pozycja: KatalogPozycja): WierszPochodzenia[] {
   if (weryfikacja) {
     wiersze.push({
       etykieta: STRINGS.pochodzenieWeryfikacja,
-      wartosc: ETYKIETY_WERYFIKACJI[weryfikacja] ?? weryfikacja,
+      wartosc: etykietaZeSlownika(ETYKIETY_WERYFIKACJI, weryfikacja),
     });
   }
 
@@ -77,7 +78,7 @@ function zbudujPochodzenie(pozycja: KatalogPozycja): WierszPochodzenia[] {
   if (status) {
     wiersze.push({
       etykieta: STRINGS.pochodzenieStatus,
-      wartosc: ETYKIETY_STATUSU_KATALOGU[status] ?? status,
+      wartosc: etykietaZeSlownika(ETYKIETY_STATUSU_KATALOGU, status),
     });
   }
 

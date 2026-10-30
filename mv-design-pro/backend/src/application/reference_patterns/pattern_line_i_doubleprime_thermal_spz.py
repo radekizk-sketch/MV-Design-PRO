@@ -553,14 +553,16 @@ class LineIDoublePrimeReferencePattern:
             status: CheckStatus = "FAIL"
             desc = (
                 f"Kryterium cieplne wyznacza górną granicę konfliktu: I_max = "
-                f"{instantaneous.i_max_thermal_a:.1f} A (k_bth={instantaneous.k_bth}). "
+                f"{instantaneous.i_max_thermal_a:.1f} A (współczynnik bezpieczeństwa kryterium "
+                f"cieplnego {instantaneous.k_bth:g}). "
                 f"{setting_window.conflict_pl}"
             )
         else:
             status = "PASS"
             desc = (
                 f"Kryterium cieplne spełnione: I_max = {instantaneous.i_max_thermal_a:.1f} A "
-                f"(k_bth={instantaneous.k_bth}, zadziałanie chwilowe 0,05 s)"
+                f"(współczynnik bezpieczeństwa kryterium cieplnego {instantaneous.k_bth:g}, "
+                "zadziałanie chwilowe 0,05 s)"
             )
 
         return build_check(

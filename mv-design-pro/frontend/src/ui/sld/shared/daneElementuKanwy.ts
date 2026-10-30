@@ -39,6 +39,7 @@ import { czyPoleNn, pola, polaNnStacji, polaSnStacji, stacjaPola } from '../../s
 import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
 import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import type { PreviewElementKind } from '../v3/compose/preview';
+import { etykietaZeSlownika } from '../../../ui2/wyniki/wzorzec/slownikWyliczen';
 
 /**
  * Rodzaj obiektu, dla którego inspektor elementu (prawy panel, `PanelElementuKanwy`)
@@ -162,7 +163,7 @@ export function buildLiveMetrics(
     const m = getMetric(payload, ref, code);
     // Wielkość bez wartości liczbowej nie dostaje wiersza (uczciwy brak, nie „—").
     if (m && typeof m.value === 'number' && Number.isFinite(m.value)) {
-      metryki.push({ code, label: ETYKIETA_METRYKI_PL[code] ?? code, value: formatScalar(m) });
+      metryki.push({ code, label: etykietaZeSlownika(ETYKIETA_METRYKI_PL, code), value: formatScalar(m) });
     }
   }
   return metryki.length > 0 ? metryki : undefined;

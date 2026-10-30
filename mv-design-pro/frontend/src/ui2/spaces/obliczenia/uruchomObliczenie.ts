@@ -91,7 +91,7 @@ export async function fetchAnalysisRunHealth(runId: string): Promise<AnalysisRun
         status: 'NOT_FOUND',
         result_status: 'NONE',
         results_valid: false,
-        error_message: 'RUN_NOT_FOUND',
+        error_message: 'Biegu nie ma na serwerze (usunięty albo z innej bazy danych).',
         not_found: true,
       };
     }

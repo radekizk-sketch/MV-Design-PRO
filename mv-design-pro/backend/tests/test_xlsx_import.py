@@ -469,7 +469,7 @@ class TestWiazanieTypowTransformatorow:
         assert typ["params"]["tap_step_percent"] == 2.5
         assert typ["params"]["source_reference"] == "arkusz:siec.xlsx#Trafo:2"
         # Przyjęcie napięć uzwojeń z napięć szyn jest NAZWANE — w ostrzeżeniu i w rekordzie.
-        assert "U_HV = napięcie szyny B2" in typ["params"]["verification_note"]
+        assert "napięcie strony GN = napięcie szyny B2" in typ["params"]["verification_note"]
         assert any("T1" in o and "U_HV_kV/U_LV_kV" in o for o in wynik.warnings)
 
     def test_jawne_napiecia_uzwojen_nie_daja_ostrzezenia(self):
