@@ -1129,8 +1129,8 @@ commit --cleanup=verbatim`, stopka:
 #### Przekazanie (stan na przerwaniu, 2026-10-30, commit 5 karty, drzewo `wt-bkr`)
 
 Prace przerwano na polecenie koordynatora (kończy się tygodniowy limit). Commit WIP zawiera cały
-stan drzewa. Merytorycznie zmiana jest kompletna, ale jedna seria iniekcji nie została dokończona,
-więc stan jest NIEZWERYFIKOWANY.
+stan drzewa. Na przerwaniu jedna seria iniekcji nie była dokończona; po wznowieniu ją dokończono
+— stan końcowy w akapicie „Domknięcie weryfikacji commitu 5” niżej.
 
 **Zrobione (z dowodem):**
 - A, reguła języka strażnika:
@@ -1181,18 +1181,13 @@ etykieta tej samej opcji. Usunięte: pole `summary` z `StationTransformerCatalog
 `buildTransformerCatalogSummary` i `formatMva` ze `StationConfiguratorSurface.tsx`, `summary`
 z fikstur `StationConfigurator.test.tsx`.
 
-**W trakcie:** bieg `/tmp/claude-0/logs/c5_iniekcje3.sh` w kolejce zamka — testy konfiguratora
-(oba pliki), iniekcja I3c przeniesiona na `optionLabel` w karcie (oczekiwana czerwona), eslint, tsc.
-
-**Zostało:** wynik tego biegu; commit właściwy (bez prefiksu WIP) po zielonym biegu i czerwonej I3c.
-
-**Znane czerwone:** brak znanych czerwonych testów i strażników. Jedyna luka to niepotwierdzona
-siła testu konfiguratora wobec I3. Środowisko nie ma pandapower, więc 33 testy z tym znacznikiem
-padają lokalnie z powodu środowiska, nie zmiany.
-
-**Pierwszy krok dla następcy:** pod zamkiem uruchom `bash /tmp/claude-0/logs/c5_iniekcje3.sh`
-z drzewa `wt-bkr`. Status trafi do `/tmp/claude-0/logs/c5_iniekcje3_status.log`. Oczekiwane:
-`czysty RC=0`, `I3c RC≠0` z „przywrocono”, `RC_ESLINT=0`, `RC_TSC=0`.
+**Domknięcie weryfikacji commitu 5 (2026-10-30):** po kasacji pola `summary` testy konfiguratora
+(`katalogTransformatorowKonfiguratora.test.tsx` i `StationConfigurator.test.tsx`) RC=0, 21 passed;
+iniekcja I3c przeniesiona na `optionLabel` karty (`String(option.vectorGroup)`) czerwona (RC=1,
+4 failed), przywrócona; eslint zmienionych plików RC=0; tsc RC=0. Komplet iniekcji commitu 5
+(I1, I2, I3a, I3b, I3c, I4, I5) czerwony. Znanych czerwonych testów i strażników brak (lokalnie
+33 testy `pandapower` padają z braku pakietu w środowisku). Commit 5 jest gotowy do pełnej bramki
+sesji głównej; następca nie ma kroku do wykonania w tej karcie poza odbiorem bramki.
 
 ---
 
