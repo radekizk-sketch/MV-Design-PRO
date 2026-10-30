@@ -125,8 +125,8 @@ export function computeProjectLegendEntries(scene: SceneV3): readonly SheetLegen
 
 /** Opisy kafli stanu łącznika w legendzie (rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC). */
 export const OPIS_KAFLA_LEGENDY_PL: Readonly<Record<StanKafla, string>> = {
-  zamkniety: 'Łącznik zamknięty — styk w osi toru (także zestyk uziemiający łącznika trójpołożeniowego w położeniu „uziemiony")',
-  otwarty: 'Łącznik otwarty — styk odchylony',
+  zamkniety: 'Łącznik zamknięty — nóż na zestyku toru',
+  otwarty: 'Łącznik otwarty — tor przerwany (łącznik trójpołożeniowy uziemiony: nóż na zestyku uziemiającym)',
   nieustalony: 'Położenie nieustalone — brak danej albo dane sprzeczne w modelu',
   bledny: 'Awaria aparatu — położenie niewiarygodne',
 };

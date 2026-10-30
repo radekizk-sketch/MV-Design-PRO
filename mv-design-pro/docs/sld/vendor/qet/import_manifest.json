@@ -334,109 +334,230 @@
     {
       "symbolId": "qetThreePositionSwitch",
       "namePl": "Łącznik trójpołożeniowy",
-      "zlozenie": "złożenie z elementów QET en_60617_07_13_07 (odłącznik dwukierunkowy) + en_60617_02_15_01 (uziemienie) nad zestykiem prawym",
+      "zlozenie": "złożenie z elementów QET en_60617_07_13_06 (odłącznik: zestyk szynowy w osi toru, nóż, przegub) + en_60617_07_13_07 (odłącznik dwukierunkowy: okrąg styku odłączającego i doprowadzenie dolne) + en_60617_07_13_07 obrócony o −90° (wyłącznie kreska zestyku jako pionowy zestyk uziemiający po lewej) + en_60617_02_15_01 (uziemienie) pod zestykiem uziemiającym",
       "skladniki": [
         { "element": "en_60617_07_13_07", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_02_15_01", "obrot": 180, "przesuniecie": [20, -55] }
+        { "element": "en_60617_02_15_01", "obrot": 0, "przesuniecie": [-20, 23] },
+        { "element": "en_60617_07_13_06", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_07_13_07", "obrot": -90, "przesuniecie": [0, 20] }
+      ],
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [1, 2, 3, 4, 5],
+          "powod": "z odłącznika dwukierunkowego zostaje okrąg styku odłączającego (przegub, ENEA Zeszyt 1 Z.10 s.89) i doprowadzenie dolne; nóż w osi i oba zestyki pominięte — zestyk szynowy stoi W OSI toru z odłącznika 07-13-06 (położenie zamknięte = nóż w osi toru, uwaga właściciela 2026-10-30: kafel zamknięty z nożem ukośnym czytał się jak otwarty), a zestyk uziemiający — z drugiego egzemplarza 07-13-07 obróconego o −90°"
+        },
+        {
+          "skladnik": 2,
+          "prymitywy": [1],
+          "powod": "doprowadzenie dolne odłącznika 07-13-06 biegnie przez przegub — zastąpione doprowadzeniem dolnym odłącznika dwukierunkowego, które zaczyna się pod okręgiem styku odłączającego"
+        },
+        {
+          "skladnik": 3,
+          "prymitywy": [0, 1, 2, 3, 4, 6],
+          "powod": "z drugiego egzemplarza odłącznika dwukierunkowego (obrót −90°) zostaje wyłącznie kreska zestyku (pionowa, po lewej stronie przegubu, w odległości zestyku szynowego) — zestyk uziemiający; symbol uziemienia przyłączony do jej dolnego końca"
+        }
       ],
       "noz": {
-        "skladnik": 0,
-        "prymitywy": [1],
-        "przegub": [0, 2],
-        "cele": { "closed": [-20, -20], "earthed": [20, -20] },
-        "nieznanyJakOtwarty": true
+        "skladnik": 2,
+        "prymitywy": [2],
+        "przegub": [0, 0],
+        "cele": { "closed": [0, -20], "earthed": [-20, 0] },
+        "otwarty": {
+          "kierunek": [-20, -20],
+          "powod": "położenie OTWARTE (odłączone): nóż odchylony o 45° w lewo od osi, poza oboma zestykami — w połowie drogi między położeniem zamkniętym (nóż w osi na zestyku szynowym) a uziemionym (nóż poziomo w lewo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia), zgodnie z kolejnością położeń mechanizmu łącznika trójpołożeniowego (zamknięty → odłączony → uziemiony); nóż źródła odłącznika odchylony o 19° stykał się grubością kreski glifu z kreską zestyku szynowego"
+        },
+        "nieznany": {
+          "zasieg": 0.6,
+          "powod": "położenie NIEUSTALONE: nóż kreskowany w połowie drogi między położeniem otwartym a zamkniętym, skrócony do 0,6 długości źródła — koniec noża w pełnej długości przechodził przy kresce zestyku szynowego i nieustalony czytałby się jak zamknięty"
+        }
       },
       "porty": [
-        { "name": "top", "skladnik": 0, "zacisk": [-20, -40] },
-        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+        { "name": "top", "skladnik": 2, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 2, "zacisk": [0, 20] }
       ],
       "zaciskiWewnetrzne": [
         {
           "skladnik": 0,
-          "zacisk": [20, -40],
-          "z": { "skladnik": 1, "zacisk": [0, -15] },
-          "powod": "zestyk uziemiający łącznika połączony z symbolem uziemienia — nie jest portem pola"
+          "zacisk": [0, 20],
+          "z": { "skladnik": 2, "zacisk": [0, 20] },
+          "powod": "zacisk dolny odłącznika dwukierunkowego i odłącznika 07-13-06 to ten sam zacisk toru (port dolny)"
         }
       ],
-      "portyWewnatrzGabarytu": {
-        "top": "zacisk szynowy QET leży 60 jednostek QET pod górną krawędzią kafla stanu, bo symbol uziemienia nad zestykiem uziemiającym sięga 30 jednostek nad poziom zacisków — przewód zestyku szynowego przedłużony do krawędzi kafla"
-      },
-      "uwaga": "Nóż w rysunku źródłowym stoi w osi (położenie odłączone). Położenie zamknięte = obrót na zestyk szynowy (lewy), uziemione = obrót na zestyk uziemiający (prawy); przegub w środku okręgu osi noża (styk odłączający ○). Symbol uziemienia nad zestykiem uziemiającym — po stronie szyny, między szyną a stykiem odłączającym, jak na schemacie ENEA Zeszyt 1, Z.10 (s. 89); uziemiana jest strona wyłącznika (zacisk dolny, wspólny z nożem).",
-      "skalaLokalna": [
+      "zaciskiPozaTorem": [
         {
           "skladnik": 0,
-          "prymitywy": [4],
-          "srodek": [-20, -20],
-          "skala": 3,
-          "powod": "kreski zestyków łącznika trójpołożeniowego (zestyk szynowy i uziemiający) powiększone trzykrotnie wokół środka — rodzaj zestyku czytelny w kaflu stanu; łącznik bez jednokładności rysunku, bo jego rysunek źródła już zajmuje ponad 0,55 boku kafla"
+          "zacisk": [-20, -40],
+          "powod": "zacisk zestyku lewego odłącznika dwukierunkowego — zestyk pominięty, zestykiem szynowym jest zestyk w osi z odłącznika 07-13-06"
         },
         {
           "skladnik": 0,
+          "zacisk": [20, -40],
+          "powod": "zacisk zestyku prawego odłącznika dwukierunkowego — zestyk pominięty, zestyk uziemiający pochodzi z egzemplarza obróconego o −90°"
+        },
+        {
+          "skladnik": 3,
+          "zacisk": [-20, -40],
+          "powod": "egzemplarz zestyku uziemiającego: zacisk zestyku pominiętego"
+        },
+        {
+          "skladnik": 3,
+          "zacisk": [0, 20],
+          "powod": "egzemplarz zestyku uziemiającego: zacisk wspólny noża pominiętego"
+        },
+        {
+          "skladnik": 3,
+          "zacisk": [20, -40],
+          "powod": "egzemplarz zestyku uziemiającego: zacisk doprowadzenia pominiętego — symbol uziemienia przyłączony bezpośrednio do dolnego końca kreski zestyku"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [0, -15],
+          "powod": "zacisk symbolu uziemienia na dolnym końcu kreski zestyku uziemiającego — obwód uziemienia łącznika, nie port pola"
+        }
+      ],
+      "skalaRysunku": {
+        "k": 1.3333333333333333,
+        "srodek": [0, 0],
+        "skladniki": [0, 1, 2, 3],
+        "powod": "stopień symboli LOD2 (glif aparatu 0,55–0,70 boku kafla stanu): rysunek łącznika trójpołożeniowego z zestykiem uziemiającym obok przegubu ma 60,5 jednostki QET wysokości (0,47 boku), jednokładność 4/3 wokół przegubu daje 0,67, a odstęp portów 60 × 4/3 = 80 zostaje wielokrotnością rastra 20; osprzęt napędu poza jednokładnością (jego rozmiar ustala skala lokalna)"
+      },
+      "skalaLokalna": [
+        {
+          "skladnik": 2,
+          "prymitywy": [3],
+          "srodek": [0, -20],
+          "skala": 2,
+          "powod": "kreska zestyku szynowego powiększona dwukrotnie wokół środka — rodzaj zestyku czytelny w kaflu stanu; skala 2 to największa, przy której kreska nie dotyka noża w położeniu nieustalonym"
+        },
+        {
+          "skladnik": 3,
           "prymitywy": [5],
           "srodek": [20, -20],
-          "skala": 3,
-          "powod": "kreski zestyków łącznika trójpołożeniowego (zestyk szynowy i uziemiający) powiększone trzykrotnie wokół środka — rodzaj zestyku czytelny w kaflu stanu; łącznik bez jednokładności rysunku, bo jego rysunek źródła już zajmuje ponad 0,55 boku kafla"
+          "skala": 2,
+          "powod": "kreska zestyku uziemiającego powiększona dwukrotnie wokół środka (jak zestyk szynowy) — sięga do początku doprowadzenia symbolu uziemienia"
         }
-      ]
+      ],
+      "portyWewnatrzGabarytu": {
+        "bottom": "zacisk dolny QET leży 40 jednostek QET nad dolną krawędzią kafla stanu, bo symbol uziemienia pod zestykiem uziemiającym (z lewej strony osi) sięga 24 jednostki QET poniżej zacisku, a kafel obejmuje cały rysunek łącznika — przewód toru przedłużony do krawędzi kafla"
+      },
+      "uwaga": "Trzy położenia, każde z własną geometrią noża (uwaga właściciela 2026-10-30, tabela stan → kolor → geometria w karcie UX-04/POLE-LINIOWE-WZORZEC §11.13): ZAMKNIĘTY NA TOR = nóż W OSI toru na kresce zestyku szynowego (jak zamknięty odłącznik); OTWARTY (odłączony) = nóż odchylony o 45° w lewo, poza oboma zestykami; UZIEMIONY = nóż poziomo w lewo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia; NIEUSTALONY = nóż kreskowany, skrócony, w połowie drogi między otwartym a zamkniętym. Odstępstwo od rysunku ENEA Zeszyt 1, Z.10 (s. 89): tam odłącznik dwukierunkowy ma zestyk szynowy z lewej i uziemiający z prawej, nad nim symbol ziemi, a nóż w osi oznacza położenie środkowe — przy takim rysunku zamknięcie na tor i uziemienie są oba nożem ukośnym, a kafel zamknięty z nożem ukośnym czytał się jak otwarty. Przegub w okręgu styku odłączającego ○ jak na rysunku ENEA; uziemiana jest strona wyłącznika (zacisk dolny, wspólny z nożem)."
     },
     {
       "symbolId": "qetThreePositionSwitchZNapedem",
       "namePl": "Łącznik trójpołożeniowy z napędem zasobnikowym",
-      "zlozenie": "złożenie z elementów QET en_60617_07_13_07 (odłącznik dwukierunkowy) + en_60617_02_15_01 (uziemienie) nad zestykiem prawym + en_60617_02_13_20 (napęd energią zmagazynowaną) na kreskowanym sprzężeniu mechanicznym od przegubu noża w prawo + en_60617_02_13_01 (napęd ręczny, symbol ogólny) pod kwadratem napędu",
+      "zlozenie": "złożenie z elementów QET en_60617_07_13_06 (odłącznik: zestyk szynowy w osi toru, nóż, przegub) + en_60617_07_13_07 (odłącznik dwukierunkowy: okrąg styku odłączającego i doprowadzenie dolne) + en_60617_07_13_07 obrócony o −90° (wyłącznie kreska zestyku jako pionowy zestyk uziemiający po lewej) + en_60617_02_15_01 (uziemienie) pod zestykiem uziemiającym + en_60617_02_13_20 (napęd energią zmagazynowaną) na kreskowanym sprzężeniu mechanicznym od przegubu noża w prawo + en_60617_02_13_01 (napęd ręczny, symbol ogólny) pod kwadratem napędu",
       "skladniki": [
         { "element": "en_60617_07_13_07", "obrot": 0, "przesuniecie": [0, 0] },
-        { "element": "en_60617_02_15_01", "obrot": 180, "przesuniecie": [20, -55] },
-        { "element": "en_60617_02_13_20", "obrot": 180, "przesuniecie": [8, 2] },
-        { "element": "en_60617_02_13_01", "obrot": -90, "przesuniecie": [32, 20] }
+        { "element": "en_60617_02_15_01", "obrot": 0, "przesuniecie": [-20, 23] },
+        {
+          "element": "en_60617_02_13_20",
+          "obrot": 180,
+          "przesuniecie": [8.666666666666666, 2.6666666666666665]
+        },
+        {
+          "element": "en_60617_02_13_01",
+          "obrot": -90,
+          "przesuniecie": [32.666666666666664, 20.666666666666668]
+        },
+        { "element": "en_60617_07_13_06", "obrot": 0, "przesuniecie": [0, 0] },
+        { "element": "en_60617_07_13_07", "obrot": -90, "przesuniecie": [0, 20] }
+      ],
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [1, 2, 3, 4, 5],
+          "powod": "z odłącznika dwukierunkowego zostaje okrąg styku odłączającego (przegub, ENEA Zeszyt 1 Z.10 s.89) i doprowadzenie dolne; nóż w osi i oba zestyki pominięte — zestyk szynowy stoi W OSI toru z odłącznika 07-13-06 (położenie zamknięte = nóż w osi toru, uwaga właściciela 2026-10-30: kafel zamknięty z nożem ukośnym czytał się jak otwarty), a zestyk uziemiający — z drugiego egzemplarza 07-13-07 obróconego o −90°"
+        },
+        {
+          "skladnik": 4,
+          "prymitywy": [1],
+          "powod": "doprowadzenie dolne odłącznika 07-13-06 biegnie przez przegub — zastąpione doprowadzeniem dolnym odłącznika dwukierunkowego, które zaczyna się pod okręgiem styku odłączającego"
+        },
+        {
+          "skladnik": 5,
+          "prymitywy": [0, 1, 2, 3, 4, 6],
+          "powod": "z drugiego egzemplarza odłącznika dwukierunkowego (obrót −90°) zostaje wyłącznie kreska zestyku (pionowa, po lewej stronie przegubu, w odległości zestyku szynowego) — zestyk uziemiający; symbol uziemienia przyłączony do jej dolnego końca"
+        }
       ],
       "noz": {
-        "skladnik": 0,
-        "prymitywy": [1],
-        "przegub": [0, 2],
-        "cele": { "closed": [-20, -20], "earthed": [20, -20] },
-        "nieznanyJakOtwarty": true
+        "skladnik": 4,
+        "prymitywy": [2],
+        "przegub": [0, 0],
+        "cele": { "closed": [0, -20], "earthed": [-20, 0] },
+        "otwarty": {
+          "kierunek": [-20, -20],
+          "powod": "położenie OTWARTE (odłączone): nóż odchylony o 45° w lewo od osi, poza oboma zestykami — w połowie drogi między położeniem zamkniętym (nóż w osi na zestyku szynowym) a uziemionym (nóż poziomo w lewo na pionowej kresce zestyku uziemiającego, pod którą wisi symbol uziemienia), zgodnie z kolejnością położeń mechanizmu łącznika trójpołożeniowego (zamknięty → odłączony → uziemiony); nóż źródła odłącznika odchylony o 19° stykał się grubością kreski glifu z kreską zestyku szynowego"
+        },
+        "nieznany": {
+          "zasieg": 0.6,
+          "powod": "położenie NIEUSTALONE: nóż kreskowany w połowie drogi między położeniem otwartym a zamkniętym, skrócony do 0,6 długości źródła — koniec noża w pełnej długości przechodził przy kresce zestyku szynowego i nieustalony czytałby się jak zamknięty"
+        }
       },
       "porty": [
-        { "name": "top", "skladnik": 0, "zacisk": [-20, -40] },
-        { "name": "bottom", "skladnik": 0, "zacisk": [0, 20] }
+        { "name": "top", "skladnik": 4, "zacisk": [0, -40] },
+        { "name": "bottom", "skladnik": 4, "zacisk": [0, 20] }
       ],
       "zaciskiWewnetrzne": [
         {
           "skladnik": 0,
-          "zacisk": [20, -40],
-          "z": { "skladnik": 1, "zacisk": [0, -15] },
-          "powod": "zestyk uziemiający łącznika połączony z symbolem uziemienia — nie jest portem pola"
+          "zacisk": [0, 20],
+          "z": { "skladnik": 4, "zacisk": [0, 20] },
+          "powod": "zacisk dolny odłącznika dwukierunkowego i odłącznika 07-13-06 to ten sam zacisk toru (port dolny)"
         }
       ],
-      "portyWewnatrzGabarytu": {
-        "top": "zacisk szynowy QET leży 40 jednostek QET pod górną krawędzią kafla stanu, bo symbol uziemienia nad zestykiem uziemiającym sięga 30 jednostek nad poziom zacisków, a kafel jest wyśrodkowany na rysunku łącznika ze znakiem napędu — przewód zestyku szynowego przedłużony do krawędzi kafla",
-        "bottom": "zacisk dolny QET leży 20 jednostek QET nad dolną krawędzią kafla stanu, bo znak napędu ręcznego pod kwadratem napędu sięga poniżej zacisku — przewód toru przedłużony do krawędzi kafla"
-      },
-      "osprzet": [
+      "zaciskiPozaTorem": [
         {
-          "skladnik": 2,
-          "powod": "napęd łącznika trójpołożeniowego z modelu (`BayPrimaryDevice.naped` = ZASOBNIKOWY_RECZNY; ENEA Zeszyt 1, Z.10 s.89, Z.11 s.90, Z.11.1 s.91: kwadrat na kreskowanym sprzężeniu mechanicznym przy łączniku Q1) — kształt EN 60617 02-13-20 (napęd energią zmagazynowaną); koniec kreskowanej linii sprzężenia przy okręgu przegubu noża (styk odłączający ○), kwadrat po prawej stronie osi, pod zestykiem uziemiającym"
+          "skladnik": 0,
+          "zacisk": [-20, -40],
+          "powod": "zacisk zestyku lewego odłącznika dwukierunkowego — zestyk pominięty, zestykiem szynowym jest zestyk w osi z odłącznika 07-13-06"
         },
         {
-          "skladnik": 3,
-          "powod": "obsługa ręczna napędu (ENEA Zeszyt 1, Z.10/Z.11/Z.11.1: od kwadratu napędu w dół kreskowany odcinek zakończony poprzeczką) — kształt EN 60617 02-13-01 (napęd ręczny, symbol ogólny); obrót o −90° stawia koniec sprzężenia w środku dolnego boku kwadratu, a poprzeczkę na dole"
+          "skladnik": 0,
+          "zacisk": [20, -40],
+          "powod": "zacisk zestyku prawego odłącznika dwukierunkowego — zestyk pominięty, zestyk uziemiający pochodzi z egzemplarza obróconego o −90°"
+        },
+        {
+          "skladnik": 5,
+          "zacisk": [-20, -40],
+          "powod": "egzemplarz zestyku uziemiającego: zacisk zestyku pominiętego"
+        },
+        {
+          "skladnik": 5,
+          "zacisk": [0, 20],
+          "powod": "egzemplarz zestyku uziemiającego: zacisk wspólny noża pominiętego"
+        },
+        {
+          "skladnik": 5,
+          "zacisk": [20, -40],
+          "powod": "egzemplarz zestyku uziemiającego: zacisk doprowadzenia pominiętego — symbol uziemienia przyłączony bezpośrednio do dolnego końca kreski zestyku"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [0, -15],
+          "powod": "zacisk symbolu uziemienia na dolnym końcu kreski zestyku uziemiającego — obwód uziemienia łącznika, nie port pola"
         }
       ],
-      "uwaga": "Napęd łącznika trójpołożeniowego z modelu (`BayPrimaryDevice.naped` = ZASOBNIKOWY_RECZNY, decyzja architekta 2026-10-30: napęd jest atrybutem łącznika, nie osobnym aparatem). Rysunek łącznika (nóż, zestyki, uziemienie, porty, położenia) — ten sam co `qetThreePositionSwitch`; kafel wyśrodkowany na treści przesuwa się o jeden raster zacisków QET w dół, bo znak napędu ręcznego sięga poniżej zacisku dolnego. Odłącznik z uziemieniem Q5 odgałęzienia przekładnika napięciowego znaku napędu na rysunku ENEA nie ma — rysuje się `qetThreePositionSwitch`.",
+      "skalaRysunku": {
+        "k": 1.3333333333333333,
+        "srodek": [0, 0],
+        "skladniki": [0, 1, 4, 5],
+        "powod": "stopień symboli LOD2 (glif aparatu 0,55–0,70 boku kafla stanu): rysunek łącznika trójpołożeniowego z zestykiem uziemiającym obok przegubu ma 60,5 jednostki QET wysokości (0,47 boku), jednokładność 4/3 wokół przegubu daje 0,67, a odstęp portów 60 × 4/3 = 80 zostaje wielokrotnością rastra 20; osprzęt napędu poza jednokładnością (jego rozmiar ustala skala lokalna)"
+      },
       "skalaLokalna": [
         {
-          "skladnik": 0,
-          "prymitywy": [4],
-          "srodek": [-20, -20],
-          "skala": 3,
-          "powod": "kreski zestyków łącznika trójpołożeniowego (zestyk szynowy i uziemiający) powiększone trzykrotnie wokół środka — rodzaj zestyku czytelny w kaflu stanu; łącznik bez jednokładności rysunku, bo jego rysunek źródła już zajmuje ponad 0,55 boku kafla"
+          "skladnik": 4,
+          "prymitywy": [3],
+          "srodek": [0, -20],
+          "skala": 2,
+          "powod": "kreska zestyku szynowego powiększona dwukrotnie wokół środka — rodzaj zestyku czytelny w kaflu stanu; skala 2 to największa, przy której kreska nie dotyka noża w położeniu nieustalonym"
         },
         {
-          "skladnik": 0,
+          "skladnik": 5,
           "prymitywy": [5],
           "srodek": [20, -20],
-          "skala": 3,
-          "powod": "kreski zestyków łącznika trójpołożeniowego (zestyk szynowy i uziemiający) powiększone trzykrotnie wokół środka — rodzaj zestyku czytelny w kaflu stanu; łącznik bez jednokładności rysunku, bo jego rysunek źródła już zajmuje ponad 0,55 boku kafla"
+          "skala": 2,
+          "powod": "kreska zestyku uziemiającego powiększona dwukrotnie wokół środka (jak zestyk szynowy) — sięga do początku doprowadzenia symbolu uziemienia"
         },
         {
           "skladnik": 2,
@@ -452,7 +573,21 @@
           "skala": 0.75,
           "powod": "znak napędu ręcznego (EN 60617 02-13-01) pomniejszony do 0,75 wokół końca sprzężenia — kreskowany odcinek 22,5 jednostki QET z poprzeczką mieści się pod kwadratem napędu w kaflu stanu z marginesem (pełna długość źródła, 30 jednostek, wychodzi poza margines kafla)"
         }
-      ]
+      ],
+      "portyWewnatrzGabarytu": {
+        "bottom": "zacisk dolny QET leży 20 jednostek QET nad dolną krawędzią kafla stanu, bo znak napędu ręcznego pod kwadratem napędu sięga poniżej zacisku — przewód toru przedłużony do krawędzi kafla"
+      },
+      "osprzet": [
+        {
+          "skladnik": 2,
+          "powod": "napęd łącznika trójpołożeniowego z modelu (`BayPrimaryDevice.naped` = ZASOBNIKOWY_RECZNY; ENEA Zeszyt 1, Z.10 s.89, Z.11 s.90, Z.11.1 s.91: kwadrat na kreskowanym sprzężeniu mechanicznym przy łączniku Q1) — kształt EN 60617 02-13-20 (napęd energią zmagazynowaną); koniec kreskowanej linii sprzężenia przy okręgu przegubu noża (styk odłączający ○), kwadrat po prawej stronie osi, pod zestykiem uziemiającym"
+        },
+        {
+          "skladnik": 3,
+          "powod": "obsługa ręczna napędu (ENEA Zeszyt 1, Z.10/Z.11/Z.11.1: od kwadratu napędu w dół kreskowany odcinek zakończony poprzeczką) — kształt EN 60617 02-13-01 (napęd ręczny, symbol ogólny); obrót o −90° stawia koniec sprzężenia w środku dolnego boku kwadratu, a poprzeczkę na dole"
+        }
+      ],
+      "uwaga": "Napęd łącznika trójpołożeniowego z modelu (`BayPrimaryDevice.naped` = ZASOBNIKOWY_RECZNY, decyzja architekta 2026-10-30: napęd jest atrybutem łącznika, nie osobnym aparatem). Rysunek łącznika (nóż, zestyki, uziemienie, porty, położenia) — ten sam co `qetThreePositionSwitch`; kwadrat napędu po prawej stronie przegubu, na wysokości okręgu styku odłączającego (koniec kreskowanego sprzężenia na okręgu), zestyk uziemiający po lewej — napęd i uziemienie po przeciwnych stronach osi. Odłącznik z uziemieniem Q5 odgałęzienia przekładnika napięciowego znaku napędu na rysunku ENEA nie ma — rysuje się `qetThreePositionSwitch`."
     },
     {
       "symbolId": "qetCurrentTransformer",

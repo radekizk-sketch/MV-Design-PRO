@@ -227,10 +227,10 @@ export function baseSymbolStrokeColor(
  * STANY = położenia, które rozróżnia model (`v2/model/stanAparatowPola.ts`):
  * zamknięty, otwarty, nieustalony (brak danej, „nieznany", rekord sprzeczny z gałęzią)
  * i błędny (rekord „awaria" — odpowiednik położenia „bad-state" podwójnego wskazania
- * IEC 61850-7-4 Dbpos). Położenie „uziemiony" łącznika trójpołożeniowego ma kolor
- * ZAMKNIĘTEGO: zestyk jest zamknięty na uziemienie (łącznik trójpołożeniowy w praktyce
- * IEC 61850 to dwa węzły XSWI — tor i uziemienie; uziemiony = węzeł uziemienia „on"),
- * a geometria noża na zestyku uziemiającym odróżnia go od zamknięcia na tor.
+ * IEC 61850-7-4 Dbpos). Kolor mówi o TORZE GŁÓWNYM łącznika (uwaga właściciela 2026-10-30):
+ * położenie „uziemiony" łącznika trójpołożeniowego ma kolor OTWARTEGO — tor jest otwarty,
+ * a nóż na zestyku uziemiającym pod symbolem ziemi mówi, że pole jest uziemione. Kolor
+ * i geometrię wyznacza jedna tabela `symbols/glyphs.tsx` `polozenieZeStanu`.
  * Punkt normalnie otwarty (NOP) NIE ma osobnego koloru: to stan łącznika (zwykle
  * otwarty) plus ZNACZNIK funkcji NOP (symbol `noPoint` i podpis „NO").
  *

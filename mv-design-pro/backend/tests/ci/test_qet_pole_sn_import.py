@@ -142,23 +142,36 @@ def test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione():
     )
     for ident in lacznikowe:
         noz = po_id[ident]["noz"]
-        assert noz["katy"]["open"] == 0
-        assert noz["katy"]["closed"] != 0
+        katy = noz["katy"]
+        assert katy["closed"] != katy["open"]
         assert all(p["k"] == "line" and p["nozStanu"] for p in noz["prymitywy"])
+        # Uwaga właściciela 2026-10-30 (kolor kafla i położenie noża sprzeczne): geometria noża
+        # wynika WYŁĄCZNIE ze stanu — nieznany jest położeniem pośrednim między otwartym
+        # a zamkniętym, różnym od każdego położenia pewnego (także w trójpołożeniowym, gdzie
+        # dawniej „nieznany jak otwarty" rysował nóż odłączony pod szarym kaflem „?").
+        assert math.isclose(katy["unknown"], (katy["open"] + katy["closed"]) / 2, abs_tol=1e-4)
+        pewne = [katy[k] for k in ("open", "closed", "earthed") if k in katy]
+        assert min(abs(katy["unknown"] - k) for k in pewne) >= 5, ident
     for ident in trojpolozeniowe:
         trojpol = po_id[ident]["noz"]["katy"]
-        # Zamknięty i uziemiony — przeciwne kierunki od położenia odłączonego (oś).
-        assert trojpol["closed"] == -trojpol["earthed"] and trojpol["closed"] < 0, ident
-        assert trojpol["unknown"] == 0, ident
+        # Trzy położenia pewne, każde z własną geometrią: otwarty (jawny kierunek manifestu —
+        # nóż źródła w 19° stykał się z kreską zestyku szynowego), zamknięty na zestyk toru
+        # (oś, w górę), uziemiony na zestyk uziemnika (w lewo, do symbolu ziemi) — trzy różne
+        # kierunki, uziemiony po przeciwnej stronie otwartego niż zamknięty.
+        assert trojpol["open"] != 0, ident
+        assert trojpol["earthed"] < trojpol["open"] < trojpol["closed"], ident
+        assert trojpol["closed"] - trojpol["open"] >= 30, ident
+        assert trojpol["open"] - trojpol["earthed"] >= 30, ident
     # Napęd nie zmienia noża: kąty położeń łącznika z napędem równe kątom łącznika bez napędu.
     assert (
         po_id["qetThreePositionSwitchZNapedem"]["noz"]["katy"]
         == po_id["qetThreePositionSwitch"]["noz"]["katy"]
     )
-    # Dwupołożeniowe: nieznany = połowa kąta zamknięcia.
+    # Dwupołożeniowe: otwarty = rysunek źródła, nieznany = połowa kąta zamknięcia.
     for ident in lacznikowe - trojpolozeniowe:
         katy = po_id[ident]["noz"]["katy"]
         assert "earthed" not in katy
+        assert katy["open"] == 0
         assert math.isclose(katy["unknown"], katy["closed"] / 2, abs_tol=1e-4)
     # Intencja (bez zmian od pierwszej wersji): symbol złożony z kilku elementów QET istnieje
     # tylko z jawną deklaracją złożenia — nigdy po cichu. Zbiór złożeń przypięty wprost: łącznik
@@ -193,10 +206,11 @@ def test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione():
     # krawędź) jest JAWNY w ``doprowadzenia``, pionowy, kończy się na krawędzi w stronę portu
     # i ma powód; zacisk źródła POZA kaflem (rysunek po jednokładności) przenosi się na krawędź
     # z przycięciem przewodu, bez doprowadzenia. Po jednokładności rysunku jedynym zaciskiem toru
-    # wewnątrz kafla jest zacisk szynowy łącznika trójpołożeniowego (uziemienie nad zestykiem
-    # uziemiającym sięga ponad poziom zacisków) — z powodem z własnej deklaracji; łącznik
-    # z napędem ma dodatkowo zacisk dolny wewnątrz kafla (znak napędu ręcznego pod kwadratem
-    # napędu sięga poniżej zacisku), też z powodem z deklaracji.
+    # wewnątrz kafla jest zacisk dolny łącznika trójpołożeniowego (symbol uziemienia pod
+    # zestykiem uziemiającym, a w wariancie z napędem także znak napędu ręcznego, sięgają poniżej
+    # zacisku) — z powodem z własnej deklaracji. Zestyk szynowy stoi w osi toru na górnej
+    # krawędzi rysunku (uwaga właściciela 2026-10-30, położenie zamknięte = nóż w osi), więc
+    # zacisk szynowy leży na krawędzi kafla bez doprowadzenia.
     tor_z_doprowadzeniem = set()
     for ident in lacznikowe:
         s = po_id[ident]
@@ -212,8 +226,7 @@ def test_noz_zamyka_na_styk_staly_a_trojpolozeniowy_ma_polozenie_uziemione():
             poczatek = "zacisk szynowy QET" if d["port"] == "top" else "zacisk dolny QET"
             assert d["powod"].startswith(poczatek), (ident, d)
     assert tor_z_doprowadzeniem == {
-        ("qetThreePositionSwitch", "top"),
-        ("qetThreePositionSwitchZNapedem", "top"),
+        ("qetThreePositionSwitch", "bottom"),
         ("qetThreePositionSwitchZNapedem", "bottom"),
     }
     # Poza łącznikami doprowadzenie powstaje wyłącznie jako przedłużenie portu obwodu wtórnego
@@ -269,6 +282,33 @@ def test_iniekcja_kafel_stanu_przerywa_import(kopia_zrodel, wariant, oczekiwany)
         manifest["kafelStanu"]["kreskaGlifuQet"] = 10.5
     else:
         manifest["kafelStanu"]["powod"] = " "
+    _zapisz_manifest(kopia_zrodel, manifest)
+    with pytest.raises(qet.BladImportu, match=oczekiwany):
+        qet.generuj()
+
+
+@pytest.mark.parametrize(
+    ("wariant", "oczekiwany"),
+    [
+        ("otwarty_bez_powodu", "bez powodu"),
+        ("nieznany_bez_powodu", "bez powodu"),
+        ("nieznany_zasieg_zero", "poza \\(0; 1\\)"),
+        ("nieznany_zasieg_pelny", "poza \\(0; 1\\)"),
+    ],
+)
+def test_iniekcja_polozenie_otwarte_i_nieustalone_wymaga_powodu(kopia_zrodel, wariant, oczekiwany):
+    """Położenie otwarte różne od rysunku źródła (``noz.otwarty``) i skrócony nóż położenia
+    nieustalonego (``noz.nieznany``) to decyzje projektowe — każda z powodem, zasięg w (0; 1)."""
+    manifest = _manifest(kopia_zrodel)
+    noz = next(w for w in manifest["symbole"] if w["symbolId"] == "qetThreePositionSwitch")["noz"]
+    if wariant == "otwarty_bez_powodu":
+        noz["otwarty"]["powod"] = " "
+    elif wariant == "nieznany_bez_powodu":
+        noz["nieznany"]["powod"] = ""
+    elif wariant == "nieznany_zasieg_zero":
+        noz["nieznany"]["zasieg"] = 0
+    else:
+        noz["nieznany"]["zasieg"] = 1
     _zapisz_manifest(kopia_zrodel, manifest)
     with pytest.raises(qet.BladImportu, match=oczekiwany):
         qet.generuj()
@@ -722,7 +762,7 @@ def test_iniekcja_port_poza_rastrem_qet_przerywa_import(kopia_zrodel, wariant):
 
 @pytest.mark.parametrize(
     ("symbol_id", "deklaracja"),
-    [("qetThreePositionSwitch", "bottom"), ("qetCableHead", "top")],
+    [("qetThreePositionSwitchZNapedem", "top"), ("qetCableHead", "top")],
 )
 def test_iniekcja_deklaracja_portu_wewnatrz_gabarytu_rozna_od_geometrii_przerywa_import(
     kopia_zrodel, symbol_id, deklaracja

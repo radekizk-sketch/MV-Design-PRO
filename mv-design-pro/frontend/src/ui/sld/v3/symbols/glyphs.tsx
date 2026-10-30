@@ -53,11 +53,60 @@ export type SwitchState = 'closed' | 'open' | 'unknown' | 'earthed' | 'bad';
 /** Margines kafla stanu wokół obrysu symbolu [px świata]. */
 export const KAFEL_STANU_MARGINES = 2;
 
-/** Położenie rysowane przez geometrię glifu kanonicznego (dwupołożeniowego): `earthed`
- *  (nie jest położeniem tych aparatów), `bad` i brak danej rysują się jako nieustalone —
- *  nigdy jako zamknięte albo otwarte z domysłu. */
-export function polozenieGeometrii(state: SwitchState | undefined): 'closed' | 'open' | 'unknown' {
-  return state === 'closed' || state === 'open' ? state : 'unknown';
+/** Położenie rysowane GEOMETRIĄ łącznika (nóż, wypełnienie korpusu, przerwa toru). */
+export type PolozenieGeometrii = 'closed' | 'open' | 'earthed' | 'unknown';
+
+/** Kolor i geometria łącznika — para z JEDNEGO źródła (`polozenieZeStanu`). */
+export interface PolozenieLacznika {
+  /** Stan kafla, czyli KOLOR: położenie TORU GŁÓWNEGO łącznika. */
+  readonly kafel: StanKafla;
+  /** Położenie rysowane geometrią glifu. */
+  readonly geometria: PolozenieGeometrii;
+}
+
+/**
+ * JEDNO ŹRÓDŁO koloru kafla i geometrii łącznika (uwaga właściciela 2026-10-30, karta
+ * UX-04/POLE-LINIOWE-WZORZEC §11.13; CLAUDE.md „KLASA, NIE INSTANCJA" pkt 3 — predykaty
+ * parami): stan aparatu z modelu wyznacza OBA naraz, glif nie ma własnego położenia noża,
+ * a kafel nie ma własnej reguły koloru. Konwencja dyspozytorska: czerwony = zamknięty,
+ * zielony = otwarty; kolor mówi o TORZE GŁÓWNYM łącznika:
+ *  • `closed`  → kafel zamknięty, nóż na zestyku toru (w osi);
+ *  • `open`    → kafel otwarty, nóż odchylony, poza zestykami;
+ *  • `earthed` → (WYŁĄCZNIE łącznik z zestykiem uziemiającym — trójpołożeniowy) kafel OTWARTY,
+ *    bo tor główny jest otwarty, a nóż leży na zestyku uziemiającym pod symbolem ziemi;
+ *    łącznik bez zestyku uziemiającego — rekord sprzeczny z rodzajem aparatu → nieustalony;
+ *  • `unknown` i brak danej → kafel nieustalony (szary z „?"), nóż w położeniu pośrednim
+ *    albo kreskowany;
+ *  • `bad` (rekord „awaria") → kafel błędny (fioletowy z „!"), nóż jak nieustalony.
+ */
+const POLOZENIE_ZE_STANU: Readonly<Record<SwitchState, PolozenieLacznika>> = {
+  closed: { kafel: 'zamkniety', geometria: 'closed' },
+  open: { kafel: 'otwarty', geometria: 'open' },
+  earthed: { kafel: 'otwarty', geometria: 'earthed' },
+  unknown: { kafel: 'nieustalony', geometria: 'unknown' },
+  bad: { kafel: 'bledny', geometria: 'unknown' },
+};
+
+/** Kolor i geometria ze stanu (`POLOZENIE_ZE_STANU`); `maZestykUziemiajacy` — czy aparat ma
+ *  położenie „uziemiony" (łącznik trójpołożeniowy). */
+export function polozenieZeStanu(state: SwitchState | undefined, maZestykUziemiajacy: boolean): PolozenieLacznika {
+  if (state === undefined || (state === 'earthed' && !maZestykUziemiajacy)) return POLOZENIE_ZE_STANU.unknown;
+  return POLOZENIE_ZE_STANU[state];
+}
+
+/** Kolor i geometria łącznika rysowanego symbolem `id` w stanie `state` — rodzaj semantyczny
+ *  symbolu rozstrzyga, czy aparat ma zestyk uziemiający (łącznik trójpołożeniowy z napędem
+ *  i bez napędu to ten sam rodzaj). */
+export function polozenieLacznika(id: SymbolId, state: SwitchState | undefined): PolozenieLacznika {
+  return polozenieZeStanu(state, rodzajSymbolu(id) === 'qetThreePositionSwitch');
+}
+
+/** Geometria glifu kanonicznego (dwupołożeniowego, bez zestyku uziemiającego) z tego samego
+ *  źródła co kolor kafla: `bad`, brak danej i `earthed` (nie jest położeniem tych aparatów)
+ *  rysują się jako nieustalone — nigdy jako zamknięte albo otwarte z domysłu. */
+export function polozenieGeometrii(id: SymbolId, state: SwitchState | undefined): 'closed' | 'open' | 'unknown' {
+  const geometria = polozenieLacznika(id, state).geometria;
+  return geometria === 'earthed' ? 'unknown' : geometria;
 }
 
 /** SCHEMAT-10 GS-1/GS-2 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU
@@ -229,7 +278,7 @@ function skalujWagi<T extends Readonly<Record<string, number>>>(props: GlyphProp
 }
 
 export function BreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('breaker', props.state);
   return (
     <g {...glyphGroupProps('breaker', props)}>
       <rect
@@ -261,7 +310,7 @@ export function BreakerGlyph(props: GlyphProps): JSX.Element {
  * (`ProtectionRelayGlyph`, 24×24 z `labelLines`).
  */
 export function RecloserGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('recloser', props.state);
   const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
     <g {...glyphGroupProps('recloser', props)}>
@@ -282,7 +331,7 @@ export function RecloserGlyph(props: GlyphProps): JSX.Element {
 }
 
 export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('disconnector', props.state);
   // Nóż: zamknięty = w osi toru; otwarty = odchylony 45° (IEC 60617-7).
   const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
   return (
@@ -304,7 +353,7 @@ export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
  *  POPRZECZKA na końcu styku ruchomego (cecha odróżniająca zdolność
  *  łączenia pod obciążeniem). Stan z geometrii noża jak `DisconnectorGlyph`. */
 export function LoadBreakSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('loadBreakSwitch', props.state);
   const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
   return (
     <g {...glyphGroupProps('loadBreakSwitch', props)}>
@@ -342,7 +391,7 @@ export function LoadArrowGlyph(props: GlyphProps): JSX.Element {
  *  przerywany w osi (jak `DisconnectorGlyph`). Rozszerzenie 5: dawny domysł „brak danej =
  *  otwarty" usunięty — uziemnik bez stanu w modelu jest NIEUSTALONY, nie otwarty. */
 export function EarthSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('earthSwitch', props.state);
   const bladeEnd = state === 'open' ? { x: 15, y: 10 } : { x: 8, y: 14 };
   return (
     <g {...glyphGroupProps('earthSwitch', props)}>
@@ -425,7 +474,7 @@ export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
 /** Rozłącznik bezpiecznikowy SN. Rozszerzenie 5: dawny domysł „brak danej = zamknięty"
  *  usunięty — bez stanu w modelu nóż jest przerywany (nieustalony). */
 export function FuseSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('fuseSwitch', props.state);
   return (
     <g {...glyphGroupProps('fuseSwitch', props)}>
       <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
@@ -651,7 +700,7 @@ export function JointSleeveGlyph(props: GlyphProps): JSX.Element {
  * przerywany — i kafel stanu, jak każdy łącznik.
  */
 export function NoPointGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('noPoint', props.state);
   const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
     <g {...glyphGroupProps('noPoint', props)} data-nop-polozenie={state}>
@@ -676,7 +725,7 @@ export function NoPointGlyph(props: GlyphProps): JSX.Element {
  *  `DisconnectorGlyph` obrócona o 90° (nóż w osi toru = zamknięty, odchylony =
  *  otwarty, przerywany = stan nieznany; poprzeczka styku stałego). */
 export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('lineSwitch', props.state);
   const bladeEnd = state === 'open' ? { x: 18, y: 1 } : { x: 22, y: 8 };
   return (
     <g {...glyphGroupProps('lineSwitch', props)}>
@@ -695,7 +744,7 @@ export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
 /** Karta SLD-SUBSTRAT (kontynuacja): wyłącznik na torze POZIOMYM — korpus
  *  `BreakerGlyph` (wypełniony = zamknięty, pusty = otwarty) z wyprowadzeniami W/E. */
 export function LineBreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('lineBreaker', props.state);
   return (
     <g {...glyphGroupProps('lineBreaker', props)}>
       <rect
@@ -1231,7 +1280,7 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
  * górnym) — cecha, której `BreakerGlyph` (aparat pierwotny SN) nie niesie.
  */
 export function NnBreakerGlyph(props: GlyphProps): JSX.Element {
-  const state = polozenieGeometrii(props.state);
+  const state = polozenieGeometrii('nnBreaker', props.state);
   const w = grubosc(props, V3_STROKE_APPARATUS);
   return (
     <g {...glyphGroupProps('nnBreaker', props)}>
@@ -1306,31 +1355,27 @@ export function LvPortalGlyph(props: GlyphProps): JSX.Element {
 // ---------------------------------------------------------------------------
 // Karta UX-04/POLE-LINIOWE-WZORZEC — symbole QElectroTech EN 60617 pola liniowego SN.
 // Geometria z importera (`cad/qet/qetPoleSn.ts`), rysunek przez wspólną warstwę
-// prymitywów CAD (`CadPrimitiveLayer`). Rysunek źródła = położenie OTWARTE; położenie
-// zamknięte/uziemione/nieznane = obrót noża o kąt z importera wokół przegubu.
+// prymitywów CAD (`CadPrimitiveLayer`). Każde położenie noża (otwarte, zamknięte, uziemione,
+// nieznane) = obrót noża źródła o kąt z importera wokół przegubu (`noz.katy`).
 // ---------------------------------------------------------------------------
 
-/** Położenie noża rysowane dla stanu łącznika: `earthed` tylko tam, gdzie symbol ma
- *  zestyk uziemiający (łącznik trójpołożeniowy); dla pozostałych — jak stan nieznany. */
-export function polozenieNozaQet(id: QetSymbolPolaSnId, state: SwitchState): QetPolozenieNoza {
+/** Położenie noża symbolu QET dla stanu łącznika — geometria z JEDNEGO źródła z kolorem
+ *  kafla (`polozenieLacznika`); położenie bez kąta w importerze (niemożliwe dla kompletu
+ *  położeń generatora) rysuje się jako nieustalone. Symbol bez noża — rysunek źródła. */
+export function polozenieNozaQet(id: QetSymbolPolaSnId, state: SwitchState | undefined): QetPolozenieNoza {
   const noz = QET_SYMBOLE_POLA_SN[id].noz;
   if (!noz) return 'open';
-  if (state === 'bad') return 'unknown';
-  return noz.katy[state] === undefined ? 'unknown' : state;
+  const geometria = polozenieLacznika(id, state).geometria;
+  return noz.katy[geometria] === undefined ? 'unknown' : geometria;
 }
 
 /**
- * Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC — STAN KAFLA łącznika z położeniem.
- * JEDNA reguła dla rysunku, eksportu, legendy, inspektora i sond:
- *  • `closed` → `zamkniety` (czerwony), `open` → `otwarty` (zielony);
- *  • `earthed` łącznika trójpołożeniowego → `zamkniety`: zestyk UZIEMIAJĄCY jest zamknięty
- *    (IEC 61850-7-4 modeluje łącznik trójpołożeniowy jako dwa XSWI — tor otwarty, uziemnik
- *    zamknięty; kafel niesie położenie styku, który jest zamknięty, a geometria noża mówi
- *    KTÓRY — nóż na zestyku uziemiającym). Ten sam kolor ma zamknięty uziemnik osobny;
- *  • `earthed` dla innego symbolu (rekord sprzeczny z rodzajem aparatu) i brak danej →
- *    `nieustalony` (szary z „?");
- *  • `bad` (rekord „awaria") → `bledny` (fioletowy z „!").
- * `null` = symbol bez położenia (patrz `SYMBOLE_LACZNIKOW_Z_POLOZENIEM`) — bez kafla.
+ * Rozszerzenie 5 karty UX-04/POLE-LINIOWE-WZORZEC — STAN KAFLA łącznika z położeniem: kolor
+ * z TEJ SAMEJ pary co geometria noża (`polozenieLacznika`), jedna reguła dla rysunku,
+ * eksportu, legendy, inspektora i sond. `earthed` łącznika trójpołożeniowego → `otwarty`
+ * (kolor mówi o torze głównym, który jest otwarty; nóż na zestyku uziemiającym mówi, że pole
+ * jest uziemione — uwaga właściciela 2026-10-30). `null` = symbol bez położenia (patrz
+ * `SYMBOLE_LACZNIKOW_Z_POLOZENIEM`) — bez kafla.
  */
 export function stanKaflaLacznika(id: SymbolId, state: SwitchState | undefined): StanKafla | null {
   if (!czyLacznikZPolozeniem(id)) return null;
@@ -1338,19 +1383,14 @@ export function stanKaflaLacznika(id: SymbolId, state: SwitchState | undefined):
   // łącznika — model nie niesie położenia, więc znacznik funkcji stoi bez kafla (kafel „?"
   // sugerowałby łącznik o nieznanym stanie, którego w modelu nie ma).
   if (id === 'noPoint' && state === undefined) return null;
-  // Rodzaj semantyczny: rysunek łącznika trójpołożeniowego ze znakiem napędu to ten sam łącznik.
-  if (state === 'earthed' && rodzajSymbolu(id) !== 'qetThreePositionSwitch') return 'nieustalony';
-  return stanKaflaPolozenia(state);
+  return polozenieLacznika(id, state).kafel;
 }
 
-/** Stan kafla z SAMEGO położenia — dla miejsc bez symbolu (inspektor, legenda). `earthed`
- *  przychodzi tu wyłącznie od łącznika trójpołożeniowego (`stanAparatowPola` rysuje go jako
- *  nieustalony dla innych rodzajów), więc mapuje się na zestyk zamknięty. */
+/** Stan kafla z SAMEGO położenia — dla miejsc bez symbolu (inspektor, legenda); ta sama tabela
+ *  co rysunek. `earthed` przychodzi tu wyłącznie od łącznika trójpołożeniowego
+ *  (`stanAparatowPola` rysuje go jako nieustalony dla innych rodzajów) — tor otwarty. */
 export function stanKaflaPolozenia(state: SwitchState | undefined): StanKafla {
-  if (state === 'closed' || state === 'earthed') return 'zamkniety';
-  if (state === 'open') return 'otwarty';
-  if (state === 'bad') return 'bledny';
-  return 'nieustalony';
+  return polozenieZeStanu(state, true).kafel;
 }
 
 /** Opis położenia łącznika po polsku — JEDNA mapa (`v2/model/stanAparatowPola.ts`). */

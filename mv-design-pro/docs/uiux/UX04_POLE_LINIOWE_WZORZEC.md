@@ -1503,35 +1503,27 @@ Nowe artefakty generowane: `core/metrykiKroju.json` (pkt 7) i plik symboli QET
   iloczyn dostał cechę kamery „krawędź w slocie” — przesunięcie kadru użytkownika, przy którym
   iniekcja gryzie 96 z 96.
 
-### 11.12. Przekazanie (stan na przerwaniu, 2026-10-30)
+### 11.12. Przekazanie (stan bieżący, 2026-10-30, praca w toku)
 
-**Zrobione (z dowodem).** Wszystkie rozstrzygnięcia §11.7 pkt 1–8, zlecenia A (napęd łącznika
-jako atrybut), B (funkcje EAZ bez duplikatów u źródła), C (glif Q1) oraz klasa D (obrysy etykiet
-według planu, `frontend/src/ui/sld/v3/canvas/obrysyWgPlanu.ts`, wpięcie w
-`canvas/SldCanvasV3.tsx`, test `canvas/__tests__/obrysyWgPlanu.test.tsx`) — opis i inwentarz
-w §11.11. Fikstury odtworzone generatorami (75 plików JSON i `sldNetwork53.ts`), zrzuty
-`docs/uiux/zrzuty/ux04-pole-liniowe/*.png` odświeżone w obu motywach. Kody wyjścia: vitest
-szeroki rc=0 (486+1 plików, 10 677 testów), krok budżetów rc=0 (7 plików, 184 testy),
-`accept:sld-v3` rc=0 (434 PASS), spec zrzutów ux04 — Z.10 rc=0 w biegu 1, Z.11.1 rc=0 w biegu 2
-(bieg 1 Z.11.1 padł na zabiciu przeglądarki przez wspólny memcg OOM, środowiskowo). Trzy czerwone
-z biegu `guardy_z_ci` nr 3 naprawione u źródła i sprawdzone celowo (wszystkie rc=0):
-`tsconfig_gate_guard` (typy w `cad/__tests__/literySymboli.test.tsx` — `ink`/`paper`,
-`scene/__tests__/zaciskiPrzekladnikaGpz.test.ts` — `rdzenie: undefined`), `mypy_ratchet_guard`
-166/20 (zawężenie listy portów w `backend/src/enm/domain_operations.py::_rozwiaz_port_startu`
-i `::_port_startu_dla_szyny`; 183 testy enm portu startu zielone), pin pól kontraktów
-wejściowych 4469 → 4468 w `scripts/test_solver_input_substitute_guard.py` (70 testów zielonych).
+**Zrobione na tej gałęzi (commity WIP).** Zaciski P1/P2 przekładnika T1 przy zaciskach, po stronie
+przeciwnej do podpisu (`c218b93b8`). Jedno źródło koloru kafla i położenia noża łącznika
+(`symbols/glyphs.tsx::POLOZENIE_ZE_STANU`, `polozenieLacznika`, `polozenieNozaQet`): glif nie ma
+własnego położenia noża, położenie „nieustalony" jest położeniem pośrednim, uziemiony ma kafel
+otwarty (tor główny otwarty). Importer QET: jawny kierunek położenia otwartego i zasięg położenia
+nieustalonego z powodem (`scripts/import_qet_pole_sn.py`, iniekcje w
+`backend/tests/ci/test_qet_pole_sn_import.py`).
 
-**Potwierdzenie strażników (dokończone po przerwaniu).** Bieg `guardy_z_ci.py --rownoleglosc 2`
-nr 4: 115 z 115 zadań zielonych (107 strażników CI, lint black/ruff, `npm run type-check`,
-`npm run lint`), przerwany poleceniem sesji głównej na etapie „testy własne strażników”; ten etap
-dokończony osobno tym samym poleceniem co w `guardy_z_ci.py::_polecenie_samotestow`
-(`python -m pytest -q -n 2 ../scripts`, pod `flock`): rc=0, 4093 testy zielone. Stan WIP
-zabezpieczony commitem `1858cac81`; commit końcowy niesie tylko tę sekcję.
+**W toku (polecenia sesji głównej 2026-10-30).** (1) Wzorzec HMI e²TANGO: symbol ziemi pod
+uziemnikiem, skierowany w dół, uziemnik łącznika trójpołożeniowego po prawej stronie osi.
+(2) Znacznik rodzaju aparatu przy styku stałym („×", „○", rozłącznik wg katalogu repo, kreska
+uziemnika), kafel bez osobnego dużego symbolu, rozmiar 22–28% boku kafla, test iloczynu
+z iniekcjami. (3) Przekładnik wieloprzekładniowy — wybrany zaczep w modelu i u konsumentów.
+(4) Decyzje 1–3 (Ferranti i koniec toru, opisy przy symbolach, blok przekaźnika i zakładka
+inspektora).
 
-**Zostało z polecenia.** Nic po stronie wykonawcy. Pełna bramka (`bramka_scalenia.py`) i pełna
-regresja należą do sesji głównej; werdykt wizualny B-02 — do właściciela.
+**Znane czerwone.** `symbols/__tests__/kafelStanu.test.tsx` — 9 testów z oczekiwaniami sprzed
+jednego źródła stanu (uziemiony = kafel zamknięty, napęd po prawej); przepisywane razem
+z nowym układem kafla (pkt 2).
 
-**Znane czerwone.** Brak znanych czerwonych testów i strażników na tym drzewie.
-
-**Pierwszy krok następcy.** Pełna bramka scalenia na gałęzi karty w osobnym drzewie sesji
-głównej.
+**Pierwszy krok następcy.** Dokończyć pkt (1)–(2) w importerze QET (układ kafla łącznika),
+potem testy iloczynu i zrzuty.

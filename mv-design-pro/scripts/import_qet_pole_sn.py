@@ -25,9 +25,11 @@ Zasady (fail-closed — każde odstępstwo przerywa import z komunikatem):
   wokół przegubu na kierunek styku stałego i ZASIĘG noża równy odległości przegub–styk (koniec
   noża leży na styku stałym: nóż źródła odłącznika jest dłuższy od odległości do styku, więc
   obrócony sztywno przechodził przez kreskę styku i odłącznik zamknięty czytał się jak krzyżyk
-  „+” — decyzja architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC); NIEZNANY = połowa
-  kąta zamknięcia (łącznik dwupołożeniowy) albo położenie źródła (łącznik trójpołożeniowy,
-  ``nieznanyJakOtwarty``), z zasięgiem źródła;
+  „+” — decyzja architekta 2026-10-30, karta UX-04/POLE-LINIOWE-WZORZEC); OTWARTY = rysunek
+  źródła albo obrót noża na jawny kierunek z powodem (``otwarty``); NIEZNANY = połowa drogi
+  między położeniem otwartym a zamkniętym, z zasięgiem źródła — położenie pośrednie różne od
+  każdego położenia pewnego, także w łączniku trójpołożeniowym (uwaga właściciela 2026-10-30:
+  geometria noża wynika wyłącznie ze stanu; dawna opcja „nieznany jak otwarty" skasowana);
 * jednokładność rysunku (``skalaRysunku``: skala k ∈ (1; 4] wokół punktu, z powodem) i skala
   lokalna prymitywów (``skalaLokalna``: znak rodzaju aparatu, doprowadzenie obwodu wtórnego)
   przenoszą kształt źródła bez zmian; stopień glifu (wysokość rysunku aparatu / bok kafla
@@ -764,6 +766,17 @@ def zloz_symbol(
         koniec = max(ostrze.punkty, key=lambda q: math.dist(q, przegub))
         katy["open"] = 0.0
         zasiegi["open"] = 1.0
+        # Położenie OTWARTE = rysunek źródła albo — z jawnym powodem (``otwarty``: kierunek noża
+        # i powód) — obrót noża źródła na podany kierunek, bez zmiany długości (koniec noża poza
+        # zestykami). Łącznik trójpołożeniowy: nóż źródła odłącznika odchylony o 19° przy
+        # kresce zestyku szynowego w osi stykał się z nią grubością kreski glifu.
+        otwarty = noz_wpis.get("otwarty")
+        if otwarty is not None:
+            _powod(otwarty, ident, "kierunek położenia otwartego")
+            cel_otw = s_noza.punkt((float(otwarty["kierunek"][0]), float(otwarty["kierunek"][1])))
+            katy["open"] = normalizuj_kat(
+                kat_kierunku(przegub, cel_otw) - kat_kierunku(przegub, koniec)
+            )
         for polozenie, cel in sorted(noz_wpis["cele"].items()):
             if polozenie not in ("closed", "earthed"):
                 raise BladImportu(f"{ident}: położenie {polozenie!r} nieznane")
@@ -775,8 +788,18 @@ def zloz_symbol(
             zasiegi[polozenie] = math.dist(przegub, cel_zl) / math.dist(przegub, koniec)
         if "closed" not in katy:
             raise BladImportu(f"{ident}: brak położenia zamkniętego noża")
-        katy["unknown"] = 0.0 if noz_wpis.get("nieznanyJakOtwarty") else katy["closed"] / 2
+        # NIEZNANY = położenie pośrednie między otwartym a zamkniętym (różne od obu); zasięg
+        # źródła albo — z jawnym powodem (``nieznany``) — skrócony, gdy nóż w pełnej długości
+        # przechodziłby przy kresce styku stałego.
+        katy["unknown"] = (katy["open"] + katy["closed"]) / 2
         zasiegi["unknown"] = 1.0
+        nieznany = noz_wpis.get("nieznany")
+        if nieznany is not None:
+            _powod(nieznany, ident, "zasięg położenia nieustalonego")
+            zasieg = float(nieznany["zasieg"])
+            if not 0 < zasieg < 1:
+                raise BladImportu(f"{ident}: zasięg położenia nieustalonego {zasieg} poza (0; 1)")
+            zasiegi["unknown"] = zasieg
     if kafel is not None and przegub is None:
         raise BladImportu(f"{ident}: kafel stanu wyłącznie dla łącznika z nożem")
 
@@ -1268,9 +1291,10 @@ NAGLOWEK = """/**
  * (kolekcja `qelectrotech-elements`, autor: The QElectroTech team, licencja CC BY 3.0,
  * https://creativecommons.org/licenses/by/3.0/). Współrzędne w jednostkach świata
  * schematu SLD v3 względem lewego górnego rogu gabarytu (skala 0,4 jednostki QET).
- * Rysunek źródła = położenie OTWARTE; pozostałe położenia — kąty obrotu noża (`noz.katy`,
- * stopnie, konwencja SVG `rotate`) wokół przegubu (`noz.cx`, `noz.cy`) i zasięg noża
- * (`noz.zasiegi`: w położeniu zamkniętym i uziemionym koniec noża leży na styku stałym).
+ * Prymitywy noża = rysunek źródła; każde położenie (otwarte, zamknięte, uziemione, nieznane) —
+ * kąt obrotu noża (`noz.katy`, stopnie, konwencja SVG `rotate`; otwarte 0° albo jawny kierunek
+ * manifestu) wokół przegubu (`noz.cx`, `noz.cy`) i zasięg noża (`noz.zasiegi`: w położeniu
+ * zamkniętym i uziemionym koniec noża leży na styku stałym).
  * Jednokładność rysunku (`skalaRysunku` manifestu) przenosi kształt elementu bez zmian; role prymitywów: `przewody`
  * (kreska przewodu toru), `stale` i `noz` (rysunek aparatu — kreska glifu `QET_KRESKA_GLIFU`),
  * `osprzet` (napęd, cewka wyłączająca — kreska glifu).
