@@ -117,7 +117,7 @@ export const FIXTURE_APARATY: KatalogPozycja[] = [
   },
 ];
 
-// ConverterType (fetchConverterTypes) — ui/catalog/api.ts:255 (PV/BESS/WIND znormalizowane)
+// ConverterType (fetchDerConverterTypes) — GET /api/catalog/converter-types (PV/BESS/WIND)
 export const FIXTURE_FALOWNIKI: KatalogPozycja[] = [
   {
     id: 'pv-inv-2500',

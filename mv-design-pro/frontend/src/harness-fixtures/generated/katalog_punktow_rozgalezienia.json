@@ -1,0 +1,233 @@
+[
+  {
+    "id": "AFL-SLUP",
+    "name": "Słup rozgałęźny SN AFL",
+    "params": {
+      "kind": "BRANCH_POLE",
+      "medium": "LINE_OVERHEAD",
+      "manufacturer": "MV-DESIGN-PRO",
+      "series": "Słup rozgałęźny SN",
+      "switch_device_kind": "ODLACZNIK",
+      "switch_rated_current_a": 400.0,
+      "branch_ports_count": 1,
+      "topology_role": "BRANCH_POINT",
+      "catalog_namespace": "mv_branch_points",
+      "object_role": "OVERHEAD_BRANCH_POLE",
+      "standard_topology": "OVERHEAD_LINE_POLE_WITH_BRANCH_SWITCH",
+      "has_switchgear": false,
+      "has_transformer": false,
+      "route_ports": [
+        {
+          "port_id": "MAIN_IN",
+          "role": "ciag_wejscie",
+          "medium": "LINE_OVERHEAD"
+        },
+        {
+          "port_id": "MAIN_OUT",
+          "role": "ciag_wyjscie",
+          "medium": "LINE_OVERHEAD"
+        },
+        {
+          "port_id": "BRANCH",
+          "role": "odgalezienie",
+          "medium": "LINE_OVERHEAD"
+        }
+      ],
+      "apparatus_specs": [
+        {
+          "apparatus_role": "BRANCH_SWITCH",
+          "device_kind": "ODLACZNIK",
+          "rated_current_a": 400.0,
+          "port_id": "BRANCH"
+        }
+      ],
+      "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+      "source_reference": "Matryca obiektów pośrednich SN MV-DESIGN-PRO / katalog branch point",
+      "catalog_status": "REFERENCYJNY_V1",
+      "contract_version": "2.0",
+      "verification_note": "Referencyjny słup rozgałęźny dla linii napowietrznej SN z jednym portem BRANCH."
+    }
+  },
+  {
+    "id": "SLUP-ODG-12",
+    "name": "Słup odgałęźny 12/20 kV",
+    "params": {
+      "kind": "BRANCH_POLE",
+      "medium": "LINE_OVERHEAD",
+      "manufacturer": "MV-DESIGN-PRO",
+      "series": "Słup rozgałęźny SN 12/20 kV",
+      "switch_device_kind": "ROZLACZNIK",
+      "switch_rated_current_a": 630.0,
+      "branch_ports_count": 1,
+      "topology_role": "BRANCH_POINT",
+      "catalog_namespace": "mv_branch_points",
+      "object_role": "OVERHEAD_BRANCH_POLE",
+      "standard_topology": "OVERHEAD_LINE_POLE_WITH_BRANCH_SWITCH",
+      "has_switchgear": false,
+      "has_transformer": false,
+      "route_ports": [
+        {
+          "port_id": "MAIN_IN",
+          "role": "ciag_wejscie",
+          "medium": "LINE_OVERHEAD"
+        },
+        {
+          "port_id": "MAIN_OUT",
+          "role": "ciag_wyjscie",
+          "medium": "LINE_OVERHEAD"
+        },
+        {
+          "port_id": "BRANCH",
+          "role": "odgalezienie",
+          "medium": "LINE_OVERHEAD"
+        }
+      ],
+      "apparatus_specs": [
+        {
+          "apparatus_role": "BRANCH_SWITCH",
+          "device_kind": "ROZLACZNIK",
+          "rated_current_a": 630.0,
+          "port_id": "BRANCH"
+        }
+      ],
+      "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+      "source_reference": "Matryca obiektów pośrednich SN MV-DESIGN-PRO / katalog branch point",
+      "catalog_status": "REFERENCYJNY_V1",
+      "contract_version": "2.0",
+      "verification_note": "Referencyjny słup odgałęźny z rozłącznikiem dla sieci napowietrznej SN."
+    }
+  },
+  {
+    "id": "RSN-6",
+    "name": "ZKSN przelotowy RSN-6",
+    "params": {
+      "kind": "ZKSN",
+      "medium": "CABLE",
+      "manufacturer": "MV-DESIGN-PRO",
+      "series": "RSN",
+      "switch_device_kind": "ROZLACZNIK",
+      "switch_rated_current_a": 630.0,
+      "branch_ports_count": 1,
+      "topology_role": "BRANCH_POINT",
+      "catalog_namespace": "mv_branch_points",
+      "object_role": "MV_SWITCHGEAR_BRANCH_NODE",
+      "standard_topology": "ZKSN_WITH_LINE_AND_BRANCH_FIELDS",
+      "switchgear_kind": "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA",
+      "has_transformer": false,
+      "route_ports": [
+        {
+          "port_id": "MAIN_IN",
+          "role": "ciag_wejscie",
+          "medium": "CABLE"
+        },
+        {
+          "port_id": "MAIN_OUT",
+          "role": "ciag_wyjscie",
+          "medium": "CABLE"
+        },
+        {
+          "port_id": "BRANCH",
+          "role": "odgalezienie",
+          "medium": "CABLE"
+        }
+      ],
+      "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+      "source_reference": "Matryca obiektów pośrednich SN MV-DESIGN-PRO / katalog branch point",
+      "catalog_status": "REFERENCYJNY_V1",
+      "contract_version": "2.0",
+      "verification_note": "Referencyjny ZKSN dla odcinka kablowego SN z jednym portem BRANCH."
+    }
+  },
+  {
+    "id": "RSN-12",
+    "name": "ZKSN odgałęźny RSN-12",
+    "params": {
+      "kind": "ZKSN",
+      "medium": "CABLE",
+      "manufacturer": "MV-DESIGN-PRO",
+      "series": "RSN",
+      "switch_device_kind": "ROZLACZNIK",
+      "switch_rated_current_a": 630.0,
+      "branch_ports_count": 2,
+      "topology_role": "BRANCH_POINT",
+      "catalog_namespace": "mv_branch_points",
+      "object_role": "MV_SWITCHGEAR_BRANCH_NODE",
+      "standard_topology": "ZKSN_WITH_LINE_AND_BRANCH_FIELDS",
+      "switchgear_kind": "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA",
+      "has_transformer": false,
+      "route_ports": [
+        {
+          "port_id": "MAIN_IN",
+          "role": "ciag_wejscie",
+          "medium": "CABLE"
+        },
+        {
+          "port_id": "MAIN_OUT",
+          "role": "ciag_wyjscie",
+          "medium": "CABLE"
+        },
+        {
+          "port_id": "BRANCH_1",
+          "role": "odgalezienie",
+          "medium": "CABLE"
+        },
+        {
+          "port_id": "BRANCH_2",
+          "role": "odgalezienie",
+          "medium": "CABLE"
+        }
+      ],
+      "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+      "source_reference": "Matryca obiektów pośrednich SN MV-DESIGN-PRO / katalog branch point",
+      "catalog_status": "REFERENCYJNY_V1",
+      "contract_version": "2.0",
+      "verification_note": "Referencyjny ZKSN dla kabla SN z dwoma portami BRANCH i wariantem odgałęźnym."
+    }
+  },
+  {
+    "id": "ZKSN-2P-630A",
+    "name": "ZKSN 2P 630 A",
+    "params": {
+      "kind": "ZKSN",
+      "medium": "CABLE",
+      "manufacturer": "MV-DESIGN-PRO",
+      "series": "ZKSN 2P",
+      "switch_device_kind": "ROZLACZNIK",
+      "switch_rated_current_a": 630.0,
+      "branch_ports_count": 2,
+      "topology_role": "BRANCH_POINT",
+      "catalog_namespace": "mv_branch_points",
+      "object_role": "MV_SWITCHGEAR_BRANCH_NODE",
+      "standard_topology": "ZKSN_WITH_LINE_AND_BRANCH_FIELDS",
+      "switchgear_kind": "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA",
+      "has_transformer": false,
+      "route_ports": [
+        {
+          "port_id": "MAIN_IN",
+          "role": "ciag_wejscie",
+          "medium": "CABLE"
+        },
+        {
+          "port_id": "MAIN_OUT",
+          "role": "ciag_wyjscie",
+          "medium": "CABLE"
+        },
+        {
+          "port_id": "BRANCH_1",
+          "role": "odgalezienie",
+          "medium": "CABLE"
+        },
+        {
+          "port_id": "BRANCH_2",
+          "role": "odgalezienie",
+          "medium": "CABLE"
+        }
+      ],
+      "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+      "source_reference": "Matryca obiektów pośrednich SN MV-DESIGN-PRO / katalog branch point",
+      "catalog_status": "REFERENCYJNY_V1",
+      "contract_version": "2.0",
+      "verification_note": "Referencyjny ZKSN 2-portowy 630 A dla odgałęzień kablowych SN."
+    }
+  }
+]

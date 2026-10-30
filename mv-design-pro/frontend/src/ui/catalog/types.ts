@@ -19,10 +19,53 @@ export interface CatalogType {
 }
 
 /**
+ * Metadane wiarygodności pozycji katalogu (`_catalog_metadata_to_dict` backendu): status
+ * weryfikacji, źródło, status katalogu, wersja kontraktu i nota weryfikacji. Serwer wysyła je
+ * w każdej pozycji (wyrocznia `harness-fixtures/generated/pola_kart_katalogu.json`); w typie są
+ * opcjonalne, bo pozycje budowane we froncie (fikstury, kreatory) ich nie niosą.
+ */
+export interface MetadaneKatalogu {
+  verification_status?: string | null;
+  source_reference?: string | null;
+  catalog_status?: string | null;
+  contract_version?: string | null;
+  verification_note?: string | null;
+}
+
+/** Metadane pozycji, której serializacja nie niesie noty weryfikacji (odbiór, kompensator). */
+export type MetadaneKataloguBezNoty = Omit<MetadaneKatalogu, 'verification_note'>;
+
+/**
+ * Parametry modelu przekształtnika wspólne dla pozycji falownika PV, falownika magazynu i
+ * przekształtnika katalogu (`ConverterType`, projekcje `ZRODLO_NN_PV`/`ZRODLO_NN_BESS`
+ * backendu — `POLA_KARTY_PROJEKCJI`): pasma regulatorów i filtr (model Z_conv(f)), hierarchia
+ * mocy, krzywa P-Q, współczynnik migotania, stan powiązania z wykazem PTPiREE i jakość pól.
+ * Brak pola albo `null` = pozycja nie deklaruje wartości.
+ */
+export interface ParametryModeluPrzeksztaltnika {
+  /** Jakość danych pól pozycji (pole → jakość, źródło, uwaga). */
+  card_field_status?: StatusPolKarty;
+  control_delay_ms?: number | null;
+  current_loop_bandwidth_hz?: number | null;
+  voltage_loop_bandwidth_hz?: number | null;
+  pll_bandwidth_hz?: number | null;
+  filter_l_pu?: number | null;
+  filter_r_pu?: number | null;
+  /** Współczynnik migotania c(ψk) (IEC 61400-21). */
+  flicker_c?: number | null;
+  p_installed_mw?: number | null;
+  pn_ac_mw?: number | null;
+  /** Krzywa P-Q: punkty (P, Q_min, Q_max) [MW, Mvar]. */
+  pq_curve?: ReadonlyArray<readonly [number, number, number]> | null;
+  ptpiree_certificate_condition?: string | null;
+  ptpiree_note?: string | null;
+}
+
+/**
  * Line Type (overhead line).
  * Source: backend LineType dataclass.
  */
-export interface LineType extends CatalogType {
+export interface LineType extends CatalogType, MetadaneKatalogu {
   r_ohm_per_km: number;
   x_ohm_per_km: number;
   b_us_per_km: number;
@@ -33,6 +76,19 @@ export interface LineType extends CatalogType {
   voltage_rating_kv: number;
   conductor_material?: string | null;
   cross_section_mm2: number | null;
+  r0_ohm_per_km?: number | null;
+  x0_ohm_per_km?: number | null;
+  b0_siemens_per_km?: number | null;
+  ith_1s_a?: number | null;
+  jth_1s_a_per_mm2?: number | null;
+  short_circuit_temperature_c?: number | null;
+  thermal_source_reference?: string | null;
+  /** Czy pozycja niesie komplet danych cieplnych zwarciowych (I_th albo j_th i θ_k). */
+  dane_cieplne_kompletne?: boolean;
+  base_type_id?: string | null;
+  trade_name?: string | null;
+  /** Założenia wartości roboczych pozycji: pole → opis założenia (zasada nr 4). */
+  wartosci_robocze?: Readonly<Record<string, string>> | null;
 }
 
 /**
@@ -41,7 +97,7 @@ export interface LineType extends CatalogType {
  * z geometrii słupa (`POST /api/catalog/overhead-conductor-types/{id}/parametry-linii`).
  * Źródło: backend `OverheadConductorType.to_dict`.
  */
-export interface OverheadConductorType extends CatalogType {
+export interface OverheadConductorType extends CatalogType, MetadaneKatalogu {
   oznaczenie: string;
   przeznaczenie: 'FAZOWY' | 'ODGROMOWY';
   conductor_material: string;
@@ -138,7 +194,7 @@ export interface PodgladParametrowLiniiWn {
  * Cable Type (underground cable).
  * Source: backend CableType dataclass.
  */
-export interface CableType extends CatalogType {
+export interface CableType extends CatalogType, MetadaneKatalogu {
   r_ohm_per_km: number;
   x_ohm_per_km: number;
   c_nf_per_km: number;
@@ -157,13 +213,25 @@ export interface CableType extends CatalogType {
   number_of_cores?: number;
   base_type_id?: string | null;
   trade_name?: string | null;
+  r0_ohm_per_km?: number | null;
+  x0_ohm_per_km?: number | null;
+  b0_siemens_per_km?: number | null;
+  /** Sposób połączenia żył powrotnych przyjęty dla składowej zerowej. */
+  z0_reference_bonding?: string | null;
+  ith_1s_a?: number | null;
+  jth_1s_a_per_mm2?: number | null;
+  short_circuit_temperature_c?: number | null;
+  /** Czy pozycja niesie komplet danych cieplnych zwarciowych (I_th albo j_th i θ_k). */
+  dane_cieplne_kompletne?: boolean;
+  /** Założenia wartości roboczych pozycji: pole → opis założenia (zasada nr 4). */
+  wartosci_robocze?: Readonly<Record<string, string>> | null;
 }
 
 /**
  * Transformer Type.
  * Source: backend TransformerType dataclass.
  */
-export interface TransformerType extends CatalogType {
+export interface TransformerType extends CatalogType, MetadaneKatalogu {
   rated_power_mva: number;
   voltage_hv_kv: number;
   voltage_lv_kv: number;
@@ -196,8 +264,6 @@ export interface TapChangerCatalogType {
   step_percent: number;
   range_percent: number;
   regulated_side: 'hv' | 'lv';
-  switching_time_s: number;
-  operations_before_maintenance_thousand: number;
   supports_avr: boolean;
   applicable_to: string[];
 }
@@ -206,10 +272,14 @@ export interface TapChangerCatalogType {
  * Switch Equipment Type.
  * Source: backend SwitchEquipmentType dataclass.
  */
-export interface SwitchEquipmentType extends CatalogType {
+export interface SwitchEquipmentType extends CatalogType, MetadaneKatalogu {
   equipment_kind: string;
   un_kv: number;
+  /** Najwyższe napięcie urządzenia U_m [kV]. */
+  u_m_kv?: number;
   in_a: number;
+  /** Znamionowa zwarciowa zdolność wyłączania graniczna I_cu [kA]; `null` = brak w karcie. */
+  i_cu_ka?: number | null;
   /**
    * Znamionowy prąd zwarciowy łączeniowy [kA]; `null` = brak danej z karty (nigdy 0 —
    * bramka rekordu KAT-T-050). Dla rozłącznika/odłącznika/uziemnika wielkość nie dotyczy.
@@ -226,7 +296,10 @@ export interface SwitchEquipmentType extends CatalogType {
  * Converter Type (PV/Wind/BESS inverter).
  * Source: backend ConverterType dataclass.
  */
-export interface ConverterType extends CatalogType {
+export interface ConverterType
+  extends CatalogType,
+    MetadaneKatalogu,
+    ParametryModeluPrzeksztaltnika {
   kind: 'PV' | 'WIND' | 'BESS';
   /**
    * Napięcie przekształtnika po stronie SIECI [kV] = uzwojenie nN transformatora
@@ -271,9 +344,29 @@ export interface ConverterType extends CatalogType {
   ptpiree_ppm_scope?: string | null;
   ptpiree_source_url?: string | null;
   ptpiree_publication_date?: string | null;
-  verification_status?: string | null;
-  source_reference?: string | null;
-  catalog_status?: string | null;
+  /** Stały współczynnik mocy trybu cos φ i charakterystyka cos φ(P): punkty (P, cos φ). */
+  cosphi?: number | null;
+  cosphi_p_points?: ReadonlyArray<readonly [number, number]> | null;
+  /** Charakterystyka Q(U): martwa strefa, nachylenie i granice mocy biernej. */
+  qu_deadband_low_pu?: number | null;
+  qu_deadband_high_pu?: number | null;
+  qu_slope_pu_per_pu?: number | null;
+  qu_q_min_mvar?: number | null;
+  qu_q_max_mvar?: number | null;
+  /** Czy przekształtnik może pobierać moc bierną. */
+  q_absorbing?: boolean;
+  /** Charakterystyka LFSM: statyzm, martwa strefa i dopuszczenie wzrostu mocy. */
+  lfsm_droop_pct?: number | null;
+  lfsm_deadband_hz?: number | null;
+  lfsm_allow_increase?: boolean;
+  f0_hz?: number | null;
+  p_connection_mw?: number | null;
+  p_achievable_mw?: number | null;
+  /** Model udziału zwarciowego poza `k_sc`. */
+  sc_model?: 'simple_k_factor' | 'pq_component' | 'from_datasheet' | null;
+  sc_pq_split?: number | null;
+  sc_transient_k?: number | null;
+  sc_sustained_k?: number | null;
 }
 
 /**
@@ -306,33 +399,45 @@ export interface ProtectionDeviceType extends CatalogType {
  * LV Cable Type (KABEL_NN).
  * Source: backend LVCableType dataclass.
  */
-export interface LVCableType extends CatalogType {
+export interface LVCableType extends CatalogType, MetadaneKatalogu {
   u_n_kv: number;
   r_ohm_per_km: number;
   x_ohm_per_km: number;
+  r0_ohm_per_km?: number | null;
+  x0_ohm_per_km?: number | null;
   i_max_a: number;
   conductor_material?: string;
   insulation_type?: string;
   cross_section_mm2: number;
   number_of_cores: number;
+  /** Funkcje żył kabla (np. „3L+PEN”, „3L+N+PE”). */
+  core_functions?: string;
+  return_conductor_cross_section_mm2?: number | null;
+  return_conductor_r_ohm_per_km_20c?: number | null;
+  return_conductor_x_ohm_per_km?: number | null;
+  max_temperature_c?: number;
+  ith_1s_a?: number | null;
+  jth_1s_a_per_mm2?: number | null;
+  short_circuit_temperature_c?: number;
+  standard?: string;
 }
 
-/**
- * Load Type (OBCIAZENIE).
- * Source: backend LoadType dataclass.
- */
 /**
  * Generator synchroniczny SN (przestrzeń `GENERATOR_SN`) — tabliczka znamionowa maszyny
  * dołączonej wprost do szyny. Mirror `SynchronousGeneratorType.to_dict` (backend).
  */
-export interface SynchronousGeneratorCatalogType extends CatalogType {
+export interface SynchronousGeneratorCatalogType extends CatalogType, MetadaneKatalogu {
   rated_mva: number;
   rated_kv: number;
   q_min_mvar: number;
   q_max_mvar: number;
 }
 
-export interface LoadCatalogType extends CatalogType {
+/**
+ * Load Type (OBCIAZENIE).
+ * Source: backend LoadType dataclass.
+ */
+export interface LoadCatalogType extends CatalogType, MetadaneKataloguBezNoty {
   model: string;
   p_kw: number;
   q_kvar?: number;
@@ -354,13 +459,16 @@ export interface LoadCatalogType extends CatalogType {
   c_q?: number;
   k_pf?: number;
   k_qf?: number;
+  /** Napięcie i częstotliwość odniesienia modelu ZIP [p.u., Hz]. */
+  v0_pu?: number;
+  f0_hz?: number;
 }
 
 /**
  * MV Apparatus Type (APARAT_SN).
  * Source: backend MVApparatusType dataclass.
  */
-export interface MVApparatusType extends CatalogType {
+export interface MVApparatusType extends CatalogType, MetadaneKatalogu {
   device_kind: string;
   u_n_kv: number;
   i_n_a: number;
@@ -465,7 +573,7 @@ export type StatusPolKarty = Readonly<Record<string, StatusPolaKarty>>;
  * dokładnie tym rozjazdem, przed którym ostrzega docstring `MVApparatusType`
  * (KD-6) obok. Wszystkie pola Optional/None-default — zgodne z backendem 1:1.
  */
-export interface LVApparatusType extends CatalogType {
+export interface LVApparatusType extends CatalogType, MetadaneKatalogu {
   device_kind: string;
   u_n_kv: number;
   i_n_a: number;
@@ -529,11 +637,18 @@ export interface LVRcdType {
  * CT Type (Przekładnik prądowy).
  * Source: backend CTType dataclass.
  */
-export interface CTCatalogType extends CatalogType {
+export interface CTCatalogType extends CatalogType, MetadaneKatalogu {
   ratio_primary_a: number;
   ratio_secondary_a: number;
   accuracy_class?: string;
   burden_va?: number;
+  /** Prąd cieplny 1 s [kA] i prąd dynamiczny szczytowy [kA] przekładnika. */
+  ith_ka_1s?: number | null;
+  idyn_ka_peak?: number | null;
+  /** Rezystancja uzwojenia wtórnego R_ct [Ω] (rdzeń zabezpieczeniowy). */
+  rct_ohm?: number | null;
+  /** Współczynnik bezpieczeństwa przyrządu FS (rdzeń pomiarowy). */
+  fs_safety_factor?: number | null;
   /**
    * Rodzaj rdzenia WYPROWADZONY z klasy w katalogu (IEC 61869-2, V12K-239): klasa
    * z literą P ⇒ `protection`, klasa liczbowa ⇒ `metering`. `null`/brak = nie da się
@@ -555,7 +670,7 @@ export interface CTCatalogType extends CatalogType {
  * VT Type (Przekładnik napięciowy).
  * Source: backend VTType dataclass.
  */
-export interface VTCatalogType extends CatalogType {
+export interface VTCatalogType extends CatalogType, MetadaneKatalogu {
   ratio_primary_v: number;
   ratio_secondary_v: number;
   accuracy_class?: string;
@@ -575,21 +690,14 @@ export interface VTCatalogType extends CatalogType {
  * PV Inverter Type (ZRODLO_NN_PV).
  * Source: backend PVInverterType dataclass.
  */
-export interface PVInverterCatalogType extends CatalogType {
-  /**
-   * Metadane katalogowe rekordu (kontrakt `_catalog_metadata_to_dict` backendu).
-   * Karta KATALOG-NIEZMIENNIKI §5 p.2: mapowanie `fetchConverterTypes` niesie je
-   * dalej, bo projektant ma widzieć, czy pozycja jest produkcyjna i skąd pochodzi.
-   */
-  verification_status?: string | null;
-  source_reference?: string | null;
-  catalog_status?: string | null;
+export interface PVInverterCatalogType
+  extends CatalogType,
+    MetadaneKatalogu,
+    ParametryModeluPrzeksztaltnika {
   s_n_kva: number;
   p_max_kw: number;
+  /** Napięcie znamionowe po stronie sieci [kV]. */
   un_kv?: number;
-  u_n_kv?: number;
-  voltage_kv?: number;
-  voltage_lv_kv?: number;
   cos_phi_min?: number;
   cos_phi_max?: number;
   k_sc?: number | null;
@@ -611,24 +719,17 @@ export interface PVInverterCatalogType extends CatalogType {
  * BESS Inverter Type (ZRODLO_NN_BESS).
  * Source: backend BESSInverterType dataclass.
  */
-export interface BESSInverterCatalogType extends CatalogType {
-  /**
-   * Metadane katalogowe rekordu (kontrakt `_catalog_metadata_to_dict` backendu).
-   * Karta KATALOG-NIEZMIENNIKI §5 p.2: mapowanie `fetchConverterTypes` niesie je
-   * dalej, bo projektant ma widzieć, czy pozycja jest produkcyjna i skąd pochodzi.
-   */
-  verification_status?: string | null;
-  source_reference?: string | null;
-  catalog_status?: string | null;
+export interface BESSInverterCatalogType
+  extends CatalogType,
+    MetadaneKatalogu,
+    ParametryModeluPrzeksztaltnika {
   p_charge_kw: number;
   p_discharge_kw: number;
   e_kwh: number;
   k_sc?: number | null;
   s_n_kva?: number;
+  /** Napięcie znamionowe po stronie sieci [kV]. */
   un_kv?: number;
-  u_n_kv?: number;
-  voltage_kv?: number;
-  voltage_lv_kv?: number;
   dynamic_profile_id?: string | null;
   ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY' | string;
   ptpiree_certificate_ref?: string | null;
@@ -645,7 +746,7 @@ export interface BESSInverterCatalogType extends CatalogType {
  * MV surge arrester type (OGRANICZNIK_SN).
  * Source: backend SurgeArresterType dataclass.
  */
-export interface SurgeArresterCatalogType extends CatalogType {
+export interface SurgeArresterCatalogType extends CatalogType, MetadaneKatalogu {
   u_m_kv: number;
   mcov_kv: number;
   u_rated_kv: number;
@@ -664,17 +765,27 @@ export interface SurgeArresterCatalogType extends CatalogType {
  * Shunt capacitor bank type (KOMPENSATOR_SN).
  * Source: backend ShuntCapacitorType dataclass.
  */
-export interface ShuntCapacitorCatalogType extends CatalogType {
+export interface ShuntCapacitorCatalogType extends CatalogType, MetadaneKataloguBezNoty {
   rated_mvar: number;
   rated_kv: number;
   loss_kw?: number | null;
+  /** Liczba stopni regulacji baterii i układ połączeń członów. */
+  liczba_stopni?: number;
+  uklad_polaczen?: string;
+  /** Dławik ograniczający prąd załączania: obecność i indukcyjność [mH]; `null` = brak w karcie. */
+  dlawik_ograniczajacy?: boolean | null;
+  dlawik_indukcyjnosc_mh?: number | null;
+  rezystory_rozladowcze_wewnetrzne?: boolean | null;
+  /** Tolerancja pojemności [%]; `null` = brak w karcie. */
+  tolerancja_pojemnosci_min_proc?: number | null;
+  tolerancja_pojemnosci_max_proc?: number | null;
 }
 
 /**
  * PTPiREE certificate snapshot record.
  * Source: backend PtpireeGeneratorCertificate dataclass.
  */
-export interface PtpireeGeneratorCertificateCatalogType extends CatalogType {
+export interface PtpireeGeneratorCertificateCatalogType extends CatalogType, MetadaneKatalogu {
   manufacturer: string;
   model: string;
   device_type: string;
@@ -695,7 +806,7 @@ export interface PtpireeGeneratorCertificateCatalogType extends CatalogType {
  * MV System Source Type (ZRODLO_SN).
  * Source: backend SourceSystemType dataclass.
  */
-export interface SourceSystemCatalogType extends CatalogType {
+export interface SourceSystemCatalogType extends CatalogType, MetadaneKatalogu {
   voltage_rating_kv: number;
   sk3_mva: number;
   ik3_ka?: number;
@@ -712,19 +823,53 @@ export interface SourceSystemCatalogType extends CatalogType {
   data_source?: string;
 }
 
+/** Port trasy punktu rozgałęzienia: wejście i wyjście ciągu oraz odgałęzienia. */
+export interface PortTrasyPunktuRozgalezienia {
+  port_id: string;
+  role: string;
+  medium: 'LINE_OVERHEAD' | 'CABLE';
+}
+
+/** Aparat punktu rozgałęzienia (łącznik odgałęzienia słupa). */
+export interface AparatPunktuRozgalezienia {
+  apparatus_role: string;
+  device_kind: string;
+  rated_current_a: number;
+  port_id: string;
+}
+
 /**
- * Branch Point Type (słup rozgałęźny / ZKSN).
- * Source: backend mv_branch_point_catalog.py.
+ * Parametry punktu rozgałęzienia — serwer wysyła je w `params` pozycji
+ * (`network_model/catalog/mv_branch_point_catalog.py`). Pola zależne od rodzaju punktu
+ * (słup: aparat odgałęzienia; ZKSN: rodzaj rozdzielnicy) są opcjonalne.
  */
-export interface BranchPointCatalogType extends CatalogType {
+export interface ParametryPunktuRozgalezienia extends MetadaneKatalogu {
   kind: 'BRANCH_POLE' | 'ZKSN';
   medium: 'LINE_OVERHEAD' | 'CABLE';
+  manufacturer?: string;
   series?: string;
   switch_device_kind?: string;
   switch_rated_current_a?: number;
   branch_ports_count: number;
   topology_role?: string;
   catalog_namespace?: 'mv_branch_points';
+  object_role?: string;
+  standard_topology?: string;
+  switchgear_kind?: string;
+  has_switchgear?: boolean;
+  has_transformer?: boolean;
+  route_ports: readonly PortTrasyPunktuRozgalezienia[];
+  apparatus_specs?: readonly AparatPunktuRozgalezienia[];
+}
+
+/**
+ * Branch Point Type (słup rozgałęźny / ZKSN).
+ * Source: backend mv_branch_point_catalog.py — pozycja to `{id, name, params}`.
+ */
+export interface BranchPointCatalogType {
+  id: string;
+  name: string;
+  params: ParametryPunktuRozgalezienia;
 }
 
 /**

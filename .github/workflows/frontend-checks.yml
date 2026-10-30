@@ -99,9 +99,6 @@ jobs:
       # (S-2: zgubione `k_sc`, pomiar tej karty: dwanascie dalszych pol).
       # Miejsce: TA bramka — guard czyta `frontend/src/ui/catalog/**` i kontrakt
       # dataclass backendu, bez uruchamiania czegokolwiek.
-      - name: Katalog — parytet pol backend/front
-        working-directory: mv-design-pro
-        run: python scripts/katalog_parytet_pol_guard.py
       # Kontrakt werdyktu wyjasnialnego §12 (plan AB O-36, karta AB-1a Pakiety E1, D2, E2):
       # szesc sprawdzen KONTRAKTU (pola werdyktu w modelach backendu, migawka OpenAPI, mapy
       # status -> etykieta i progi w UI, renderery dokumentow, kod w tekscie, werdykt poza

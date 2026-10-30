@@ -14,6 +14,8 @@ import { ETYKIETY_KATEGORII_TYPOW } from '../etykietyKategoriiTypow';
 import { ETYKIETY_POL_KARTY, KOLEJNOSC_POL_KARTY } from '../etykietyPolKarty';
 import {
   KATEGORIE_Z_BUDOWNICZYM_WIERSZY,
+  KLUCZE_PARAMETROW_PUNKTU_ROZGALEZIENIA,
+  KLUCZE_TYPOW_POZYCJI,
   POLA_KARTY_KATEGORII,
   POLA_POZA_PANELEM_OGOLNYM,
   maBudowniczegoWierszy,
@@ -41,6 +43,39 @@ describe('POLA_KARTY_KATEGORII', () => {
     expect(Object.keys(wyrocznia.kategorie).sort()).toEqual(zSerwera.sort());
     expect(POLA_KARTY_KATEGORII.PROTECTION_DEVICE).toContain('functions_supported');
     expect(POLA_KARTY_KATEGORII.PROTECTION_DEVICE).not.toContain('name_pl');
+  });
+});
+
+/**
+ * Typy TS pozycji katalogu = serializacja serwera. Każdy klucz typu (`KluczeTypu<T>` w
+ * `polaKartyKatalogu.ts` — tsc wymusza równość z interfejsem) musi być kluczem rekordu
+ * serwera i odwrotnie: pole fantomowe (deklarowane, nigdy niewysyłane) i pole niewidoczne
+ * dla typów (wysyłane, nieopisane) zapalają czerwień.
+ */
+describe('typy pozycji katalogu (ui/catalog/types.ts) = rekordy serwera', () => {
+  it.each(Object.keys(wyrocznia.typy_pozycji))('typ %s = klucze serwera', (typ) => {
+    const serwer = (wyrocznia.typy_pozycji as Record<string, string[]>)[typ];
+    expect([...(KLUCZE_TYPOW_POZYCJI[typ] ?? [])].sort()).toEqual(serwer);
+  });
+
+  it('rejestr typów obejmuje dokładnie typy zmierzone przez wyrocznię', () => {
+    expect(Object.keys(KLUCZE_TYPOW_POZYCJI).sort()).toEqual(
+      Object.keys(wyrocznia.typy_pozycji).sort(),
+    );
+  });
+
+  it.each(Object.keys(wyrocznia.parametry_punktu_rozgalezienia))(
+    'punkt rozgałęzienia: %s = klucze serwera',
+    (czesc) => {
+      const serwer = (wyrocznia.parametry_punktu_rozgalezienia as Record<string, string[]>)[czesc];
+      expect([...(KLUCZE_PARAMETROW_PUNKTU_ROZGALEZIENIA[czesc] ?? [])].sort()).toEqual(serwer);
+    },
+  );
+
+  it('rejestr punktu rozgałęzienia obejmuje dokładnie części zmierzone przez wyrocznię', () => {
+    expect(Object.keys(KLUCZE_PARAMETROW_PUNKTU_ROZGALEZIENIA).sort()).toEqual(
+      Object.keys(wyrocznia.parametry_punktu_rozgalezienia).sort(),
+    );
   });
 });
 

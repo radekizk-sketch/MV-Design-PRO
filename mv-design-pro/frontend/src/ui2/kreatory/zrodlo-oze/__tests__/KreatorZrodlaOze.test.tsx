@@ -114,7 +114,7 @@ const { fetchConverterTypesMock, fetchLvApparatusTypesMock } = vi.hoisted(() => 
 
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
-  fetchConverterTypes: () => fetchConverterTypesMock(),
+  fetchDerConverterTypes: () => fetchConverterTypesMock(),
   fetchLvApparatusTypes: () => fetchLvApparatusTypesMock(),
   // K9-A: katalogi kroku „Aparatura pola".
   fetchCtTypes: () =>

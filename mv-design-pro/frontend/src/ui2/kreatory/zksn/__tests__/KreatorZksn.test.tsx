@@ -6,6 +6,9 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import katalogPunktow from '../../../../harness-fixtures/generated/katalog_punktow_rozgalezienia.json';
+import type { BranchPointCatalogType } from '../../../../ui/catalog/types';
+
 import { KreatorZksn } from '../KreatorZksn';
 
 const closeFormMock = vi.fn();
@@ -49,11 +52,14 @@ vi.mock('../../../../ui/selection', () => ({
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
 const { fetchBranchPointTypesMock } = vi.hoisted(() => ({
-  fetchBranchPointTypesMock: vi.fn((_kind: string) =>
-    Promise.resolve([
-      { id: 'zk-1', name: 'ZK przelotowe', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK' },
-      { id: 'zk-2', name: 'ZK odgałęźne', kind: 'ZKSN', medium: 'CABLE', branch_ports_count: 2, switch_device_kind: 'ROZLACZNIK' },
-    ]),
+  // Rekordy serwera (`GET /api/catalog/branch-point-types`, fikstura wyroczni
+  // `eksport_fixtur_harnessu.py::katalog_punktow_rozgalezienia`) — kształt `{id, name, params}`
+  // z prawdziwej serializacji, nie z pamięci autora testu (dawny płaski kształt maskował
+  // odczyt `undefined` w kreatorze).
+  fetchBranchPointTypesMock: vi.fn((kind: string) =>
+    Promise.resolve(
+      (katalogPunktow as BranchPointCatalogType[]).filter((t) => t.params.kind === kind),
+    ),
   ),
 }));
 
@@ -61,7 +67,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
   fetchBranchPointTypes: (kind: string) => fetchBranchPointTypesMock(kind),
 }));
 
-async function pick(id = 'zk-2') {
+async function pick(id = 'RSN-12') {
   // Czekamy na OPCJĘ wariantu, nie tylko na listę: katalog ładuje się asynchronicznie, więc
   // lista bywa w DOM przed pozycjami (wyścig widoczny pod obciążeniem pełnego biegu vitest).
   await waitFor(() => {
@@ -93,7 +99,7 @@ describe('KreatorZksn — realna ścieżka', () => {
       selection_hint: { element_id: 'zk/7', element_type: 'branch_point' },
     });
     render(<KreatorZksn />);
-    await pick('zk-2');
+    await pick('RSN-12');
 
     await userEvent.click(screen.getByTestId('mvd-kreator-zksn-zapisz'));
 
@@ -105,12 +111,27 @@ describe('KreatorZksn — realna ścieżka', () => {
           segment_id: 'seg-1',
           branch_ports_count: 2,
           insert_at: { mode: 'RATIO', value: 0.5 },
-          catalog_binding: expect.objectContaining({ catalog_namespace: 'mv_branch_points', catalog_item_id: 'zk-2' }),
+          catalog_binding: expect.objectContaining({ catalog_namespace: 'mv_branch_points', catalog_item_id: 'RSN-12' }),
         }),
       );
     });
     expect(closeFormMock).toHaveBeenCalled();
     expect(selectElementMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'zk/7', type: 'BranchPole' }));
+  });
+
+  // Iloczyn: każdy rekord serwera rodzaju ZKSN × odczyt parametrów kreatora. Odczyt
+  // czyta `params` pozycji; dawny płaski odczyt pokazywał „undefined" i „—" dla każdego rekordu.
+  it.each(
+    (katalogPunktow as BranchPointCatalogType[])
+      .filter((t) => t.params.kind === 'ZKSN')
+      .map((t) => [t.id, t] as const),
+  )('rekord %s: odczyt parametrów pochodzi z params pozycji', async (_id, wariant) => {
+    render(<KreatorZksn />);
+    await pick(wariant.id);
+    expect(screen.getByTestId('mvd-kreator-zksn-param-porty').textContent).toContain(
+      `${wariant.params.branch_ports_count}`,
+    );
+    expect(screen.getByTestId('mvd-kreator-zksn-param-porty').textContent).not.toMatch(/undefined/);
   });
 
   it('panel teorii renderuje wzory przez KaTeX (math-rendered)', async () => {

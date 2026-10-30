@@ -6,6 +6,9 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import katalogPunktow from '../../../../harness-fixtures/generated/katalog_punktow_rozgalezienia.json';
+import type { BranchPointCatalogType } from '../../../../ui/catalog/types';
+
 import { KreatorSlupaOdgaleznego } from '../KreatorSlupaOdgaleznego';
 
 const closeFormMock = vi.fn();
@@ -49,10 +52,14 @@ vi.mock('../../../../ui/selection', () => ({
 // `vi.hoisted` + `vi.fn()` (S9-5): pozwala nadpisać implementację per test
 // (`mockReturnValueOnce`), żeby symulować katalog W TRAKCIE ładowania.
 const { fetchBranchPointTypesMock } = vi.hoisted(() => ({
-  fetchBranchPointTypesMock: vi.fn((_kind: string) =>
-    Promise.resolve([
-      { id: 'bp-1', name: 'Słup odczepowy', kind: 'BRANCH_POLE', medium: 'LINE_OVERHEAD', branch_ports_count: 1, switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 400 },
-    ]),
+  // Rekordy serwera (`GET /api/catalog/branch-point-types`, fikstura wyroczni
+  // `eksport_fixtur_harnessu.py::katalog_punktow_rozgalezienia`) — kształt `{id, name, params}`
+  // z prawdziwej serializacji, nie z pamięci autora testu (dawny płaski kształt maskował
+  // odczyt `undefined` w kreatorze).
+  fetchBranchPointTypesMock: vi.fn((kind: string) =>
+    Promise.resolve(
+      (katalogPunktow as BranchPointCatalogType[]).filter((t) => t.params.kind === kind),
+    ),
   ),
 }));
 
@@ -62,9 +69,9 @@ vi.mock('../../../../ui/catalog/api', () => ({
 
 async function pick() {
   await waitFor(() =>
-    expect(screen.getByTestId('mvd-kreator-slup-katalog').querySelector('option[value="bp-1"]')).not.toBeNull(),
+    expect(screen.getByTestId('mvd-kreator-slup-katalog').querySelector('option[value="SLUP-ODG-12"]')).not.toBeNull(),
   );
-  await userEvent.selectOptions(screen.getByTestId('mvd-kreator-slup-katalog'), 'bp-1');
+  await userEvent.selectOptions(screen.getByTestId('mvd-kreator-slup-katalog'), 'SLUP-ODG-12');
 }
 
 describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
@@ -99,7 +106,7 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
         expect.objectContaining({
           segment_id: 'seg-1',
           insert_at: { mode: 'RATIO', value: 0.5 },
-          catalog_binding: expect.objectContaining({ catalog_namespace: 'mv_branch_points', catalog_item_id: 'bp-1' }),
+          catalog_binding: expect.objectContaining({ catalog_namespace: 'mv_branch_points', catalog_item_id: 'SLUP-ODG-12' }),
         }),
       );
     });
@@ -108,6 +115,29 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
     // K2: operacja kreatora KOTWICZY kamerę przy utworzonym obiekcie (tryb 'kotwicz' —
     // kamera zostaje przy pracy projektanta), a nie kadruje go jak wskazanie z wyników.
     expect(centerMock).toHaveBeenCalledWith('bp/9', 'kotwicz');
+  });
+
+  // Iloczyn: każdy rekord serwera rodzaju BRANCH_POLE × odczyt parametrów kreatora. Odczyt
+  // czyta `params` pozycji; dawny płaski odczyt pokazywał „undefined" i „—" dla każdego rekordu.
+  it.each(
+    (katalogPunktow as BranchPointCatalogType[])
+      .filter((t) => t.params.kind === 'BRANCH_POLE')
+      .map((t) => [t.id, t] as const),
+  )('rekord %s: odczyt parametrów pochodzi z params pozycji', async (_id, wariant) => {
+    render(<KreatorSlupaOdgaleznego />);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('mvd-kreator-slup-katalog').querySelector(`option[value="${wariant.id}"]`),
+      ).not.toBeNull(),
+    );
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-slup-katalog'), wariant.id);
+    expect(screen.getByTestId('mvd-kreator-slup-param-porty').textContent).toContain(
+      `${wariant.params.branch_ports_count}`,
+    );
+    expect(screen.getByTestId('mvd-kreator-slup-param-prad').textContent).toContain(
+      `${wariant.params.switch_rated_current_a} A`,
+    );
+    expect(screen.getByTestId('mvd-kreator-slup-param-porty').textContent).not.toMatch(/undefined/);
   });
 
   it('panel teorii renderuje wzory przez KaTeX (math-rendered)', async () => {

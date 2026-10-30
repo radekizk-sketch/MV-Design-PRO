@@ -470,8 +470,8 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 #: zadeklarowano" od „zadeklarowano fałsz"; kwalifikują wyłącznie charakterystyki
 #: Q(U)/LFSM, których nie deklaruje żadna pozycja katalogu. `qmin_mvar`/`qmax_mvar`
 #: (PV) i `control_mode`/`grid_code`/`cosphi_*` (BESS) — kontrakty projekcji opisują
-#: zdolność bierną inaczej (`scripts/katalog_parytet_pol_guard.py::NIENOSZONE`), a ich
-#: przeniesienie zmieniłoby tabliczkę 66 generatorów PV i 56 BESS (decyzja poza tą listą).
+#: zdolność bierną inaczej (PV przez cos φ, BESS bez granic biernych), a ich przeniesienie
+#: zmieniłoby tabliczkę 66 generatorów PV i 56 BESS (decyzja poza tą listą).
 POLA_KARTY_PROJEKCJI: tuple[str, ...] = (
     # fundamental
     "cosphi",

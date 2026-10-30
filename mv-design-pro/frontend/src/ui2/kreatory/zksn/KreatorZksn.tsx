@@ -145,13 +145,15 @@ export function KreatorZksn() {
     };
   }, []);
 
+  // Parametry punktu serwer wysyła w `params` pozycji (`{id, name, params}`).
   const params = useMemo(
-    () => (dane.catalog_ref ? typy.find((t) => t.id === dane.catalog_ref) ?? null : null),
+    () => (dane.catalog_ref ? typy.find((t) => t.id === dane.catalog_ref)?.params ?? null : null),
     [dane.catalog_ref, typy],
   );
 
   const opcjeTypow = useMemo(
-    () => typy.map((t) => ({ id: t.id, etykieta: `${t.name} · ${opisWariantu(t.branch_ports_count)}` })),
+    () =>
+      typy.map((t) => ({ id: t.id, etykieta: `${t.name} · ${opisWariantu(t.params.branch_ports_count)}` })),
     [typy],
   );
 
@@ -169,7 +171,7 @@ export function KreatorZksn() {
       setDane((p) => ({
         ...p,
         catalog_ref: id,
-        branch_ports_count: wariant?.branch_ports_count ?? p.branch_ports_count,
+        branch_ports_count: wariant?.params.branch_ports_count ?? p.branch_ports_count,
         nazwa: p.nazwa.trim() ? p.nazwa : wariant?.name ?? p.nazwa,
       }));
     },
@@ -255,8 +257,16 @@ export function KreatorZksn() {
 
   const paramReadout = params ? (
     <KreatorSiatka kolumny={2}>
-      <RzadWartosci etykieta={T.paramLacznik} wartosc={params.switch_device_kind ?? '—'} />
-      <RzadWartosci etykieta={T.paramPorty} wartosc={`${params.branch_ports_count}`} />
+      <RzadWartosci
+        etykieta={T.paramLacznik}
+        wartosc={params.switch_device_kind ?? '—'}
+        testid="mvd-kreator-zksn-param-lacznik"
+      />
+      <RzadWartosci
+        etykieta={T.paramPorty}
+        wartosc={`${params.branch_ports_count}`}
+        testid="mvd-kreator-zksn-param-porty"
+      />
     </KreatorSiatka>
   ) : null;
 

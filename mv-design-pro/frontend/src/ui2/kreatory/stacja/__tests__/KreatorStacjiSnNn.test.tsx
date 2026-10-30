@@ -235,7 +235,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
         tap_step_percent: 2.5,
       },
     ]),
-  fetchConverterTypes: () =>
+  fetchDerConverterTypes: () =>
     Promise.resolve([
       { id: 'pv-800-069', name: 'PV 800 0,69kV', kind: 'PV', un_kv: 0.69, sn_mva: 0.9, pmax_mw: 0.8 },
       { id: 'pv-500-04', name: 'PV 500 0,4kV', kind: 'PV', un_kv: 0.4, sn_mva: 0.55, pmax_mw: 0.5 },

@@ -10,7 +10,7 @@ import type { UziemienieEkranuKabla } from '../../../types/uziemienie';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchConverterTypes, fetchLvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
+import { fetchDerConverterTypes, fetchLvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { ConverterType, LVApparatusType } from '../../../ui/catalog/types';
 import {
   listNnFeederOptions,
@@ -207,7 +207,7 @@ export function KreatorZrodlaOze() {
   const [aparaty, setAparaty] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   // R5 (karta FAB-K, wzorzec E2E-S95): katalog przekształtników/aparatury nN
-  // ładuje się asynchronicznie (`fetchConverterTypes`/`fetchLvApparatusTypes`
+  // ładuje się asynchronicznie (`fetchDerConverterTypes`/`fetchLvApparatusTypes`
   // niżej) — bez tej flagi `stanGotowosci` nie mógłby odróżnić „katalog jeszcze
   // w locie" od „katalog odpowiedział pustą listą".
   const [katalogLadowanie, setKatalogLadowanie] = useState(true);
@@ -236,7 +236,7 @@ export function KreatorZrodlaOze() {
     let cancelled = false;
     setBladKatalogu(null);
     setKatalogLadowanie(true);
-    Promise.all([fetchConverterTypes(), fetchLvApparatusTypes()])
+    Promise.all([fetchDerConverterTypes(), fetchLvApparatusTypes()])
       .then(([conv, apar]) => {
         if (cancelled) return;
         setKonwertery(Array.isArray(conv) ? conv : []);

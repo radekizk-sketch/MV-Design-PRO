@@ -446,6 +446,403 @@
       "params"
     ]
   },
+  "typy_pozycji": {
+    "LINE": [
+      "b0_siemens_per_km",
+      "b_us_per_km",
+      "base_type_id",
+      "catalog_status",
+      "conductor_material",
+      "contract_version",
+      "cross_section_mm2",
+      "dane_cieplne_kompletne",
+      "id",
+      "ith_1s_a",
+      "jth_1s_a_per_mm2",
+      "manufacturer",
+      "max_temperature_c",
+      "name",
+      "r0_ohm_per_km",
+      "r_ohm_per_km",
+      "rated_current_a",
+      "short_circuit_temperature_c",
+      "source_reference",
+      "standard",
+      "thermal_source_reference",
+      "trade_name",
+      "verification_note",
+      "verification_status",
+      "voltage_rating_kv",
+      "wartosci_robocze",
+      "x0_ohm_per_km",
+      "x_ohm_per_km"
+    ],
+    "CABLE": [
+      "b0_siemens_per_km",
+      "base_type_id",
+      "c_nf_per_km",
+      "catalog_status",
+      "conductor_material",
+      "contract_version",
+      "cross_section_mm2",
+      "dane_cieplne_kompletne",
+      "id",
+      "insulation_type",
+      "ith_1s_a",
+      "jth_1s_a_per_mm2",
+      "manufacturer",
+      "max_temperature_c",
+      "name",
+      "number_of_cores",
+      "r0_ohm_per_km",
+      "r_ohm_per_km",
+      "rated_current_a",
+      "return_conductor_cross_section_mm2",
+      "return_conductor_ith_1s_a",
+      "return_conductor_jth_1s_a_per_mm2",
+      "return_conductor_material",
+      "return_conductor_r_ohm_per_km_20c",
+      "short_circuit_temperature_c",
+      "source_reference",
+      "standard",
+      "trade_name",
+      "verification_note",
+      "verification_status",
+      "voltage_rating_kv",
+      "wartosci_robocze",
+      "x0_ohm_per_km",
+      "x_ohm_per_km",
+      "z0_reference_bonding"
+    ],
+    "TRANSFORMER": [
+      "catalog_status",
+      "contract_version",
+      "cooling_class",
+      "i0_percent",
+      "id",
+      "manufacturer",
+      "name",
+      "p0_kw",
+      "pk_kw",
+      "rated_power_mva",
+      "source_reference",
+      "tap_max",
+      "tap_min",
+      "tap_step_percent",
+      "uk_percent",
+      "vector_group",
+      "verification_note",
+      "verification_status",
+      "voltage_hv_kv",
+      "voltage_lv_kv"
+    ],
+    "SWITCH_EQUIPMENT": [
+      "card_field_status",
+      "catalog_status",
+      "contract_version",
+      "equipment_kind",
+      "i_cu_ka",
+      "icw_ka",
+      "id",
+      "ik_ka",
+      "in_a",
+      "manufacturer",
+      "medium",
+      "name",
+      "source_reference",
+      "u_m_kv",
+      "un_kv",
+      "verification_note",
+      "verification_status"
+    ],
+    "PRZEKSZTALTNIK_DER": [
+      "card_field_status",
+      "catalog_status",
+      "contract_version",
+      "control_delay_ms",
+      "control_mode",
+      "converter_machine_side_voltage_kv",
+      "converter_topology",
+      "cosphi",
+      "cosphi_max",
+      "cosphi_min",
+      "cosphi_p_points",
+      "current_loop_bandwidth_hz",
+      "dynamic_profile_id",
+      "e_kwh",
+      "f0_hz",
+      "filter_l_pu",
+      "filter_r_pu",
+      "flicker_c",
+      "generator_machine_type",
+      "generator_rated_power_mw",
+      "generator_stator_frequency_max_hz",
+      "generator_stator_voltage_kv",
+      "grid_code",
+      "id",
+      "k_sc",
+      "kind",
+      "lfsm_allow_increase",
+      "lfsm_deadband_hz",
+      "lfsm_droop_pct",
+      "manufacturer",
+      "model",
+      "name",
+      "p_achievable_mw",
+      "p_connection_mw",
+      "p_installed_mw",
+      "pll_bandwidth_hz",
+      "pmax_mw",
+      "pn_ac_mw",
+      "pq_curve",
+      "ptpiree_certificate_condition",
+      "ptpiree_certificate_ref",
+      "ptpiree_document_acceptance_date",
+      "ptpiree_document_number",
+      "ptpiree_note",
+      "ptpiree_ppm_scope",
+      "ptpiree_publication_date",
+      "ptpiree_source_url",
+      "ptpiree_status",
+      "ptpiree_wipwc_version",
+      "ptpiree_wos_version",
+      "q_absorbing",
+      "qmax_mvar",
+      "qmin_mvar",
+      "qu_deadband_high_pu",
+      "qu_deadband_low_pu",
+      "qu_q_max_mvar",
+      "qu_q_min_mvar",
+      "qu_slope_pu_per_pu",
+      "sc_model",
+      "sc_pq_split",
+      "sc_sustained_k",
+      "sc_transient_k",
+      "sn_mva",
+      "source_reference",
+      "un_kv",
+      "verification_note",
+      "verification_status",
+      "voltage_loop_bandwidth_hz"
+    ],
+    "GENERATOR_SN": [
+      "catalog_status",
+      "contract_version",
+      "id",
+      "manufacturer",
+      "name",
+      "q_max_mvar",
+      "q_min_mvar",
+      "rated_kv",
+      "rated_mva",
+      "source_reference",
+      "verification_note",
+      "verification_status"
+    ],
+    "PRZELACZNIK_ZACZEPOW": [
+      "applicable_to",
+      "catalog_namespace",
+      "catalog_version",
+      "id",
+      "label_pl",
+      "neutral_position",
+      "range_percent",
+      "regulated_side",
+      "step_percent",
+      "supports_avr",
+      "tap_count",
+      "type"
+    ]
+  },
+  "parametry_punktu_rozgalezienia": {
+    "params": [
+      "apparatus_specs",
+      "branch_ports_count",
+      "catalog_namespace",
+      "catalog_status",
+      "contract_version",
+      "has_switchgear",
+      "has_transformer",
+      "kind",
+      "manufacturer",
+      "medium",
+      "object_role",
+      "route_ports",
+      "series",
+      "source_reference",
+      "standard_topology",
+      "switch_device_kind",
+      "switch_rated_current_a",
+      "switchgear_kind",
+      "topology_role",
+      "verification_note",
+      "verification_status"
+    ],
+    "route_ports": [
+      "medium",
+      "port_id",
+      "role"
+    ],
+    "apparatus_specs": [
+      "apparatus_role",
+      "device_kind",
+      "port_id",
+      "rated_current_a"
+    ]
+  },
+  "wartosci_kodowe": {
+    "apparatus_role": [
+      "BRANCH_SWITCH"
+    ],
+    "application": [
+      "MV_CABLE_TERMINATION",
+      "MV_FEEDER",
+      "MV_SUBSTATION",
+      "metering",
+      "protection"
+    ],
+    "catalog_namespace": [
+      "mv_branch_points"
+    ],
+    "catalog_status": [
+      "PRODUKCYJNY_V1",
+      "REFERENCYJNY_V1",
+      "TESTOWY"
+    ],
+    "conductor_material": [
+      "AL",
+      "AL_ST",
+      "CU"
+    ],
+    "control_mode": [
+      "GRID_FORMING",
+      "Q_OF_U",
+      "Q_U_DROOP",
+      "STALY_COS_PHI"
+    ],
+    "converter_topology": [
+      "FULL_CONVERTER"
+    ],
+    "cos_phi_mode": [
+      "IND"
+    ],
+    "device_kind": [
+      "ODLACZNIK",
+      "REKLOZER",
+      "ROZLACZNIK",
+      "ROZLACZNIK_BEZPIECZNIKOWY",
+      "UZIEMNIK",
+      "WYLACZNIK",
+      "WYLACZNIK_GLOWNY",
+      "WYLACZNIK_ODPLYWOWY"
+    ],
+    "equipment_kind": [
+      "CIRCUIT_BREAKER",
+      "DISCONNECTOR",
+      "EARTH_SWITCH",
+      "FUSE",
+      "LOAD_SWITCH",
+      "RECLOSER"
+    ],
+    "generator_machine_type": [
+      "PMSG",
+      "SCIG"
+    ],
+    "grid_code": [
+      "NC_RfG",
+      "NC_RfG_typ_A",
+      "NC_RfG_typ_B",
+      "NC_RfG_typ_C",
+      "NC_RfG_typ_D"
+    ],
+    "i_th_pochodzenie": [
+      "producent",
+      "referencyjny"
+    ],
+    "insulation_type": [
+      "EPR",
+      "PVC",
+      "XLPE"
+    ],
+    "kind": [
+      "BESS",
+      "BRANCH_POLE",
+      "PV",
+      "WIND",
+      "ZKSN"
+    ],
+    "medium": [
+      "AIR",
+      "CABLE",
+      "LINE_OVERHEAD",
+      "SF6",
+      "VACUUM"
+    ],
+    "neutral_system": [
+      "COMPENSATED_OR_RESISTIVE",
+      "RESISTIVE_OR_EFFECTIVE"
+    ],
+    "object_role": [
+      "MV_SWITCHGEAR_BRANCH_NODE",
+      "OVERHEAD_BRANCH_POLE"
+    ],
+    "operator_name": [
+      "OSD"
+    ],
+    "przeznaczenie": [
+      "FAZOWY",
+      "ODGROMOWY"
+    ],
+    "ptpiree_status": [
+      "NIEPOWIAZANY",
+      "POWIAZANY"
+    ],
+    "rcd_type": [
+      "A",
+      "AC"
+    ],
+    "return_conductor_material": [
+      "CU"
+    ],
+    "role": [
+      "ciag_wejscie",
+      "ciag_wyjscie",
+      "odgalezienie"
+    ],
+    "short_circuit_model": [
+      "short_circuit_power"
+    ],
+    "standard_topology": [
+      "OVERHEAD_LINE_POLE_WITH_BRANCH_SWITCH",
+      "ZKSN_WITH_LINE_AND_BRANCH_FIELDS"
+    ],
+    "supply_role": [
+      "ZASILANIE_SYSTEMOWE"
+    ],
+    "switch_device_kind": [
+      "ODLACZNIK",
+      "ROZLACZNIK"
+    ],
+    "switchgear_kind": [
+      "ROZDZIELNIA_SN_BEZ_TRANSFORMATORA"
+    ],
+    "topology_role": [
+      "BRANCH_POINT"
+    ],
+    "uklad_polaczen": [
+      "PODWOJNA_GWIAZDA_IZOLOWANA"
+    ],
+    "vector_group": [
+      "Dyn11",
+      "Yd11"
+    ],
+    "verification_status": [
+      "CZESCIOWO_ZWERYFIKOWANY",
+      "NIEWERYFIKOWANY",
+      "REFERENCYJNY",
+      "ZWERYFIKOWANY"
+    ]
+  },
   "klucze_wartosci_zlozonych": [
     "apparatus_role",
     "apparatus_specs",

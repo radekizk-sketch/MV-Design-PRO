@@ -23,7 +23,7 @@ import {
   fetchBayApparatusKinds,
   fetchBayProtectionCodes,
   fetchCompleteBayTemplates,
-  fetchConverterTypes,
+  fetchDerConverterTypes,
   fetchCtTypes,
   fetchFactoryConfigurations,
   fetchManufacturers,
@@ -339,7 +339,7 @@ export function KreatorStacjiSnNn() {
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
-    Promise.all([fetchTransformerTypes(), fetchConverterTypes()])
+    Promise.all([fetchTransformerTypes(), fetchDerConverterTypes()])
       .then(([t, c]) => {
         if (cancelled) return;
         setTypy(Array.isArray(t) ? t : []);

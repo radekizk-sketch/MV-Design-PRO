@@ -128,18 +128,20 @@ export function KreatorSlupaOdgaleznego() {
     };
   }, []);
 
-  const params = useMemo(
+  // Parametry punktu serwer wysyła w `params` pozycji (`{id, name, params}`).
+  const wybranyTyp = useMemo(
     () => (dane.catalog_ref ? typy.find((t) => t.id === dane.catalog_ref) ?? null : null),
     [dane.catalog_ref, typy],
   );
+  const params = wybranyTyp?.params ?? null;
 
   const opcjeTypow = useMemo(
     () =>
       typy.map((t) => ({
         id: t.id,
         etykieta:
-          typeof t.switch_rated_current_a === 'number'
-            ? `${t.name} · ${t.switch_rated_current_a} A`
+          typeof t.params.switch_rated_current_a === 'number'
+            ? `${t.name} · ${t.params.switch_rated_current_a} A`
             : t.name,
       })),
     [typy],
@@ -234,12 +236,21 @@ export function KreatorSlupaOdgaleznego() {
 
   const paramReadout = params ? (
     <KreatorSiatka kolumny={3}>
-      <RzadWartosci etykieta={T.paramLacznik} wartosc={params.switch_device_kind ?? '—'} />
+      <RzadWartosci
+        etykieta={T.paramLacznik}
+        wartosc={params.switch_device_kind ?? '—'}
+        testid="mvd-kreator-slup-param-lacznik"
+      />
       <RzadWartosci
         etykieta={T.paramPrad}
         wartosc={typeof params.switch_rated_current_a === 'number' ? `${params.switch_rated_current_a} A` : '—'}
+        testid="mvd-kreator-slup-param-prad"
       />
-      <RzadWartosci etykieta={T.paramPorty} wartosc={`${params.branch_ports_count}`} />
+      <RzadWartosci
+        etykieta={T.paramPorty}
+        wartosc={`${params.branch_ports_count}`}
+        testid="mvd-kreator-slup-param-porty"
+      />
     </KreatorSiatka>
   ) : null;
 
@@ -344,7 +355,7 @@ export function KreatorSlupaOdgaleznego() {
           <KreatorSiatka kolumny={2}>
             <RzadWartosci etykieta={T.wierszOdcinek} wartosc={kontekst.segment_label || '—'} />
             <RzadWartosci etykieta={T.wierszPolozenie} wartosc={fmtPct01(dane.polozenie)} />
-            <RzadWartosci etykieta={T.wierszSlup} wartosc={params?.name ?? '—'} />
+            <RzadWartosci etykieta={T.wierszSlup} wartosc={wybranyTyp?.name ?? '—'} />
             <RzadWartosci etykieta={T.nazwa} wartosc={dane.nazwa.trim() || 'Słup rozgałęźny SN'} />
           </KreatorSiatka>
         </KreatorSekcja>

@@ -55,6 +55,7 @@ sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(BACKEND_DIR))
 
 from api.analysis_runs import _catalog_completed_snapshot  # noqa: E402
+from api.audit2_catalogs import list_tap_changers  # noqa: E402
 from api.canonical_run_views import (  # noqa: E402
     build_branch_results_response,
     build_bus_results_response,
@@ -72,7 +73,10 @@ from api.canonical_run_views import (  # noqa: E402
 from api.catalog import (  # noqa: E402
     list_bess_inverter_types,
     list_branch_point_types,
+    list_cable_types,
+    list_converter_types,
     list_ct_types,
+    list_line_types,
     list_load_types,
     list_lv_apparatus_types,
     list_lv_cable_types,
@@ -84,6 +88,8 @@ from api.catalog import (  # noqa: E402
     list_shunt_capacitor_types,
     list_source_system_types,
     list_surge_arrester_types,
+    list_switch_equipment_types,
+    list_transformer_types,
     list_vt_types,
 )
 from api.generators import (  # noqa: E402
@@ -255,6 +261,7 @@ from network_model.catalog.rodzaje_aparatury import (  # noqa: E402
     wielkosc_zwarciowa_aparatu_sn_dotyczy,
     wielkosc_zwarciowa_lacznika_dotyczy,
 )
+from network_model.catalog.types import SynchronousGeneratorType  # noqa: E402
 from network_model.solvers.cable_voltage_drop import (  # noqa: E402
     CableRatedCurrentInput,
     compute_cable_rated_current,
@@ -1169,6 +1176,62 @@ def rodzaje_wielkosci_zwarciowych_aparatury() -> dict[str, Any]:
     }
 
 
+#: Typy pozycji spoza panelu ogólnego, których wartości kodowe projektant widzi: karta
+#: z budowniczym wierszy (linia, kabel, transformator, łącznik) i przekształtnik w kreatorach
+#: OZE. Przełącznik zaczepów jest poza zbiorem: kreator pokazuje jego `label_pl`, a kody
+#: (`oltc`, `hv`) przepisuje na pola modelu, nigdy na ekran; generator synchroniczny nie ma
+#: pozycji (kształt mierzony z `to_dict` pozycji pomiarowej).
+_TYPY_Z_WARTOSCIAMI_KODOWYMI = (
+    "LINE",
+    "CABLE",
+    "TRANSFORMER",
+    "SWITCH_EQUIPMENT",
+    "PRZEKSZTALTNIK_DER",
+)
+_WARTOSC_KODOWA = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+#: Poddrzewa z własnym słownikiem prezentacji: jakość danej pola (`NAZWA_JAKOSCI_DANEJ_PL`) i
+#: propozycje wartości roboczych (sekcja karty z `nazwa_pl` rejestru backendu).
+_PODDRZEWA_Z_WLASNA_PREZENTACJA = frozenset({"card_field_status", "wartosci_robocze"})
+
+
+def _pole_referencji(klucz: str) -> bool:
+    """Tożsamość i odwołanie do innego rekordu — nie wartość kodowa do nazwania."""
+    return klucz in {"id", "name"} or klucz.endswith(("_id", "_ref", "_key"))
+
+
+def wartosci_kodowe_kart(grupy_rekordow: Iterable[list[dict[str, Any]]]) -> dict[str, list[str]]:
+    """Pola kart katalogu, których KAŻDA wartość ma postać kodu (`[A-Za-z][A-Za-z0-9_]*`):
+    pole → posortowane wartości, także wewnątrz wartości złożonych (`params`, listy portów).
+
+    Wyrocznia słownika nazw wartości kodowych frontu (`ui/catalog/wartosciKodoweKarty.ts`):
+    karta pokazuje projektantowi nazwę, nie kod. Pole z choć jedną wartością tekstową (opis,
+    numer dokumentu, model) nie jest kodowe; pole referencji (`id`, `*_id`, `*_ref`, `*_key`)
+    wskazuje inny rekord i nie jest nazywane słownikiem."""
+    wartosci: dict[str, set[str]] = {}
+    tekstowe: set[str] = set()
+
+    def zbierz(klucz: str, wartosc: Any) -> None:
+        if klucz in _PODDRZEWA_Z_WLASNA_PREZENTACJA or _pole_referencji(klucz):
+            return
+        if isinstance(wartosc, dict):
+            for k, v in wartosc.items():
+                zbierz(k, v)
+        elif isinstance(wartosc, list):
+            for v in wartosc:
+                zbierz(klucz, v)
+        elif isinstance(wartosc, str):
+            if _WARTOSC_KODOWA.fullmatch(wartosc):
+                wartosci.setdefault(klucz, set()).add(wartosc)
+            else:
+                tekstowe.add(klucz)
+
+    for rekordy in grupy_rekordow:
+        for rekord in rekordy:
+            for klucz, wartosc in rekord.items():
+                zbierz(klucz, wartosc)
+    return {k: sorted(v) for k, v in sorted(wartosci.items()) if k not in tekstowe}
+
+
 def pola_kart_katalogu() -> dict[str, Any]:
     """Klucze pozycji katalogu, które serwer wysyła dla kategorii przeglądarki typów — POMIAR
     odpowiedzi TYCH SAMYCH funkcji, które obsługują `GET /api/catalog/...` (`api/catalog.py`):
@@ -1226,14 +1289,54 @@ def pola_kart_katalogu() -> dict[str, Any]:
             if k != "wartosci_robocze"
         )
     )
+    # Kategorie przeglądarki z dedykowanym budowniczym wierszy (`wierszeKartyKatalogu.ts`) i typy
+    # pozycji katalogu czytane poza przeglądarką (kreatory) — lustro typów `ui/catalog/types.ts`.
+    # Generator synchroniczny: katalog nie ma dziś żadnej pozycji, więc kształt serializacji mierzy
+    # `to_dict` pozycji z każdym polem opcjonalnym podanym (nota weryfikacji obecna).
+    rekordy_typow: dict[str, list[dict[str, Any]]] = {
+        "LINE": list_line_types(),
+        "CABLE": list_cable_types(),
+        "TRANSFORMER": list_transformer_types(),
+        "SWITCH_EQUIPMENT": list_switch_equipment_types(),
+        "PRZEKSZTALTNIK_DER": list_converter_types(None),
+        "GENERATOR_SN": [
+            SynchronousGeneratorType(
+                id="pomiar", name="pomiar", manufacturer="pomiar", verification_note="pomiar"
+            ).to_dict()
+        ],
+        "PRZELACZNIK_ZACZEPOW": list_tap_changers(),
+    }
+    punkty = rekordy_kategorii["BRANCH_POLE"] + rekordy_kategorii["ZKSN"]
+    parametry_punktow = [r["params"] for r in punkty]
     return {
         "zrodlo": "api/catalog.py (funkcje obsługi GET /api/catalog/...)",
         "kategorie": {kat: klucze(rekordy) for kat, rekordy in rekordy_kategorii.items()},
+        "typy_pozycji": {typ: klucze(rekordy) for typ, rekordy in rekordy_typow.items()},
+        # Parametry punktu rozgałęzienia (słup rozgałęźny, ZKSN) — serwer wysyła je w `params`.
+        "parametry_punktu_rozgalezienia": {
+            "params": klucze(parametry_punktow),
+            "route_ports": klucze([p for x in parametry_punktow for p in x["route_ports"]]),
+            "apparatus_specs": klucze(
+                [a for x in parametry_punktow for a in x.get("apparatus_specs", [])]
+            ),
+        },
+        "wartosci_kodowe": wartosci_kodowe_kart(
+            [*rekordy_kategorii.values(), *(rekordy_typow[k] for k in _TYPY_Z_WARTOSCIAMI_KODOWYMI)]
+        ),
         "klucze_wartosci_zlozonych": sorted(zagniezdzone),
         # Jakość danej w `card_field_status` (`quality`) = `werdykt.proweniencja.FieldQuality`;
         # panel pokazuje nazwę polską z tej samej enumeracji.
         "nazwy_jakosci_danej": {q.value: q.label_pl for q in FieldQuality},
     }
+
+
+def katalog_punktow_rozgalezienia() -> list[dict[str, Any]]:
+    """Odpowiedź `GET /api/catalog/branch-point-types` (bez zawężenia) — TA SAMA funkcja,
+    którą woła końcówka. Kreatory słupa rozgałęźnego i ZKSN (`ui2/kreatory/slup-odgalezny`,
+    `ui2/kreatory/zksn`) testują się na rekordach serwera `{id, name, params}`, nie na
+    zmyślonym kształcie płaskim (pola punktu „na wierzchu” — kształt, którego serwer nie
+    wysyła; kreatory czytały je i pokazywały „undefined”)."""
+    return list_branch_point_types(None)
 
 
 def katalog_analiz_v126() -> dict[str, Any]:
@@ -5394,6 +5497,7 @@ FIXTURY: dict[str, Any] = {
     "kody_metryk_wynikow": kody_metryk_wynikow,
     "rodzaje_wielkosci_zwarciowych_aparatury": rodzaje_wielkosci_zwarciowych_aparatury,
     "pola_kart_katalogu": pola_kart_katalogu,
+    "katalog_punktow_rozgalezienia": katalog_punktow_rozgalezienia,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
     "identyfikatory_grafu": identyfikatory_grafu,

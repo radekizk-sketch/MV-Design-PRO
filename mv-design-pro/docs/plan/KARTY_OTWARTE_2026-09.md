@@ -1277,6 +1277,20 @@ kanwie WYŁĄCZNIE z rekordu aparatu pola (`primary_devices`, `CABLE_HEAD`); GPZ
 i kontrakt sceny (głowica na kanwie ⇔ rekord głowicy). Otwarte: karta aparatu inspektora
 (40 czerwonych w `InspectorEngineeringView.apparatus.test.tsx`, diagnoza w toku).
 
+**Commit 9 (WIP, 2026-10-30) — typy katalogu TS = wyrocznia serwera.** Wyrocznia
+`pola_kart_katalogu.json` mierzy też klucze typów pozycji (`typy_pozycji`: linia, kabel,
+transformator, łącznik, przekształtnik, generator SN, przełącznik zaczepów) i części punktu
+rozgałęzienia (`params`, `route_ports`, `apparatus_specs`); `polaKartyKatalogu.ts` trzyma
+rejestr kluczy `KluczeTypu<T>` (tsc wymusza równość z interfejsem), vitest — równość z
+wyrocznią. Usunięte pola fantomowe: łańcuch napięć PV/BESS (`u_n_kv`, `voltage_kv`,
+`voltage_lv_kv`), `switching_time_s` i `operations_before_maintenance_thousand` przełącznika
+zaczepów (skasowane w backendzie kartą K-Q), płaski kształt punktu rozgałęzienia (kreatory
+słupa i ZKSN pokazywały „undefined” i „—”; `TypePicker` czytał pola spoza `params`). Jedna
+ścieżka przekształtników (`fetchDerConverterTypes` → `/api/catalog/converter-types`),
+druga projekcja frontu skasowana razem ze strażnikiem `katalog_parytet_pol_guard.py`
+(zastąpionym testem parytetu). Fikstury kreatorów = rekordy serwera
+(`katalog_punktow_rozgalezienia.json`).
+
 ---
 
 ## LICZBY-PL

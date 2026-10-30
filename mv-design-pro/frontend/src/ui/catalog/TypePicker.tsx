@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import type { CatalogListItem } from './api';
 import { fetchTypesByCategory, getCatalogErrorMessage } from './api';
-import type { TypeCategory } from './types';
+import type { BranchPointCatalogType, TypeCategory } from './types';
 import {
   pradAparatuSnKatalogu,
   pradKaLubBrakDanych,
@@ -54,8 +54,11 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
     case 'SYSTEM_SOURCE':
       return `${record.voltage_rating_kv ?? '-'} kV, Sk3=${record.sk3_mva ?? '-'} MVA, R/X=${record.rx_ratio ?? '-'}`;
     case 'BRANCH_POLE':
-    case 'ZKSN':
-      return `${record.switch_device_kind ?? '-'}, ${record.switch_rated_current_a ?? '-'} A, porty odgałęzienia=${record.branch_ports_count ?? '-'}`;
+    case 'ZKSN': {
+      // Parametry punktu serwer wysyła w `params` pozycji (`{id, name, params}`).
+      const params = (type as BranchPointCatalogType).params;
+      return `${params.switch_device_kind ?? '-'}, ${params.switch_rated_current_a ?? '-'} A, porty odgałęzienia=${params.branch_ports_count ?? '-'}`;
+    }
     case 'MEASUREMENT_TRANSFORMER':
     case 'CONVERTER':
     default:
