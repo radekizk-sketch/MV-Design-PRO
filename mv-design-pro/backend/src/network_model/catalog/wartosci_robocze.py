@@ -389,7 +389,8 @@ def _propozycja_i_th(karta: KartaAparatuSN) -> tuple[PropozycjaWartosci | None, 
         return None, (
             "prąd krótkotrwały wytrzymywany nie dotyczy tego rodzaju aparatu — w rozłączniku "
             "bezpiecznikowym zwarcie przerywa wkładka, która przepala się, a nie przewodzi "
-            "prądu zwarciowego przez czas znamionowy (PN-EN 60282-1 nie definiuje I_cw)"
+            "prądu zwarciowego przez czas znamionowy (PN-EN 60282-1 nie definiuje prądu "
+            "krótkotrwałego wytrzymywanego)"
         )
     icu = karta.breaking_capacity_ka
     if karta.device_kind.strip().upper() == RODZAJ_WYLACZNIK and icu is not None and icu > 0:
@@ -454,7 +455,8 @@ def _propozycja_i_dyn(i_th: WartoscRozstrzygnieta) -> tuple[PropozycjaWartosci |
             odniesienie=_ODNIESIENIE_I_DYN,
             uzasadnienie_pl=(
                 "Karta nie podaje prądu szczytowego wytrzymywanego — przyjęto relację normową "
-                f"I_p = {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}·I_k dla 50 Hz z prądu "
+                f"— prąd szczytowy równy {liczba_pl(WSPOLCZYNNIK_IP_DO_IK_50HZ)}-krotności prądu "
+                f"krótkotrwałego dla 50 Hz, z prądu "
                 f"krótkotrwałego {liczba_pl(i_th.wartosc)} kA {zrodlo_i_th}"
             ),
             wplyw_pl=(
@@ -963,14 +965,15 @@ _PROPOZYCJA_FAZ = PropozycjaDanejLinii(
     rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
     odniesienie=_ODNIESIENIE_SLUPA,
     uzasadnienie_pl=(
-        "Projekt nie podaje geometrii słupa — przyjęto słup typowy, żeby obliczenie R′, X′, B′ "
-        "i Z′0 linii biegło od razu"
+        "Projekt nie podaje geometrii słupa — przyjęto słup typowy, żeby obliczenie rezystancji, "
+        "reaktancji, susceptancji i impedancji składowej zerowej linii biegło od razu"
     ),
     wplyw_pl=(
         "reaktancja i susceptancja zależą od logarytmu odległości faz: przy 50 Hz zmiana "
-        "średniej odległości faz o +25 % / −25 % zmienia X′1 o ok. +0,014 / −0,018 Ω/km "
-        "(ωμ0/(2π)·ln 1,25 i ·ln 0,75), a impedancja zerowa zależy także od wysokości "
-        "zawieszenia"
+        "średniej odległości faz o +25 % / −25 % zmienia reaktancję jednostkową składowej "
+        "zgodnej o ok. +0,014 / −0,018 Ω/km (logarytm stosunku odległości 1,25 i 0,75 "
+        "pomnożony przez reaktancję właściwą przy 50 Hz), a impedancja zerowa zależy także od "
+        "wysokości zawieszenia"
     ),
 )
 _PROPOZYCJA_ODGROMOWE = PropozycjaDanejLinii(
@@ -984,7 +987,8 @@ _PROPOZYCJA_ODGROMOWE = PropozycjaDanejLinii(
     ),
     wplyw_pl=(
         "przewód odgromowy uziemiony na każdym słupie obniża impedancję składowej zerowej; "
-        "jego położenie zmienia Z′0, nie zmienia Z′1"
+        "jego położenie zmienia impedancję składowej zerowej, nie zmienia impedancji składowej "
+        "zgodnej"
     ),
 )
 _PROPOZYCJA_PRZEWODU_ODGROMOWEGO = PropozycjaDanejLinii(
@@ -1008,10 +1012,10 @@ _PROPOZYCJA_REZYSTYWNOSCI = PropozycjaDanejLinii(
     odniesienie=_ODNIESIENIE_REZYSTYWNOSCI,
     uzasadnienie_pl="Projekt nie podaje rezystywności gruntu wzdłuż trasy linii",
     wplyw_pl=(
-        "rezystywność wpływa wyłącznie na impedancję składowej zerowej: przy 50 Hz X′0 linii "
-        "bez przewodu odgromowego rośnie o ok. 0,22 Ω/km na dekadę rezystywności "
-        "(3·ωμ0/(4π)·ln 10, pierwszy wyraz szeregu Carsona); przewód odgromowy tę zależność "
-        "osłabia"
+        "rezystywność wpływa wyłącznie na impedancję składowej zerowej: przy 50 Hz reaktancja "
+        "jednostkowa składowej zerowej linii bez przewodu odgromowego rośnie o ok. 0,22 Ω/km "
+        "na dekadę rezystywności (pierwszy wyraz szeregu Carsona); przewód odgromowy tę "
+        "zależność osłabia"
     ),
 )
 
@@ -1229,25 +1233,30 @@ def dane_przyjete_linii_wn(
 KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU = "wartosci_robocze"
 
 ZALOZENIE_R0_TRZY_R1 = (
-    "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
+    "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej "
+    "zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
     "składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
 )
 ZALOZENIE_X0_TRZY_X1 = (
-    "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
+    "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej "
+    "zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
     "składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
 )
 ZALOZENIE_R0_ZYLA_POWROTNA = (
-    "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej "
+    "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej "
+    "i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej "
     "wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje "
     "składowej zerowej tej pozycji"
 )
 ZALOZENIE_R_ZYLY_POWROTNEJ = (
-    "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg "
-    "IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; "
+    "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój "
+    "odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) "
+    "— producent nie podaje rezystancji żyły powrotnej; "
     "przekrój znamionowy, nie zmierzony"
 )
 ZALOZENIE_ITH_ZYLY_POWROTNEJ = (
-    "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału "
+    "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego "
+    "materiału pomnożona przez przekrój "
     "(IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej "
     "żyły powrotnej"
 )
@@ -1263,15 +1272,18 @@ POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
 # urządzenia nie blokuje zwarć doziemnych ani rozpływu niesymetrycznego — obliczenie przyjmuje
 # wartość roboczą tą samą regułą wyprowadzenia co pozycje katalogu, z opisem źródła odcinka.
 ZALOZENIE_ODCINKA_R0_TRZY_R1 = (
-    "R′0 = 3·R′1 — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
+    "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej "
+    "zgodnej — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
     "inżynierskie, stosunek typowy; żadna norma nie podaje tego stosunku)"
 )
 ZALOZENIE_ODCINKA_X0_TRZY_X1 = (
-    "X′0 = 3·X′1 — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
+    "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej "
+    "zgodnej — wartość robocza odcinka bez składowej zerowej w modelu (założenie "
     "inżynierskie, stosunek typowy; żadna norma nie podaje tego stosunku)"
 )
 ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA = (
-    "R′0 = R′1 + R′ żyły powrotnej — wartość robocza odcinka bez składowej zerowej w modelu "
+    "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej "
+    "i rezystancji żyły powrotnej — wartość robocza odcinka bez składowej zerowej w modelu "
     "(założenie inżynierskie: prąd składowej zerowej wraca wyłącznie żyłą powrotną, ekranem, "
     "bez udziału ziemi)"
 )
@@ -1284,13 +1296,17 @@ ZALOZENIE_ODCINKA_R0_ZYLA_POWROTNA = (
 # o równym przekroju: R′0 = 4·R′1) i zawyżała prąd zwarcia doziemnego — niebezpiecznie dla
 # sprawdzenia samoczynnego wyłączenia, więc bez danych żyły powrotnej wartości roboczej nie ma.
 ZALOZENIE_ODCINKA_NN_R0_ZYLA_POWROTNA = (
-    "R′0 = R′1 + 3·R′ żyły powrotnej PE/PEN — wartość robocza odcinka nN bez składowej zerowej "
-    "w modelu (założenie inżynierskie: prąd 3·I0 wraca wyłącznie wspólną żyłą powrotną tej samej "
+    "Rezystancja jednostkowa składowej zerowej równa rezystancji składowej zgodnej powiększonej "
+    "o trzykrotność rezystancji żyły powrotnej PE/PEN — wartość robocza odcinka nN bez "
+    "składowej zerowej w modelu (założenie inżynierskie: potrojony prąd składowej zerowej "
+    "wraca wyłącznie wspólną żyłą powrotną tej samej "
     "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
 )
 ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA = (
-    "X′0 = X′1 + 3·X′ żyły powrotnej PE/PEN — wartość robocza odcinka nN bez składowej zerowej "
-    "w modelu (założenie inżynierskie: prąd 3·I0 wraca wyłącznie wspólną żyłą powrotną tej samej "
+    "Reaktancja jednostkowa składowej zerowej równa reaktancji składowej zgodnej powiększonej "
+    "o trzykrotność reaktancji żyły powrotnej PE/PEN — wartość robocza odcinka nN bez "
+    "składowej zerowej w modelu (założenie inżynierskie: potrojony prąd składowej zerowej "
+    "wraca wyłącznie wspólną żyłą powrotną tej samej "
     "trasy, bez udziału ziemi; ta sama impedancja pętli co analiza pętli zwarcia IEC 60364-4-41)"
 )
 
@@ -1313,15 +1329,17 @@ ZALOZENIE_ODCINKA_NN_X0_ZYLA_POWROTNA = (
 STOSUNEK_B0_B1_LINII_SN: Final[float] = 0.4
 
 ZALOZENIE_ODCINKA_B0_KABEL_SN = (
-    "B′0 = B′1 — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie "
-    "inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; "
-    "jedyną pojemnością żyły jest pojemność żyła–ekran, więc C′0 = C′1)"
+    "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — "
+    "wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły "
+    "z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością "
+    "żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe)"
 )
 ZALOZENIE_ODCINKA_B0_LINIA_SN = (
-    "B′0 = 0,4·B′1 — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie "
-    "inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych "
-    "C′0/C′1 = ln(D/r)/(ln(D/r) + 3·ln(2h/D)), dla typowych słupów SN 0,34–0,45; "
-    "rozrzut ±15 % wobec geometrii rzeczywistej)"
+    "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — "
+    "wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: "
+    "linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności "
+    "składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec "
+    "geometrii rzeczywistej)"
 )
 
 #: Założenia wartości roboczej odcinka MODELU — dana przyjęta nazywa je „wartością roboczą”,
@@ -1689,15 +1707,16 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             PARAMETR_MOC_POZORNA_MASZYNY,
             None,
             odniesienie=(
-                f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}, podzielona przez cos φ_rG "
-                f"(S_rG = P/cos φ_rG); {_NORMA_MASZYN} pkt 6.3 wymaga S_rG z danych maszyny"
+                f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}, podzielona przez znamionowy współczynnik "
+                f"mocy; {_NORMA_MASZYN} pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy "
+                "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy "
                 "czynnej punktu pracy elementu"
             ),
             wplyw_pl=(
-                "impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej "
+                "impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do "
+                "mocy pozornej znamionowej — maszyna o większej "
                 "mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, "
                 "niż wykazuje obliczenie"
             ),
@@ -1707,14 +1726,16 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             0.15,
             odniesienie=(
                 f"wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych "
-                f"(zakres spotykany 0,10–0,25 p.u.); {_NORMA_MASZYN} pkt 6.3 wymaga x″d z danych "
+                f"(zakres spotykany 0,10–0,25 p.u.); {_NORMA_MASZYN} pkt 6.3 wymaga reaktancji "
+                "podprzejściowej z danych "
                 "maszyny i nie podaje wartości domyślnej"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u."
+                "Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u."
             ),
             wplyw_pl=(
-                "impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna "
+                "impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej "
+                "— maszyna "
                 "o mniejszej reaktancji daje większy udział w prądach zwarciowych"
             ),
         ),
@@ -1723,14 +1744,15 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             0.8,
             odniesienie=(
                 "wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; "
-                f"{_NORMA_MASZYN} pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga "
+                "znamionowego współczynnika mocy z danych maszyny"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto "
-                "cos φ_rG 0,8"
+                "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8"
             ),
             wplyw_pl=(
-                "współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość "
+                "współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika "
+                "mocy — inna wartość "
                 "zmienia udział maszyny w prądach zwarciowych"
             ),
         ),
@@ -1741,16 +1763,17 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             None,
             odniesienie=(
                 f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}; {_NORMA_MASZYN} pkt 6.7 i 9.1.2 wymagają "
-                "mocy znamionowej P_rM z danych maszyny (S_rM = P_rM/(η_r·cos φ_r), "
-                "m = P_rM/p)"
+                "mocy czynnej znamionowej z danych maszyny (moc pozorna znamionowa z mocy czynnej, "
+                "sprawności i współczynnika mocy; moc na parę biegunów z liczby par biegunów)"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje ani mocy znamionowej P_rM, ani mocy pozornej "
-                "znamionowej S_rM — przyjęto P_rM z mocy czynnej punktu pracy elementu"
+                "Tabliczka maszyny nie podaje ani mocy czynnej znamionowej, ani mocy pozornej "
+                "znamionowej — przyjęto moc znamionową z mocy czynnej punktu pracy elementu"
             ),
             wplyw_pl=(
-                "moc pozorna S_rM, a z nią udział maszyny w prądach zwarciowych, oraz moc na "
-                "parę biegunów m (zanik prądu wyłączeniowego I_b) są proporcjonalne do P_rM — "
+                "moc pozorna znamionowa, a z nią udział maszyny w prądach zwarciowych, oraz moc na "
+                "parę biegunów (zanik prądu wyłączeniowego) są proporcjonalne do mocy czynnej "
+                "znamionowej — "
                 "maszyna o mocy znamionowej większej niż punkt pracy daje większe prądy"
             ),
         ),
@@ -1760,16 +1783,17 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             odniesienie=(
                 "założenie zachowawcze: tabliczka nie podaje liczby par biegunów ani prędkości "
                 "znamionowej, z której liczbę par wyznacza się przy częstotliwości sieci; "
-                f"{_NORMA_MASZYN} pkt 9.1.2 wymaga mocy na parę biegunów m = P_rM/p"
+                f"{_NORMA_MASZYN} pkt 9.1.2 wymaga mocy na parę biegunów (moc czynna znamionowa "
+                "przez liczbę par biegunów)"
             ),
             uzasadnienie_pl=(
                 "Przyjęto p = 1 — największą moc na parę biegunów, a więc najsłabszy zanik prądu "
                 "maszyny (współczynnik q najbliższy 1) i dla maszyny SN o mocy co najmniej "
-                "1 MW najmniejszy stosunek R_M/X_M"
+                "1 MW najmniejszy stosunek rezystancji do reaktancji maszyny"
             ),
             wplyw_pl=(
-                "prąd wyłączeniowy I_b (i przy maszynie SN — współczynnik udaru) jest liczony "
-                "zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy I_b"
+                "prąd wyłączeniowy (i przy maszynie SN — współczynnik udaru) jest liczony "
+                "zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy prąd wyłączeniowy"
             ),
         ),
         PARAMETR_KROTNOSC_I_LR: _propozycja_maszyny(
@@ -1777,14 +1801,15 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             5.0,
             odniesienie=(
                 "wartość typowa maszyn indukcyjnych (zakres spotykany 4–7); "
-                f"{_NORMA_MASZYN} pkt 6.7 wymaga I_LR/I_rM z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wymaga krotności prądu zablokowanego wirnika z danych "
+                "maszyny"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje krotności prądu zablokowanego wirnika — przyjęto "
-                "I_LR/I_rM = 5"
+                "Tabliczka maszyny nie podaje krotności prądu zablokowanego wirnika — przyjęto 5"
             ),
             wplyw_pl=(
-                "impedancja maszyny Z_M jest odwrotnie proporcjonalna do I_LR/I_rM — maszyna "
+                "impedancja maszyny jest odwrotnie proporcjonalna do krotności prądu zablokowanego "
+                "wirnika — maszyna "
                 "o większej krotności daje proporcjonalnie większy udział w prądach zwarciowych"
             ),
         ),
@@ -1793,15 +1818,15 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             0.85,
             odniesienie=(
                 "wartość typowa znamionowego współczynnika mocy maszyn indukcyjnych; "
-                f"{_NORMA_MASZYN} pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, "
+                "sprawności i współczynnika mocy z danych maszyny"
             ),
             uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto "
-                "cos φ_rM 0,85"
+                "Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,85"
             ),
             wplyw_pl=(
-                "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach "
-                "zwarciowych, są odwrotnie proporcjonalne do cos φ_rM"
+                "moc pozorna znamionowa, a z nią prąd znamionowy i udział maszyny w prądach "
+                "zwarciowych, są odwrotnie proporcjonalne do znamionowego współczynnika mocy"
             ),
         ),
         PARAMETR_SPRAWNOSC: _propozycja_maszyny(
@@ -1809,13 +1834,12 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
             0.95,
             odniesienie=(
                 "wartość typowa sprawności znamionowej maszyn indukcyjnych dużej mocy; "
-                f"{_NORMA_MASZYN} pkt 6.7 wyznacza S_rM = P_rM/(η_r·cos φ_r) z danych maszyny"
+                f"{_NORMA_MASZYN} pkt 6.7 wyznacza moc pozorną znamionową z mocy czynnej, "
+                "sprawności i współczynnika mocy z danych maszyny"
             ),
-            uzasadnienie_pl=(
-                "Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto η_rM 0,95"
-            ),
+            uzasadnienie_pl=("Tabliczka maszyny nie podaje sprawności znamionowej — przyjęto 0,95"),
             wplyw_pl=(
-                "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach "
+                "moc pozorna znamionowa, a z nią prąd znamionowy i udział maszyny w prądach "
                 "zwarciowych, są odwrotnie proporcjonalne do sprawności"
             ),
         ),
@@ -1901,7 +1925,8 @@ def blad_wartosci_maszyny(rodzina: RodzinaMaszyny, parametr: object, wartosc: ob
 
 #: Pochodzenie mocy znamionowej P_rM wyznaczonej z mocy pozornej znamionowej tabliczki (pkt 6.7).
 POCHODZENIE_MOCY_Z_MOCY_POZORNEJ = (
-    "wyznaczona z mocy pozornej znamionowej S_rM tabliczki elementu: P_rM = S_rM·η_r·cos φ_r, "
+    "wyznaczona z mocy pozornej znamionowej tabliczki elementu (iloczyn mocy pozornej, "
+    "sprawności i współczynnika mocy), "
     "IEC 60909-0:2016 pkt 6.7"
 )
 

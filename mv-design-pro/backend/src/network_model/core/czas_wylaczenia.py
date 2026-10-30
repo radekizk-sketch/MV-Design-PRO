@@ -68,15 +68,16 @@ POCHODZENIE_TB_PROPOZYCJA: PochodzenieCzasuTb = "PROPOZYCJA"
 CZAS_TB_ROBOCZY_S = 0.1
 #: Źródło wartości roboczej (odniesienie normowe, tekst dla wyjaśnienia i raportu).
 ZRODLO_CZASU_TB_ROBOCZEGO = (
-    "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+    "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s)"
 )
 _UZASADNIENIE_ROBOCZEGO = (
     "żadne pole z wyłącznikiem przyłączone do szyny punktu zwarcia nie daje czasu wyłączenia "
     "z nastaw zabezpieczenia"
 )
 _WPLYW_ROBOCZEGO = (
-    "I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy "
-    "rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe"
+    "prąd wyłączeniowy z udziałem maszyn wirujących i składowa nieokresowa policzone przy "
+    "założonym czasie wyłączenia; dłuższy rzeczywisty czas wyłączenia daje mniejsze wartości "
+    "(ocena zachowawcza), krótszy — większe"
 )
 
 
@@ -164,14 +165,14 @@ def czas_tb_z_danych(dane: object) -> float | None:
         return None
     if isinstance(dane, bool) or not isinstance(dane, int | float):
         raise OdmowaCzasuTbError(
-            f"Czas wyłączenia t_b {dane!r} nie jest liczbą — podaj najkrótszy czas "
+            f"Czas wyłączenia {dane!r} nie jest liczbą — podaj najkrótszy czas "
             "zadziałania zabezpieczenia powiększony o czas własny wyłącznika, w sekundach.",
             kod=KOD_CZAS_TB_NIEPOPRAWNY,
         )
     wartosc = float(dane)
     if not math.isfinite(wartosc) or wartosc <= 0.0:
         raise OdmowaCzasuTbError(
-            f"Czas wyłączenia t_b {dane!r} musi być skończoną liczbą dodatnią w sekundach "
+            f"Czas wyłączenia {dane!r} musi być skończoną liczbą dodatnią w sekundach "
             "(najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika).",
             kod=KOD_CZAS_TB_NIEPOPRAWNY,
         )
@@ -185,7 +186,7 @@ def czas_tb_projektanta(wartosc_s: float) -> CzasWylaczeniaTb:
         pochodzenie=POCHODZENIE_TB_PROJEKTANT,
         robocza=False,
         opis_pl=(
-            f"t_b = {_liczba_pl(wartosc_s)} s podany przez projektanta w scenariuszu "
+            f"Czas wyłączenia {_liczba_pl(wartosc_s)} s podany przez projektanta w scenariuszu "
             "zwarciowym (dotyczy wszystkich punktów zwarcia biegu)."
         ),
     )
@@ -202,8 +203,9 @@ def czas_tb_roboczy(powod_pl: str | None = None) -> CzasWylaczeniaTb:
         pochodzenie=POCHODZENIE_TB_PROPOZYCJA,
         robocza=True,
         opis_pl=(
-            f"t_b = {_liczba_pl(CZAS_TB_ROBOCZY_S)} s — wartość robocza ({ZRODLO_CZASU_TB_ROBOCZEGO}): "
-            f"{powod}. Wpływ: {_WPLYW_ROBOCZEGO}. Zmień t_b w scenariuszu zwarciowym, aby "
+            f"Czas wyłączenia {_liczba_pl(CZAS_TB_ROBOCZY_S)} s — wartość robocza "
+            f"({ZRODLO_CZASU_TB_ROBOCZEGO}): {powod}. Wpływ: {_WPLYW_ROBOCZEGO}. Zmień czas "
+            "wyłączenia w scenariuszu zwarciowym, aby "
             "przeliczyć na wartości projektowej."
         ),
     )

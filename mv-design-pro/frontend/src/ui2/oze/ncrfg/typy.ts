@@ -165,6 +165,11 @@ export interface KatalogNcRfg {
   readonly procedure_version: DokumentWarstwy;
   readonly operators: readonly ProfilOperatoraNcRfg[];
   readonly tests: readonly DefinicjaTestuNcRfg[];
+  /**
+   * Zapis wzoru rdzenia (`KrokSladuNcRfg.formula`, dokładny tekst) → LaTeX tego samego wzoru
+   * (`application/ncrfg_compliance/wzory_sladu.py`). Ślad renderuje wzór przez KaTeX.
+   */
+  readonly wzory_sladu_latex: Readonly<Record<string, string>>;
 }
 
 // =============================================================================

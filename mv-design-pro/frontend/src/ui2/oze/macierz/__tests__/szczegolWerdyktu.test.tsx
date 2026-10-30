@@ -12,7 +12,7 @@ import { useSelectionStore } from '../../../../ui/selection/store';
 import { SzczegolWerdyktu, nazwaRodzajuTwierdzenia } from '../SzczegolWerdyktu';
 import { mapujMacierz, zbudujModuly, type KomorkaMacierzy } from '../macierzModel';
 import { MACIERZ_STRINGS } from '../strings';
-import { biegFixture, derFixture, deryScenyMacierz, wejsciaFixture, wejsciaZ } from './fixtures';
+import { biegFixture, derFixture, deryScenyMacierz, katalogFixture, wejsciaFixture, wejsciaZ } from './fixtures';
 
 const BIEG = biegFixture();
 const MODULY = [
@@ -31,13 +31,13 @@ function komorka(indeksWiersza: number, derRef: string): KomorkaMacierzy {
 
 describe('SzczegolWerdyktu', () => {
   it('bez wybranej komórki → podpowiedź wyboru', () => {
-    render(<SzczegolWerdyktu komorka={null} definicja={null} nazwaModulu={null} slad={[]} szczegolyAudytowe={false} />);
+    render(<SzczegolWerdyktu komorka={null} definicja={null} nazwaModulu={null} slad={[]} wzoryLatex={{}} szczegolyAudytowe={false} />);
     expect(screen.getByTestId('mvd-oze-szczegol-pusty')).toHaveTextContent(MACIERZ_STRINGS.szczegolWybierz);
   });
 
   it('komórka modułu bez danych → jawny powód', () => {
     render(
-      <SzczegolWerdyktu komorka={komorka(0, 'zz-bez-napiecia')} definicja={null} nazwaModulu="x" slad={[]} szczegolyAudytowe={false} />,
+      <SzczegolWerdyktu komorka={komorka(0, 'zz-bez-napiecia')} definicja={null} nazwaModulu="x" slad={[]} wzoryLatex={{}} szczegolyAudytowe={false} />,
     );
     expect(screen.getByTestId('mvd-oze-szczegol-blokada')).toHaveTextContent('napięcie przyłączenia');
   });
@@ -46,7 +46,7 @@ describe('SzczegolWerdyktu', () => {
     const pv = BIEG.modules[1];
     const k = komorka(0, pv.der_ref);
     const definicja = BIEG.test_catalog[0];
-    render(<SzczegolWerdyktu komorka={k} definicja={definicja} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} szczegolyAudytowe={false} />);
+    render(<SzczegolWerdyktu komorka={k} definicja={definicja} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} wzoryLatex={{}} szczegolyAudytowe={false} />);
     if (k.stan !== 'wynik') throw new Error('oczekiwano rekordu');
     expect(screen.getByTestId(`mvd-werdykt-${k.wynik.ocena.kryterium_id}`)).toBeInTheDocument();
     expect(screen.getByTestId('mvd-oze-szczegol-definicja')).toHaveTextContent(definicja.procedure_basis_pl);
@@ -71,6 +71,7 @@ describe('SzczegolWerdyktu', () => {
           definicja={definicja}
           nazwaModulu={pv.der_name}
           slad={[]}
+          wzoryLatex={{}}
           szczegolyAudytowe={szczegolyAudytowe}
         />,
       );
@@ -91,7 +92,7 @@ describe('SzczegolWerdyktu', () => {
     const k = komorka(indeks, pv.der_ref);
     if (k.stan !== 'wynik') throw new Error('oczekiwano rekordu');
     const uzytkownik = userEvent.setup();
-    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={[]} szczegolyAudytowe={false} />);
+    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={[]} wzoryLatex={{}} szczegolyAudytowe={false} />);
     await uzytkownik.click(screen.getByTestId('mvd-oze-szczegol-pokaz-element'));
     expect(useSelectionStore.getState().selectedElement?.id).toBe(k.wynik.ocena.przedmiot.element_ref);
   });
@@ -101,7 +102,7 @@ describe('SzczegolWerdyktu', () => {
     const indeks = BIEG.test_catalog.findIndex((d) => (pv.tests.find((t) => t.test_id === d.test_id)?.trace_refs.length ?? 0) > 0);
     const k = komorka(indeks, pv.der_ref);
     const uzytkownik = userEvent.setup();
-    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} szczegolyAudytowe={false} />);
+    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} wzoryLatex={{}} szczegolyAudytowe={false} />);
     await uzytkownik.click(screen.getByTestId('mvd-oze-slad-przelacz'));
     expect(screen.getByTestId('mvd-oze-slad-przelacz')).toHaveAttribute('aria-expanded', 'true');
     const kroki = BIEG.white_box_trace.filter((krok) => krok.test_id === k.testId);
@@ -109,5 +110,46 @@ describe('SzczegolWerdyktu', () => {
     expect(screen.getByTestId('mvd-oze-slad')).toHaveTextContent('Zapis techniczny');
     if (kroki.length > 0) expect(screen.getByTestId('mvd-oze-slad-kroki').children).toHaveLength(kroki.length);
     else expect(screen.getByTestId('mvd-oze-slad-pusty')).toBeInTheDocument();
+  });
+
+  // Iloczyn cech: {wzór z wpisem rejestru LaTeX, wzór bez wpisu} × {wszystkie testy sceny z
+  // krokami}. Mapa pochodzi z katalogu backendu (`ncrfg_katalog.json`, generator fixtur) — ta
+  // sama ścieżka co w MacierzNcRfg (`katalog.wzory_sladu_latex`).
+  it('ślad: każdy wzór kroku sceny renderuje się przez KaTeX z katalogu (bez zapisu ASCII)', async () => {
+    const wzory = katalogFixture().wzory_sladu_latex;
+    const pv = BIEG.modules[1];
+    const indeksy = BIEG.test_catalog
+      .map((d, i) => ((pv.tests.find((t) => t.test_id === d.test_id)?.trace_refs.length ?? 0) > 0 ? i : -1))
+      .filter((i) => i >= 0);
+    expect(indeksy.length).toBeGreaterThan(0);
+    for (const indeks of indeksy) {
+      const k = komorka(indeks, pv.der_ref);
+      const uzytkownik = userEvent.setup();
+      const { unmount } = render(
+        <SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} wzoryLatex={wzory} szczegolyAudytowe={false} />,
+      );
+      await uzytkownik.click(screen.getByTestId('mvd-oze-slad-przelacz'));
+      const kroki = BIEG.white_box_trace.filter((krok) => krok.test_id === k.testId);
+      const lista = screen.getByTestId('mvd-oze-slad-kroki');
+      expect(lista.querySelectorAll('.katex').length).toBeGreaterThanOrEqual(kroki.length);
+      for (const krok of kroki) expect(wzory[krok.formula]).toBeDefined();
+      expect(lista.querySelectorAll('code').length).toBe(
+        kroki.filter((krok) => krok.substitution).length,
+      );
+      unmount();
+    }
+  });
+
+  it('ślad: wzór bez wpisu w katalogu zostaje zapisem rdzenia (stan awaryjny, bez KaTeX)', async () => {
+    const pv = BIEG.modules[1];
+    const indeks = BIEG.test_catalog.findIndex((d) => (pv.tests.find((t) => t.test_id === d.test_id)?.trace_refs.length ?? 0) > 0);
+    const k = komorka(indeks, pv.der_ref);
+    const uzytkownik = userEvent.setup();
+    render(<SzczegolWerdyktu komorka={k} definicja={null} nazwaModulu={pv.der_name} slad={BIEG.white_box_trace} wzoryLatex={{}} szczegolyAudytowe={false} />);
+    await uzytkownik.click(screen.getByTestId('mvd-oze-slad-przelacz'));
+    const kroki = BIEG.white_box_trace.filter((krok) => krok.test_id === k.testId);
+    const lista = screen.getByTestId('mvd-oze-slad-kroki');
+    expect(lista.querySelectorAll('.katex')).toHaveLength(0);
+    for (const krok of kroki) expect(lista.textContent).toContain(krok.formula);
   });
 });

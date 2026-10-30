@@ -37,6 +37,8 @@ export interface SzczegolWerdyktuProps {
   readonly nazwaModulu: string | null;
   /** Pełny ślad WHITE BOX biegu — kroki testu filtrowane po `test_id`. */
   readonly slad: readonly KrokSladuNcRfg[];
+  /** Zapis wzoru rdzenia → LaTeX z katalogu testów (ślad renderuje wzory przez KaTeX). */
+  readonly wzoryLatex: Readonly<Record<string, string>>;
   /**
    * Tryb ekspercki — identyfikator zdolności dowodowej (`zdolnosc_id`, metadana audytowa, nie
    * język inżynierski) tylko wtedy. Ten sam predykat co w wierszu macierzy (`MacierzNcRfg`
@@ -50,6 +52,7 @@ export function SzczegolWerdyktu({
   definicja,
   nazwaModulu,
   slad,
+  wzoryLatex,
   szczegolyAudytowe,
 }: SzczegolWerdyktuProps): JSX.Element {
   const pokazElement = usePoprawWModelu();
@@ -166,7 +169,10 @@ export function SzczegolWerdyktu({
                 {/* Karta #145: ślad silnika prób NC RfG (wzory ASCII, klucze danych, kody
                     statusów) pochodzi z rdzenia zamrożonego — zapis techniczny z podpisem. */}
                 <ZapisTechniczny podpis={MACIERZ_STRINGS.sladZapisPodpis} testid="mvd-oze-slad">
-                  <SladTestu kroki={slad.filter((krok) => krok.test_id === komorka.testId)} />
+                  <SladTestu
+                    kroki={slad.filter((krok) => krok.test_id === komorka.testId)}
+                    wzoryLatex={wzoryLatex}
+                  />
                 </ZapisTechniczny>
               </div>
             </div>

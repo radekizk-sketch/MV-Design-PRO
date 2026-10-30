@@ -190,7 +190,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 15825.6639851
                 },
@@ -208,12 +208,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 10.7017571388
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.500933131423
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 15739.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.340648}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -362,7 +362,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 14326.7057522
                 },
@@ -380,12 +380,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 10.7017571388
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.453225214144
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 14240.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.340648}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -422,7 +422,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.087,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -555,7 +555,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9469.59255784
                 },
@@ -573,12 +573,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 15.7080418078
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.00201755083335
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -727,7 +727,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 8608.93045268
                 },
@@ -745,12 +745,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 15.7080418078
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.00183413712122
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -787,7 +787,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.002,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -801,7 +801,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "standard": "IEC 60909"
     },
     "source": {
-      "control_mode": "cos\u03c6=const",
+      "control_mode": "$\\cos\\varphi$ = const",
       "grid_earthing": {
         "ik_1f_ka": 10.0,
         "imd_it_nn": false,
@@ -1058,7 +1058,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 26237.0557696
                 },
@@ -1076,12 +1076,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 1.01719106872
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 12540.5383871
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 24522.3 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.0323782}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1230,7 +1230,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 23901.596201
                 },
@@ -1248,12 +1248,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 1.01719106872
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 11346.2013979
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 22186.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.0323782}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1290,7 +1290,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.715,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -1423,7 +1423,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9513.00929808
                 },
@@ -1441,12 +1441,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 15.7080418078
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.00201755083335
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1595,7 +1595,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 8652.34719292
                 },
@@ -1613,12 +1613,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 15.7080418078
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.00183413712122
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1655,7 +1655,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.046,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -1879,7 +1879,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9536.56518906
                 },
@@ -1897,12 +1897,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 15.7080418078
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.00201755083335
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2023,7 +2023,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 8675.9030839
                 },
@@ -2041,12 +2041,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 15.7080418078
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.00183413712122
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2083,7 +2083,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.069,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -2188,7 +2188,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 7351.80921809
                 },
@@ -2206,12 +2206,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 15.7080236832
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.00155199066656
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 7282.53 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2332,7 +2332,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 6689.76129211
                 },
@@ -2350,12 +2350,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 15.7080236832
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 0.00141090060596
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 6620.48 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2392,7 +2392,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.069,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -2406,7 +2406,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "standard": "IEC 60909"
     },
     "source": {
-      "control_mode": "cos\u03c6(P)",
+      "control_mode": "$\\cos\\varphi(P)$",
       "machine_type": "IBG",
       "nc_rfg_class": "C",
       "power_hierarchy": {
@@ -2769,7 +2769,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 29199.0841224
                 },
@@ -2787,12 +2787,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.57111691114
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 54.3927016632
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 27467.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.209165}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2941,7 +2941,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 26583.0937091
                 },
@@ -2959,12 +2959,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.57111691114
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 49.212444362
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 24851.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.209165}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -3001,7 +3001,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.731,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
@@ -3134,7 +3134,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9561.11591093
                 },
@@ -3152,12 +3152,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 151.908920213
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9468.79 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -3306,7 +3306,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 8700.31717857
                 },
@@ -3324,12 +3324,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 138.099018375
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 8607.99 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -3366,7 +3366,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -3386,7 +3386,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "ik_1f_ka": 0.12,
         "imd_it_nn": true,
         "neutral_point": "kompensowana",
-        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD; SN 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD",
+        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD; SN 15 kV: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "hybrid": {
@@ -3869,7 +3869,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 31768.860736
                 },
@@ -3887,12 +3887,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.75790483764
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 49.0949191289
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 29884.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.215111}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -4069,7 +4069,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 28922.7418819
                 },
@@ -4087,12 +4087,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.75790483764
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 44.4192125452
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 27038.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.215111}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -4129,7 +4129,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 3.462,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -4290,7 +4290,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 13095.0645541
                 },
@@ -4308,12 +4308,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.79933770923
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 19.1782756655
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 12167.7 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.21643}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -4490,7 +4490,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 11936.2335459
                 },
@@ -4508,12 +4508,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.79933770923
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 17.3517732212
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 11008.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.21643}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -4550,7 +4550,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.731,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
@@ -4711,7 +4711,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9561.11591093
                 },
@@ -4729,12 +4729,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 151.908920213
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9468.79 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -4911,7 +4911,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 8700.31717857
                 },
@@ -4929,12 +4929,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 138.099018375
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 8607.99 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -4971,7 +4971,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.092,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -4991,7 +4991,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "ik_1f_ka": 0.12,
         "imd_it_nn": true,
         "neutral_point": "kompensowana",
-        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD; SN 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD",
+        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD; SN 15 kV: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "hybrid": {
@@ -5479,7 +5479,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 13033.4045802
                 },
@@ -5497,12 +5497,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.79933770923
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 19.1782756655
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 12167.7 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.21643}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -5651,7 +5651,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 11874.5735719
                 },
@@ -5669,12 +5669,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.79933770923
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 17.3517732212
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 11008.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.21643}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -5711,7 +5711,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.866,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.8,
           "verification": {
@@ -5844,7 +5844,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9061.86247829
                 },
@@ -5862,12 +5862,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 144.675162107
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9017.89 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -6016,7 +6016,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 8242.05416176
                 },
@@ -6034,12 +6034,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 131.522874643
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 8198.08 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -6076,7 +6076,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.044,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.75,
           "verification": {
@@ -6112,7 +6112,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "lp": 1,
             "measure": "SN",
             "name": "nadpr\u0105dowe od przeci\u0105\u017ce\u0144",
-            "relay_sn": "1,2 I_bSN = 6 A \u2192 48 A SN / 5 s",
+            "relay_sn": "1,2 \u00d7 pr\u0105d bazowy SN = 6 A \u2192 48 A SN / 5 s",
             "trips": "SN Q0 pole 1"
           },
           {
@@ -6121,34 +6121,34 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "lp": 2,
             "measure": "SN",
             "name": "nadpr\u0105dowe zwarciowe",
-            "relay_sn": "4 I_bSN = 20 A \u2192 160 A SN / 0,1 s",
+            "relay_sn": "4 \u00d7 pr\u0105d bazowy SN = 20 A \u2192 160 A SN / 0,1 s",
             "trips": "SN Q0 pole 1"
           },
           {
             "code": "Ust I>",
-            "inverter": "1,1 Un = 880 V (16,5 kV) / 5 s",
+            "inverter": "1,1 \u00d7 napi\u0119cie znamionowe = 880 V (16,5 kV) / 5 s",
             "lp": 3,
             "measure": "SN",
             "name": "przed wzrostem napi\u0119cia",
-            "relay_sn": "1,12 U_bSN = 112 V \u2192 16,80 kV / 3 s",
+            "relay_sn": "1,12 \u00d7 napi\u0119cie bazowe SN = 112 V \u2192 16,80 kV / 3 s",
             "trips": "nN Q1"
           },
           {
             "code": "Ust II>",
-            "inverter": "1,15 Un = 920 V (17,25 kV) / 0,05 s",
+            "inverter": "1,15 \u00d7 napi\u0119cie znamionowe = 920 V (17,25 kV) / 0,05 s",
             "lp": 4,
             "measure": "SN",
             "name": "przed wzrostem napi\u0119cia",
-            "relay_sn": "1,15 U_bSN = 115 V \u2192 17,25 kV / 0,3 s",
+            "relay_sn": "1,15 \u00d7 napi\u0119cie bazowe SN = 115 V \u2192 17,25 kV / 0,3 s",
             "trips": "SN Q0 pole 1"
           },
           {
             "code": "Ust I<",
-            "inverter": "0,8 Un = 640 V (12,00 kV) / 0,05 s",
+            "inverter": "0,8 \u00d7 napi\u0119cie znamionowe = 640 V (12,00 kV) / 0,05 s",
             "lp": 5,
             "measure": "nN",
             "name": "przed obni\u017ceniem napi\u0119cia",
-            "relay_sn": "0,8 U_bnN = 80 V \u2192 12,00 kV / 5 s",
+            "relay_sn": "0,8 \u00d7 napi\u0119cie bazowe nN = 80 V \u2192 12,00 kV / 5 s",
             "trips": "nN Q1"
           },
           {
@@ -6225,7 +6225,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "ik_1f_ka": 0.12,
         "imd_it_nn": true,
         "neutral_point": "kompensowana",
-        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD sygnalizuje; SN: I\u2033k1f-z z uziemienia neutralnego OSD",
+        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD sygnalizuje; SN: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "IBG",
@@ -6676,7 +6676,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 31616.2987753
                 },
@@ -6694,12 +6694,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.75790483764
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 49.0949191289
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 29884.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.215111}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -6848,7 +6848,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 28770.1799213
                 },
@@ -6866,12 +6866,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.75790483764
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 44.4192125452
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 27038.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.215111}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -6908,7 +6908,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 1.732,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.4,
           "verification": {
@@ -7041,7 +7041,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9514.97407741
                 },
@@ -7059,12 +7059,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 151.908920213
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9468.79 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -7213,7 +7213,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 8654.17534506
                 },
@@ -7231,12 +7231,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 138.099018375
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 8607.99 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -7273,7 +7273,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.046,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -7293,7 +7293,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "ik_1f_ka": 0.12,
         "imd_it_nn": true,
         "neutral_point": "kompensowana",
-        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD; SN: I\u2033k1f-z z uziemienia neutralnego OSD",
+        "note_pl": "nN IT: 1. doziemienie bez pr\u0105du \u2014 IMD; SN: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "IBG",
@@ -7719,7 +7719,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9745.91418509
                 },
@@ -7737,12 +7737,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 151.908920213
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9468.79 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -7947,7 +7947,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 8885.11545274
                 },
@@ -7965,12 +7965,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.47904844772
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 138.099018375
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 8607.99 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -8007,7 +8007,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 0.277,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 15.0,
           "verification": {
@@ -8196,7 +8196,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 34505.9903631
                 },
@@ -8214,12 +8214,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.57111691114
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 63.0640019284
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 31846.8 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.209165}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -8424,7 +8424,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 31472.9579998
                 },
@@ -8442,12 +8442,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.57111691114
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 57.0579065066
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 28813.8 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.209165}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -8484,7 +8484,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             "ik_contribution_ka": 6.025,
             "is_synchronous_machine": false,
             "machine_type": "IBG",
-            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (k\u00b7I_rated), sprowadzone przez przek\u0142adni\u0119"
+            "model": "IEC 60909 \u00a76.7 \u2014 \u017ar\u00f3d\u0142o pr\u0105dowe ograniczone (krotno\u015b\u0107 pr\u0105du znamionowego), sprowadzone przez przek\u0142adni\u0119"
           },
           "un_kv": 0.69,
           "verification": {
@@ -8512,7 +8512,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "ik_1f_ka": 0.06,
         "imd_it_nn": false,
         "neutral_point": "kompensowana",
-        "note_pl": "SN kolektor 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy \u221d Un; LV turbiny za trafem Dyn \u2014 uziemienie lokalne",
+        "note_pl": "SN kolektor 15 kV: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy proporcjonalny do napi\u0119cia znamionowego; LV turbiny za trafem Dyn \u2014 uziemienie lokalne",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "IBG",
@@ -8960,7 +8960,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 10252.8820216
                 },
@@ -8978,12 +8978,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 5.32256329887
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 74.4106220607
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 10781.5 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.169422}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -9222,7 +9222,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 9331.84367412
                 },
@@ -9240,12 +9240,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 5.32256329887
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 67.6460200552
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9801.38 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.169422}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -9312,7 +9312,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_3/1"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 DFIG (Typ 3): crowbar \u2192 maszyna asynchroniczna za Z_M (zanik \u03bc\u00b7q)",
+            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 DFIG (Typ 3): crowbar \u2192 maszyna asynchroniczna za impedancj\u0105 silnika (zanik \u03bc\u00b7q)",
             "motors_negligible": false,
             "t_min_s": 0.1
           },
@@ -9537,7 +9537,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 37543.9665094
                 },
@@ -9555,12 +9555,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 8.3990174875
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 14.1111616514
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 44329.7 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.267349}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -9799,7 +9799,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 34086.1204493
                 },
@@ -9817,12 +9817,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 8.3990174875
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 12.7672414941
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 40107.8 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.267349}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -9889,7 +9889,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_3/1"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 DFIG (Typ 3): crowbar \u2192 maszyna asynchroniczna za Z_M (zanik \u03bc\u00b7q)",
+            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 DFIG (Typ 3): crowbar \u2192 maszyna asynchroniczna za impedancj\u0105 silnika (zanik \u03bc\u00b7q)",
             "motors_negligible": false,
             "t_min_s": 0.1
           },
@@ -9919,7 +9919,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "ik_1f_ka": 0.06,
         "imd_it_nn": false,
         "neutral_point": "kompensowana",
-        "note_pl": "SN kolektor 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy \u221d Un; zacisk DFIG za trafem Dyn \u2014 uziemienie lokalne",
+        "note_pl": "SN kolektor 15 kV: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy proporcjonalny do napi\u0119cia znamionowego; zacisk DFIG za trafem Dyn \u2014 uziemienie lokalne",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "DFIG",
@@ -10380,7 +10380,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 9791.08307736
                 },
@@ -10398,12 +10398,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.86856911067
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 109.175982862
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 10046.3 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.154971}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -10642,7 +10642,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 8904.9056697
                 },
@@ -10660,12 +10660,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.86856911067
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 99.2508935112
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9132.97 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.154971}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -10732,7 +10732,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_3/1"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 maszyna asynchroniczna za Z_M (zanik \u03bc\u00b7q)",
+            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 maszyna asynchroniczna za impedancj\u0105 silnika (zanik \u03bc\u00b7q)",
             "motors_negligible": false,
             "t_min_s": 0.1
           },
@@ -10957,7 +10957,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 16209.7349913
                 },
@@ -10975,12 +10975,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 8.54530193628
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 5.39782803583
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 19628.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.272005}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -11219,7 +11219,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 14709.8576945
                 },
@@ -11237,12 +11237,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 8.54530193628
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 4.88374917527
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 17758.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.272005}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -11309,7 +11309,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_3/1"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 maszyna asynchroniczna za Z_M (zanik \u03bc\u00b7q)",
+            "model": "IEC 60909-0:2016 \u00a76.7/\u00a76.6 \u2014 maszyna asynchroniczna za impedancj\u0105 silnika (zanik \u03bc\u00b7q)",
             "motors_negligible": false,
             "t_min_s": 0.1
           },
@@ -11339,7 +11339,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "ik_1f_ka": 0.06,
         "imd_it_nn": false,
         "neutral_point": "kompensowana",
-        "note_pl": "SN kolektor 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy \u221d Un; LV turbiny za trafem Dyn \u2014 uziemienie lokalne",
+        "note_pl": "SN kolektor 15 kV: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy proporcjonalny do napi\u0119cia znamionowego; LV turbiny za trafem Dyn \u2014 uziemienie lokalne",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "ASYNCHRONOUS",
@@ -11692,7 +11692,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 9949.48128729
                 },
@@ -11710,12 +11710,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.32150474338
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 190.898050298
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 10164.6 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.137558}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -11860,7 +11860,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 9055.49420809
                 },
@@ -11878,12 +11878,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.32150474338
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 173.543682089
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9240.59 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.137558}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -11941,7 +11941,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "sync/SN_PCC/2"
               }
             ],
-            "model": "IEC 60909-0:2016 \u00a76.3/\u00a76.6 \u2014 maszyna synchroniczna za Z\u2033 (zanik \u03bc)",
+            "model": "IEC 60909-0:2016 \u00a76.3/\u00a76.6 \u2014 maszyna synchroniczna za impedancj\u0105 podprzej\u015bciow\u0105 (zanik \u03bc)",
             "motors_negligible": true,
             "t_min_s": 0.1
           },
@@ -11957,12 +11957,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "standard": "IEC 60909"
     },
     "source": {
-      "control_mode": "U/Q \u00b7 cos\u03c6",
+      "control_mode": "U/Q \u00b7 $\\cos\\varphi$",
       "genset": {
         "cos_phi_r": 0.8,
         "genset_kw": 1000.0,
         "n_gensets": 2,
-        "neutral_earthing": "rezystor NGR (ogranicza I0 stojana)",
+        "neutral_earthing": "rezystor NGR (ogranicza pr\u0105d zerowy stojana)",
         "sn_kv": 15.0,
         "source_ref": "std:IEC_60909_6_3;enm:Generator.gen_type=biogas_synchronous",
         "xd_subtransient_pu": 0.15
@@ -11971,7 +11971,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
         "ik_1f_ka": 0.06,
         "imd_it_nn": false,
         "neutral_point": "kompensowana",
-        "note_pl": "SN 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy \u221d Un; agregaty synchroniczne na szynie SN \u2014 punkt gwiazdowy generatora wg karty",
+        "note_pl": "SN 15 kV: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana), pr\u0105d resztkowy proporcjonalny do napi\u0119cia znamionowego; agregaty synchroniczne na szynie SN \u2014 punkt gwiazdowy generatora wg karty",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "SYNCHRONOUS",
@@ -12389,7 +12389,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 59205.0836764
                 },
@@ -12407,12 +12407,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.61756682078
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 105.543132523
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 55832.6 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.210644}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -12613,7 +12613,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 53896.4187182
                 },
@@ -12631,12 +12631,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 6.61756682078
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 95.4914056165
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 50515.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.210644}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -12881,7 +12881,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 10243.8845517
                 },
@@ -12899,12 +12899,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.55680806412
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 156.064829545
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 10514.5 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.145048}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -13105,7 +13105,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 9334.30303093
                 },
@@ -13123,12 +13123,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 4.55680806412
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 141.877117769
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 9558.59 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.145048}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -13373,7 +13373,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 30923.3627618
                 },
@@ -13391,12 +13391,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 8.33096476656
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 12.3476128459
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 36237.7 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.265183}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -13597,7 +13597,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od pocz\u0105tkowego pr\u0105du zwarciowego odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; wsp\u00f3\u0142czynnik zanikania \u03bc z krotno\u015bci pocz\u0105tkowego pr\u0105du zwarciowego maszyny wzgl\u0119dem jej pr\u0105du znamionowego (oba na zaciskach maszyny) i z minimalnego czasu zw\u0142oki r\u00f3wnego czasowi wy\u0142\u0105czenia, wsp\u00f3\u0142czynnik q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; spadek napi\u0119cia na reaktancji podprzej\u015bciowej maszyny wyznacza jej udzia\u0142 w zaniku. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do pocz\u0105tkowego pr\u0105du zwarciowego i pr\u0105du wy\u0142\u0105czeniowego bez zaniku.",
                 "result": {
                   "ib_a": 28091.1594627
                 },
@@ -13615,12 +13615,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                   "wykladnik": 8.33096476656
                 },
                 "key": "iDC",
-                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
                 "result": {
                   "i_dc_a": 11.1716497177
                 },
                 "substitution_latex": "\\sqrt{2} \\cdot 32786.4 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.265183}",
-                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -13694,12 +13694,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
       "standard": "IEC 60909"
     },
     "source": {
-      "control_mode": "U/Q \u00b7 cos\u03c6 \u00b7 P(f)",
+      "control_mode": "U/Q \u00b7 $\\cos\\varphi$ \u00b7 P(f)",
       "grid_earthing": {
         "ik_1f_ka": 0.06,
         "imd_it_nn": false,
         "neutral_point": "kompensowana",
-        "note_pl": "SN 15 kV: I\u2033k1f-z z uziemienia neutralnego OSD (kompensowana); pkt neutralny agregatu synchr. przez rezystor NGR (64/59N)",
+        "note_pl": "SN 15 kV: pr\u0105d zwarcia doziemnego z uziemienia neutralnego OSD (kompensowana); pkt neutralny agregatu synchr. przez rezystor NGR (64/59N)",
         "source_ref": "norma:PN-EN_60909_doziemienie;OSD:punkt_neutralny_SN"
       },
       "machine_type": "MIXED",

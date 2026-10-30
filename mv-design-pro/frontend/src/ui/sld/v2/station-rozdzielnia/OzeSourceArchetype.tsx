@@ -493,7 +493,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
       {/* Machine type + NC RfG mode badge (gate G). */}
       {detail !== 'far' && (
         <text data-testid="oze-source-badge" x={0} y={busY - 19} textAnchor="middle" fill="#FFB020" fontFamily={FONT_MONO} fontSize={7.5} fontWeight={700}>
-          {`${src.technology} · ${src.machine_type} · NC ${src.nc_rfg_class} · ${src.control_mode}`}
+          <TekstSvgZWzorami tekst={`${src.technology} · ${src.machine_type} · NC ${src.nc_rfg_class} · ${src.control_mode}`} />
         </text>
       )}
 

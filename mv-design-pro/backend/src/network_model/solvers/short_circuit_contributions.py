@@ -298,7 +298,8 @@ KLASA_WKLADU_ZRODLA_INNA_WYSPA: str = "INNA_WYSPA"
 #: Przyczyna wkładu strukturalnie zerowego — wynika z topologii, nie z wartości liczbowej.
 PRZYCZYNA_WKLADU_INNA_WYSPA: str = (
     "źródło w innej wyspie niż węzeł zwarcia: brak drogi przez gałęzie w ruchu i zamknięte "
-    "łączniki, więc impedancja wzajemna Z_kf = 0 z topologii — wkład strukturalnie zerowy"
+    "łączniki, więc impedancja wzajemna węzła źródła i węzła zwarcia jest równa zeru "
+    "z topologii — wkład strukturalnie zerowy"
 )
 
 #: Tolerancja WZGLĘDNA bilansu wkładów w węźle zwarcia — kontrakt bilansu KCL rozpływu

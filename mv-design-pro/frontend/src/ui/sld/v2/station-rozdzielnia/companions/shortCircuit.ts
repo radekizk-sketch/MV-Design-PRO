@@ -145,7 +145,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 15833.1445535
               },
@@ -163,12 +163,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 0.656561418254
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 11612.913032
               },
               "substitution_latex": "\\sqrt{2} \\cdot 15833.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.020899}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -317,7 +317,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 14325.2260246
               },
@@ -335,12 +335,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 0.656561418254
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 10506.9213147
               },
               "substitution_latex": "\\sqrt{2} \\cdot 14325.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.020899}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -480,7 +480,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
+              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
             {
@@ -504,7 +504,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 9467.28315676
               },
@@ -522,12 +522,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00201755083335
               },
-              "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -652,7 +652,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
               "result": {
                 "kappa": 1.23866591694
               },
-              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500002}",
+              "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot 0.500003}",
               "title": "Wsp\u00f3\u0142czynnik udaru"
             },
             {
@@ -676,7 +676,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 8606.6210516
               },
@@ -694,12 +694,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00183413712122
               },
-              "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -872,7 +872,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 15833.1445535
               },
@@ -890,12 +890,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 0.656561418254
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 11612.913032
               },
               "substitution_latex": "\\sqrt{2} \\cdot 15833.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.020899}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1044,7 +1044,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 14325.2260246
               },
@@ -1062,12 +1062,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 0.656561418254
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 10506.9213147
               },
               "substitution_latex": "\\sqrt{2} \\cdot 14325.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.020899}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1231,7 +1231,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 9467.28315676
               },
@@ -1249,12 +1249,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00201755083335
               },
               "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1403,7 +1403,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 8606.6210516
               },
@@ -1421,12 +1421,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00183413712122
               },
               "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1571,7 +1571,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 9467.28315676
               },
@@ -1589,12 +1589,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00201755083335
               },
               "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1715,7 +1715,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 8606.6210516
               },
@@ -1733,12 +1733,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00183413712122
               },
               "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1883,7 +1883,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 9467.28315676
               },
@@ -1901,12 +1901,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00201755083335
               },
               "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2027,7 +2027,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 8606.6210516
               },
@@ -2045,12 +2045,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00183413712122
               },
               "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2186,7 +2186,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 9467.28315676
               },
@@ -2204,12 +2204,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00201755083335
               },
               "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2330,7 +2330,7 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "przypadek": "odlegle_od_generatora"
               },
               "key": "Ib",
-              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
+              "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, pr\u0105d wy\u0142\u0105czeniowy symetryczny r\u00f3wna si\u0119 pocz\u0105tkowemu pr\u0105dowi zwarciowemu (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do pr\u0105du wy\u0142\u0105czeniowego w ca\u0142o\u015bci.",
               "result": {
                 "ib_a": 8606.6210516
               },
@@ -2348,12 +2348,12 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
                 "wykladnik": 15.7080418078
               },
               "key": "iDC",
-              "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+              "notes": "Pocz\u0105tkowy pr\u0105d zwarciowy cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). Stosunek R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
               "result": {
                 "i_dc_a": 0.00183413712122
               },
               "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
-              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
+              "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili wy\u0142\u0105czenia"
             },
             {
               "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",

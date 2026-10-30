@@ -210,7 +210,8 @@ def _odmowa_brak_pol_karty_zconv(converter: Any) -> OdmowaWejsciaRdzenia:
         [
             RekordOdmowy(
                 KOD_SSCI_BRAK_POL_KARTY,
-                "Model impedancji przekształtnika Z_conv(f) wymaga pól karty przekształtnika; "
+                "Model impedancji przekształtnika w funkcji częstotliwości wymaga pól karty "
+                "przekształtnika; "
                 f"brakuje: {', '.join(opisy)}.",
                 (OdwolanieElementu(RODZAJ_ELEMENT, converter.ref),),
             )
@@ -368,8 +369,8 @@ def _z_zrodla_szyny(bus: Any) -> tuple[complex, bool] | None:
 
 #: Polskie nazwy parametrów obwodu napięcia powrotnego (komunikat braku, ślad WHITE BOX).
 _NAZWY_PARAMETROW_TRV: dict[str, str] = {
-    "breaker_rated_voltage_kv": "napięcie znamionowe wyłącznika U_r",
-    "trv_natural_frequency_hz": "częstotliwość własna f_n",
+    "breaker_rated_voltage_kv": "napięcie znamionowe wyłącznika",
+    "trv_natural_frequency_hz": "częstotliwość własna obwodu napięcia powrotnego",
     "trv_tau_s": "stała czasowa τ",
 }
 
@@ -584,16 +585,19 @@ def _wiersz_izolacji(item: Any) -> JsonDict:
         mcov = u_c_wymagane if dlugotrwale else max(u_c_wymagane, u_tov / TOV_10S_DO_U_C_ROBOCZY)
         dane.append(
             _dana_przyjeta_izolacji(
-                "Napięcie trwałej pracy ogranicznika U_c (dobór wstępny)",
+                "Napięcie trwałej pracy ogranicznika (dobór wstępny)",
                 mcov,
                 "kV",
-                "Brak karty katalogowej ogranicznika — U_c "
+                "Brak karty katalogowej ogranicznika — napięcie trwałej pracy "
                 + (
-                    "równe wymaganemu U_TOV (doziemienie długotrwałe, IEC 60099-5)."
+                    "równe wymaganemu przepięciu dorywczemu (doziemienie długotrwałe, "
+                    "IEC 60099-5)."
                     if dlugotrwale
-                    else "= max(U_m/√3, U_TOV/"
-                    f"{_lp(TOV_10S_DO_U_C_ROBOCZY)}) — napięcie trwałej pracy i wytrzymałość TOV "
-                    "10 s doboru wstępnego (doziemienie wyłączane samoczynnie, IEC 60099-5)."
+                    else "równe większej z wartości: napięcie najwyższe sieci przez √3 albo "
+                    "przepięcie dorywcze przez "
+                    f"{_lp(TOV_10S_DO_U_C_ROBOCZY)} — napięcie trwałej pracy i wytrzymałość na "
+                    "przepięcie dorywcze 10 s doboru wstępnego (doziemienie wyłączane "
+                    "samoczynnie, IEC 60099-5)."
                 ),
             )
         )
@@ -603,11 +607,12 @@ def _wiersz_izolacji(item: Any) -> JsonDict:
         u_r = mcov * U_R_DO_U_C_ROBOCZY
         dane.append(
             _dana_przyjeta_izolacji(
-                "Napięcie znamionowe ogranicznika U_r (dobór wstępny)",
+                "Napięcie znamionowe ogranicznika (dobór wstępny)",
                 u_r,
                 "kV",
-                f"U_r = {_lp(U_R_DO_U_C_ROBOCZY)}·U_c — największy stosunek ograniczników ZnO SN "
-                "katalogu programu (do potwierdzenia kartą producenta).",
+                f"Napięcie znamionowe równe {_lp(U_R_DO_U_C_ROBOCZY)}-krotności napięcia trwałej "
+                "pracy — największy stosunek ograniczników ZnO SN katalogu programu (do "
+                "potwierdzenia kartą producenta).",
             )
         )
     if item.arrester_residual_10ka_kv is not None:
@@ -616,11 +621,12 @@ def _wiersz_izolacji(item: Any) -> JsonDict:
         residual = mcov * U_RES_DO_U_C_ROBOCZY
         dane.append(
             _dana_przyjeta_izolacji(
-                "Napięcie obniżone ogranicznika przy 10 kA U_res (dobór wstępny)",
+                "Napięcie obniżone ogranicznika przy 10 kA (dobór wstępny)",
                 residual,
                 "kV",
-                f"U_res = {_lp(U_RES_DO_U_C_ROBOCZY)}·U_c — największy stosunek ograniczników ZnO "
-                "SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                f"Napięcie obniżone równe {_lp(U_RES_DO_U_C_ROBOCZY)}-krotności napięcia trwałej "
+                "pracy — największy stosunek ograniczników ZnO SN katalogu programu, zachowawczo "
+                "(do potwierdzenia kartą producenta).",
             )
         )
     if item.arrester_tov_10s_kv is not None:
@@ -632,8 +638,9 @@ def _wiersz_izolacji(item: Any) -> JsonDict:
                 "Wytrzymałość ogranicznika na przepięcie dorywcze 10 s (dobór wstępny)",
                 tov_cap,
                 "kV",
-                f"TOV(10 s) = {_lp(TOV_10S_DO_U_C_ROBOCZY)}·U_c — najmniejszy stosunek ograniczników "
-                "ZnO SN katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
+                f"Wytrzymałość na przepięcie dorywcze 10 s równa {_lp(TOV_10S_DO_U_C_ROBOCZY)}"
+                "-krotności napięcia trwałej pracy — najmniejszy stosunek ograniczników ZnO SN "
+                "katalogu programu, zachowawczo (do potwierdzenia kartą producenta).",
             )
         )
     if not dlugotrwale:
@@ -669,7 +676,8 @@ def _wiersz_izolacji(item: Any) -> JsonDict:
                 "short_duration_50hz_kv": None,
                 "bil_margin_percent": None,
                 "message_pl": (
-                    f"U_m = {_lp(u_m)} kV powyżej tabeli poziomów izolacji solvera "
+                    f"Napięcie najwyższe sieci {_lp(u_m)} kV powyżej tabeli poziomów izolacji "
+                    "solvera "
                     "(IEC 60071-1 tab. 2 do 123 kV) — marginesu ochrony nie wyznaczono."
                 ),
             }
@@ -1286,7 +1294,8 @@ class V126AcademicSolver:
             return {
                 "status": "dane niekompletne",
                 "message_pl": (
-                    "Analiza SSCI (Z_grid/Z_conv) wymaga przekształtnika (falownika) "
+                    "Analiza SSCI (impedancja sieci względem impedancji przekształtnika) wymaga "
+                    "przekształtnika (falownika) "
                     "w modelu. Brak przekształtnika — analiza niewykonana."
                 ),
                 "missing_fields": ["converter"],
@@ -1316,7 +1325,8 @@ class V126AcademicSolver:
                 "ssci_impedance_missing_card_fields",
                 "Z_conv(jw) wymaga: current_loop_bandwidth_hz, pll_bandwidth_hz, filter_l_pu",
                 {"converter_ref": converter.ref, "missing": missing},
-                "Brak obowiązkowych pól karty przekształtnika dla Z_conv(f): " + ", ".join(opisy),
+                "Brak obowiązkowych pól karty przekształtnika dla modelu impedancji "
+                "przekształtnika: " + ", ".join(opisy),
                 {"status": "dane niekompletne"},
                 "Brak danych karty przekształtnika; wartości zastępczych się nie podstawia.",
                 result_pl=("Brak danych karty przekształtnika"),
@@ -1448,13 +1458,18 @@ class V126AcademicSolver:
         l_finite = all(_finite(row["re"], row["im"]) for row in l_rows)
         sanity = _sanity_block(
             [
-                ("z_grid_finite", z_grid_finite, "Z_grid nieskończone/NaN"),
-                ("z_conv_finite", z_conv_finite, "Z_conv nieskończone/NaN"),
-                ("minor_loop_finite", l_finite, "L(f) nieskończone/NaN"),
+                ("z_grid_finite", z_grid_finite, "Impedancja sieci nieskończona albo nieokreślona"),
+                (
+                    "z_conv_finite",
+                    z_conv_finite,
+                    "Impedancja przekształtnika nieskończona albo nieokreślona",
+                ),
+                ("minor_loop_finite", l_finite, "Wzmocnienie pętli nieskończone albo nieokreślone"),
                 (
                     "negative_resistance_present",
                     re_zconv_min < 0.0,
-                    "Brak strefy Re(Z_conv)<0 poniżej pasma PLL — mechanizm SSCI nieobecny",
+                    "Brak strefy ujemnej rezystancji przekształtnika poniżej pasma PLL — "
+                    "mechanizm SSCI nieobecny",
                 ),
             ],
             has_inputs=True,
@@ -1871,12 +1886,12 @@ class V126AcademicSolver:
                 (
                     "u_touch_nonneg",
                     _finite(u_touch) and u_touch >= 0.0,
-                    "U_touch < 0 lub nieskończone",
+                    "Napięcie dotykowe ujemne albo nieskończone",
                 ),
                 (
                     "u_step_nonneg",
                     _finite(u_step) and u_step >= 0.0,
-                    "U_step < 0 lub nieskończone",
+                    "Napięcie krokowe ujemne albo nieskończone",
                 ),
             ],
             has_inputs=True,
@@ -2208,16 +2223,16 @@ class V126AcademicSolver:
         # `UziemienieSekcji.prad_pojemnosciowy_a` i gotowość (`galezie.b0`).
         if b0_total_s <= 0.0 or missing_b0 or u_line_kv is None or u_line_kv <= 0.0:
             reason = (
-                f"Odcinki sieci SN bez susceptancji zerowej B′0 i bez podstawy wartości "
-                f"roboczej (susceptancja zgodna B′1 nieznana): {len(missing_b0)} — suma "
-                "pojemności doziemnej bez nich zaniżałaby I_C, projekt uziemienia nie jest "
-                "liczony z sumy częściowej."
+                f"Odcinki sieci SN bez susceptancji jednostkowej składowej zerowej i bez podstawy "
+                f"wartości roboczej (susceptancja jednostkowa składowej zgodnej nieznana): "
+                f"{len(missing_b0)} — suma pojemności doziemnej bez nich zaniżałaby prąd "
+                "pojemnościowy doziemienia, projekt uziemienia nie jest liczony z sumy częściowej."
                 if missing_b0
                 else (
-                    "Brak jawnej pojemności doziemnej B0 (b0_siemens_per_km) dla linii/kabli "
-                    "sieci SN — C0 nieoznaczalne (zakaz fabrykacji)."
+                    "Brak jawnej susceptancji składowej zerowej linii i kabli sieci SN — "
+                    "pojemność doziemna nieoznaczalna (zakaz fabrykacji)."
                     if b0_total_s <= 0.0
-                    else "Brak napięcia znamionowego sieci (U_l) — projekt niewykonalny."
+                    else "Brak napięcia znamionowego sieci — projekt niewykonalny."
                 )
             )
             trace.add(
@@ -2231,7 +2246,8 @@ class V126AcademicSolver:
                 },
                 przedrostek + reason,
                 {"status": "dane niekompletne"},
-                "Brak danych wejściowych (B0 lub U_l) — brak oszacowania zastępczego.",
+                "Brak danych wejściowych (susceptancja składowej zerowej albo napięcie "
+                "znamionowe sieci) — brak oszacowania zastępczego.",
                 result_pl=("Brak danych do wyznaczenia prądu pojemnościowego doziemienia"),
             )
             return {
@@ -2531,7 +2547,8 @@ class V126AcademicSolver:
         if brak:
             reason = (
                 "Sieć SN uziemiona przez rezystor, ale wejście nie niesie danych rezystora "
-                "punktu neutralnego (R, I_n, t_n) — sprawdzenia rezystora nie wykonano."
+                "punktu neutralnego (rezystancja, prąd znamionowy i czas znamionowy) — "
+                "sprawdzenia rezystora nie wykonano."
                 if not rezystory
                 else "Wejście nie niesie punktów uziemienia sieci w ruchu (impedancje rezystora, "
                 "dławika Z.14 i transformatora uziemiającego) — prądu doziemienia nie wyznaczono."
@@ -2604,7 +2621,7 @@ class V126AcademicSolver:
                 (
                     "i_ef_positive",
                     _finite(i_ef_a) and i_ef_a > 0.0,
-                    "I_ef ≤ 0 lub nieskończone",
+                    "Prąd doziemienia niedodatni albo nieskończony",
                 ),
             ],
             has_inputs=True,
@@ -2659,10 +2676,14 @@ class V126AcademicSolver:
                 "ner_thermal_incomplete",
                 formula,
                 {"missing": ["uziemienie_sn.sieci.c_max"], **dopisek},
-                "Brak współczynnika napięciowego c_max sieci (IEC 60909-0 tab. 1).",
+                "Brak maksymalnego współczynnika napięciowego sieci (IEC 60909-0 tab. 1).",
                 {"status": "dane niekompletne"},
-                "Bez c_max największego prądu rezystora nie da się wyznaczyć — bez zgadywania.",
-                result_pl="Sprawdzenia cieplnego nie wykonano — brak współczynnika c_max sieci",
+                "Bez maksymalnego współczynnika napięciowego największego prądu rezystora nie da "
+                "się wyznaczyć — bez zgadywania.",
+                result_pl=(
+                    "Sprawdzenia cieplnego nie wykonano — brak maksymalnego współczynnika "
+                    "napięciowego sieci"
+                ),
             )
             return {
                 "status": "dane niekompletne",
@@ -2761,9 +2782,12 @@ class V126AcademicSolver:
             "energy_rating_j": rozstrzygajacy["energy_rating_j"],
             "resistors": wiersze,
             "podstawa_pl": (
-                "IEC 60909-0: prąd największy (c_max, tab. 1) i prąd cieplny zastępczy "
-                "I_th = I_k·√(m+n) (§12); IEEE Std C57.32: prąd i czas znamionowy rezystora "
-                "uziemiającego (I_n, t_n) — kryterium adiabatyczne I_th²·t ≤ I_n²·t_n"
+                "IEC 60909-0: prąd największy (maksymalny współczynnik napięciowy, tab. 1) "
+                "i zastępczy prąd cieplny jako prąd zwarciowy pomnożony przez pierwiastek z sumy "
+                "współczynników składowej nieokresowej i okresowej (§12); IEEE Std C57.32: prąd "
+                "i czas znamionowy rezystora uziemiającego — kryterium adiabatyczne: całka "
+                "kwadratu zastępczego prądu cieplnego po czasie wyłączenia nie przekracza "
+                "kwadratu prądu znamionowego pomnożonego przez czas znamionowy"
             ),
         }
         if t_clear_s is None:
@@ -2773,8 +2797,8 @@ class V126AcademicSolver:
                 {"missing": ["ner_clearing_time_s"], **dopisek},
                 "Brak czasu wyłączenia zwarcia doziemnego.",
                 {"status": "dane niekompletne"},
-                "Porównanie z czasem wyłączenia wymaga t_wył — bez zgadywania; czas "
-                "dopuszczalny t_dop policzono.",
+                "Porównanie z czasem wyłączenia wymaga czasu wyłączenia — bez zgadywania; czas "
+                "dopuszczalny policzono.",
                 result_pl=(
                     "Porównania z czasem wyłączenia nie wykonano — brak czasu wyłączenia; "
                     f"czas dopuszczalny {rozstrzygajacy['permissible_time_s']} s"
@@ -2849,8 +2873,8 @@ class V126AcademicSolver:
                     for row in rows
                 ],
             },
-            "Przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego k sieci "
-            "(solver doziemienia albo wartość robocza trybu) i napięcia najwyższego U_m; "
+            "Przepięcie dorywcze przy doziemieniu z współczynnika zwarcia doziemnego sieci "
+            "(solver doziemienia albo wartość robocza trybu) i napięcia najwyższego sieci; "
             "wymagane napięcie trwałej pracy ogranicznika wg czasu trwania doziemienia "
             "(sieć izolowana i kompensowana — długotrwale, z rezystorem i uziemiona "
             "bezpośrednio — do wyłączenia); napięcie obniżone przy 10 kA i wytrzymałość TOV "
@@ -2956,8 +2980,9 @@ class V126AcademicSolver:
                 "i5_multiplier": 3.0 if recommended == "fifth_harmonic" else None,
             },
             "settings_podstawa_pl": (
-                "Nastawy startowe metody zalecanej (U0 5 % U_f, P0 1 W, krotność 5. harmonicznej "
-                "3) — propozycja praktyki zabezpieczeń ziemnozwarciowych SN bez wartości "
+                "Nastawy startowe metody zalecanej (napięcie składowej zerowej 5 % napięcia "
+                "fazowego, moc czynna składowej zerowej 1 W, krotność 5. harmonicznej 3) — "
+                "propozycja praktyki zabezpieczeń ziemnozwarciowych SN bez wartości "
                 "normowej; dobór ostateczny w projekcie zabezpieczeń."
             ),
             "sanity": sanity,
@@ -3066,8 +3091,8 @@ class V126AcademicSolver:
                 opis_braku_trv
                 if brak_trv
                 else "Przebieg napięcia powrotnego 2–100 µs wyznaczono z parametrów obwodu; "
-                "obwiedni wytrzymałości wyłącznika nie przyjęto (parametry u_c, t_3 tabel "
-                "IEC 62271-100 nie są danymi programu)."
+                "obwiedni wytrzymałości wyłącznika nie przyjęto (wartość szczytowa obwiedni "
+                "i czas do jej osiągnięcia z tabel IEC 62271-100 nie są danymi programu)."
             ),
             {"trv_peak_kv": szczyt, "ferro_risk": ferro_risk},
             "Napięcie powrotne w [kV] (iloczyn napięcia [kV] i czynników bezwymiarowych).",
@@ -3090,7 +3115,8 @@ class V126AcademicSolver:
                     inrush_multiple is not None
                     and _finite(inrush_multiple)
                     and 0.0 < inrush_multiple <= 30.0,
-                    "Krotność udaru poza (0,30]×In (nierealna)",
+                    "Krotność prądu załączania poza przedziałem do 30-krotności prądu "
+                    "znamionowego (nierealna)",
                 ),
                 (
                     "second_harmonic_range",
@@ -3199,7 +3225,7 @@ class V126AcademicSolver:
                 cos_phi = float(propozycja.wartosc)
                 dane.append(
                     {
-                        "nazwa_pl": "Znamionowy współczynnik mocy silnika cos φ_n",
+                        "nazwa_pl": "Znamionowy współczynnik mocy silnika",
                         "wartosc": {"wartosc": cos_phi, "jednostka": "1"},
                         "powod_pl": f"{propozycja.uzasadnienie_pl} ({propozycja.odniesienie}).",
                         "jakosc": "ESTIMATED",
@@ -3212,7 +3238,7 @@ class V126AcademicSolver:
                 sprawnosc = float(propozycja.wartosc)
                 dane.append(
                     {
-                        "nazwa_pl": "Sprawność znamionowa silnika η_n",
+                        "nazwa_pl": "Sprawność znamionowa silnika",
                         "wartosc": {"wartosc": sprawnosc, "jednostka": "1"},
                         "powod_pl": f"{propozycja.uzasadnienie_pl} ({propozycja.odniesienie}).",
                         "jakosc": "ESTIMATED",
@@ -3259,8 +3285,9 @@ class V126AcademicSolver:
             "t_r/t_utyku; M_r = 2·M_max/(1/s_k + s_k)",
             {"motors": len(model.motors)},
             "Impedancja zastępcza sieci w węźle silnika — przekątna macierzy Z-bus sieci "
-            "zwarciowej IEC 60909 modelu (przekładnia i K_T transformatorów, Z_Q zasilania, Z″ "
-            "maszyn), odniesiona do napięcia znamionowego szyny; czas rozruchu odniesiony do "
+            "zwarciowej IEC 60909 modelu (przekładnia i współczynnik korekcyjny impedancji "
+            "transformatorów, impedancja sieci zasilającej, impedancja podprzejściowa maszyn), "
+            "odniesiona do napięcia znamionowego szyny; czas rozruchu odniesiony do "
             "dopuszczalnego czasu utyku przy prądzie zablokowanego wirnika.",
             {
                 "voltage_dip_percent": [row["voltage_dip_percent"] for row in rows],
@@ -3293,7 +3320,8 @@ class V126AcademicSolver:
                 (
                     "lr_multiple_range",
                     _finite(*lr_values) and all(0.0 < v <= 12.0 for v in lr_values),
-                    "Krotność prądu zablokowanego wirnika poza (0,12]×In",
+                    "Krotność prądu zablokowanego wirnika poza przedziałem do 12-krotności "
+                    "prądu znamionowego",
                 ),
                 (
                     "time_ratio_nonneg",
@@ -3506,8 +3534,11 @@ class V126AcademicSolver:
                 "seeds_by_bus": seeds_by_bus,
                 "impedancje_zastepcze_ohm": impedancje_zastepcze,
             },
-            "ΔU = P_netto·|Z_th|/U_n², Z_th — przekątna macierzy Z-bus sieci zwarciowej IEC 60909 "
-            "modelu w szynie (przekładnia i K_T transformatorów, Z_Q zasilania, Z″ maszyn). "
+            "Zmiana napięcia jako iloczyn mocy netto i modułu impedancji zastępczej sieci "
+            "odniesiony do kwadratu napięcia znamionowego; impedancja zastępcza to przekątna "
+            "macierzy Z-bus sieci zwarciowej IEC 60909 modelu w szynie (przekładnia i współczynnik "
+            "korekcyjny impedancji transformatorów, impedancja sieci zasilającej, impedancja "
+            "podprzejściowa maszyn). "
             "Obciążenie losowane z rozkładu beta, generacja z rozkładu normalnego obciętego "
             "do zakresu fizycznego; KAŻDA szyna losuje z WŁASNEGO podstrumienia — ziarno "
             "szyny wyprowadzone jawnie z pary (ziarno modelu, referencja szyny), więc "
@@ -3563,8 +3594,9 @@ class V126AcademicSolver:
                 [
                     RekordOdmowy(
                         KOD_TRANSFORMATOR_BEZ_STRAT_JALOWYCH,
-                        "Bilans strat i koszt cyklu życia wymagają strat jałowych P0 z karty "
-                        f"katalogowej transformatora; transformatorów bez P0: {len(bez_p0)}.",
+                        "Bilans strat i koszt cyklu życia wymagają strat jałowych z karty "
+                        "katalogowej transformatora; transformatorów bez strat jałowych: "
+                        f"{len(bez_p0)}.",
                         tuple(OdwolanieElementu(RODZAJ_ELEMENT, ref) for ref in bez_p0),
                     )
                 ]

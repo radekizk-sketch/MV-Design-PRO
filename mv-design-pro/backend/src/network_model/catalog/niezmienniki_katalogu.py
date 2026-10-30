@@ -247,11 +247,15 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-003",
-        nazwa="Współczynnik udziału zwarciowego k_sc skończony i dodatni",
+        nazwa="Współczynnik udziału zwarciowego przekształtnika skończony i dodatni",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja k_sc = I_k'' / I_n przekształtnika (wielkość dodatnia)",
+        podstawa=(
+            "Definicja współczynnika udziału zwarciowego jako ilorazu początkowego prądu "
+            "zwarciowego i prądu znamionowego przekształtnika (wielkość dodatnia)"
+        ),
         uzasadnienie=(
-            "k_sc = 0 znaczy „źródło nie wnosi prądu zwarciowego”, wartość ujemna nie "
+            "Współczynnik równy zeru znaczy „źródło nie wnosi prądu zwarciowego”, wartość "
+            "ujemna nie "
             "ma sensu, a NaN/±Inf nie są liczbami — każda z nich rozsadziłaby wynik "
             "zwarciowy po cichu. Warunek `math.isfinite` domyka NaN i obie "
             "nieskończoności jednym predykatem."
@@ -294,18 +298,19 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         podstawa="Definicja przedziału mocy biernej w punkcie obwiedni",
         uzasadnienie=(
-            "Para (q_min, q_max) z q_min > q_max opisuje zbiór PUSTY — punkt pracy o "
+            "Para granic mocy biernej z minimalną większą od maksymalnej opisuje zbiór PUSTY — "
+            "punkt pracy o "
             "takim przedziale nie istnieje, więc nie jest to rekord nietypowy, tylko "
             "sprzeczny."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-008",
-        nazwa="Punkty krzywej P-Q rosnąco po p_mw",
+        nazwa="Punkty krzywej P-Q rosnąco po mocy czynnej",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt pola `pq_curve` — interpolacja po rosnącym p_mw",
+        podstawa="Kontrakt pola `pq_curve` — interpolacja po rosnącej mocy czynnej",
         uzasadnienie=(
-            "Konsument interpoluje obwiednię po p_mw; nieposortowana albo powtarzająca "
+            "Konsument interpoluje obwiednię po mocy czynnej; nieposortowana albo powtarzająca "
             "się odcięta dałaby wynik zależny od kolejności wierszy, czyli złamanie "
             "determinizmu."
         ),
@@ -330,7 +335,10 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-T-010",
         nazwa="Zakres nastawialności wymaga min <= max",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja przedziału nastaw aparatu (Ir/Isd/Ii/tr/tsd)",
+        podstawa=(
+            "Definicja przedziału nastaw aparatu (nastawy członów przeciążeniowego, "
+            "zwarciowego zwłocznego i bezzwłocznego oraz ich czasy)"
+        ),
         uzasadnienie=(
             "Para (min, max) z min > max opisuje zbiór PUSTY nastaw — aparat o takim "
             "zakresie nie istnieje. Cicha zamiana granic miejscami byłaby poprawianiem "
@@ -341,7 +349,10 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-T-011",
         nazwa="Współczynnik emisji migotania flicker_c dodatni",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja współczynnika c(psi_k, v_a) migotania (wielkość dodatnia)",
+        podstawa=(
+            "Definicja współczynnika migotania zależnego od kąta impedancji sieci i prędkości "
+            "wiatru (wielkość dodatnia)"
+        ),
         uzasadnienie=(
             "Współczynnik migotania mnoży moc znamionową w ocenie emisji; zero albo "
             "wartość ujemna oznaczałaby źródło, które migotania nie wnosi wcale albo je "
@@ -407,7 +418,8 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
             "Kontrakt karty widmowej (karta AB-H0 §0.4.5; reguła `widmo.amplituda`) — "
-            "procent zawsze z nazwaną bazą (I_n urządzenia, I_1 w punkcie pracy, U_1, U_n)"
+            "procent zawsze z nazwaną bazą (prąd znamionowy urządzenia, składowa podstawowa "
+            "prądu w punkcie pracy, składowa podstawowa napięcia, napięcie znamionowe)"
         ),
         uzasadnienie=(
             "Amplituda ujemna nie istnieje; „% prądu znamionowego” i „% podstawowej” to "
@@ -511,7 +523,8 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
         podstawa="IEC 62271-1 — szereg znamionowych prądów krótkotrwałych wytrzymywanych",
         uzasadnienie=(
-            "Norma wymienia szereg wartości znamionowych; aparat SN o I_th spoza szeregu "
+            "Norma wymienia szereg wartości znamionowych; aparat SN o prądzie krótkotrwałym "
+            "wytrzymywanym spoza szeregu "
             "nie ma znamionowania, które produkt potrafi zestawić z wynikiem zwarciowym."
         ),
     ),
@@ -522,7 +535,8 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         podstawa="IEC 62271-1 — szereg znamionowych czasów trwania zwarcia",
         uzasadnienie=(
             "Prąd krótkotrwały jest znamionowany ŁĄCZNIE z czasem odniesienia; czas spoza "
-            "szeregu unieruchamialby przeliczenie I_th na inny czas (reguła I^2t)."
+            "szeregu unieruchamialby przeliczenie prądu krótkotrwałego na inny czas (reguła "
+            "stałej całki Joule'a)."
         ),
     ),
     RegulaKatalogu(
@@ -758,8 +772,9 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         podstawa="Definicja wielkości znamionowych aparatu (prąd i czas są dodatnie)",
         uzasadnienie=(
-            "Zerowy albo ujemny I_n, I_Δn lub czas wyłączenia opisuje aparat, który nie "
-            "istnieje; napięcie dotykowe R_A·I_Δn i porównanie czasu z tablicą czasów "
+            "Zerowy albo ujemny prąd znamionowy, znamionowy prąd różnicowy lub czas wyłączenia "
+            "opisuje aparat, który nie istnieje; napięcie dotykowe (iloczyn rezystancji "
+            "uziemienia i znamionowego prądu różnicowego) i porównanie czasu z tablicą czasów "
             "wyłączenia nie miałyby sensu fizycznego."
         ),
     ),
@@ -816,7 +831,8 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         podstawa=(
             "Definicja wielkości znamionowych aparatu łączeniowego (IEC 62271-1:2007 § 4.5 "
             "prąd krótkotrwały wytrzymywany, IEC 62271-100:2008 § 4.101 znamionowy prąd "
-            "wyłączalny zwarciowy, IEC 60282-1 — bezpiecznik bez I_cw) — wielkość "
+            "wyłączalny zwarciowy, IEC 60282-1 — bezpiecznik bez prądu krótkotrwałego "
+            "wytrzymywanego) — wielkość "
             "znamionowa jest dodatnia i właściwa rodzajowi aparatu"
         ),
         uzasadnienie=(
@@ -825,7 +841,8 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
             "konsument (dobór, dowód wytrzymałości, eksport, raport, interfejs) czyta jako "
             "liczbę — zero jest więc odrzucane w każdej wielkości. Wielkość, której rodzaj "
             "aparatu z definicji normy nie ma (zdolność wyłączania rozłącznika, odłącznika "
-            "i uziemnika, I_cw bezpiecznika), jest zawsze `None` — o „nie dotyczy” "
+            "i uziemnika, prąd krótkotrwały wytrzymywany bezpiecznika), jest zawsze `None` — "
+            "o „nie dotyczy” "
             "rozstrzyga rodzaj; `None` przy wielkości właściwej rodzajowi to brak danej."
         ),
     ),
@@ -854,7 +871,8 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         podstawa=(
             "Stopień baterii to fizyczna grupa jednostek przyłączana jednym łącznikiem — "
-            "udział stopni załączonych u = n_zał/n wymaga n ≥ 1"
+            "udział stopni załączonych (liczba stopni załączonych przez liczbę stopni) wymaga "
+            "co najmniej jednego stopnia"
         ),
         uzasadnienie=(
             "Bateria bez stopnia albo z ułamkiem stopnia nie istnieje; zero dałoby dzielenie "
@@ -882,7 +900,8 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         nazwa="Dławik ograniczający baterii: indukcyjność dodatnia i tylko przy dławiku",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         podstawa=(
-            "Reaktancja dławika szeregowego X_L = 2πfL > 0; indukcyjność opisuje dławik, "
+            "Reaktancja dławika szeregowego (iloczyn pulsacji i indukcyjności) jest dodatnia; "
+            "indukcyjność opisuje dławik, "
             "więc bez dławika nie istnieje (ten sam predykat co element ENM: "
             "`network_model.core.bateria_kondensatorow.sprzecznosc_parametrow_baterii`)"
         ),
@@ -915,7 +934,8 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         podstawa="Typowa konstrukcja żyły powrotnej / ekranu z powrotem ziemnym",
         uzasadnienie=(
             "Rezystancja składowej zerowej zależy od konstrukcji żyły powrotnej, ekranu i "
-            "drogi powrotu przez ziemię. Dla konstrukcji z powrotem ziemnym R0 jest "
+            "drogi powrotu przez ziemię. Dla konstrukcji z powrotem ziemnym rezystancja "
+            "składowej zerowej jest "
             "zwykle kilkukrotnie większe, ale nie jest to nierówność uniwersalna dla "
             "każdej konstrukcji kabla i linii. Twarda bramka odrzuciłaby poprawny rekord "
             "spoza dotychczasowego zbioru."
@@ -937,7 +957,10 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-W-003",
         nazwa="Icw <= Icu aparatu SN",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
-        podstawa="IEC 62271-100 — Icw i Icu są ODDZIELNYMI wielkościami znamionowymi",
+        podstawa=(
+            "IEC 62271-100 — prąd krótkotrwały wytrzymywany i zdolność wyłączania są "
+            "ODDZIELNYMI wielkościami znamionowymi"
+        ),
         uzasadnienie=(
             "Prąd krótkotrwały wytrzymywany (przewodzenie bez uszkodzenia) i zdolność "
             "wyłączania (przerwanie prądu) to różne zdolności, znamionowane osobno. "
@@ -952,8 +975,9 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
         podstawa="IEC 60947-2 § 4.3.5.4 (Icw) wobec § 4.3.5.2.2 (Ics jako % Icu)",
         uzasadnienie=(
-            "Norma definiuje Ics JAWNIE jako procent Icu (§ 4.3.5.2.2) — tamta relacja "
-            "mogłaby być twarda. Dla Icw takiej definicji NIE MA: norma opisuje je osobno "
+            "Norma definiuje eksploatacyjną zdolność wyłączania JAWNIE jako procent graniczną "
+            "zdolność wyłączania (§ 4.3.5.2.2) — tamta relacja mogłaby być twarda. Dla prądu "
+            "krótkotrwałego wytrzymywanego takiej definicji NIE MA: norma opisuje go osobno "
             "(§ 4.3.5.4), jako wytrzymałość krótkotrwała wyłącznika kategorii B przez "
             "zadany czas, a nie jako ułamek zdolności wyłączalnej. Porównywać je wolno "
             "wyłącznie dla tego samego wariantu, napięcia i czasu."
@@ -1174,13 +1198,15 @@ RODZINY_PRZEGLADU: dict[str, SpecyfikacjaRodziny] = {
 #: pominieta milczeniem bylaby nierozroznialna od przeoczonej.
 RODZINY_BEZ_REGUL: dict[str, str] = {
     "switch-equipment": (
-        "Aparat łączeniowy pola: relację Icw/Icu tych samych rekordów ocenia reguła "
+        "Aparat łączeniowy pola: relację prądu krótkotrwałego wytrzymywanego i zdolności "
+        "wyłączania tych samych rekordów ocenia reguła "
         "KAT-W-003 na projekcji rodziny aparatów SN — druga ocena tej samej pary byłaby "
         "zdublowanym sygnałem."
     ),
     "lv-breaker-mcb": (
         "Wyłącznik nadprądowy MCB: kontrakt niesie pasmo wyzwalania z IEC 60898-1, bez "
-        "pary Icw/Icu, na której działa reguła wiarygodności."
+        "pary prąd krótkotrwały wytrzymywany — zdolność wyłączania, na której działa reguła "
+        "wiarygodności."
     ),
     "lv-fuse-link": (
         "Wkładka topikowa nie ma prądu krótkotrwałego wytrzymywanego — jej zdolność "
@@ -1190,13 +1216,15 @@ RODZINY_BEZ_REGUL: dict[str, str] = {
     "ct": "Przekładnik prądowy: znamiona dokładności i przetężenia, bez par objętych regułami.",
     "vt": "Przekładnik napięciowy: jak CT.",
     "surge-arrester": (
-        "Ogranicznik przepięć: znamiona napięciowo-energetyczne (Um, MCOV, Ures, BIL), "
+        "Ogranicznik przepięć: znamiona napięciowo-energetyczne (napięcie najwyższe, napięcie "
+        "trwałej pracy, napięcie obniżone, poziom izolacji udarowej), "
         "bez par objętych regułami."
     ),
     "shunt-capacitor": "Bateria kondensatorów: moc bierna i napięcie, bez par objętych regułami.",
     "pv-inverter": (
-        "Przekształtnik PV: udział zwarciowy k_sc jest bramką TWARDĄ (KAT-T-003); brak "
-        "k_sc jest BRAKIEM DANEJ raportowanym przez miernik gotowości, nie odstępstwem."
+        "Przekształtnik PV: współczynnik udziału zwarciowego jest bramką TWARDĄ (KAT-T-003); "
+        "brak współczynnika jest BRAKIEM DANEJ raportowanym przez miernik gotowości, nie "
+        "odstępstwem."
     ),
     "bess-inverter": "Przekształtnik magazynu: jak PV.",
     "bess-battery": (
@@ -1220,7 +1248,8 @@ RODZINY_BEZ_REGUL: dict[str, str] = {
     ),
     "synchronous-generator": (
         "Generator synchroniczny: reaktancje podprzejściowe/przejściowe i stałe czasowe, "
-        "bez par objętych regułami (relacja x''<x'<x nie była u nas nigdy bramką i nie ma "
+        "bez par objętych regułami (relacja reaktancji podprzejściowej, przejściowej "
+        "i synchronicznej nie była u nas nigdy bramką i nie ma "
         "dziś konsumenta przeglądu)."
     ),
 }
@@ -1369,15 +1398,16 @@ PREDYKATY_WIARYGODNOSCI: dict[str, Callable[[Any], _WynikReguly]] = {
 #: Powod pominiecia pozycji przez regule — nazwany, bo „pominieto 28 z 48" bez
 #: powodu jest tak samo nieme jak ciche zero.
 POWODY_POMINIECIA: dict[str, str] = {
-    "KAT-W-001": "pozycja nie niesie rezystancji składowej zerowej (R0)",
-    "KAT-W-002": "pozycja nie niesie strat jałowych (P0) albo obciążeniowych (Pk)",
+    "KAT-W-001": "pozycja nie niesie rezystancji składowej zerowej",
+    "KAT-W-002": "pozycja nie niesie strat jałowych albo obciążeniowych",
     "KAT-W-003": (
         "nie dotyczy: odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu "
         "zwarciowego (zdolność wyłączania None wg rodzaju); albo brak danych: aparat ze "
-        "zdolnością wyłączania bez Icu albo bez I_th w karcie katalogowej"
+        "zdolnością wyłączania bez zdolności wyłączania albo bez prądu krótkotrwałego "
+        "wytrzymywanego w karcie katalogowej"
     ),
     "KAT-W-004": (
-        "aparat bez dodatniej zdolności wyłączania Icu albo bez prądu krótkotrwałego Icw "
+        "aparat bez dodatniej zdolności wyłączania albo bez prądu krótkotrwałego wytrzymywanego "
         "w karcie katalogowej"
     ),
     "KAT-W-005": "źródło nie niesie stosunku R/X (ani wariantu maksymalnego, ani minimalnego)",

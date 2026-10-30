@@ -101,8 +101,8 @@ _J_MINUTY = "min"
 _J_SEKUNDY = "s"
 _J_HZ = "Hz"
 _J_BEZWYMIAROWA = "1"
-_J_Q = "p.u. (P_n modułu)"
-_J_U = "p.u. (U_n)"
+_J_Q = "p.u. (moc znamionowa modułu)"
+_J_U = "p.u. (napięcie znamionowe)"
 _J_KW = "kW"
 
 _NIEPEWNOSC_DEKLARACJI = Niepewnosc(
@@ -227,7 +227,7 @@ TEST_CATALOG: list[NcRfgPtpireeTestDefinition] = [
     ),
     NcRfgPtpireeTestDefinition(
         test_id="T08",
-        ability_pl="Tryb regulacji współczynnika mocy cosφ",
+        ability_pl="Tryb regulacji współczynnika mocy",
         procedure_basis_pl="Zakres testów zgodności PPM typu C i D.",
         default_for_modules=["C", "D"],
         zdolnosc_id="ncrfg_ptpiree.reactive_voltage_mode",
@@ -541,7 +541,7 @@ class NcRfgPtpireeSolver:
             element_ref=modul.der_ref,
             nazwa_pl=modul.der_name or modul.der_ref,
             opis_pl=(
-                f"{typ_pl} ({NAZWA_TECHNOLOGII_PL[technologia]}), P_max "
+                f"{typ_pl} ({NAZWA_TECHNOLOGII_PL[technologia]}), moc maksymalna "
                 f"{format_liczba(modul.p_max_kw)} kW, napięcie przyłączenia "
                 f"{format_liczba(modul.voltage_kv)} kV"
             ),
@@ -976,7 +976,8 @@ class NcRfgPtpireeSolver:
             kryterium=Kryterium(
                 opis_pl=(
                     f"{definicja.ability_pl}: czas przejścia do "
-                    f"{format_liczba(udzial * _PROCENT)} % P_max przy zadeklarowanym tempie zmiany mocy"
+                    f"{format_liczba(udzial * _PROCENT)} % mocy maksymalnej przy zadeklarowanym "
+                    "tempie zmiany mocy"
                 ),
                 warunek_latex=(
                     r"t = \frac{1 - u}{r} \le \max\left(k \cdot \frac{1 - u}{r_{\mathrm{wym}}},"
@@ -1097,7 +1098,7 @@ class NcRfgPtpireeSolver:
         relacja: Relacja = "NIE_WIECEJ" if dolna else "NIE_MNIEJ"
         wartosc_modulu = modul.q_range_pct_pn_min if dolna else modul.q_range_pct_pn_max
         wartosc_wymagana = bierna.q_range_pct_pn_min if dolna else bierna.q_range_pct_pn_max
-        strona = "dolna (Q_min)" if dolna else "górna (Q_max)"
+        strona = "dolna (moc bierna minimalna)" if dolna else "górna (moc bierna maksymalna)"
         spec.kryterium = Kryterium(
             opis_pl=(
                 f"{definicja.ability_pl}: pokrycie wymaganego zakresu mocy biernej — strona "
@@ -1190,7 +1191,7 @@ class NcRfgPtpireeSolver:
                 },
                 f"{format_liczba(modul.cos_phi_min)} ≤ {format_liczba(bierna.cos_phi_min)}",
                 {},
-                "cosφ jest bezwymiarowy.",
+                "Współczynnik mocy jest bezwymiarowy.",
             )
         )
         return spec
@@ -1438,7 +1439,10 @@ class NcRfgPtpireeSolver:
         spec = _Specyfikacja(
             kryterium_id="szybki_prad_bierny.wzmocnienie",
             kryterium=Kryterium(
-                opis_pl=f"{definicja.ability_pl}: wzmocnienie prądu biernego ΔI_q / ΔU",
+                opis_pl=(
+                    f"{definicja.ability_pl}: wzmocnienie prądu biernego (przyrost prądu "
+                    "biernego odniesiony do zmiany napięcia)"
+                ),
                 warunek_latex=r"K_{\mathrm{FRT}} = \frac{\Delta I_q}{\Delta U} \ge K_{\min}",
                 relacja="NIE_MNIEJ",
             ),
@@ -1472,7 +1476,8 @@ class NcRfgPtpireeSolver:
                     "wzmocnienie_minimalne": kryteria.k_frt_min,
                     "spadek_napiecia_testu_pu": kryteria.spadek_napiecia_testu_frt_pu,
                 },
-                "brak przebiegu I_q(t) z biegu dynamiki — wartość zadeklarowana informacyjnie",
+                "brak przebiegu prądu biernego w czasie z biegu dynamiki — wartość zadeklarowana "
+                "informacyjnie",
                 {},
                 "p.u. / p.u. = 1.",
             )

@@ -443,7 +443,8 @@ EQ_SC3F_011 = EquationDefinition(
     equation_id="EQ_SC3F_011",
     name_pl="Współczynnik zanikania μ (składowa AC) maszyny",
     standard_ref=(
-        f"{NORMA_KRZYWYCH_ZANIKU['mu']} (krzywe μ w węzłach t_min; między węzłami "
+        f"{NORMA_KRZYWYCH_ZANIKU['mu']} (krzywe μ w węzłach minimalnego czasu zwłoki; między "
+        "węzłami "
         f"{podstawa_reguly('mu', REGULA_INTERPOLACJA).skrot_pl})"
     ),
     latex=(
@@ -475,7 +476,7 @@ EQ_SC3F_011 = EquationDefinition(
         SymbolDefinition(
             symbol="t_{min}",
             unit="s",
-            description_pl="Minimalny czas zwłoki t_min = t_b punktu zwarcia",
+            description_pl="Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia",
             mapping_key="t_min_s",
         ),
     ),
@@ -493,7 +494,8 @@ EQ_SC3F_012 = EquationDefinition(
     equation_id="EQ_SC3F_012",
     name_pl="Współczynnik zanikania q maszyny asynchronicznej",
     standard_ref=(
-        f"{NORMA_KRZYWYCH_ZANIKU['q']} (krzywe q w węzłach t_min; między węzłami "
+        f"{NORMA_KRZYWYCH_ZANIKU['q']} (krzywe q w węzłach minimalnego czasu zwłoki; między "
+        "węzłami "
         f"{podstawa_reguly('q', REGULA_INTERPOLACJA).skrot_pl})"
     ),
     latex=(
@@ -510,13 +512,13 @@ EQ_SC3F_012 = EquationDefinition(
         SymbolDefinition(
             symbol="m",
             unit="MW",
-            description_pl="Moc czynna na parę biegunów (P_rM / p)",
+            description_pl="Moc czynna znamionowa silnika na parę biegunów",
             mapping_key="p_per_pole_mw",
         ),
         SymbolDefinition(
             symbol="t_{min}",
             unit="s",
-            description_pl="Minimalny czas zwłoki t_min = t_b punktu zwarcia",
+            description_pl="Minimalny czas zwłoki równy czasowi wyłączenia punktu zwarcia",
             mapping_key="t_min_s",
         ),
     ),
@@ -573,7 +575,7 @@ EQ_SC3F_013 = EquationDefinition(
 # niesymetrycznym normy i został usunięty. Składowa nieokresowa — osobne EQ_SC3F_020.
 EQ_SC3F_014 = EquationDefinition(
     equation_id="EQ_SC3F_014",
-    name_pl="Prąd wyłączeniowy symetryczny I_b",
+    name_pl="Prąd wyłączeniowy symetryczny",
     standard_ref="IEC 60909-0:2016 rozdz. 9 (eq. 75 i 76)",
     latex=(
         r"I_b = I_k'' - \sum_m \frac{\Delta U''_m}{c\,U_n/\sqrt{3}}"
@@ -601,7 +603,10 @@ EQ_SC3F_014 = EquationDefinition(
         SymbolDefinition(
             symbol="\\mu_m",
             unit="—",
-            description_pl="Współczynnik zaniku składowej okresowej maszyny przy t_min = t_b",
+            description_pl=(
+                "Współczynnik zaniku składowej okresowej maszyny przy minimalnym czasie zwłoki "
+                "równym czasowi wyłączenia"
+            ),
             mapping_key="mu_factor",
         ),
         SymbolDefinition(
@@ -631,14 +636,14 @@ EQ_SC3F_014 = EquationDefinition(
 
 EQ_SC3F_020 = EquationDefinition(
     equation_id="EQ_SC3F_020",
-    name_pl="Składowa nieokresowa prądu zwarciowego i_DC w chwili t_b",
+    name_pl="Składowa nieokresowa prądu zwarciowego w chwili wyłączenia",
     standard_ref="IEC 60909-0:2016 rozdz. 10 (eq. 64)",
     latex=r"i_{DC} = \sqrt{2} \cdot I_k'' \cdot e^{-2 \pi f \, t_b \, R/X}",
     symbols=(
         SymbolDefinition(
             symbol="i_{DC}",
             unit="kA",
-            description_pl="Składowa nieokresowa prądu zwarciowego w chwili t_b",
+            description_pl="Składowa nieokresowa prądu zwarciowego w chwili wyłączenia",
             mapping_key="i_dc_ka",
         ),
         SymbolDefinition(
@@ -654,8 +659,8 @@ EQ_SC3F_020 = EquationDefinition(
             symbol="t_b",
             unit="s",
             description_pl=(
-                "Czas wyłączenia t_min — najkrótszy czas zadziałania zabezpieczenia + czas "
-                "własny wyłącznika"
+                "Czas wyłączenia (minimalny czas zwłoki) — najkrótszy czas zadziałania "
+                "zabezpieczenia + czas własny wyłącznika"
             ),
             mapping_key="tb_s",
         ),
@@ -681,7 +686,9 @@ EQ_SC3F_015 = EquationDefinition(
         SymbolDefinition(
             symbol="I^2t",
             unit="kA²s",
-            description_pl="Energia cieplna zwarcia (całka Joule'a z definicji I_th)",
+            description_pl=(
+                "Energia cieplna zwarcia (całka Joule'a z definicji zastępczego prądu cieplnego)"
+            ),
             mapping_key="i2t_ka2s",
         ),
         SymbolDefinition(
@@ -1502,7 +1509,7 @@ EQ_LC_006 = EquationDefinition(
 
 EQ_LVCV_001 = EquationDefinition(
     equation_id="EQ_LVCV_001",
-    name_pl="Obciążalność dopuszczalna po korektach (Iz′)",
+    name_pl="Obciążalność dopuszczalna po korektach",
     standard_ref="PN-HD 60364-5-52 (zestaw korekcyjny G-D1)",
     latex=r"I_z' = I_z \cdot f_{\theta} \cdot f_{\rho} \cdot f_{N}",
     symbols=(
@@ -1617,7 +1624,7 @@ EQ_LVCV_003 = EquationDefinition(
 
 EQ_LVCV_004 = EquationDefinition(
     equation_id="EQ_LVCV_004",
-    name_pl="Zdolność wyłączania wobec Ik″max — dwa zdania inżynierskie",
+    name_pl="Zdolność wyłączania wobec maksymalnego prądu zwarciowego — dwa zdania inżynierskie",
     standard_ref="IEC 60947 / IEC 60898-1 / IEC 60269-1",
     latex=r"I_{cond} \ge I_k''_{max} \qquad \text{oraz osobno} \qquad I_{cu/cn} \ge I_k''_{max}",
     symbols=(
@@ -1753,13 +1760,16 @@ EQ_LVCV_007 = EquationDefinition(
         SymbolDefinition(
             symbol="I_a",
             unit="A",
-            description_pl="Prąd zapewniający zadziałanie zabezpieczenia w czasie t_wym",
+            description_pl="Prąd zapewniający zadziałanie zabezpieczenia w czasie wymaganym",
             mapping_key="ia_wymagane_a",
         ),
         SymbolDefinition(
             symbol="t_{wym}",
             unit="s",
-            description_pl="Czas wymagany wyłączenia (Tab. 41.1, wg pasma U0 i rodzaju obwodu)",
+            description_pl=(
+                "Czas wymagany wyłączenia (Tab. 41.1, wg pasma napięcia względem ziemi i rodzaju "
+                "obwodu)"
+            ),
             mapping_key="t_wymagany_s",
         ),
     ),
@@ -1784,7 +1794,10 @@ EQ_LVCV_007 = EquationDefinition(
 EQ_LVCV_008 = EquationDefinition(
     equation_id="EQ_LVCV_008",
     name_pl="Prąd zwarcia doziemnego w układzie TT",
-    standard_ref="IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 (c_min)",
+    standard_ref=(
+        "IEC 60364-4-41 §411.5.3 (pętla doziemna TT) / IEC 60909-0 §5.3.2 (minimalny "
+        "współczynnik napięciowy)"
+    ),
     latex=r"I_d = \frac{c_{min} \cdot U_0}{|Z_s|},\quad "
     r"Z_s = Z_{up} + Z_{TR} + Z_L + R_B + R_A",
     symbols=(
@@ -1809,7 +1822,10 @@ EQ_LVCV_008 = EquationDefinition(
         SymbolDefinition(
             symbol="Z_s",
             unit="Ω",
-            description_pl="Moduł impedancji pętli doziemnej (upstream SN + TR + żyła fazowa + R_B + R_A)",
+            description_pl=(
+                "Moduł impedancji pętli doziemnej (sieć SN po stronie zasilania + transformator "
+                "+ żyła fazowa + rezystancja uziemienia sieci + rezystancja uziemienia odbiorcy)"
+            ),
             mapping_key="z_loop_magnitude_ohm",
         ),
         SymbolDefinition(
@@ -1933,7 +1949,7 @@ EQ_LVCV_011 = EquationDefinition(
         SymbolDefinition(
             symbol="c",
             unit="—",
-            description_pl="Współczynnik napięciowy (c_min dla wartości minimalnej)",
+            description_pl="Współczynnik napięciowy (minimalny, dla prądu zwarciowego minimalnego)",
             mapping_key="c_min",
         ),
         SymbolDefinition(
@@ -1945,7 +1961,10 @@ EQ_LVCV_011 = EquationDefinition(
         SymbolDefinition(
             symbol="Z_s",
             unit="Ω",
-            description_pl="Moduł impedancji pętli jednej fazy (upstream SN + Z1 TR + żyła fazowa + PE)",
+            description_pl=(
+                "Moduł impedancji pętli jednej fazy (sieć SN po stronie zasilania + impedancja "
+                "zgodna transformatora + żyła fazowa + przewód ochronny)"
+            ),
             mapping_key="z_loop_magnitude_ohm",
         ),
     ),
@@ -2471,7 +2490,7 @@ EQ_QU_004 = EquationDefinition(
 
 EQ_QU_005 = EquationDefinition(
     equation_id="EQ_QU_005",
-    name_pl="Wpływ Q_cmd na napięcie U (referencja VDROP)",
+    name_pl="Wpływ zadanej mocy biernej na napięcie (referencja spadku napięcia)",
     standard_ref="Q(U) regulation → VDROP link",
     latex=(r"Q_{cmd} \xrightarrow{\text{VDROP}} \Delta U_X \to \Delta U \to U"),
     symbols=(
@@ -2707,7 +2726,7 @@ EQ_SC1_005 = EquationDefinition(
 
 EQ_SC1_006 = EquationDefinition(
     equation_id="EQ_SC1_006",
-    name_pl="Wyznaczenie prądów składowych I₁, I₂, I₀",
+    name_pl="Wyznaczenie prądów składowych symetrycznych",
     standard_ref="IEC 60909-0:2016 Annex B",
     latex=(
         r"\begin{aligned}"
@@ -2768,7 +2787,7 @@ EQ_SC1_006 = EquationDefinition(
 
 EQ_SC1_007 = EquationDefinition(
     equation_id="EQ_SC1_007",
-    name_pl="Rekonstrukcja prądów fazowych Ia, Ib, Ic",
+    name_pl="Rekonstrukcja prądów fazowych",
     standard_ref="IEC 60909-0:2016 Annex B",
     latex=(
         r"\begin{bmatrix} I_a \\ I_b \\ I_c \end{bmatrix} ="
@@ -2831,7 +2850,7 @@ EQ_SC1_007 = EquationDefinition(
 
 EQ_SC1_008 = EquationDefinition(
     equation_id="EQ_SC1_008",
-    name_pl="Początkowy prąd zwarciowy I″k (zwarcie asymetryczne)",
+    name_pl="Początkowy prąd zwarciowy (zwarcie asymetryczne)",
     standard_ref="IEC 60909-0:2016 § 4.2 / eq. 29, 23",
     latex=(
         r"\begin{aligned}"
@@ -2888,13 +2907,13 @@ EQ_SC1_009 = EquationDefinition(
         SymbolDefinition(
             symbol="R_k",
             unit="Ω",
-            description_pl="Rezystancja zastępcza Z_k",
+            description_pl="Rezystancja impedancji zastępczej pętli zwarcia",
             mapping_key="r_equiv_ohm",
         ),
         SymbolDefinition(
             symbol="X_k",
             unit="Ω",
-            description_pl="Reaktancja zastępcza Z_k",
+            description_pl="Reaktancja impedancji zastępczej pętli zwarcia",
             mapping_key="x_equiv_ohm",
         ),
     ),
@@ -2904,7 +2923,7 @@ EQ_SC1_009 = EquationDefinition(
 
 EQ_SC1_010 = EquationDefinition(
     equation_id="EQ_SC1_010",
-    name_pl="Prąd udarowy ip (zwarcie asymetryczne)",
+    name_pl="Prąd udarowy (zwarcie asymetryczne)",
     standard_ref="IEC 60909-0:2016 § 4.3.1.1 eq. (55)",
     latex=r"i_p = \kappa \cdot \sqrt{2} \cdot I_k''",
     symbols=(
@@ -2933,7 +2952,7 @@ EQ_SC1_010 = EquationDefinition(
 
 EQ_SC1_011 = EquationDefinition(
     equation_id="EQ_SC1_011",
-    name_pl="Prąd cieplny równoważny I_th (zwarcie asymetryczne)",
+    name_pl="Prąd cieplny równoważny (zwarcie asymetryczne)",
     standard_ref="IEC 60909-0:2016 § 4.8 eq. (102)",
     latex=r"I_{th} = I_k'' \cdot \sqrt{m + n}",
     symbols=(
@@ -2971,7 +2990,7 @@ EQ_SC1_011 = EquationDefinition(
 
 EQ_SC1_012 = EquationDefinition(
     equation_id="EQ_SC1_012",
-    name_pl="Prąd dynamiczny I_dyn (zwarcie asymetryczne)",
+    name_pl="Prąd dynamiczny (zwarcie asymetryczne)",
     standard_ref="IEC 60909-0:2016 § 4.3.1.1",
     latex=r"I_{dyn} = i_p",
     symbols=(
@@ -3119,7 +3138,7 @@ EQ_SC1_015 = EquationDefinition(
 
 EQ_SC1_016 = EquationDefinition(
     equation_id="EQ_SC1_016",
-    name_pl="Wyznaczenie prądów składowych I₁, I₂, I₀ (pętla z impedancją przejścia)",
+    name_pl="Wyznaczenie prądów składowych symetrycznych (pętla z impedancją przejścia)",
     standard_ref="Metoda składowych symetrycznych — poza zakresem IEC 60909-0:2016 (zwarcie przez impedancję przejścia)",
     latex=(
         r"\begin{aligned}"
