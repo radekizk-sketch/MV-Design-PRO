@@ -264,6 +264,7 @@ from solver_input.v126_contracts import (  # noqa: E402
     V126AnalysisType,
     build_v126_input_from_enm,
 )
+from werdykt.proweniencja import FieldQuality  # noqa: E402
 
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
 from tests.ci.tolerancja_fikstur import (  # noqa: E402
@@ -1183,32 +1184,55 @@ def pola_kart_katalogu() -> dict[str, Any]:
     def klucze(rekordy: list[dict[str, Any]]) -> list[str]:
         return sorted(set().union(*(set(r) for r in rekordy)))
 
+    def klucze_wartosci_zlozonych(wartosc: Any) -> set[str]:
+        if isinstance(wartosc, dict):
+            return set(wartosc).union(*(klucze_wartosci_zlozonych(v) for v in wartosc.values()))
+        if isinstance(wartosc, list):
+            return set().union(*(klucze_wartosci_zlozonych(v) for v in wartosc))
+        return set()
+
     ct = list_ct_types()
     vt = list_vt_types()
     pv = list_pv_inverter_types()
     bess = list_bess_inverter_types()
+    rekordy_kategorii: dict[str, list[dict[str, Any]]] = {
+        "HV_OVERHEAD_CONDUCTOR": list_overhead_conductor_types()["przewody"],
+        "MV_APPARATUS": list_mv_apparatus_types(),
+        "LV_APPARATUS": list_lv_apparatus_types(),
+        "LV_RCD": list_lv_rcd_types(),
+        "LV_CABLE": list_lv_cable_types(),
+        "LOAD": list_load_types(),
+        "CT": ct,
+        "VT": vt,
+        "MEASUREMENT_TRANSFORMER": ct + vt,
+        "PV_INVERTER": pv,
+        "BESS_INVERTER": bess,
+        "CONVERTER": pv + bess,
+        "SYSTEM_SOURCE": list_source_system_types(),
+        "SURGE_ARRESTER": list_surge_arrester_types(),
+        "SHUNT_CAPACITOR": list_shunt_capacitor_types(),
+        "PTPIREE_CERTIFICATE": list_ptpiree_generator_certificates(Response()),
+        "BRANCH_POLE": list_branch_point_types("BRANCH_POLE"),
+        "ZKSN": list_branch_point_types("ZKSN"),
+    }
+    # Klucze wewnątrz wartości złożonych (słownik, lista słowników) — panel pokazuje je jako
+    # „Etykieta: wartość”; `wartosci_robocze` ma własną sekcję karty (V12K-351).
+    zagniezdzone = set().union(
+        *(
+            klucze_wartosci_zlozonych(v)
+            for rekordy in rekordy_kategorii.values()
+            for rekord in rekordy
+            for k, v in rekord.items()
+            if k != "wartosci_robocze"
+        )
+    )
     return {
         "zrodlo": "api/catalog.py (funkcje obsługi GET /api/catalog/...)",
-        "kategorie": {
-            "HV_OVERHEAD_CONDUCTOR": klucze(list_overhead_conductor_types()["przewody"]),
-            "MV_APPARATUS": klucze(list_mv_apparatus_types()),
-            "LV_APPARATUS": klucze(list_lv_apparatus_types()),
-            "LV_RCD": klucze(list_lv_rcd_types()),
-            "LV_CABLE": klucze(list_lv_cable_types()),
-            "LOAD": klucze(list_load_types()),
-            "CT": klucze(ct),
-            "VT": klucze(vt),
-            "MEASUREMENT_TRANSFORMER": klucze(ct + vt),
-            "PV_INVERTER": klucze(pv),
-            "BESS_INVERTER": klucze(bess),
-            "CONVERTER": klucze(pv + bess),
-            "SYSTEM_SOURCE": klucze(list_source_system_types()),
-            "SURGE_ARRESTER": klucze(list_surge_arrester_types()),
-            "SHUNT_CAPACITOR": klucze(list_shunt_capacitor_types()),
-            "PTPIREE_CERTIFICATE": klucze(list_ptpiree_generator_certificates(Response())),
-            "BRANCH_POLE": klucze(list_branch_point_types("BRANCH_POLE")),
-            "ZKSN": klucze(list_branch_point_types("ZKSN")),
-        },
+        "kategorie": {kat: klucze(rekordy) for kat, rekordy in rekordy_kategorii.items()},
+        "klucze_wartosci_zlozonych": sorted(zagniezdzone),
+        # Jakość danej w `card_field_status` (`quality`) = `werdykt.proweniencja.FieldQuality`;
+        # panel pokazuje nazwę polską z tej samej enumeracji.
+        "nazwy_jakosci_danej": {q.value: q.label_pl for q in FieldQuality},
     }
 
 

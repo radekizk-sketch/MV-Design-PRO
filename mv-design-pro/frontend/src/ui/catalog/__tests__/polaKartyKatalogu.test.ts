@@ -11,13 +11,16 @@ import { describe, expect, it } from 'vitest';
 
 import wyrocznia from '../../../harness-fixtures/generated/pola_kart_katalogu.json';
 import { ETYKIETY_KATEGORII_TYPOW } from '../etykietyKategoriiTypow';
+import { ETYKIETY_POL_KARTY, KOLEJNOSC_POL_KARTY } from '../etykietyPolKarty';
 import {
   KATEGORIE_Z_BUDOWNICZYM_WIERSZY,
   POLA_KARTY_KATEGORII,
+  POLA_POZA_PANELEM_OGOLNYM,
   maBudowniczegoWierszy,
   type KategoriaPaneluOgolnego,
 } from '../polaKartyKatalogu';
 import type { TypeCategory } from '../types';
+import { NAZWA_JAKOSCI_DANEJ_PL } from '../../../ui2/wyniki/wzorzec/werdykt';
 
 const WSZYSTKIE = Object.keys(ETYKIETY_KATEGORII_TYPOW) as TypeCategory[];
 
@@ -38,5 +41,32 @@ describe('POLA_KARTY_KATEGORII', () => {
     expect(Object.keys(wyrocznia.kategorie).sort()).toEqual(zSerwera.sort());
     expect(POLA_KARTY_KATEGORII.PROTECTION_DEVICE).toContain('functions_supported');
     expect(POLA_KARTY_KATEGORII.PROTECTION_DEVICE).not.toContain('name_pl');
+  });
+});
+
+/** Klucze, które panel ogólny pokazuje jako etykietę: pola schematu poza nagłówkiem karty
+ *  i klucze wewnątrz wartości złożonych (`card_field_status`, `params`). */
+const KLUCZE_Z_ETYKIETA = new Set([
+  ...Object.values(POLA_KARTY_KATEGORII)
+    .flat()
+    .filter((k) => !POLA_POZA_PANELEM_OGOLNYM.has(k)),
+  ...wyrocznia.klucze_wartosci_zlozonych,
+]);
+
+describe('ETYKIETY_POL_KARTY — nazwa polska każdego pola karty', () => {
+  it.each([...KLUCZE_Z_ETYKIETA].sort())('pole %s ma polską etykietę', (klucz) => {
+    expect(ETYKIETY_POL_KARTY[klucz]).toMatch(/\S/);
+  });
+
+  it('słownik nie ma wpisów martwych (każdy klucz pokazuje panel)', () => {
+    expect(Object.keys(ETYKIETY_POL_KARTY).filter((k) => !KLUCZE_Z_ETYKIETA.has(k))).toEqual([]);
+  });
+
+  it('kolejność pól zawiera wyłącznie pola schematu panelu', () => {
+    expect(KOLEJNOSC_POL_KARTY.filter((k) => !KLUCZE_Z_ETYKIETA.has(k))).toEqual([]);
+  });
+
+  it('nazwy jakości danej = FieldQuality.label_pl backendu', () => {
+    expect(NAZWA_JAKOSCI_DANEJ_PL).toEqual(wyrocznia.nazwy_jakosci_danej);
   });
 });

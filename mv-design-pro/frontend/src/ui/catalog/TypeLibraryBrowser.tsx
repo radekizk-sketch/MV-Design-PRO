@@ -8,6 +8,11 @@ import {
 import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
 import { ETYKIETY_KATEGORII_TYPOW } from './etykietyKategoriiTypow';
 import {
+  NAZWA_JAKOSCI_DANEJ_PL,
+  type FieldQuality,
+} from '../../ui2/wyniki/wzorzec/werdykt';
+import { ETYKIETY_POL_KARTY, KOLEJNOSC_POL_KARTY } from './etykietyPolKarty';
+import {
   maBudowniczegoWierszy,
   POLA_KARTY_KATEGORII,
   POLA_POZA_PANELEM_OGOLNYM,
@@ -67,114 +72,6 @@ const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'PTPIREE_CERTIFICATE', icon: '☑' },
 ] as const;
 
-const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
-  vendor: 'Dostawca',
-  manufacturer: 'Producent',
-  model: 'Model',
-  series: 'Seria',
-  equipment_kind: 'Rodzaj aparatu',
-  device_kind: 'Rodzaj urządzenia',
-  measurement_kind: 'Rodzaj przekładnika',
-  source_catalog: 'Źródło katalogu',
-  operator_name: 'Operator',
-  supply_role: 'Rola zasilania',
-  short_circuit_model: 'Model zwarciowy',
-  notes_pl: 'Uwagi',
-  standard: 'Norma',
-  control_mode: 'Tryb sterowania',
-  grid_code: 'Wymagania przyłączeniowe',
-  model_type: 'Model',
-  functions_supported: 'Funkcje obsługiwane',
-  curves_supported: 'Krzywe obsługiwane',
-  unverified: 'Niezweryfikowane',
-  unverified_ranges: 'Zakresy niezweryfikowane',
-  voltage_rating_kv: 'Napięcie znamionowe [kV]',
-  sk3_mva: 'Moc zwarciowa Sk3 [MVA]',
-  ik3_ka: 'Prąd zwarciowy Ik3 [kA]',
-  rx_ratio: 'Stosunek R/X',
-  u_n_kv: 'Napięcie znamionowe [kV]',
-  i_n_a: 'Prąd znamionowy [A]',
-  breaking_capacity_ka: 'Zdolność wyłączalna [kA]',
-  making_capacity_ka: 'Zdolność załączalna [kA]',
-  i_th_ka: 'Prąd wytrzymywany krótkotrwale I_th [kA]',
-  i_th_duration_s: 'Czas odniesienia I_th [s]',
-  i_th_pochodzenie: 'Pochodzenie I_th',
-  i_dyn_ka: 'Prąd dynamiczny szczytowy I_dyn [kA]',
-  i_dyn_pochodzenie: 'Pochodzenie I_dyn',
-  break_time_s: 'Czas własny aparatu [s]',
-  cross_section_mm2: 'Przekrój [mm2]',
-  number_of_cores: 'Liczba żył',
-  ratio_primary_a: 'Przekładnia pierwotna [A]',
-  ratio_secondary_a: 'Przekładnia wtórna [A]',
-  ratio_primary_v: 'Przekładnia pierwotna [V]',
-  ratio_secondary_v: 'Przekładnia wtórna [V]',
-  accuracy_class: 'Klasa dokładności',
-  burden_va: 'Moc obciążeniowa [VA]',
-  p_kw: 'Moc czynna P [kW]',
-  q_kvar: 'Moc bierna Q [kvar]',
-  cos_phi: 'cos phi',
-  cos_phi_mode: 'Tryb cos phi',
-  profile_id: 'Profil',
-  s_n_kva: 'Moc znamionowa S [kVA]',
-  p_max_kw: 'Moc maksymalna Pmax [kW]',
-  p_charge_kw: 'Moc ładowania [kW]',
-  p_discharge_kw: 'Moc rozładowania [kW]',
-  e_kwh: 'Pojemność energii [kWh]',
-  rated_current_a: 'Prąd znamionowy [A]',
-  catalog_number: 'Numer katalogowy',
-};
-
-const GENERIC_FIELD_ORDER = [
-  'model',
-  'series',
-  'equipment_kind',
-  'device_kind',
-  'measurement_kind',
-  'voltage_rating_kv',
-  'u_n_kv',
-  'sk3_mva',
-  'ik3_ka',
-  'rx_ratio',
-  'rated_current_a',
-  'i_n_a',
-  'breaking_capacity_ka',
-  'making_capacity_ka',
-  'i_th_ka',
-  'i_th_duration_s',
-  'i_th_pochodzenie',
-  'i_dyn_ka',
-  'i_dyn_pochodzenie',
-  'break_time_s',
-  'cross_section_mm2',
-  'number_of_cores',
-  'ratio_primary_a',
-  'ratio_secondary_a',
-  'ratio_primary_v',
-  'ratio_secondary_v',
-  'accuracy_class',
-  'burden_va',
-  'p_kw',
-  'q_kvar',
-  'cos_phi',
-  'cos_phi_mode',
-  's_n_kva',
-  'p_max_kw',
-  'p_charge_kw',
-  'p_discharge_kw',
-  'e_kwh',
-  'functions_supported',
-  'curves_supported',
-  'operator_name',
-  'supply_role',
-  'short_circuit_model',
-  'standard',
-  'source_catalog',
-  'catalog_number',
-  'notes_pl',
-  'unverified',
-  'unverified_ranges',
-] as const;
-
 interface TypeLibraryBrowserProps {
   onSelectType?: (typeId: string, category: TypeCategory) => void;
   initialTab?: TypeCategory;
@@ -208,8 +105,9 @@ function formatDetailValue(value: unknown): string {
 }
 
 function humanizeKey(key: string): string {
-  if (GENERIC_FIELD_LABELS[key]) {
-    return GENERIC_FIELD_LABELS[key] as string;
+  const etykieta = ETYKIETY_POL_KARTY[key];
+  if (etykieta) {
+    return etykieta;
   }
 
   const cleaned = key
@@ -254,13 +152,21 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
     case 'VT':
       return `${formatDetailValue(record.ratio_primary_v)}/${formatDetailValue(record.ratio_secondary_v)} V · klasa=${formatDetailValue(record.accuracy_class)}`;
     case 'MEASUREMENT_TRANSFORMER':
-      return `${formatDetailValue(record.measurement_kind)} · klasa=${formatDetailValue(record.accuracy_class)} · burden=${formatDetailValue(record.burden_va)} VA`;
+      // Kategoria złożona = CT ∪ VT (`fetchTypesByCategory`); serwer wysyła przekładnię
+      // prądową wyłącznie w pozycji przekładnika prądowego (wyrocznia `pola_kart_katalogu`).
+      return 'ratio_primary_a' in record
+        ? `Przekładnik prądowy · ${getTypeSummary(type, 'CT')}`
+        : `Przekładnik napięciowy · ${getTypeSummary(type, 'VT')}`;
     case 'PV_INVERTER':
       return `S=${formatDetailValue(record.s_n_kva)} kVA · Pmax=${formatDetailValue(record.p_max_kw)} kW · sterowanie=${formatDetailValue(record.control_mode)}`;
     case 'BESS_INVERTER':
       return `Pdis=${formatDetailValue(record.p_discharge_kw)} kW · Pchg=${formatDetailValue(record.p_charge_kw)} kW · E=${formatDetailValue(record.e_kwh)} kWh`;
     case 'CONVERTER':
-      return `S=${formatDetailValue(record.s_n_kva ?? record.sn_mva)} · P=${formatDetailValue(record.p_max_kw ?? record.pmax_mw)} · typ=${formatDetailValue(record.kind)}`;
+      // Kategoria złożona = PV ∪ BESS (`fetchTypesByCategory`); pojemność energii serwer
+      // wysyła wyłącznie w pozycji magazynu (wyrocznia `pola_kart_katalogu`).
+      return 'e_kwh' in record
+        ? `Falownik magazynu energii · ${getTypeSummary(type, 'BESS_INVERTER')}`
+        : `Falownik PV · ${getTypeSummary(type, 'PV_INVERTER')}`;
     case 'PROTECTION_DEVICE':
       return `${formatDetailValue(record.series)} · funkcje=${Array.isArray(record.functions_supported) ? record.functions_supported.length : 0} · krzywe=${Array.isArray(record.curves_supported) ? record.curves_supported.length : 0}`;
     default:
@@ -292,6 +198,34 @@ function wartoscPolaKarty(value: unknown): string {
 }
 
 /**
+ * Jakość pól karty (`card_field_status`: pole → {quality, note, source_ref}) — zdanie dla
+ * projektanta: nazwa pola, jakość danej po polsku (`FieldQuality.label_pl`), uwaga i źródło.
+ * Jakość spoza enumeracji nie udaje znanej: „jakość nieokreślona”.
+ */
+function opisJakosciPolKarty(value: unknown): string {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    return wartoscPolaKarty(value);
+  }
+  const wpisy = Object.entries(value as Record<string, unknown>);
+  if (wpisy.length === 0) return BRAK_DANYCH_PL;
+  return wpisy
+    .map(([pole, stan]) => {
+      const opis = (stan ?? {}) as { quality?: unknown; note?: unknown; source_ref?: unknown };
+      const jakosc =
+        typeof opis.quality === 'string' &&
+        Object.prototype.hasOwnProperty.call(NAZWA_JAKOSCI_DANEJ_PL, opis.quality)
+          ? NAZWA_JAKOSCI_DANEJ_PL[opis.quality as FieldQuality]
+          : 'jakość nieokreślona';
+      const uwaga = typeof opis.note === 'string' && opis.note ? ` — ${opis.note}` : '';
+      const zrodlo =
+        typeof opis.source_ref === 'string' && opis.source_ref ? ` (źródło: ${opis.source_ref})` : '';
+      return `${humanizeKey(pole)}: ${jakosc}${uwaga}${zrodlo}`;
+    })
+    .sort((a, b) => a.localeCompare(b, 'pl'))
+    .join('; ');
+}
+
+/**
  * Wiersze panelu ogólnego: KAŻDE pole schematu kategorii (`POLA_KARTY_KATEGORII` — lustro
  * serializacji serwera) i każde pole rekordu spoza schematu, także `null` i pominięte —
  * brak wartości jest jawny, nie ukryty.
@@ -305,9 +239,9 @@ function getGenericDetailEntries(
     (key) => !POLA_POZA_PANELEM_OGOLNYM.has(key),
   );
   const orderedKeys = [
-    ...GENERIC_FIELD_ORDER.filter((key) => pola.includes(key)),
+    ...KOLEJNOSC_POL_KARTY.filter((key) => pola.includes(key)),
     ...pola
-      .filter((key) => !GENERIC_FIELD_ORDER.includes(key as (typeof GENERIC_FIELD_ORDER)[number]))
+      .filter((key) => !KOLEJNOSC_POL_KARTY.includes(key))
       .sort(),
   ];
 
@@ -318,7 +252,9 @@ function getGenericDetailEntries(
       category === 'MV_APPARATUS'
       && (WIELKOSCI_ZWARCIOWE_APARATU_SN as readonly string[]).includes(key)
         ? pradAparatuSnKatalogu(record, key as (typeof WIELKOSCI_ZWARCIOWE_APARATU_SN)[number])
-        : wartoscPolaKarty(record[key]),
+        : key === 'card_field_status'
+          ? opisJakosciPolKarty(record[key])
+          : wartoscPolaKarty(record[key]),
   }));
 }
 
@@ -559,7 +495,10 @@ export function TypeLibraryBrowser({
                       <td className="px-4 py-3 text-sm text-gray-700">
                         {getCatalogManufacturer(type) ?? '—'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                      <td
+                        className="px-4 py-3 text-sm text-gray-600"
+                        data-testid={`type-library-skrot-${type.id}`}
+                      >
                         {getTypeSummary(type, activeTab)}
                       </td>
                     </tr>

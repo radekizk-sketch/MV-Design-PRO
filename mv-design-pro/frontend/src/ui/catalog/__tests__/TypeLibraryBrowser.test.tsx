@@ -505,11 +505,12 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getByText('Moc zwarciowa Sk3 [MVA]')).toBeInTheDocument();
     expect(screen.getByText('350')).toBeInTheDocument();
     // CV-4.3 K7: trzy pola scenariusza MIN — „brak danych" gdy null (wzór K1,
-    // `renderLineParams`/`max_temperature_c`), NIE ukryte jak w panelu generycznym.
-    expect(screen.getByText('Moc zwarciowa Sk3 min')).toBeInTheDocument();
-    expect(screen.getByText('Prąd zwarciowy Ik3 min')).toBeInTheDocument();
-    expect(screen.getByText('Stosunek R/X min')).toBeInTheDocument();
-    expect(screen.getAllByText('brak danych')).toHaveLength(3);
+    // `renderLineParams`/`max_temperature_c`), nie ukryte. Panel ogólny pokazuje też każde
+    // inne pole schematu bez wartości jako „brak danych” (zasada nr 4,
+    // `panelOgolnyKatalogu.test.tsx`), więc wiersz MIN sprawdzany jest osobno.
+    for (const etykieta of ['Moc zwarciowa Sk3 min', 'Prąd zwarciowy Ik3 min', 'Stosunek R/X min']) {
+      expect(screen.getByText(etykieta).parentElement).toHaveTextContent('brak danych');
+    }
   });
 
   it('aparatura łączeniowa: brak danej prądu zwarciowego to „brak danych”, nigdy „0 kA” (KAT-T-050)', async () => {
@@ -630,11 +631,13 @@ describe('TypeLibraryBrowser', () => {
     });
     await user.click(screen.getByText('GPZ 110/15 kV'));
 
-    expect(screen.getByText('Moc zwarciowa Sk3 min')).toBeInTheDocument();
-    expect(screen.getByText('210')).toBeInTheDocument();
-    expect(screen.getByText('8.1')).toBeInTheDocument();
-    expect(screen.getByText('0.22')).toBeInTheDocument();
-    expect(screen.queryByText('brak danych')).not.toBeInTheDocument();
+    const wiersz = (etykieta: string) => screen.getByText(etykieta).parentElement;
+    expect(wiersz('Moc zwarciowa Sk3 min')).toHaveTextContent('210');
+    expect(wiersz('Prąd zwarciowy Ik3 min')).toHaveTextContent('8.1');
+    expect(wiersz('Stosunek R/X min')).toHaveTextContent('0.22');
+    for (const etykieta of ['Moc zwarciowa Sk3 min', 'Prąd zwarciowy Ik3 min', 'Stosunek R/X min']) {
+      expect(wiersz(etykieta)).not.toHaveTextContent('brak danych');
+    }
   });
 
   it('filters visible types by search query', async () => {

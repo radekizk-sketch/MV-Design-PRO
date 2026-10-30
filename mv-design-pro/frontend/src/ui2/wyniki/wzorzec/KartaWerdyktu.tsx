@@ -35,11 +35,11 @@ import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 import { MathInline } from '../../../ui/proof/MathRenderer';
 import {
   jestWynikiemWymagania,
+  NAZWA_JAKOSCI_DANEJ_PL,
   type ClaimKind,
   type DanaPrzyjeta,
   type DziedzinaFizyki,
   type EvidenceTier,
-  type FieldQuality,
   type KompletnoscDowodu,
   type LimitKryterium,
   type Margines,
@@ -141,13 +141,6 @@ const NAZWA_TWIERDZENIA_PL: Readonly<Record<ClaimKind, string>> = {
   DYNAMIC_PERFORMANCE: 'zachowanie dynamiczne',
   DECLARED_CONFIGURATION: 'konfiguracja zadeklarowana',
   STATIC_CALCULATION: 'obliczenie statyczne',
-};
-
-/** Jakość danej — lustro `werdykt.proweniencja.FieldQuality.label_pl`. */
-const NAZWA_JAKOSCI_PL: Readonly<Record<FieldQuality, string>> = {
-  DATASHEET: 'karta techniczna',
-  ESTIMATED: 'oszacowane',
-  SYSTEM_DEFAULT: 'domyślne techniczne',
 };
 
 /** Stan źródła podstawy — lustro `werdykt.kontrakt.NAZWA_STANU_ZRODLA_PL`. */
@@ -496,7 +489,7 @@ function ListaDanych({
           {dana.jakosc !== null && (
             <>
               {' · '}
-              {TEKSTY.jakoscDanej}: {NAZWA_JAKOSCI_PL[dana.jakosc]}
+              {TEKSTY.jakoscDanej}: {NAZWA_JAKOSCI_DANEJ_PL[dana.jakosc]}
             </>
           )}
           {' — '}

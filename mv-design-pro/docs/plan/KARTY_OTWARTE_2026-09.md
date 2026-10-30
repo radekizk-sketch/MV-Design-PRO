@@ -1208,8 +1208,14 @@ pokazuje KAŻDE pole schematu kategorii — schemat `frontend/src/ui/catalog/pol
 `polaKartyKatalogu.test.ts`), brak wartości = „brak danych”, wartości złożone czytelne (nie
 „[object Object]”); test iloczynu `panelOgolnyKatalogu.test.tsx` (19 kategorii × {pełne, null,
 pominięte}). Pomiar: 136 ze 179 pól schematu nie ma polskiej etykiety (dotąd pokazywane jako
-angielski klucz po „uczłowieczeniu”) — następny krok: słownik etykiet PL dla wszystkich pól
-z testem pełności; potem biegi celowane, tsc, eslint, strażniki.
+angielski klucz po „uczłowieczeniu”). Krok 3 (WIP, niezweryfikowany): jeden słownik etykiet
+`frontend/src/ui/catalog/etykietyPolKarty.ts` (`ETYKIETY_POL_KARTY` — każde pole schematu i każdy
+klucz wartości złożonej z wyroczni, bez wpisów martwych; `KOLEJNOSC_POL_KARTY` bez pól spoza
+serwera), jakość pól karty (`card_field_status`) po polsku z `NAZWA_JAKOSCI_DANEJ_PL`
+(przeniesione z `KartaWerdyktu.tsx` do `ui2/wyniki/wzorzec/werdykt.ts`, parytet z
+`FieldQuality.label_pl` przez wyrocznię), skrót wykazu kategorii złożonych (przekładniki,
+przekształtniki) bez pól, których serwer nie wysyła (`measurement_kind`, `kind`, `sn_mva`,
+`pmax_mw`). Następny krok: biegi celowane, tsc, eslint, iniekcje, strażniki.
 
 ---
 

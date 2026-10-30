@@ -14,6 +14,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ETYKIETY_POL_KARTY } from '../etykietyPolKarty';
 import { BRAK_DANYCH_PL } from '../pradZwarciowyKatalogu';
 import {
   POLA_KARTY_KATEGORII,
@@ -85,13 +86,17 @@ describe('Panel ogólny karty katalogu — każde pole schematu, brak jawny', ()
     expect(siatka.textContent ?? '').not.toMatch(/undefined|\bnull\b|NaN|\[object Object\]/);
   });
 
-  it('pole spoza schematu (nowe w serwerze) też ma wiersz; wartość złożona jest czytelna', async () => {
+  it('pole spoza schematu (nowe w serwerze) też ma wiersz; jakość pól karty po polsku', async () => {
     fetchTypesByCategoryMock.mockResolvedValue([
       {
         id: 'typ-ct',
         name: 'Typ wzorcowy CT',
         pole_nowe_serwera: null,
-        card_field_status: { ith_ka_1s: { quality: 'ESTIMATED' } },
+        card_field_status: {
+          ith_ka_1s: { field_name: 'ith_ka_1s', quality: 'ESTIMATED', note: 'wartość robocza' },
+          rct_ohm: { field_name: 'rct_ohm', quality: 'DATASHEET', source_ref: 'karta producenta' },
+          burden_va: { field_name: 'burden_va', quality: 'NIEZNANA' },
+        },
       },
     ]);
     const user = userEvent.setup();
@@ -101,9 +106,36 @@ describe('Panel ogólny karty katalogu — każde pole schematu, brak jawny', ()
     expect(within(siatka).getByTestId('type-library-pole-pole_nowe_serwera')).toHaveTextContent(
       BRAK_DANYCH_PL,
     );
-    expect(within(siatka).getByTestId('type-library-pole-card_field_status')).toHaveTextContent(
-      'Ith kA 1s: Quality: ESTIMATED',
+    const jakosc = within(siatka).getByTestId('type-library-pole-card_field_status');
+    expect(jakosc).toHaveTextContent(`${ETYKIETY_POL_KARTY.ith_ka_1s}: oszacowane — wartość robocza`);
+    expect(jakosc).toHaveTextContent(
+      `${ETYKIETY_POL_KARTY.rct_ohm}: karta techniczna (źródło: karta producenta)`,
     );
+    expect(jakosc).toHaveTextContent(`${ETYKIETY_POL_KARTY.burden_va}: jakość nieokreślona`);
+    expect(jakosc.textContent ?? '').not.toMatch(/ESTIMATED|DATASHEET|NIEZNANA|field_name/);
     expect(siatka.textContent ?? '').not.toMatch(/\[object Object\]/);
+  });
+
+  /** Skrót parametrów w wykazie czyta wyłącznie pola, które serwer wysyła: pozycja z KAŻDYM
+   *  polem schematu nie ma w skrócie kreski braku. Kategorie złożone — każda składowa osobno
+   *  (przekładnik prądowy i napięciowy, falownik PV i magazynu). */
+  const SKLADOWE: Partial<Record<KategoriaPaneluOgolnego, readonly KategoriaPaneluOgolnego[]>> = {
+    MEASUREMENT_TRANSFORMER: ['CT', 'VT'],
+    CONVERTER: ['PV_INVERTER', 'BESS_INVERTER'],
+  };
+  const PRZYPADKI_SKROTU = KATEGORIE.flatMap((kategoria) =>
+    (SKLADOWE[kategoria] ?? [kategoria]).map((skladowa) => [kategoria, skladowa] as const),
+  );
+
+  it.each(PRZYPADKI_SKROTU)('skrót wykazu %s (pozycja %s) bez pól spoza serwera', async (kategoria, skladowa) => {
+    const rekord: Record<string, unknown> = { id: 'typ-pelny', name: 'Typ pełny' };
+    for (const pole of POLA_KARTY_KATEGORII[skladowa]) {
+      if (!(pole in rekord)) rekord[pole] = 1;
+    }
+    fetchTypesByCategoryMock.mockResolvedValue([rekord]);
+    fetchPtpireeMock.mockResolvedValue({ items: [rekord], total: 1 });
+    render(<TypeLibraryBrowser initialTab={kategoria} />);
+    const skrot = await screen.findByTestId('type-library-skrot-typ-pelny');
+    expect(skrot.textContent ?? '').not.toMatch(/—|undefined|NaN/);
   });
 });
