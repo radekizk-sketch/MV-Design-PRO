@@ -49,6 +49,8 @@ def source_to_dict(entry: SourceReactiveEntry) -> dict[str, Any]:
         "why_pl": entry.why_pl,
         "missing_data": list(entry.missing_data),
         "white_box": [white_box_to_dict(step) for step in entry.white_box],
+        "ocena_rezerwy_gora": entry.ocena_rezerwy_gora.model_dump(mode="json"),
+        "ocena_rezerwy_dol": entry.ocena_rezerwy_dol.model_dump(mode="json"),
     }
 
 
@@ -62,6 +64,7 @@ def violation_to_dict(entry: VoltageViolationEntry) -> dict[str, Any]:
         "kind_pl": entry.kind_pl,
         "why_pl": entry.why_pl,
         "white_box": [white_box_to_dict(step) for step in entry.white_box],
+        "ocena": entry.ocena.model_dump(mode="json"),
     }
 
 
@@ -107,4 +110,6 @@ def view_to_dict(view: ReactiveAdequacyView) -> dict[str, Any]:
         "summary": summary_to_dict(view.summary),
         "provenance": view.provenance.to_dict() if view.provenance else None,
         "missing_data": list(view.missing_data),
+        "wymaganie": view.wymaganie.model_dump(mode="json"),
+        "wyjasnienie": view.wyjasnienie.model_dump(mode="json"),
     }

@@ -25,6 +25,7 @@ ZAKRES (D-06d) celowo NIE obejmuje (odroczone):
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import replace
 
 from analysis.reactive_adequacy.models import (
     DEFAULT_SATURATION_TOL_MVAR,
@@ -48,7 +49,31 @@ from analysis.reactive_adequacy.models import (
     compute_reactive_adequacy_id,
     worst_field_quality,
 )
+from analysis.reactive_adequacy.oceny import (
+    PODSTAWA_PASMA_DOMYSLNEGO,
+    PODSTAWA_PASMA_WEZLA,
+    ocena_braku_zrodla,
+    ocena_pasma,
+    ocena_rezerwy,
+    wymaganie_adekwatnosci,
+)
 from enm.nazwy_elementow import nazwa_po_identyfikatorze
+from werdykt import DanaPrzyjeta, OcenaKryterium, Wielkosc
+from werdykt.kontrakt import JAKOSCI_BEZ_ZRODLA
+from werdykt.porownanie import rozstrzygniecie
+
+#: Opis brakującej wielkości (kody ``missing_data`` → zdanie dla inżyniera).
+_BRAKI_PL = {
+    "power_flow_not_converged": (
+        "zbieżny wynik rozpływu mocy (bieg niezbieżny — napięcia i moc bierna źródeł "
+        "niewiarygodne)"
+    ),
+    "bus_voltages": "napięcia węzłów z biegu rozpływu mocy (żaden węzeł nie został rozwiązany)",
+    "controllable_sources": "regulowalne źródło mocy biernej w modelu biegu",
+    "q_actual_mvar": "moc bierna źródła Q_akt z wyniku rozpływu mocy",
+    "q_min_mvar": "dolna granica regulatora mocy biernej Q_min z karty źródła",
+    "q_max_mvar": "górna granica regulatora mocy biernej Q_max z karty źródła",
+}
 
 
 def _round(value: float, digits: int = 4) -> float:
@@ -64,8 +89,10 @@ class ReactiveAdequacyBuilder:
         default_u_min_pu: float = DEFAULT_U_MIN_PU,
         default_u_max_pu: float = DEFAULT_U_MAX_PU,
     ) -> None:
-        if saturation_tol_mvar < 0.0:
-            raise ValueError("saturation_tol_mvar nie może być ujemny")
+        if not saturation_tol_mvar > 0.0:
+            # ε = 0 nie wykrywa źródła DOKŁADNIE na granicy (rezerwa 0 ≥ 0 spełnia relację
+            # rekordu) — tolerancja nasycenia musi być dodatnia.
+            raise ValueError("saturation_tol_mvar musi być dodatnia")
         if default_u_min_pu >= default_u_max_pu:
             raise ValueError("default_u_min_pu musi być mniejszy niż default_u_max_pu")
         self.saturation_tol_mvar = float(saturation_tol_mvar)
@@ -102,8 +129,10 @@ class ReactiveAdequacyBuilder:
         # --- Przeplyw "dane niekompletne": brak wyniku power-flow / brak zrodel.
         top_missing = self._top_level_missing(ordered_buses, ordered_sources, power_flow_converged)
 
-        source_entries = tuple(self._build_source(s) for s in ordered_sources)
-        violations = self._build_violations(ordered_buses, nazwy)
+        source_entries = tuple(
+            self._build_source(s, nazwy, power_flow_converged) for s in ordered_sources
+        )
+        oceny_pasma, violations = self._build_violations(ordered_buses, nazwy, power_flow_converged)
         balance = self._build_balance(ordered_sources, ordered_loads)
         provenance = self._build_provenance(ordered_sources)
 
@@ -127,7 +156,22 @@ class ReactiveAdequacyBuilder:
             violated_bus_refs=violated_buses,
         )
 
+        oceny: list[OcenaKryterium] = []
+        for entry in source_entries:
+            oceny.extend((entry.ocena_rezerwy_gora, entry.ocena_rezerwy_dol))
+        if not source_entries:
+            oceny.append(ocena_braku_zrodla(powod_pl=_BRAKI_PL["controllable_sources"]))
+        oceny.extend(oceny_pasma)
+        wymaganie = wymaganie_adekwatnosci(
+            oceny, braki=tuple(_BRAKI_PL[kod] for kod in top_missing)
+        )
         verdict, is_adequate, why = self._classify(
+            rozstrzygniecie(wymaganie.oceny_skladowe),
+            zrodla_niekompletne=tuple(
+                nazwa_po_identyfikatorze(e.ref, indeks=nazwy)
+                for e in source_entries
+                if e.missing_data
+            ),
             top_missing=top_missing,
             nasycone_nazwy=tuple(nazwa_po_identyfikatorze(ref, indeks=nazwy) for ref in saturated),
             wezly_z_naruszeniem=tuple(
@@ -167,6 +211,8 @@ class ReactiveAdequacyBuilder:
             summary=summary,
             provenance=provenance,
             missing_data=top_missing,
+            wymaganie=wymaganie,
+            wyjasnienie=wymaganie.wyjasnienie,
         )
 
     # ------------------------------------------------------------------
@@ -189,22 +235,67 @@ class ReactiveAdequacyBuilder:
 
     # --- per zrodlo ------------------------------------------------------
 
-    def _build_source(self, item: SourceReactiveInput) -> SourceReactiveEntry:
-        missing: list[str] = []
-        if item.q_actual_mvar is None:
-            missing.append("q_actual_mvar")
-        if item.q_min_mvar is None:
-            missing.append("q_min_mvar")
-        if item.q_max_mvar is None:
-            missing.append("q_max_mvar")
+    def _dane_przyjete_granic(
+        self, item: SourceReactiveInput, nazwa: str
+    ) -> tuple[tuple[DanaPrzyjeta, ...], tuple[DanaPrzyjeta, ...]]:
+        """Dane przyjęte granic regulatora (jakość bez źródła producenta) — dla rekordu
+        rezerwy w górę (Q_max) i w dół (Q_min). Granice z karty producenta: brak."""
+        jakosc = item.limits_field_quality
+        if jakosc is None or jakosc not in JAKOSCI_BEZ_ZRODLA:
+            return (), ()
+        powod = (
+            f"granice regulatora mocy biernej źródła o jakości „{jakosc.label_pl}” — "
+            "wartość robocza, nie dana producenta"
+        )
 
-        if missing:
-            why = (
-                "Dane niekompletne — brak: "
-                + ", ".join(missing)
-                + ". Ocena rezerwy biernej wymaga aktualnego Q (z wyniku "
-                "power-flow) oraz granic regulatora Q_min/Q_max źródła."
+        def _dana(symbol: str, wartosc: float | None) -> tuple[DanaPrzyjeta, ...]:
+            if wartosc is None:
+                return ()
+            return (
+                DanaPrzyjeta(
+                    nazwa_pl=f"{symbol} — {nazwa}",
+                    wartosc=Wielkosc(wartosc=_round(wartosc), jednostka="Mvar"),
+                    powod_pl=powod,
+                    jakosc=jakosc,
+                ),
             )
+
+        return _dana("Q_max", item.q_max_mvar), _dana("Q_min", item.q_min_mvar)
+
+    def _build_source(
+        self, item: SourceReactiveInput, nazwy: Mapping[str, str], converged: bool
+    ) -> SourceReactiveEntry:
+        nazwa = nazwa_po_identyfikatorze(item.ref, indeks=nazwy)
+        dane_gora, dane_dol = self._dane_przyjete_granic(item, nazwa)
+
+        def _rekordy(
+            gora: float | None, dol: float | None, braki: tuple[str, ...]
+        ) -> tuple[OcenaKryterium, OcenaKryterium]:
+            return (
+                ocena_rezerwy(
+                    kierunek="gora",
+                    nazwa_pl=nazwa,
+                    element_ref=item.ref,
+                    rezerwa_mvar=gora,
+                    tolerancja_mvar=self.saturation_tol_mvar,
+                    braki=braki,
+                    dane_przyjete=dane_gora,
+                ),
+                ocena_rezerwy(
+                    kierunek="dol",
+                    nazwa_pl=nazwa,
+                    element_ref=item.ref,
+                    rezerwa_mvar=dol,
+                    tolerancja_mvar=self.saturation_tol_mvar,
+                    braki=braki,
+                    dane_przyjete=dane_dol,
+                ),
+            )
+
+        def _bez_rezerwy(
+            why: str, *, missing_data: tuple[str, ...], braki: tuple[str, ...]
+        ) -> SourceReactiveEntry:
+            ocena_gora, ocena_dol = _rekordy(None, None, braki)
             return SourceReactiveEntry(
                 ref=item.ref,
                 bus_ref=item.bus_ref,
@@ -216,38 +307,57 @@ class ReactiveAdequacyBuilder:
                 is_saturated=False,
                 at_limit_pl=None,
                 why_pl=why,
-                missing_data=tuple(missing),
+                missing_data=missing_data,
                 white_box=(),
+                ocena_rezerwy_gora=ocena_gora,
+                ocena_rezerwy_dol=ocena_dol,
             )
 
-        q = float(item.q_actual_mvar)  # type: ignore[arg-type]
-        q_min = float(item.q_min_mvar)  # type: ignore[arg-type]
-        q_max = float(item.q_max_mvar)  # type: ignore[arg-type]
-        if q_min > q_max:
+        missing: list[str] = []
+        if item.q_actual_mvar is None:
+            missing.append("q_actual_mvar")
+        if item.q_min_mvar is None:
+            missing.append("q_min_mvar")
+        if item.q_max_mvar is None:
+            missing.append("q_max_mvar")
+        if missing:
+            braki = tuple(_BRAKI_PL[kod] for kod in missing)
             why = (
-                f"Dane niespójne — Q_min = {_round(q_min)} Mvar > "
-                f"Q_max = {_round(q_max)} Mvar. Granice regulatora muszą spełniać "
-                "Q_min <= Q_max."
+                "Dane niekompletne — brak: "
+                + "; ".join(braki)
+                + ". Ocena rezerwy biernej wymaga aktualnego Q (z wyniku "
+                "rozpływu mocy) oraz granic regulatora Q_min/Q_max źródła."
             )
-            return SourceReactiveEntry(
-                ref=item.ref,
-                bus_ref=item.bus_ref,
-                q_actual_mvar=_round(q),
-                q_min_mvar=_round(q_min),
-                q_max_mvar=_round(q_max),
-                headroom_up_mvar=None,
-                headroom_down_mvar=None,
-                is_saturated=False,
-                at_limit_pl=None,
-                why_pl=why,
-                missing_data=("q_limits_inconsistent",),
-                white_box=(),
+            return _bez_rezerwy(why, missing_data=tuple(missing), braki=braki)
+        assert item.q_actual_mvar is not None and item.q_min_mvar is not None
+        assert item.q_max_mvar is not None
+        q = float(item.q_actual_mvar)
+        q_min = float(item.q_min_mvar)
+        q_max = float(item.q_max_mvar)
+        if not converged:
+            braki = (_BRAKI_PL["power_flow_not_converged"],)
+            why = (
+                "Rozpływ mocy niezbieżny — moc bierna źródła z biegu jest niewiarygodna, "
+                "rezerwy regulacyjnej nie wyznaczono."
+            )
+            return _bez_rezerwy(why, missing_data=("power_flow_not_converged",), braki=braki)
+        if q_min > q_max:
+            opis = (
+                f"granice regulatora niespójne: Q_min = {_round(q_min)} Mvar > "
+                f"Q_max = {_round(q_max)} Mvar"
+            )
+            why = f"Dane niespójne — {opis}. Granice regulatora muszą spełniać Q_min <= Q_max."
+            entry = _bez_rezerwy(why, missing_data=("q_limits_inconsistent",), braki=(opis,))
+            return replace(
+                entry, q_actual_mvar=_round(q), q_min_mvar=_round(q_min), q_max_mvar=_round(q_max)
             )
 
         headroom_up = _round(q_max - q)
         headroom_down = _round(q - q_min)
-        at_upper = (q_max - q) <= self.saturation_tol_mvar
-        at_lower = (q - q_min) <= self.saturation_tol_mvar
+        ocena_gora, ocena_dol = _rekordy(headroom_up, headroom_down, ())
+        # Nasycenie = PROJEKCJA rekordów kierunków (jedno źródło prawdy: rezerwa < ε).
+        at_upper = ocena_gora.status_maszynowy == "NIE_SPELNIA"
+        at_lower = ocena_dol.status_maszynowy == "NIE_SPELNIA"
         is_saturated = at_upper or at_lower
         # Przy zdegenerowanym zakresie (Q_min==Q_max) zrodlo nie reguluje Q —
         # oba kierunki przy granicy; raportujemy Q_max (gorny limit wstrzykiwania).
@@ -257,14 +367,14 @@ class ReactiveAdequacyBuilder:
             why = (
                 f"Źródło nasycone przy Q_max = {_round(q_max)} Mvar "
                 f"(Q_actual = {_round(q)} Mvar; rezerwa w górę = {headroom_up} Mvar "
-                f"<= tol {self.saturation_tol_mvar}). Brak dalszej rezerwy do "
+                f"< ε = {self.saturation_tol_mvar} Mvar). Brak dalszej rezerwy do "
                 "wstrzykiwania mocy biernej (podtrzymania napięcia w górę)."
             )
         elif is_saturated and at_limit == "Q_min":
             why = (
                 f"Źródło nasycone przy Q_min = {_round(q_min)} Mvar "
                 f"(Q_actual = {_round(q)} Mvar; rezerwa w dół = {headroom_down} Mvar "
-                f"<= tol {self.saturation_tol_mvar}). Brak dalszej rezerwy do "
+                f"< ε = {self.saturation_tol_mvar} Mvar). Brak dalszej rezerwy do "
                 "absorpcji mocy biernej (obniżenia napięcia)."
             )
         else:
@@ -292,8 +402,8 @@ class ReactiveAdequacyBuilder:
             WhiteBoxStep(
                 symbol="nasycenie",
                 formula_latex=(
-                    r"\text{nasycenie} \Leftarrow \Delta Q_{\uparrow} \leq \varepsilon "
-                    r"\vee \Delta Q_{\downarrow} \leq \varepsilon"
+                    r"\text{nasycenie} \Leftarrow \Delta Q_{\uparrow} < \varepsilon "
+                    r"\vee \Delta Q_{\downarrow} < \varepsilon"
                 ),
                 substitution_pl=(
                     f"ε = {self.saturation_tol_mvar} Mvar; "
@@ -320,21 +430,40 @@ class ReactiveAdequacyBuilder:
             why_pl=why,
             missing_data=(),
             white_box=white_box,
+            ocena_rezerwy_gora=ocena_gora,
+            ocena_rezerwy_dol=ocena_dol,
         )
 
     # --- naruszenia napiecia --------------------------------------------
 
     def _build_violations(
-        self, buses: list[BusVoltageInput], nazwy: Mapping[str, str]
-    ) -> tuple[VoltageViolationEntry, ...]:
+        self, buses: list[BusVoltageInput], nazwy: Mapping[str, str], converged: bool
+    ) -> tuple[tuple[OcenaKryterium, ...], tuple[VoltageViolationEntry, ...]]:
+        """Rekord K pasma napięcia każdego rozwiązanego węzła i naruszenia jako jego projekcja
+        (rekord ``NIE_SPELNIA``). Węzeł nierozwiązany (bez zasilania) jest poza oceną pasma —
+        wykluczenie zapisane w zakresie ważności rekordu. Bieg niezbieżny: napięcia węzłów nie
+        są oceniane (rekordy ``NIE_OCENIONO``), naruszeń nie ma z czego wyznaczyć."""
+        oceny: list[OcenaKryterium] = []
         out: list[VoltageViolationEntry] = []
         for b in buses:
-            nazwa_wezla = nazwa_po_identyfikatorze(b.bus_ref, indeks=nazwy)
             if b.v_pu is None:
                 continue  # wezel nierozwiazany — brak |V| do oceny
+            nazwa_wezla = nazwa_po_identyfikatorze(b.bus_ref, indeks=nazwy)
             v = float(b.v_pu)
+            wlasne_pasmo = b.u_min_pu is not None and b.u_max_pu is not None
             u_min = float(b.u_min_pu) if b.u_min_pu is not None else self.default_u_min_pu
             u_max = float(b.u_max_pu) if b.u_max_pu is not None else self.default_u_max_pu
+            ocena = ocena_pasma(
+                nazwa_pl=nazwa_wezla,
+                element_ref=b.bus_ref,
+                v_pu=_round(v) if converged else None,
+                pasmo_pu=(_round(u_min), _round(u_max)),
+                podstawa=PODSTAWA_PASMA_WEZLA if wlasne_pasmo else PODSTAWA_PASMA_DOMYSLNEGO,
+                braki=() if converged else (_BRAKI_PL["power_flow_not_converged"],),
+            )
+            oceny.append(ocena)
+            if ocena.status_maszynowy != "NIE_SPELNIA":
+                continue
             if v > u_max:
                 dev = _round(v - u_max)
                 kind = "przekroczenie U_max"
@@ -343,7 +472,7 @@ class ReactiveAdequacyBuilder:
                     f"{nazwa_wezla}; przekroczenie o {dev} p.u. Wskazuje na nadmiar "
                     "mocy biernej / potrzebę absorpcji Q."
                 )
-            elif v < u_min:
+            else:
                 dev = _round(v - u_min)  # ujemne
                 kind = "poniżej U_min"
                 why = (
@@ -351,8 +480,6 @@ class ReactiveAdequacyBuilder:
                     f"{nazwa_wezla}; niedobór {dev} p.u. Wskazuje na niedobór mocy "
                     "biernej / potrzebę wstrzykiwania Q (podtrzymania napięcia)."
                 )
-            else:
-                continue
             white_box = (
                 WhiteBoxStep(
                     symbol="ΔU",
@@ -374,9 +501,22 @@ class ReactiveAdequacyBuilder:
                     kind_pl=kind,
                     why_pl=why,
                     white_box=white_box,
+                    ocena=ocena,
                 )
             )
-        return tuple(out)
+        if not oceny:
+            # Żaden węzeł nie ma napięcia — pasma nie ma na czym ocenić (brak ≠ spełnia).
+            oceny.append(
+                ocena_pasma(
+                    nazwa_pl="Węzły sieci biegu rozpływu",
+                    element_ref=None,
+                    v_pu=None,
+                    pasmo_pu=(self.default_u_min_pu, self.default_u_max_pu),
+                    podstawa=PODSTAWA_PASMA_DOMYSLNEGO,
+                    braki=(_BRAKI_PL["bus_voltages"],),
+                )
+            )
+        return tuple(oceny), tuple(out)
 
     # --- bilans bierny ---------------------------------------------------
 
@@ -480,7 +620,9 @@ class ReactiveAdequacyBuilder:
 
     def _classify(
         self,
+        rozstrzygniecie_skladowych: str | None,
         *,
+        zrodla_niekompletne: tuple[str, ...],
         top_missing: tuple[str, ...],
         nasycone_nazwy: tuple[str, ...],
         wezly_z_naruszeniem: tuple[str, ...],
@@ -488,23 +630,31 @@ class ReactiveAdequacyBuilder:
         net_down: float | None,
         provenance: ProvenanceTag | None,
     ) -> tuple[str, bool, str]:
-        if top_missing:
+        """Kod zastany i uzasadnienie — PROJEKCJA rozstrzygnięcia rekordów składowych
+        (``rozstrzygniecie``): naruszenie → wyczerpana, wszystkie spełnione → wystarczająca,
+        którakolwiek nierozstrzygnięta → dane niekompletne (brak danych ≠ spełnia)."""
+        if rozstrzygniecie_skladowych is None:
+            braki = [_BRAKI_PL[kod] for kod in top_missing]
+            if zrodla_niekompletne and "power_flow_not_converged" not in top_missing:
+                braki.append("komplet danych regulatora źródeł: " + ", ".join(zrodla_niekompletne))
             why = (
                 "Werdykt niemożliwy — dane niekompletne: "
-                + ", ".join(top_missing)
+                + "; ".join(braki)
                 + ". Ocena adekwatności mocy biernej wymaga zbieżnego wyniku "
-                "power-flow (napięcia |V|) oraz co najmniej jednego regulowalnego "
-                "źródła z granicami Q."
+                "rozpływu mocy (napięcia |V|) oraz kompletu granic Q każdego regulowalnego "
+                "źródła."
             )
             return VERDICT_NO_DATA, False, why
 
         # Uzasadnienie nazywa zrodla i wezly nazwami z modelu (karta #144).
-        if nasycone_nazwy or wezly_z_naruszeniem:
+        if rozstrzygniecie_skladowych == "NIE_SPELNIA":
             parts: list[str] = []
             if nasycone_nazwy:
                 parts.append("źródła nasycone: " + ", ".join(nasycone_nazwy))
             if wezly_z_naruszeniem:
                 parts.append("węzły z naruszeniem napięcia: " + ", ".join(wezly_z_naruszeniem))
+            if "controllable_sources" in top_missing:
+                parts.append("brak " + _BRAKI_PL["controllable_sources"])
             why = (
                 "Rezerwa Q wyczerpana — "
                 + "; ".join(parts)

@@ -12,11 +12,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  BRAKI_DANYCH_Q,
-  BRAKI_DANYCH_SILY,
-  WERDYKTY_ADEKWATNOSCI_Q,
-} from '../strings';
+import * as PULPIT from '../strings';
+import { BRAKI_DANYCH_Q, BRAKI_DANYCH_SILY } from '../strings';
 
 const ANALIZY = join(process.cwd(), '..', 'backend', 'src', 'analysis');
 
@@ -45,21 +42,19 @@ describe('pulpit OZE — braki danych i werdykty po polsku, parytet z backendem'
     expect([...zBackendu].sort()).toEqual(Object.keys(BRAKI_DANYCH_Q).sort());
   });
 
-  it('adekwatność Q: każdy werdykt `VERDICT_*` ma polską etykietę i odwrotnie', () => {
-    const zBackendu = new Set(
-      [...zrodlo('reactive_adequacy', 'models.py').matchAll(/^VERDICT_[A-Z_]+ = "([^"]+)"/gm)].map(
-        (m) => m[1],
-      ),
-    );
-    expect(zBackendu.size).toBeGreaterThan(0);
-    expect([...zBackendu].sort()).toEqual(Object.keys(WERDYKTY_ADEKWATNOSCI_Q).sort());
+  it('adekwatność Q i siła sieci: ekran nie mapuje kodu werdyktu — etykieta z rekordu', () => {
+    // Kontrakt werdyktu wyjaśnialnego §9 (karta WERDYKT-MIGRACJA-190): status pokazuje
+    // EtykietaWerdyktu/KartaWerdyktu z rekordu `wymaganie`/`ocena`; własne słowniki
+    // kodów `verdict` są zakazane, więc moduł napisów ich nie eksportuje.
+    expect(PULPIT).not.toHaveProperty('WERDYKTY_ADEKWATNOSCI_Q');
+    expect(PULPIT).not.toHaveProperty('klasaWerdyktuQ');
+    expect(PULPIT).not.toHaveProperty('klasaWerdyktuSily');
   });
 
   it('żadna etykieta nie jest kodem (snake_case) ani pustym napisem', () => {
     [
       ...Object.values(BRAKI_DANYCH_SILY),
       ...Object.values(BRAKI_DANYCH_Q),
-      ...Object.values(WERDYKTY_ADEKWATNOSCI_Q),
     ].forEach((etykieta) => {
       expect(etykieta.trim()).not.toBe('');
       expect(etykieta).not.toMatch(/\b[a-z]+_[a-z0-9_]+\b/);

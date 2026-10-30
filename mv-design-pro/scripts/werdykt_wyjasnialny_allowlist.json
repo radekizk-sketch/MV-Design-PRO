@@ -10,20 +10,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.reactive_adequacy.models:ReactiveAdequacyView.is_adequate",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B10 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "B10"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.reactive_adequacy.models:ReactiveAdequacyView.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B10 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "B10"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "analysis.recommendations.models:RecommendationEntry.expected_effect",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz B6: 6. `analysis/recommendations/models.py:14,44`, `builder.py:51-62, 147-198` — `RecommendationEffect` {PASS, STILL_FAIL, NOT_COMPUTED}. Present: SUBJ, value+unit, required_delta %, confidence_note (codenames P20/P25/P26). Missing: LIM, SRC, BASIS, EVID, DOM. Reach: only `pokrycie_analiz.py:62`; view never serialized. Class: ENUM_WEWNETRZNY (output unused → LEGACY candidate).",

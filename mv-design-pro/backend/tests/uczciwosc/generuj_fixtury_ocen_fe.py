@@ -23,11 +23,18 @@ from pathlib import Path
 from typing import Any
 
 from analysis.energy_validation.builder import _pozycja as _pozycja_walidacji
-from analysis.grid_strength.builder import GridStrengthBuilder
-from analysis.grid_strength.models import BusSourceModule, BusStrengthInput, GridStrengthContext
 from analysis.energy_validation.models import EnergyCheckType
 from analysis.energy_validation.serializer import item_to_dict
+from analysis.grid_strength.builder import GridStrengthBuilder
+from analysis.grid_strength.models import BusSourceModule, BusStrengthInput, GridStrengthContext
 from analysis.normative.models import NormativeConfig
+from analysis.reactive_adequacy import (
+    BusVoltageInput,
+    LoadReactiveInput,
+    ReactiveAdequacyBuilder,
+    ReactiveAdequacyContext,
+    SourceReactiveInput,
+)
 from analysis.sensitivity.builder import SensitivityBuilder
 from analysis.ssci_stability.models import ocena_ssci_niewykonana
 from analysis.voltage_profile.builder import wiersz_profilu
@@ -523,6 +530,59 @@ def _sila_sieci() -> dict[str, Any]:
     return GridStrengthBuilder().build(wejscia, context=kontekst).to_dict()
 
 
+def _adekwatnosc_q() -> dict[str, Any]:
+    """Widok adekwatności mocy biernej (``analysis/reactive_adequacy`` — TEN SAM builder co
+    końcówka ``GET /api/oze-analysis/reactive-adequacy``) dla pulpitu OZE: źródło w zakresie
+    regulacji, źródło nasycone przy Q_max, węzeł z napięciem powyżej pasma; granice z karty
+    producenta (bez danych przyjętych)."""
+    from solver_input.provenance import FieldQuality
+
+    kontekst = ReactiveAdequacyContext(
+        project_name="Projekt A",
+        case_name="Scenariusz 1",
+        case_id="case-1",
+        run_timestamp=datetime(2026, 7, 16, 10, 5, tzinfo=UTC),
+        snapshot_hash="snap-1",
+        run_id="run-pf-2",
+    )
+    return (
+        ReactiveAdequacyBuilder()
+        .build(
+            [
+                BusVoltageInput("bus-pcc-1", 1.0, 0.95, 1.05),
+                BusVoltageInput("bus-pcc-2", 1.07, 0.95, 1.05),
+            ],
+            [
+                SourceReactiveInput(
+                    "src-1",
+                    "bus-pcc-1",
+                    q_actual_mvar=1.2,
+                    q_min_mvar=-3.6,
+                    q_max_mvar=3.6,
+                    limits_field_quality=FieldQuality.DATASHEET,
+                ),
+                SourceReactiveInput(
+                    "src-2",
+                    "bus-pcc-2",
+                    q_actual_mvar=3.6,
+                    q_min_mvar=-3.6,
+                    q_max_mvar=3.6,
+                    limits_field_quality=FieldQuality.DATASHEET,
+                ),
+            ],
+            [LoadReactiveInput("load-1", 2.0)],
+            context=kontekst,
+            nazwy={
+                "bus-pcc-1": "Szyna SN przyłączenia A",
+                "bus-pcc-2": "Szyna SN przyłączenia B",
+                "src-1": "Blok PV A",
+                "src-2": "Magazyn energii 1",
+            },
+        )
+        .to_dict()
+    )
+
+
 #: Plik fixtury frontu → funkcja budująca jego treść.
 FIXTURY: dict[Path, Any] = {
     _FRONTEND_SRC / "ui2" / "oze" / "frt" / "__tests__" / "rekordyOceny.json": _frt,
@@ -554,6 +614,12 @@ FIXTURY: dict[Path, Any] = {
     / "__tests__"
     / "wrazliwoscOgolna.json": _wrazliwosc_ogolna,
     _FRONTEND_SRC / "ui2" / "oze" / "pulpit" / "__tests__" / "widokSilySieci.json": _sila_sieci,
+    _FRONTEND_SRC
+    / "ui2"
+    / "oze"
+    / "pulpit"
+    / "__tests__"
+    / "widokAdekwatnosciQ.json": _adekwatnosc_q,
 }
 
 

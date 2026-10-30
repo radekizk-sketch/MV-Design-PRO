@@ -333,8 +333,18 @@ class TestMissingData:
         assert bad.white_box == ()
         assert "Dane niekompletne" in bad.why_pl
         assert v.summary.not_computed_source_count == 1
-        # Z kompletnym zrodlem "OK" w obszarze regulacji werdykt jest adekwatny.
-        assert v.verdict == VERDICT_ADEQUATE
+        # Braki nazwane po polsku, bez kodów pól (karta WERDYKT-MIGRACJA-190).
+        assert "q_min_mvar" not in bad.why_pl
+        assert "Q_min" in bad.why_pl
+        # Kanon zmieniony (karta WERDYKT-MIGRACJA-190, brak danych ≠ spełnia): źródło bez
+        # granicy regulatora ma rekordy rezerwy NIE_OCENIONO, więc rezerwy sieci nie da się
+        # wykazać — werdykt „dane niekompletne” (dawniej „wystarczająca” mimo braku), z nazwą
+        # źródła w uzasadnieniu. Intencja testu (źródło niekompletne oznaczone) zachowana.
+        assert bad.ocena_rezerwy_gora.status_maszynowy == "NIE_OCENIONO"
+        assert v.verdict == VERDICT_NO_DATA
+        assert v.is_adequate is False
+        assert "Falownik o błędnej karcie" in v.why_pl
+        assert "BAD" not in v.why_pl
 
     def test_inconsistent_limits_qmin_gt_qmax(self) -> None:
         buses = [BusVoltageInput("B", 1.0, 0.95, 1.05)]
@@ -446,8 +456,12 @@ class TestWhiteBoxAndSerialization:
             "summary",
             "provenance",
             "missing_data",
+            "wymaganie",
+            "wyjasnienie",
         }
         assert d["sources"][0]["headroom_up_mvar"] == 1.5
+        assert d["wyjasnienie"] == d["wymaganie"]["wyjasnienie"]
+        assert d["sources"][0]["ocena_rezerwy_gora"]["status_maszynowy"] == "SPELNIA"
         assert isinstance(d["sources"][0]["white_box"], list)
 
 

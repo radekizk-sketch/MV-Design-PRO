@@ -91,7 +91,10 @@ export type BrakDanychQ =
   | 'q_max_mvar'
   | 'q_limits_inconsistent';
 
-/** Werdykty adekwatności mocy biernej (`analysis/reactive_adequacy/models.py`, `VERDICT_*`). */
+/**
+ * Kody zastane werdyktu adekwatności Q (`analysis/reactive_adequacy/models.py`, `VERDICT_*`) —
+ * projekcja rekordu `wymaganie`; ekran pokazuje etykietę i wyjaśnienie rekordu, nie kod.
+ */
 export type WerdyktAdekwatnosciQ =
   | 'wystarczająca rezerwa Q'
   | 'rezerwa Q wyczerpana'
@@ -179,6 +182,9 @@ export interface WpisZrodlaQ {
   readonly why_pl: string;
   readonly missing_data: readonly BrakDanychQ[];
   readonly white_box: readonly KrokSladuQ[];
+  /** Rekordy K rezerwy w górę i w dół (`analysis/reactive_adequacy/oceny.py`) — nasycenie to ich projekcja. */
+  readonly ocena_rezerwy_gora: OcenaKryterium;
+  readonly ocena_rezerwy_dol: OcenaKryterium;
 }
 
 /** Węzeł z naruszeniem pasma napięciowego. */
@@ -191,6 +197,8 @@ export interface WpisNaruszeniaNapiecia {
   readonly kind_pl: string;
   readonly why_pl: string;
   readonly white_box: readonly KrokSladuQ[];
+  /** Rekord K pasma napięcia węzła (status NIE_SPELNIA). */
+  readonly ocena: OcenaKryterium;
 }
 
 /** Bilans bierny systemu. */
@@ -238,6 +246,9 @@ export interface WidokAdekwatnosciQ {
   readonly summary: PodsumowanieQ;
   readonly provenance: ProweniencjaQ | null;
   readonly missing_data: readonly BrakDanychQ[];
+  /** Rekord W adekwatności (składowe: rezerwy źródeł, pasma węzłów) — jedyne źródło etykiety. */
+  readonly wymaganie: WynikWymagania;
+  readonly wyjasnienie: WyjasnienieWerdyktu;
 }
 
 // =============================================================================

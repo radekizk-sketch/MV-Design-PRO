@@ -10,6 +10,7 @@ import { useState } from 'react';
 
 import { pobierzAdekwatnoscQ, type WpisZrodlaQ } from '../api';
 import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { SladAnalizy } from './SladAnalizy';
 import { busRefModuluQ } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
@@ -17,9 +18,7 @@ import {
   BRAKI_DANYCH_Q,
   formatMvar,
   formatPu,
-  klasaWerdyktuQ,
   PULPIT_STRINGS,
-  WERDYKTY_ADEKWATNOSCI_Q,
 } from './strings';
 import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
@@ -73,13 +72,24 @@ function WpisZrodla({
           {formatMvar(wpis.q_min_mvar)} … {formatMvar(wpis.q_max_mvar)}
         </span>
       </div>
+      {/* Rezerwa z etykietą rekordu K kierunku (kontrakt werdyktu §9): nasycenie to projekcja. */}
       <div className="mvd-oze-metryka">
         <span>{PULPIT_STRINGS.adekwRezerwaGora}</span>
         <span className="mvd-oze-num">{formatMvar(wpis.headroom_up_mvar)}</span>
+        <EtykietaWerdyktu
+          etykieta={wpis.ocena_rezerwy_gora.etykieta}
+          status={wpis.ocena_rezerwy_gora.status_maszynowy}
+          testid={`mvd-oze-adekw-ocena-gora-${wpis.ref}`}
+        />
       </div>
       <div className="mvd-oze-metryka">
         <span>{PULPIT_STRINGS.adekwRezerwaDol}</span>
         <span className="mvd-oze-num">{formatMvar(wpis.headroom_down_mvar)}</span>
+        <EtykietaWerdyktu
+          etykieta={wpis.ocena_rezerwy_dol.etykieta}
+          status={wpis.ocena_rezerwy_dol.status_maszynowy}
+          testid={`mvd-oze-adekw-ocena-dol-${wpis.ref}`}
+        />
       </div>
       <p style={{ margin: '4px 0 0' }}>{wpis.why_pl}</p>
       {wpis.missing_data.length > 0 ? (
@@ -148,15 +158,12 @@ export function SekcjaAdekwatnosciQ({
           <div className="mvd-oze-podsum" data-testid="mvd-oze-adekw-podsum">
             <div className="mvd-oze-podsum-poz">
               <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.adekwWerdyktEt}</span>
-              <span
-                className={`mvd-oze-komorka ${klasaWerdyktuQ(
-                  stan.dane.is_adequate,
-                  stan.dane.verdict,
-                )}`}
-                data-testid="mvd-oze-adekw-werdykt"
-              >
-                {WERDYKTY_ADEKWATNOSCI_Q[stan.dane.verdict]}
-              </span>
+              {/* Etykieta Z REKORDU W (kontrakt werdyktu §9) — kod zastany nie trafia na ekran. */}
+              <EtykietaWerdyktu
+                etykieta={stan.dane.wymaganie.etykieta}
+                status={stan.dane.wymaganie.status_maszynowy}
+                testid="mvd-oze-adekw-werdykt"
+              />
             </div>
             <div className="mvd-oze-podsum-poz">
               <span className="mvd-oze-podsum-etyk">{PULPIT_STRINGS.adekwRezerwaSystem}</span>
@@ -168,6 +175,7 @@ export function SekcjaAdekwatnosciQ({
           </div>
 
           <p style={{ margin: '4px 0 0' }}>{stan.dane.why_pl}</p>
+          <KartaWerdyktu rekord={stan.dane.wymaganie} naglowek={PULPIT_STRINGS.adekwOcena} />
 
           {stan.dane.provenance ? (
             <div className="mvd-oze-metryka" data-testid="mvd-oze-adekw-proweniencja">
@@ -185,7 +193,7 @@ export function SekcjaAdekwatnosciQ({
                 className="mvd-oze-wyroznienie-wezel"
                 data-testid="mvd-oze-adekw-wyroznienie-wezel"
               >
-                {PULPIT_STRINGS.adekwWyroznionyWezel}: {wyroznionyWezel}
+                {PULPIT_STRINGS.adekwWyroznionyWezel}: {nazwaObiektu(wyroznionyWezel)}
               </p>
             ) : null}
             {wyroznionyModul && !wyroznionyWezel ? (

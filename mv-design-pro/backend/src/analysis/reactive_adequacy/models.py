@@ -34,8 +34,10 @@ from typing import Any
 
 from analysis.normative.kryteria_napiecia import KRYTERIUM_OSTRZEZENIE_PROCENT, pasmo_pu
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from werdykt import OcenaKryterium, WyjasnienieWerdyktu, WynikWymagania
 
-# Tolerancja nasycenia: rezerwa <= tej wartosci [Mvar] => zrodlo przy granicy Q.
+# Tolerancja nasycenia ε [Mvar], ε > 0: rezerwa MNIEJSZA od ε => zrodlo przy granicy Q
+# (rekord K ``rezerwa >= ε`` niespelniony — `analysis/reactive_adequacy/oceny.py`).
 # Udokumentowana, NIE dostrajana pod test — domyslna liczbowa "blisko zera".
 DEFAULT_SATURATION_TOL_MVAR = 1.0e-3
 
@@ -183,6 +185,9 @@ class SourceReactiveEntry:
     why_pl: str
     missing_data: tuple[str, ...]
     white_box: tuple[WhiteBoxStep, ...]
+    # Rekordy K rezerwy w gore i w dol — ``is_saturated``/``at_limit_pl`` sa ich projekcja.
+    ocena_rezerwy_gora: OcenaKryterium
+    ocena_rezerwy_dol: OcenaKryterium
 
 
 @dataclass(frozen=True)
@@ -195,6 +200,8 @@ class VoltageViolationEntry:
     kind_pl: str  # "przekroczenie U_max" / "ponizej U_min"
     why_pl: str
     white_box: tuple[WhiteBoxStep, ...]
+    # Rekord K pasma napiecia wezla (status ``NIE_SPELNIA`` — naruszenie jest jego projekcja).
+    ocena: OcenaKryterium
 
 
 @dataclass(frozen=True)
@@ -249,6 +256,10 @@ class ReactiveAdequacyView:
     summary: ReactiveAdequacySummary
     provenance: ProvenanceTag | None
     missing_data: tuple[str, ...]
+    # Rekord W adekwatnosci (skladowe: rezerwy zrodel i pasma wezlow) — ``verdict`` i
+    # ``is_adequate`` sa projekcja rozstrzygniecia jego skladowych.
+    wymaganie: WynikWymagania
+    wyjasnienie: WyjasnienieWerdyktu
 
     def to_dict(self) -> dict[str, Any]:
         from analysis.reactive_adequacy.serializer import view_to_dict

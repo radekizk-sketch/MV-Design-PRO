@@ -9,7 +9,7 @@ import { render, screen } from '@testing-library/react';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { SekcjaAdekwatnosciQ } from '../SekcjaAdekwatnosciQ';
-import { BRAKI_DANYCH_Q, WERDYKTY_ADEKWATNOSCI_Q } from '../strings';
+import { BRAKI_DANYCH_Q } from '../strings';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { adekwatnoscQFixture, przebiegFixture } from './analizyFixtures';
 
@@ -56,11 +56,20 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
     render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
     expect(await screen.findByTestId('mvd-oze-adekw-wynik')).toBeInTheDocument();
     expect(pobierzAdekwatnoscQ).toHaveBeenCalledWith('lf-run');
-    // Karta #145: werdykt maszynowy backendu nie trafia na ekran — polska etykieta.
-    expect(screen.getByTestId('mvd-oze-adekw-werdykt')).toHaveTextContent(
-      WERDYKTY_ADEKWATNOSCI_Q['wystarczająca rezerwa Q'],
-    );
+    // Kontrakt werdyktu §9: etykieta Z REKORDU W (fikstura z buildera backendu: źródło
+    // nasycone + węzeł powyżej pasma → wymaganie naruszone); kod zastany nie trafia na ekran.
+    expect(screen.getByTestId('mvd-oze-adekw-werdykt')).toHaveTextContent('Wymaganie naruszone');
     expect(screen.getByTestId('mvd-oze-adekw-werdykt')).not.toHaveTextContent('rezerwa Q');
+    // Rezerwa kierunku z etykietą rekordu K: src-2 przy Q_max — rezerwa w górę naruszona.
+    expect(screen.getByTestId('mvd-oze-adekw-ocena-gora-src-2')).toHaveTextContent(
+      'Kryterium naruszone',
+    );
+    expect(screen.getByTestId('mvd-oze-adekw-ocena-dol-src-2')).toHaveTextContent(
+      'Kryterium spełnione',
+    );
+    expect(screen.getByTestId('mvd-oze-adekw-ocena-gora-src-1')).toHaveTextContent(
+      'Kryterium spełnione',
+    );
     expect(screen.getByTestId('mvd-oze-adekw-nasycenie-src-2')).toHaveTextContent('przy granicy');
     expect(screen.getByTestId('mvd-oze-adekw-naruszenie-bus-pcc-2')).toBeInTheDocument();
   });
@@ -93,9 +102,11 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
   it('pokazuje proweniencję werdyktu (jakość pól Q-granic)', async () => {
     pobierzAdekwatnoscQ.mockResolvedValue(adekwatnoscQFixture());
     render(<SekcjaAdekwatnosciQ szczegolyAudytowe={false} />);
+    const fikstura = adekwatnoscQFixture();
     expect(await screen.findByTestId('mvd-oze-adekw-proweniencja')).toHaveTextContent(
-      'z karty katalogowej',
+      fikstura.provenance?.worst_quality_label_pl ?? '',
     );
+    expect(fikstura.provenance?.worst_quality).toBe('DATASHEET');
   });
 
   it('błąd końcówki → jawny stan błędu', async () => {

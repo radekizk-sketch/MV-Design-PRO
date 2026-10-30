@@ -483,6 +483,18 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="analysis/grid_strength/builder.py; karta WERDYKT-MIGRACJA-190",
         ),
         CapabilityEvidence(
+            capability_id="adekwatnosc_q.rezerwa_i_pasmo",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Adekwatność mocy biernej: rezerwa regulacyjna Q_max − Q_akt i Q_akt − Q_min "
+                "każdego regulowalnego źródła z biegu rozpływu mocy i granic regulatora z karty "
+                "wobec tolerancji nasycenia oraz napięcia węzłów wobec pasma dopuszczalnego. "
+                "Stan ustalony na modelu niezwalidowanym pomiarem — nie dowód regulacyjny."
+            ),
+            audit_ref="analysis/reactive_adequacy/builder.py; karta WERDYKT-MIGRACJA-190",
+        ),
+        CapabilityEvidence(
             capability_id="wrazliwosc.zapas_kryterium",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             claim_kind=ClaimKind.STATIC_CALCULATION,

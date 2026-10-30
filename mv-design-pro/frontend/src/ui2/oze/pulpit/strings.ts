@@ -7,7 +7,7 @@
 
 import type { ConnectionSide } from '../../../ui/network-build/station-der';
 import { formatLiczba } from '../macierz/strings';
-import type { BrakDanychQ, BrakDanychSily, WerdyktAdekwatnosciQ } from '../api';
+import type { BrakDanychQ, BrakDanychSily } from '../api';
 
 export const PULPIT_STRINGS = {
   // Nagłówek
@@ -131,7 +131,8 @@ export const PULPIT_STRINGS = {
     'i moc bierna źródeł). Uruchom rozpływ mocy w przypadku obliczeniowym.',
   adekwLadowanie: 'Ładowanie oceny adekwatności mocy biernej…',
   adekwBlad: 'Nie udało się pobrać oceny adekwatności mocy biernej',
-  adekwWerdyktEt: 'Werdykt adekwatności',
+  adekwWerdyktEt: 'Ocena adekwatności',
+  adekwOcena: 'Ocena adekwatności rezerwy mocy biernej',
   adekwProweniencja: 'Proweniencja werdyktu',
   adekwRezerwaSystem: 'Rezerwa systemowa (źródła nienasycone)',
   adekwZrodla: 'Rezerwy mocy biernej źródeł',
@@ -164,16 +165,6 @@ export const PULPIT_STRINGS = {
   dokumentyOpis: 'Dokumentacja przyłączeniowa i raporty modułu w osobnym widoku.',
   dokumentyPrzejdz: 'Przejdź do dokumentacji',
 } as const;
-
-/**
- * Klasa CSS werdyktu adekwatności Q. Bazuje na fladze `is_adequate` z backendu
- * i tekście werdyktu („wyczerpana" → błąd, niekompletne dane → neutralny).
- */
-export function klasaWerdyktuQ(isAdequate: boolean, verdict: WerdyktAdekwatnosciQ): string {
-  if (isAdequate) return 'mvd-oze-werdykt-ok';
-  if (verdict === 'rezerwa Q wyczerpana') return 'mvd-oze-werdykt-err';
-  return 'mvd-oze-werdykt-neutralny';
-}
 
 /** Format pojemności energetycznej [kWh] → kWh lub MWh gdy ≥ 1000 kWh. */
 export function formatEnergia(kwh: number | null): string {
@@ -244,9 +235,3 @@ export const BRAKI_DANYCH_Q: Readonly<Record<BrakDanychQ, string>> = {
   q_limits_inconsistent: 'spójne granice regulatora (Q_min nie większa niż Q_max)',
 };
 
-/** Werdykt adekwatności mocy biernej po polsku — wartość maszynowa backendu nie trafia na ekran. */
-export const WERDYKTY_ADEKWATNOSCI_Q: Readonly<Record<WerdyktAdekwatnosciQ, string>> = {
-  'wystarczająca rezerwa Q': 'wystarczająca rezerwa mocy biernej',
-  'rezerwa Q wyczerpana': 'rezerwa mocy biernej wyczerpana',
-  'dane niekompletne': 'dane niekompletne',
-};
