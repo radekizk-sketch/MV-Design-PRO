@@ -106,6 +106,16 @@ poświadcza, że każdy rekord został już potwierdzony przez producenta.
 
 ## Ubuntu — bieżący audyt wszystkich rodzin
 
+Jedno polecenie w katalogu `mv-design-pro`:
+
+```bash
+bash scripts/catalog_audit_ubuntu.sh
+```
+
+`bash scripts/catalog_audit_ubuntu.sh --strict` dodatkowo odrzuca brakujące minimum.
+Wymaga przygotowanego środowiska Python 3.11 z zależnościami backendu.
+
+
 ```bash
 cd mv-design-pro
 PYTHONPATH=backend/src python -m network_model.catalog.completeness_report --summary
