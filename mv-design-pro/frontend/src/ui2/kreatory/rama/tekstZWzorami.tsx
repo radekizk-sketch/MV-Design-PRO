@@ -20,69 +20,11 @@
 
 import { Fragment } from 'react';
 import { MathInline } from '../../../ui/proof/MathRenderer';
-
-/** Regex segmentu wzoru inline: `$...$` bez zagnieżdżonych delimiterów. */
-const SEGMENT_WZORU = /(\$[^$]+\$)/g;
+import { jestWzorem, latexNaTekst, SEGMENT_WZORU_INLINE } from '../../../ui/proof/latexTekst';
 
 export interface TekstZWzoramiProps {
   /** Tekst PL z opcjonalnymi wzorami LaTeX w delimiterach `$...$`. */
   tekst: string;
-}
-
-/** Znaki poleceń LaTeX-a symboli i operatorów — odczyt w postaci bez wzorów. */
-const ZNAKI_POLECEN: Readonly<Record<string, string>> = {
-  prime: '′',
-  Delta: 'Δ',
-  delta: 'δ',
-  Sigma: 'Σ',
-  eta: 'η',
-  cdot: '·',
-  times: '×',
-  leq: '≤',
-  le: '≤',
-  geq: '≥',
-  ge: '≥',
-  neq: '≠',
-  approx: '≈',
-  pm: '±',
-  rho: 'ρ',
-  varphi: 'φ',
-  phi: 'ϕ',
-  alpha: 'α',
-  beta: 'β',
-  gamma: 'γ',
-  omega: 'ω',
-  Omega: 'Ω',
-  mu: 'μ',
-  theta: 'θ',
-  vartheta: 'ϑ',
-  tau: 'τ',
-  pi: 'π',
-  sqrt: '√',
-  infty: '∞',
-  to: '→',
-  subseteq: '⊆',
-  in: '∈',
-};
-
-/** Operatory i relacje — w odczycie otoczone spacją (`2 \cdot I` → `2 · I`). */
-const OPERATORY = new Set(['cdot', 'times', 'leq', 'le', 'geq', 'ge', 'neq', 'approx', 'pm', 'to', 'in', 'subseteq']);
-
-/** Polecenia LaTeX-a, które tylko formatują (krój, tekst) — w odczycie znikają. */
-const POLECENIA_FORMATU = new Set(['mathrm', 'text', 'mathit', 'mathbf', 'operatorname', 'left', 'right']);
-
-function latexNaTekst(latex: string): string {
-  return latex
-    .replace(/\\[,;:! ]/g, ' ')
-    .replace(/\\([%_&#])/g, '$1')
-    .replace(/\\([a-zA-Z]+)\s*/g, (_cale, polecenie: string) => {
-      if (POLECENIA_FORMATU.has(polecenie)) return '';
-      const znak = ZNAKI_POLECEN[polecenie] ?? polecenie;
-      return OPERATORY.has(polecenie) ? ` ${znak} ` : znak;
-    })
-    .replace(/[{}_^]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 /** Tekst bez wzorów dla atrybutów i natywnych `<option>` (patrz nagłówek modułu). */
@@ -92,11 +34,11 @@ export function tekstBezWzorow(tekst: string): string {
 
 /** Tekst z osadzonymi wzorami LaTeX renderowanymi przez KaTeX (MathInline). */
 export function TekstZWzorami({ tekst }: TekstZWzoramiProps) {
-  const segmenty = tekst.split(SEGMENT_WZORU);
+  const segmenty = tekst.split(SEGMENT_WZORU_INLINE);
   return (
     <>
       {segmenty.map((segment, i) =>
-        segment.length > 2 && segment.startsWith('$') && segment.endsWith('$') ? (
+        jestWzorem(segment) ? (
           <MathInline key={i} latex={segment} />
         ) : (
           <Fragment key={i}>{segment}</Fragment>

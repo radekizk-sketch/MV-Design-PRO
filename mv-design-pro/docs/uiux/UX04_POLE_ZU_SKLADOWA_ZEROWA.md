@@ -1418,3 +1418,16 @@ największe `proof_engine` 885, `solvers` 355, `analyses` 168, `catalog` 167), w
 strażnika; specy e2e `menu-schematu-nn`, `w5e-ttit-nn`, `kanon-menu-sld` podają dane
 transformatorów 110/SN przy równoważniku SN (ten sam defekt co naprawiony spec Z_f, karta GPZ-MODEL)
 — w zakresie równoległej karty czerwonych e2e pełnego biegu.
+
+**Decyzja architekta o zakresie klas (2026-10-30, kolejność 1 → 2 → 3 → 4) — w toku.**
+Punkt 1 (`ui/**`, pin 0): zakres strażnika `ui_math_guard` rozszerzony o `ui/**` i o teksty JSX
+(parser kompilatora TypeScript, `scripts/teksty_jsx.mjs`); wykryto i naprawiono przy okazji:
+KaTeX w trybie `html` oznacza znacznik `aria-hidden`, więc każdy wzór był niewidoczny dla czytnika
+ekranu i dla nazwy dostępnej (`MathRenderer` dostał `role="math"` i `aria-label` z odczytu
+`latexNaTekst`, który rozwija teraz ułamek i pierwiastek); kontener `uppercase` zamieniał indeksy
+na wielkie litery (`normal-case` na wzorze); polecenie LaTeX z pojedynczym ukośnikiem w literale TS
+(`\Delta` ginie, `\varphi` staje się znakiem sterującym) — nowa reguła strażnika. Wspólne źródło
+odczytu i tekstu SVG: `ui/proof/latexTekst.ts`, `ui/proof/TekstSvgZWzorami.tsx`. Stan: około
+dwie trzecie trafień `ui/**` naprawione; w toku: przejście skanu literałów TS z wyrażenia
+regularnego na parser (literał zagnieżdżony w interpolacji i wielowierszowy były niewidoczne).
+Punkty 2–4: nierozpoczęte.

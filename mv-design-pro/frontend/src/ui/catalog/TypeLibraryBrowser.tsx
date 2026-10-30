@@ -6,6 +6,7 @@ import {
   type CatalogListItem,
 } from './api';
 import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 import {
   BRAK_DANYCH_PL,
   pradAparatuSnKatalogu,
@@ -77,20 +78,20 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   unverified: 'Niezweryfikowane',
   unverified_ranges: 'Zakresy niezweryfikowane',
   voltage_rating_kv: 'Napięcie znamionowe [kV]',
-  sk3_mva: 'Moc zwarciowa Sk3 [MVA]',
-  ik3_ka: 'Prąd zwarciowy Ik3 [kA]',
+  sk3_mva: 'Moc zwarciowa $S\'\'_{k3}$ [MVA]',
+  ik3_ka: 'Prąd zwarciowy $I\'\'_{k3}$ [kA]',
   rx_ratio: 'Stosunek R/X',
   u_n_kv: 'Napięcie znamionowe [kV]',
   i_n_a: 'Prąd znamionowy [A]',
   breaking_capacity_ka: 'Zdolność wyłączalna [kA]',
   making_capacity_ka: 'Zdolność załączalna [kA]',
-  i_th_ka: 'Prąd wytrzymywany krótkotrwale I_th [kA]',
-  i_th_duration_s: 'Czas odniesienia I_th [s]',
-  i_th_pochodzenie: 'Pochodzenie I_th',
-  i_dyn_ka: 'Prąd dynamiczny szczytowy I_dyn [kA]',
-  i_dyn_pochodzenie: 'Pochodzenie I_dyn',
+  i_th_ka: 'Prąd wytrzymywany krótkotrwale $I_{th}$ [kA]',
+  i_th_duration_s: 'Czas odniesienia $I_{th}$ [s]',
+  i_th_pochodzenie: 'Pochodzenie $I_{th}$',
+  i_dyn_ka: 'Prąd dynamiczny szczytowy $I_{dyn}$ [kA]',
+  i_dyn_pochodzenie: 'Pochodzenie $I_{dyn}$',
   break_time_s: 'Czas własny aparatu [s]',
-  cross_section_mm2: 'Przekrój [mm2]',
+  cross_section_mm2: 'Przekrój [mm²]',
   number_of_cores: 'Liczba żył',
   ratio_primary_a: 'Przekładnia pierwotna [A]',
   ratio_secondary_a: 'Przekładnia wtórna [A]',
@@ -98,13 +99,13 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   ratio_secondary_v: 'Przekładnia wtórna [V]',
   accuracy_class: 'Klasa dokładności',
   burden_va: 'Moc obciążeniowa [VA]',
-  p_kw: 'Moc czynna P [kW]',
-  q_kvar: 'Moc bierna Q [kvar]',
-  cos_phi: 'cos phi',
-  cos_phi_mode: 'Tryb cos phi',
+  p_kw: 'Moc czynna $P$ [kW]',
+  q_kvar: 'Moc bierna $Q$ [kvar]',
+  cos_phi: 'Współczynnik mocy $\\cos\\varphi$',
+  cos_phi_mode: 'Tryb współczynnika mocy $\\cos\\varphi$',
   profile_id: 'Profil',
-  s_n_kva: 'Moc znamionowa S [kVA]',
-  p_max_kw: 'Moc maksymalna Pmax [kW]',
+  s_n_kva: 'Moc znamionowa $S_n$ [kVA]',
+  p_max_kw: 'Moc maksymalna $P_{max}$ [kW]',
   p_charge_kw: 'Moc ładowania [kW]',
   p_discharge_kw: 'Moc rozładowania [kW]',
   e_kwh: 'Pojemność energii [kWh]',
@@ -223,39 +224,39 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
 
   switch (category) {
     case 'LINE':
-      return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · In=${formatDetailValue(record.rated_current_a)} A`;
+      return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · $I_n$ = ${formatDetailValue(record.rated_current_a)} A`;
     case 'HV_OVERHEAD_CONDUCTOR':
-      return `${formatDetailValue(record.oznaczenie)} · ${record.przeznaczenie === 'ODGROMOWY' ? 'przewód odgromowy' : 'przewód fazowy'} · R20=${formatDetailValue(record.r20_dc_ohm_per_km)} Ohm/km · d=${formatDetailValue(record.srednica_mm)} mm`;
+      return `${formatDetailValue(record.oznaczenie)} · ${record.przeznaczenie === 'ODGROMOWY' ? 'przewód odgromowy' : 'przewód fazowy'} · $R_{20}$ = ${formatDetailValue(record.r20_dc_ohm_per_km)} Ohm/km · d=${formatDetailValue(record.srednica_mm)} mm`;
     case 'CABLE':
       return `R=${formatDetailValue(record.r_ohm_per_km)} Ohm/km · X=${formatDetailValue(record.x_ohm_per_km)} Ohm/km · C=${formatDetailValue(record.c_nf_per_km)} nF/km`;
     case 'TRANSFORMER':
-      return `${formatDetailValue(record.rated_power_mva)} MVA · ${formatDetailValue(record.voltage_hv_kv)}/${formatDetailValue(record.voltage_lv_kv)} kV · uk=${formatDetailValue(record.uk_percent)}%`;
+      return `${formatDetailValue(record.rated_power_mva)} MVA · ${formatDetailValue(record.voltage_hv_kv)}/${formatDetailValue(record.voltage_lv_kv)} kV · $u_k$ = ${formatDetailValue(record.uk_percent)}%`;
     case 'SWITCH_EQUIPMENT':
-      return `${formatDetailValue(record.un_kv)} kV · ${formatDetailValue(record.in_a)} A · Ik ${pradLacznikaKatalogu(record, 'ik_ka')}`;
+      return `${formatDetailValue(record.un_kv)} kV · ${formatDetailValue(record.in_a)} A · $I_k$ ${pradLacznikaKatalogu(record, 'ik_ka')}`;
     case 'SYSTEM_SOURCE':
-      return `${formatDetailValue(record.voltage_rating_kv)} kV · Sk3=${formatDetailValue(record.sk3_mva)} MVA · R/X=${formatDetailValue(record.rx_ratio)}`;
+      return `${formatDetailValue(record.voltage_rating_kv)} kV · $S''_{k3}$ = ${formatDetailValue(record.sk3_mva)} MVA · R/X=${formatDetailValue(record.rx_ratio)}`;
     case 'MV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
+      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · $I_k$ ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
     case 'LV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
+      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · $I_k$ ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
     case 'LV_RCD':
-      return `IΔn=${formatDetailValue(record.i_delta_n_a)} A · typ ${formatDetailValue(record.rcd_type)} · In=${formatDetailValue(record.in_a)} A · ta=${formatDetailValue(record.t_a_s)} s`;
+      return `$I_{\\Delta n}$ = ${formatDetailValue(record.i_delta_n_a)} A · typ ${formatDetailValue(record.rcd_type)} · $I_n$ = ${formatDetailValue(record.in_a)} A · $t_a$ = ${formatDetailValue(record.t_a_s)} s`;
     case 'LV_CABLE':
-      return `${formatDetailValue(record.cross_section_mm2)} mm2 · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
+      return `${formatDetailValue(record.cross_section_mm2)} mm² · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
     case 'LOAD':
-      return `P=${formatDetailValue(record.p_kw)} kW · cos phi=${formatDetailValue(record.cos_phi)} · model=${formatDetailValue(record.model)}`;
+      return `P=${formatDetailValue(record.p_kw)} kW · $\\cos\\varphi$ = ${formatDetailValue(record.cos_phi)} · model=${formatDetailValue(record.model)}`;
     case 'CT':
       return `${formatDetailValue(record.ratio_primary_a)}/${formatDetailValue(record.ratio_secondary_a)} A · klasa=${formatDetailValue(record.accuracy_class)}`;
     case 'VT':
       return `${formatDetailValue(record.ratio_primary_v)}/${formatDetailValue(record.ratio_secondary_v)} V · klasa=${formatDetailValue(record.accuracy_class)}`;
     case 'MEASUREMENT_TRANSFORMER':
-      return `${formatDetailValue(record.measurement_kind)} · klasa=${formatDetailValue(record.accuracy_class)} · burden=${formatDetailValue(record.burden_va)} VA`;
+      return `${formatDetailValue(record.measurement_kind)} · klasa=${formatDetailValue(record.accuracy_class)} · obciążenie znamionowe ${formatDetailValue(record.burden_va)} VA`;
     case 'PV_INVERTER':
-      return `S=${formatDetailValue(record.s_n_kva)} kVA · Pmax=${formatDetailValue(record.p_max_kw)} kW · sterowanie=${formatDetailValue(record.control_mode)}`;
+      return `$S_n$ = ${formatDetailValue(record.s_n_kva)} kVA · $P_{max}$ = ${formatDetailValue(record.p_max_kw)} kW · sterowanie=${formatDetailValue(record.control_mode)}`;
     case 'BESS_INVERTER':
-      return `Pdis=${formatDetailValue(record.p_discharge_kw)} kW · Pchg=${formatDetailValue(record.p_charge_kw)} kW · E=${formatDetailValue(record.e_kwh)} kWh`;
+      return `rozładowanie ${formatDetailValue(record.p_discharge_kw)} kW · ładowanie ${formatDetailValue(record.p_charge_kw)} kW · energia ${formatDetailValue(record.e_kwh)} kWh`;
     case 'CONVERTER':
-      return `S=${formatDetailValue(record.s_n_kva ?? record.sn_mva)} · P=${formatDetailValue(record.p_max_kw ?? record.pmax_mw)} · typ=${formatDetailValue(record.kind)}`;
+      return `$S_n$ = ${formatDetailValue(record.s_n_kva ?? record.sn_mva)} · $P_{max}$ = ${formatDetailValue(record.p_max_kw ?? record.pmax_mw)} · typ=${formatDetailValue(record.kind)}`;
     case 'PROTECTION_DEVICE':
       return `${formatDetailValue(record.series)} · funkcje=${Array.isArray(record.functions_supported) ? record.functions_supported.length : 0} · krzywe=${Array.isArray(record.curves_supported) ? record.curves_supported.length : 0}`;
     default:
@@ -550,7 +551,7 @@ export function TypeLibraryBrowser({
                         {getCatalogManufacturer(type) ?? '—'}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {getTypeSummary(type, activeTab)}
+                        <TekstZWzorami tekst={getTypeSummary(type, activeTab)} />
                       </td>
                     </tr>
                   );
@@ -617,7 +618,7 @@ function TypeDetailsPanel({
           {/* CV-4.3 K7: dane scenariusza MIN ZRODLO_SN — bespoke (nie generyczny
               panel powyżej), bo panel generyczny UKRYWA pola `null` zamiast
               pokazać "brak danych" (wzór K1: `renderLineParams` / `max_temperature_c`).
-              Dokłada się DO generycznych wpisów (Sk3/Ik3/R-X maks. już tam są). */}
+              Dokłada się DO generycznych wpisów (moc i prąd zwarciowy maksymalny oraz R/X maks. już tam są). */}
           {category === 'SYSTEM_SOURCE' ? renderSystemSourceMinParams(type as SourceSystemCatalogType) : null}
         </div>
       </div>
@@ -718,7 +719,7 @@ function DetailField({
 }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</dt>
+      <dt className="text-xs font-medium uppercase tracking-wider text-gray-500"><TekstZWzorami tekst={label} /></dt>
       <dd className="mt-1 text-sm text-gray-900">
         {value}
         {unit ? <span className="ml-1 text-gray-500">{unit}</span> : null}
@@ -739,7 +740,7 @@ function renderLineParams(type: LineType) {
       <DetailField
         label="Przekrój"
         value={type.cross_section_mm2 == null ? BRAK_DANYCH_PL : type.cross_section_mm2.toFixed(0)}
-        unit="mm2"
+        unit="mm²"
       />
       <DetailField
         label="Maks. temperatura"
@@ -753,18 +754,18 @@ function renderLineParams(type: LineType) {
 /**
  * CV-4.3 K7: trzy pola scenariusza MIN (warunki przyłączenia OSD) dla ZRODLO_SN —
  * „brak danych" gdy null (wzór K1, `max_temperature_c` w `renderLineParams`).
- * Dokładany OBOK generycznego panelu (Sk3/Ik3/R-X MAKS. już renderują tamtędy).
+ * Dokładany OBOK generycznego panelu (moc i prąd zwarciowy maksymalny oraz R/X MAKS. już renderują tamtędy).
  */
 function renderSystemSourceMinParams(type: SourceSystemCatalogType) {
   return (
     <>
       <DetailField
-        label="Moc zwarciowa Sk3 min"
+        label="Moc zwarciowa minimalna $S''_{k3,min}$"
         value={type.sk3_min_mva == null ? BRAK_DANYCH_PL : formatNumber(type.sk3_min_mva)}
         unit="MVA"
       />
       <DetailField
-        label="Prąd zwarciowy Ik3 min"
+        label="Prąd zwarciowy minimalny $I''_{k3,min}$"
         value={type.ik3_min_ka == null ? BRAK_DANYCH_PL : formatNumber(type.ik3_min_ka)}
         unit="kA"
       />
@@ -786,7 +787,7 @@ function renderCableParams(type: CableType) {
       <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
       <DetailField label="Izolacja" value={type.insulation_type ?? '—'} />
       <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField label="Przekrój" value={type.cross_section_mm2.toFixed(0)} unit="mm2" />
+      <DetailField label="Przekrój" value={type.cross_section_mm2.toFixed(0)} unit="mm²" />
     </>
   );
 }
@@ -797,10 +798,10 @@ function renderTransformerParams(type: TransformerType) {
       <DetailField label="Moc znamionowa" value={type.rated_power_mva.toFixed(1)} unit="MVA" />
       <DetailField label="Napięcie HV" value={type.voltage_hv_kv.toFixed(1)} unit="kV" />
       <DetailField label="Napięcie LV" value={type.voltage_lv_kv.toFixed(1)} unit="kV" />
-      <DetailField label="uk" value={type.uk_percent.toFixed(2)} unit="%" />
-      <DetailField label="Straty zwarcia Pk" value={type.pk_kw.toFixed(1)} unit="kW" />
-      <DetailField label="Prąd jałowy i0" value={type.i0_percent.toFixed(2)} unit="%" />
-      <DetailField label="Straty jałowe P0" value={type.p0_kw.toFixed(1)} unit="kW" />
+      <DetailField label="Napięcie zwarcia $u_k$" value={type.uk_percent.toFixed(2)} unit="%" />
+      <DetailField label="Straty zwarcia $P_k$" value={type.pk_kw.toFixed(1)} unit="kW" />
+      <DetailField label="Prąd jałowy $i_0$" value={type.i0_percent.toFixed(2)} unit="%" />
+      <DetailField label="Straty jałowe $P_0$" value={type.p0_kw.toFixed(1)} unit="kW" />
       <DetailField label="Grupa połączeń" value={type.vector_group} />
       <DetailField label="Chłodzenie" value={type.cooling_class ?? '—'} />
       <DetailField label="Zakres zaczepów" value={`${type.tap_min} ... ${type.tap_max}`} />
@@ -817,12 +818,12 @@ function renderSwitchParams(type: SwitchEquipmentType) {
       {/* Brak liczby: „nie dotyczy” (rodzaj aparatu tej wielkości nie ma) albo „brak danych”
           (wielkość właściwa rodzajowi, karta jej nie podaje) — rozstrzyga rodzaj. */}
       <DetailField
-        label="Prąd wyłączalny Ik"
+        label="Prąd wyłączalny $I_k$"
         value={type.ik_ka == null ? pradLacznikaKatalogu(type as unknown as Record<string, unknown>, 'ik_ka') : type.ik_ka.toFixed(1)}
         unit={type.ik_ka == null ? undefined : 'kA'}
       />
       <DetailField
-        label="Prąd wytrzymałości Icw"
+        label="Prąd wytrzymałości $I_{cw}$"
         value={type.icw_ka == null ? pradLacznikaKatalogu(type as unknown as Record<string, unknown>, 'icw_ka') : type.icw_ka.toFixed(1)}
         unit={type.icw_ka == null ? undefined : 'kA'}
       />

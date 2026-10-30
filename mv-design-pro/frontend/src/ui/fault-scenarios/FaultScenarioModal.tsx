@@ -19,6 +19,8 @@ import {
   type UpdateFaultScenarioRequest,
 } from './types';
 import { SekcjaWspolczynnikaC } from './SekcjaWspolczynnikaC';
+import { MathInline } from '../proof/MathRenderer';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 import {
   DOMYSLNE_POLA_C,
   konfiguracjaZwarciaZPol,
@@ -102,14 +104,14 @@ export function FaultScenarioModal() {
       const r = parseFloat(rOhm);
       const x = parseFloat(xOhm);
       if (isNaN(r) || isNaN(x)) {
-        setValidationError('Impedancja przejścia Z_f (R_f i X_f) jest wymagana dla trybu impedancyjnego');
+        setValidationError('Impedancja przejścia $Z_f$ ($R_f$ i $X_f$) jest wymagana dla trybu impedancyjnego');
         return;
       }
     }
 
     const czas = Number(czasTk.replace(',', '.'));
     if (!Number.isFinite(czas) || czas <= 0) {
-      setValidationError('Czas trwania zwarcia t_k musi być liczbą dodatnią [s]');
+      setValidationError('Czas trwania zwarcia $t_k$ musi być liczbą dodatnią [s]');
       return;
     }
     const konfiguracja = konfiguracjaZwarciaZPol(
@@ -210,10 +212,10 @@ export function FaultScenarioModal() {
           {/* Impedancja zwarcia Zf (v2) — aktywne tylko dla IMPEDANCE */}
           {faultMode === 'IMPEDANCE' && (
             <div className="p-3 rounded border border-amber-200 bg-amber-50">
-              <label className="block text-xs font-medium text-amber-800 mb-2">Impedancja przejścia Z_f w miejscu zwarcia</label>
+              <label className="block text-xs font-medium text-amber-800 mb-2">Impedancja przejścia <MathInline latex="Z_f" /> w miejscu zwarcia</label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">R_f [Ω]</label>
+                  <label className="block text-xs text-amber-700 mb-0.5"><MathInline latex="R_f" /> [Ω]</label>
                   <input
                     type="number" step="any" min="0" value={rOhm} onChange={(e) => setROhm(e.target.value)}
                     placeholder="0.0"
@@ -222,7 +224,7 @@ export function FaultScenarioModal() {
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">X_f [Ω]</label>
+                  <label className="block text-xs text-amber-700 mb-0.5"><MathInline latex="X_f" /> [Ω]</label>
                   <input
                     type="number" step="any" min="0" value={xOhm} onChange={(e) => setXOhm(e.target.value)}
                     placeholder="0.0"
@@ -287,7 +289,7 @@ export function FaultScenarioModal() {
           />
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">
-              Czas trwania zwarcia t_k [s]
+              Czas trwania zwarcia <MathInline latex="t_k" /> [s]
             </label>
             <input
               type="number" step="0.1" min="0" value={czasTk}
@@ -298,7 +300,7 @@ export function FaultScenarioModal() {
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1" htmlFor="fault-scenario-tb-input">
-              Czas wyłączenia t_b [s]
+              Czas wyłączenia <MathInline latex="t_b" /> [s]
             </label>
             <input
               id="fault-scenario-tb-input"
@@ -309,14 +311,14 @@ export function FaultScenarioModal() {
               data-testid="fault-scenario-tb-input"
             />
             <p className="mt-1 text-xs text-slate-500">
-              Puste pole = t_b w każdym punkcie zwarcia z pól przy jego szynie (nastawy + czas własny wyłącznika), a bez nich wartość robocza z oznaczeniem w wynikach.
+              Puste pole = <MathInline latex="t_b" /> w każdym punkcie zwarcia z pól przy jego szynie (nastawy + czas własny wyłącznika), a bez nich wartość robocza z oznaczeniem w wynikach.
             </p>
           </div>
 
           {/* Errors */}
           {validationError && (
             <div className="p-2 text-xs rounded bg-rose-50 text-rose-700 border border-rose-200" data-testid="fault-scenario-validation-error">
-              {validationError}
+              <TekstZWzorami tekst={validationError} />
             </div>
           )}
           {error && (

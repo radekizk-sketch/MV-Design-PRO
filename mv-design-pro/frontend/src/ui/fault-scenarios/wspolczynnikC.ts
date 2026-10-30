@@ -36,7 +36,7 @@ export const KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA = 'fault.c_nadpisanie_wartosc_ni
 /** Zdanie PL dla kodu odmowy — to samo brzmienie, które formularz pokazuje przed wysłaniem. */
 export const KOMUNIKAT_KODU_C: Readonly<Record<string, string>> = {
   [KOD_NADPISANIE_BEZ_UZASADNIENIA]:
-    'Nadpisanie współczynnika napięciowego c wymaga uzasadnienia — IEC 60909-0 dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu (np. uzgodnienie z operatorem, ograniczenie c·Un ≤ Um).',
+    'Nadpisanie współczynnika napięciowego c wymaga uzasadnienia — IEC 60909-0 dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu (np. uzgodnienie z operatorem, ograniczenie $c \\cdot U_n \\leq U_m$).',
   [KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA]:
     'Wartość nadpisania współczynnika napięciowego c musi być skończoną liczbą dodatnią.',
 };
@@ -75,7 +75,7 @@ export function nadpisanieCZPol(pola: PolaWspolczynnikaC): WynikNadpisaniaC {
 /** Kod odmowy backendu dla niepoprawnego t_b (`network_model.core.czas_wylaczenia`). */
 export const KOD_CZAS_TB_NIEPOPRAWNY = 'fault.czas_tb_niepoprawny';
 export const KOMUNIKAT_CZAS_TB_NIEPOPRAWNY =
-  'Czas wyłączenia t_b musi być liczbą dodatnią w sekundach (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) — albo zostaw pole puste.';
+  'Czas wyłączenia $t_b$ musi być liczbą dodatnią w sekundach (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) — albo zostaw pole puste.';
 
 export type WynikCzasuWylaczenia =
   | { ok: true; wartosc: number | null }

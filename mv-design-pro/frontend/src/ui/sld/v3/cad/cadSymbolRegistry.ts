@@ -384,7 +384,7 @@ export const ELECTRICAL_CAD_SYMBOL_REGISTRY: Readonly<Record<CadSymbolId, CadSym
     states: stanyLacznika(KRZYZYK_WYLACZNIKA, (deg) => noz(deg)),
     minimumSizePx: 28,
     lodPolicy: 'zawsze',
-    notes: 'Wybierany wyłącznie z danych katalogu (przestrzeń APARAT_NN_RCD), nie z typu gałęzi (RCD jest gałęzią switch). Parametry I_Δn / typ / In opisuje etykieta aparatu z tabliczki katalogowej, nie symbol.',
+    notes: 'Wybierany wyłącznie z danych katalogu (przestrzeń APARAT_NN_RCD), nie z typu gałęzi (RCD jest gałęzią switch). Parametry (znamionowy prąd różnicowy, typ, prąd znamionowy) opisuje etykieta aparatu z tabliczki katalogowej, nie symbol.',
   },
   'cad.odlacznik': {
     symbolId: 'cad.odlacznik',

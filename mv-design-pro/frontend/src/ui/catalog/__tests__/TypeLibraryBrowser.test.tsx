@@ -5,6 +5,7 @@ import { TypeLibraryBrowser } from '../TypeLibraryBrowser';
 import * as catalogApi from '../api';
 import type { CatalogListItem } from '../api';
 import type { PtpireeGeneratorCertificateCatalogType, TypeCategory } from '../types';
+import { tekstZrodlowy } from '../../../test/tekstZWzorami';
 
 vi.mock('../api');
 
@@ -460,7 +461,10 @@ describe('TypeLibraryBrowser', () => {
 
     expect(await screen.findByText('ACSR 240')).toBeInTheDocument();
     expect(screen.getAllByText('ABC Cables')).toHaveLength(2);
-    expect(screen.getByRole('cell', { name: /R=0\.12 Ohm\/km .* In=645 A/ })).toBeInTheDocument();
+    // Nazwa dostępna komórki niesie odczyt symbolu (`role="math"`, `aria-label`), a treść
+    // źródłowa — wzór `$I_n$` złożony KaTeX-em, nie spłaszczone „In”.
+    const komorka = screen.getByRole('cell', { name: /R=0\.12 Ohm\/km .* In = 645 A/ });
+    expect(tekstZrodlowy(komorka)).toMatch(/Ohm\/km · \$I_n\$ = 645 A$/);
   });
 
   it('zakładka przewodów linii 110 kV pobiera kategorię HV_OVERHEAD_CONDUCTOR i streszcza dane wyrobu (bez impedancji linii)', async () => {
@@ -474,7 +478,7 @@ describe('TypeLibraryBrowser', () => {
     });
     expect(await screen.findByText('AFL-6 240 mm² (243-AL1/39-ST1A)')).toBeInTheDocument();
     expect(
-      screen.getByRole('cell', { name: /243-AL1\/39-ST1A · przewód fazowy · R20=.* Ohm\/km · d=.* mm/ }),
+      screen.getByRole('cell', { name: /243-AL1\/39-ST1A · przewód fazowy · R20 = .* Ohm\/km · d=.* mm/ }),
     ).toBeInTheDocument();
   });
 
@@ -488,7 +492,7 @@ describe('TypeLibraryBrowser', () => {
       expect(catalogApi.fetchTypesByCategory).toHaveBeenCalledWith('LV_RCD');
     });
     expect(await screen.findByText('RCCB A 40 A / 30 mA')).toBeInTheDocument();
-    expect(screen.getByRole('cell', { name: /IΔn=.* A · typ A · In=40 A · ta=.* s/ })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /IΔn = .* A · typ A · In = 40 A · ta = .* s/ })).toBeInTheDocument();
   });
 
   it('switches to a generic category and renders generic details', async () => {
@@ -507,12 +511,13 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getByText('Dane katalogowe')).toBeInTheDocument();
     expect(screen.getByText('Operator')).toBeInTheDocument();
     expect(screen.getAllByText('OSD Północ').length).toBeGreaterThan(1);
-    expect(screen.getByText('Moc zwarciowa Sk3 [MVA]')).toBeInTheDocument();
+    const szczegolyZrodla = screen.getByTestId('type-library-details-grid');
+    expect(tekstZrodlowy(szczegolyZrodla)).toContain("Moc zwarciowa $S''_{k3}$ [MVA]350");
     expect(screen.getByText('350')).toBeInTheDocument();
     // CV-4.3 K7: trzy pola scenariusza MIN — „brak danych" gdy null (wzór K1,
     // `renderLineParams`/`max_temperature_c`), NIE ukryte jak w panelu generycznym.
-    expect(screen.getByText('Moc zwarciowa Sk3 min')).toBeInTheDocument();
-    expect(screen.getByText('Prąd zwarciowy Ik3 min')).toBeInTheDocument();
+    expect(tekstZrodlowy(szczegolyZrodla)).toContain("Moc zwarciowa minimalna $S''_{k3,min}$");
+    expect(tekstZrodlowy(szczegolyZrodla)).toContain("Prąd zwarciowy minimalny $I''_{k3,min}$");
     expect(screen.getByText('Stosunek R/X min')).toBeInTheDocument();
     expect(screen.getAllByText('brak danych')).toHaveLength(3);
   });
@@ -532,8 +537,8 @@ describe('TypeLibraryBrowser', () => {
 
     await user.click(screen.getByText('Wyłącznik 110 kV (typ minimalny topologii zasilania)'));
     const szczegoly = screen.getByTestId('type-library-details-grid');
-    expect(szczegoly).toHaveTextContent('Prąd wyłączalny Ikbrak danych');
-    expect(szczegoly).toHaveTextContent('Prąd wytrzymałości Icwbrak danych');
+    expect(tekstZrodlowy(szczegoly)).toContain('Prąd wyłączalny $I_k$brak danych');
+    expect(tekstZrodlowy(szczegoly)).toContain('Prąd wytrzymałości $I_{cw}$brak danych');
     expect(szczegoly).not.toHaveTextContent(/0[.,]0\s*kA/);
   });
 
@@ -548,13 +553,13 @@ describe('TypeLibraryBrowser', () => {
 
     await user.click(screen.getByText('ABB OJS 12 kV 630 A'));
     let szczegoly = screen.getByTestId('type-library-details-grid');
-    expect(szczegoly).toHaveTextContent('Prąd wyłączalny Iknie dotyczy');
-    expect(szczegoly).toHaveTextContent('Prąd wytrzymałości Icw20.0kA');
+    expect(tekstZrodlowy(szczegoly)).toContain('Prąd wyłączalny $I_k$nie dotyczy');
+    expect(tekstZrodlowy(szczegoly)).toContain('Prąd wytrzymałości $I_{cw}$20.0kA');
 
     await user.click(screen.getByText('ETI VV 12 kV 63 A'));
     szczegoly = screen.getByTestId('type-library-details-grid');
-    expect(szczegoly).toHaveTextContent('Prąd wyłączalny Ik63.0kA');
-    expect(szczegoly).toHaveTextContent('Prąd wytrzymałości Icwnie dotyczy');
+    expect(tekstZrodlowy(szczegoly)).toContain('Prąd wyłączalny $I_k$63.0kA');
+    expect(tekstZrodlowy(szczegoly)).toContain('Prąd wytrzymałości $I_{cw}$nie dotyczy');
     expect(szczegoly).not.toHaveTextContent(/\b0[.,]0\s*kA/);
   });
 
@@ -569,12 +574,12 @@ describe('TypeLibraryBrowser', () => {
     await user.click(screen.getByText('ABB OJS 12 kV 630 A (aparat pola)'));
     let szczegoly = screen.getByTestId('type-library-details-grid');
     expect(szczegoly).toHaveTextContent('Zdolność wyłączalna [kA]nie dotyczy');
-    expect(szczegoly).toHaveTextContent('Prąd wytrzymywany krótkotrwale I_th [kA]20 kA');
+    expect(tekstZrodlowy(szczegoly)).toContain('Prąd wytrzymywany krótkotrwale $I_{th}$ [kA]20 kA');
 
     await user.click(screen.getByText('Wyłącznik 110 kV (aparat pola)'));
     szczegoly = screen.getByTestId('type-library-details-grid');
     expect(szczegoly).toHaveTextContent('Zdolność wyłączalna [kA]brak danych');
-    expect(szczegoly).toHaveTextContent('Prąd wytrzymywany krótkotrwale I_th [kA]brak danych');
+    expect(tekstZrodlowy(szczegoly)).toContain('Prąd wytrzymywany krótkotrwale $I_{th}$ [kA]brak danych');
   });
 
   it('aparat SN: propozycje wartości roboczych w osobnej sekcji, nie jako dana karty (V12K-351)', async () => {
@@ -635,7 +640,9 @@ describe('TypeLibraryBrowser', () => {
     });
     await user.click(screen.getByText('GPZ 110/15 kV'));
 
-    expect(screen.getByText('Moc zwarciowa Sk3 min')).toBeInTheDocument();
+    expect(tekstZrodlowy(screen.getByTestId('type-library-details-grid'))).toContain(
+      "Moc zwarciowa minimalna $S''_{k3,min}$",
+    );
     expect(screen.getByText('210')).toBeInTheDocument();
     expect(screen.getByText('8.1')).toBeInTheDocument();
     expect(screen.getByText('0.22')).toBeInTheDocument();

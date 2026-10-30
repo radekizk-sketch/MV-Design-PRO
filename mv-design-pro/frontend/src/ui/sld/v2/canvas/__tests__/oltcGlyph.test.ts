@@ -35,17 +35,17 @@ describe('buildOltcAnnotation', () => {
     expect(buildOltcAnnotation(tap({ regulation_type: 'NONE' }))).toBeNull();
   });
 
-  it('mapuje OLTC automatyczny z U_zad', () => {
+  it('mapuje OLTC automatyczny z napięcie zadane', () => {
     const a = buildOltcAnnotation(tap({ regulation_type: 'OLTC', current_position: 3 }));
     expect(a).toEqual({
       kind: 'OLTC',
       positionLabel: 'poz. +3',
       modeLabel: 'AUTO',
-      setpointLabel: 'U_zad 15.5 kV',
+      setpointLabel: 'nastawa 15.5 kV',
     });
   });
 
-  it('tryb MANUAL → MAN, bez U_zad', () => {
+  it('tryb MANUAL → MAN, bez napięcie zadane', () => {
     const a = buildOltcAnnotation(tap({ control_mode: 'MANUAL', current_position: -2 }));
     expect(a?.modeLabel).toBe('MAN');
     expect(a?.setpointLabel).toBeUndefined();
@@ -57,13 +57,13 @@ describe('buildOltcAnnotation', () => {
     expect(buildOltcAnnotation(tap({ control_mode: 'REMOTE' }))?.modeLabel).toBe('AUTO');
   });
 
-  it('DETC bez U_zad nawet gdy setpoint podany (tylko AUTO pokazuje U_zad)', () => {
+  it('DETC bez napięcie zadane nawet gdy setpoint podany (tylko AUTO pokazuje napięcie zadane)', () => {
     const a = buildOltcAnnotation(tap({ regulation_type: 'DETC', control_mode: 'MANUAL' }));
     expect(a?.kind).toBe('DETC');
     expect(a?.setpointLabel).toBeUndefined();
   });
 
-  it('AUTO bez dodatniego setpointu → brak U_zad (bez fabrykacji)', () => {
+  it('AUTO bez dodatniego setpointu → brak napięcie zadane (bez fabrykacji)', () => {
     expect(buildOltcAnnotation(tap({ voltage_setpoint_kv: null }))?.setpointLabel).toBeUndefined();
     expect(buildOltcAnnotation(tap({ voltage_setpoint_kv: 0 }))?.setpointLabel).toBeUndefined();
   });

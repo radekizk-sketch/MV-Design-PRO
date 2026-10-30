@@ -55,7 +55,7 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
     closedAt: '2026-04-27',
     scope: 'Zaawansowane solvery zwarc, FRT/LVRT/HVRT, stabilnosci dynamicznej oraz NR/GS/FD.',
     decision:
-      'Backend publikuje solver_capability_registry, kanoniczny PF obsluguje NR, GS i FD, a wyniki zaawansowane niosa proof i status raportowy.',
+      'Backend publikuje rejestr zdolności solverów (solver_capability_registry); kanoniczny PF obsluguje NR, GS i FD, a wyniki zaawansowane niosa proof i status raportowy.',
     changedFiles: [
       'backend/src/application/solvers/solver_capability_registry.py',
       'backend/src/api/solver_capabilities.py',

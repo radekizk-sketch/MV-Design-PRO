@@ -15,6 +15,7 @@
  */
 
 import { useMemo } from 'react';
+import { tekstBezWzorow } from '../../../../ui2/kreatory/rama/tekstZWzorami';
 
 export type ProofPackStatus = 'available' | 'requires_calculation' | 'blocked';
 
@@ -44,7 +45,7 @@ export const CANONICAL_PROOF_PACKS: readonly Omit<ProofPackInfo, 'status' | 'blo
   {
     id: 'equipment',
     labelPl: 'Wytrzymałość aparatury',
-    description: 'I_dyn, I_th — wytrzymałość cieplna i dynamiczna',
+    description: '$I_{dyn}$, $I_{th}$ — wytrzymałość cieplna i dynamiczna',
   },
   {
     id: 'power_flow',
@@ -64,7 +65,7 @@ export const CANONICAL_PROOF_PACKS: readonly Omit<ProofPackInfo, 'status' | 'blo
   {
     id: 'earthing',
     labelPl: 'Zwarcie ziemne SN',
-    description: 'Earthing ground fault na sieci średniego napięcia',
+    description: 'Doziemienie w sieci średniego napięcia',
   },
   {
     id: 'lf_voltage',
@@ -141,8 +142,8 @@ export function ProofPacksPanel({
                   if (!isBlocked) onSelectPack?.(pack.id);
                 }}
                 disabled={isBlocked}
-                title={pack.blockedReason ?? pack.description}
-                aria-label={`${pack.labelPl} — ${pack.description}`}
+                title={pack.blockedReason ?? tekstBezWzorow(pack.description)}
+                aria-label={`${pack.labelPl} — ${tekstBezWzorow(pack.description)}`}
                 data-testid={`sld-proof-pack-${pack.id}`}
                 className={[
                   'flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left',

@@ -11,6 +11,8 @@
  */
 import type { JSX } from 'react';
 
+import { TekstZWzorami, tekstBezWzorow } from '../../../ui2/kreatory/rama/tekstZWzorami';
+
 import {
   BRAK_DANYCH_PL,
   type EdycjaWiersza,
@@ -31,7 +33,7 @@ function WierszDanych({
   const edycja = onEdytuj && wiersz.edycja ? wiersz.edycja : null;
   return (
     <div className="mvd-kt-wiersz" data-testid={`inspektor-karta-pole-${wiersz.klucz}`} data-brak={brak ? 'true' : 'false'}>
-      <dt className="mvd-kt-etykieta">{wiersz.etykieta}</dt>
+      <dt className="mvd-kt-etykieta"><TekstZWzorami tekst={wiersz.etykieta} /></dt>
       <dd className="mvd-kt-wartosc">
         <span className={brak ? 'mvd-kt-brak' : undefined} data-testid={`inspektor-karta-wartosc-${wiersz.klucz}`}>
           {wiersz.wartosc ?? BRAK_DANYCH_PL}
@@ -49,7 +51,7 @@ function WierszDanych({
             type="button"
             className="mvd-btn mvd-kt-zmien"
             data-testid={`inspektor-karta-zmien-${wiersz.klucz}`}
-            aria-label={`Zmień: ${wiersz.etykieta}`}
+            aria-label={`Zmień: ${tekstBezWzorow(wiersz.etykieta)}`}
             onClick={() => onEdytuj?.(edycja)}
           >
             Zmień
@@ -87,7 +89,7 @@ function TabelaDanych({ tabela }: { readonly tabela: TabelaKarty }): JSX.Element
             <tr>
               {tabela.kolumny.map((k) => (
                 <th key={k.klucz} scope="col">
-                  {k.etykieta}
+                  <TekstZWzorami tekst={k.etykieta} />
                 </th>
               ))}
             </tr>

@@ -10,6 +10,7 @@
 import { clsx } from 'clsx';
 import type { ReactNode } from 'react';
 import { publicTechnicalLabel } from '../../shared/publicTechnicalLabels';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 
 // =============================================================================
 // Types
@@ -114,7 +115,9 @@ export function ObjectCard({
               <div className="space-y-1">
                 {section.fields.map((field, fieldIndex) => (
                   <div key={`${field.key}:${fieldIndex}`} className="flex items-baseline justify-between gap-2">
-                    <span className="text-[11px] text-gray-500 flex-shrink-0">{field.label}</span>
+                    <span className="text-[11px] text-gray-500 flex-shrink-0">
+                      <TekstZWzorami tekst={field.label} />
+                    </span>
                     <span
                       className={clsx(
                         'text-[11px] font-medium text-right truncate max-w-[55%]',

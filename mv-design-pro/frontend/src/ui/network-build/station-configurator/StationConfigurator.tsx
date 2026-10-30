@@ -51,6 +51,7 @@ import type { UziemienieSekcjiSn } from '../station-der/audit2-api';
 import type { DoziemienieSieci } from '../../results-inspector/types';
 import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
 import { wielkoscPl } from '../../../ui2/wyniki/wzorzec/KartaWerdyktu';
+import { TekstZWzorami } from '../../../ui2/kreatory/rama/tekstZWzorami';
 import type { PolePomiaroweWiersz } from './polaPomiaroweStacji';
 import {
   canonicalFieldRole,
@@ -642,11 +643,11 @@ function DoziemienieSekcji({
 }): JSX.Element {
   const wartosci: [string, string | null][] = [
     [`Prąd doziemienia (${doziemienie.charakter_pl})`, fmtA(doziemienie.prad_a)],
-    ['Prąd pojemnościowy I_C', fmtA(doziemienie.i_c_a)],
-    ['Prąd indukcyjny I_L', fmtA(doziemienie.i_l_a)],
-    ['Składowa czynna I_w', fmtA(doziemienie.i_w_a)],
-    ['Napięcie składowej zerowej U0', fmtV(doziemienie.u0_v)],
-    ['Współczynnik zwarcia doziemnego k', doziemienie.wspolczynnik_k === null ? null : doziemienie.wspolczynnik_k.toFixed(3)],
+    ['Prąd pojemnościowy $I_C$', fmtA(doziemienie.i_c_a)],
+    ['Prąd indukcyjny $I_L$', fmtA(doziemienie.i_l_a)],
+    ['Składowa czynna $I_w$', fmtA(doziemienie.i_w_a)],
+    ['Napięcie składowej zerowej $U_0$', fmtV(doziemienie.u0_v)],
+    ['Współczynnik zwarcia doziemnego $k$', doziemienie.wspolczynnik_k === null ? null : doziemienie.wspolczynnik_k.toFixed(3)],
   ];
   return (
     <div className="space-y-1" data-testid={`station-earthing-doziemienie-${stan}`}>
@@ -717,7 +718,7 @@ function StationEarthingPanel({
                 value={sekcja.prad_dlawikow_a === null ? 'brak dławika w ruchu' : `${sekcja.prad_dlawikow_a.toFixed(1)} A`}
               />
               <Fact
-                label="Rozstrojenie kompensacji v = (I_C − I_L)/I_C (dodatnie — niedokompensowanie)"
+                label="Rozstrojenie kompensacji $v = \frac{I_C - I_L}{I_C}$ (dodatnie — niedokompensowanie)"
                 value={sekcja.rozstrojenie === null ? 'nie dotyczy' : `${(sekcja.rozstrojenie * 100).toFixed(1)} %`}
               />
               <Fact label="Kompletność danych" value={ETYKIETA_KOMPLETNOSCI[sekcja.kompletnosc]} />
@@ -929,7 +930,9 @@ function MetricCard({ label, value }: { readonly label: string; readonly value: 
 function Fact({ label, value }: { readonly label: string; readonly value: string }): JSX.Element {
   return (
     <div className="rounded border border-scada-border/70 bg-scada-bg px-2 py-1.5">
-      <span className="text-scada-muted">{label}: </span>
+      <span className="text-scada-muted">
+        <TekstZWzorami tekst={label} />:{' '}
+      </span>
       <span className="text-scada-text">{value}</span>
     </div>
   );

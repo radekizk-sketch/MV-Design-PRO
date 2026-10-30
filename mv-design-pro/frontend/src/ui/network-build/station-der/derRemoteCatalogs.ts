@@ -381,6 +381,6 @@ export function formatDerDynamicProfileLabelPl(profile: DerDynamicProfileItem): 
   }
   const tryb = profile.control_mode === 'grid_forming' ? 'grid-forming' : 'grid-following';
   return `${profile.profile_name_pl} (${tryb}, droop P/f=${(profile.p_f_droop_pu * 100).toFixed(0)}%, `
-    + `t_odp=${profile.tp_s.toFixed(2)} s)`
+    + `czas odpowiedzi ${profile.tp_s.toFixed(2)} s)`
     + proweniencjaTag;
 }

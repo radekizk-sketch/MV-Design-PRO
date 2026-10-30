@@ -15,6 +15,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WalidacjaVtPolaSekcja, type KontekstUziemieniaStacji } from '../WalidacjaVtPolaSekcja';
+import { tekstZrodlowy } from '../../../../../test/tekstZWzorami';
 
 const TYPY_VT = [
   {
@@ -105,7 +106,7 @@ describe('WalidacjaVtPolaSekcja — typy, uziemienie z modelu i werdykt z backen
 
     const wiersz = await screen.findByTestId('vt-validation-J01');
     expect(wiersz.getAttribute('data-vt-ok')).toBe('true');
-    expect(wiersz.textContent).toContain('F_v = 1.9');
+    expect(tekstZrodlowy(wiersz)).toContain('$F_v$ = 1.9');
     expect(zapytania.some((u) => u.endsWith('/_uziemienie-sn'))).toBe(true);
     expect(cialaReguly).toEqual([{ voltage_factor: 1.9, grounding_type: 'petersen_coil' }]);
   });

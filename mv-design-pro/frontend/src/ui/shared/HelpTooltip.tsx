@@ -17,6 +17,8 @@
 
 import { useId, useState } from 'react';
 
+import { TekstZWzorami, tekstBezWzorow } from '../../ui2/kreatory/rama/tekstZWzorami';
+
 interface HelpTooltipProps {
   text: string;
   norm?: string;
@@ -51,9 +53,9 @@ export function HelpTooltip({ text, norm, inline }: HelpTooltipProps) {
         role="tooltip"
         aria-hidden={!open}
         className={`absolute z-50 mt-6 max-w-xs rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-lg ${open ? '' : 'hidden'}`}
-        title={text}
+        title={tekstBezWzorow(text)}
       >
-        {text}
+        <TekstZWzorami tekst={text} />
         {norm ? (
           <span className="mt-1 block text-amber-700">
             {norm}

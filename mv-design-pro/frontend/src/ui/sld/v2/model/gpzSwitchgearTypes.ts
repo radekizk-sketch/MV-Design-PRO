@@ -37,6 +37,6 @@ export interface OltcGlyphAnnotation {
   readonly positionLabel: string;
   /** Tryb sterowania jako badge: "AUTO" (AUTOMATIC/PROFILE/REMOTE) lub "MAN". */
   readonly modeLabel: 'AUTO' | 'MAN';
-  /** Napięcie zadane, np. "U_zad 15.5 kV" (tylko tryb automatyczny). */
+  /** Napięcie zadane, np. "nastawa 15.5 kV" (tylko tryb automatyczny). */
   readonly setpointLabel?: string;
 }

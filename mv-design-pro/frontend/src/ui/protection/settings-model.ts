@@ -326,48 +326,6 @@ export const FUNCTION_CODE_TO_ANSI: Record<ProtectionFunctionCode, AnsiDeviceNum
   THERMAL: ['49'],
 };
 
-/**
- * Etykiety polskie dla funkcji zabezpieczeniowych.
- */
-export const FUNCTION_CODE_LABELS_PL: Record<ProtectionFunctionCode, string> = {
-  UNDERVOLTAGE: 'Podnapięciowa (U<)',
-  OVERVOLTAGE: 'Nadnapięciowa (U>)',
-  OVERCURRENT_INST: 'Nadprądowa zwarciowa (I>>)',
-  OVERCURRENT_TIME: 'Nadprądowa czasowa (I>)',
-  EARTH_FAULT_INST: 'Ziemnozwarciowa zwarciowa (Io>>)',
-  EARTH_FAULT_TIME: 'Ziemnozwarciowa czasowa (Io>)',
-  UNDERFREQUENCY: 'Podczestotliwosciowa (f<)',
-  OVERFREQUENCY: 'Nadczestotliwosciowa (f>)',
-  ROCOF: 'Pochodna czestotliwosci (df/dt)',
-  RECLOSING: 'SPZ (Samoczynne Ponowne Zalaczenie)',
-  DISTANCE: 'Odleglosciowa',
-  DIFFERENTIAL: 'Roznicowa',
-  DIRECTIONAL_OC: 'Kierunkowa nadprądowa',
-  SYNCHROCHECK: 'Kontrola synchronizmu',
-  THERMAL: 'Przeciazeniowa termiczna',
-};
-
-/**
- * Etykiety polskie dla bazy nastawy.
- */
-export const SETPOINT_BASIS_LABELS_PL: Record<ProtectionSetpointBasis, string> = {
-  UN: 'Napięcie znamionowe (Un)',
-  IN: 'Prąd znamionowy (In)',
-  HZ: 'Częstotliwość bazowa (fn)',
-  ABS: 'Wartość bezwzględna',
-};
-
-/**
- * Etykiety polskie dla operatorów.
- */
-export const SETPOINT_OPERATOR_LABELS_PL: Record<ProtectionSetpointOperator, string> = {
-  LT: 'mniejszy niż (<)',
-  GT: 'większy niż (>)',
-  GE: 'większy lub równy (>=)',
-  LE: 'mniejszy lub równy (<=)',
-  EQ: 'równy (=)',
-};
-
 // =============================================================================
 // Builder Functions (helpers)
 // =============================================================================

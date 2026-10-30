@@ -407,7 +407,7 @@ export function PanelScenariuszy() {
 
           {bladFormularza && (
             <p className="mvd-scen-blad" data-testid="mvd-scenariusze-blad-formularza">
-              {bladFormularza}
+              <TekstZWzorami tekst={bladFormularza} />
             </p>
           )}
 
@@ -485,7 +485,7 @@ export function PanelScenariuszy() {
                       </label>
                       {bladTb && (
                         <p className="mvd-scen-blad" data-testid={`mvd-scenariusze-tb-blad-${s.scenario_id}`}>
-                          {bladTb}
+                          <TekstZWzorami tekst={bladTb} />
                         </p>
                       )}
                       <button

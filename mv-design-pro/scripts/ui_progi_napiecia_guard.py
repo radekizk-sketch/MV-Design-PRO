@@ -79,22 +79,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "{ p_pu: 1.0, cos_phi: 0.95 },",
     ): "domyslny punkt krzywej cosφ(P) falownika (parametr sterowania DER), nie kryterium oceny wyniku sieci",
     (
-        "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        "if (sorted[0].uPu > 0.9) {",
-    ): "walidacja ksztaltu krzywej sterowania Q(U) falownika (parametr DER), nie kryterium oceny wyniku sieci",
-    (
-        "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        "issues.push(`Krzywa Q(U) musi zaczynać się przy U ≤ 0.9 p.u. Obecnie: ${sorted[0].uPu}.`);",
-    ): "tekst komunikatu o jw. wymaganym ksztalcie krzywej Q(U)",
-    (
-        "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        "if (sorted[sorted.length - 1].uPu < 1.1) {",
-    ): "jw. — koniec krzywej Q(U)",
-    (
-        "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
-        "issues.push(`Krzywa Q(U) musi kończyć się przy U ≥ 1.1 p.u. Obecnie: ${sorted[sorted.length - 1].uPu}.`);",
-    ): "tekst komunikatu o jw. (koniec krzywej Q(U))",
-    (
         "frontend/src/ui/network-build/forms/profiles/QofUProfileForm.tsx",
         "{ u_pu: 0.95, q_mvar: -0.5 },",
     ): "domyslny punkt krzywej sterowania Q(U) falownika (parametr DER), nie kryterium oceny wyniku sieci",

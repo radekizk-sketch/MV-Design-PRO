@@ -913,7 +913,7 @@ describe('V3 compose/gpz — SLD-02 wiersz regulacji zaczepów OLTC', () => {
     return label!.rows.map((r) => r.text);
   }
 
-  it('transformator z regulacją OLTC (AUTO + U_zad) ⇒ wiersz tabliczki + klucz parytetu', () => {
+  it('transformator z regulacją OLTC (AUTO + napięcie zadane) ⇒ wiersz tabliczki + klucz parytetu', () => {
     const composition = composeGpz(
       baseProps({
         transformers: [
@@ -923,18 +923,18 @@ describe('V3 compose/gpz — SLD-02 wiersz regulacji zaczepów OLTC', () => {
               kind: 'OLTC',
               positionLabel: 'poz. +3',
               modeLabel: 'AUTO',
-              setpointLabel: 'U_zad 15.5 kV',
+              setpointLabel: 'nastawa 15.5 kV',
             },
           },
         ],
       }),
       ORIGIN,
     );
-    expect(trLabelRowsOf(composition, 'tr-1')).toContain('OLTC poz. +3 · AUTO · U_zad 15.5 kV');
+    expect(trLabelRowsOf(composition, 'tr-1')).toContain('OLTC poz. +3 · AUTO · nastawa 15.5 kV');
     expect(composition.parityKeys.has('gpz.transformer.oltc')).toBe(true);
   });
 
-  it('regulacja DETC bez nastawy (MAN) ⇒ wiersz bez U_zad (uczciwy brak)', () => {
+  it('regulacja DETC bez nastawy (MAN) ⇒ wiersz bez napięcie zadane (uczciwy brak)', () => {
     const composition = composeGpz(
       baseProps({
         transformers: [

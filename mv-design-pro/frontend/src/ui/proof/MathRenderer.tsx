@@ -24,6 +24,7 @@ import { useMemo } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { featureFlags } from '../config/featureFlags';
+import { latexNaTekst } from './latexTekst';
 
 // =============================================================================
 // Types
@@ -191,7 +192,7 @@ export function MathRenderer({
   if (!result.success || !result.html) {
     return (
       <code
-        className={`math-fallback font-mono text-slate-800 whitespace-pre-wrap break-words ${className}`}
+        className={`math-fallback normal-case font-mono text-slate-800 whitespace-pre-wrap break-words ${className}`}
         data-testid="math-fallback"
         data-latex={latex}
         title={result.error ?? undefined}
@@ -202,13 +203,20 @@ export function MathRenderer({
   }
 
   // Sukces: renderuj HTML z KaTeX
+  // `normal-case`: symbol nie podlega `text-transform` kontenera (nagłówki i etykiety
+  // `uppercase` zamieniłyby `I_{th}` na `I_{TH}` — inny symbol).
   const containerClassName = result.isBlock
-    ? `math-block text-center my-2 ${className}`
-    : `math-inline ${className}`;
+    ? `math-block normal-case text-center my-2 ${className}`
+    : `math-inline normal-case ${className}`;
 
+  // KaTeX w trybie `html` oznacza swój znacznik `aria-hidden` — bez `role="math"` i odczytu
+  // `aria-label` wzór byłby niewidoczny dla czytnika ekranu i nazwy dostępnej (przycisk,
+  // komórka tabeli). Odczyt z tej samej funkcji co atrybuty `title` (`latexNaTekst`).
   return (
     <span
       className={containerClassName}
+      role="math"
+      aria-label={latexNaTekst(extractLatexContent(latex).content)}
       data-testid="math-rendered"
       data-latex={latex}
       dangerouslySetInnerHTML={{ __html: result.html }}

@@ -18,6 +18,7 @@
 import { useState, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { useSanityChecksByElement } from '../protection';
+import { TekstZWzorami } from '../../ui2/kreatory/rama/tekstZWzorami';
 import {
   type ProtectionSanityCheckResult,
   SEVERITY_COLORS,
@@ -172,12 +173,12 @@ function DiagnosticResultCard({ result }: DiagnosticResultCardProps) {
 
       {/* Code label */}
       <div className="text-xs font-medium text-gray-800 mb-1">
-        {codeLabel}
+        <TekstZWzorami tekst={codeLabel} />
       </div>
 
       {/* Message */}
       <div className="text-xs text-gray-600">
-        {result.message_pl}
+        <TekstZWzorami tekst={result.message_pl} />
       </div>
 
       {/* Evidence (if present) */}

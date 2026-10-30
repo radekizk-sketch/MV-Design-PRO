@@ -537,7 +537,7 @@ interface ApparatusTransformerSymbolProps {
    *  uzwojenie (strona SN). */
   readonly hasTapChanger?: boolean;
   /** SLD-02 (V12K-045): adnotacja regulacji zaczepów (OLTC/DETC, pozycja,
-   *  tryb AUTO/MAN, U_zad) — READ-ONLY z modelu `tap_changer`. Obecność
+   *  tryb AUTO/MAN, napięcie zadane) — READ-ONLY z modelu `tap_changer`. Obecność
    *  implikuje strzałkę zaczepu. Brak → symbol bez adnotacji regulacji. */
   readonly oltc?: OltcGlyphAnnotation;
 }
