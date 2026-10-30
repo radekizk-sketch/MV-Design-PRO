@@ -2647,11 +2647,8 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "EarthingGroundFaultPackInput generate_earthing_ground_fault_pack serialize_earthing_pack",
         "ZU5",
     ),
-    *_be_def(
-        f"{_PE}/types.py",
-        "EarthingGroundFaultInput ProofType.EARTHING_GROUND_FAULT_SN",
-        "ZU5",
-    ),
+    *_be_def(f"{_PE}/types.py", "EarthingGroundFaultInput", "ZU5"),
+    *_be_def(f"{_PE}/types.py", "ProofType.EARTHING_GROUND_FAULT_SN", "ZU5", zasieg="plik"),
     *_be_def(
         f"{_PE}/proof_generator.py",
         "generate_earthing_ground_fault_proof _create_earth_current_step "
@@ -2661,9 +2658,14 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     *_be_def(
         f"{_PE}/equation_registry.py",
         "EQ_EARTH_001 EQ_EARTH_002 EQ_EARTH_003 EARTH_EQUATIONS EARTH_STEP_ORDER "
-        "get_earth_equations get_earth_step_order EquationRegistry.EARTH_EQUATIONS "
-        "EquationRegistry.EARTH_STEP_ORDER",
+        "get_earth_equations get_earth_step_order",
         "ZU5",
+    ),
+    *_be_def(
+        f"{_PE}/equation_registry.py",
+        "EquationRegistry.EARTH_EQUATIONS EquationRegistry.EARTH_STEP_ORDER",
+        "ZU5",
+        zasieg="plik",
     ),
     *_be_def(
         "analysis/normative/evaluator.py",
@@ -2676,6 +2678,7 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "NormativeConfig.touch_voltage_warn_v NormativeConfig.touch_voltage_fail_v "
         "NormativeConfig.earth_current_warn_a NormativeConfig.earth_current_fail_a",
         "ZU5",
+        zasieg="plik",
     ),
     *_fe_wzorzec("ui/workspace/WorkspaceSurfaceRouter.tsx", ("EARTHING_GROUND_FAULT_SN",), "ZU5"),
     *_fe_wzorzec("ui/workspace/routerDisplayHelpers.ts", ("EARTHING_GROUND_FAULT_SN",), "ZU5"),

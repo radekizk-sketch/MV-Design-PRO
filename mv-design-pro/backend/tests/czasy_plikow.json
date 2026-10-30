@@ -1,5 +1,5 @@
 {
-  "zrodlo": "pełny bieg backendu -n 4 --dist loadfile -m 'not pandapower and not andes', 41 029 testów, 2026-10-28, maszyna 4 vCPU pod blokadą biegu ciężkiego (obce lekkie procesy obok), drzewo 1465336df; czas pliku = suma czasów przypadków raportu JUnit; zdjęto wpisy bez pliku (tests/application/analyses/protection/test_vector_group_earth_fault_touch_voltage.py): plik testów mostu doziemienia skasowany z mostem ground_fault_bridge w odcinku 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (6bfd4bcab), 2026-10-30",
+  "zrodlo": "pełny bieg backendu -n 4 --dist loadfile -m 'not pandapower and not andes', 41 029 testów, 2026-10-28, maszyna 4 vCPU pod blokadą biegu ciężkiego (obce lekkie procesy obok), drzewo 1465336df; czas pliku = suma czasów przypadków raportu JUnit; zdjęto wpisy bez pliku (tests/application/analyses/protection/test_vector_group_earth_fault_touch_voltage.py): plik testów mostu doziemienia skasowany z mostem ground_fault_bridge w odcinku 3 karty UX-04/POLE-ZU-SKLADOWA-ZEROWA (6bfd4bcab), 2026-10-30; zdjęto wpisy bez pliku (tests/proof_engine/test_earthing_pack.py, tests/proof_engine/test_earthing_proof.py): karta UX-04/POLE-ZU-SKLADOWA-ZEROWA commit 5: kasacja pakietu dowodowego P19 (uziemienie / doziemienie SN) — testy test_earthing_pack.py i test_earthing_proof.py usunięte razem z kodem",
   "czasy_s": {
     "tests/analysis/reporting/test_arc_flash_report.py": 2.4,
     "tests/analysis/reporting/test_audit2_report.py": 2.4,
@@ -726,8 +726,6 @@
     "tests/proof_engine/test_audit2_validation_pack.py": 0.6,
     "tests/proof_engine/test_dowod_parametrow_linii.py": 1.5,
     "tests/proof_engine/test_dowod_zwarcia_przez_impedancje_przejscia.py": 0.6,
-    "tests/proof_engine/test_earthing_pack.py": 0.3,
-    "tests/proof_engine/test_earthing_proof.py": 0.1,
     "tests/proof_engine/test_equation_registry_import.py": 0.0,
     "tests/proof_engine/test_inspector.py": 3.1,
     "tests/proof_engine/test_load_flow_voltage_proof_p32.py": 0.1,

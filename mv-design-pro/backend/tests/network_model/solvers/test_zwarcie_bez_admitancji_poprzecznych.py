@@ -654,6 +654,11 @@ _WOLAJACY_BUILD_ZBUS = {
     "network_model/solvers/machine_sc_iec60909.py",
     "application/analyses/fault_loop/service.py",
     "application/analyses/lv_domain/upstream_equivalent.py",
+    # Most modelu analiz V12.6 (`impedancje_zastepcze_szyn`): impedancja zastępcza Thévenina
+    # szyny Z_th = Z_bus[k,k]·Z_b dla przepustowości i rozruchu silnika — z sieci zgodnej zwarć
+    # (przekładnia, K_T, Z_Q), zamiast dawnego ręcznego składania impedancji w kontrakcie
+    # (karta UX-04/POLE-ZU-SKLADOWA-ZEROWA, commit 5).
+    "solver_input/v126_contracts.py",
 }
 
 
