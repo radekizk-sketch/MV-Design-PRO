@@ -75,17 +75,17 @@ def test_warunki_gpzu_sa_danymi_projektu() -> None:
 
 
 def test_testowe_nie_zanieczyszczaja_pomiaru() -> None:
-    assert not ocena_pozycji("ct_types", _typ(ratio_primary_a=None,
-                                              ratio_secondary_a=None,
-                                              accuracy_class=None,
-                                              ith_ka_1s=None,
-                                              idyn_ka_peak=None,
-                                              burden_va=None,
-                                              core_count=2,
-                                              secondary_cores=None,
-                                              rct_ohm=None,
-                                              verification_status="REFERENCYJNY")
-                             ) == []  # referencyjne pozostają w raporcie
+    assert ocena_pozycji("ct_types", _typ(ratio_primary_a=None,
+                                         ratio_secondary_a=None,
+                                         accuracy_class=None,
+                                         ith_ka_1s=None,
+                                         idyn_ka_peak=None,
+                                         burden_va=None,
+                                         core_count=2,
+                                         secondary_cores=None,
+                                         rct_ohm=None,
+                                         verification_status="REFERENCYJNY"))
+    # Referencyjne wpisy pozostają w raporcie, a benchmarki nie.
     typ = SimpleNamespace(id="bench_any", catalog_status="TESTOWY")
     assert ocena_pozycji("ct_types", typ) == []
 
@@ -112,3 +112,32 @@ def test_raport_rzeczywistego_repo_nie_uznaje_etykiet_za_braki() -> None:
     )
     assert not any(x["pole"] == "primary_taps_a" for x in raport["pozycje"])
     assert "136" in raport["uwaga"]  # etykiety UI, nie brak 136 parametrów
+
+
+def test_podejrzane_zero_to_osobny_przeglad_a_nie_pusta_wartosc() -> None:
+    kabel = _typ(r_ohm_per_km=0.0, x_ohm_per_km=0.08,
+                  c_nf_per_km=160, rated_current_a=385,
+                  voltage_rating_kv=18, cross_section_mm2=240,
+                  max_temperature_c=90, short_circuit_temperature_c=250,
+                  ith_1s_a=18000, return_conductor_cross_section_mm2=None)
+    raport = ocena_pozycji("cable_types", kabel)
+    zero = [x for x in raport if x.rodzaj == "ZERO_DO_WERYFIKACJI"]
+    assert len(zero) == 1
+    assert zero[0].pole == "r_ohm_per_km"
+
+
+def test_szablon_ct_nie_liczy_sie_jako_karta_producenta() -> None:
+    ct = SimpleNamespace(
+        id="ct-project-sn-200-1-0p2s-5va-5p20-15va",
+        catalog_status="REFERENCYJNY_V1",
+        ratio_primary_a=200, ratio_secondary_a=1,
+        accuracy_class="0.2S", core_count=2,
+        secondary_cores=(
+            {"role": "METERING", "accuracy_class": "0.2S"},
+            {"role": "PROTECTION", "accuracy_class": "5P20"},
+        ),
+        ith_ka_1s=None, idyn_ka_peak=None, rct_ohm=None,
+    )
+    luki = ocena_pozycji("ct_types", ct)
+    assert luki
+    assert all(x.rodzaj_pozycji == "SZABLON_PROJEKTOWY" for x in luki)
