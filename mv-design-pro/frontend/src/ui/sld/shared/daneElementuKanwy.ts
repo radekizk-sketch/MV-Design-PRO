@@ -223,7 +223,10 @@ function rekordStanuAparatu(bay: Bay, deviceRef: string): BaySwitchState | null 
   return bay.runtime_state?.primary_device_states?.[deviceRef] ?? null;
 }
 
-const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
+/** Nazwa aparatu pola z identyfikatora wewnętrznego widoku stacji
+ *  (`${stationRef}/internal-bay/<pole>/<aparat>`) — jedno źródło dla opisu elementu kanwy
+ *  i inspektora inżynierskiego (`InspectorEngineeringView`). */
+export const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
   'switch-disconnector': 'Rozłącznik',
   fuse: 'Bezpiecznik',
   'earthing-switch': 'Uziemnik',

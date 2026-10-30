@@ -94,6 +94,10 @@ import {
 } from '../shared/transformatoryStacji';
 import { operacjaAkcjiMenu } from '../sld/shared/sldActionExecutor';
 import {
+  INTERNAL_STATION_DEVICE_LABELS_PL,
+  stationRefFromInternalElement,
+} from '../sld/shared/daneElementuKanwy';
+import {
   DzialaniaZwiniete,
   PanelElementuKanwy,
   type OperacjaModeluInspektora,
@@ -1052,25 +1056,6 @@ function parseApparatusSelectionId(id: string): { bayRef: string; apparatusKind:
   const marker = id.lastIndexOf('#');
   if (marker <= 0 || marker === id.length - 1) return null;
   return { bayRef: id.slice(0, marker), apparatusKind: id.slice(marker + 1) };
-}
-
-const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
-  'switch-disconnector': 'Rozłącznik',
-  fuse: 'Bezpiecznik',
-  'earthing-switch': 'Uziemnik',
-  'cable-head': 'Głowica kablowa',
-  'transformer-device': 'Transformator',
-  breaker: 'Wyłącznik',
-  disconnector: 'Odłącznik',
-  vt: 'Przekładnik napięciowy',
-};
-
-function stationRefFromInternalElement(id: string): string | null {
-  for (const marker of ['/internal-bay/', '/nn/', '/pv/', '/transformer/']) {
-    const markerIndex = id.indexOf(marker);
-    if (markerIndex > 0) return id.slice(0, markerIndex);
-  }
-  return null;
 }
 
 function stationDisplayNameForInternalRef(
