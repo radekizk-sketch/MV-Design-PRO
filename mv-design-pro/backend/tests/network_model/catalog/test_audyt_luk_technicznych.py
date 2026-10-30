@@ -95,13 +95,20 @@ def test_raport_rzeczywistego_repo_nie_uznaje_etykiet_za_braki() -> None:
     raport = zbuduj_raport_luk_technicznych(repo)
     assert raport["liczba_pozycji"] >= 8000
     assert raport["liczba_brakow_technicznych"] >= 78
+    assert raport["braki_szablonow"] >= 78
+    assert raport["liczba_brakow_technicznych"] == (
+        raport["braki_techniczne_poza_szablonami"] + raport["braki_szablonow"]
+    )
+    assert any(x["rodzaj_pozycji"] == "SZABLON_PROJEKTOWY"
+               for x in raport["macierz"])
     assert raport["liczba_pustych_pol"] == (
         raport["liczba_brakow_technicznych"] + raport["liczba_danych_projektu"]
     )
     assert raport["liczba_zerowych_do_weryfikacji"] >= 0
     assert raport["macierz"] == sorted(
         raport["macierz"],
-        key=lambda x: (x["rodzina"], x["pole"], x["rodzaj"], x["analiza"])
+        key=lambda x: (x["rodzina"], x["rodzaj_pozycji"], x["pole"],
+                       x["rodzaj"], x["analiza"])
     )
     assert not any(x["pole"] == "primary_taps_a" for x in raport["pozycje"])
     assert "136" in raport["uwaga"]  # etykiety UI, nie brak 136 parametrów
