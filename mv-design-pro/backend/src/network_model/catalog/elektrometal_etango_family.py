@@ -597,21 +597,21 @@ def get_etango_sn_catalog_additions() -> list[dict[str, Any]]:
                 "id": row["id"],
                 "name_pl": "Elektrometal " + row["model"],
                 "params": {
-                "vendor": "ELEKTROMETAL",
-                "series": "e2TANGO",
-                "revision": None,
-                "rated_current_a": None,
-                "analytical_library_ref": None,
-                "notes_pl": note,
-                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
-                "source_reference": row["zrodlo"]["wydanie"] + "; " + row["zrodlo"]["url"],
-                "catalog_status": "REFERENCYJNY_V1",
-                "contract_version": "2.0",
-                "verification_note": (
-                    "Producent potwierdza rodzinę i zastosowanie; wariant sprzętowy, "
-                    "czynne funkcje, przekładniki i nastawy wymagają dowodu z DTR "
-                    "i konfiguracji konkretnej instancji."
-                ),
+                    "vendor": "ELEKTROMETAL",
+                    "series": "e2TANGO",
+                    "revision": None,
+                    "rated_current_a": None,
+                    "analytical_library_ref": None,
+                    "notes_pl": note,
+                    "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                    "source_reference": row["zrodlo"]["wydanie"] + "; " + row["zrodlo"]["url"],
+                    "catalog_status": "REFERENCYJNY_V1",
+                    "contract_version": "2.0",
+                    "verification_note": (
+                        "Producent potwierdza rodzinę i zastosowanie; wariant sprzętowy, "
+                        "czynne funkcje, przekładniki i nastawy wymagają dowodu z DTR "
+                        "i konfiguracji konkretnej instancji."
+                    ),
                 },
             }
         )
