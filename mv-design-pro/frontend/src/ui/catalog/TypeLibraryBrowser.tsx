@@ -38,6 +38,7 @@ const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'CT', label: 'Typy przekładników prądowych', icon: '◎' },
   { id: 'VT', label: 'Typy przekładników napięciowych', icon: '◌' },
   { id: 'FERRANTI', label: 'Przekładniki Ferrantiego 3I₀', icon: '◎' },
+  { id: 'INSTRUMENT_FAMILY', label: 'Rodziny przekładników producentów', icon: '◈' },
   { id: 'MEASUREMENT_TRANSFORMER', label: 'Typy przekładników pomiarowych', icon: '◍' },
   { id: 'PV_INVERTER', label: 'Typy falowników źródeł fotowoltaicznych', icon: '☀' },
   { id: 'BESS_INVERTER', label: 'Typy falowników magazynów energii', icon: '▣' },
@@ -97,6 +98,19 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   test_winding: 'Uzwojenie testowe',
   thermal_short_circuit_current_ka: 'Prąd cieplny [kA]',
   thermal_short_circuit_duration_s: 'Czas prądu cieplnego [s]',
+  model_family: 'Rodzina producenta',
+  transformer_kind: 'Rodzaj przekładnika',
+  mounting: 'Miejsce montażu',
+  voltage_domain: 'Domena napięciowa',
+  record_kind: 'Typ rekordu',
+  primary_a_min: 'Minimalny prąd pierwotny rodziny [A]',
+  primary_a_max: 'Maksymalny prąd pierwotny rodziny [A]',
+  secondary_current_options_a: 'Dostępne prądy wtórne [A]',
+  core_count_max: 'Maks. liczba rdzeni w rodzinie',
+  accuracy_options: 'Dostępne klasy w rodzinie',
+  burden_options_va: 'Opcje mocy [VA]',
+  ith_range_ka: 'Zakres dostępnego Ith [kA]',
+  residual_capability: 'Dostępne warianty resztkowe',
   accuracy_class: 'Klasa dokładności',
   burden_va: 'Moc obciążeniowa [VA]',
   um_kv: 'Najwyższe napięcie urządzenia Um [kV]',
@@ -424,7 +438,11 @@ export function TypeLibraryBrowser({
 
   const handleSelectType = (typeId: string) => {
     setSelectedTypeId(typeId);
-    onSelectType?.(typeId, activeTab);
+    // Rodzina nie jest skończonym modelem; nie wolno wysłać jej
+    // jako typ fizycznego CT/VT do grafu projektu.
+    if (activeTab !== 'INSTRUMENT_FAMILY') {
+      onSelectType?.(typeId, activeTab);
+    }
   };
 
   return (
