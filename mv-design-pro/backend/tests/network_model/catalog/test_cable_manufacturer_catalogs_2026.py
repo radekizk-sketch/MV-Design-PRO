@@ -159,3 +159,30 @@ def test_nkt_nn_pvc_42_typy_yky_yaky_z_producenckich_tabel() -> None:
     assert "kab-nn-nkt-yky-5x1p5" in repo.lv_cable_types
     assert "kab-nn-nkt-yaky-5x10" in repo.lv_cable_types
     assert "kab-nn-nkt-yaky-4x10" not in repo.lv_cable_types
+
+
+def test_tfk_8p7_15_kv_warianty_wyrobu_do_sieci_15_kv_odbiorcy() -> None:
+    """24 warianty 8,7/15 kV z oddzielnych tabel TFK, bez fikcyjnych Cu >=630."""
+    records = get_all_tfk_8715_cable_types()
+    assert len(records) == 24
+    assert sum(x["params"]["conductor_material"] == "AL" for x in records) == 13
+    assert sum(x["params"]["conductor_material"] == "CU" for x in records) == 11
+    repo = get_default_mv_catalog()
+    assert not any("yhkxs-1000" in x["id"] for x in records)
+    for item in records:
+        p = item["params"]
+        assert item["id"] in repo.cable_types
+        assert item["id"].endswith("-8p7-15")
+        assert p["voltage_rating_kv"] == 15.0
+        assert "8.7/15(17.5)" in p["source_reference"]
+        assert all(
+            isinstance(p[key], (int, float)) and math.isfinite(p[key]) and p[key] > 0
+            for key in ("r_ohm_per_km", "x_ohm_per_km", "c_nf_per_km",
+                        "rated_current_a", "ith_1s_a", "return_conductor_ith_1s_a")
+        )
+    al_240 = next(i for i in records if i["id"] == "cable-tfk-2025-yhakxs-240-50-8p7-15")
+    cu_240 = next(i for i in records if i["id"] == "cable-tfk-2025-yhkxs-240-50-8p7-15")
+    assert al_240["params"]["c_nf_per_km"] == 320.0
+    assert al_240["params"]["rated_current_a"] == 522.0
+    assert cu_240["params"]["c_nf_per_km"] == 330.0
+    assert cu_240["params"]["rated_current_a"] == 667.0
