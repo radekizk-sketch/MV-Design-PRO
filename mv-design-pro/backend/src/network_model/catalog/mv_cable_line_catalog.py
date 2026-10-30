@@ -26,7 +26,7 @@ import re
 from collections import Counter
 from typing import Any
 
-from .mv_cable_tfk_full import get_all_tfk_1220_cable_types
+from .mv_cable_tfk_full import get_all_tfk_1220_cable_types, get_all_tfk_1830_cable_types
 
 from .types import (
     CATALOG_CONTRACT_VERSION,
@@ -401,7 +401,7 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
         for record in CABLE_NKT_PELNY_ODBIORCA_TYPES
     ] + [
         _with_zero_sequence_parameters(_with_cable_return_conductor(record), kind="cable")
-        for record in get_all_tfk_1220_cable_types()
+        for record in get_all_tfk_1220_cable_types() + get_all_tfk_1830_cable_types()
     ]
     base_records = [
         _with_catalog_quality(
