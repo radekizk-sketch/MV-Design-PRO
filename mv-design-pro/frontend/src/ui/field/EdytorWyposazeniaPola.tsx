@@ -49,6 +49,7 @@ import {
   RODZAJE_APARATU_POLA_SN,
   RODZAJE_KATALOGOWE_APARATU,
   RODZAJ_Z_PRZEKLADNIA,
+  RODZAJ_Z_WYKONANIEM,
   RODZAJE_Z_GALEZIA,
   RODZAJE_Z_ROLA_UZIEMIENIA,
   STAN_DANYCH_WYPOSAZENIA_PL,
@@ -66,7 +67,7 @@ import {
   type ZmianaZrodlaU0,
 } from './wyposazeniePola';
 import type { ZrodloU0Pola } from './useFieldReadModel';
-import type { DomainOpResponseV1, KlasaPolaLiniowego } from '../../types/enm';
+import { OPIS_WYKONANIA_APARATU_PL, WYKONANIA_APARATU, type DomainOpResponseV1, type KlasaPolaLiniowego, type WykonanieAparatu } from '../../types/enm';
 
 interface PozycjeKatalogu {
   readonly APARAT_SN: readonly MVApparatusType[];
@@ -501,6 +502,23 @@ export function EdytorWyposazeniaPola({
                         value={w.przekladnia}
                         onChange={(e) => zmienWiersz(i, (x) => ({ ...x, przekladnia: e.target.value }))}
                       />
+                    ) : null}
+                    {w.kind === RODZAJ_Z_WYKONANIEM ? (
+                      <select
+                        aria-label={`Wykonanie aparatu ${i + 1}`}
+                        data-testid={`wyposazenie-pola-aparat-${i}-wykonanie`}
+                        className={pole}
+                        title="Wykonanie wyłącznika: stałe albo wysuwne (człon wysuwny na wózku, ENEA Zeszyt 1 §13) — schemat rysuje człon wysuwny znacznikiem ○ obok × wyłącznika"
+                        value={w.wykonanie}
+                        onChange={(e) => zmienWiersz(i, (x) => ({ ...x, wykonanie: e.target.value as WykonanieAparatu | '' }))}
+                      >
+                        <option value="">wykonanie nieokreślone</option>
+                        {WYKONANIA_APARATU.map((wyk) => (
+                          <option key={wyk} value={wyk}>
+                            wykonanie {OPIS_WYKONANIA_APARATU_PL[wyk]}
+                          </option>
+                        ))}
+                      </select>
                     ) : null}
                     <button
                       type="button"

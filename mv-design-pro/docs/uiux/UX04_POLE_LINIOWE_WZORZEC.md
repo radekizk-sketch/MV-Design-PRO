@@ -1604,7 +1604,7 @@ ani z HMI producenta nie deklaruję; werdykt wizualny wydaje właściciel (B-02)
    | rozłącznik | kreska styku z okręgiem zawieszonym pod nią | S00290 = S00227 + S00220 + S00221 (`docs/sld/SLD_SYMBOL_NORMATIVE_REGISTRY.md` l. 143); QET 07-13-08 ma to samo złożenie | `qetLoadBreakSwitch`, `qetFuseSwitch` |
    | uziemnik | kreska styku + ziemia w dół | S00288 + S00200 (rejestr l. 177) | `qetEarthSwitch`; zestyk uziemiający Q1 |
    | trójpołożeniowy | oba: „○" przy styku zamknięcia, kreska przy zestyku uziemiającym | złożenie powyższych | `qetThreePositionSwitch`, `qetThreePositionSwitchZNapedem` |
-   | człon wysuwny lub odłączalny | „○" | decyzja właściciela | **luka modelu** — poniżej |
+   | człon wysuwny (wyłącznik wykonania `WYSUWNE`) | „○" obok „×", po stronie przeciwnej do noża otwartego | decyzja właściciela; rozstrzygnięcie architekta 2026-10-30 pkt 3 | `qetBreakerWysuwny`, `qetBreakerWysuwnyZNapedem` (punkt „Człon wysuwny — wykonanie") |
 
    Rozłącznik — decyzja z dowodem: wyróżnik IEC zostaje (kreska z okręgiem, S00221 „switch-disconnector
    function"), bo odróżnia rozłącznik od odłącznika (sam okrąg, S00220) i od uziemnika (sama kreska);
@@ -1676,6 +1676,33 @@ zostaje dla przewodów toru i symboli bez kafla.
    implementacja, bez równoległej (punkt „Rodzina kanoniczna — wykonanie").
 5. **Kolor łącznika trójpołożeniowego v2 i romb sprzęgła** — ta sama funkcja stan → kolor →
    geometria (`POLOZENIE_ZE_STANU`), jedno źródło (punkt „v2 i sprzęgło — wykonanie").
+
+**Człon wysuwny — wykonanie (rozstrzygnięcie 3).** Łańcuch od danych do kanwy:
+
+| Ogniwo | Plik | Co |
+|---|---|---|
+| słownik | `backend/src/network_model/catalog/rodzaje_aparatury.py` | `WykonanieAparatu = STALE \| WYSUWNE`, opis polski, `RODZAJE_Z_WYKONANIEM = {CB}` |
+| szablon | `backend/src/network_model/catalog/bay_templates.py` | `BayDeviceTemplate.wykonanie` (tylko CB); wyłącznik Q0 szablonu GPZ = `WYSUWNE` dla wykonania łączników `WYSUWNY`, inaczej `STALE`; `template_primary_devices` przenosi wartość do rekordu pola |
+| model | `backend/src/enm/models.py` | `BayPrimaryDevice.wykonanie` (addytywne, `None` poza odciskiem hash — `enm/hash.py`), walidator: wyłącznie CB |
+| operacja | `backend/src/enm/wyposazenie_pola.py`, `domain/canonical_operations.py` | `set_bay_equipment` przyjmuje `wykonanie`; przy aparacie innym niż CB odmowa `bay_equipment.execution_not_applicable` (`docs/ui/KONTRAKT_OPERACJI_ENM_OP.md`) |
+| konsument | `backend/src/reference_engine/compliance.py` | „odłączenie wysunięciem wyłącznika" czytane z rekordu aparatu (`odlaczenie_wysunieciem_wylacznika(devices)`), nie z identyfikatora szablonu — zmiana w inspektorze zmienia ocenę profilu |
+| inspektor | `frontend/src/ui/field/EdytorWyposazeniaPola.tsx`, `wyposazeniePola.ts` | lista „Wykonanie" przy wierszu CB, w ładunku operacji |
+| scena | `ui/sld/v2/canvas/enmToSldAdapter.ts` → `ui/sld/v3/compose/apparatusSequence.ts` | `wysuwny` → symbol `qetBreakerWysuwny` / `qetBreakerWysuwnyZNapedem` (pierwszeństwo w każdym wariancie CB) |
+| symbol | `docs/sld/vendor/qet/import_manifest.json` → `scripts/import_qet_pole_sn.py` → `qetPoleSn.ts` | znacznik `czlon_wysuwny` (okrąg, ten sam promień co „○" odłącznika) obok krzyżyka, po stronie przeciwnej do noża otwartego, odstęp `odstepWysuwuQet` = 2,25 j.QET; kotwica podłogi LOD1 = lewy bok obwiedni krzyżyka |
+
+Pomiar: przy skali znacznika 1 okrąg ma środek (11,1; 17), r = 6 — margines od krawędzi kafla 4,1 j.św.,
+odstęp od tuszu „×" 1,12 j.św.; na podłodze LOD1 (0,51, mnożnik 1,307) — margines tuszu 0,14 ≥ 0,
+odstęp od „×" 0,78. Położenie członu (wsunięty / próbny / wysunięty) nie jest modelowane — rozstrzygnięcie
+dotyczy wykonania; stan łączeniowy wyłącznika pozostaje stanem aparatu.
+
+Testy (iloczyn cech): `tests/enm/test_wyposazenie_pola.py` — {STALE, WYSUWNE, brak} × {CB, LOAD_SWITCH,
+CORE_BALANCE_CT, CABLE_HEAD}; `tests/reference_engine/test_reference_packs.py::test_profil_pola_liniowego_gpz_iloczyn`
+— oś `wykonanie_cb` {z szablonu, brak, STALE, WYSUWNE} × wariant × wykonanie łączników; `tests/ci/test_qet_pole_sn_import.py`
+— iniekcje importera (wysuw przy styku zamknięcia, obok odłącznika, dwa razy, przy krawędzi, nachodzący na krzyżyk);
+`symbols/__tests__/znacznikRodzajuLacznika.test.tsx` — rozłączność znaczników parami na LOD1/LOD2 oraz iniekcje
+„brak znacznika członu wysuwnego" i „○ zsunięty na ×"; `scene/__tests__/poleLinioweGpz.test.tsx` — fikstura ×
+wykonanie × napęd; `field/__tests__/EdytorWyposazeniaPola.test.tsx` — ładunek operacji (iniekcja: wiersz bez
+wykonania — czerwony).
 
 **Do decyzji architekta (z pomiarem) — stan sprzed rozstrzygnięcia 2026-10-30.**
 

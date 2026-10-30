@@ -52,7 +52,9 @@ ROLE = tuple(SZABLON_ROLI)
 
 
 def _pierwsza(slownik: dict[str, Any], warunek: Any = None) -> str:
-    return next(ref for ref, typ in sorted(slownik.items()) if warunek is None or warunek(typ))
+    return next(
+        ref for ref, typ in sorted(slownik.items()) if warunek is None or warunek(typ)
+    )
 
 
 #: Napięcie szyn SN sieci testowej [kV] (GPZ 15 kV) — pozycje „poprawne” mają poziom izolacji
@@ -63,7 +65,8 @@ NAPIECIE_SIECI_KV = 15.0
 
 def _ref_aparatu_sn(rodzaj_katalogowy: str) -> str:
     """Pierwsza pozycja rodzaju dopuszczona w polu PROJEKTOWANYM (pola sieci testowej budują
-    operacje projektowe — zakaz gazów fluorowanych, karta UX-04/POLE-LINIOWE-WZORZEC)."""
+    operacje projektowe — zakaz gazów fluorowanych, karta UX-04/POLE-LINIOWE-WZORZEC).
+    """
     return _pierwsza(
         katalog_biezacy().mv_apparatus_types,
         lambda t: t.device_kind == rodzaj_katalogowy
@@ -93,8 +96,18 @@ def _poprawny_ref(rodzaj: str) -> str:
 
 #: Rola pola → wyposażenie z katalogu (realne zestawy aparatów tej funkcji pola).
 APARATY_ROLI: dict[str, list[tuple[str, str]]] = {
-    "IN": [("DS", "UPSTREAM"), ("CB", "MIDSTREAM"), ("CT", "MIDSTREAM"), ("ES", "GROUND_BRANCH")],
-    "OUT": [("DS", "UPSTREAM"), ("CB", "MIDSTREAM"), ("CT", "MIDSTREAM"), ("ES", "GROUND_BRANCH")],
+    "IN": [
+        ("DS", "UPSTREAM"),
+        ("CB", "MIDSTREAM"),
+        ("CT", "MIDSTREAM"),
+        ("ES", "GROUND_BRANCH"),
+    ],
+    "OUT": [
+        ("DS", "UPSTREAM"),
+        ("CB", "MIDSTREAM"),
+        ("CT", "MIDSTREAM"),
+        ("ES", "GROUND_BRANCH"),
+    ],
     "TR": [("LOAD_SWITCH", "MIDSTREAM"), ("ES", "GROUND_BRANCH")],
     "FEEDER": [("LOAD_SWITCH", "MIDSTREAM"), ("SURGE_ARRESTER", "GROUND_BRANCH")],
     "COUPLER": [("DS", "UPSTREAM"), ("CB", "MIDSTREAM"), ("DS", "DOWNSTREAM")],
@@ -137,8 +150,12 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
             },
         )
     pola_stacji = [b for b in enm["bays"] if b["substation_ref"] == stacja["ref_id"]]
-    pole_nn = next(b["ref_id"] for b in pola_stacji if b["ref_id"].endswith("nn_main_breaker"))
-    pola_sn = {b["bay_role"]: b["ref_id"] for b in pola_stacji if b["ref_id"] != pole_nn}
+    pole_nn = next(
+        b["ref_id"] for b in pola_stacji if b["ref_id"].endswith("nn_main_breaker")
+    )
+    pola_sn = {
+        b["bay_role"]: b["ref_id"] for b in pola_stacji if b["ref_id"] != pole_nn
+    }
     assert set(pola_sn) == set(ROLE), pola_sn
     return enm, pola_sn, pole_nn
 
@@ -168,7 +185,11 @@ def _odmowa(enm: dict[str, Any], ladunek: dict[str, Any], kod: str) -> dict[str,
 
 def _ladunek_katalogowy(rola: str) -> list[dict[str, Any]]:
     return [
-        {"kind": rodzaj, "placement": umiejscowienie, "catalog_ref": _poprawny_ref(rodzaj)}
+        {
+            "kind": rodzaj,
+            "placement": umiejscowienie,
+            "catalog_ref": _poprawny_ref(rodzaj),
+        }
         for rodzaj, umiejscowienie in APARATY_ROLI[rola]
     ]
 
@@ -181,14 +202,19 @@ def _ladunek_katalogowy(rola: str) -> list[dict[str, Any]]:
 @pytest.mark.parametrize("rola", ROLE)
 def test_pole_swieze_bez_szablonu_jest_brakiem_danych(siec: Any, rola: str) -> None:
     enm, pola, _ = siec
-    assert stan_danych_wyposazenia(_pole(enm, pola[rola])["primary_devices"]) == "BRAK_DANYCH"
+    assert (
+        stan_danych_wyposazenia(_pole(enm, pola[rola])["primary_devices"])
+        == "BRAK_DANYCH"
+    )
 
 
 @pytest.mark.parametrize("rola", ROLE)
 def test_tryb_katalog_daje_model(siec: Any, rola: str) -> None:
     enm, pola, _ = siec
     devices = _ladunek_katalogowy(rola)
-    wynik = _wykonaj(enm, {"bay_ref": pola[rola], "mode": "katalog", "devices": devices})
+    wynik = _wykonaj(
+        enm, {"bay_ref": pola[rola], "mode": "katalog", "devices": devices}
+    )
 
     assert wynik.get("error") is None, wynik.get("error")
     zapisane = _pole(wynik["snapshot"], pola[rola])["primary_devices"]
@@ -218,7 +244,12 @@ def test_tryb_katalog_daje_model(siec: Any, rola: str) -> None:
 def test_tryb_szablon_daje_propozycje_jako_dana_przyjeta(siec: Any, rola: str) -> None:
     enm, pola, _ = siec
     wynik = _wykonaj(
-        enm, {"bay_ref": pola[rola], "mode": "szablon", "bay_template_ref": SZABLON_ROLI[rola]}
+        enm,
+        {
+            "bay_ref": pola[rola],
+            "mode": "szablon",
+            "bay_template_ref": SZABLON_ROLI[rola],
+        },
     )
 
     assert wynik.get("error") is None, wynik.get("error")
@@ -241,7 +272,11 @@ def test_tryb_wyczysc_daje_brak_danych(siec: Any, rola: str) -> None:
     wyposazone = wykonaj(
         enm,
         "set_bay_equipment",
-        {"bay_ref": pola[rola], "mode": "katalog", "devices": _ladunek_katalogowy(rola)},
+        {
+            "bay_ref": pola[rola],
+            "mode": "katalog",
+            "devices": _ladunek_katalogowy(rola),
+        },
     )
     wynik = _wykonaj(wyposazone, {"bay_ref": pola[rola], "mode": "wyczysc"})
 
@@ -279,7 +314,11 @@ def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
             enm = wykonaj(
                 enm,
                 "set_bay_equipment",
-                {"bay_ref": ref, "mode": "katalog", "devices": _ladunek_katalogowy(rola)},
+                {
+                    "bay_ref": ref,
+                    "mode": "katalog",
+                    "devices": _ladunek_katalogowy(rola),
+                },
             )
         wynik = _wykonaj(enm, ladunek)
         assert wynik.get("error") is None, wynik.get("error")
@@ -300,7 +339,9 @@ def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
     )
 
 
-@pytest.mark.parametrize("rola", ["FEEDER", "IN", "OUT", "TR", "COUPLER", "MEASUREMENT"])
+@pytest.mark.parametrize(
+    "rola", ["FEEDER", "IN", "OUT", "TR", "COUPLER", "MEASUREMENT"]
+)
 def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
     """Pole GPZ na rodzinie ABB UniGear ZS1, szablon = katalogowe pole rodziny tej roli:
     aparaty z BOM-u producenta, każdy z referencją szablonu aparatu (MODEL, bez danych
@@ -308,7 +349,9 @@ def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
     pola — dlatego pole FEEDER przyjmuje wyłącznie szablon FEEDER, inne odmawia."""
     rodzina = "ABB__UNIGEAR_ZS1"
     szablony = {
-        k: v for k, v in _rejestr_pol_katalogowych().items() if v.switchgear_family_ref == rodzina
+        k: v
+        for k, v in _rejestr_pol_katalogowych().items()
+        if v.switchgear_family_ref == rodzina
     }
     (szablon,) = (k for k, v in szablony.items() if v.bay_role == rola)
     enm = wykonaj(
@@ -324,7 +367,11 @@ def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
         },
     )
     (pole_gpz,) = (b for b in enm["bays"])
-    ladunek = {"bay_ref": pole_gpz["ref_id"], "mode": "szablon", "bay_template_ref": szablon}
+    ladunek = {
+        "bay_ref": pole_gpz["ref_id"],
+        "mode": "szablon",
+        "bay_template_ref": szablon,
+    }
     if pole_gpz["bay_role"] != rola:
         _odmowa(enm, ladunek, "bay_equipment.template_role_mismatch")
         return
@@ -342,7 +389,11 @@ def test_szablon_z_rekordu_pola_bez_wskazania_w_ladunku(siec: Any) -> None:
     ze_wskazaniem = wykonaj(
         enm,
         "set_bay_equipment",
-        {"bay_ref": pola["OUT"], "mode": "szablon", "bay_template_ref": "bay_template_line_out"},
+        {
+            "bay_ref": pola["OUT"],
+            "mode": "szablon",
+            "bay_template_ref": "bay_template_line_out",
+        },
     )
     ponownie = _wykonaj(ze_wskazaniem, {"bay_ref": pola["OUT"], "mode": "szablon"})
     assert ponownie.get("error") is None
@@ -385,7 +436,9 @@ def test_tryb_katalog_z_rodzajem_bez_katalogu_jest_propozycja(siec: Any) -> None
 @pytest.mark.parametrize("rodzaj", sorted(PRZESTRZEN_KATALOGU_APARATU))
 def test_pozycja_katalogowa_kazdej_przestrzeni(siec: Any, rodzaj: str) -> None:
     enm, pola, _ = siec
-    umiejscowienie = "GROUND_BRANCH" if rodzaj in {"ES", "SURGE_ARRESTER"} else "MIDSTREAM"
+    umiejscowienie = (
+        "GROUND_BRANCH" if rodzaj in {"ES", "SURGE_ARRESTER"} else "MIDSTREAM"
+    )
 
     def ladunek(ref: object) -> dict[str, Any]:
         wpis: dict[str, Any] = {"kind": rodzaj, "placement": umiejscowienie}
@@ -399,7 +452,9 @@ def test_pozycja_katalogowa_kazdej_przestrzeni(siec: Any, rodzaj: str) -> None:
 
     _odmowa(enm, ladunek(None), "bay_equipment.catalog_ref_missing")
     _odmowa(enm, ladunek("   "), "bay_equipment.catalog_ref_missing")
-    nieistniejaca = _odmowa(enm, ladunek("pozycja-ktorej-nie-ma"), "catalog.item_not_found")
+    nieistniejaca = _odmowa(
+        enm, ladunek("pozycja-ktorej-nie-ma"), "catalog.item_not_found"
+    )
     assert "Aparat 1" in nieistniejaca["error"]
 
 
@@ -417,7 +472,11 @@ def test_pozycja_aparatu_innego_rodzaju(siec: Any, rodzaj: str) -> None:
             "bay_ref": pola["IN"],
             "mode": "katalog",
             "devices": [
-                {"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": _ref_aparatu_sn(obcy)}
+                {
+                    "kind": rodzaj,
+                    "placement": "MIDSTREAM",
+                    "catalog_ref": _ref_aparatu_sn(obcy),
+                }
             ],
         },
         "bay_equipment.catalog_kind_mismatch",
@@ -432,7 +491,9 @@ def test_rodzaj_bez_katalogu_nie_przyjmuje_pozycji(siec: Any, rodzaj: str) -> No
         {
             "bay_ref": pola["TR"],
             "mode": "katalog",
-            "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}],
+            "devices": [
+                {"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}
+            ],
         },
         "bay_equipment.catalog_not_applicable",
     )
@@ -447,7 +508,11 @@ def test_ct_z_pozycja_vt_jest_odrzucony(siec: Any) -> None:
             "bay_ref": pola["IN"],
             "mode": "katalog",
             "devices": [
-                {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": _ref_przestrzeni("VT")}
+                {
+                    "kind": "CT",
+                    "placement": "MIDSTREAM",
+                    "catalog_ref": _ref_przestrzeni("VT"),
+                }
             ],
         },
         "catalog.item_not_found",
@@ -487,7 +552,9 @@ def test_aparat_wskazuje_lacznik_pola_i_odczyt_pola_czyta_jego_stan(siec: Any) -
     otwarte = wykonaj(wyposazone, "open_switch", {"switch_ref": lacznik})
 
     def stan_aparatu(migawka: dict[str, Any]) -> dict[str, Any]:
-        odczyt = build_field_read_model("w5c", EnergyNetworkModel.model_validate(migawka))
+        odczyt = build_field_read_model(
+            "w5c", EnergyNetworkModel.model_validate(migawka)
+        )
         (pozycja,) = (p for p in odczyt["fields"] if p["bay_ref"] == pola["OUT"])
         (aparat,) = pozycja["canonical_model"]["base_model"]["primary_devices"]
         assert aparat["linked_ref"] == lacznik
@@ -542,7 +609,11 @@ def test_dwa_aparaty_nie_wskazuja_tego_samego_lacznika(siec: Any) -> None:
     lacznik = _wylacznik_pola(enm, pola["OUT"])
     _odmowa(
         enm,
-        {"bay_ref": pola["OUT"], "mode": "katalog", "devices": [_cb(lacznik), _cb(lacznik)]},
+        {
+            "bay_ref": pola["OUT"],
+            "mode": "katalog",
+            "devices": [_cb(lacznik), _cb(lacznik)],
+        },
         "bay_equipment.linked_ref_duplicate",
     )
 
@@ -575,7 +646,11 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
             "bay_ref": pole_gpz,
             "mode": "katalog",
             "devices": [
-                {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": _poprawny_ref("CT")}
+                {
+                    "kind": "CT",
+                    "placement": "MIDSTREAM",
+                    "catalog_ref": _poprawny_ref("CT"),
+                }
             ],
         },
         "bay_equipment.family_disallows",
@@ -585,7 +660,9 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
         {
             "bay_ref": pole_gpz,
             "mode": "katalog",
-            "devices": [{"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}],
+            "devices": [
+                {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}
+            ],
         },
     )
     assert przyjete.get("error") is None, przyjete.get("error")
@@ -599,14 +676,24 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
         ({"bay_ref": "@IN", "mode": "inny"}, "bay_equipment.mode_invalid"),
         ({"bay_ref": "@IN"}, "bay_equipment.mode_invalid"),
         ({"bay_ref": "@IN", "mode": "katalog"}, "bay_equipment.devices_missing"),
-        ({"bay_ref": "@IN", "mode": "katalog", "devices": []}, "bay_equipment.devices_missing"),
-        ({"bay_ref": "@IN", "mode": "katalog", "devices": ["CB"]}, "bay_equipment.device_invalid"),
+        (
+            {"bay_ref": "@IN", "mode": "katalog", "devices": []},
+            "bay_equipment.devices_missing",
+        ),
+        (
+            {"bay_ref": "@IN", "mode": "katalog", "devices": ["CB"]},
+            "bay_equipment.device_invalid",
+        ),
         (
             {"bay_ref": "@IN", "mode": "katalog", "devices": [{"kind": "XX"}]},
             "bay_equipment.kind_not_allowed",
         ),
         (
-            {"bay_ref": "@IN", "mode": "katalog", "devices": [{"kind": "CB", "placement": "X"}]},
+            {
+                "bay_ref": "@IN",
+                "mode": "katalog",
+                "devices": [{"kind": "CB", "placement": "X"}],
+            },
             "bay_equipment.placement_invalid",
         ),
         (
@@ -630,7 +717,11 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
             "bay_equipment.template_unknown",
         ),
         (
-            {"bay_ref": "@IN", "mode": "szablon", "bay_template_ref": "bay_template_transformer"},
+            {
+                "bay_ref": "@IN",
+                "mode": "szablon",
+                "bay_template_ref": "bay_template_transformer",
+            },
             "bay_equipment.template_role_mismatch",
         ),
         ({"bay_ref": "@NN", "mode": "wyczysc"}, "bay_equipment.bay_not_mv"),
@@ -730,7 +821,9 @@ def test_brak_przekladni_nie_zostawia_pola_w_rekordzie(siec: Any, rodzaj: str) -
 
 @pytest.mark.parametrize("postac", sorted(POSTACI_ODGALEZIENIA))
 @pytest.mark.parametrize("rodzaj", RODZAJE_POL_OPCJONALNYCH)
-def test_odgalezienie_toru_krotkim_identyfikatorem(siec: Any, rodzaj: str, postac: str) -> None:
+def test_odgalezienie_toru_krotkim_identyfikatorem(
+    siec: Any, rodzaj: str, postac: str
+) -> None:
     """Odgałęzienie toru (Z.11.1: „pn" — odgałęzienie przekładnika napięciowego) przyjmuje
     wyłącznie krótki identyfikator z liter i cyfr, dla każdego rodzaju aparatu; inna postać —
     odmowa atomowa `bay_equipment.branch_invalid`."""
@@ -739,7 +832,9 @@ def test_odgalezienie_toru_krotkim_identyfikatorem(siec: Any, rodzaj: str, posta
     ladunek = {
         "bay_ref": pola["IN"],
         "mode": "katalog",
-        "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "odgalezienie": wartosc}],
+        "devices": [
+            {"kind": rodzaj, "placement": "MIDSTREAM", "odgalezienie": wartosc}
+        ],
     }
     if not poprawna:
         _odmowa(enm, ladunek, "bay_equipment.branch_invalid")
@@ -767,3 +862,67 @@ def test_determinizm(siec: Any, tryb: str) -> None:
     drugi = _wykonaj(copy.deepcopy(enm), ladunek)
     assert pierwszy.get("error") is None, pierwszy.get("error")
     assert pierwszy == drugi
+
+
+# ---------------------------------------------------------------------------
+# Wykonanie wyłącznika (stałe / wysuwne) — rozstrzygnięcie architekta 2026-10-30 pkt 3
+# ---------------------------------------------------------------------------
+
+#: Postać wykonania → (czy poprawna dla wyłącznika, wartość zapisana).
+POSTACI_WYKONANIA: dict[str, tuple[Any, bool, Any]] = {
+    "stale": ("STALE", True, "STALE"),
+    "wysuwne": ("WYSUWNE", True, "WYSUWNE"),
+    "spoza_slownika": ("NA_WOZKU", False, None),
+    "male_litery": ("wysuwne", False, None),
+    "liczba": (1, False, None),
+}
+#: Rodzaje aparatu × wymagana pozycja katalogu (wyłącznik ma pozycję katalogową aparatu SN).
+RODZAJE_WYKONANIA: dict[str, str | None] = {
+    "CB": APARAT_POLA,
+    "LOAD_SWITCH": _ref_aparatu_sn("ROZLACZNIK"),
+    "CORE_BALANCE_CT": None,
+    "CABLE_HEAD": None,
+}
+
+
+@pytest.mark.parametrize("postac", sorted(POSTACI_WYKONANIA))
+@pytest.mark.parametrize("rodzaj", sorted(RODZAJE_WYKONANIA))
+def test_wykonanie_wylacznie_wylacznika_ze_slownika(
+    siec: Any, rodzaj: str, postac: str
+) -> None:
+    """Iloczyn rodzaj aparatu × postać wykonania: wykonanie (stałe / wysuwne) zapisuje się
+    WYŁĄCZNIE wyłącznikowi i wyłącznie ze słownika `rodzaje_aparatury.WYKONANIA_APARATU`; każdy
+    inny rodzaj albo postać — odmowa atomowa `bay_equipment.execution_not_applicable` (model
+    wejściowy nietknięty)."""
+    enm, pola, _ = siec
+    wartosc, poprawna, zapisana = POSTACI_WYKONANIA[postac]
+    aparat: dict[str, Any] = {
+        "kind": rodzaj,
+        "placement": "MIDSTREAM",
+        "wykonanie": wartosc,
+    }
+    if RODZAJE_WYKONANIA[rodzaj] is not None:
+        aparat["catalog_ref"] = RODZAJE_WYKONANIA[rodzaj]
+    ladunek = {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]}
+    if not (poprawna and rodzaj == "CB"):
+        _odmowa(enm, ladunek, "bay_equipment.execution_not_applicable")
+        return
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    (zapisany,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert zapisany["wykonanie"] == zapisana
+    # Ten sam rekord przechodzi przez model ENM (walidator rodzaju) bez odmowy.
+    EnergyNetworkModel.model_validate(wynik["snapshot"])
+
+
+def test_brak_wykonania_nie_zostawia_pola_w_rekordzie(siec: Any) -> None:
+    """Pole addytywne: wyłącznik bez wykonania nie niesie klucza (odcisk modelu sprzed pola
+    nietknięty — `enm/hash.py::_POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE`)."""
+    enm, pola, _ = siec
+    aparat = {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": APARAT_POLA}
+    wynik = _wykonaj(
+        enm, {"bay_ref": pola["IN"], "mode": "katalog", "devices": [aparat]}
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    (zapisany,) = _pole(wynik["snapshot"], pola["IN"])["primary_devices"]
+    assert zapisany.get("wykonanie") is None

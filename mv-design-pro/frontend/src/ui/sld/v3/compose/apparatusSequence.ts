@@ -159,6 +159,18 @@ export const SYMBOL_QET_RODZAJU: Readonly<Partial<Record<BayPrimaryDeviceKind, S
  * napęd jest atrybutem łącznika, nie osobnym aparatem). Rysunek kanoniczny napędu nie
  * rozróżnia (znak ogólny aparatu).
  */
+/**
+ * Rysunek QET WYŁĄCZNIKA W WYKONANIU WYSUWNYM (`BayPrimaryDevice.wykonanie` = WYSUWNE,
+ * rozstrzygnięcie architekta 2026-10-30 pkt 3): znacznik „○” członu wysuwnego obok „×”
+ * wyłącznika — klucz: napęd z modelu (`brak` = bez znaku napędu). Wykonanie dotyczy wyłącznie
+ * wyłącznika (backend `rodzaje_aparatury.RODZAJE_Z_WYKONANIEM`), więc tabela ma jeden rodzaj.
+ */
+export const SYMBOL_WYLACZNIKA_WYSUWNEGO: Readonly<Record<RodzajNapeduLacznika | 'brak', SymbolId | undefined>> = {
+  brak: 'qetBreakerWysuwny',
+  SILNIKOWY: 'qetBreakerWysuwnyZNapedem',
+  ZASOBNIKOWY_RECZNY: undefined,
+};
+
 export const SYMBOL_LACZNIKA_Z_NAPEDEM: Readonly<
   Partial<Record<BayPrimaryDeviceKind, Readonly<Partial<Record<RodzajNapeduLacznika, SymbolId>>>>>
 > = {
@@ -182,6 +194,13 @@ export function symbolIdForPrimaryDeviceKind(
   renderVariant?: string | null,
   cechy: CechyRysunkuAparatu = {},
 ): SymbolId | null {
+  // Wyłącznik wysuwny — rysunek QET ze znacznikiem członu wysuwnego w KAŻDYM wariancie
+  // rysunku: biblioteka kanoniczna nie ma znacznika członu wysuwnego, a dana modelu nie może
+  // zniknąć z rysunku (zero cichych braków).
+  if (kind === 'CB' && cechy.wysuwny) {
+    const wysuwny = SYMBOL_WYLACZNIKA_WYSUWNEGO[cechy.naped ?? 'brak'];
+    if (wysuwny) return wysuwny;
+  }
   if (renderVariant === WARIANT_RYSUNKU_QET) {
     if (kind === 'VT') return symbolQetPrzekladnikaNapieciowego(cechy.liczbaUzwojenWtornych);
     // Karta UX-04/POLE-LINIOWE-WZORZEC: napęd łącznika z modelu — rysunek łącznika ze znakiem
@@ -201,6 +220,8 @@ export function symbolIdForPrimaryDeviceKind(
 export interface CechyRysunkuAparatu {
   readonly liczbaUzwojenWtornych?: number;
   readonly naped?: RodzajNapeduLacznika;
+  /** Wyłącznik w wykonaniu wysuwnym (`BayPrimaryDevice.wykonanie` = WYSUWNE). */
+  readonly wysuwny?: boolean;
 }
 
 /** WSZYSTKIE rysunki, którymi może się narysować aparat danego rodzaju — oba warianty
@@ -213,6 +234,8 @@ export function symboleRodzajuAparatu(kind: BayPrimaryDeviceKind): readonly Symb
   const cechyRysunku: readonly CechyRysunkuAparatu[] = [
     {},
     ...RODZAJE_NAPEDU_LACZNIKA.map((naped) => ({ naped })),
+    { wysuwny: true },
+    ...RODZAJE_NAPEDU_LACZNIKA.map((naped) => ({ naped, wysuwny: true })),
     ...[1, 2, 3].map((liczbaUzwojenWtornych) => ({ liczbaUzwojenWtornych })),
   ];
   for (const wariant of [null, WARIANT_RYSUNKU_QET]) {
@@ -303,16 +326,19 @@ export interface AparatSekwencjiPola {
   readonly liczbaUzwojenWtornych?: number;
   /** Napęd łącznika z rekordu (wybór rysunku QET ze znakiem napędu). */
   readonly naped?: RodzajNapeduLacznika;
+  /** Wyłącznik w wykonaniu wysuwnym z rekordu (rysunek ze znacznikiem członu wysuwnego). */
+  readonly wysuwny?: boolean;
 }
 
 /** Symbol aparatu pola z jego rekordu (rodzaj + wariant rysunku + cechy rysunku: liczba
  *  uzwojeń wtórnych przekładnika napięciowego, napęd łącznika) — JEDNO wywołanie dla measure, stacji, GPZ i sond sceny. */
 export function symbolAparatuPola(
-  device: Pick<AparatSekwencjiPola, 'kind' | 'renderVariant' | 'liczbaUzwojenWtornych' | 'naped'>,
+  device: Pick<AparatSekwencjiPola, 'kind' | 'renderVariant' | 'liczbaUzwojenWtornych' | 'naped' | 'wysuwny'>,
 ): SymbolId | null {
   return symbolIdForPrimaryDeviceKind(device.kind, device.renderVariant, {
     liczbaUzwojenWtornych: device.liczbaUzwojenWtornych,
     naped: device.naped,
+    wysuwny: device.wysuwny,
   });
 }
 

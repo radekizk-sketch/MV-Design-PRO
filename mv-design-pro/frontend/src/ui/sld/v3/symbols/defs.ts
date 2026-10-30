@@ -432,6 +432,9 @@ export function czySymbolQet(id: SymbolId): id is QetSymbolPolaSnId {
 const RODZAJ_SEMANTYCZNY_QET: Readonly<Record<QetSymbolPolaSnId, SymbolId>> = {
   qetBreaker: 'breaker',
   qetBreakerZNapedem: 'breaker',
+  // Wyłącznik w wykonaniu wysuwnym (`BayPrimaryDevice.wykonanie` = WYSUWNE) — ten sam rodzaj.
+  qetBreakerWysuwny: 'breaker',
+  qetBreakerWysuwnyZNapedem: 'breaker',
   qetDisconnector: 'disconnector',
   qetLoadBreakSwitch: 'loadBreakSwitch',
   qetFuseSwitch: 'fuseSwitch',
@@ -535,6 +538,8 @@ export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
   'breaker',
   'qetBreaker',
   'qetBreakerZNapedem',
+  'qetBreakerWysuwny',
+  'qetBreakerWysuwnyZNapedem',
   'disconnector',
   'qetDisconnector',
   'loadBreakSwitch',

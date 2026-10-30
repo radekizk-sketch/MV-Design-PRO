@@ -59,7 +59,8 @@ from .registry import (
 
 # Nazwy PL aparatów — z JEDYNEGO słownika symboli (pakiet iec60617).
 _KIND_NAME_PL: dict[str, str] = {
-    entry.kind: entry.symbol_name_pl for entry in get_reference_pack("iec60617").symbol_map
+    entry.kind: entry.symbol_name_pl
+    for entry in get_reference_pack("iec60617").symbol_map
 }
 
 # Mapowanie kind aparatu (ENM) → słownik aparatów rodziny rozdzielnicy —
@@ -121,7 +122,9 @@ def _sorted_bays(enm: EnergyNetworkModel) -> list[Bay]:
     SN) dotyczą rozdzielnic SN — pola nN (predykat poziomu `enm.pola.czy_pole_nn`, napięcie
     szyny pola) nie są przez nie oceniane."""
     poziom = poziom_pol(enm)
-    return sorted((b for b in enm.bays if not czy_pole_nn(enm, b, poziom)), key=lambda b: b.ref_id)
+    return sorted(
+        (b for b in enm.bays if not czy_pole_nn(enm, b, poziom)), key=lambda b: b.ref_id
+    )
 
 
 def _station_type_of(bay: Bay, substations_by_ref: dict[str, Substation]) -> str | None:
@@ -175,14 +178,18 @@ def _profile_checks_for_bay(
             (
                 f"Aparat wymagany obecny: {_kind_pl(req)}."
                 if ok
-                else f"Brak wymaganego aparatu: {_kind_pl(req)} " f"(profil „{profile.name_pl}”)."
+                else f"Brak wymaganego aparatu: {_kind_pl(req)} "
+                f"(profil „{profile.name_pl}”)."
             ),
         )
 
-    wysuwne = odlaczenie_wysunieciem_wylacznika(bay.bay_template_ref) and "CB" in present
+    # Wykonanie wyłącznika toru z rekordu aparatu (jedno źródło z rysunkiem SLD).
+    wysuwne = odlaczenie_wysunieciem_wylacznika(devices_toru)
     for group in profile.one_of_groups:
         aparatem = any(kind in present for kind in group)
-        wysunieciem = not aparatem and wysuwne and group in profile.grupy_spelniane_wysunieciem
+        wysunieciem = (
+            not aparatem and wysuwne and group in profile.grupy_spelniane_wysunieciem
+        )
         ok = aparatem or wysunieciem
         names = " / ".join(_kind_pl(k) for k in group)
         add(
@@ -220,7 +227,9 @@ def _profile_checks_for_bay(
 
     lateral = set(profile.lateral_only)
     main_kinds = [
-        d.kind for d in devices_toru if d.kind not in lateral and _kind_is_field_apparatus(d.kind)
+        d.kind
+        for d in devices_toru
+        if d.kind not in lateral and _kind_is_field_apparatus(d.kind)
     ]
     canonical_main = [k for k in profile.canonical_order if k not in lateral]
     order_ok = _is_subsequence(main_kinds, canonical_main)
@@ -268,7 +277,9 @@ def _interlock_checks_for_bay(bay: Bay, pack_id: str) -> list[ComplianceCheck]:
     (brak danych stanów ≠ sztuczny pass — uczciwy score, spec §7).
     """
     devices = list(bay.primary_devices or [])
-    es_with_state = [d for d in devices if d.kind == "ES" and device_state(bay, d) is not None]
+    es_with_state = [
+        d for d in devices if d.kind == "ES" and device_state(bay, d) is not None
+    ]
     if not es_with_state:
         return []
     closed_es, closed_main = earthing_interlock_violation(bay)
@@ -312,7 +323,9 @@ def _cell_match_check_for_bay(
     """
     if not pack.cell_configurations or not bay.primary_devices:
         return []
-    bay_kinds = {d.kind for d in bay.primary_devices if d.kind in _KIND_TO_FAMILY_APPARATUS}
+    bay_kinds = {
+        d.kind for d in bay.primary_devices if d.kind in _KIND_TO_FAMILY_APPARATUS
+    }
     if not bay_kinds:
         return []
     mapped_bay_kind = _BAY_ROLE_TO_FAMILY_BAY_KIND.get(bay.bay_role)
@@ -331,7 +344,9 @@ def _cell_match_check_for_bay(
         # transformatorze). Sprawdzana tylko w kierunku pole ⊆ dozwolone,
         # NIE wymagana od danych pola.
         standard = {
-            a.kind for a in cell.apparatus if a.requirement == "standard" and a.kind != "CABLE_HEAD"
+            a.kind
+            for a in cell.apparatus
+            if a.requirement == "standard" and a.kind != "CABLE_HEAD"
         }
         allowed = {a.kind for a in cell.apparatus}
         if standard.issubset(bay_kinds) and bay_kinds.issubset(allowed):
@@ -417,7 +432,11 @@ def _family_checks_for_bay(
             )
 
     voltage = buses_voltage_kv.get(bay.bus_ref)
-    if voltage is not None and voltage > 0 and (family.network_voltages_kv or family.um_classes_kv):
+    if (
+        voltage is not None
+        and voltage > 0
+        and (family.network_voltages_kv or family.um_classes_kv)
+    ):
         # Reguła doboru napięciowego ma JEDNO źródło prawdy w katalogu
         # (`family_validation.czy_rodzina_obsluguje_napiecie`) — ta lista
         # sprawdzeń tylko RAPORTUJE jej wynik. Własny warunek „max(...) >=
@@ -543,7 +562,9 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
         ):
             # POLA-W-TORZE: kabel dochodzi do ZACISKU pola stacji, nie do szyny głównej —
             # przynależność szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
-            cable_entry = any(bus_ref in cable_bus_refs for bus_ref in szyny_stacji(enm, station))
+            cable_entry = any(
+                bus_ref in cable_bus_refs for bus_ref in szyny_stacji(enm, station)
+            )
             add(
                 station.ref_id,
                 "osd_enea.station.pole_station_cable_entry_forbidden",
@@ -558,9 +579,14 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
             )
 
         limit_mva = (
-            _OSD_TRANSFORMER_LIMIT_MVA.get(construction) if construction is not None else None
+            _OSD_TRANSFORMER_LIMIT_MVA.get(construction)
+            if construction is not None
+            else None
         )
-        if "osd_enea.station.transformer_power_limit" in implemented and limit_mva is not None:
+        if (
+            "osd_enea.station.transformer_power_limit" in implemented
+            and limit_mva is not None
+        ):
             for transformer_ref in sorted(station.transformer_refs):
                 transformer = transformers_by_ref.get(transformer_ref)
                 if transformer is None or transformer.sn_mva <= 0:
@@ -590,7 +616,9 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
             and station_bays
         ):
             tr_count = sum(1 for b in station_bays if b.bay_role == "TR")
-            line_count = sum(1 for b in station_bays if b.bay_role in _OSD_LINE_BAY_ROLES)
+            line_count = sum(
+                1 for b in station_bays if b.bay_role in _OSD_LINE_BAY_ROLES
+            )
             total = len(station_bays)
             ok = tr_count == 1 and 1 <= line_count <= 4 and total <= 5
             add(
@@ -616,14 +644,19 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
                 if not _bay_remote_control_evidence(bay):
                     continue  # bramka danych: brak dowodu zdalnego sterowania
                 bay_measurements = {
-                    m.measurement_type for m in enm.measurements if m.bay_ref == bay.ref_id
+                    m.measurement_type
+                    for m in enm.measurements
+                    if m.bay_ref == bay.ref_id
                 }
                 has_u = "VT" in bay_measurements
                 has_i = "CT" in bay_measurements
                 ok = has_u and has_i
                 missing = [
                     name
-                    for name, present in (("napięcia (VT)", has_u), ("prądu (CT)", has_i))
+                    for name, present in (
+                        ("napięcia (VT)", has_u),
+                        ("prądu (CT)", has_i),
+                    )
                     if not present
                 ]
                 add(
@@ -664,9 +697,13 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
             for station in sorted(enm.substations, key=lambda s: s.ref_id):
                 for bay in pola_sn_stacji(enm, station.ref_id):
                     if bay.funkcja_pomiaru == "UKLAD_ENERGII":
-                        uklady_energii.append((station.ref_id, str(bay.rodzaj_pomiaru or "")))
+                        uklady_energii.append(
+                            (station.ref_id, str(bay.rodzaj_pomiaru or ""))
+                        )
             if uklady_energii:
-                ma_kontrolny = any(rodzaj == "KONTROLNY" for _, rodzaj in uklady_energii)
+                ma_kontrolny = any(
+                    rodzaj == "KONTROLNY" for _, rodzaj in uklady_energii
+                )
                 add(
                     uklady_energii[0][0],
                     "osd_enea.metering.control_metering_above_5mw",
@@ -739,7 +776,9 @@ def _checks_for_pack(
         family = family_for_pack(pack)
         if family is not None:
             for bay in bays:
-                checks.extend(_family_checks_for_bay(bay, family, pack.pack_id, buses_voltage_kv))
+                checks.extend(
+                    _family_checks_for_bay(bay, family, pack.pack_id, buses_voltage_kv)
+                )
                 checks.extend(_cell_match_check_for_bay(bay, pack, family))
 
     elif pack.kind == "osd":
@@ -784,7 +823,11 @@ def evaluate_enm(
             )
         packs = [p for p in list_reference_packs() if p.kind != "osd"]
         try:
-            packs.append(pakiet_osd_operatora(operator_przypadku, nazwa_przypadku=nazwa_przypadku))
+            packs.append(
+                pakiet_osd_operatora(
+                    operator_przypadku, nazwa_przypadku=nazwa_przypadku
+                )
+            )
         except OdmowaBrakuPakietuDanych as odmowa:
             braki.append(odmowa.rekord())
         packs.sort(key=lambda p: p.pack_id)

@@ -16,6 +16,7 @@ import type {
   KlasaPolaLiniowego,
   StanDanychWyposazenia,
   StanObiektu,
+  WykonanieAparatu,
 } from '../../types/enm';
 import type { RolaUziemnika } from '../../types/uziemienie';
 
@@ -155,10 +156,19 @@ export interface WierszAparatu {
    * standardu, np. '1/100') — WYŁĄCZNIE rodzaj CORE_BALANCE_CT; `''` = dana nieopisana.
    */
   przekladnia: string;
+  /**
+   * Wykonanie wyłącznika (`BayPrimaryDevice.wykonanie`: stałe / wysuwne — człon wysuwny na
+   * wózku) — WYŁĄCZNIE rodzaj CB; `''` = wykonanie nieokreślone. Rozstrzygnięcie architekta
+   * 2026-10-30 pkt 3: domyślnie z szablonu pola, edytowalne tutaj, rysunek SLD ze znacznikiem
+   * członu wysuwnego.
+   */
+  wykonanie: WykonanieAparatu | '';
 }
 
 /** Rodzaj aparatu, któremu zapisuje się przekładnię (lustro walidatora `BayPrimaryDevice`). */
 export const RODZAJ_Z_PRZEKLADNIA: RodzajAparatuPolaSn = 'CORE_BALANCE_CT';
+/** Rodzaj aparatu, któremu zapisuje się wykonanie (lustro `rodzaje_aparatury.RODZAJE_Z_WYKONANIEM`). */
+export const RODZAJ_Z_WYKONANIEM: RodzajAparatuPolaSn = 'CB';
 
 export const WIERSZ_PUSTY: WierszAparatu = {
   kind: '',
@@ -170,6 +180,7 @@ export const WIERSZ_PUSTY: WierszAparatu = {
   stan_obiektu: '',
   odgalezienie: '',
   przekladnia: '',
+  wykonanie: '',
 };
 
 function czyRodzajPolaSn(kind: string): kind is RodzajAparatuPolaSn {
@@ -196,6 +207,7 @@ export function wierszeZAparatow(aparaty: readonly BayPrimaryDevice[] | null | u
       stan_obiektu: '',
       odgalezienie: a.odgalezienie ?? '',
       przekladnia: a.przekladnia ?? '',
+      wykonanie: a.wykonanie ?? '',
     }));
 }
 
@@ -209,6 +221,7 @@ export function zmienRodzaj(wiersz: WierszAparatu, kind: RodzajAparatuPolaSn | '
     linked_ref: kind && RODZAJE_Z_GALEZIA.includes(kind) ? wiersz.linked_ref : '',
     earthing_role: kind && RODZAJE_Z_ROLA_UZIEMIENIA.includes(kind) ? wiersz.earthing_role : '',
     przekladnia: kind === RODZAJ_Z_PRZEKLADNIA ? wiersz.przekladnia : '',
+    wykonanie: kind === RODZAJ_Z_WYKONANIEM ? wiersz.wykonanie : '',
   };
 }
 
@@ -273,6 +286,7 @@ export function zbudujPayloadWyposazenia(
       if (w.stan_obiektu) aparat.stan_obiektu = w.stan_obiektu;
       if (w.odgalezienie.trim()) aparat.odgalezienie = w.odgalezienie.trim();
       if (w.kind === RODZAJ_Z_PRZEKLADNIA && w.przekladnia.trim()) aparat.przekladnia = w.przekladnia.trim();
+      if (w.kind === RODZAJ_Z_WYKONANIEM && w.wykonanie) aparat.wykonanie = w.wykonanie;
       return aparat;
     }),
   };

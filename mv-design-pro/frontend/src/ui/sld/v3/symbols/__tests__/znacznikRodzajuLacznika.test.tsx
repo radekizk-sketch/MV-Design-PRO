@@ -29,18 +29,18 @@
  * kreski nałożona na piktogram kafla (stan sprzed wiersza UX04-KRESKA-PIKTOGRAMU-KAFLA rejestru
  * konfliktów).
  *
- * Człon wysuwny lub odłączalny: model nie ma rodzaju aparatu ani położenia członu
- * (`BayPrimaryDeviceKind`, `BayPrimaryDevice.switch_state`) — szablon pola zna wyłącznik na wózku
- * tylko z opisu (`bay_templates.py`). Tabela właściciela ma wiersz z „○”, a test przypina, że
- * każdy łącznik pola i każdy symbol z kaflem ma wiersz tabeli: nowy rodzaj (np. człon wysuwny)
- * bez znacznika w tabeli = czerwony test.
+ * Człon wysuwny (rozstrzygnięcie architekta 2026-10-30 pkt 3): wykonanie wyłącznika w modelu
+ * (`BayPrimaryDevice.wykonanie` = WYSUWNE) rysuje się symbolem `qetBreakerWysuwny`
+ * (`…ZNapedem`) — „×” przy styku zamknięcia i „○” członu wysuwnego obok, po stronie przeciwnej
+ * do noża otwartego (`data-znacznik-styk="wysuw"`). Test przypina, że każdy łącznik pola i każdy
+ * symbol z kaflem ma wiersz tabeli: nowy rysunek bez znacznika w tabeli = czerwony test.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { QET_BOK_KAFLA_STANU, QET_KRESKA_GLIFU, QET_SYMBOLE_POLA_SN, type QetSymbolPolaSnId } from '../../cad/qet/qetPoleSn';
 import { RODZAJE_LACZNIKOW_POLA } from '../../compose/rodzajeAparatuPola';
-import { symboleRodzajuAparatu } from '../../compose/apparatusSequence';
+import { WARIANT_RYSUNKU_QET, symbolIdForPrimaryDeviceKind, symboleRodzajuAparatu } from '../../compose/apparatusSequence';
 import { strokeScaleFactor } from '../../compose/preview';
 import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../../canvas/camera';
 import { DARK_SCADA_SLD_PALETTE, STATE_COLOR, STANY_KAFLA, type KafleStanuLacznika } from '../../theme/colorTokens';
@@ -49,14 +49,15 @@ import { czySymbolQet, type SymbolId } from '../defs';
 import { PODLOGA_ZNACZNIKA_LOD1_PX, SYMBOL_GLYPHS, skalaZnacznikaKafla, type SwitchState } from '../glyphs';
 
 type P = readonly [number, number];
-type RodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik';
+type RodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik' | 'czlon_wysuwny';
+type StykZnacznika = 'closed' | 'earthed' | 'wysuw';
 
 /** Tabela właściciela (decyzja 2026-10-30) — rodzaj aparatu → znaczniki przy stykach stałych.
  *  Wyrocznia jawna, niezależna od manifestu importera. */
 const TABELA_WLASCICIELA: ReadonlyArray<{
   readonly rodzaj: string;
   readonly symbole: readonly QetSymbolPolaSnId[];
-  readonly znaczniki: Readonly<Partial<Record<'closed' | 'earthed', RodzajZnacznika>>>;
+  readonly znaczniki: Readonly<Partial<Record<StykZnacznika, RodzajZnacznika>>>;
 }> = [
   { rodzaj: 'wyłącznik', symbole: ['qetBreaker', 'qetBreakerZNapedem'], znaczniki: { closed: 'wylacznik' } },
   { rodzaj: 'odłącznik', symbole: ['qetDisconnector'], znaczniki: { closed: 'odlacznik' } },
@@ -67,8 +68,11 @@ const TABELA_WLASCICIELA: ReadonlyArray<{
     symbole: ['qetThreePositionSwitch', 'qetThreePositionSwitchZNapedem'],
     znaczniki: { closed: 'odlacznik', earthed: 'uziemnik' },
   },
-  // Luka modelu: brak rodzaju i położenia członu wysuwnego — wiersz gotowy, symboli brak.
-  { rodzaj: 'człon wysuwny lub odłączalny', symbole: [], znaczniki: { closed: 'odlacznik' } },
+  {
+    rodzaj: 'wyłącznik w wykonaniu wysuwnym (człon wysuwny)',
+    symbole: ['qetBreakerWysuwny', 'qetBreakerWysuwnyZNapedem'],
+    znaczniki: { closed: 'wylacznik', wysuw: 'czlon_wysuwny' },
+  },
 ];
 
 /** Sygnatura kształtu znacznika rozpoznawana przez wyrocznię (rodzaje elementów i kierunki
@@ -79,6 +83,7 @@ const SYGNATURA: Readonly<Record<RodzajZnacznika, string>> = {
   odlacznik: 'okrag',
   rozlacznik: 'kreska-prosta+okrag',
   uziemnik: 'kreska-prosta',
+  czlon_wysuwny: 'okrag',
 };
 
 const UDZIAL: readonly [number, number] = [0.22, 0.28];
@@ -102,6 +107,7 @@ const NUMER_LOD = { L1: 1, L2: 2 } as const;
 function bokOczekiwany(lod: keyof typeof PODLOGA_PX, skala: number): number {
   return lod === 'L1' ? Math.max(12, PODLOGA_PX.L1 / skala) : 12;
 }
+const podlogaKafla = (lod: keyof typeof PODLOGA_PX, skala: number): boolean => bokOczekiwany(lod, skala) > 12 + 1e-9;
 const MOTYWY = [
   ['ciemny', DARK_SCADA_SLD_PALETTE.state],
   ['jasny', LIGHT_TECHNICAL_SLD_PALETTE.state],
@@ -188,7 +194,7 @@ function sygnatura(s: Ksztalt): string {
 /** Naruszenia decyzji właściciela na jednym wyrenderowanym kaflu (pusta lista = spełnia). */
 function naruszenia(
   doc: Document,
-  oczekiwane: Readonly<Partial<Record<'closed' | 'earthed', RodzajZnacznika>>>,
+  oczekiwane: Readonly<Partial<Record<StykZnacznika, RodzajZnacznika>>>,
   kafle: KafleStanuLacznika,
   lod: keyof typeof PODLOGA_PX,
   skala: number,
@@ -215,7 +221,7 @@ function naruszenia(
   }
   for (const s of styki) if (!(s! in oczekiwane)) bledy.push(`znacznik przy styku ${s} spoza tabeli właściciela`);
   for (const g of grupy) {
-    const styk = g.getAttribute('data-znacznik-styk') as 'closed' | 'earthed';
+    const styk = g.getAttribute('data-znacznik-styk') as StykZnacznika;
     const rodzaj = g.getAttribute('data-znacznik-rodzaj') as RodzajZnacznika;
     const opis = `znacznik ${rodzaj} (${styk})`;
     const z = ksztalt(g);
@@ -248,6 +254,21 @@ function naruszenia(
     const odstep = d - polKreski - kreskaNoza / 2;
     if (odstep < ODSTEP - 0.05) bledy.push(`${opis}: tusz ${odstep.toFixed(2)} j.św. od noża (położenie ${polozenie}) < ${ODSTEP} — znacznik nachodzi na nóż`);
   }
+  // Znaczniki jednego kafla rozłączne: tusz ≥ 0 (na podłodze LOD1) albo ≥ odstęp (proporcje
+  // świata) — „○” członu wysuwnego nie wchodzi na „×” wyłącznika w żadnej skali.
+  for (let i = 0; i < grupy.length; i += 1) {
+    for (let j = i + 1; j < grupy.length; j += 1) {
+      const [a, b] = [ksztalt(grupy[i]), ksztalt(grupy[j])];
+      const pb = probki(b);
+      let d = Infinity;
+      for (const p of probki(a)) for (const q of pb) d = Math.min(d, Math.hypot(p[0] - q[0], p[1] - q[1]));
+      const tusz = d - Math.max(...a.kreski) / 2 - Math.max(...b.kreski) / 2;
+      const wymagany = podlogaKafla(lod, skala) ? 0 : ODSTEP;
+      if (tusz < wymagany - 0.05) {
+        bledy.push(`znaczniki ${grupy[i].getAttribute('data-znacznik-rodzaj')} i ${grupy[j].getAttribute('data-znacznik-rodzaj')}: tusz ${tusz.toFixed(2)} j.św. < ${wymagany} — znaczniki nachodzą na siebie`);
+      }
+    }
+  }
   return bledy;
 }
 
@@ -272,15 +293,21 @@ describe('znacznik rodzaju aparatu — tabela właściciela pokrywa każdy łąc
     for (const id of qetLacznikow) expect(SYMBOLE.some(([, s]) => s === id), id).toBe(true);
   });
 
-  it('człon wysuwny lub odłączalny: wiersz „○” gotowy, model nie ma rodzaju ani położenia członu (luka zgłoszona, nie symbol udający dane)', () => {
-    expect(TABELA_WLASCICIELA.find((w) => w.rodzaj.startsWith('człon wysuwny'))?.znaczniki).toEqual({ closed: 'odlacznik' });
-    // Zbiór łączników pola = lustro backendu; rodzaj członu wysuwnego dołożony do modelu bez
-    // symbolu ze znacznikiem w tabeli czerwieni test wyżej (symbol bez wiersza).
+  it('człon wysuwny: wykonanie wyłącznika z modelu wybiera rysunek „×” + „○” obok (każdy wariant rysunku i napęd)', () => {
+    expect(TABELA_WLASCICIELA.find((w) => w.rodzaj.includes('człon wysuwny'))?.znaczniki).toEqual({ closed: 'wylacznik', wysuw: 'czlon_wysuwny' });
+    expect(symbolIdForPrimaryDeviceKind('CB', WARIANT_RYSUNKU_QET, { wysuwny: true })).toBe('qetBreakerWysuwny');
+    expect(symbolIdForPrimaryDeviceKind('CB', null, { wysuwny: true })).toBe('qetBreakerWysuwny');
+    expect(symbolIdForPrimaryDeviceKind('CB', WARIANT_RYSUNKU_QET, { wysuwny: true, naped: 'SILNIKOWY' })).toBe('qetBreakerWysuwnyZNapedem');
+    expect(symbolIdForPrimaryDeviceKind('CB', WARIANT_RYSUNKU_QET, { naped: 'SILNIKOWY' })).toBe('qetBreakerZNapedem');
+    // Wykonanie dotyczy wyłącznie wyłącznika (backend `RODZAJE_Z_WYKONANIEM`).
+    expect(symbolIdForPrimaryDeviceKind('LOAD_SWITCH', WARIANT_RYSUNKU_QET, { wysuwny: true })).toBe('qetLoadBreakSwitch');
+    expect(symboleRodzajuAparatu('CB')).toEqual(expect.arrayContaining(['qetBreakerWysuwny', 'qetBreakerWysuwnyZNapedem']));
     expect([...RODZAJE_LACZNIKOW_POLA].sort()).toEqual(['CB', 'DS', 'ES', 'FUSE', 'LOAD_SWITCH', 'THREE_POSITION_SWITCH']);
   });
 
-  it('cztery rodzaje znaczników — cztery różne sygnatury kształtu', () => {
+  it('cztery kształty znaczników; człon wysuwny ma znak odłącznika „○” (decyzja właściciela), rozróżniony położeniem obok krzyżyka', () => {
     expect(new Set(Object.values(SYGNATURA)).size).toBe(4);
+    expect(SYGNATURA.czlon_wysuwny).toBe(SYGNATURA.odlacznik);
   });
 
   for (const [motyw, kafle] of MOTYWY) {
@@ -324,7 +351,7 @@ describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × LOD', 
   }
 
   it('spójność: ten sam rodzaj = ta sama sygnatura w każdym LOD i te same proporcje w każdym symbolu, stanie i motywie danego LOD; różne rodzaje rozróżnialne', () => {
-    expect([...sygnatury.keys()].sort()).toEqual(['odlacznik', 'rozlacznik', 'uziemnik', 'wylacznik']);
+    expect([...sygnatury.keys()].sort()).toEqual(['czlon_wysuwny', 'odlacznik', 'rozlacznik', 'uziemnik', 'wylacznik']);
     for (const [rodzaj, zbior] of sygnatury) expect([...zbior], rodzaj).toEqual([SYGNATURA[rodzaj]]);
     for (const [rodzaj, zbior] of rozmiary) expect(zbior.size, `${rodzaj}: ${[...zbior].join(' · ')}`).toBe(1);
     // Wszystkie rodzaje mają ten sam bok znacznika na danym poziomie (jeden rozmiar kafla);
@@ -403,6 +430,23 @@ describe('znacznik rodzaju aparatu — iniekcje (każda czerwona)', () => {
       'closed',
       (d) => d.querySelector('[data-qet="znacznik"] circle')!.setAttribute('stroke', '#000000'),
       /kolor #000000/,
+    ],
+    [
+      'brak znacznika członu wysuwnego',
+      'qetBreakerWysuwny',
+      'open',
+      (d) => d.querySelector('[data-znacznik-styk="wysuw"]')!.remove(),
+      /styk wysuw: 0 znaczników/,
+    ],
+    [
+      '„○” członu wysuwnego zsunięty na „×” wyłącznika',
+      'qetBreakerWysuwnyZNapedem',
+      'open',
+      (d) => {
+        const c = d.querySelector('[data-znacznik-styk="wysuw"] circle')!;
+        c.setAttribute('cx', String(liczba(c, 'cx') + 3));
+      },
+      /znaczniki nachodzą na siebie/,
     ],
     [
       'zamieniony rodzaj (rozłącznik z bezpiecznikami oznaczony jak odłącznik)',

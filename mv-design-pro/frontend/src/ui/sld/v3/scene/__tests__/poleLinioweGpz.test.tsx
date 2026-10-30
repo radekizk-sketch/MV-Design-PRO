@@ -1139,7 +1139,14 @@ describe('UX-04 — iniekcje na modelu pola', () => {
 function rysunekRekordu(d: BayPrimaryDevice): string {
   const liczbaUzwojen = d.uzwojenia?.length ?? 0;
   const tabela: Readonly<Partial<Record<BayPrimaryDevice['kind'], string>>> = {
-    CB: d.naped === 'SILNIKOWY' ? 'qetBreakerZNapedem' : 'qetBreaker',
+    CB:
+      d.wykonanie === 'WYSUWNE'
+        ? d.naped === 'SILNIKOWY'
+          ? 'qetBreakerWysuwnyZNapedem'
+          : 'qetBreakerWysuwny'
+        : d.naped === 'SILNIKOWY'
+          ? 'qetBreakerZNapedem'
+          : 'qetBreaker',
     VT: liczbaUzwojen === 3 ? 'qetVoltageTransformer3' : liczbaUzwojen === 2 ? 'qetVoltageTransformer2' : 'qetVoltageTransformer',
     DS: 'qetDisconnector',
     ES: 'qetEarthSwitch',
@@ -1345,6 +1352,42 @@ describe('UX-04 — kanwa względem topologii ENM: aparaty i połączenia z mode
       ],
     };
     expect(polaczeniaBezOdpowiednika(fxZ11Model, dorysowany).some((n) => n.includes('bez wspólnego węzła w modelu'))).toBe(true);
+  });
+
+  it('wykonanie wyłącznika z modelu: Q0 wysuwny rysuje się ze znacznikiem członu wysuwnego, stały — bez; iniekcja rozjazdu rekordu i rysunku czerwona', () => {
+    // Rozstrzygnięcie architekta 2026-10-30 pkt 3 — iloczyn: fikstura × wykonanie {WYSUWNE,
+    // STALE, brak} × napęd {z fikstury (silnikowy), zdjęty}.
+    for (const [nazwaFx, enm] of FIKSTURY) {
+      for (const wykonanie of ['WYSUWNE', 'STALE', null] as const) {
+        for (const bezNapedu of [false, true]) {
+          const model = structuredClone(enm) as EnergyNetworkModel;
+          for (const bay of model.bays ?? []) {
+            if (!(bay.tags ?? []).includes('gpz_line_field')) continue;
+            for (const d of bay.primary_devices ?? []) {
+              if (d.kind !== 'CB') continue;
+              d.wykonanie = wykonanie;
+              if (bezNapedu) d.naped = null;
+            }
+          }
+          const scena = buildSceneV3(model, 2);
+          for (const pole of polaLiniowe(model)) {
+            const mapa = oznaczenia(model, pole.ref);
+            const q0 = torGlowny(scena, pole.ref).find((s) => mapa.get(s.meta?.deviceRef ?? '') === 'Q0')!;
+            const oczekiwany =
+              (wykonanie === 'WYSUWNE' ? 'qetBreakerWysuwny' : 'qetBreaker') + (bezNapedu ? '' : 'ZNapedem');
+            expect(q0.symbolId, `${nazwaFx} ${pole.ref} ${wykonanie} ${bezNapedu}`).toBe(oczekiwany);
+          }
+          expect(aparatyBezOdpowiednika(model, scena), nazwaFx).toEqual([]);
+          if (wykonanie === 'WYSUWNE') {
+            // Rysunek stały przy rekordzie wysuwnym — wyrocznia aparatów czerwona.
+            const staly = structuredClone(model) as EnergyNetworkModel;
+            for (const bay of staly.bays ?? []) for (const d of bay.primary_devices ?? []) if (d.kind === 'CB') d.wykonanie = 'STALE';
+            const naruszenia = aparatyBezOdpowiednika(model, buildSceneV3(staly, 2));
+            expect(naruszenia.length, nazwaFx).toBeGreaterThan(0);
+          }
+        }
+      }
+    }
   });
 
   it('iniekcja: napęd zdjęty z rekordów Q0 i Q1 — łączniki bez znaku napędu; z napędem — ze znakiem (symbol z modelu)', () => {

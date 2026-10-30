@@ -204,6 +204,315 @@
       ]
     },
     {
+      "symbolId": "qetBreakerWysuwny",
+      "namePl": "Wyłącznik w wykonaniu wysuwnym",
+      "zlozenie": "element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” członu wysuwnego obok krzyżyka, w układzie kafla",
+      "skladniki": [
+        {
+          "element": "en_60617_07_13_05",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_07_13_07",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        }
+      ],
+      "ukladKafla": {
+        "rodzaj": "dwupolozeniowy",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
+        "znaczniki": [
+          {
+            "rodzaj": "wylacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [
+              3,
+              4
+            ],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — wyłącznik: krzyżyk „×” (IEC 60617 S00219, funkcja wyłącznika) ze środkiem w punkcie styku"
+          },
+          {
+            "rodzaj": "czlon_wysuwny",
+            "styk": "wysuw",
+            "skladnik": 1,
+            "prymitywy": [
+              6
+            ],
+            "powod": "człon wysuwny (rozstrzygnięcie architekta 2026-10-30 pkt 3, decyzja właściciela 2026-10-30: „○” odłącznik lub człon wysuwny): okrąg „○” (kształt okręgu styku odłączającego EN 60617 07-13-07, ten sam co znacznik odłącznika) obok krzyżyka wyłącznika, po stronie przeciwnej do noża otwartego, na wysokości styku zamknięcia — wykonanie wysuwne z modelu (`BayPrimaryDevice.wykonanie` = WYSUWNE)"
+          }
+        ]
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        },
+        {
+          "skladnik": 1,
+          "prymitywy": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "powod": "z odłącznika dwukierunkowego 07-13-07 zostaje wyłącznie okrąg styku odłączającego — znacznik „○” członu wysuwnego"
+        }
+      ],
+      "porty": [
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wylacz",
+          "punkt": [
+            120,
+            60
+          ],
+          "dir": "E",
+          "powod": "koniec linii wyłączania od przekaźnika zabezpieczeniowego (ENEA Zeszyt 1, Z.10/Z.11.1: wyjście wyłączające przekaźnika do wyłącznika) na prawej krawędzi kafla — kafel zawiera wyłącznie nóż, styk stały ze znacznikiem i napęd M (decyzja właściciela 2026-10-30: duży osobny symbol w kaflu znika), więc cewka wyłączająca EN 60617 07-15-01 nie jest rysowana, a linia wyłączania kończy się na krawędzi kafla wyłącznika"
+        }
+      ],
+      "zaciskiPozaTorem": [
+        {
+          "skladnik": 1,
+          "zacisk": [
+            -20,
+            -40
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [
+            0,
+            20
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 1,
+          "zacisk": [
+            20,
+            -40
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
+        }
+      ]
+    },
+    {
+      "symbolId": "qetBreakerWysuwnyZNapedem",
+      "namePl": "Wyłącznik w wykonaniu wysuwnym z napędem silnikowym",
+      "zlozenie": "element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + en_60617_02_13_26 (napęd silnikowy M) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” członu wysuwnego obok krzyżyka, w układzie kafla",
+      "skladniki": [
+        {
+          "element": "en_60617_07_13_05",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_02_13_26",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        },
+        {
+          "element": "en_60617_07_13_07",
+          "obrot": 0,
+          "przesuniecie": [
+            0,
+            0
+          ]
+        }
+      ],
+      "ukladKafla": {
+        "rodzaj": "dwupolozeniowy",
+        "noz": {
+          "skladnik": 0,
+          "prymitywy": [
+            2
+          ],
+          "przegub": [
+            0,
+            0
+          ],
+          "koniec": [
+            -8,
+            -23
+          ]
+        },
+        "znaczniki": [
+          {
+            "rodzaj": "wylacznik",
+            "styk": "closed",
+            "skladnik": 0,
+            "prymitywy": [
+              3,
+              4
+            ],
+            "powod": "wzorzec HMI e²TANGO (decyzja właściciela 2026-10-30): przy styku stałym znacznik rodzaju aparatu w jednym rozmiarze kafla (kafelStanu.uklad.znacznik) — wyłącznik: krzyżyk „×” (IEC 60617 S00219, funkcja wyłącznika) ze środkiem w punkcie styku"
+          },
+          {
+            "rodzaj": "czlon_wysuwny",
+            "styk": "wysuw",
+            "skladnik": 2,
+            "prymitywy": [
+              6
+            ],
+            "powod": "człon wysuwny (rozstrzygnięcie architekta 2026-10-30 pkt 3, decyzja właściciela 2026-10-30: „○” odłącznik lub człon wysuwny): okrąg „○” (kształt okręgu styku odłączającego EN 60617 07-13-07, ten sam co znacznik odłącznika) obok krzyżyka wyłącznika, po stronie przeciwnej do noża otwartego, na wysokości styku zamknięcia — wykonanie wysuwne z modelu (`BayPrimaryDevice.wykonanie` = WYSUWNE)"
+          }
+        ],
+        "osprzetKotwica": [
+          6,
+          0
+        ]
+      },
+      "pominPrymitywy": [
+        {
+          "skladnik": 0,
+          "prymitywy": [
+            0,
+            1
+          ],
+          "powod": "przewody toru źródła zastępuje układ kafla: przewód od portu górnego do znacznika styku zamknięcia i od przegubu do portu dolnego (zawias u dołu, styk stały u góry)"
+        },
+        {
+          "skladnik": 2,
+          "prymitywy": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "powod": "z odłącznika dwukierunkowego 07-13-07 zostaje wyłącznie okrąg styku odłączającego — znacznik „○” członu wysuwnego"
+        }
+      ],
+      "porty": [
+        {
+          "name": "top",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            -40
+          ]
+        },
+        {
+          "name": "bottom",
+          "skladnik": 0,
+          "zacisk": [
+            0,
+            20
+          ]
+        }
+      ],
+      "portyWtorne": [
+        {
+          "name": "wylacz",
+          "punkt": [
+            120,
+            60
+          ],
+          "dir": "E",
+          "powod": "koniec linii wyłączania od przekaźnika zabezpieczeniowego (ENEA Zeszyt 1, Z.10/Z.11.1: wyjście wyłączające przekaźnika do wyłącznika) na prawej krawędzi kafla — kafel zawiera wyłącznie nóż, styk stały ze znacznikiem i napęd M (decyzja właściciela 2026-10-30: duży osobny symbol w kaflu znika), więc cewka wyłączająca EN 60617 07-15-01 nie jest rysowana, a linia wyłączania kończy się na krawędzi kafla wyłącznika"
+        }
+      ],
+      "osprzet": [
+        {
+          "skladnik": 1,
+          "powod": "napęd silnikowy wyłącznika (EN 60617 02-13-26) z modelu (`BayPrimaryDevice.naped` = SILNIKOWY, ENEA Zeszyt 1, Z.11.1: napęd M wyłącznika) — atrybut łącznika (decyzja właściciela 2026-10-30: napęd M zostaje jako atrybut); kreskowana linia sprzężenia mechanicznego kończy się w przegubie noża, okrąg z literą M po lewej stronie osi"
+        }
+      ],
+      "skalaLokalna": [
+        {
+          "skladnik": 1,
+          "prymitywy": [
+            1,
+            2
+          ],
+          "srodek": [
+            -14,
+            0
+          ],
+          "skala": 3.5,
+          "powod": "okrąg napędu z literą M powiększony 3,5× wokół punktu styku z linią sprzężenia — litera M 8,4 j.św., czytelna w całym LOD2 (§11.1 wiersz 4 karty UX-04)"
+        }
+      ],
+      "zaciskiPozaTorem": [
+        {
+          "skladnik": 2,
+          "zacisk": [
+            -20,
+            -40
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 2,
+          "zacisk": [
+            0,
+            20
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
+        },
+        {
+          "skladnik": 2,
+          "zacisk": [
+            20,
+            -40
+          ],
+          "powod": "zacisk odłącznika dwukierunkowego, z którego pochodzi wyłącznie okrąg znacznika członu wysuwnego — nie jest zaciskiem toru"
+        }
+      ]
+    },
+    {
       "symbolId": "qetDisconnector",
       "namePl": "Odłącznik",
       "zlozenie": "element QET en_60617_07_13_06 (odłącznik: nóż) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” przy styku stałym",
@@ -919,7 +1228,8 @@
         "udzial": [0.22, 0.28],
         "marginesQet": 10,
         "odstepOdNozaQet": 2.5,
-        "strefaStykuQet": 12.5
+        "strefaStykuQet": 12.5,
+        "odstepWysuwuQet": 2.25
       },
       "noz": { "katOtwarty": 45, "zasiegNieustalony": 0.6 },
       "ziemia": { "szerokoscQet": 30, "pionQet": 7.5 },

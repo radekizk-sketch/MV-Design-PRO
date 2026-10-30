@@ -69,6 +69,10 @@ export interface BayPrimaryDeviceView {
    *  łączniku trójpołożeniowym (zasobnikowy z obsługą ręczną). Brak = napęd niepodany (bez
    *  znaku). */
   readonly naped?: RodzajNapeduLacznika;
+  /** Rozstrzygnięcie architekta 2026-10-30 pkt 3: wyłącznik w wykonaniu wysuwnym
+   *  (`BayPrimaryDevice.wykonanie` = WYSUWNE) — rysunek QET ze znacznikiem „○” członu wysuwnego
+   *  obok „×”. Brak = wykonanie stałe albo nieokreślone (bez znacznika). */
+  readonly wysuwny?: boolean;
   /** Kody funkcji EAZ zasilanych z aparatu (`BayPrimaryDevice.funkcje_eaz_zasilane`) — źródła
    *  linii pomiarowych do przekaźnika pola. Brak = aparat nie zasila żadnej funkcji. */
   readonly funkcjeEazZasilane?: readonly string[];

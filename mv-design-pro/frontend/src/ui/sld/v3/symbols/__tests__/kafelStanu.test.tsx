@@ -475,8 +475,8 @@ describe('kafel stanu — stopień glifu i kreska proporcjonalna do kafla', () =
     return [lo, hi];
   }
 
-  it('warunek wstępny: osiem rysunków łączników z kaflem, kreska glifu = bok/24 i grubsza od kreski przewodu', () => {
-    expect(KAFLOWE).toHaveLength(8);
+  it('warunek wstępny: dziesięć rysunków łączników z kaflem (z wyłącznikiem wysuwnym bez i z napędem), kreska glifu = bok/24 i grubsza od kreski przewodu', () => {
+    expect(KAFLOWE).toHaveLength(10);
     expect(QET_KRESKA_GLIFU).toBeCloseTo(QET_BOK_KAFLA_STANU / 24, 9);
     expect(QET_KRESKA_GLIFU).toBeGreaterThan(V3_STROKE_APPARATUS);
   });

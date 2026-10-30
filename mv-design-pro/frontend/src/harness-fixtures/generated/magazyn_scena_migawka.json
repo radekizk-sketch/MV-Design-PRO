@@ -117,7 +117,8 @@
           "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
           "symbol_ref": "symbol:ds",
-          "uzwojenia": []
+          "uzwojenia": [],
+          "wykonanie": null
         },
         {
           "catalog_ref": null,
@@ -150,7 +151,8 @@
           "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
           "symbol_ref": "symbol:cb",
-          "uzwojenia": []
+          "uzwojenia": [],
+          "wykonanie": null
         },
         {
           "catalog_ref": null,
@@ -183,7 +185,8 @@
           "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
           "symbol_ref": "symbol:ct",
-          "uzwojenia": []
+          "uzwojenia": [],
+          "wykonanie": null
         },
         {
           "catalog_ref": null,
@@ -212,7 +215,8 @@
           "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
           "symbol_ref": "symbol:vt",
-          "uzwojenia": []
+          "uzwojenia": [],
+          "wykonanie": null
         },
         {
           "catalog_ref": null,
@@ -245,7 +249,8 @@
           "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
           "symbol_ref": "symbol:ds",
-          "uzwojenia": []
+          "uzwojenia": [],
+          "wykonanie": null
         },
         {
           "catalog_ref": null,
@@ -274,7 +279,8 @@
           "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
           "symbol_ref": "symbol:es",
-          "uzwojenia": []
+          "uzwojenia": [],
+          "wykonanie": null
         },
         {
           "catalog_ref": null,
@@ -303,7 +309,8 @@
           "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
           "symbol_ref": "symbol:surge_arrester",
-          "uzwojenia": []
+          "uzwojenia": [],
+          "wykonanie": null
         },
         {
           "catalog_ref": null,
@@ -336,7 +343,8 @@
           "stan_obiektu": "PROJEKTOWANY",
           "switch_state": null,
           "symbol_ref": "symbol:cable_head",
-          "uzwojenia": []
+          "uzwojenia": [],
+          "wykonanie": null
         }
       ],
       "protection_codes": [

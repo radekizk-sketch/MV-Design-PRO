@@ -27,6 +27,8 @@ import type { CadPrimitive } from '../cadSymbolRegistry';
 export type QetSymbolPolaSnId =
   | 'qetBreaker'
   | 'qetBreakerZNapedem'
+  | 'qetBreakerWysuwny'
+  | 'qetBreakerWysuwnyZNapedem'
   | 'qetDisconnector'
   | 'qetLoadBreakSwitch'
   | 'qetFuseSwitch'
@@ -61,7 +63,7 @@ export interface QetNozSymbolu {
 }
 
 /** Rodzaj aparatu rozpoznawany po znaczniku przy styku stałym (wzorzec HMI e²TANGO). */
-export type QetRodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik';
+export type QetRodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik' | 'czlon_wysuwny';
 
 export interface QetPunkt {
   readonly x: number;
@@ -69,10 +71,12 @@ export interface QetPunkt {
 }
 
 /** Znacznik rodzaju aparatu przy styku stałym: `kotwica` = punkt styku, na którym spoczywa nóż
- *  w położeniu `styk` (zamkniętym albo uziemionym). */
+ *  w położeniu `styk` (zamkniętym albo uziemionym) — punkt, wokół którego znacznik rośnie na
+ *  podłodze LOD1. Znacznik członu wysuwnego (`styk` = `wysuw`, okrąg obok krzyżyka wyłącznika):
+ *  kotwica = lewy bok obwiedni krzyżyka na wysokości styku zamknięcia. */
 export interface QetZnacznikStyku {
   readonly rodzaj: QetRodzajZnacznika;
-  readonly styk: 'closed' | 'earthed';
+  readonly styk: 'closed' | 'earthed' | 'wysuw';
   readonly kotwica: QetPunkt;
   readonly prymitywy: readonly CadPrimitive[];
 }
@@ -151,18 +155,21 @@ export const QET_KRESKA_GLIFU = 2;
  *  znacznika (linia środkowa), `udzial` = dopuszczalny przedział boku / bok kafla, `margines` =
  *  najmniejsza odległość tuszu znacznika od krawędzi kafla, `odstep` = najmniejsza odległość tuszu
  *  znacznika od tuszu noża poza strefą styku, `strefa` = promień strefy styku (wokół punktu, w którym
- *  nóż spoczywa na styku, i wokół przegubu). Kreska znacznika = `QET_KRESKA_GLIFU` (kreska noża). */
+ *  nóż spoczywa na styku, i wokół przegubu), `odstepWysuwu` = odstęp linii środkowych znacznika
+ *  członu wysuwnego od obwiedni krzyżyka wyłącznika. Kreska znacznika = `QET_KRESKA_GLIFU`. */
 export const QET_ZNACZNIK_STYKU = {
   bok: 12,
   udzial: [0.22, 0.28],
   margines: 4,
   odstep: 1,
   strefa: 5,
+  odstepWysuwu: 0.9,
 } as const;
 
 /** Kotwica znacznika względem punktu styku: `srodek` — środek obwiedni znacznika w punkcie styku,
- *  `od_przegubu` — bok obwiedni zwrócony do przegubu w punkcie styku. */
-export const QET_KOTWICE_ZNACZNIKOW = { wylacznik: 'srodek', odlacznik: 'od_przegubu', rozlacznik: 'od_przegubu', uziemnik: 'srodek' } as const;
+ *  `od_przegubu` — bok obwiedni zwrócony do przegubu w punkcie styku, `obok_krzyzyka` — okrąg
+ *  członu wysuwnego obok krzyżyka wyłącznika, po stronie przeciwnej do noża otwartego. */
+export const QET_KOTWICE_ZNACZNIKOW = { wylacznik: 'srodek', odlacznik: 'od_przegubu', rozlacznik: 'od_przegubu', uziemnik: 'srodek', czlon_wysuwny: 'obok_krzyzyka' } as const;
 
 /** Symbol uziemienia łącznika [jednostki świata, skala bazowa LOD2]: szerokość górnej (najszerszej)
  *  kreski i długość pionu odgałęzienia od punktu przyłączenia. */
@@ -274,6 +281,125 @@ export const QET_SYMBOLE_POLA_SN: Readonly<Record<QetSymbolPolaSnId, QetSymbolPo
     zrodla: [
       { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt', upstreamBlobSha: '8df98b9b5c2783ea2413b406bef53ded66da628a', sha256: 'a0a9a86444b0d4553cce32f9ea7c0397e3a090d493d86c46ac4af6f6115749a4' },
       { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_26.elmt', upstreamBlobSha: '6af19ab8ebe7f4643033d6db0e9dfbbd8a11c2af', sha256: '380e368975529f40340312b3625581f33926712553eabe84836e8bf987ee94c5' },
+    ],
+  },
+  qetBreakerWysuwny: {
+    id: 'qetBreakerWysuwny',
+    namePl: 'Wyłącznik w wykonaniu wysuwnym',
+    zlozenie: 'element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” członu wysuwnego obok krzyżyka, w układzie kafla',
+    szerokosc: 48,
+    wysokosc: 48,
+    porty: [
+      { name: 'top', x: 24, y: 0, dir: 'N' },
+      { name: 'bottom', x: 24, y: 48, dir: 'S' },
+    ],
+    portyWtorne: [
+      { name: 'wylacz', x: 48, y: 24, dir: 'E' },
+    ],
+    doprowadzenia: [],
+    obrys: { x: 5.1, y: 0, width: 42.9, height: 48 },
+    glif: { x: 5.1, y: 11, width: 33.7492, height: 27 },
+    kafel: { x: 0, y: 0, width: 48, height: 48 },
+    przewody: [
+      { k: 'line', x1: 24, y1: 0, x2: 24, y2: 17 },
+      { k: 'line', x1: 24, y1: 38, x2: 24, y2: 48 },
+    ],
+    stale: [],
+    osprzet: [],
+    noz: {
+      cx: 24,
+      cy: 38,
+      katy: { open: 45, closed: 0, unknown: 22.5 },
+      zasiegi: { open: 1, closed: 1, unknown: 0.6 },
+      prymitywy: [
+        { k: 'line', x1: 24, y1: 38, x2: 24, y2: 17, nozStanu: true },
+      ],
+    },
+    znaczniki: [
+      {
+        rodzaj: 'wylacznik',
+        styk: 'closed',
+        kotwica: { x: 24, y: 17 },
+        prymitywy: [
+          { k: 'line', x1: 18, y1: 11, x2: 30, y2: 23 },
+          { k: 'line', x1: 30, y1: 11, x2: 18, y2: 23 },
+        ],
+      },
+      {
+        rodzaj: 'czlon_wysuwny',
+        styk: 'wysuw',
+        kotwica: { x: 18, y: 17 },
+        prymitywy: [
+          { k: 'circle', cx: 11.1, cy: 17, r: 6, fill: 'none' },
+        ],
+      },
+    ],
+    ziemia: null,
+    zrodla: [
+      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt', upstreamBlobSha: '8df98b9b5c2783ea2413b406bef53ded66da628a', sha256: 'a0a9a86444b0d4553cce32f9ea7c0397e3a090d493d86c46ac4af6f6115749a4' },
+      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
+    ],
+  },
+  qetBreakerWysuwnyZNapedem: {
+    id: 'qetBreakerWysuwnyZNapedem',
+    namePl: 'Wyłącznik w wykonaniu wysuwnym z napędem silnikowym',
+    zlozenie: 'element QET en_60617_07_13_05 (wyłącznik: nóż i krzyżyk styku stałego) + en_60617_02_13_26 (napęd silnikowy M) + okrąg styku odłączającego en_60617_07_13_07 jako znacznik „○” członu wysuwnego obok krzyżyka, w układzie kafla',
+    szerokosc: 48,
+    wysokosc: 48,
+    porty: [
+      { name: 'top', x: 24, y: 0, dir: 'N' },
+      { name: 'bottom', x: 24, y: 48, dir: 'S' },
+    ],
+    portyWtorne: [
+      { name: 'wylacz', x: 48, y: 24, dir: 'E' },
+    ],
+    doprowadzenia: [],
+    obrys: { x: 2, y: 0, width: 46, height: 48 },
+    glif: { x: 5.1, y: 11, width: 33.7492, height: 27 },
+    kafel: { x: 0, y: 0, width: 48, height: 48 },
+    przewody: [
+      { k: 'line', x1: 24, y1: 0, x2: 24, y2: 17 },
+      { k: 'line', x1: 24, y1: 38, x2: 24, y2: 48 },
+    ],
+    stale: [],
+    osprzet: [
+      { k: 'line', x1: 16, y1: 38, x2: 24, y2: 38, kreskowana: true },
+      { k: 'circle', cx: 9, cy: 38, r: 7, fill: 'none' },
+      { k: 'letter', x: 8.2986, y: 39.2879, t: 'M', size: 8.4 },
+    ],
+    noz: {
+      cx: 24,
+      cy: 38,
+      katy: { open: 45, closed: 0, unknown: 22.5 },
+      zasiegi: { open: 1, closed: 1, unknown: 0.6 },
+      prymitywy: [
+        { k: 'line', x1: 24, y1: 38, x2: 24, y2: 17, nozStanu: true },
+      ],
+    },
+    znaczniki: [
+      {
+        rodzaj: 'wylacznik',
+        styk: 'closed',
+        kotwica: { x: 24, y: 17 },
+        prymitywy: [
+          { k: 'line', x1: 18, y1: 11, x2: 30, y2: 23 },
+          { k: 'line', x1: 30, y1: 11, x2: 18, y2: 23 },
+        ],
+      },
+      {
+        rodzaj: 'czlon_wysuwny',
+        styk: 'wysuw',
+        kotwica: { x: 18, y: 17 },
+        prymitywy: [
+          { k: 'circle', cx: 11.1, cy: 17, r: 6, fill: 'none' },
+        ],
+      },
+    ],
+    ziemia: null,
+    zrodla: [
+      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_05.elmt', upstreamBlobSha: '8df98b9b5c2783ea2413b406bef53ded66da628a', sha256: 'a0a9a86444b0d4553cce32f9ea7c0397e3a090d493d86c46ac4af6f6115749a4' },
+      { sciezka: '10_electric/91_en_60617/en_60617_02/en_60617_02_13/en_60617_02_13_26.elmt', upstreamBlobSha: '6af19ab8ebe7f4643033d6db0e9dfbbd8a11c2af', sha256: '380e368975529f40340312b3625581f33926712553eabe84836e8bf987ee94c5' },
+      { sciezka: '10_electric/91_en_60617/en_60617_07/en_60617_07_13/en_60617_07_13_07.elmt', upstreamBlobSha: 'cee8fc840450295927176ac3b938eeded5f2fcd5', sha256: '4eb501e6d51aad3bd4e43ca545c20b282a04ba9eaa1d997185c3a5404701a53a' },
     ],
   },
   qetDisconnector: {

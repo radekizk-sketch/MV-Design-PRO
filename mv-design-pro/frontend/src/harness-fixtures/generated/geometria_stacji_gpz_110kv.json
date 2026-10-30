@@ -137,7 +137,8 @@
               "last_state_change_at": null
             },
             "symbol_ref": "symbol:three_position_switch",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -177,7 +178,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cb",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": "STALE"
           },
           {
             "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -225,7 +227,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -254,7 +257,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:voltage_indicator",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -287,7 +291,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cable_head",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -318,7 +323,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:core_balance_ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           }
         ],
         "protection_codes": [
@@ -428,7 +434,8 @@
               "last_state_change_at": null
             },
             "symbol_ref": "symbol:three_position_switch",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -468,7 +475,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cb",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": "STALE"
           },
           {
             "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -516,7 +524,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -545,7 +554,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:voltage_indicator",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -578,7 +588,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cable_head",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -609,7 +620,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:core_balance_ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           }
         ],
         "protection_codes": [
@@ -719,7 +731,8 @@
               "last_state_change_at": null
             },
             "symbol_ref": "symbol:three_position_switch",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -759,7 +772,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cb",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": "STALE"
           },
           {
             "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -807,7 +821,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -836,7 +851,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:voltage_indicator",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -869,7 +885,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cable_head",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -900,7 +917,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:core_balance_ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           }
         ],
         "protection_codes": [
@@ -1010,7 +1028,8 @@
               "last_state_change_at": null
             },
             "symbol_ref": "symbol:three_position_switch",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -1050,7 +1069,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cb",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": "STALE"
           },
           {
             "catalog_ref": "ct_typ_ogolny_osd_200_400_5_5p20_15va",
@@ -1098,7 +1118,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -1127,7 +1148,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:voltage_indicator",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -1160,7 +1182,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:cable_head",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           },
           {
             "catalog_ref": null,
@@ -1191,7 +1214,8 @@
             "stan_obiektu": "PROJEKTOWANY",
             "switch_state": null,
             "symbol_ref": "symbol:core_balance_ct",
-            "uzwojenia": []
+            "uzwojenia": [],
+            "wykonanie": null
           }
         ],
         "protection_codes": [

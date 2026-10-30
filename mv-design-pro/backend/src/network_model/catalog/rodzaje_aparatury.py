@@ -21,11 +21,18 @@ Zero nie jest żadnym z nich (bramka KAT-T-050 odrzuca je w każdej wielkości).
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, Literal
 
 #: Komplet rodzajów aparatury łączeniowej (``SwitchEquipmentType.equipment_kind``).
 RODZAJE_APARATURY_LACZENIOWEJ: frozenset[str] = frozenset(
-    {"CIRCUIT_BREAKER", "LOAD_SWITCH", "DISCONNECTOR", "EARTH_SWITCH", "FUSE", "RECLOSER"}
+    {
+        "CIRCUIT_BREAKER",
+        "LOAD_SWITCH",
+        "DISCONNECTOR",
+        "EARTH_SWITCH",
+        "FUSE",
+        "RECLOSER",
+    }
 )
 #: Rodzaje aparatury łączeniowej SN ze ZNAMIONOWĄ zdolnością łączeniową zwarciową
 #: (``SwitchEquipmentType.ik_ka``): wyłącznik i reklozer (PN-EN 62271-100 / -111) oraz
@@ -188,7 +195,10 @@ PORTY_APARATU_POLA: dict[str, tuple[str, ...]] = {
 #: Rodzaje aparatów pola BKR (podzbiór kluczy ``PORTY_APARATU_POLA``) — czytają reguły pola
 #: baterii (``enm.bateria_kondensatorow``) i lustro frontu (``RODZAJE_APARATOW_POLA_BKR``).
 RODZAJE_APARATOW_POLA_BKR: frozenset[str] = frozenset(
-    {RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA, RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO}
+    {
+        RODZAJ_PRZEKLADNIKA_NIEZROWNOWAZENIA,
+        RODZAJ_PRZEKLADNIKA_NAPIECIOWEGO_MIEDZYFAZOWEGO,
+    }
 )
 
 #: Liczba przekładników napięciowych międzyfazowych rozładowujących baterię (Zeszyt 1 §17
@@ -205,7 +215,11 @@ PORT_UZIEMIANY_LACZNIKA_TROJPOLOZENIOWEGO = PORT_WYJSCIA
 #: Położenia łącznika trójpołożeniowego (``BaySwitchState.actual_state``). Stan
 #: ``uziemiony`` jest WYŁĄCZNIE położeniem łącznika trójpołożeniowego.
 STAN_UZIEMIONY = "uziemiony"
-STANY_LACZNIKA_TROJPOLOZENIOWEGO: tuple[str, ...] = ("zamkniety", "otwarty", STAN_UZIEMIONY)
+STANY_LACZNIKA_TROJPOLOZENIOWEGO: tuple[str, ...] = (
+    "zamkniety",
+    "otwarty",
+    STAN_UZIEMIONY,
+)
 
 #: Rodzaje aparatu pola, które są ŁĄCZNIKAMI (mają położenie łączeniowe): zbiór, który
 #: schemat oznacza ramką stanu (zamknięty / otwarty) i który czytają reguły blokad. Ten sam
@@ -223,7 +237,11 @@ RODZAJE_LACZNIKOW_TORU: frozenset[str] = RODZAJE_LACZNIKOW_POLA - {RODZAJ_UZIEMN
 #: ``uziemiony`` należy tu, bo łącznik trójpołożeniowy w położeniu uziemienia odcina szynę od
 #: toru (nóż na zestyku uziemiającym). Stan nieznany, awaria i brak rekordu NIE są otwarciem
 #: (nie zwalniają blokady — zero domysłu).
-STANY_OTWARTE_W_TORZE: tuple[str, ...] = ("otwarty", "otwarty_naped_rozbrojony", STAN_UZIEMIONY)
+STANY_OTWARTE_W_TORZE: tuple[str, ...] = (
+    "otwarty",
+    "otwarty_naped_rozbrojony",
+    STAN_UZIEMIONY,
+)
 
 #: Węzeł szyny sekcji pola — pierwszy węzeł toru (port ``we`` pierwszego aparatu toru).
 WEZEL_SZYNY = "szyna"
@@ -239,7 +257,9 @@ _WEZEL_KONCA_TORU: dict[str, str] = {
 #: Węzły końca TORU GŁÓWNEGO pola — tor główny to droga aparatów dwuportowych od węzła szyny
 #: do jednego z tych węzłów (``aparaty_poza_torem_glownym``). Lustro frontu
 #: ``WEZLY_KONCA_TORU`` (``rodzajeAparatuPola.ts``), równość przypina test parytetu.
-WEZLY_KONCA_TORU: frozenset[str] = frozenset({WEZEL_KABLA, WEZEL_TRANSFORMATORA, WEZEL_ODPLYWU})
+WEZLY_KONCA_TORU: frozenset[str] = frozenset(
+    {WEZEL_KABLA, WEZEL_TRANSFORMATORA, WEZEL_ODPLYWU}
+)
 
 #: Klucz SEKWENCJI aparatów (wejście ``porty_toru_pola``, nie pole rekordu aparatu):
 #: identyfikator odgałęzienia toru, w którym aparat leży. Aparaty o tym samym identyfikatorze
@@ -248,6 +268,22 @@ WEZLY_KONCA_TORU: frozenset[str] = frozenset({WEZEL_KABLA, WEZEL_TRANSFORMATORA,
 #: przekładnika napięciowego za wyłącznikiem, przed przekładnikiem prądowym). Klucz nie
 #: przechodzi do rekordu — położenie aparatu niosą odtąd jego porty.
 KLUCZ_ODGALEZIENIA = "odgalezienie"
+
+#: WYKONANIE APARATU (rozstrzygnięcie architekta 2026-10-30 pkt 3, karta UX-04/POLE-LINIOWE-
+#: WZORZEC): wyłącznik stały albo człon wysuwny (wyłącznik poziomo wysuwny na wózku, ENEA
+#: Zeszyt 1 §13). Jedno źródło słownika dla szablonu pola (`BayDeviceTemplate.wykonanie`),
+#: rekordu ENM (`BayPrimaryDevice.wykonanie`), pisarza wyposażenia (`set_bay_equipment`),
+#: oceny składu pola (`bay_templates.odlaczenie_wysunieciem_wylacznika`) i rysunku SLD
+#: (znacznik „○” członu wysuwnego obok „×” wyłącznika).
+WykonanieAparatu = Literal["STALE", "WYSUWNE"]
+WYKONANIA_APARATU: tuple[str, ...] = ("STALE", "WYSUWNE")
+OPIS_WYKONANIA_APARATU_PL: dict[str, str] = {
+    "STALE": "stałe",
+    "WYSUWNE": "wysuwne (człon wysuwny na wózku)",
+}
+#: Rodzaje aparatu, którym zapisuje się wykonanie — wyłącznik pola (ENEA Zeszyt 1 §13 rozróżnia
+#: wykonanie stałe i poziomo wysuwne wyłącznika; człon wysuwny niesie wyłącznik).
+RODZAJE_Z_WYKONANIEM: frozenset[str] = frozenset({"CB"})
 
 
 def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -278,9 +314,14 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
         return kopie
 
     def dwuportowy(aparat: Mapping[str, Any]) -> bool:
-        return PORTY_APARATU_POLA.get(str(aparat.get("kind"))) == (PORT_WEJSCIA, PORT_WYJSCIA)
+        return PORTY_APARATU_POLA.get(str(aparat.get("kind"))) == (
+            PORT_WEJSCIA,
+            PORT_WYJSCIA,
+        )
 
-    indeksy_toru = [i for i, a in enumerate(kopie) if dwuportowy(a) and odgalezienia[i] is None]
+    indeksy_toru = [
+        i for i, a in enumerate(kopie) if dwuportowy(a) and odgalezienia[i] is None
+    ]
     ostatni_toru = indeksy_toru[-1] if indeksy_toru else None
     wezel = WEZEL_SZYNY
     numer = 0
@@ -293,7 +334,9 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
             identyfikator = str(odgalezienie)
             biezacy = wezly_odgalezien.setdefault(identyfikator, wezel)
             if komplet == (PORT_WEJSCIA, PORT_WYJSCIA):
-                numery_odgalezien[identyfikator] = numery_odgalezien.get(identyfikator, 0) + 1
+                numery_odgalezien[identyfikator] = (
+                    numery_odgalezien.get(identyfikator, 0) + 1
+                )
                 nastepny = f"{identyfikator}{numery_odgalezien[identyfikator]}"
                 aparat["ports"] = [
                     {"port_id": PORT_WEJSCIA, "wezel": biezacy},
@@ -301,7 +344,9 @@ def porty_toru_pola(aparaty: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]
                 ]
                 wezly_odgalezien[identyfikator] = nastepny
             elif komplet:
-                aparat["ports"] = [{"port_id": port, "wezel": biezacy} for port in komplet]
+                aparat["ports"] = [
+                    {"port_id": port, "wezel": biezacy} for port in komplet
+                ]
             continue
         if komplet == (PORT_WEJSCIA, PORT_WYJSCIA):
             if i == ostatni_toru:

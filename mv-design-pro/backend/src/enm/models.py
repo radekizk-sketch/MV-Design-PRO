@@ -26,7 +26,9 @@ from network_model.catalog.przekladniki import (
 from network_model.catalog.rodzaje_aparatury import (
     PORTY_APARATU_POLA,
     RODZAJ_LACZNIKA_TROJPOLOZENIOWEGO,
+    RODZAJE_Z_WYKONANIEM,
     STAN_UZIEMIONY,
+    WykonanieAparatu,
 )
 from network_model.core.bateria_kondensatorow import (
     UkladPolaczenBaterii,
@@ -1059,7 +1061,8 @@ class Measurement(ENMElement):
         """CTVT-MODEL/W3-B: `rdzenie`/`uzwojenia`/`vt_mounting`/`vt_uzwojenie` to dane
         WYŁĄCZNIE dla odpowiadającego `measurement_type` — CT nie ma montażu VT ani uzwojeń VT,
         a VT nie ma rdzeni CT (spójność osi, WHITE BOX, `domain_no_guessing_guard`). Lista
-        podana jest niepusta (pusta lista nie opisuje przekładnika — brak danej to `None`)."""
+        podana jest niepusta (pusta lista nie opisuje przekładnika — brak danej to `None`).
+        """
         if self.rdzenie is not None and self.measurement_type != "CT":
             raise ValueError(
                 f"Measurement '{self.ref_id}': rdzenie wymagają measurement_type='CT'."
@@ -1246,7 +1249,9 @@ class LineRun(BaseModel):
     id: str
     name: str | None = None
     run_kind: Literal["main_trunk", "branch", "ring", "loop"]
-    starting_bay_ref: str  # pole SN (GPZ albo stacji) albo punkt odgałęźny, z którego ciąg startuje
+    starting_bay_ref: (
+        str  # pole SN (GPZ albo stacji) albo punkt odgałęźny, z którego ciąg startuje
+    )
     # Port startu w JEDNEJ postaci (`domain_operations._rozwiaz_port_startu`): `ref_id` pola
     # liniowego, gdy ciąg startuje z pola; inaczej zacisk — szyna portu odgałęźnego punktu albo
     # szyna końca ciągu.
@@ -1368,7 +1373,8 @@ class MetadanePochodzeniaPola(BaseModel):
 class WyborBlokuPola(BaseModel):
     """Wybór BLOKU FABRYCZNEGO pola rodziny RMU (karta W5-B; dawne klucze
     `factory_configuration_ref`/`factory_unit_index` wpisu). Pole rodziny blokowej jest
-    jednostką konkretnego wyrobu, nie luźną celką — numer jednostki bez bloku nie istnieje."""
+    jednostką konkretnego wyrobu, nie luźną celką — numer jednostki bez bloku nie istnieje.
+    """
 
     factory_configuration_ref: str
     factory_unit_index: int | None = None
@@ -1499,8 +1505,12 @@ class Bay(ENMElement):
     def _wlasciciel_pola(self) -> Bay:
         """Pole ma DOKŁADNIE jednego właściciela: stację albo punkt rozgałęzienia ZKSN.
         Port punktu rozgałęzienia ma sens wyłącznie dla pola ZKSN."""
-        ma_stacje = isinstance(self.substation_ref, str) and bool(self.substation_ref.strip())
-        ma_punkt = isinstance(self.branch_point_ref, str) and bool(self.branch_point_ref.strip())
+        ma_stacje = isinstance(self.substation_ref, str) and bool(
+            self.substation_ref.strip()
+        )
+        ma_punkt = isinstance(self.branch_point_ref, str) and bool(
+            self.branch_point_ref.strip()
+        )
         if ma_stacje == ma_punkt:
             raise ValueError(
                 f"pole {self.ref_id!r} musi wskazywać dokładnie jednego właściciela: "
@@ -1535,7 +1545,9 @@ class BaySwitchState(BaseModel):
     # Stan ruchowy aparatu (karta #135): tryb sterowania, uzbrojenie napędu i komunikacja są
     # TELEMETRIĄ — wartość wyłącznie ze źródła runtime (`BayRuntimeState.primary_device_states`
     # albo rekord aparatu na migawce); `None` = brak telemetrii, nigdy wartość domyślna.
-    control_mode: Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"] | None = None
+    control_mode: (
+        Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"] | None
+    ) = None
     armed_for_close: bool | None = None
     armed_for_open: bool | None = None
     communication_ok: bool | None = None
@@ -1605,7 +1617,9 @@ class BayPrimaryDevice(BaseModel):
         "UNBALANCE_CT",
         "PHASE_TO_PHASE_VT",
     ]
-    placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
+    placement: Literal[
+        "UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"
+    ]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
     is_controllable: bool = False
     render_variant: str | None = None
@@ -1663,6 +1677,15 @@ class BayPrimaryDevice(BaseModel):
     naped: RodzajNapedu | None = None
     funkcje_eaz_zasilane: list[str] = []
     funkcje_eaz_wylaczajace: list[str] = []
+    # Rozstrzygnięcie architekta 2026-10-30 pkt 3 (karta UX-04/POLE-LINIOWE-WZORZEC): WYKONANIE
+    # wyłącznika — stałe albo wysuwne (człon wysuwny na wózku, ENEA Zeszyt 1 §13), WYŁĄCZNIE
+    # `kind == "CB"`. Domyślnie z szablonu pola (`BayDeviceTemplate.wykonanie`), edytowalne
+    # w inspektorze pola (`set_bay_equipment`). Jedno źródło dla rysunku SLD (znacznik „○”
+    # członu wysuwnego obok „×” wyłącznika) i oceny składu pola (funkcja odłączenia od szyny
+    # wysunięciem, `bay_templates.odlaczenie_wysunieciem_wylacznika`). `None` = wykonanie
+    # nieokreślone (rekord sprzed atrybutu albo pole bez szablonu) — rysunek bez znacznika
+    # członu wysuwnego, ocena bez funkcji odłączenia wysunięciem; poza odciskiem.
+    wykonanie: WykonanieAparatu | None = None
 
     @model_validator(mode="after")
     def _powiazania_obwodow_wtornych(self) -> BayPrimaryDevice:
@@ -1670,10 +1693,17 @@ class BayPrimaryDevice(BaseModel):
         rodzaju, dla którego słownik go dopuszcza (`NAPEDY_RODZAJU_APARATU`), funkcje wyłączające
         na wyłączniku, funkcje mierzące na przekładniku; kody bez powtórzeń."""
         zasilajace = set(RODZAJ_APARATU_WEJSCIA.values())
-        if self.naped is not None and self.naped not in NAPEDY_RODZAJU_APARATU.get(self.kind, ()):
+        if self.naped is not None and self.naped not in NAPEDY_RODZAJU_APARATU.get(
+            self.kind, ()
+        ):
             raise ValueError(
                 f"aparat {self.device_ref!r} ({self.kind}): napęd {self.naped} nie dotyczy "
                 "aparatu tego rodzaju"
+            )
+        if self.wykonanie is not None and self.kind not in RODZAJE_Z_WYKONANIEM:
+            raise ValueError(
+                f"aparat {self.device_ref!r} ({self.kind}): wykonanie (stałe / wysuwne) ma "
+                "wyłącznie wyłącznik"
             )
         if self.funkcje_eaz_wylaczajace and self.kind != "CB":
             raise ValueError(
@@ -1690,7 +1720,9 @@ class BayPrimaryDevice(BaseModel):
             ("funkcje_eaz_wylaczajace", self.funkcje_eaz_wylaczajace),
         ):
             if len(set(kody)) != len(kody):
-                raise ValueError(f"aparat {self.device_ref!r}: powtórzony kod funkcji w {nazwa}")
+                raise ValueError(
+                    f"aparat {self.device_ref!r}: powtórzony kod funkcji w {nazwa}"
+                )
         return self
 
     @model_validator(mode="after")
@@ -1707,7 +1739,9 @@ class BayPrimaryDevice(BaseModel):
                     f"porty rodzaju: {', '.join(komplet) or 'brak'}"
                 )
             if port.port_id in widziane:
-                raise ValueError(f"aparat {self.device_ref!r}: powtórzony port {port.port_id!r}")
+                raise ValueError(
+                    f"aparat {self.device_ref!r}: powtórzony port {port.port_id!r}"
+                )
             widziane.add(port.port_id)
         if (
             self.switch_state is not None
@@ -1753,7 +1787,9 @@ class BayMeasurements(BaseModel):
 
 
 class BayMeasurementSet(BaseModel):
-    side: Literal["pole", "strona_szyn", "strona_odplywu", "strona_lewa", "strona_prawa"]
+    side: Literal[
+        "pole", "strona_szyn", "strona_odplywu", "strona_lewa", "strona_prawa"
+    ]
     values: BayMeasurements = Field(default_factory=BayMeasurements)
 
 
@@ -1878,7 +1914,9 @@ class BayProtectionControlUnit(BaseModel):
     spz: SpzState | None = None
     alarms: list[AlarmEntry] = []
     events: list[EventEntry] = []
-    disturbance_recorder: DisturbanceRecorderState = Field(default_factory=DisturbanceRecorderState)
+    disturbance_recorder: DisturbanceRecorderState = Field(
+        default_factory=DisturbanceRecorderState
+    )
     trends: TrendState = Field(default_factory=TrendState)
     settings_mode: Literal["automatyczne", "reczne"] = "reczne"
     settings_ref: str | None = None
@@ -1925,8 +1963,12 @@ class BayEnergizationSafetyState(BaseModel):
 class BayRuntimeState(BaseModel):
     secondary_communication_status: Literal["ok", "degraded", "offline"] = "offline"
     last_good_update_at: datetime | None = None
-    control_availability: Literal["dostepne", "czesciowo_dostepne", "niedostepne"] = "niedostepne"
-    measurement_availability: Literal["dostepne", "czesciowe", "niedostepne"] = "niedostepne"
+    control_availability: Literal["dostepne", "czesciowo_dostepne", "niedostepne"] = (
+        "niedostepne"
+    )
+    measurement_availability: Literal["dostepne", "czesciowe", "niedostepne"] = (
+        "niedostepne"
+    )
     primary_device_states: dict[str, BaySwitchState] = {}
     active_alarms: list[AlarmEntry] = []
     pending_command: BayCommandExecutionState | None = None
@@ -1941,7 +1983,9 @@ class BayScenarioState(BaseModel):
     source: Literal["bazowy", "wariant", "symulacja_przelaczen", "ruch"] = "bazowy"
 
 
-TrybPracyZrodla = Literal["praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"]
+TrybPracyZrodla = Literal[
+    "praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"
+]
 # Jeden słownik trybu pracy źródła: zapis (`set_source_operating_mode`), odczyt
 # (`application/field_read_model._generator_operating_mode`) i pole modelu niżej.
 TRYBY_PRACY_ZRODLA: tuple[str, ...] = get_args(TrybPracyZrodla)
@@ -2082,7 +2126,9 @@ class BayProjectResults(BaseModel):
 class BayCanonicalModel(BaseModel):
     schema_version: Literal["v10.bay.1"] = "v10.bay.1"
     created_from: Literal["szablon", "recznie", "migracja", "przebudowa"] = "migracja"
-    integrity_status: Literal["kompletny", "po_migracji", "wymaga_uzupelnienia"] = "po_migracji"
+    integrity_status: Literal["kompletny", "po_migracji", "wymaga_uzupelnienia"] = (
+        "po_migracji"
+    )
     audit_trail_ref: str | None = None
     base_model: BayBaseModel
     runtime_state: BayRuntimeState | None = None
@@ -2161,7 +2207,9 @@ class BranchPointSN(ENMElement):
     # W5-C: dawne `switch_state` (kopia stanu łączników portów) skasowane — stan żyje na
     # gałęziach łączników portów (`status`/`normal_state`); migracja `enm/stan_normalny.py`.
     materialized_params: dict | None = None
-    completeness_status: Literal["KOMPLETNY", "NIEKOMPLETNY", "BRAK_KATALOGU"] | None = None
+    completeness_status: (
+        Literal["KOMPLETNY", "NIEKOMPLETNY", "BRAK_KATALOGU"] | None
+    ) = None
     runtime_inputs: dict | None = None
 
 
@@ -2209,7 +2257,9 @@ class KatalogProjektu(BaseModel):
             rekordy = getattr(self, rodzaj)
             for rekord in rekordy:
                 if not rekord.id.strip():
-                    raise ValueError(f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji")
+                    raise ValueError(
+                        f"katalog_projektu.{rodzaj}: pusty identyfikator pozycji"
+                    )
                 if rekord.id in widziane:
                     raise ValueError(
                         f"katalog_projektu: identyfikator '{rekord.id}' powtarza się w sekcji"
@@ -2367,7 +2417,11 @@ def liczba_jednostek_zrodla(element: Generator | Mapping[str, Any]) -> int:
         ilosc = element.get("quantity")
     else:
         ilosc = element.quantity
-    liczba = ilosc if isinstance(ilosc, int) and not isinstance(ilosc, bool) and ilosc else None
+    liczba = (
+        ilosc
+        if isinstance(ilosc, int) and not isinstance(ilosc, bool) and ilosc
+        else None
+    )
     if liczba is None:
         liczba = liczba_torow(element)
     if liczba < 1:

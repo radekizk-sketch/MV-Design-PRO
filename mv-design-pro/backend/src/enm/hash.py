@@ -249,7 +249,16 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_PUSTE: dict[str, dict[str, tuple[str, ...]]] 
 #: `tests/enm/test_pole_liniowe_gpz_szablony.py::test_odcisk_pustych_list_jak_brak_pola`.
 _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] = {
     # Poprawki P0 2026-10-29: napęd wyłącznika wykonawczego wzorca (`BayPrimaryDevice.naped`).
-    "bays": {"primary_devices": ("stan_obiektu", "odgalezienie", "przekladnia", "naped")},
+    # Rozstrzygnięcie architekta 2026-10-30 pkt 3: wykonanie wyłącznika (`.wykonanie`).
+    "bays": {
+        "primary_devices": (
+            "stan_obiektu",
+            "odgalezienie",
+            "przekladnia",
+            "naped",
+            "wykonanie",
+        )
+    },
 }
 
 #: Pola SKASOWANE z modelu, ktore odcisk PELNY (trzy hashe pelne, nie projekcja
@@ -259,10 +268,14 @@ _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] =
 #: migawka ze zrodlem niosla `"c_max": null, "c_min": null`. Zrodlo, ktore MIALO wartosc,
 #: zmienia odcisk (wartosc nie wchodzila do zadnego obliczenia). Przypiete testem
 #: `tests/enm/test_wspolczynnik_c_jeden_nosnik.py`.
-_POLA_SKASOWANE_W_ODCISKU_PELNYM: dict[str, tuple[str, ...]] = {"sources": ("c_max", "c_min")}
+_POLA_SKASOWANE_W_ODCISKU_PELNYM: dict[str, tuple[str, ...]] = {
+    "sources": ("c_max", "c_min")
+}
 
 
-def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool = True) -> None:
+def _postac_kanoniczna_elementu(
+    item: dict[str, Any], key: str, *, pelna: bool = True
+) -> None:
     """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
     bez `id`, bez pol addytywnych o wartosci `None` (i pustej liście dla pol-list z
     `_POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE`), ze skasowanymi polami jako `null`
@@ -288,7 +301,10 @@ def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool =
                     {
                         k: v
                         for k, v in el.items()
-                        if not ((k in pola_puste and v == []) or (k in pola_none and v is None))
+                        if not (
+                            (k in pola_puste and v == [])
+                            or (k in pola_none and v is None)
+                        )
                     }
                     if isinstance(el, dict)
                     else el
@@ -432,7 +448,9 @@ _SEMANTIC_INCLUDE_SUBSTATION = (
 )
 
 
-def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[str, Any]:
+def _project(
+    item: dict[str, Any], include: tuple[str, ...], key: str
+) -> dict[str, Any]:
     """Projekcja semantyczna elementu + ta sama postac kanoniczna co hashe pelne
     (W5-A: `Bus.grounding` skasowane → w projekcji jako `null`, jak przed karta;
     `Source.neutral_grounding` = `None` → poza projekcja, jak kazde pole addytywne)."""
@@ -444,27 +462,35 @@ def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[s
 def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
     raw = enm.model_dump(mode="json", exclude={"header"})
     return {
-        "buses": [_project(b, _SEMANTIC_INCLUDE_BUS, "buses") for b in raw.get("buses", [])],
+        "buses": [
+            _project(b, _SEMANTIC_INCLUDE_BUS, "buses") for b in raw.get("buses", [])
+        ],
         "branches": [
-            _project(b, _SEMANTIC_INCLUDE_BRANCH, "branches") for b in raw.get("branches", [])
+            _project(b, _SEMANTIC_INCLUDE_BRANCH, "branches")
+            for b in raw.get("branches", [])
         ],
         "transformers": [
             _project(t, _SEMANTIC_INCLUDE_TRANSFORMER, "transformers")
             for t in raw.get("transformers", [])
         ],
         "sources": [
-            _project(s, _SEMANTIC_INCLUDE_SOURCE, "sources") for s in raw.get("sources", [])
+            _project(s, _SEMANTIC_INCLUDE_SOURCE, "sources")
+            for s in raw.get("sources", [])
         ],
         "generators": [
             _project(g, _SEMANTIC_INCLUDE_GENERATOR, "generators")
             for g in raw.get("generators", [])
         ],
-        "loads": [_project(ld, _SEMANTIC_INCLUDE_LOAD, "loads") for ld in raw.get("loads", [])],
+        "loads": [
+            _project(ld, _SEMANTIC_INCLUDE_LOAD, "loads") for ld in raw.get("loads", [])
+        ],
         "shunt_capacitors": [
             _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR, "shunt_capacitors")
             for sc in raw.get("shunt_capacitors", [])
         ],
-        "bays": [_project(b, _SEMANTIC_INCLUDE_BAY, "bays") for b in raw.get("bays", [])],
+        "bays": [
+            _project(b, _SEMANTIC_INCLUDE_BAY, "bays") for b in raw.get("bays", [])
+        ],
         "substations": [
             _project(s, _SEMANTIC_INCLUDE_SUBSTATION, "substations")
             for s in raw.get("substations", [])
@@ -623,7 +649,9 @@ def hash_sieci_bez_zabezpieczen(snapshot: dict[str, Any]) -> str:
         data.pop(klucz, None)
     naglowek = data.get("header")
     if isinstance(naglowek, dict):
-        data["header"] = {k: v for k, v in naglowek.items() if k not in _POLA_NAGLOWKA_POZA_SIECIA}
+        data["header"] = {
+            k: v for k, v in naglowek.items() if k not in _POLA_NAGLOWKA_POZA_SIECIA
+        }
     _strip_uuids(data)
     return _canonical_sha256(data)
 
@@ -654,9 +682,15 @@ def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:
     data: dict[str, Any] = {}
     for klucz, wartosc in snapshot.items():
         if klucz == "header" and isinstance(wartosc, dict):
-            data[klucz] = {k: v for k, v in wartosc.items() if k not in _POLA_NAGLOWKA_POZA_HASHEM}
-        elif (klucz in _ELEMENT_KEYS or klucz == "line_runs") and isinstance(wartosc, list):
-            data[klucz] = [dict(item) if isinstance(item, dict) else item for item in wartosc]
+            data[klucz] = {
+                k: v for k, v in wartosc.items() if k not in _POLA_NAGLOWKA_POZA_HASHEM
+            }
+        elif (klucz in _ELEMENT_KEYS or klucz == "line_runs") and isinstance(
+            wartosc, list
+        ):
+            data[klucz] = [
+                dict(item) if isinstance(item, dict) else item for item in wartosc
+            ]
         else:
             data[klucz] = wartosc
     return data
@@ -676,6 +710,8 @@ def compute_enm_hash(enm: EnergyNetworkModel) -> str:
       compute_case_hash               — parametry przypadku
       compute_variant_hash            — delty wariantu
     """
-    data = enm.model_dump(mode="json", exclude={"header": set(_POLA_NAGLOWKA_POZA_HASHEM)})
+    data = enm.model_dump(
+        mode="json", exclude={"header": set(_POLA_NAGLOWKA_POZA_HASHEM)}
+    )
     _strip_uuids(data)
     return _canonical_sha256(data)

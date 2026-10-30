@@ -598,6 +598,32 @@ describe('EdytorWyposazeniaPola — szablony kanoniczne z oceną backendu i klas
     const urzadzenia = (wykonaj.mock.calls[0][2] as { devices: Array<Record<string, unknown>> }).devices;
     expect(urzadzenia.map((d) => d.przekladnia ?? null)).toEqual([null, '1/100', '1/50']);
   });
+
+  it('wykonanie wyłącznika (stałe / wysuwne): wybór tylko przy wyłączniku, wartość z rekordu wraca, zmiana trafia do ładunku, zmiana rodzaju ją zdejmuje', async () => {
+    // Rozstrzygnięcie architekta 2026-10-30 pkt 3 — iloczyn: rodzaj {CB, rozłącznik} × wartość
+    // rekordu {wysuwne, brak} × akcja {bez zmiany, wybór stałe, zmiana rodzaju}.
+    const user = userEvent.setup();
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('MODEL'));
+    renderuj(
+      polePola('OUT', [
+        { device_ref: 'd1', symbol_ref: 's', kind: 'CB', placement: 'MIDSTREAM', catalog_ref: 'cb-1', wykonanie: 'WYSUWNE' },
+        { device_ref: 'd2', symbol_ref: 's', kind: 'CB', placement: 'MIDSTREAM', catalog_ref: 'cb-1' },
+        { device_ref: 'd3', symbol_ref: 's', kind: 'LOAD_SWITCH', placement: 'MIDSTREAM', catalog_ref: 'ls-1' },
+        { device_ref: 'd4', symbol_ref: 's', kind: 'CB', placement: 'MIDSTREAM', catalog_ref: 'cb-1', wykonanie: 'WYSUWNE' },
+      ] as never),
+      wykonaj,
+    );
+    await otworz(user);
+    expect((screen.getByTestId('wyposazenie-pola-aparat-0-wykonanie') as HTMLSelectElement).value).toBe('WYSUWNE');
+    expect((screen.getByTestId('wyposazenie-pola-aparat-1-wykonanie') as HTMLSelectElement).value).toBe('');
+    expect(screen.queryByTestId('wyposazenie-pola-aparat-2-wykonanie')).toBeNull();
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-1-wykonanie'), 'STALE');
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-3-rodzaj'), 'LOAD_SWITCH');
+    expect(screen.queryByTestId('wyposazenie-pola-aparat-3-wykonanie')).toBeNull();
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    const urzadzenia = (wykonaj.mock.calls[0][2] as { devices: Array<Record<string, unknown>> }).devices;
+    expect(urzadzenia.map((d) => d.wykonanie ?? null)).toEqual(['WYSUWNE', 'STALE', null, null]);
+  });
 });
 
 describe('EdytorWyposazeniaPola — profil funkcjonalny EAZ wzorca', () => {

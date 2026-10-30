@@ -1621,7 +1621,8 @@
             "odgalezienie",
             "placement",
             "przekladnia",
-            "stan_obiektu"
+            "stan_obiektu",
+            "wykonanie"
           ],
           "zagniezdzone": {}
         }

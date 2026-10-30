@@ -2203,6 +2203,7 @@ export function projectBayPrimaryDevices(
       // Karta UX-04/POLE-LINIOWE-WZORZEC (obwody wtórne): napęd, powiązania funkcji EAZ
       // i liczba uzwojeń wtórnych z rekordu — pola obecne tylko, gdy rekord je niesie.
       ...(device.naped ? { naped: device.naped } : {}),
+      ...(device.wykonanie === 'WYSUWNE' ? { wysuwny: true } : {}),
       ...(device.funkcje_eaz_zasilane?.length ? { funkcjeEazZasilane: [...device.funkcje_eaz_zasilane] } : {}),
       ...(device.funkcje_eaz_wylaczajace?.length ? { funkcjeEazWylaczajace: [...device.funkcje_eaz_wylaczajace] } : {}),
       ...(device.uzwojenia?.length ? { liczbaUzwojenWtornych: device.uzwojenia.length } : {}),

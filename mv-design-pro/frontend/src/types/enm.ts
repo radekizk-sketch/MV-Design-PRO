@@ -1409,6 +1409,16 @@ export type KlasaPolaLiniowego = 'ODBIORCZE' | 'MIESZANE' | 'DEDYKOWANE_WYTWORCY
 
 /** Rodzaj napędu łącznika pola — lustro backendu `obwody_wtorne_pola.RodzajNapedu` (parytet
  *  przypina `ui/sld/v3/compose/__tests__/symbolNapeduLacznika.test.ts`). */
+/** Wykonanie aparatu — lustro `rodzaje_aparatury.WykonanieAparatu` (backend). */
+export type WykonanieAparatu = 'STALE' | 'WYSUWNE';
+
+/** Słownik wykonań aparatu w kolejności backendu (`WYKONANIA_APARATU`) z opisem polskim. */
+export const WYKONANIA_APARATU: readonly WykonanieAparatu[] = ['STALE', 'WYSUWNE'];
+export const OPIS_WYKONANIA_APARATU_PL: Readonly<Record<WykonanieAparatu, string>> = {
+  STALE: 'stałe',
+  WYSUWNE: 'wysuwne (człon wysuwny na wózku)',
+};
+
 export type RodzajNapeduLacznika = 'SILNIKOWY' | 'ZASOBNIKOWY_RECZNY';
 
 export interface BayPrimaryDevice {
@@ -1455,6 +1465,11 @@ export interface BayPrimaryDevice {
    *  backend `NAPEDY_RODZAJU_APARATU`): `'SILNIKOWY'` przy wyłączniku kind='CB',
    *  `'ZASOBNIKOWY_RECZNY'` przy łączniku trójpołożeniowym; `null`/brak = napęd niepodany. */
   naped?: RodzajNapeduLacznika | null;
+  /** Wykonanie wyłącznika kind='CB' — stałe albo wysuwne (człon wysuwny na wózku, ENEA Zeszyt 1
+   *  §13); lustro `BayPrimaryDevice.wykonanie` (rozstrzygnięcie architekta 2026-10-30 pkt 3).
+   *  Domyślnie z szablonu pola, edytowalne w inspektorze; rysunek SLD: znacznik „○” członu
+   *  wysuwnego obok „×” wyłącznika. `null`/brak = wykonanie nieokreślone. */
+  wykonanie?: WykonanieAparatu | null;
   /** Kody funkcji EAZ zasilanych z tego aparatu (rdzeń CT, uzwojenie VT, przekładnik
    *  Ferrantiego) — lustro `BayPrimaryDevice.funkcje_eaz_zasilane`, materializowane przez
    *  `dodaj_pole`/`zmien_pole` z obwodów wtórnych szablonu. */

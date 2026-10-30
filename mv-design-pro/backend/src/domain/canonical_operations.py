@@ -647,7 +647,9 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         # Karta W3-B (mapa 4 #3): jedyna droga edycji obwodu wtórnego po utworzeniu —
         # `update_element_parameters` odrzuca kolekcję `measurements`. Opis czyta
         # projektant (treść komunikatu operacji, karta #142) — bez kodów.
-        description_pl=("Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku"),
+        description_pl=(
+            "Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku"
+        ),
         target_layer="Domain / NetworkModel",
         required_fields=(
             "measurement_ref",
@@ -1136,7 +1138,13 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                         "apparatus_catalog_binding": _WIAZANIE_KATALOGOWE,
                         "cable_laying_conditions": KsztaltObiektu(
                             pola=frozenset(
-                                {"f_grunt", "f_grupa", "f_wiazka", "opis_pl", "set_name"}
+                                {
+                                    "f_grunt",
+                                    "f_grupa",
+                                    "f_wiazka",
+                                    "opis_pl",
+                                    "set_name",
+                                }
                             ),
                         ),
                     },
@@ -1145,7 +1153,12 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         ),
         "source_field": KsztaltObiektu(
             pola=frozenset(
-                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+                {
+                    "catalog_binding",
+                    "field_name",
+                    "source_field_kind",
+                    "switching_device",
+                }
             ),
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
@@ -1176,7 +1189,12 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         ),
         "source_field": KsztaltObiektu(
             pola=frozenset(
-                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+                {
+                    "catalog_binding",
+                    "field_name",
+                    "source_field_kind",
+                    "switching_device",
+                }
             ),
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
@@ -1186,7 +1204,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
     "add_grid_source_sn": {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
         "gpz_line_field_apparatus": KsztaltObiektu(
-            pola=frozenset({"apparatus_kind", "catalog_binding", "catalog_item_id", "catalog_ref"}),
+            pola=frozenset(
+                {"apparatus_kind", "catalog_binding", "catalog_item_id", "catalog_ref"}
+            ),
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
             },
@@ -1309,7 +1329,12 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
     "add_ups_nn": {
         "source_field": KsztaltObiektu(
             pola=frozenset(
-                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+                {
+                    "catalog_binding",
+                    "field_name",
+                    "source_field_kind",
+                    "switching_device",
+                }
             ),
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
@@ -1421,7 +1446,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     ),
                 ),
                 "station_auxiliary": KsztaltObiektu(
-                    pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+                    pola=frozenset(
+                        {"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}
+                    ),
                 ),
                 "switchgear": KsztaltObiektu(
                     pola=frozenset({"manufacturer_ref", "switchgear_family_ref"}),
@@ -1429,7 +1456,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             },
         ),
         "station_auxiliary": KsztaltObiektu(
-            pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+            pola=frozenset(
+                {"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}
+            ),
         ),
         "transformer": KsztaltObiektu(
             pola=frozenset(
@@ -1469,7 +1498,13 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
         "catalog_binding": _WIAZANIE_KATALOGOWE,
         "segment": KsztaltObiektu(
             pola=frozenset(
-                {"catalog_binding", "catalog_ref", "dlugosc_m", "rodzaj", "screen_bonding"}
+                {
+                    "catalog_binding",
+                    "catalog_ref",
+                    "dlugosc_m",
+                    "rodzaj",
+                    "screen_bonding",
+                }
             ),
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
@@ -1497,7 +1532,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
                 "zero_sequence": KsztaltObiektu(
-                    pola=frozenset({"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}),
+                    pola=frozenset(
+                        {"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}
+                    ),
                 ),
             },
         ),
@@ -1610,7 +1647,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     ),
                 ),
                 "station_auxiliary": KsztaltObiektu(
-                    pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+                    pola=frozenset(
+                        {"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}
+                    ),
                 ),
                 "switchgear": KsztaltObiektu(
                     pola=frozenset({"manufacturer_ref", "switchgear_family_ref"}),
@@ -1618,7 +1657,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             },
         ),
         "station_auxiliary": KsztaltObiektu(
-            pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+            pola=frozenset(
+                {"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}
+            ),
         ),
         "transformer": KsztaltObiektu(
             pola=frozenset(
@@ -1669,6 +1710,7 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
                     "placement",
                     "przekladnia",
                     "stan_obiektu",
+                    "wykonanie",
                 }
             ),
         ),
@@ -1707,7 +1749,9 @@ KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
             zagniezdzone={
                 "catalog_binding": _WIAZANIE_KATALOGOWE,
                 "zero_sequence": KsztaltObiektu(
-                    pola=frozenset({"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}),
+                    pola=frozenset(
+                        {"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}
+                    ),
                 ),
             },
         ),
@@ -1870,7 +1914,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N "
             "albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "neutral_grounding"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "neutral_grounding",
+        },
     ),
     "source.grid_supply_missing": ReadinessCodeSpec(
         code="source.grid_supply_missing",
@@ -1952,7 +2000,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "liczony z impedancji dla S''kQmax (założenie niekonserwatywne dla czułości "
             "zabezpieczeń); wprowadź S''kQmin albo I''kQmin z warunków przyłączenia"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_min_mva"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "sk3_min_mva",
+        },
     ),
     # CV-4.3 K7: dane MIN sprzeczne z MAX (S''kQmin > S''kQmax albo I''kQmin > I''kQmax) —
     # emiter przez odwzorowanie kodu walidatora `sources.sk_min_exceeds_max`.
@@ -1965,7 +2017,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Minimalna moc zwarciowa źródła przekracza maksymalną (S''kQmin > S''kQmax "
             "albo I''kQmin > I''kQmax) — dane warunków przyłączenia są sprzeczne"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_min_mva"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "sk3_min_mva",
+        },
     ),
     # Napięcie zadane szyny bilansującej (`Source.u_set_pu`) poza pasmem 0,8–1,2 p.u. —
     # emiter przez odwzorowanie kodu walidatora `sources.u_set_pu_out_of_range`.
@@ -2458,7 +2514,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego "
             "źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego"
         ),
-        fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
+        fix_navigation={
+            "panel": "analizy",
+            "tab": "dynamika",
+            "focus": "dynamic_model_ref",
+        },
     ),
     # Karta modeli odbiorów (O-49 pkt 2 i 11, O-56): odbiór bez kopii `Load.dynamika`
     # (profil modelu dynamicznego z katalogu `load_dynamic`) — bieg `dynamika_rms` odmawia
@@ -2476,7 +2536,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "pomiar częstotliwości) — obliczenia czasowe nie mogą zbudować modelu odbioru; "
             "zwiąż odbiór z profilem z katalogu"
         ),
-        fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
+        fix_navigation={
+            "panel": "analizy",
+            "tab": "dynamika",
+            "focus": "dynamic_model_ref",
+        },
     ),
     # Karta FAB-D2 (D3): Q generatora nieznany i niewyprowadzalny z jawnego
     # Q-set-pointu karty katalogowej — 0 Mvar podstawione za brak byłoby
@@ -2527,7 +2591,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "(albo wskazany profil nie istnieje w katalogu) — tryb wymaga profilu "
             "dopuszczającego regulację napięcia"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "nc_rfg_profile_ref"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "nc_rfg_profile_ref",
+        },
     ),
     "generator.voltage_control_not_permitted": ReadinessCodeSpec(
         code="generator.voltage_control_not_permitted",
@@ -2538,7 +2606,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Profil NC RfG operatora nie dopuszcza trybu „Regulacja napięcia (U = const)” "
             "— zmień tryb regulacji albo profil operatora"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "control_mode"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "control_mode",
+        },
     ),
     # Karta S-2 AUTORYTET (dawniej FAB-H; dyrektywa właściciela 2026-09-16:
     # „K_sc pozostaje DEFAULT_FORBIDDEN"): udział zwarciowy falownika k_sc
@@ -2898,7 +2970,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — "
             "uzupełnij, by policzyć bilans mocy wtórnej"
         ),
-        fix_navigation={"panel": "wizard", "tab": "pomiary", "focus": "ct_obwod_wtorny"},
+        fix_navigation={
+            "panel": "wizard",
+            "tab": "pomiary",
+            "focus": "ct_obwod_wtorny",
+        },
     ),
     "ct.rated_burden_missing": ReadinessCodeSpec(
         code="ct.rated_burden_missing",
@@ -2953,7 +3029,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak danych obwodu wtórnego przekładnika napięciowego (długość, przekrój) — "
             "uzupełnij, by policzyć zmianę napięcia obwodu"
         ),
-        fix_navigation={"panel": "wizard", "tab": "pomiary", "focus": "vt_obwod_wtorny"},
+        fix_navigation={
+            "panel": "wizard",
+            "tab": "pomiary",
+            "focus": "vt_obwod_wtorny",
+        },
     ),
     "vt.rated_burden_missing": ReadinessCodeSpec(
         code="vt.rated_burden_missing",
@@ -3000,7 +3080,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "którego katalog podaje R0/X0 — składowa zerowa z katalogu dotyczy "
             "innego układu uziemienia ekranu"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "screen_bonding"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "screen_bonding",
+        },
     ),
     "cable.operating_temperature_missing": ReadinessCodeSpec(
         code="cable.operating_temperature_missing",
@@ -3010,7 +3094,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl=(
             "Brak temperatury pracy żyły — podaj ją, by ocenić względne starzenie izolacji"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "temperatura_pracy_c"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "temperatura_pracy_c",
+        },
     ),
     "transformer.loss_data_missing": ReadinessCodeSpec(
         code="transformer.loss_data_missing",
@@ -3038,7 +3126,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — "
             "gałąź magnesująca nie jest uwzględniona w rozpływie mocy"
         ),
-        fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "i0_percent"},
+        fix_navigation={
+            "panel": "katalog",
+            "tab": "transformatory",
+            "focus": "i0_percent",
+        },
     ),
     # Grupa połączeń nieznana => BLOCKER dla analiz doziemnych/niesymetrycznych
     # (składowa zerowa zależy JAKOŚCIOWO od układu połączeń, nie tylko
@@ -3052,7 +3144,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Grupa połączeń transformatora nieznana — analizy doziemne/niesymetryczne "
             "(składowa zerowa) nie mogą wyznaczyć układu bez tej danej"
         ),
-        fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "vector_group"},
+        fix_navigation={
+            "panel": "katalog",
+            "tab": "transformatory",
+            "focus": "vector_group",
+        },
     ),
     # W5-A (jedna reprezentacja uziemienia, F-4/G6): grupa polaczen spoza slownika
     # IEC 60076-1 — walidator E-W5-02.
@@ -3065,7 +3161,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Grupa połączeń transformatora spoza słownika IEC 60076-1 — wybierz "
             "grupę z listy (np. Dyn11, YNd11, Yzn5)"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "vector_group"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "vector_group",
+        },
     ),
     # Walidator W023: napięcie znamionowe uzwojenia inne niż napięcie szyny w tym samym
     # paśmie — przekładnia nieznamionowa (liczalna, IEC 60909-0 §6.3.3), więc OSTRZEŻENIE.
@@ -3098,7 +3198,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "konfiguracja deklaruje jego uziemienie — zmień grupę połączeń (N/n) albo "
             "usuń konfigurację uziemienia tej strony"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_neutral"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "lv_neutral",
+        },
     ),
     # W5-A §1 p. 2: uklad sieci nN typowany na transformatorze (walidator E063,
     # gotowosc ELIG_FLNN_MISSING_EARTHING_SYSTEM) — brak = odmowa, nigdy TN-C-S.
@@ -3111,7 +3215,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Transformator SN/nN nie deklaruje układu uziemienia sieci nN "
             "(TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia i SWZ nie mogą być liczone"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_earthing_system"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "lv_earthing_system",
+        },
     ),
     "transformer.loading_factor_missing": ReadinessCodeSpec(
         code="transformer.loading_factor_missing",
@@ -3245,7 +3353,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Założenie biegu: admitancja poprzeczna (pojemność) gałęzi pominięta — "
             "solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję szeregową"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "b_siemens_per_km"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "b_siemens_per_km",
+        },
     ),
     "power_flow.unbalanced_magnetising_branch_omitted": ReadinessCodeSpec(
         code="power_flow.unbalanced_magnetising_branch_omitted",
@@ -3273,7 +3385,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone "
             "(napięcia i prądy bez zmian)"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "r0_ohm_per_km",
+        },
     ),
     "power_flow.unbalanced_transformer_series_model": ReadinessCodeSpec(
         code="power_flow.unbalanced_transformer_series_model",
@@ -3302,7 +3418,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "(Z_m = 0) — solver BFS nie odwzorowuje izolacji składowej zerowej przez "
             "trójkąt/gwiazdę nieuziemioną"
         ),
-        fix_navigation={"panel": "inspector", "tab": "transformator", "focus": "vector_group"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "transformator",
+            "focus": "vector_group",
+        },
     ),
     # Droga I0 odbioru faza–N bez transformatora zamykającego (odbiór faza–N wprost na
     # szynie źródła albo za samymi liniami/YNyn): powrót przez punkt neutralny źródła —
@@ -3330,7 +3450,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Gałąź nie ma składowej zerowej (R0/X0) — zwarcia doziemne i rozpływ "
             "niesymetryczny nie mogą jej policzyć; uzupełnij parametry albo katalog"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "r0_ohm_per_km",
+        },
     ),
     # Karta LINIA-110 (rozstrzygnięcie architekta, pkt 2; zasada nr 4): R′0/X′0 linii
     # i kabli SN z katalogu są wyprowadzone bez danej producenta (R′0 = 3·R′1, X′0 = 3·X′1,
@@ -3348,7 +3472,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "nie podaje; wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka "
             "i przelicz"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "r0_ohm_per_km",
+        },
     ),
     # Lokalizacja zwarcia scenariusza NA GAŁĘZI (BRANCH/BRANCH_POINT) — adapter
     # obliczeniowy dziś liczy zwarcie WYŁĄCZNIE dla POJEDYNCZEGO węzła grafu; punkt
@@ -3412,7 +3540,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest "
             "inna, i przelicz"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "lv_voltage_tolerance",
+        },
     ),
     # Karta LINIA-110 (zasada nr 4): linia 110 kV z przewodem z katalogu PRZEWOD_LINII_WN ma
     # R′, X′, B′ i Z′0 policzone z geometrii słupa; składowe niepodane w projekcie (położenie
@@ -3448,7 +3580,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Bateria kondensatorów pominięta w składowej zgodnej i przeciwnej impedancji "
             "zwarciowej (IEC 60909-0); w składowej zerowej wchodzi wyłącznie gwiazda uziemiona"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "uklad_polaczen"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "uklad_polaczen",
+        },
     ),
     # Zasada nr 4: parametr baterii, który wchodzi do wyniku (dławik, liczba stopni, układ
     # połączeń w zwarciu doziemnym), z wartości roboczej rejestru — bieg biegnie, wynik niesie
@@ -3462,7 +3598,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Bateria kondensatorów liczona z wartością roboczą parametru (dławik ograniczający, "
             "liczba stopni albo układ połączeń) — podaj daną z karty producenta i przelicz"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "parametry_baterii"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "parametry_baterii",
+        },
     ),
     # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): kanoniczny odpowiednik E011 walidatora
     # ENM — wartość projektanta (`overrides`) maszyny wirującej albo aparatu SN spoza bramy
@@ -3583,7 +3723,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie "
             "wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna"
         ),
-        fix_navigation={"panel": "inspector", "tab": "regulacja", "focus": "deadband_kv"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "regulacja",
+            "focus": "deadband_kv",
+        },
     ),
     "oltc.target_voltage_missing": ReadinessCodeSpec(
         code="oltc.target_voltage_missing",
@@ -3884,7 +4028,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Stan obiektu łącznika musi być istniejący albo projektowany i wymaga pozycji "
             "katalogu łącznika"
         ),
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "CatalogPicker"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
     ),
     "catalog.materialization_required": ReadinessCodeSpec(
         code="catalog.materialization_required",
@@ -4216,7 +4364,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego "
             "bezpośrednio z rezystancją uziomu stacji"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_neutral"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "lv_neutral",
+        },
     ),
     "nn.brak_rcd": ReadinessCodeSpec(
         code="nn.brak_rcd",
@@ -4238,7 +4390,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancji zerowej na km) — "
             "prąd pierwszego zwarcia doziemnego nie jest liczony"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "b0_siemens_per_km"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "b0_siemens_per_km",
+        },
     ),
     "nn.transformer_lv_not_nn_band": ReadinessCodeSpec(
         code="nn.transformer_lv_not_nn_band",
@@ -4312,7 +4468,9 @@ def opis_kodu_gotowosci_pl(kod: str) -> str:
     """
     spec = READINESS_CODES.get(kod)
     if spec is None:
-        raise KeyError(f"Kod gotowości „{kod}” nie ma komunikatu w rejestrze READINESS_CODES.")
+        raise KeyError(
+            f"Kod gotowości „{kod}” nie ma komunikatu w rejestrze READINESS_CODES."
+        )
     return spec.message_pl
 
 
@@ -4407,7 +4565,9 @@ def _obce_w_obiekcie(
             if not _w_kontrakcie(klucz, ksztalt.pola):
                 wynik.append(f"{prefiks}.{klucz}")
             elif klucz in ksztalt.zagniezdzone:
-                _obce_w_obiekcie(wartosc, ksztalt.zagniezdzone[klucz], f"{prefiks}.{klucz}", wynik)
+                _obce_w_obiekcie(
+                    wartosc, ksztalt.zagniezdzone[klucz], f"{prefiks}.{klucz}", wynik
+                )
 
 
 def klucze_spoza_kontraktu(op_name: str, payload: dict[str, Any]) -> list[str]:
