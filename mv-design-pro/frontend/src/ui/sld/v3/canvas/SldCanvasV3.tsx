@@ -33,7 +33,7 @@ import {
 } from '../scene/buildScene';
 import { scenyWszystkichPoziomow } from '../scene/scenaSld';
 import { SYMBOL_DEFS } from '../symbols/defs';
-import { SYMBOL_GLYPHS } from '../symbols/glyphs';
+import { SYMBOL_GLYPHS, skalaZnacznikaKafla } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
 import {
   LABEL_TYPOGRAPHY,
@@ -539,6 +539,9 @@ function SceneSymbolNode(props: {
    *  kreska aparatu 0,16 px (15,70× zamiast projektowych 3,33×) — zgłoszenie
    *  właściciela „tor prądowy grubszy od kreski aparatu ok. 8–10×". */
   readonly cameraScale: number;
+  /** Poziom szczegółu rysowanej sceny — podłoga ekranu znacznika rodzaju aparatu na LOD1
+   *  (`skalaZnacznikaKafla`, rozstrzygnięcie architekta 2026-10-30 pkt 1). */
+  readonly lod: SceneLod;
   /** Ramka bloku przekaźnika wg PLANU etykiet (`canvas/obrysyWgPlanu.ts`) — zastępuje ramkę
    *  sceny (`meta.ramkaBlokuPrzekaznika`), liczoną ze slotów w piśmie naturalnym; `undefined`
    *  = symbol bez ramki albo żaden wiersz bloku nie jest narysowany. */
@@ -602,6 +605,7 @@ function SceneSymbolNode(props: {
         y={symbol.y}
         stroke={stroke}
         strokeScale={strokeScaleFactor(cameraScale)}
+        skalaZnacznika={skalaZnacznikaKafla(cameraScale, props.lod)}
         {...daneGlifuSymbolu(symbol)}
         ramkaBloku={props.ramkaBloku}
         kafleStanu={palette.state}
@@ -3668,6 +3672,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 index={index}
                 overlay={effectiveOverlay}
                 cameraScale={camera.transform.scale}
+                lod={effectiveLod}
                 ramkaBloku={ramkiBlokow.get(index)}
               />
             );

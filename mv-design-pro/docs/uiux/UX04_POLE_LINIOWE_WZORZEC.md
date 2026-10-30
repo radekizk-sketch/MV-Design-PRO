@@ -1653,7 +1653,31 @@ kompensacja grubości kamerą (PROPORCJE 2026-08-07) łamała margines i odstęp
 granicy LOD2, więc piktogram kafla ma jeden lejek kreski `glyphs.tsx::kreskaPiktogramuKafla`, a kompensacja
 zostaje dla przewodów toru i symboli bez kafla.
 
-**Do decyzji architekta (z pomiarem).**
+**Rozstrzygnięcia architekta 2026-10-30 (odpowiedź na „Do decyzji architekta" niżej).**
+
+1. **Podłoga 8 px na LOD1 wygrywa z udziałem 22–28 % kafla.** Bok znacznika na ekranie =
+   max(udział · bok kafla · skala, 8 px) na LOD1; na LOD2 obowiązuje udział 22–28 % i ≥ 10 px.
+   Wykonanie: `symbols/glyphs.tsx::skalaZnacznikaKafla(skala, lod)` (jedno źródło dla kanwy
+   — `SceneSymbolNode` dostaje `lod` rysowanej sceny — i tablicy łączników), znacznik rośnie
+   jednokładnie wokół kotwicy (punktu styku), kreska zostaje kreską noża. Na dolnym brzegu LOD1
+   (0,51) znacznik ma 15,69 j.św. = 32,7 % kafla = 8,0 px; margines 4 j.św. od krawędzi kafla
+   obowiązuje bez podłogi, z czynną podłogą — tusz wewnątrz kafla (≥ 0). Test:
+   `symbols/__tests__/znacznikRodzajuLacznika.test.tsx` — LOD1 na obu brzegach (0,51 i 0,69)
+   i LOD2 (1,02), wyrocznia jawna `bokOczekiwany`; iniekcja „podłoga wyłączona" (mnożnik 1 na 0,51)
+   — czerwona dla wyłącznika, odłącznika i łącznika trójpołożeniowego.
+2. **Uziemiony łącznik trójpołożeniowy:** kafel zielony (kolor odnosi się do toru głównego — tor
+   otwarty), geometria odgałęzienia do ziemi pokazuje styk uziemnika zamknięty; opis w dymku
+   kafla „uziemiony". Przyjęte bez zmian (§11.13).
+3. **Człon wysuwny** — dodany do modelu end-to-end (pole wykonania aparatu stałe / wysuwne przy
+   wyłączniku pola, domyślnie z szablonu pola, edytowalne w inspektorze, przepływ do sceny SLD:
+   znacznik „○" członu wysuwnego obok „×" wyłącznika). Wykonanie i testy — niżej, punkt
+   „Człon wysuwny — wykonanie".
+4. **Rodzina kanoniczna łączników** przepięta na kafel 48 × 48 ze znacznikiem rodzaju — jedna
+   implementacja, bez równoległej (punkt „Rodzina kanoniczna — wykonanie").
+5. **Kolor łącznika trójpołożeniowego v2 i romb sprzęgła** — ta sama funkcja stan → kolor →
+   geometria (`POLOZENIE_ZE_STANU`), jedno źródło (punkt „v2 i sprzęgło — wykonanie").
+
+**Do decyzji architekta (z pomiarem) — stan sprzed rozstrzygnięcia 2026-10-30.**
 
 - **Podłoga 8 px na całym LOD1.** Na zejściu LOD1 → LOD0 (skala 0,51) znacznik 12 j.św. ma 6,1 px.
   Podłoga 8 px przy 0,51 wymaga boku 15,7 j.św. = 33 % kafla — poza przedziałem 22–28 % z tej samej

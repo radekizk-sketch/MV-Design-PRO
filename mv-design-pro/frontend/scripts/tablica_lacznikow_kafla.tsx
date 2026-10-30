@@ -5,8 +5,9 @@
  *
  * Rysuje PRODUKCYJNE glify kanwy (`SYMBOL_GLYPHS`) z paletą motywu (`palette.state` — kafle,
  * `palette.baseStroke`, `palette.canvasBackground`) i mnożnikiem kreski kanwy
- * `strokeScaleFactor(skala)` — tak jak `SldCanvasV3` — w trzech skalach: wejście w LOD1 (0,69),
- * dolna granica LOD2 (1,02) i podgląd ×3. Wiersze: wyłącznik (bez i z napędem M), odłącznik,
+ * `strokeScaleFactor(skala)` i mnożnikiem znacznika `skalaZnacznikaKafla(skala, lod)` — tak jak
+ * `SldCanvasV3` — w czterech skalach: dolny brzeg LOD1 (0,51, podłoga znacznika 8 px), wejście
+ * w LOD1 (0,69), dolna granica LOD2 (1,02) i podgląd ×3 (LOD2). Wiersze: wyłącznik (bez i z napędem M), odłącznik,
  * rozłącznik (sam i z bezpiecznikami), uziemnik, łącznik trójpołożeniowy (bez i z napędem).
  * Kolumny: zamknięty, otwarty, uziemiony, nieustalony, awaria, brak stanu w modelu. Człon wysuwny
  * nie ma wiersza — model go nie zna (luka opisana w §11.14).
@@ -29,7 +30,7 @@ import { QET_BOK_KAFLA_STANU } from '../src/ui/sld/v3/cad/qet/qetPoleSn';
 import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../src/ui/sld/v3/canvas/camera';
 import { strokeScaleFactor } from '../src/ui/sld/v3/compose/preview';
 import { SLD_FONT_FAMILY } from '../src/ui/sld/v3/core/text';
-import { SYMBOL_GLYPHS, type SwitchState } from '../src/ui/sld/v3/symbols/glyphs';
+import { SYMBOL_GLYPHS, skalaZnacznikaKafla, type SwitchState } from '../src/ui/sld/v3/symbols/glyphs';
 import type { SymbolId } from '../src/ui/sld/v3/symbols/defs';
 import { DARK_SCADA_SLD_PALETTE } from '../src/ui/sld/v3/theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../src/ui/sld/v3/theme/palette';
@@ -56,10 +57,11 @@ const KOLUMNY: ReadonlyArray<readonly [string, SwitchState | undefined]> = [
   ['awaria', 'bad'],
   ['brak stanu', undefined],
 ];
-const SKALE: ReadonlyArray<readonly [string, number]> = [
-  ['LOD1 — wejście, skala 0,69 px/j.św.', DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN)],
-  ['LOD2 — dolna granica, skala 1,02 px/j.św.', DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN)],
-  ['podgląd ×3', 3],
+const SKALE: ReadonlyArray<readonly [string, number, 1 | 2]> = [
+  ['LOD1 — dolny brzeg, skala 0,51 px/j.św. (podłoga znacznika 8 px)', DEFAULT_LOD_THRESHOLDS.l0Max * (1 - LOD_HYSTERESIS_MARGIN), 1],
+  ['LOD1 — wejście, skala 0,69 px/j.św.', DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN), 1],
+  ['LOD2 — dolna granica, skala 1,02 px/j.św.', DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN), 2],
+  ['podgląd ×3 (LOD2)', 3, 2],
 ];
 const MOTYWY = [
   ['ciemny', DARK_SCADA_SLD_PALETTE],
@@ -73,7 +75,7 @@ const NAGLOWEK_H = 22;
 const TYTUL_H = 26;
 const ODSTEP = 14;
 
-function blok(skala: number, tytul: string, paleta: (typeof MOTYWY)[number][1], y0: number): { el: JSX.Element; h: number; w: number } {
+function blok(skala: number, lod: 1 | 2, tytul: string, paleta: (typeof MOTYWY)[number][1], y0: number): { el: JSX.Element; h: number; w: number } {
   const wiersz = QET_BOK_KAFLA_STANU * skala + ODSTEP;
   const kom = Math.max(wiersz, KOLUMNA_MIN);
   const w = OPIS_W + KOLUMNY.length * kom;
@@ -93,7 +95,7 @@ function blok(skala: number, tytul: string, paleta: (typeof MOTYWY)[number][1], 
             <text x={8} y={y + (QET_BOK_KAFLA_STANU * skala) / 2 + 4} fontSize={12} {...tekst}>{nazwa}</text>
             {KOLUMNY.map(([kol, stan], c) => (
               <g key={kol} transform={`translate(${OPIS_W + c * kom} ${y}) scale(${skala})`}>
-                <Glyph x={0} y={0} state={stan} stroke={paleta.baseStroke} kafleStanu={paleta.state} strokeScale={strokeScaleFactor(skala)} />
+                <Glyph x={0} y={0} state={stan} stroke={paleta.baseStroke} kafleStanu={paleta.state} strokeScale={strokeScaleFactor(skala)} skalaZnacznika={skalaZnacznikaKafla(skala, lod)} />
               </g>
             ))}
           </g>
@@ -111,8 +113,8 @@ try {
     let y = 8;
     let szer = 0;
     const bloki: JSX.Element[] = [];
-    for (const [tytul, skala] of SKALE) {
-      const b = blok(skala, tytul, paleta, y);
+    for (const [tytul, skala, lod] of SKALE) {
+      const b = blok(skala, lod, tytul, paleta, y);
       bloki.push(b.el);
       y += b.h + 16;
       szer = Math.max(szer, b.w);

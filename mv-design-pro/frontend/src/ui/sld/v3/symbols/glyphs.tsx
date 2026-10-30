@@ -19,7 +19,9 @@ import {
   QET_BOK_KAFLA_STANU,
   QET_KRESKA_GLIFU,
   QET_SYMBOLE_POLA_SN,
+  QET_ZNACZNIK_STYKU,
   type QetNozSymbolu,
+  type QetZnacznikStyku,
   type QetPolozenieNoza,
   type QetSymbolPolaSn,
   type QetSymbolPolaSnId,
@@ -230,6 +232,10 @@ export interface GlyphProps {
    *  JEDNA tabela `STATE_COLOR`). Podane = łącznik z położeniem (`czyLacznikZPolozeniem`)
    *  rysuje się na kaflu stanu; brak = sam symbol (legenda, podgląd kreatora, harness mono). */
   readonly kafleStanu?: KafleStanuLacznika;
+  /** Mnożnik boku ZNACZNIKA RODZAJU APARATU na kaflu stanu (`skalaZnacznikaKafla`, rozstrzygnięcie
+   *  architekta 2026-10-30 pkt 1: podłoga 8 px na LOD1). Kanwa podaje go z tego samego miejsca co
+   *  `strokeScale`; brak = 1 (rysunek świata: legenda, harness, eksport bez kamery). */
+  readonly skalaZnacznika?: number;
   /** UX-04/POLE-BKR-MODEL: dane baterii kondensatorów z modelu — WYŁĄCZNIE
    *  `CapacitorBankGlyph` (układ połączeń i obecność rekordu przekładnika niezrównoważenia
    *  pola). `undefined`/`uklad: null` = model nie deklaruje układu (znak „?"). */
@@ -1522,6 +1528,38 @@ function kreskaPiktogramuKafla(props: GlyphProps, symbol: QetSymbolPolaSn): numb
   return symbol.kafel ? QET_KRESKA_GLIFU : grubosc(props, QET_KRESKA_GLIFU);
 }
 
+/** Podłoga ekranu boku znacznika rodzaju aparatu na LOD1 [px] (rozstrzygnięcie architekta
+ *  2026-10-30 pkt 1). Na LOD2 obowiązuje udział `QET_ZNACZNIK_STYKU.udzial` i ≥ 10 px, które
+ *  daje sam udział (12 j.św. × 1,02 = 12,2 px na dolnym brzegu LOD2). */
+export const PODLOGA_ZNACZNIKA_LOD1_PX = 8;
+
+/**
+ * Mnożnik boku znacznika rodzaju aparatu (JEDNO źródło dla kanwy, tablicy łączników i testów):
+ * bok na ekranie = max(udział · bok kafla · skala, 8 px) na LOD1 — podłoga wygrywa z udziałem
+ * 22–28 % (rozstrzygnięcie architekta 2026-10-30 pkt 1; przy skali 0,51, dolnym brzegu LOD1,
+ * znacznik ma 15,7 j.św. = 33 % kafla). Na LOD0 i LOD2 — 1 (proporcje świata). Znacznik rośnie
+ * wokół swojej kotwicy (punktu styku), kreska zostaje kreską noża (`QET_KRESKA_GLIFU`).
+ */
+export function skalaZnacznikaKafla(cameraScale: number, lod: 0 | 1 | 2): number {
+  if (lod !== 1 || !Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
+  return Math.max(1, PODLOGA_ZNACZNIKA_LOD1_PX / (QET_ZNACZNIK_STYKU.bok * cameraScale));
+}
+
+/** Prymitywy znacznika w skali `f` wokół kotwicy (jednokładność współrzędnych, kreska bez zmian).
+ *  Znacznik składa się z linii i okręgów (importer — `znaczniki` w `qetPoleSn.ts`). */
+export function prymitywyZnacznikaWSkali(z: QetZnacznikStyku, f: number): readonly CadPrimitive[] {
+  if (f === 1) return z.prymitywy;
+  const kx = z.kotwica.x;
+  const ky = z.kotwica.y;
+  const x = (v: number) => kx + (v - kx) * f;
+  const y = (v: number) => ky + (v - ky) * f;
+  return z.prymitywy.map((p) => {
+    if (p.k === 'line') return { ...p, x1: x(p.x1), y1: y(p.y1), x2: x(p.x2), y2: y(p.y2) };
+    if (p.k === 'circle') return { ...p, cx: x(p.cx), cy: y(p.cy), r: p.r * f };
+    throw new Error(`znacznik QET z prymitywem ${p.k} — importer dopuszcza linie i okręgi`);
+  });
+}
+
 /**
  * Symbol QET w rolach importera (`qetPoleSn.ts`): PRZEWODY (tor i obwód wtórny w gabarycie)
  * kreską przewodu `V3_STROKE_APPARATUS` przez lejek `grubosc`; GLIF — rysunek aparatu (`stale`,
@@ -1564,7 +1602,14 @@ function qetGlyph(id: QetSymbolPolaSnId): (props: GlyphProps) => JSX.Element {
           )}
           {symbol.znaczniki.map((z) => (
             <g key={`${z.styk}-${z.rodzaj}`} data-qet="znacznik" data-znacznik-rodzaj={z.rodzaj} data-znacznik-styk={z.styk}>
-              <CadPrimitiveLayer prims={z.prymitywy} ink={ink} paper="none" strokeWidth={wGlifu} nonScalingStroke={false} state="closed" />
+              <CadPrimitiveLayer
+                prims={prymitywyZnacznikaWSkali(z, props.skalaZnacznika ?? 1)}
+                ink={ink}
+                paper="none"
+                strokeWidth={wGlifu}
+                nonScalingStroke={false}
+                state="closed"
+              />
             </g>
           ))}
         </g>

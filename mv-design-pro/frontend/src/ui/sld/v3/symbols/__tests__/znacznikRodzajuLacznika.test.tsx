@@ -46,7 +46,7 @@ import { DEFAULT_LOD_THRESHOLDS, LOD_HYSTERESIS_MARGIN } from '../../canvas/came
 import { DARK_SCADA_SLD_PALETTE, STATE_COLOR, STANY_KAFLA, type KafleStanuLacznika } from '../../theme/colorTokens';
 import { LIGHT_TECHNICAL_SLD_PALETTE } from '../../theme/palette';
 import { czySymbolQet, type SymbolId } from '../defs';
-import { SYMBOL_GLYPHS, type SwitchState } from '../glyphs';
+import { PODLOGA_ZNACZNIKA_LOD1_PX, SYMBOL_GLYPHS, skalaZnacznikaKafla, type SwitchState } from '../glyphs';
 
 type P = readonly [number, number];
 type RodzajZnacznika = 'wylacznik' | 'odlacznik' | 'rozlacznik' | 'uziemnik';
@@ -87,10 +87,21 @@ const ODSTEP = 1;
 const STREFA_STYKU = 5;
 const PODLOGA_PX = { L1: 8, L2: 10 } as const;
 
+/** Poziomy szczegółu: nazwa przypadku, LOD, skala kamery. LOD1 sprawdzany na OBU brzegach — dolnym
+ *  (zejście do LOD0, `l0Max·(1−m)` = 0,51, podłoga 8 px czynna) i wejściu (`l0Max·(1+m)` = 0,69);
+ *  LOD2 na dolnym brzegu aktywnego (`l1Max·(1−m)` = 1,02). */
 const LODY = [
-  ['L1', DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN)],
-  ['L2', DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN)],
+  ['L1 dół', 'L1', DEFAULT_LOD_THRESHOLDS.l0Max * (1 - LOD_HYSTERESIS_MARGIN)],
+  ['L1', 'L1', DEFAULT_LOD_THRESHOLDS.l0Max * (1 + LOD_HYSTERESIS_MARGIN)],
+  ['L2', 'L2', DEFAULT_LOD_THRESHOLDS.l1Max * (1 - LOD_HYSTERESIS_MARGIN)],
 ] as const;
+const NUMER_LOD = { L1: 1, L2: 2 } as const;
+
+/** Oczekiwany bok znacznika [j.św.] — wyrocznia jawna rozstrzygnięcia architekta 2026-10-30 pkt 1:
+ *  LOD1 — max(udział · bok kafla · skala, 8 px) / skala; LOD2 — udział · bok kafla (12 j.św.). */
+function bokOczekiwany(lod: keyof typeof PODLOGA_PX, skala: number): number {
+  return lod === 'L1' ? Math.max(12, PODLOGA_PX.L1 / skala) : 12;
+}
 const MOTYWY = [
   ['ciemny', DARK_SCADA_SLD_PALETTE.state],
   ['jasny', LIGHT_TECHNICAL_SLD_PALETTE.state],
@@ -99,11 +110,18 @@ const STANY: readonly (SwitchState | undefined)[] = ['closed', 'open', 'earthed'
 
 const SYMBOLE = TABELA_WLASCICIELA.flatMap((w) => w.symbole.map((id) => [w, id] as const));
 
-function rysuj(id: SymbolId, state: SwitchState | undefined, kafle: KafleStanuLacznika, skala: number): Document {
+function rysuj(
+  id: SymbolId,
+  state: SwitchState | undefined,
+  kafle: KafleStanuLacznika,
+  skala: number,
+  lod: keyof typeof PODLOGA_PX,
+  skalaZnacznika: number = skalaZnacznikaKafla(skala, NUMER_LOD[lod]),
+): Document {
   const Glyph = SYMBOL_GLYPHS[id];
   const markup = renderToStaticMarkup(
     <svg xmlns="http://www.w3.org/2000/svg">
-      <Glyph x={0} y={0} stroke="#123456" state={state} kafleStanu={kafle} strokeScale={strokeScaleFactor(skala)} />
+      <Glyph x={0} y={0} stroke="#123456" state={state} kafleStanu={kafle} strokeScale={strokeScaleFactor(skala)} skalaZnacznika={skalaZnacznika} />
     </svg>,
   );
   return new DOMParser().parseFromString(markup, 'image/svg+xml');
@@ -206,13 +224,20 @@ function naruszenia(
     const o = obwiednia(z);
     const bok = Math.max(o.x1 - o.x0, o.y1 - o.y0);
     const udzial = bok / kafel.w;
-    if (udzial < UDZIAL[0] - 1e-9 || udzial > UDZIAL[1] + 1e-9) bledy.push(`${opis}: ${bok.toFixed(2)} j.św. = ${(udzial * 100).toFixed(1)} % boku kafla poza 22–28 %`);
+    // Podłoga LOD1 wygrywa z udziałem: górna granica udziału rośnie do 8 px / skala / bok kafla.
+    const podlogaCzynna = bokOczekiwany(lod, skala) > 12 + 1e-9;
+    const gornyUdzial = podlogaCzynna ? bokOczekiwany(lod, skala) / kafel.w : UDZIAL[1];
+    if (udzial < UDZIAL[0] - 1e-9 || udzial > gornyUdzial + 1e-9) bledy.push(`${opis}: ${bok.toFixed(2)} j.św. = ${(udzial * 100).toFixed(1)} % boku kafla poza 22–28 %`);
     if (bok * skala < PODLOGA_PX[lod] - 1e-9) bledy.push(`${opis}: ${(bok * skala).toFixed(2)} px na ${lod} < ${PODLOGA_PX[lod]} px`);
+    if (Math.abs(bok - bokOczekiwany(lod, skala)) > 1e-6) bledy.push(`${opis}: bok ${bok.toFixed(3)} j.św. ≠ max(udział · kafel, ${PODLOGA_PX.L1} px / skala) = ${bokOczekiwany(lod, skala).toFixed(3)}`);
     for (const w of z.kreski) if (Math.abs(w - kreskaNoza) > 1e-9) bledy.push(`${opis}: kreska ${w} ≠ kreska noża ${kreskaNoza}`);
     for (const c of [...z.kolory, ...noz.kolory]) if (c !== kafle.glif) bledy.push(`${opis}: kolor ${c} ≠ kolor noża i glifu kafla ${kafle.glif}`);
     const polKreski = Math.max(...z.kreski) / 2;
     const margines = Math.min(o.x0 - kafel.x, o.y0 - kafel.y, kafel.x + kafel.w - o.x1, kafel.y + kafel.h - o.y1) - polKreski;
-    if (margines < MARGINES - 1e-9) bledy.push(`${opis}: tusz ${margines.toFixed(2)} j.św. od krawędzi kafla < ${MARGINES}`);
+    // Margines 4 j.św. wiąże proporcje świata; gdy podłoga LOD1 powiększa znacznik, wymagany jest
+    // tusz w kaflu (≥ 0) — kafel 24,5 px na skali 0,51 nie mieści znacznika 8 px z marginesem 4 j.św.
+    const marginesWymagany = podlogaCzynna ? 0 : MARGINES;
+    if (margines < marginesWymagany - 1e-9) bledy.push(`${opis}: tusz ${margines.toFixed(2)} j.św. od krawędzi kafla < ${marginesWymagany}`);
     const naStyku = polozenie === styk;
     const pz = probki(z);
     let d = Infinity;
@@ -274,22 +299,23 @@ describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × LOD', 
   for (const [wiersz, id] of SYMBOLE) {
     for (const state of STANY) {
       for (const [motyw, kafle] of MOTYWY) {
-        for (const [lod, skala] of LODY) {
-          it(`${wiersz.rodzaj} (${id}) · ${state ?? 'brak stanu'} · ${motyw} · ${lod} (skala ${skala.toFixed(2)})`, () => {
-            const doc = rysuj(id, state, kafle, skala);
+        for (const [nazwaLod, lod, skala] of LODY) {
+          it(`${wiersz.rodzaj} (${id}) · ${state ?? 'brak stanu'} · ${motyw} · ${nazwaLod} (skala ${skala.toFixed(2)})`, () => {
+            const doc = rysuj(id, state, kafle, skala, lod);
             expect(naruszenia(doc, wiersz.znaczniki, kafle, lod, skala)).toEqual([]);
             for (const g of doc.querySelectorAll('[data-qet="znacznik"]')) {
               const rodzaj = g.getAttribute('data-znacznik-rodzaj') as RodzajZnacznika;
               const z = ksztalt(g);
               const o = obwiednia(z);
               if (!sygnatury.has(rodzaj)) sygnatury.set(rodzaj, new Set());
-              if (!rozmiary.has(rodzaj)) rozmiary.set(rodzaj, new Set());
+              const klucz = `${rodzaj}@${nazwaLod}`;
+              if (!rozmiary.has(klucz)) rozmiary.set(klucz, new Set());
               sygnatury.get(rodzaj)!.add(sygnatura(z));
               // Proporcje rodzaju: bok obwiedni (większy wymiar) i stosunek boków (okrąg, krzyżyk
               // i kreska z okręgiem — niezależne od orientacji).
               const a = Math.max(o.x1 - o.x0, o.y1 - o.y0);
               const b = Math.min(o.x1 - o.x0, o.y1 - o.y0);
-              rozmiary.get(rodzaj)!.add(`${a.toFixed(3)}:${(b / a).toFixed(3)}`);
+              rozmiary.get(klucz)!.add(`${a.toFixed(3)}:${(b / a).toFixed(3)}`);
             }
           });
         }
@@ -297,12 +323,20 @@ describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × LOD', 
     }
   }
 
-  it('spójność: ten sam rodzaj = ta sama sygnatura i te same proporcje w każdym symbolu, stanie, motywie i LOD; różne rodzaje rozróżnialne', () => {
+  it('spójność: ten sam rodzaj = ta sama sygnatura w każdym LOD i te same proporcje w każdym symbolu, stanie i motywie danego LOD; różne rodzaje rozróżnialne', () => {
     expect([...sygnatury.keys()].sort()).toEqual(['odlacznik', 'rozlacznik', 'uziemnik', 'wylacznik']);
     for (const [rodzaj, zbior] of sygnatury) expect([...zbior], rodzaj).toEqual([SYGNATURA[rodzaj]]);
     for (const [rodzaj, zbior] of rozmiary) expect(zbior.size, `${rodzaj}: ${[...zbior].join(' · ')}`).toBe(1);
-    // Wszystkie rodzaje mają ten sam bok znacznika (jeden rozmiar kafla).
-    expect(new Set([...rozmiary.values()].map((z) => [...z][0].split(':')[0])).size).toBe(1);
+    // Wszystkie rodzaje mają ten sam bok znacznika na danym poziomie (jeden rozmiar kafla);
+    // stosunek boków rodzaju jest ten sam na każdym poziomie (znacznik rośnie jednokładnie).
+    for (const [nazwaLod] of LODY) {
+      const boki = [...rozmiary].filter(([k]) => k.endsWith(`@${nazwaLod}`)).map(([, z]) => [...z][0].split(':')[0]);
+      expect(new Set(boki).size, nazwaLod).toBe(1);
+    }
+    for (const r of sygnatury.keys()) {
+      const stosunki = [...rozmiary].filter(([k]) => k.startsWith(`${r}@`)).map(([, z]) => [...z][0].split(':')[1]);
+      expect(new Set(stosunki).size, r).toBe(1);
+    }
   });
 
   it('warunek wstępny: kafel 48 j.św., kreska glifu = bok/24', () => {
@@ -313,7 +347,7 @@ describe('znacznik rodzaju aparatu — iloczyn rodzaj × stan × motyw × LOD', 
 
 describe('znacznik rodzaju aparatu — iniekcje (każda czerwona)', () => {
   const [, kafle] = MOTYWY[0];
-  const [lod, skala] = LODY[1];
+  const [, lod, skala] = LODY[2];
   const wiersz = (id: QetSymbolPolaSnId) => TABELA_WLASCICIELA.find((w) => w.symbole.includes(id))!;
 
   function skaluj(g: Element, k: number): void {
@@ -381,7 +415,7 @@ describe('znacznik rodzaju aparatu — iniekcje (każda czerwona)', () => {
 
   for (const [opis, id, state, psuj, oczekiwany] of PRZYPADKI) {
     it(opis, () => {
-      const doc = rysuj(id, state, kafle, skala);
+      const doc = rysuj(id, state, kafle, skala, lod);
       expect(naruszenia(doc, wiersz(id).znaczniki, kafle, lod, skala), 'przed iniekcją').toEqual([]);
       psuj(doc);
       const wynik = naruszenia(doc, wiersz(id).znaczniki, kafle, lod, skala);
@@ -393,11 +427,11 @@ describe('znacznik rodzaju aparatu — iniekcje (każda czerwona)', () => {
   // kreski kanwy (`strokeScaleFactor`). Na dolnym brzegu LOD2 tusz okręgu odłącznika schodzi pod
   // margines 4 j.św., a przy wejściu w LOD1 ramiona krzyżyka wyłącznika zlewają się z nożem.
   for (const [lodI, skalaI, idI, oczekiwanyI] of [
-    ['L2', LODY[1][1], 'qetDisconnector', /od krawędzi kafla < 4/],
-    ['L1', LODY[0][1], 'qetBreaker', /nachodzi na nóż/],
+    ['L2', LODY[2][2], 'qetDisconnector', /od krawędzi kafla < 4/],
+    ['L1', LODY[1][2], 'qetBreaker', /nachodzi na nóż/],
   ] as const) {
     it(`kompensacja kreski na piktogramie kafla (${lodI}, ${idI}) — czerwony`, () => {
-      const doc = rysuj(idI, 'closed', kafle, skalaI);
+      const doc = rysuj(idI, 'closed', kafle, skalaI, lodI);
       expect(naruszenia(doc, wiersz(idI).znaczniki, kafle, lodI, skalaI), 'przed iniekcją').toEqual([]);
       const k = strokeScaleFactor(skalaI);
       expect(k).toBeGreaterThan(1);
@@ -409,10 +443,25 @@ describe('znacznik rodzaju aparatu — iniekcje (każda czerwona)', () => {
   }
 
   it('podłoga ekranu: znacznik 12 j.św. na dolnym brzegu LOD2 ma 12,24 px (≥ 10), przy wejściu w LOD1 8,28 px (≥ 8)', () => {
-    expect(12 * LODY[1][1]).toBeCloseTo(12.24, 9);
-    expect(12 * LODY[0][1]).toBeCloseTo(8.28, 9);
+    expect(12 * LODY[2][2]).toBeCloseTo(12.24, 9);
+    expect(12 * LODY[1][2]).toBeCloseTo(8.28, 9);
     // Iniekcja: znacznik o dolnym brzegu przedziału udziału (22 % → 10,56 j.św.) przy wejściu
     // w LOD1 ma 7,29 px < 8 — podłoga LOD1 jest czynna, nie trywialna.
-    expect(0.22 * QET_BOK_KAFLA_STANU * LODY[0][1]).toBeLessThan(PODLOGA_PX.L1);
+    expect(0.22 * QET_BOK_KAFLA_STANU * LODY[1][2]).toBeLessThan(PODLOGA_PX.L1);
+    expect(PODLOGA_ZNACZNIKA_LOD1_PX).toBe(PODLOGA_PX.L1);
+    // Dolny brzeg LOD1 (0,51): znacznik ma 8 px = 15,69 j.św. = 32,7 % kafla.
+    expect(skalaZnacznikaKafla(LODY[0][2], 1) * 12 * LODY[0][2]).toBeCloseTo(8, 9);
+    // LOD0 i LOD2 — bez podłogi (proporcje świata).
+    expect(skalaZnacznikaKafla(LODY[0][2], 0)).toBe(1);
+    expect(skalaZnacznikaKafla(LODY[2][2], 2)).toBe(1);
   });
+
+  for (const id of ['qetBreaker', 'qetDisconnector', 'qetThreePositionSwitch'] as const) {
+    it(`podłoga LOD1 wyłączona (mnożnik 1 na skali 0,51, ${id}) — czerwony`, () => {
+      const [, lodD, skalaD] = LODY[0];
+      expect(naruszenia(rysuj(id, 'open', kafle, skalaD, lodD), wiersz(id).znaczniki, kafle, lodD, skalaD)).toEqual([]);
+      const doc = rysuj(id, 'open', kafle, skalaD, lodD, 1);
+      expect(naruszenia(doc, wiersz(id).znaczniki, kafle, lodD, skalaD).join('\n')).toMatch(/px na L1 < 8 px/);
+    });
+  }
 });
