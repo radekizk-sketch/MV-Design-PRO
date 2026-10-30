@@ -118,9 +118,10 @@ im karty producenta. W szczególności nie wolno utożsamiać wariantu
 
 ### Rozszerzenie nN — rzeczywiste tablice NKT
 
-Zamiast 17 typów są **54 typy** w istniejącym katalogu nN:
-17 dotychczasowych, **19 NKT YKXSżo Cu/XLPE** oraz
-**18 NKT YAKXSżo Al/XLPE**. Są to rodziny 4- i 5-żyłowe,
+Zamiast 17 typów jest **96 typów** w istniejącym katalogu nN:
+17 dotychczasowych, **19 NKT YKXSżo Cu/XLPE**,
+**18 NKT YAKXSżo Al/XLPE**, **23 NKT YKYżo Cu/PVC** oraz
+**19 NKT YAKYżo Al/PVC**. Są to rodziny 4- i 5-żyłowe,
 z R20, L→X przy 50 Hz, Iz w ziemi i w powietrzu, Ith(1s),
 temperaturami i żyłą PE/PEN.
 
@@ -128,6 +129,10 @@ temperaturami i żyłą PE/PEN.
   https://www.elektrykasklep.pl/file,470067,ykxs.pdf
 - YAKXS, katalog NKT, str. druk. 79–80:
   https://www.elektrykasklep.pl/file,553320,przewody-i-kable-elektroenergetyczne_201532.pdf
+- YKY, karta NKT, str. druk. 51–52:
+  https://media.solar.pl/mdm/data/technicals/5A43D1111FF74A972980A1A53D1782DA.pdf
+- YAKY, karta NKT, str. druk. 74–75:
+  https://www.elektrykasklep.pl/file,358936,karta_2015_yaky.pdf
 
 **Nie publikujemy Al 4×10 jako 3L+PEN**: żyła PEN aluminiowa musi mieć
 co najmniej 16 mm². Przy 4 żyłach N/PE oraz 5 żyłach projektant nadal
@@ -142,7 +147,7 @@ założeniem geometrycznym, a nie osobnym pomiarem NKT.
 - 6 wariantów NKT z typoszeregu ENEA 2026;
 - 13 dalszych NKT XRUHAKXS1 do projektów odbiorcy;
 - 54 TFK XRUHAKXS/XRUHKXS SN 12/20 i 18/30 kV do projektów odbiorcy;
-- 37 dalszych NKT nN.
+- 79 dalszych NKT nN (4 rodziny: Cu/Al i PVC/XLPE).
 
 Są to rekordy o **niepustym minimum projektowym**, nie gwarancja, że
 każdy wariant ma osobno potwierdzone R0/X0 dla dowolnego sposobu
