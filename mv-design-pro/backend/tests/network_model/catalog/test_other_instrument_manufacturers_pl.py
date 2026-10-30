@@ -1,7 +1,7 @@
 """Przekładniki rynku PL: konkretne wyroby vs nieprzypisywalne rodziny."""
 from __future__ import annotations
 
-from math import isclose, sqrt
+from math import isclose
 
 from api.catalog import list_instrument_transformer_families
 from network_model.catalog.mv_ct_vt_other_pl import (
@@ -53,7 +53,7 @@ def test_ritz_ves_6_konfiguracji_z_tabeli_bez_3u0_z_domyslu() -> None:
         assert x["id"] in repo.vt_types
         assert p["manufacturer"] == "RITZ"
         assert p["has_residual_winding"] is None
-        assert p["rated_voltage_factor"] if "rated_voltage_factor" in p else True
+        assert p.get("rated_voltage_factor") is None
         assert p["um_kv"] in (12.0, 17.5, 24.0)
         assert p["burden_va"] == (20.0 if p["accuracy_class"] == "0.2" else 50.0)
         assert p["catalog_status"] == "REFERENCYJNY_V1"
