@@ -68,6 +68,7 @@ ANALIZY: dict[str, str] = {
 class Luka:
     rodzina: str
     typ_id: str
+    rodzaj_pozycji: str
     pole: str
     rodzaj: str
     analiza: str
@@ -77,6 +78,7 @@ class Luka:
         return {
             "rodzina": self.rodzina,
             "id": self.typ_id,
+            "rodzaj_pozycji": self.rodzaj_pozycji,
             "pole": self.pole,
             "rodzaj": self.rodzaj,
             "analiza": self.analiza,
@@ -107,6 +109,14 @@ def _wylacznik(obj: object, pole: str) -> bool:
     return rodzaj in ("WYLACZNIK", "CIRCUIT_BREAKER", "RECLOSER", "REKLOZER")
 
 
+def _rodzaj_pozycji(rodzina: str, typ_id: str) -> str:
+    if rodzina == "ct_types" and typ_id.startswith("ct-project-"):
+        return "SZABLON_PROJEKTOWY"
+    if rodzina == "ct_types" and typ_id.startswith("ct-enea-"):
+        return "PROFIL_WYMAGAN_ENEA"
+    return "POZYCJA_KATALOGU"
+
+
 def ocena_pozycji(rodzina: str, obj: object) -> list[Luka]:
     """Sprawdź typ bez podstawiania wartości i bez uznawania None za zero."""
     typ_id = str(getattr(obj, "id", "?"))
@@ -115,12 +125,13 @@ def ocena_pozycji(rodzina: str, obj: object) -> list[Luka]:
 
     braki: list[Luka] = []
     widziane: set[str] = set()
+    rodzaj_pozycji = _rodzaj_pozycji(rodzina, typ_id)
 
     def dodaj(pole: str, rodzaj: str, powod: str) -> None:
         if pole in widziane or _ma(obj, pole):
             return
         widziane.add(pole)
-        braki.append(Luka(rodzina, typ_id, pole, rodzaj,
+        braki.append(Luka(rodzina, typ_id, rodzaj_pozycji, pole, rodzaj,
                           ANALIZY.get(pole, "dobór / analiza właściwa dla rodzaju"),
                           powod))
 
@@ -230,7 +241,7 @@ def ocena_pozycji(rodzina: str, obj: object) -> list[Luka]:
             continue
         wartosc = getattr(obj, pole, None)
         if isinstance(wartosc, (float, int)) and not isinstance(wartosc, bool) and wartosc == 0:
-            braki.append(Luka(rodzina, typ_id, pole,
+            braki.append(Luka(rodzina, typ_id, rodzaj_pozycji, pole,
                               "ZERO_DO_WERYFIKACJI",
                               ANALIZY.get(pole, "dobór"),
                               "Zerowa wartość znamionowa nie opisuje "
@@ -258,15 +269,20 @@ def zbuduj_raport_luk_technicznych(
         for o in obiekty.values():
             wyniki.extend(ocena_pozycji(rodzina, o))
 
-    wyniki.sort(key=lambda luka: (luka.rodzina, luka.pole, luka.typ_id, luka.rodzaj))
-    grupy: Counter[tuple[str, str, str, str]] = Counter(
-        (r.rodzina, r.pole, r.rodzaj, r.analiza) for r in wyniki
+    wyniki.sort(key=lambda luka: (
+        luka.rodzina, luka.rodzaj_pozycji, luka.pole, luka.typ_id, luka.rodzaj
+    ))
+    grupy: Counter[tuple[str, str, str, str, str]] = Counter(
+        (r.rodzina, r.rodzaj_pozycji, r.pole, r.rodzaj, r.analiza)
+        for r in wyniki
     )
     macierz = [{
-        "rodzina": rodzina, "pole": pole, "rodzaj": rodzaj,
+        "rodzina": rodzina,
+        "rodzaj_pozycji": rodzaj_pozycji,
+        "pole": pole, "rodzaj": rodzaj,
         "analiza": analiza, "liczba_pozycji": ile,
         "liczba_typow_w_rodzinie": liczby[rodzina],
-    } for (rodzina, pole, rodzaj, analiza), ile in sorted(grupy.items())]
+    } for (rodzina, rodzaj_pozycji, pole, rodzaj, analiza), ile in sorted(grupy.items())]
 
     return {
         "zrodlo": "CatalogRepository — rzeczywiste zmaterializowane pozycje",
@@ -281,6 +297,14 @@ def zbuduj_raport_luk_technicznych(
         "liczba_pustych_pol": sum(r.rodzaj in ("BRAK_TECHNICZNY", "DANE_PROJEKTU") for r in wyniki),
         "liczba_zerowych_do_weryfikacji": sum(r.rodzaj == "ZERO_DO_WERYFIKACJI" for r in wyniki),
         "liczba_brakow_technicznych": sum(r.rodzaj == "BRAK_TECHNICZNY" for r in wyniki),
+        "braki_techniczne_poza_szablonami": sum(
+            r.rodzaj == "BRAK_TECHNICZNY"
+            and r.rodzaj_pozycji != "SZABLON_PROJEKTOWY" for r in wyniki
+        ),
+        "braki_szablonow": sum(
+            r.rodzaj == "BRAK_TECHNICZNY"
+            and r.rodzaj_pozycji == "SZABLON_PROJEKTOWY" for r in wyniki
+        ),
         "liczba_danych_projektu": sum(r.rodzaj == "DANE_PROJEKTU" for r in wyniki),
         "macierz": macierz,
         "pozycje": [r.to_dict() for r in wyniki],
@@ -297,7 +321,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     raport = zbuduj_raport_luk_technicznych()
     if args.csv:
         writer = csv.DictWriter(sys.stdout, fieldnames=(
-            "rodzina", "pole", "rodzaj", "analiza",
+            "rodzina", "rodzaj_pozycji", "pole", "rodzaj", "analiza",
             "liczba_pozycji", "liczba_typow_w_rodzinie"))
         writer.writeheader()
         writer.writerows(raport["macierz"])
