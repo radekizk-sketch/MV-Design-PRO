@@ -120,7 +120,12 @@ def _family(
     residual_capability: bool | None = None,
     note: str = "",
 ) -> dict[str, Any]:
-    slug = "".join(ch if ch.isalnum() else "-" for ch in (manufacturer + "-" + family).lower())
+    # Identyfikatory katalogu i adresy API zawsze ASCII. Nazwa producenta
+    # zachowuje polskie znaki, ale klucz techniczny ma stabilną transliterację.
+    plain = (manufacturer + "-" + family).translate(
+        str.maketrans("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ", "acelnoszzACELNOSZZ")
+    ).lower()
+    slug = "".join(ch if ch.isascii() and ch.isalnum() else "-" for ch in plain)
     slug = "-".join(filter(None, slug.split("-")))
     rec: dict[str, Any] = {
         "id": f"instrument-family-pl-{slug}",
