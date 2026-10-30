@@ -45,7 +45,7 @@ Każdy rekord ma obowiązkowo:
 - Nie zmieniać `_V0` ani nie dopisywać ochron 67N/87T/50/51 i gotowych nastaw bez faktycznego wyposażenia i konfiguracji konkretnej instancji.
 
 ## Pełna rodzina — audyt 31.10.2026
-- Indeks **17 pozycji źródłowych** w `network_model/catalog/elektrometal_etango_family.py`, bez tworzenia fikcyjnych SKU: 11 urządzeń SN/nN (w tym detektor 50), 5 odmian WN e²TANGO-2000, 1 aplikacja SZR/PPZ.
+- Indeks **17 pozycji źródłowych** w `network_model/catalog/data/e2tango_rodzina_2026.json` (odczyt: `elektrometal_etango_family.py`), bez tworzenia fikcyjnych SKU: 11 urządzeń SN/nN (w tym detektor 50), 5 odmian WN e²TANGO-2000, 1 aplikacja SZR/PPZ.
 - **10 realnych typów SN** dostępnych w kanonicznym katalogu: 100/150/200/250/400/450/600/800/1000/1200; 50 to detektor, 2000 to WN, SZR/PPZ to automatyka — wszystkie trzy kategorie wyłączone z wybieralnych przekaźników SN.
 - API indeksu: `GET /api/catalog/elektrometal-etango-family`. Każdy wpis posiada źródło, zakres i jawny brak potwierdzenia nastaw konkretnej sztuki.
 - Rozwinięcie źródeł producenta, funkcji, ograniczeń i niespójności istniejących modeli analitycznych: [E2TANGO_PELNA_RODZINA_AUDYT_2026_10_31.md](E2TANGO_PELNA_RODZINA_AUDYT_2026_10_31.md).
