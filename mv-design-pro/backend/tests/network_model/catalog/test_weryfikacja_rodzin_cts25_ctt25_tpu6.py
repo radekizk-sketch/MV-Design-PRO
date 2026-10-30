@@ -16,6 +16,9 @@ def test_kpb_cts25_karta_2203_4_rdzenie_i_pelny_zakres() -> None:
     assert f["secondary_current_options_a"] == [1, 5]
     assert f["core_count_max"] == 4
     assert f["ith_range_ka"] == [2, 80]
+    assert f["power_frequency_withstand_kv"] == 50
+    assert f["lightning_impulse_withstand_kv"] == 125
+    assert f["mass_kg"] == 28
     assert f["burden_options_va"][0] == 2.5
     assert f["fs_options"] == [5, 10]
     assert f["alf_options"] == [5, 10, 15, 20]
@@ -38,11 +41,16 @@ def test_kpb_ctt25_przepustowy_tylko_wtorne_odczepy() -> None:
     assert f["fs_options"] == [5, 10]
     assert f["alf_options"] == [5, 10, 15, 20]
     assert f.get("ith_range_ka") is None  # producent nie podał na stronie
+    assert f["power_frequency_withstand_kv"] == 50
+    assert f["lightning_impulse_withstand_kv"] == 125
+    assert f["mass_kg"] == 17
 
 
 def test_abb_tpu6_rodzina_z_dtr_bez_fikcyjnych_zaczepow() -> None:
     f = _rodzina("TPU 6x.xx", "ABB")
     assert f["um_options_kv"] == [24, 25]
+    assert f["power_frequency_withstand_options_kv"] == [50, 55]
+    assert f["rated_frequency_options_hz"] == [50, 60]
     assert f["secondary_current_options_a"] == [1, 5]
     assert (f["primary_a_min"], f["primary_a_max"]) == (10, 3200)
     assert f["core_count_max"] == 6
