@@ -7,8 +7,9 @@ https://www.operator.enea.pl/media/698/uklady-pomiarowe-energii-elektrycznej-obo
 
 ## 1. Korekta katalogu po audycie
 
-Starszy katalog rozdzielał pozycję 200–400/5 A na profile 200/5 i 400/5.
-Ten zapis nie odzwierciedla tabeli ENEA. Dla analogicznej pozycji 50–100/5 A
+Starszy katalog miał pojedyncze profile 200/5 A i 400/5 A, które mogą
+poprawnie opisywać aparaty istniejących stacji, ale NIE są równoważne
+nowemu przełączalnemu profilowi 200–400/5 A ENEA. Dla analogicznej pozycji 50–100/5 A
 również wymagany jest **jeden model o dwóch zakresach**.
 
 Dodano do `get_default_mv_catalog().ct_types`:
@@ -94,13 +95,37 @@ Nie są automatycznie zgodne z wymaganym w nowych układach rozliczeniowych
 0,2S FS≤5. Do doboru takiego układu potrzebna jest inna,
 ściśle potwierdzona konfiguracja producenta.
 
-## 5. Zachowanie zgodności starych projektów
+## 5. Równoległe typy jednozakresowe — także w istniejących stacjach
 
-Historyczne profile ENEA 200/5, 400/5, 50/5 i 100/5 A pozostały z
-TYMI SAMYMI ID. Ich nazwy i `verification_note` otrzymały informację
-`LEGACY`, aby do nowych projektów wybierać odpowiednie kanoniczne
-profile wieloprzekładniowe. Nie wykonujemy automatycznej migracji
-aktywnych nastaw ani zmiany topologii istniejących projektów.
+**Pojedyncze 200/5 A, 400/5 A, 50/5 A i 100/5 A są prawidłowymi
+rodzajami przekładników, nie aparaturą automatycznie przestarzałą.**
+Wszystkie wcześniejsze ID pozostały i mają neutralne nazwy
+„CT jednozakresowy”, bez blokady wyboru.
+
+Istotna różnica: dla **nowego układu pomiarowo-rozliczeniowego ENEA**
+standard wskazuje 50–100/5 i 200–400/5 A. Dla **odwzorowania
+istniejącej stacji**, pozostałych obwodów pomiarowych, zabezpieczeń
+oraz urządzeń odbiorcy należy zachować możliwość wyboru
+rzeczywiście istniejącego jednozakresowego CT. Zgodność konkretnego
+zastosowania z aktualnymi wymaganiami sprawdza się odrębnie;
+nie wolno utożsamiać „typ dostępny w katalogu” z „typ zgodny
+z każdym nowym układem rozliczeniowym ENEA”.
+
+**Dowód terenowy z dokumentacji ENEA 2026:** modernizacja pola nr 16
+w GPZ Kościan obejmuje demontaż istniejących CT
+**4MC 200/5/5 A** i montaż nowych **200–400/5/5/5 A**.
+Zapis zamówienia potwierdza współistnienie tych rozwiązań, ale nie
+stanowi podstawy do narzucenia wymiany przy każdej istniejącej stacji.
+Źródło:
+https://www.tender-vision.com/przetargi/przetarg/p120021115400000041732026-od5-zir-dostosowanie-pola-liniowego-sn-nr-16-w-gpz-kos-404ba2b5
+
+**ENEA, rozdz. 1–2 standardu 05.2022-2:** nowo zabudowywane układy
+oraz modernizowane po ocenie możliwości i zasadności zastosowania
+standardu w danym przypadku. Nie ma automatycznego nakazu wymiany
+wszystkich prawidłowych CT jednozakresowych.
+
+Nadal nie wykonujemy automatycznej migracji nastaw czy topologii projektów,
+a aktywne zaczepy nie są dopisywane do aparatów bez zaczepów.
 
 ## 6. Testy / Ubuntu
 
