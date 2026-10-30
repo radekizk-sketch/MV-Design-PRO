@@ -541,6 +541,27 @@ export interface VTCatalogType extends CatalogType {
   secondary_windings?: readonly Record<string, unknown>[] | null;
 }
 
+/** Rodzina producenta CT/VT — nie skonfigurowany i nieprzypisywalny aparat. */
+export interface InstrumentManufacturerFamilyCatalogType extends CatalogType {
+  model_family: string;
+  transformer_kind: 'CT' | 'VT' | 'COMBINED';
+  mounting: string;
+  voltage_domain: 'SN' | 'nN';
+  record_kind: 'MANUFACTURER_FAMILY_NOT_SKU';
+  catalog_status: 'REFERENCYJNY_V1';
+  source_reference: string;
+  verification_note: string;
+  um_kv?: number;
+  primary_a_min?: number;
+  primary_a_max?: number;
+  secondary_current_options_a?: number[];
+  core_count_max?: number;
+  accuracy_options?: string[];
+  burden_options_va?: number[];
+  ith_range_ka?: number[];
+  residual_capability?: boolean;
+}
+
 /** Ferranti / zero-sequence current sensor 3I0 (nie klasyczny CT fazowy). */
 export interface FerrantiCatalogType extends CatalogType {
   manufacturer: string;
@@ -755,7 +776,7 @@ export type CatalogNamespace =
 export type TypeCategory = 'LINE' | 'HV_OVERHEAD_CONDUCTOR' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
-  | 'CT' | 'VT' | 'FERRANTI' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
+  | 'CT' | 'VT' | 'FERRANTI' | 'INSTRUMENT_FAMILY' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
   | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 
 /**
