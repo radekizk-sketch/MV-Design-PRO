@@ -267,6 +267,11 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       ratio_secondary_a: 1,
       accuracy_class: '5P20',
       burden_va: 15,
+      core_count: 2,
+      secondary_cores: [
+        { index: 1, role: 'METERING', accuracy_class: '0.2S', burden_va: 10, fs: 5 },
+        { index: 2, role: 'PROTECTION', accuracy_class: '5P20', burden_va: 15, alf: 20 },
+      ],
     },
   ],
   VT: [
@@ -278,6 +283,11 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       ratio_secondary_v: 100,
       accuracy_class: '0.5',
       burden_va: 30,
+      has_residual_winding: true,
+      secondary_windings: [
+        { index: 1, role: 'METERING', rated_voltage_v: 57.735, accuracy_class: '0.5', burden_va: 30, connection: 'STAR_PER_PHASE_BANK' },
+        { index: 2, role: 'RESIDUAL_3U0', rated_voltage_v: 33.333, accuracy_class: '3P', burden_va: 30, connection: 'OPEN_DELTA_THREE_PHASE_BANK' },
+      ],
     },
   ],
   FERRANTI: [{
@@ -532,6 +542,38 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getByText('8.1')).toBeInTheDocument();
     expect(screen.getByText('0.22')).toBeInTheDocument();
     expect(screen.queryByText('brak danych')).not.toBeInTheDocument();
+  });
+
+  it('CT wielordzeniowy pokazuje każdy rdzeń i odrębne FS/ALF', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser initialTab="CT" />);
+    await user.click(await screen.findByText('PP 400/1 A'));
+    const panel = screen.getByTestId('type-library-instrument-windings');
+    expect(panel).toHaveTextContent('Rdzenie przekładnika prądowego');
+    expect(panel).toHaveTextContent('0,2S');
+    expect(panel).toHaveTextContent('FS 5');
+    expect(panel).toHaveTextContent('5P20');
+    expect(panel).toHaveTextContent('ALF 20');
+    expect(screen.getByTestId('type-library-details-grid')).not.toHaveTextContent('[object Object]');
+  });
+
+  it('VT odróżnia połączenie resztkowe 3U0 od klasy 3P', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser initialTab="VT" />);
+    await user.click(await screen.findByText('PN 15 kV'));
+    const panel = screen.getByTestId('type-library-instrument-windings');
+    expect(panel).toHaveTextContent('Uzwojenie resztkowe 3U₀');
+    expect(panel).toHaveTextContent('Otwarty trójkąt');
+    expect(panel).toHaveTextContent('3P');
+  });
+
+  it('osobna kategoria Ferrantiego pokazuje przekładnię zwojową, nie 470/1 A', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser initialTab="FERRANTI" />);
+    await user.click(await screen.findByText('Schneider Electric CSH120 – czujnik 3I₀'));
+    expect(screen.getByText('Przekładnia zwojowa czujnika 3I₀')).toBeInTheDocument();
+    expect(screen.getByText('1/470')).toBeInTheDocument();
+    expect(screen.queryByText('Przekładnia pierwotna [A]')).not.toBeInTheDocument();
   });
 
   it('filters visible types by search query', async () => {
