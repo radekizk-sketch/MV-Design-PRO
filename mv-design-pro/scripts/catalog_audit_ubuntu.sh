@@ -18,6 +18,7 @@ python -m pytest -q \
   backend/tests/network_model/catalog/test_ct_vt_enea_manufacturer_2026.py \
   backend/tests/network_model/catalog/test_enea_ct_multirange_catalog.py \
   backend/tests/network_model/catalog/test_abb_kokm_cable_phase_catalog.py \
+  backend/tests/network_model/catalog/test_project_reference_ct_vt_2026.py \
   backend/tests/network_model/catalog/test_ct_vt_manufacturers_poland_2026.py \
   backend/tests/network_model/catalog/test_other_instrument_manufacturers_pl.py \
   backend/tests/network_model/test_lv_catalog_p02.py \

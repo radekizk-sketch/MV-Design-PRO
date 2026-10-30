@@ -453,7 +453,7 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     Pomiar 2026-10-30: 8142 = 8109 + 13 CT ENEA dwuprzekładniowych + 3 CT nN + 17 ABB KOKM fazowych; wcześniej 8101 = 8029 + 36 CT ENEA + 1 ABB TPU tabliczka + 17 ABB TPU standard + 6 VT ENEA + 9 VT ABB UDZ24 + 3 VT ESITAS; dawniej 7851 (po 18 transformatorach blokowych 0,65 kV + 4 wariantach
     Vestas V112, karta KATALOG-TURBINY-TOR-V112)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 8142
+    assert len(rekordy) == 8147
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 
