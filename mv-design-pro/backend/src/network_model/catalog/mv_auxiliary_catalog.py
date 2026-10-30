@@ -2000,7 +2000,7 @@ def get_all_protection_device_types() -> list[dict]:
             "name_pl": "Sterownik polowy Elektrometal e²TANGO-250",
             "params": {
                 "vendor": "ELEKTROMETAL",
-                "series": "e²TANGO-250",
+                "series": "e2TANGO",
                 "revision": None,
                 "analytical_library_ref": None,
                 "notes_pl": (
@@ -2028,7 +2028,7 @@ def get_all_protection_device_types() -> list[dict]:
             "name_pl": "Sterownik polowy Elektrometal e²TANGO-450",
             "params": {
                 "vendor": "ELEKTROMETAL",
-                "series": "e²TANGO-450",
+                "series": "e2TANGO",
                 "revision": None,
                 "analytical_library_ref": None,
                 "notes_pl": (
