@@ -12,14 +12,15 @@ from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import VTType
 
 
-def test_41_rodzin_9_producentow_z_wiarygodnym_zrodlem() -> None:
+def test_49_rodzin_12_producentow_z_wiarygodnym_zrodlem() -> None:
     items = get_all_instrument_transformer_manufacturer_families_pl()
-    assert len(items) == 41
+    assert len(items) == 49
     assert list_instrument_transformer_families() == items
-    assert len({r["id"] for r in items}) == 41
+    assert len({r["id"] for r in items}) == 49
     assert {item["manufacturer"] for item in items} == {
         "KPB Intra", "RITZ", "Arteche", "ALCE Elektrik", "ESITAS",
         "PLESSE", "ZWARPOL", "PFIFFNER", "MBS",
+        "Łukasiewicz-ITR", "SPIE Energotest", "ZELISKO",
     }
     for record in items:
         assert record["record_kind"] == "MANUFACTURER_FAMILY_NOT_SKU"
@@ -27,7 +28,9 @@ def test_41_rodzin_9_producentow_z_wiarygodnym_zrodlem() -> None:
         assert record["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
         assert "https://" in record["source_reference"]
         assert record["voltage_domain"] in ("SN", "nN")
-        assert record["transformer_kind"] in ("CT", "VT")
+        assert record["transformer_kind"] in (
+            "CT", "VT", "CT_SENSOR", "VT_SENSOR", "ZERO_SEQUENCE",
+        )
         assert not any(key in record for key in (
             "ratio_primary_a", "ratio_secondary_a",
             "ratio_primary_v", "ratio_secondary_v",
@@ -87,3 +90,22 @@ def test_esitas_trzy_numery_z_polskiej_oferty_roundtrip_bez_fv_uzwojenia_resztko
         assert VTType.from_dict(d).to_dict() == d
     assert len(repo.ct_types) == 68
     assert len(repo.vt_types) == 31
+
+
+def test_rodziny_sensorow_niskomocowych_nie_sa_klasycznymi_ct() -> None:
+    families = get_all_instrument_transformer_manufacturer_families_pl()
+    itr = [x for x in families if x["manufacturer"] == "Łukasiewicz-ITR"]
+    assert len(itr) == 6
+    assert {x["model_family"] for x in itr} == {
+        "CR", "CRR", "UR56", "UR66", "UR90", "URW"
+    }
+    assert {x["transformer_kind"] for x in itr} == {"CT_SENSOR", "VT_SENSOR"}
+    assert next(x for x in itr if x["model_family"] == "CRR")["mounting"] == "SPLIT_RING"
+    assert all("1A/5A" in x["verification_note"] or "100V" in x["verification_note"] for x in itr)
+    assert not any("ratio_secondary_a" in x or "ratio_secondary_v" in x for x in itr)
+    earth = next(x for x in families if x["manufacturer"] == "SPIE Energotest")
+    assert earth["model_family"] == "I0"
+    assert earth["transformer_kind"] == "ZERO_SEQUENCE"
+    assert earth["mounting"] == "RING"
+    zelisko = next(x for x in families if x["manufacturer"] == "ZELISKO")
+    assert zelisko["transformer_kind"] == "VT_SENSOR"
