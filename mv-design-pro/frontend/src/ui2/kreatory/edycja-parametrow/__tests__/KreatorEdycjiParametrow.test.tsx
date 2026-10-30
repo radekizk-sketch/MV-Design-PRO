@@ -475,7 +475,8 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       // Moc znamionowa bez tabliczki: reguła propozycji z punktu pracy, bez liczby liczonej w UI.
       expect(sekcja).toHaveTextContent(
         'Puste pole: wartość robocza (założenie inżynierskie): Tabliczka maszyny nie podaje ani mocy '
-          + 'znamionowej P_rM',
+          + 'czynnej znamionowej, ani mocy pozornej znamionowej — przyjęto moc znamionową z mocy '
+          + 'czynnej punktu pracy elementu.',
       );
       expect(tekstZrodlowy(sekcja)).toContain('Moc znamionowa (mechaniczna) jednej maszyny $P_{rM}$ [MW]');
       // Bez zmiany wartości maszyny nic do zapisu.

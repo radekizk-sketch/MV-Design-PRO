@@ -61,12 +61,13 @@ describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)'
     const ok = screen.getByTestId('lv-domain-badge-swz-QF-01');
     expect(ok).toHaveAttribute('data-swz-status', 'spełnia');
     expect(ok.textContent).toContain('SWZ ✓');
-    expect(ok.textContent).toContain('Ik₁min 2496 A');
+    // Symbol składa TekstSvgZWzorami (indeks jako <tspan>), textContent czyta „Ik1,min”.
+    expect(ok.textContent).toContain('Ik1,min 2496 A');
     expect(ok.textContent).toContain('t ≤ 0,40 s');
     const zle = screen.getByTestId('lv-domain-badge-swz-QF-02');
     expect(zle).toHaveAttribute('data-swz-status', 'nie spełnia');
     expect(zle.textContent).toContain('SWZ ✗');
-    expect(zle.textContent).toContain('Ik₁min 61 A');
+    expect(zle.textContent).toContain('Ik1,min 61 A');
     expect(zle.textContent).toContain('Ia wym. 630 A');
     const nie = screen.getByTestId('lv-domain-badge-swz-FU-03');
     expect(nie).toHaveAttribute('data-swz-status', 'nierozstrzygalne');
