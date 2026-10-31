@@ -3,11 +3,23 @@
 **Data odniesienia:** 2026-10-30  
 **Status:** RESEARCH / DO DECYZJI OPU­SA, NIE IMPLEMENTACJA, NIE WERDYKT ENEA/IEC, NIE B-02  
 **Produkt:** MV-DESIGN-PRO — środowisko modelowania, obliczeń, symulacji i projektowania sieci SN; **NIE SCADA i NIE system sterowania obiektem**.  
-**Mandat:** GPT-6 zbiera źródła, ustalenia, luki i hipotezy; **Claude Opus decyduje, co przyjmuje, odrzuca i w jakim zakresie**. Ostatnie zatwierdzenie wyglądu SLD = właściciel, bramka B-02.
+**Mandat:** GPT-6 zbiera źródła, ustalenia, luki i hipotezy. **Właściciel wiążąco WYBRAŁ e²TANGO jako docelową estetykę; Claude Opus wybiera i ocenia sposoby jej realizacji oraz pozostałe rozwiązania techniczne.** Odbiór B-02 = właściciel.
+
+## DECYZJA WŁAŚCICIELA — WIĄŻĄCA (2026-10-31)
+
+**WYBRANY KIERUNEK WIZUALNY: e²TANGO (Elektrometal Energetyka). TO NIE JEST KANDYDAT DO AKCEPTACJI PRZEZ OPU­SA.**
+
+Docelowy SLD MV-DESIGN-PRO ma posiadać estetykę inspirowaną synoptyką e²TANGO: precyzyjne, smukłe linie; czytelne, zwarte, normowo poprawne znaki aparatów; ciemny ekran inżynierski; oszczędny kolor stanu; minimalizm bez nadmiarowych obwiedni, kółek, ozdobnych kafli oraz animacji. Dopuszczalny jest osobny wydruk monochromatyczny.
+
+**Rozdzielenie kompetencji:** właściciel ustalił kierunek estetyczny i nie deleguje wyboru stylu na Opusa. **Opus odpowiada za konkretną geometrię, proporcje, grubości linii, skalowanie LOD0–LOD2, integrację, zachowanie poprawności wg ENEA/IEC i testowalną rekomendację wykonawczą.** Zamiast odrzucać e²TANGO jako kierunek, Opus może odrzucać nieudane sposoby jego realizacji. Wybór konkretnego kształtu wymaga technicznego dowodu; nie kopiować nieuprawnionych materiałów producenta. Werdykt wizualny B-02 pozostaje po stronie właściciela.
+
+**Granica produktu:** narzędzie obliczeniowo-symulacyjne i projektowe, **nie SCADA**. Nie implementować łączności online, RTU, komend do urządzeń, historian ani dyspozytorskich paneli.
+
+---
 
 ## 0. ZASADA, KTÓREJ NIE WOLNO PRZEOCZYĆ
 
-- **e²TANGO** (sterowniki polowe, ekran synoptyki) = **preferencja estetyczna właściciela**: techniczny minimalizm, cienkie precyzyjne kreski, ciemne tło, zwarte symbole, brak ozdobników i wielkich kafli. To jest kierunek wizualny — nie przenosimy hardware'u, zdalnego sterowania ani praw vendorowych.
+- **e²TANGO** (sterowniki polowe, ekran synoptyki) = **wiążąca decyzja estetyczna właściciela**: techniczny minimalizm, cienkie precyzyjne kreski, ciemne tło, zwarte symbole, brak ozdobników i wielkich kafli. To jest kierunek wizualny — nie przenosimy hardware'u, zdalnego sterowania ani praw vendorowych.
 - **e²YANKEE** (SCADA Elektrometal) = dodatkowy **dowód języka prezentacji stanu** (czerwony zamknięty, zielony otwarty, żółty znak „?” przy braku wiedzy), oraz hierarchii widok stacji → widok pola. Nie kopiujemy pulpitu dyspozytora do produktu.
 - **Schneider EcoStruxure Power Operation** = **wzorce semantyczne i komponentowe**: oddzielenie stanu wyłącznika, pozycji członu, uziemnika, trip, jakości danych; prymitywy wtyk–gniazdo, biblioteki małe/duże; walidacja połączeń. To nie jest nakaz kopiowania TGML ani platformy SCADA.
 - **ENEA + IEC** = punkt odniesienia poprawności aparatów, schematów i przyłączeń. Ostateczny kształt wymaga dowodu z autoryzowanego źródła, a nie deklaracji zgodności w komentarzu SVG.
@@ -59,7 +71,7 @@
 
 ## 6. Model współpracy
 
-Pakiet jest **materiałem wejściowym**, nie nakazem wdrożenia. Opus:
+Pakiet jest **materiałem wejściowym**, nie nakazem wdrożenia. Opus (bez kwestionowania decyzji o kierunku e²TANGO):
 1. niezależnie czyta źródła i stan aktualnej gałęzi;
 2. wybiera: PRZYJĄĆ / ZMODYFIKOWAĆ / ODRZUCIĆ / BRAK DOWODU dla każdej propozycji;
 3. przyjmuje minimalny zakres zmian odpowiadający realnej luce, bez przebudowy całego systemu;
