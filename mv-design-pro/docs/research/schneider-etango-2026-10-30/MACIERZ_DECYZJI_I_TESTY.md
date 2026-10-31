@@ -1,8 +1,20 @@
 # Macierz kandydatów, kontrakty symulacji i testy — materiał do decyzji Opusa
 
-**Status:** NIEOBOWIĄZUJĄCE kandydaty, bez wdrożenia. Opus ma prawo odrzucić wszystkie.  
+**Status:** kandydaty techniczne bez wdrożenia. **D-01 (kierunek e²TANGO) jest WIĄŻĄCĄ DECYZJĄ WŁAŚCICIELA, nie kandydatem do odrzucenia przez Opusa.** Pozostałe kandydaty Opus może przyjąć, zmodyfikować lub odrzucić.  
 **Cel:** symulacja stanów sieci SN i ich wpływu na obliczenia, w estetyce e²TANGO; **bez runtime SCADA**.  
 **Zasada:** nie zmieniać fizyki solverów, nie przebudowywać architektury bez wykazanego błędu. B-01/B-02 obowiązują.
+
+## DECYZJA WŁAŚCICIELA — WIĄŻĄCA (2026-10-31)
+
+**WYBRANY KIERUNEK WIZUALNY: e²TANGO (Elektrometal Energetyka). TO NIE JEST KANDYDAT DO AKCEPTACJI PRZEZ OPU­SA.**
+
+Docelowy SLD MV-DESIGN-PRO ma posiadać estetykę inspirowaną synoptyką e²TANGO: precyzyjne, smukłe linie; czytelne, zwarte, normowo poprawne znaki aparatów; ciemny ekran inżynierski; oszczędny kolor stanu; minimalizm bez nadmiarowych obwiedni, kółek, ozdobnych kafli oraz animacji. Dopuszczalny jest osobny wydruk monochromatyczny.
+
+**Rozdzielenie kompetencji:** właściciel ustalił kierunek estetyczny i nie deleguje wyboru stylu na Opusa. **Opus odpowiada za konkretną geometrię, proporcje, grubości linii, skalowanie LOD0–LOD2, integrację, zachowanie poprawności wg ENEA/IEC i testowalną rekomendację wykonawczą.** Zamiast odrzucać e²TANGO jako kierunek, Opus może odrzucać nieudane sposoby jego realizacji. Wybór konkretnego kształtu wymaga technicznego dowodu; nie kopiować nieuprawnionych materiałów producenta. Werdykt wizualny B-02 pozostaje po stronie właściciela.
+
+**Granica produktu:** narzędzie obliczeniowo-symulacyjne i projektowe, **nie SCADA**. Nie implementować łączności online, RTU, komend do urządzeń, historian ani dyspozytorskich paneli.
+
+---
 
 ## 1. Matryca decyzji z dowodem i kosztami
 
@@ -10,7 +22,7 @@ Kolumna „Sugestia” to **opinia badawcza**, nie decyzja Opusa.
 
 | ID | Kategoria | Kandydat | Dowód | Sugestia | Ryzyko / warunek |
 |---|---|---|---|---|---|
-| D-01 | Visual | e²TANGO jako kierunek wizualny SLD: cienkie jasne linie, ciemny podkład, zwięzłe etykiety | E01–E03/E14 | ROZWAŻ | Brak licencjonowanego SVG; nie klonować panelu |
+| D-01 | Visual | **Wybrany przez właściciela kierunek e²TANGO**: cienkie jasne linie, ciemny podkład, zwięzłe etykiety | Decyzja właściciela 2026-10-31; E01–E03/E14 jako materiał realizacyjny | **WIĄŻĄCE — REALIZOWAĆ** | Opus określa sposób i parametry, nie negocjuje wyboru estetyki; brak licencjonowanego SVG, nie klonować panelu |
 | D-02 | Visual | Mniej kolorowanych prostokątów i ozdobnych kółek, większa dyscyplina linii | O + decyzja właściciela | ROZWAŻ | Najpierw aktualny renderer, potem lokalna korekta |
 | D-03 | Visual | Wspólna geometria oznaczenia stanu, kolor jako pomocniczy | R03 + S01 | ROZWAŻ | Wymóg rozróżnienia open/unknown w mono |
 | D-04 | Visual | Czerwony zamknięty / zielony otwarty jak e²YANKEE | E07, atlas właściciela | DO DECYZJI | Konflikt ze starszą `SLD_SYMBOL_LIBRARY.md` |
@@ -37,7 +49,7 @@ Kolumna „Sugestia” to **opinia badawcza**, nie decyzja Opusa.
 | D-25 | Zabezpieczenia | automatyczne wyłączenie aparatu po obliczeniu zwarcia | Model PR | TYLKO JEŚLI SOLVER I LOGIKA SĄ ZWERYFIKOWANE | Nie symulować fikcyjnego trip matrix |
 | D-26 | Wydruk | wersja monochromatyczna i eksport SVG/PDF | R03 | ZACHOWAĆ | Barwy nie niosą jedynej semantyki |
 
-**Obowiązkowy wynik Opusa per D-xx:** `PRZYJĄĆ`, `ZMODYFIKOWAĆ`, `ODRZUCIĆ`, `BRAK DOWODU`; uzasadnienie + plik kontekstowy + brak/regresja.
+**Obowiązkowy wynik Opusa per D-02..D-26 (D-01 już rozstrzygnięte decyzją właściciela):** `PRZYJĄĆ`, `ZMODYFIKOWAĆ`, `ODRZUCIĆ`, `BRAK DOWODU`; uzasadnienie + plik kontekstowy + brak/regresja.
 
 ## 2. Formalny model przypadków pracy — propozycja do oceny
 
