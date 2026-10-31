@@ -1,7 +1,19 @@
 # Claude Opus — kontrakt niezależnego przeglądu pakietu Schneider × e²TANGO
 
-**Rodzaj zadania:** audyt architektoniczny i inżynierski; **wyłącznie decyzja o przydatności, nie automatyczna implementacja**.  
+**Rodzaj zadania:** audyt architektoniczny i inżynierski oraz decyzje o sposobie realizacji **wiążącej decyzji właściciela o estetyce e²TANGO**; bez automatycznej implementacji.  
 **Data:** 2026-10-30. **Repo:** `radekizk-sketch/MV-Design-PRO`. **Pakiet:** `mv-design-pro/docs/research/schneider-etango-2026-10-30/`.
+
+## DECYZJA WŁAŚCICIELA — WIĄŻĄCA (2026-10-31)
+
+**WYBRANY KIERUNEK WIZUALNY: e²TANGO (Elektrometal Energetyka). TO NIE JEST KANDYDAT DO AKCEPTACJI PRZEZ OPU­SA.**
+
+Docelowy SLD MV-DESIGN-PRO ma posiadać estetykę inspirowaną synoptyką e²TANGO: precyzyjne, smukłe linie; czytelne, zwarte, normowo poprawne znaki aparatów; ciemny ekran inżynierski; oszczędny kolor stanu; minimalizm bez nadmiarowych obwiedni, kółek, ozdobnych kafli oraz animacji. Dopuszczalny jest osobny wydruk monochromatyczny.
+
+**Rozdzielenie kompetencji:** właściciel ustalił kierunek estetyczny i nie deleguje wyboru stylu na Opusa. **Opus odpowiada za konkretną geometrię, proporcje, grubości linii, skalowanie LOD0–LOD2, integrację, zachowanie poprawności wg ENEA/IEC i testowalną rekomendację wykonawczą.** Zamiast odrzucać e²TANGO jako kierunek, Opus może odrzucać nieudane sposoby jego realizacji. Wybór konkretnego kształtu wymaga technicznego dowodu; nie kopiować nieuprawnionych materiałów producenta. Werdykt wizualny B-02 pozostaje po stronie właściciela.
+
+**Granica produktu:** narzędzie obliczeniowo-symulacyjne i projektowe, **nie SCADA**. Nie implementować łączności online, RTU, komend do urządzeń, historian ani dyspozytorskich paneli.
+
+---
 
 ## Misja
 
@@ -9,7 +21,7 @@ Właściciel MV-DESIGN-PRO chce **profesjonalnego, dokładnego, atrakcyjnego i n
 
 **Pamiętaj, że produkt jest systemem inżynierskim do modelowania, symulacji, obliczeń i projektowania SN, a NIE prawdziwą SCADA.** Nie przenoś sterowania obiektem, RTU, historian, ani logiki telemetrycznej tylko po to, by przypominać e²TANGO.
 
-Zespół GPT-6 przygotował materiały badawcze i dowody. **Ty, Opusie, jesteś jedynym architektem decydującym, które rozwiązania przyjąć, odrzucić, przerobić i które odłożyć bez wdrożenia**. Nie musisz zgadzać się z sugestiami. Każde rozstrzygnięcie uzasadnij dowodowo.
+Zespół GPT-6 przygotował materiały badawcze i dowody. **Ty, Opusie, jesteś architektem rozstrzygającym dobór środków technicznych i kandydatów z dokumentacji, NIE wybór kierunku wizualnego: właściciel wybrał e²TANGO.** Nie musisz zgadzać się z sugestiami. Każde rozstrzygnięcie uzasadnij dowodowo.
 
 ## Obowiązujący porządek lektury
 
@@ -42,7 +54,7 @@ Zespół GPT-6 przygotował materiały badawcze i dowody. **Ty, Opusie, jesteś 
 
 ### B. Styl e²TANGO — preferencja właściciela
 
-- Ustal konkretną paletę, hierarchię i logikę glifu **bez kopiowania OEM assetów**.
+- Zrealizuj wybrany kierunek e²TANGO: ustal konkretną paletę, hierarchię i logikę glifu **bez kopiowania OEM assetów**.
 - Wybierz 1–2 kandydatów **minimalnych**, nie kolejny atlas 60 eksperymentalnych ikon.
 - Porównaj do rzeczywistego zrzutu e²TANGO, ale pokaż, co jest obserwacją, co autorskim projektem, a co normowym wzorcem.
 - Sprawdź konflikt starego opisu palety `closed green/open red` względem nowszego atlasu i źródła e²YANKEE `closed red/open green`; źródłem prawdy jest aktywny renderer i decyzje właściciela.
