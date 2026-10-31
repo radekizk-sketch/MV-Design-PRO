@@ -1,9 +1,21 @@
 # e²TANGO / e²YANKEE — referencja estetyczna i symbolika elektroenergetyczna
 
-**Status:** materiał porównawczy do wyboru Opusa i bramki B-02. **Właściciel wskazał e²TANGO jako ulubiony kierunek wizualny.**  
+**Status:** materiał porównawczy dla Opusa i bramki B-02. **Właściciel wiążąco ustalił docelowy kierunek wizualny e²TANGO (2026-10-31); wybór stylu nie jest do dyskusji, parametry realizacji są do decyzji Opusa.**  
 **Zakres:** ekrany e²TANGO 600/800/1000/1200, e²TANGO-2000 jako materiał pomocniczy, edytor Studio, miniSCADA oraz publikacje o e²YANKEE.  
 **Czego nie robimy:** kopii 1:1 całego HMI, bitmap/ikon producenta, sprzętowego menu, rzeczywistego sterowania.  
 **Źródła i ograniczenia:** [REJESTR_ZRODEL.md](REJESTR_ZRODEL.md), E01–E15.
+
+## DECYZJA WŁAŚCICIELA — WIĄŻĄCA (2026-10-31)
+
+**WYBRANY KIERUNEK WIZUALNY: e²TANGO (Elektrometal Energetyka). TO NIE JEST KANDYDAT DO AKCEPTACJI PRZEZ OPU­SA.**
+
+Docelowy SLD MV-DESIGN-PRO ma posiadać estetykę inspirowaną synoptyką e²TANGO: precyzyjne, smukłe linie; czytelne, zwarte, normowo poprawne znaki aparatów; ciemny ekran inżynierski; oszczędny kolor stanu; minimalizm bez nadmiarowych obwiedni, kółek, ozdobnych kafli oraz animacji. Dopuszczalny jest osobny wydruk monochromatyczny.
+
+**Rozdzielenie kompetencji:** właściciel ustalił kierunek estetyczny i nie deleguje wyboru stylu na Opusa. **Opus odpowiada za konkretną geometrię, proporcje, grubości linii, skalowanie LOD0–LOD2, integrację, zachowanie poprawności wg ENEA/IEC i testowalną rekomendację wykonawczą.** Zamiast odrzucać e²TANGO jako kierunek, Opus może odrzucać nieudane sposoby jego realizacji. Wybór konkretnego kształtu wymaga technicznego dowodu; nie kopiować nieuprawnionych materiałów producenta. Werdykt wizualny B-02 pozostaje po stronie właściciela.
+
+**Granica produktu:** narzędzie obliczeniowo-symulacyjne i projektowe, **nie SCADA**. Nie implementować łączności online, RTU, komend do urządzeń, historian ani dyspozytorskich paneli.
+
+---
 
 ## 1. Przedmiot inspiracji: NIE e²YANKEE zamiast e²TANGO
 
@@ -62,7 +74,7 @@ W opracowaniu dotyczącym e²YANKEE (E07, rys. 4–8, tabela „Sygnalizacja pra
 
 **Licencja:** linki do oceny, nie pliki do redystrybucji. Bez praw nie robić „pixel-perfect copy” vendor i nie używać oryginalnego logo/układu panelu.
 
-## 4. Kontrakt stylistyczny do rozpatrzenia przez Opusa, nie specyfikacja z góry
+## 4. Parametry realizacji wybranego przez właściciela stylu e²TANGO — do ustalenia przez Opusa
 
 Właściciel odrzucił serię wcześniejszych autorskich atlasów jako „brzydkie”. Należy zatem nie dodawać nowych ikon bez dowodu jakości.
 
