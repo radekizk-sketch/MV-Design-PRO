@@ -1,0 +1,1495 @@
+{
+  "version": "R3-2026-11-03",
+  "description": "Źródłowa baza normy ogólnej aparatury SN z uwzględnieniem niezałączonej zmiany A1:2022-06; bez licencjonowanego PDF, bez modyfikacji solwera.",
+  "sources": [
+    {
+      "id": "IEC62271_1_2018",
+      "title": "PN-EN 62271-1:2018-02 (IEC 62271-1:2017, wydanie 2.0)",
+      "kind": "norma",
+      "edition": "2018-02",
+      "iec_edition": "2017",
+      "local_filename": "PN-EN 62271-1_2018-02E.pdf",
+      "sha256": "6ecfd3a461b62b15dc70a05da2cf7b941f2f49336f17658864db8e7701eef529",
+      "pages": 136,
+      "notes": "Pełny tekst podstawowy 136 stron, IEC stron merytorycznych = numer PDF − 12. Wymaga zestawienia z PN-EN 62271-1:2018-02/A1:2022-06 (niezałączona, modyfikuje 6.4.1 i bibliografię). Norma wspólna, nie zastępuje części wyrobowych 62271-100/-102/-103/-200/-202.",
+      "status": "source_verified_amendment_missing",
+      "include_licensed_original_in_repository": false,
+      "edition_verification": {
+        "checked": "2026-11-03",
+        "iec_consolidated": "IEC 62271-1:2017+AMD1:2021",
+        "pkn_amendment": "PN-EN 62271-1:2018-02/A1:2022-06",
+        "pkn_url": "https://sklep.pkn.pl/normy/pn-en-62271-1-2018-02-a1-2022-06e.html"
+      }
+    }
+  ],
+  "records": [
+    {
+      "id": "SG-SCOPE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§1",
+        "pdf_page": 24,
+        "printed_page": 12
+      },
+      "title": "Zakres: aparatura AC powyżej 1 kV",
+      "content": "Postanowienia wspólne dotyczą aparatury rozdzielczej i sterowniczej wnętrzowej i napowietrznej o napięciu znamionowym powyżej 1000 V, przy częstotliwości pracy do 60 Hz. Odpowiednia norma wyrobu może ustalać wymagania bardziej szczegółowe.",
+      "search_terms": [
+        "SN",
+        "wyłącznik",
+        "rozłącznik",
+        "rozdzielnica",
+        "zakres"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-MV-TERM",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§1, uwaga",
+        "pdf_page": 24,
+        "printed_page": 12
+      },
+      "title": "Wysokie napięcie w terminologii serii 62271",
+      "content": "W 62271-1 termin HV oznacza napięcia znamionowe powyżej 1000 V; w dystrybucji zakres ponad 1 kV do 52 kV zwyczajowo określa się jako MV. Nie oznacza to przejścia 15 kV do poziomu WN w klasyfikacji krajowej.",
+      "search_terms": [
+        "15 kV",
+        "SN",
+        "HV",
+        "MV",
+        "terminologia"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-PRODUCT-PRIORITY",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§1",
+        "pdf_page": 24,
+        "printed_page": 12
+      },
+      "title": "Priorytet właściwej normy wyrobu",
+      "content": "PN-EN 62271-1 określa wymagania wspólne. Dobór zdolności wyłączania wyłącznika, klasyfikacji rozdzielnicy czy parametrów uziemnika wymaga odpowiedniej części wyrobowej IEC 62271 i dokumentacji producenta; nie wystarcza sama część 1.",
+      "search_terms": [
+        "62271-100",
+        "62271-102",
+        "62271-200",
+        "norma wyrobu"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-NORMAL-INDOOR",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§4.1.2",
+        "pdf_page": 40,
+        "printed_page": 28
+      },
+      "title": "Warunki normalne: wnętrzowe",
+      "content": "Dla aparatury wnętrzowej normalny przedział temperatury otoczenia wynosi od −5°C do +40°C, a średnia dobowa nie przekracza +35°C; warunki normalne obejmują wysokość do 1000 m n.p.m. Odstępstwa wymagają ustaleń dla warunków szczególnych.",
+      "search_terms": [
+        "wewnętrzna",
+        "temperatura",
+        "35C",
+        "40C",
+        "-5C",
+        "1000 m"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-INDOOR-HUMIDITY",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§4.1.2(e)",
+        "pdf_page": 40,
+        "printed_page": 28
+      },
+      "title": "Wilgotność i kondensacja w rozdzielnicy wnętrzowej",
+      "content": "Kryteria normalnej wilgotności obejmują wartości średnie względnej wilgotności 24-godzinnej i miesięcznej oraz prężności pary. Wysoka wilgotność i szybkie zmiany temperatury mogą powodować kondensację i wymagają oceny warunków instalacji.",
+      "search_terms": [
+        "wilgotność",
+        "kondensacja",
+        "ogrzewanie",
+        "rozdzielnica"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-NORMAL-OUTDOOR",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§4.1.3",
+        "pdf_page": 41,
+        "printed_page": 29
+      },
+      "title": "Warunki normalne: napowietrzne",
+      "content": "Dla aparatury napowietrznej normalne warunki obejmują temperaturę od −25°C do +40°C, średnią dobową do 35°C, nasłonecznienie do 1000 W/m², wysokość do 1000 m, oblodzenie do 20 mm i wiatr do 34 m/s. Nie są to uniwersalne parametry każdej lokalizacji.",
+      "search_terms": [
+        "napowietrzna",
+        "temperatura",
+        "-25C",
+        "wiatr",
+        "lód",
+        "nasłonecznienie"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-SPECIAL-ALTITUDE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§4.2.2",
+        "pdf_page": 41,
+        "printed_page": 29
+      },
+      "title": "Wyższe położenie i izolacja zewnętrzna",
+      "content": "Powyżej wysokości 1000 m wymagany poziom wytrzymałości izolacji zewnętrznej ustala się według IEC 60071-2; nie należy bez oceny stosować standardowych poziomów probierczych z tabel dla warunków normalnych.",
+      "search_terms": [
+        "wysokość n.p.m.",
+        "1000m",
+        "izolacja zewnętrzna"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-SPECIAL-POLLUTION",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§4.2.3",
+        "pdf_page": 42,
+        "printed_page": 30
+      },
+      "title": "Zanieczyszczenia środowiska",
+      "content": "Warunki z zapyleniem, gazami korozyjnymi, solą lub agresywnymi aerozolami wykraczające poza warunki normalne wymagają określenia klasy zanieczyszczeń i odpowiedniego doboru izolacji/aparatury.",
+      "search_terms": [
+        "zasolenie",
+        "agresywne środowisko",
+        "zanieczyszczenia"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-SPECIAL-WIND",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§4.2.6",
+        "pdf_page": 43,
+        "printed_page": 31
+      },
+      "title": "Wiatr ponad standardowe warunki",
+      "content": "Jeżeli przewidywana prędkość wiatru jest wyższa niż 34 m/s, użytkownik powinien wyspecyfikować wymagania dla konkretnego zastosowania. Dotyczy aparatury napowietrznej i jej konfiguracji.",
+      "search_terms": [
+        "wiatr",
+        "34 m/s",
+        "warunki szczególne"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-RATINGS-MATRIX",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.1",
+        "pdf_page": 43,
+        "printed_page": 31
+      },
+      "title": "Zestaw danych znamionowych",
+      "content": "Macierz danych obejmuje Ur, Ud/Up (oraz Us gdy dotyczy), fr, Ir, Ik, Ip, tk, Ua i inne wartości odpowiednie dla aparatury. To wartości zadeklarowane przez producenta, a nie automatycznie wyniki obliczeń sieci.",
+      "search_terms": [
+        "Ur",
+        "Ir",
+        "Ik",
+        "Ip",
+        "tk",
+        "Ua",
+        "katalog aparatury"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-RATED-VOLTAGE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.2.2",
+        "pdf_page": 43,
+        "printed_page": 31
+      },
+      "title": "Wybór napięcia znamionowego Ur",
+      "content": "Seria I do 245 kV obejmuje m.in. poziomy Ur=12, 17,5, 24 i 36 kV. Dla sieci o Un=15 kV standardowy poziom znamionowy Ur=17,5 kV jest właściwym kandydatem do doboru w szeregu I, lecz wymagania ENEA i warunki pracy mają pierwszeństwo przy wyborze wyrobu.",
+      "search_terms": [
+        "15 kV",
+        "17.5 kV",
+        "24 kV",
+        "Ur"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-INSULATION-17_5",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.3, tablica 1",
+        "pdf_page": 45,
+        "printed_page": 33
+      },
+      "title": "Poziom izolacji dla Ur=17,5 kV",
+      "content": "W szeregu I tablica 1 podaje dla Ur=17,5 kV standardowe wartości Ud=38 kV i Up=95 kV, a dla przerwy izolacyjnej odpowiednio 45 kV i 110 kV. Kolumny wspólnego przebiegu i przerwy izolacyjnej nie są zamienne.",
+      "search_terms": [
+        "17.5 kV",
+        "38 kV",
+        "95 kV",
+        "45 kV",
+        "110 kV",
+        "udar piorunowy"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-INSULATION-24",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.3, tablica 1",
+        "pdf_page": 45,
+        "printed_page": 33
+      },
+      "title": "Poziom izolacji dla Ur=24 kV",
+      "content": "W szeregu I dla Ur=24 kV tablica 1 wskazuje Ud=50 kV i Up=125 kV oraz dla przerwy izolacyjnej 60 kV i 145 kV. Porównanie wymaganej wytrzymałości musi uwzględnić odpowiednią drogę i rodzaj izolacji.",
+      "search_terms": [
+        "24 kV",
+        "50 kV",
+        "125 kV",
+        "145 kV"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-INSULATION-ENV",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.3",
+        "pdf_page": 44,
+        "printed_page": 32
+      },
+      "title": "Wytrzymałość izolacji a warunki pracy",
+      "content": "Poziomy znamionowe w tabelach są określone dla normalnych warunków eksploatacji do 1000 m n.p.m. i odnoszą się do znormalizowanych warunków prób; dla instalacji o warunkach specjalnych trzeba przeprowadzić osobną ocenę.",
+      "search_terms": [
+        "izolacja",
+        "warunki specjalne",
+        "Ud",
+        "Up"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-RATED-FREQUENCY",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.4",
+        "pdf_page": 48,
+        "printed_page": 36
+      },
+      "title": "Częstotliwość znamionowa",
+      "content": "Dane znamionowe aparatury zawierają fr. W projekcie należy potwierdzić zgodność z częstotliwością sieci i z dopuszczalnym zakresem pracy urządzenia.",
+      "search_terms": [
+        "fr",
+        "50 Hz"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-RATED-CONTINUOUS",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.5",
+        "pdf_page": 48,
+        "printed_page": 36
+      },
+      "title": "Prąd znamionowy ciągły Ir",
+      "content": "Ir to wartość skuteczna prądu dopuszczalna w pracy ciągłej w określonych warunkach eksploatacji. Nie należy utożsamiać Ir z prądem krótkotrwałym Ik ani z prądem obliczeniowym dla jednego szczególnego wariantu rozpływu.",
+      "search_terms": [
+        "Ir",
+        "In",
+        "obciążalność",
+        "znamionowy prąd ciągły"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-RATED-IK",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.6",
+        "pdf_page": 48,
+        "printed_page": 36
+      },
+      "title": "Wytrzymałość zwarciowa krótkotrwała Ik",
+      "content": "Ik jest prądem skutecznym, który aparat potrafi wytrzymać w pozycji zamkniętej przez znamionowy czas tk. Nie jest to automatycznie znamionowy prąd wyłączalny wyłącznika; to odrębne właściwości.",
+      "search_terms": [
+        "Ik",
+        "Ith",
+        "wytrzymałość zwarciowa",
+        "zdolność wyłączania"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-RATED-IP",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.7, tablica 5",
+        "pdf_page": 49,
+        "printed_page": 37
+      },
+      "title": "Prąd szczytowy wytrzymywany Ip",
+      "content": "Dla 50 Hz i znamionowej stałej czasowej składowej nieokresowej 45 ms typowy współczynnik wynosi Ip/Ik=2,5. Przy innych stałych czasowych współczynnik może być wyższy (tablica 5); nie należy uznawać 2,5 za bezwarunkowo poprawne dla każdej sieci.",
+      "search_terms": [
+        "Ip",
+        "Ik",
+        "2.5",
+        "kappa",
+        "prąd udarowy"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-RATED-TK",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.8",
+        "pdf_page": 49,
+        "printed_page": 37
+      },
+      "title": "Czas znamionowy zwarcia tk",
+      "content": "Preferowany znamionowy czas wytrzymywania zwarcia wynosi 1 s. Możliwe są także inne wartości, np. 0,5 s, 2 s i 3 s. Ocena odporności cieplnej wymaga zgodności czasu znamionowego z obliczonym scenariuszem.",
+      "search_terms": [
+        "tk",
+        "1s",
+        "3s",
+        "wytrzymałość cieplna"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-AUX-VOLTAGE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.9",
+        "pdf_page": 49,
+        "printed_page": 37
+      },
+      "title": "Napięcia pomocnicze i sterownicze Ua",
+      "content": "Jedno urządzenie może wykorzystywać kilka napięć pomocniczych. W doborze należy oddzielnie identyfikować Ua dla napędów, wyzwalaczy, blokad, sygnalizacji i pomiaru, zamiast przyjmować jedną wartość globalną.",
+      "search_terms": [
+        "Ua",
+        "220 DC",
+        "110 DC",
+        "sterowanie",
+        "zasilanie pomocnicze"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-EARTHING-POINT",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.3",
+        "pdf_page": 51,
+        "printed_page": 39
+      },
+      "title": "Punkt uziemienia aparatury",
+      "content": "Aparatura powinna mieć niezawodny punkt do przyłączenia przewodu uziemiającego odpowiedniego do zadanych warunków zwarciowych. Dostępne części przewodzące przewidziane do połączenia z uziemieniem muszą mieć odpowiednią ciągłość połączeń.",
+      "search_terms": [
+        "PE",
+        "uziemienie",
+        "ciągłość uziemienia"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-EARTHING-LABEL",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.3",
+        "pdf_page": 51,
+        "printed_page": 39
+      },
+      "title": "Znak zacisku ochronnego",
+      "content": "Punkt przyłączenia uziemienia ochronnego oznacza się symbolem ochronnego uziemienia zgodnym z IEC 60417-5019. To oznaczenie wyrobu, a nie definicja wszystkich symboli SLD w IEC 60617.",
+      "search_terms": [
+        "znak uziemienia",
+        "IEC 60417",
+        "IEC 60617",
+        "tabliczka"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-AUX-CIRCUITS",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.4.1",
+        "pdf_page": 51,
+        "printed_page": 39
+      },
+      "title": "Obwody pomocnicze i sterowania",
+      "content": "Podrozdział obejmuje wyposażenie pomocnicze, sterowanie, nadzór, monitoring i łączność. Wydanie z załącznika nie zawiera poprawki A1:2022-06 do 6.4.1, dlatego **kompletna ocena tego punktu wymaga zmiany A1**.",
+      "search_terms": [
+        "6.4.1",
+        "schemat sterowania",
+        "obwody pomocnicze",
+        "A1"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "amendment_missing"
+    },
+    {
+      "id": "SG-ELECTRIC-SHOCK",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.4.2",
+        "pdf_page": 52,
+        "printed_page": 40
+      },
+      "title": "Ochrona przed porażeniem obwodów pomocniczych",
+      "content": "Wymagania dotyczą środków ochrony w obwodach pomocniczych i sterowniczych z uwzględnieniem zagrożenia porażeniem. Nie wyprowadzaj szczegółowych wartości zabezpieczeń bez właściwego punktu i danych urządzenia.",
+      "search_terms": [
+        "obwody pomocnicze",
+        "ochrona przeciwporażeniowa"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-AUX-INSTALL",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.4.3",
+        "pdf_page": 53,
+        "printed_page": 41
+      },
+      "title": "Montaż wyposażenia w obudowach",
+      "content": "Komponenty obwodów pomocniczych powinny być właściwie montowane i identyfikowane, z uwzględnieniem prowadzenia przewodów, dostępności i narażenia na uszkodzenia mechaniczne.",
+      "search_terms": [
+        "szafa sterowania",
+        "montaż",
+        "przewody"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-STORED-ENERGY",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.6.1",
+        "pdf_page": 55,
+        "printed_page": 43
+      },
+      "title": "Napęd z magazynowaniem energii",
+      "content": "Dla aparatu z napędem opartym na zmagazynowanej energii określa się stan naładowania i możliwość wykonania operacji łączeniowych zgodnie z danymi znamionowymi. To warunek działania mechanizmu, odrębny od statusu styków głównych.",
+      "search_terms": [
+        "sprężyna",
+        "napęd",
+        "energia",
+        "wskazanie gotowości"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-SPRING-CHARGE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.6.3–6.6.5",
+        "pdf_page": 56,
+        "printed_page": 44
+      },
+      "title": "Naciąg sprężyny i ładowanie napędu",
+      "content": "Norma odrębnie traktuje magazynowanie energii w sprężynach, ręczne naciąganie i naciąganie silnikowe; model pola SN powinien zachować osobne atrybuty napędu i możliwości operacji.",
+      "search_terms": [
+        "napęd M",
+        "sprężyna",
+        "ładowanie silnikowe"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-RELEASES",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.9",
+        "pdf_page": 57,
+        "printed_page": 45
+      },
+      "title": "Wyzwalacze zamknięcia i otwarcia",
+      "content": "Wyzwalacze zamykające, otwierające i podnapięciowe są odrębnymi funkcjami układu łącznika, o wymaganiach dla zasilania i działania. Nie utożsamiaj wyzwalacza z samym aparatem łączeniowym.",
+      "search_terms": [
+        "wyzwalacz",
+        "cewka otwierająca",
+        "cewka zamykająca"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-NAMEPLATE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.11",
+        "pdf_page": 58,
+        "printed_page": 46
+      },
+      "title": "Tabliczka znamionowa aparatu",
+      "content": "Tabliczka musi umożliwiać identyfikację wyrobu, jego wartości znamionowych i odpowiednich parametrów pracy. Wymagania szczegółowe mogą wynikać z normy wyrobu.",
+      "search_terms": [
+        "tabliczka",
+        "numer seryjny",
+        "producent",
+        "certyfikat"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-NAMEPLATE-TABLE9",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.11.2, tablica 9",
+        "pdf_page": 59,
+        "printed_page": 47
+      },
+      "title": "Zakres danych tabliczki znamionowej",
+      "content": "Tablica 9 wymienia m.in. wytwórcę, typ i nr seryjny, Ur, Ud, Up, fr, Ir, Ik, Ip, tk, Ua oraz parametry gazowe gdzie stosowne. X oznacza oznaczenie obowiązkowe, jeśli ma zastosowanie; Y — warunkowe.",
+      "search_terms": [
+        "Ur",
+        "Ir",
+        "Ik",
+        "Ip",
+        "tk",
+        "Ua",
+        "tablica 9"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-LOCKING",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.12",
+        "pdf_page": 60,
+        "printed_page": 48
+      },
+      "title": "Urządzenia blokujące",
+      "content": "Aparaty, których błędne użycie może spowodować uszkodzenie lub które zapewniają wymagane odstępy izolacyjne, powinny mieć środki blokowania, np. możliwość zamknięcia kłódką. Logika blokad funkcjonalnych wymaga modelu aparatu i normy wyrobu.",
+      "search_terms": [
+        "blokada",
+        "odłącznik",
+        "uziemnik",
+        "kłódka"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-POSITION",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.13",
+        "pdf_page": 60,
+        "printed_page": 48
+      },
+      "title": "Wskazanie rzeczywistego położenia styków",
+      "content": "Jeśli styki nie są widoczne w każdej pozycji, aparat musi zapewniać wskazanie ich rzeczywistego położenia. Pozycje stabilne, takie jak otwarta, zamknięta i próbna, muszą być czytelnie rozróżnione przy obsłudze lokalnej.",
+      "search_terms": [
+        "pozycja",
+        "otwarty",
+        "zamknięty",
+        "Q1",
+        "Q5",
+        "NO"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-POSITION-COLORS",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.13",
+        "pdf_page": 60,
+        "printed_page": 48
+      },
+      "title": "Konwencje barw i symboli",
+      "content": "Norma odsyła do IEC 60073 dla barw, IEC 60417 dla symboli i IEC 60617 dla schematów. Sama PN-EN 62271-1 nie nakazuje jednej globalnej pary kolorów czerwony/zielony w każdym SLD. W MV-DESIGN-PRO konwencja graficzna musi być jawnie określona oddzielnie.",
+      "search_terms": [
+        "kolor otwarty",
+        "zamknięty",
+        "SLD",
+        "IEC 60617"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-IP-TOUCH",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.14.2",
+        "pdf_page": 60,
+        "printed_page": 48
+      },
+      "title": "Minimum ochrony przed dotykiem IP1XB",
+      "content": "Dla osłon aparatury część wspólna wymaga co najmniej IP1XB w zakresie ochrony przed dostępem do części niebezpiecznych i obcymi ciałami stałymi, według IEC 60529. Norma wyrobu lub ENEA mogą wymagać klasy wyższej.",
+      "search_terms": [
+        "IP1XB",
+        "ochrona przed dotykiem",
+        "IEC 60529"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-IP-WATER",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.14.3",
+        "pdf_page": 60,
+        "printed_page": 48
+      },
+      "title": "Odporność obudowy na wodę",
+      "content": "Dla wyposażenia wnętrzowego norma wspólna nie podaje minimum ochrony przed wodą (druga cyfra X); dla aparatury napowietrznej określa co najmniej IPX3. Wyższe stopnie lub dodatkowe obudowy wymagają osobnej kwalifikacji.",
+      "search_terms": [
+        "IPX3",
+        "woda",
+        "opady",
+        "IP"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-IK-PREFERRED",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.14.4",
+        "pdf_page": 60,
+        "printed_page": 48
+      },
+      "title": "Odporność mechaniczna IK",
+      "content": "Dla zastosowań wnętrzowych norma wskazuje preferowaną odporność na uderzenia IK07. Nie wolno bez dalszych wymagań traktować IK07 jako obowiązkowego minimum dla każdej rozdzielnicy.",
+      "search_terms": [
+        "IK07",
+        "udar mechaniczny",
+        "osłona"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-CREEPAGE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.15, załącznik K (informacyjny)",
+        "pdf_page": 61,
+        "printed_page": 49
+      },
+      "title": "Droga upływu w warunkach zabrudzenia",
+      "content": "Załącznik K zawiera zalecenia dotyczące doboru izolatorów i dróg upływu w warunkach zabrudzenia. To nie uniwersalna jedna długość upływu dla każdego 15 kV.",
+      "search_terms": [
+        "droga upływu",
+        "izolator",
+        "warunki zabrudzenia"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-GAS-TIGHT",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.16",
+        "pdf_page": 61,
+        "printed_page": 49
+      },
+      "title": "Szczelność układów gazowych i próżniowych",
+      "content": "Wymagania szczelności zależą od typu układu ciśnieniowego, dopuszczalnej szybkości wycieku i warunków pracy. Należy rozróżnić aparaturę gazową, próżniową i izolowaną powietrzem.",
+      "search_terms": [
+        "SF6",
+        "szczelność",
+        "gaz",
+        "próżnia"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-EMC",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§6.19",
+        "pdf_page": 62,
+        "printed_page": 50
+      },
+      "title": "Kompatybilność elektromagnetyczna",
+      "content": "Aparatura musi spełniać badania kompatybilności elektromagnetycznej określone w §7.9. Dotyczy m.in. obwodów sterowania, ochrony, monitoringu i interfejsów wtórnych.",
+      "search_terms": [
+        "EMC",
+        "przekaźnik",
+        "odporność zakłócenia"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-TYPE-TESTS",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§7.1",
+        "pdf_page": 63,
+        "printed_page": 51
+      },
+      "title": "Próby typu",
+      "content": "Badania typu dokumentują zgodność określonego wariantu konstrukcyjnego z wymaganiami normy. Raport dla innego wykonania wyrobu nie może automatycznie zastąpić dowodu dla wybranego wariantu aparatu.",
+      "search_terms": [
+        "próba typu",
+        "świadectwo",
+        "raport",
+        "certyfikat"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-DIELECTRIC-TEST",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§7.2",
+        "pdf_page": 64,
+        "printed_page": 52
+      },
+      "title": "Badania izolacji",
+      "content": "Próby izolacyjne weryfikują zdolność wyrobu do wytrzymywania wymaganych napięć probierczych. Należy rozróżnić próbę na częstotliwości sieciowej i próbę impulsem udarowym oraz stan toru i przerwy izolacyjnej.",
+      "search_terms": [
+        "Ud",
+        "Up",
+        "próby izolacyjne"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-TEMPERATURE-TEST",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§7.5",
+        "pdf_page": 73,
+        "printed_page": 61
+      },
+      "title": "Próby prądem ciągłym i przyrosty temperatury",
+      "content": "Badania prądem ciągłym dotyczą obciążenia cieplnego toru głównego i granic przyrostu temperatury. Sama zgodność Ir z obliczonym prądem nie potwierdza poprawnego montażu w dowolnej zabudowie.",
+      "search_terms": [
+        "próba nagrzewania",
+        "Ir",
+        "temperatura"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-SHORT-WITHSTAND-TEST",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§7.6",
+        "pdf_page": 80,
+        "printed_page": 68
+      },
+      "title": "Badania Ik i Ip",
+      "content": "Próby wytrzymałości krótkotrwałej i szczytowej obejmują tor główny oraz, gdzie ma zastosowanie, obwody uziemiające. Dowód musi dotyczyć odpowiednich wartości i czasu znamionowego.",
+      "search_terms": [
+        "badanie zwarciowe",
+        "Ik",
+        "Ip",
+        "tk"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-TYPE-EMC",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§7.9",
+        "pdf_page": 87,
+        "printed_page": 75
+      },
+      "title": "Badania EMC obwodów wtórnych",
+      "content": "Badania odporności elektromagnetycznej są istotne dla funkcji zabezpieczeniowych, pomiarowych, sterowniczych i łączności; kryteria mogą zależeć od rodzaju funkcji, patrz także tablica 18.",
+      "search_terms": [
+        "EMC",
+        "zabezpieczenia",
+        "IEC 61850"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-ROUTINE-TEST",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§8.1",
+        "pdf_page": 96,
+        "printed_page": 84
+      },
+      "title": "Próby wyrobu na produkcji",
+      "content": "Badania wyrobu obejmują próbę dielektryczną toru głównego, kontrole sterowania, pomiar rezystancji toru głównego, próbę szczelności oraz kontrole konstrukcyjne i wizualne. Dodatkowe próby mogą wynikać z norm wyrobu.",
+      "search_terms": [
+        "badanie odbiorcze",
+        "próba wyrobu",
+        "routine tests"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-ROUTINE-DIELECTRIC",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§8.2",
+        "pdf_page": 96,
+        "printed_page": 84
+      },
+      "title": "Rutynowa próba izolacji toru",
+      "content": "Próba wyrobu obejmuje krótkotrwałą próbę napięciem o częstotliwości sieciowej na torze głównym. Uwarunkowania zależą m.in. od wykonania osłony i ciśnienia izolacyjnego.",
+      "search_terms": [
+        "próba izolacji",
+        "50 Hz",
+        "routine"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-ROUTINE-WIRING",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§8.3.1",
+        "pdf_page": 97,
+        "printed_page": 85
+      },
+      "title": "Weryfikacja dokumentacji i okablowania",
+      "content": "Kontrole obwodów pomocniczych obejmują zgodność z dokumentacją połączeń, oznaczenia przewodów i zacisków, prowadzenie okablowania, montaż napędów i blokad. To źródło wymagań odbioru szafy, nie schematycznej estetyki SLD.",
+      "search_terms": [
+        "schemat połączeń",
+        "przewody",
+        "zaciski",
+        "FAT"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-ROUTINE-FUNCTIONAL",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§8.3.2",
+        "pdf_page": 97,
+        "printed_page": 85
+      },
+      "title": "Próby funkcjonalne obwodów sterowania",
+      "content": "Próby funkcjonalne obwodów pomocniczych są definiowane w odpowiednich normach wyrobów i weryfikują współpracę układów sterowniczych i aparatu. Odbiór wymaga odniesienia do rzeczywistego wykonania.",
+      "search_terms": [
+        "FAT",
+        "SAT",
+        "napęd",
+        "blokady",
+        "sterowanie"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-ROUTINE-RESISTANCE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§8.4",
+        "pdf_page": 98,
+        "printed_page": 86
+      },
+      "title": "Pomiar rezystancji toru głównego",
+      "content": "Wynik pomiaru rezystancji toru głównego jest porównywany z wartością odniesienia z badania prądem ciągłym; §8.4 wskazuje dla określonego przypadku granicę 1,2×Ru. Nie stosować jej do dowolnej rezystancji obiektu bez zakresu przepisu.",
+      "search_terms": [
+        "rezystancja styków",
+        "Ru",
+        "1.2x"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-ROUTINE-TIGHTNESS",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§8.5",
+        "pdf_page": 98,
+        "printed_page": 86
+      },
+      "title": "Próba szczelności wyrobu",
+      "content": "Dla urządzeń gazowych badania szczelności wykonywane są zgodnie z układem ciśnieniowym i odpowiednim minimum funkcjonalnym. Sam katalogowy parametr gazu nie dowodzi wykonania próby wyrobu.",
+      "search_terms": [
+        "próba szczelności",
+        "gaz",
+        "protokół"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-SELECTION-INFO",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§9 (informacyjny)",
+        "pdf_page": 99,
+        "printed_page": 87
+      },
+      "title": "Dobór aparatury: poradnik nie samodzielny limit",
+      "content": "Rozdział 9 ma charakter informacyjny i wskazuje czynniki doboru, w tym wartości znamionowe i warunki środowiskowe. Propozycje z tego rozdziału nie są automatycznie wymaganiami o randze shall.",
+      "search_terms": [
+        "dobór aparatury",
+        "informacyjny",
+        "warunki pracy"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-TENDER-INFO",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§10 (informacyjny)",
+        "pdf_page": 100,
+        "printed_page": 88
+      },
+      "title": "Dane do zapytań i zamówień",
+      "content": "Przy opracowaniu specyfikacji technicznej potrzebne są m.in. parametry sieci, wartości znamionowe, rodzaj instalacji, dane sterowania i schematy. Norma podaje przewodnik kompletności danych wejściowych.",
+      "search_terms": [
+        "STWiOR",
+        "SWZ",
+        "zamówienie",
+        "katalog"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-SLD-DRAWINGS",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§10, wymagania informacyjne",
+        "pdf_page": 101,
+        "printed_page": 89
+      },
+      "title": "Dokumentacja schematów i obwodów",
+      "content": "W informacji do zamówienia należy ująć schematy obwodów i wymagane funkcje. Schemat jednokreskowy jest dokumentacją topologii; sama PN-EN 62271-1 nie standaryzuje geometrii wszystkich symboli na SLD.",
+      "search_terms": [
+        "schemat jednokreskowy",
+        "SLD",
+        "schemat sterowania"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-OPERATING",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§11.4",
+        "pdf_page": 104,
+        "printed_page": 92
+      },
+      "title": "Instrukcje obsługi i bezpieczeństwa",
+      "content": "Instrukcje producenta powinny opisywać zasadę działania, zabezpieczenia i blokady, izolowanie, uziemianie, konserwację i czynności obsługowe. W projekcie należy zapewnić odniesienie do właściwej wersji instrukcji.",
+      "search_terms": [
+        "instrukcja obsługi",
+        "odłączanie",
+        "uziemianie"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-MAINTENANCE",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§11.5",
+        "pdf_page": 105,
+        "printed_page": 93
+      },
+      "title": "Konserwacja i dostęp do dokumentacji",
+      "content": "Eksploatacja i konserwacja powinny być realizowane zgodnie z informacją producenta i przewidzianym cyklem życia wyposażenia. Dokumentacja projektowa nie zastępuje szczegółowych instrukcji konserwacyjnych.",
+      "search_terms": [
+        "serwis",
+        "przeglądy",
+        "napęd",
+        "konserwacja"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "normal"
+    },
+    {
+      "id": "SG-NOT-BREAKING-CAPACITY",
+      "source_id": "IEC62271_1_2018",
+      "source": {
+        "clause": "§5.6 w związku z §1",
+        "pdf_page": 48,
+        "printed_page": 36
+      },
+      "title": "Wytrzymywanie nie oznacza wyłączania zwarcia",
+      "content": "Definicja Ik dotyczy przetrwania prądu zwarciowego przy zamkniętych stykach. Zdolność wyłączeniowa, wyłączalny prąd zwarciowy i sekwencja łączeniowa wyłącznika należą do odpowiedniej normy wyrobu (np. 62271-100) oraz jego danych znamionowych.",
+      "search_terms": [
+        "wyłącznik",
+        "Ik",
+        "Ibr",
+        "zdolność wyłączania"
+      ],
+      "topic": "Aparatura rozdzielcza i sterownicza SN",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Tekst PN-EN 62271-1:2018-02 bez zmiany A1:2022-06; stosować łącznie z normą wyrobu",
+      "severity": "critical"
+    }
+  ],
+  "rules": [
+    {
+      "id": "KB-R3-001",
+      "title": "Norma wspólna plus norma wyrobu",
+      "source_ids": [
+        "SG-PRODUCT-PRIORITY"
+      ],
+      "action": "Nie wydawaj werdyktu pełnej zgodności wyłącznika, rozłącznika lub rozdzielnicy wyłącznie na podstawie 62271-1; wymagaj właściwej części 62271.",
+      "category": "source_scope",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-002",
+      "title": "Zmiana A1 do 62271-1 niezałączona",
+      "source_ids": [
+        "SG-AUX-CIRCUITS"
+      ],
+      "action": "Dla §6.4.1 oznacz NIEKOMPLETNE_ŹRÓDŁO do czasu pozyskania PN-EN 62271-1:2018-02/A1:2022-06.",
+      "category": "edition_gate",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-003",
+      "title": "Właściwe napięcie znamionowe",
+      "source_ids": [
+        "SG-RATED-VOLTAGE",
+        "SG-INSULATION-17_5"
+      ],
+      "action": "W doborze aparatury sprawdź Ur względem najwyższego napięcia urządzenia/sieci i odpowiedniego standardu OSD; w sieci 15 kV Ur 17,5 kV jest typową opcją, nie wartością ustalaną bez katalogu.",
+      "category": "selection",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-004",
+      "title": "Poziom izolacji: nie pomyl kolumn",
+      "source_ids": [
+        "SG-INSULATION-17_5",
+        "SG-INSULATION-24"
+      ],
+      "action": "Dla Ur=17,5 kV rozdziel Ud=38/45 i Up=95/110 kV dla normalnego przebiegu i przerwy izolacyjnej; analogicznie dla Ur=24 kV.",
+      "category": "selection",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-005",
+      "title": "Oddzielnie Ir i Ik",
+      "source_ids": [
+        "SG-RATED-CONTINUOUS",
+        "SG-RATED-IK"
+      ],
+      "action": "Kontroluj Ir w pracy ciągłej i Ik podczas zwarcia jako różne atrybuty, bez stosowania jednej wartości amperowej jako obu parametrów.",
+      "category": "selection",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-006",
+      "title": "Ik nie jest prądem wyłączalnym",
+      "source_ids": [
+        "SG-RATED-IK",
+        "SG-NOT-BREAKING-CAPACITY"
+      ],
+      "action": "Nie oceniaj zdolności wyłączeniowej wyłącznika przez samo Ik z 62271-1; potrzebne parametry i wymagania części 62271-100.",
+      "category": "critical",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-007",
+      "title": "Wymagana wytrzymałość szczytowa",
+      "source_ids": [
+        "SG-RATED-IP"
+      ],
+      "action": "Porównuj obliczone ip z znamionowym Ip. Nie zakładaj, że 2,5×Ik wystarcza przy dowolnej stałej czasowej i stosunku R/X.",
+      "category": "critical",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-008",
+      "title": "Czas wytrzymywania zwarcia",
+      "source_ids": [
+        "SG-RATED-TK",
+        "SG-SHORT-WITHSTAND-TEST"
+      ],
+      "action": "Przy dopasowaniu Ik sprawdź czas tk, wytrzymałość cieplną i rzeczywisty czas wyłączenia; 1 s jest preferencją, nie wartością uniwersalną.",
+      "category": "thermal",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-009",
+      "title": "Warunki normalne i specjalne",
+      "source_ids": [
+        "SG-NORMAL-INDOOR",
+        "SG-NORMAL-OUTDOOR",
+        "SG-SPECIAL-ALTITUDE",
+        "SG-SPECIAL-WIND"
+      ],
+      "action": "Zawsze oznacz montaż wnętrzowy/napowietrzny i środowisko. Temperatury i warunki specjalne oceniaj przed porównywaniem danych znamionowych.",
+      "category": "environment",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-010",
+      "title": "Brak automatycznej korekcji wysokości",
+      "source_ids": [
+        "SG-SPECIAL-ALTITUDE",
+        "SG-INSULATION-ENV"
+      ],
+      "action": "Dla lokalizacji powyżej 1000 m wymagaj przeliczenia koordynacji izolacji zewnętrznej wg powołanej IEC 60071-2.",
+      "category": "environment",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-011",
+      "title": "Uziemienie metalowych części",
+      "source_ids": [
+        "SG-EARTHING-POINT",
+        "SG-EARTHING-LABEL"
+      ],
+      "action": "Punkt PE i ciągłość połączenia ochronnego wymagają dokumentacji; nie można ich dowodzić samym symbolem uziemnika na SLD.",
+      "category": "safety",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-012",
+      "title": "Odłącznik i uziemnik: blokady",
+      "source_ids": [
+        "SG-LOCKING",
+        "SG-POSITION"
+      ],
+      "action": "Oceń dostępność właściwych blokad i wiarygodność wskazania rzeczywistego położenia, nie tylko stan graficzny przycisku.",
+      "category": "safety",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-013",
+      "title": "Kolory SLD nie z 62271-1",
+      "source_ids": [
+        "SG-POSITION-COLORS"
+      ],
+      "action": "Nie uzasadniaj sztywnej pary czerwony/zielony samą 62271-1; wymagaj uzgodnionej konwencji i właściwych norm symboliki oraz ENEA.",
+      "category": "uiux",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-014",
+      "title": "Rozdziel ochronę IP ludzi i wody",
+      "source_ids": [
+        "SG-IP-TOUCH",
+        "SG-IP-WATER"
+      ],
+      "action": "Rozpatruj ochronę przed dostępem do części niebezpiecznych osobno od ochrony przed wodą; dla napowietrznych minimum IPX3 w normie wspólnej.",
+      "category": "safety",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-015",
+      "title": "IK07 jest preferowany",
+      "source_ids": [
+        "SG-IK-PREFERRED"
+      ],
+      "action": "Nie zgłaszaj automatycznej niezgodności dla wartości innych niż IK07 bez uwzględnienia normy wyrobu i warunków projektowych.",
+      "category": "scope",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-016",
+      "title": "Napięcie zasilania sterowania",
+      "source_ids": [
+        "SG-AUX-VOLTAGE",
+        "SG-STORED-ENERGY",
+        "SG-RELEASES"
+      ],
+      "action": "Napęd, wyzwalacze i blokady mają własne wymagania Ua; nie współdziel jednej niezweryfikowanej wartości zasilania.",
+      "category": "controls",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-017",
+      "title": "Tabliczka a model katalogowy",
+      "source_ids": [
+        "SG-NAMEPLATE",
+        "SG-NAMEPLATE-TABLE9"
+      ],
+      "action": "Przenoś do obiektu tylko potwierdzone wartości z tabliczki/karty typu, zachowując producenta, oznaczenie i wersję; brak danych != zgodność.",
+      "category": "catalog",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-018",
+      "title": "Próby typu i próby wyrobu osobno",
+      "source_ids": [
+        "SG-TYPE-TESTS",
+        "SG-ROUTINE-TEST"
+      ],
+      "action": "Nie utożsamiaj certyfikatu prób typu z protokołem prób wyrobu konkretnego egzemplarza.",
+      "category": "evidence",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-019",
+      "title": "Weryfikacja połączeń sterowania",
+      "source_ids": [
+        "SG-ROUTINE-WIRING",
+        "SG-ROUTINE-FUNCTIONAL"
+      ],
+      "action": "Sprawdzaj zgodność zacisków, blokad, napędu i okablowania z dokumentacją producenta w FAT/SAT; nie redukuj do walidacji SVG.",
+      "category": "evidence",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-020",
+      "title": "Stopień ochrony z normy wyrobu i OSD",
+      "source_ids": [
+        "SG-IP-TOUCH",
+        "SG-IP-WATER",
+        "SG-PRODUCT-PRIORITY"
+      ],
+      "action": "IP1XB w 62271-1 nie kończy doboru obudowy. Zweryfikuj wyższe wymagania z normy wyrobu/OSD.",
+      "category": "selection",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-021",
+      "title": "Tablica szczytowa a R/X",
+      "source_ids": [
+        "SG-RATED-IP"
+      ],
+      "action": "Typowe 2,5×Ik dla 50 Hz i 45 ms nie jest obliczeniowym substytutem ip według 60909-0 dla modelu sieci.",
+      "category": "critical",
+      "level": "proposal_not_in_solver"
+    },
+    {
+      "id": "KB-R3-022",
+      "title": "Prądy łuku wewnętrznego poza zakresem dowodu 62271-1",
+      "source_ids": [
+        "SG-PRODUCT-PRIORITY",
+        "SG-TYPE-TESTS"
+      ],
+      "action": "Nie przypisuj klasyfikacji IAC i LSC/PM/PI na podstawie 62271-1: przepis właściwy dla metalowej rozdzielnicy pochodzi z 62271-200.",
+      "category": "scope",
+      "level": "proposal_not_in_solver"
+    }
+  ]
+}
