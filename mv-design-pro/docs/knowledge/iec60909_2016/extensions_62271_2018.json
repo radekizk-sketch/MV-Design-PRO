@@ -561,8 +561,8 @@
       "source_id": "IEC62271_1_2018",
       "source": {
         "clause": "§6.4.3",
-        "pdf_page": 53,
-        "printed_page": 41
+        "pdf_page": 52,
+        "printed_page": 40
       },
       "title": "Montaż wyposażenia w obudowach",
       "content": "Komponenty obwodów pomocniczych powinny być właściwie montowane i identyfikowane, z uwzględnieniem prowadzenia przewodów, dostępności i narażenia na uszkodzenia mechaniczne.",
@@ -975,8 +975,8 @@
       "source_id": "IEC62271_1_2018",
       "source": {
         "clause": "§7.9",
-        "pdf_page": 87,
-        "printed_page": 75
+        "pdf_page": 85,
+        "printed_page": 73
       },
       "title": "Badania EMC obwodów wtórnych",
       "content": "Badania odporności elektromagnetycznej są istotne dla funkcji zabezpieczeniowych, pomiarowych, sterowniczych i łączności; kryteria mogą zależeć od rodzaju funkcji, patrz także tablica 18.",
@@ -1189,8 +1189,8 @@
       "source_id": "IEC62271_1_2018",
       "source": {
         "clause": "§11.4",
-        "pdf_page": 104,
-        "printed_page": 92
+        "pdf_page": 105,
+        "printed_page": 93
       },
       "title": "Instrukcje obsługi i bezpieczeństwa",
       "content": "Instrukcje producenta powinny opisywać zasadę działania, zabezpieczenia i blokady, izolowanie, uziemianie, konserwację i czynności obsługowe. W projekcie należy zapewnić odniesienie do właściwej wersji instrukcji.",
