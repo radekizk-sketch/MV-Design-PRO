@@ -1,4 +1,4 @@
-# MV-DESIGN-PRO — baza wiedzy PN-EN 60909-0:2016 (R1)
+# MV-DESIGN-PRO — baza wiedzy technicznej i normowej (R3)
 
 **Status:** źródłowy moduł wiedzy i narzędzia offline, PR do oceny; nie jest wpięty do produkcyjnego API i nie zmienia solvera B-01.
 **Podstawa:** licencjonowany załącznik dostarczony przez właściciela + dwa materiały dydaktyczne.
@@ -62,3 +62,28 @@ Przykładowe zapytania:
 python kb.py ask "podwójne doziemienie" --source IEC60909_3_2010
 python kb.py ask "asymetria SN 95%" --source EN50160_A1_2025
 ```
+
+## Rozszerzenie R3 — 2026-11-03: dobór aparatury i status edycji
+
+**Włączono PN-EN 62271-1:2018-02** jako 56 kart ze wskazaniem § i strony, oraz 22 propozycje reguł. Łączny stan: **168 kart, 7 źródeł, 59 reguł**. Podstawą są osobne pliki rozszerzeń; nie ma kopii licencjonowanych PDF w repo.
+
+- [`extensions_62271_2018.json`](./extensions_62271_2018.json) — karty i reguły aparatury.
+- [`NORM_REGISTER_2026_11.json`](./NORM_REGISTER_2026_11.json) — krajowy/IEC status edycji i śledzenie brakujących zmian.
+- [`AUDYT_NORM_R3_2026_11.md`](./AUDYT_NORM_R3_2026_11.md) — pogłębiona analiza, pułapki doborowe, mapa norm wyrobu, luki i poziomy dowodów.
+
+**Bramka wersji 2026:** IEC 60909-0:2026 została opublikowana 23.07.2026, ale załączony skan i indeks obejmują PN-EN 60909-0:2016-09. Katalog PKN nadal wskazuje wydanie 2016 bez adnotacji o wycofaniu na dzień 2026-11-03. Nie należy automatycznie uznawać metody 2016 za metodę 2026. Załączona PN-EN 62271-1:2018-02 **nie zawiera A1:2022-06**, która zmienia §6.4.1. Wymagania wyłączników i rozdzielnic uzupełniają normy wyrobu m.in. 62271-100 i 62271-200.
+
+**Uwaga do tablicy 1 62271-1:** przy Ur=17,5 kV występują **dwa warianty** Up: **75/85** lub **95/110 kV** (wspólna izolacja/przerwa izolacyjna); nie koduj jednej pary jako bezwzględnego minimum. Dla Ur=24 kV odpowiednio Up 95/110 albo 125/145 kV. Dobór zależy od koordynacji izolacji i wymagań OSD.
+
+Przykładowe zapytania:
+
+```bash
+python kb.py check
+python kb.py build
+python -m unittest discover -s tests -v
+python build_html.py
+python kb.py ask "kiedy należy zastosować 17,5 kV" --source IEC62271_1_2018
+python kb.py ask "Ip Ik a prąd wyłączalny" --source IEC62271_1_2018
+```
+
+**Status wykonania:** referencyjny indeks i wstępne reguły kontroli wejść; nie jest to pełne API zgodności wyrobu, nie zmienia B-01, SLD ani kontraktów obliczeń. Integracja do produkcyjnego przepływu wymaga osobnej kontroli i odbioru.
