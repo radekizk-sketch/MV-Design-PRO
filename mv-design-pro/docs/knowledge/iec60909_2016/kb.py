@@ -16,13 +16,26 @@ def normalize(text):
     return "".join(c for c in s if not unicodedata.combining(c)).replace("ł", "l")
 
 def load(name):
-    return json.loads((ROOT / name).read_text(encoding="utf-8"))
+    base = json.loads((ROOT / name).read_text(encoding="utf-8"))
+    extension_keys = {
+        "knowledge.json": "records",
+        "sources.json": "sources",
+        "rules.json": "rules",
+    }
+    if name in extension_keys:
+        addon = json.loads((ROOT / "extensions_2026_11.json").read_text(encoding="utf-8"))
+        return base + addon[extension_keys[name]]
+    return base
 
 def check():
     facts, sources, rules = load("knowledge.json"), load("sources.json"), load("rules.json")
     ids = [f["id"] for f in facts]
     src = {s["id"] for s in sources}
     errors = []
+    if len(src) != len(sources):
+        errors.append("duplicate source id")
+    if len({r["id"] for r in rules}) != len(rules):
+        errors.append("duplicate rule id")
     if len(set(ids)) != len(ids):
         errors.append("duplicate fact id")
     for f in facts:
@@ -34,6 +47,14 @@ def check():
             loc = f["source"]
             if loc.get("pdf_page", -1) - 8 != loc.get("printed_page"):
                 errors.append("bad physical page: " + f["id"])
+        elif f["source_id"] == "IEC60909_3_2010":
+            loc = f["source"]
+            if not 15 <= loc.get("pdf_page", 0) <= 66 or loc.get("pdf_page") - 8 != loc.get("printed_page"):
+                errors.append("bad IEC 60909-3 page: " + f["id"])
+        elif f["source_id"] == "EN50160_A1_2025":
+            loc = f["source"]
+            if not 5 <= loc.get("pdf_page", 0) <= 9 or loc.get("pdf_page") - 2 != loc.get("printed_page"):
+                errors.append("bad EN 50160 A1 page: " + f["id"])
     for rule in rules:
         if set(rule["source_ids"]) - set(ids):
             errors.append("unknown rule reference: " + rule["id"])
@@ -69,6 +90,12 @@ def citation(record):
     if record["source_id"] == "IEC60909_2016":
         s = (f"PN-EN 60909-0:2016, {loc['clause']}, str. IEC "
              f"{loc['printed_page']} (PDF {loc['pdf_page']})")
+    elif record["source_id"] == "IEC60909_3_2010":
+        s = (f"PN-EN 60909-3:2010, {loc['clause']}, "
+             f"str. IEC {loc['printed_page']} (PDF {loc['pdf_page']})")
+    elif record["source_id"] == "EN50160_A1_2025":
+        s = (f"PN-EN 50160:2023-10/A1:2025-04, {loc['clause']}, "
+             f"str. EN {loc['printed_page']} (PDF {loc['pdf_page']}); zmiana A1, nie pełna norma")
     else:
         s = (f"{record['source_id']}, {loc['clause']}, "
              f"s. {loc['printed_page']}")
@@ -110,6 +137,18 @@ def validate_case(case):
     if case.get("fault") == "1F_Z" and case.get("neutral") in ("IZOLOWANY", "KOMPENSOWANY"):
         problems.append({"rule_id": "KB-R-001",
                          "detail": "§1 normy: przypadek izolowany/kompensowany poza zakresem tej części"})
+    if case.get("fault") == "2x1F_Z" and (
+        not case.get("fault_location_a") or not case.get("fault_location_b")
+        or case.get("fault_location_a") == case.get("fault_location_b")
+    ):
+        problems.append({"rule_id": "KB-R2-002",
+                         "detail": "Podwójne doziemienie wymaga dwóch różnych miejsc zwarcia A/B."})
+    if case.get("quality_standard") == "EN50160_A1_2025" and case.get("full_compliance", False):
+        problems.append({"rule_id": "KB-R2-008",
+                         "detail": "Sama zmiana A1 nie dostarcza całych tabel wydania bazowego EN 50160."})
+    if case.get("network_voltage_level") == "SN" and case.get("voltage_limit_clause") == "4.2.2.2":
+        problems.append({"rule_id": "KB-R2-009",
+                         "detail": "Punkt 4.2.2.2 dotyczy nN; dla SN potrzebny §5.2.2.2 wydania bazowego."})
     return {"status": "WYMAGA_KOREKTY" if problems else "BRAK_WYKRYTEJ_SPRZECZNOSCI",
             "problems": problems, "disclaimer": "Nie jest werdyktem zgodności urządzenia ani wynikiem solvera."}
 
