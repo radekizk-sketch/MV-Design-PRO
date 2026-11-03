@@ -47,3 +47,18 @@ Baza jest **niekanoniczną warstwą referencyjną**. Kanon pozostaje w `docs/dom
 ## Licencje i ograniczenia
 
 **Nie dodawaj pliku PDF normy do repozytorium.** Repo przechowuje identyfikatory, parafrazy i linki do posiadanego legalnie oryginału, nie tekst normy. Pakiet nie jest dowodem pełnego przeglądu wszystkich klauzul, nie waliduje liczbowo istniejącego solvera i nie potwierdza aktualności wydania IEC/PN-EN na 2026.
+
+## Rozszerzenie R2 — 2026-11-03
+
+Do R1 dołączono `extensions_2026_11.json`: **PN-EN 60909-3:2010** (24 karty) oraz **PN-EN 50160:2023-10/A1:2025-04** (18 kart). Baza zawiera łącznie **112 kart, 6 źródeł i 37 reguł**. Skrypt `kb.py` i `build_html.py` odczytują dodatek automatycznie; `index.html` jest odświeżony i zawiera oba nowe źródła.
+
+**Ważne:** PN-EN 60909-3:2010 **nie** opisuje pojedynczego doziemienia w sieci izolowanej/kompensowanej (§1). Załączona A1 do PN-EN 50160 **nie zastępuje** normy bazowej, a jej limity nN (§4) nie są bezpośrednio limitami SN (§5). Wątpliwości i przypisy: [AUDYT_ROZSZERZENIA_R2.md](./AUDYT_ROZSZERZENIA_R2.md).
+
+Reguły 2x1F-Z i EN 50160 są **propozycjami w warstwie wiedzy**, a nie wdrożonymi obliczeniami lub pełnym werdyktem zgodności. Chroniony solver IEC 60909 pozostawiono bez zmian.
+
+Przykładowe zapytania:
+
+```bash
+python kb.py ask "podwójne doziemienie" --source IEC60909_3_2010
+python kb.py ask "asymetria SN 95%" --source EN50160_A1_2025
+```
