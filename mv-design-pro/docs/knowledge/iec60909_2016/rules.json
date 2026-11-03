@@ -1,0 +1,249 @@
+[
+  {
+    "id": "KB-R-001",
+    "title": "Zakres stosowalności 1F-Z",
+    "source_ids": [
+      "SC-SCOPE-01",
+      "SC-SCOPE-02"
+    ],
+    "action": "Nie stosuj automatycznie IEC 60909-0 do jednego doziemienia w sieci izolowanej/kompensowanej.",
+    "category": "scope",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-002",
+    "title": "Współczynnik c w SN",
+    "source_ids": [
+      "SC-C-01",
+      "SC-C-03"
+    ],
+    "action": "Dla 1 kV < Un ≤ 230 kV: w wydaniu 2016 cmax = 1,10, cmin = 1,00.",
+    "category": "input",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-003",
+    "title": "Współczynnik c w nN",
+    "source_ids": [
+      "SC-C-02"
+    ],
+    "action": "Rozstrzygnij kategorię tolerancji napięcia, zanim wybierzesz cmax.",
+    "category": "input",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-004",
+    "title": "Oddzielny snapshot MAX/MIN",
+    "source_ids": [
+      "SC-MAX-01",
+      "SC-MIN-01"
+    ],
+    "action": "Rozdziel scenariusze układów zasilania, temperatur i wkładów źródeł.",
+    "category": "scenario",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-005",
+    "title": "Baza napięciowa impedancji",
+    "source_ids": [
+      "SC-Z-03",
+      "SC-TR-01"
+    ],
+    "action": "Sprowadzaj impedancje do tej samej strony napięciowej.",
+    "category": "units",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-006",
+    "title": "ZQ i R/X",
+    "source_ids": [
+      "SC-Z-01",
+      "SC-Z-02"
+    ],
+    "action": "Z danych o module Z nie wyznaczaj R/X bez danych lub jawnego założenia.",
+    "category": "input",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-007",
+    "title": "Współczynnik KT",
+    "source_ids": [
+      "SC-TR-03",
+      "SC-TR-04"
+    ],
+    "action": "Przechowuj zastosowany współczynnik korekcyjny transformatora w śladzie white-box.",
+    "category": "physics",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-008",
+    "title": "Rezystancja w MIN",
+    "source_ids": [
+      "SC-LINE-03",
+      "SC-MIN-01"
+    ],
+    "action": "Wskaż przyjętą temperaturę przewodu i rezystancję dla scenariusza minimalnego.",
+    "category": "physics",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-009",
+    "title": "Rozróżnianie typów zwarć",
+    "source_ids": [
+      "SC-IK3-01",
+      "SC-IK2-01",
+      "SC-IK2G-01",
+      "SC-IK1G-01"
+    ],
+    "action": "Zastosuj właściwe sieci składowych dla 3F, 2F, 2F-Z i 1F-Z.",
+    "category": "physics",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-010",
+    "title": "Składowa zerowa Z0",
+    "source_ids": [
+      "SC-IK2G-01",
+      "SC-IK1G-01"
+    ],
+    "action": "Nie zastępuj Z0 niejawnie przez Z1 lub zero; wskaż tor powrotny.",
+    "category": "physics",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-011",
+    "title": "Wkład falowników",
+    "source_ids": [
+      "SC-PV-01",
+      "SC-PV-02",
+      "SC-IK3-02"
+    ],
+    "action": "Model przekształtnika opieraj na odpowiednich parametrach źródła i sterowania.",
+    "category": "der",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-012",
+    "title": "Wielkości udarowe",
+    "source_ids": [
+      "SC-IP-01",
+      "SC-KAPPA-01",
+      "SC-IP-02"
+    ],
+    "action": "Rozróżniaj wartość skuteczną Iʺk od szczytowej ip i dokumentuj metodę κ.",
+    "category": "physics",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-013",
+    "title": "Prąd wyłączeniowy Ib",
+    "source_ids": [
+      "SC-IB-01",
+      "SC-IB-02",
+      "SC-IB-03"
+    ],
+    "action": "Zapisz czas rozdzielenia styków i udział źródeł; nie zastępuj Ib stałym mnożnikiem Iʺk.",
+    "category": "physics",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-014",
+    "title": "Prąd cieplny Ith",
+    "source_ids": [
+      "SC-ITH-01",
+      "SC-MN-01"
+    ],
+    "action": "Wymagaj czasu zwarcia tk, współczynników m i n oraz źródła ich obliczenia.",
+    "category": "physics",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-015",
+    "title": "Odrębne analizy LF i SC",
+    "source_ids": [
+      "LF-METHOD-01",
+      "SC-METHOD-01"
+    ],
+    "action": "Nie utożsamiaj algorytmu rozpływu z procedurą zwarciową IEC 60909.",
+    "category": "architecture",
+    "level": "project_guidance"
+  },
+  {
+    "id": "KB-R-016",
+    "title": "ENM jako jedyna prawda",
+    "source_ids": [
+      "SC-METHOD-01",
+      "LF-YBUS-01"
+    ],
+    "action": "Baza wiedzy nie może tworzyć konkurencyjnego modelu sieci.",
+    "category": "architecture",
+    "level": "project_guidance"
+  },
+  {
+    "id": "KB-R-017",
+    "title": "Grupa połączeń a Z0",
+    "source_ids": [
+      "LF-SEQ0-01",
+      "LF-SEQUENCE-01"
+    ],
+    "action": "Przy przenoszeniu asymetrii uwzględniaj połączenia uzwojeń i uziemienia.",
+    "category": "physics",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-018",
+    "title": "Oznaczenie szacowanych danych",
+    "source_ids": [
+      "SC-PV-02",
+      "SC-Z-02"
+    ],
+    "action": "Oznacz brak danych producenta jako ESTIMATED z jawnym źródłem założenia.",
+    "category": "evidence",
+    "level": "project_guidance"
+  },
+  {
+    "id": "KB-R-019",
+    "title": "Podręcznik a standard OSD",
+    "source_ids": [
+      "ST-FIELD-01",
+      "ST-FIELD-02",
+      "ST-BUS-01"
+    ],
+    "action": "Nie przypisuj wymagania ENEA na podstawie samego podręcznika.",
+    "category": "evidence",
+    "level": "project_guidance"
+  },
+  {
+    "id": "KB-R-020",
+    "title": "Symbole IEC i ENEA",
+    "source_ids": [
+      "ST-SLD-01",
+      "ST-FIELD-04"
+    ],
+    "action": "Bez wzorca operatora lub IEC 60617 nie oznaczaj symbolu jako normowo zatwierdzony.",
+    "category": "sld",
+    "level": "project_guidance"
+  },
+  {
+    "id": "KB-R-021",
+    "title": "Wersja i numer równania",
+    "source_ids": [
+      "SC-IK3-01",
+      "SC-KAPPA-01",
+      "SC-IP-01"
+    ],
+    "action": "Dopasuj standard_ref do konkretnego wydania, klauzuli i numeru wzoru.",
+    "category": "provenance",
+    "level": "technical_gate"
+  },
+  {
+    "id": "KB-R-022",
+    "title": "Licencjonowany skan",
+    "source_ids": [
+      "SC-SCOPE-01"
+    ],
+    "action": "Nie publikuj pełnej normy w repo. Wskazuj legalny oryginał i autorskie streszczenia.",
+    "category": "rights",
+    "level": "project_guidance"
+  }
+]
