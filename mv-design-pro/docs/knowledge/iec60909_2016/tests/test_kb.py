@@ -21,7 +21,7 @@ class KnowledgeBaseTests(unittest.TestCase):
         cls.tmp.cleanup()
 
     def test_integrity(self):
-        self.assertEqual((self.stat["records"], self.stat["sources"], self.stat["rules"]), (70, 4, 22))
+        self.assertEqual((self.stat["records"], self.stat["sources"], self.stat["rules"]), (112, 6, 37))
         self.assertTrue(kb.check()["ok"])
 
     def test_15kv_cmin_source(self):
@@ -62,6 +62,33 @@ class KnowledgeBaseTests(unittest.TestCase):
     def test_sql_fts_parser_not_exposed(self):
         self.assertIsInstance(kb.search('"; DROP TABLE idx; --'), list)
         self.assertTrue(kb.search("cmin"))
+
+    def test_a1_is_not_full_standard(self):
+        sources = {s["id"]: s for s in kb.load("sources.json")}
+        self.assertEqual(sources["EN50160_A1_2025"]["kind"], "zmiana_normy")
+        self.assertIn("TYLKO", sources["EN50160_A1_2025"]["notes"])
+        out = kb.validate_case({"quality_standard":"EN50160_A1_2025","full_compliance":True})
+        self.assertIn("KB-R2-008", [e["rule_id"] for e in out["problems"]])
+
+    def test_two_earth_faults_have_distinct_locations(self):
+        out = kb.validate_case({"fault":"2x1F_Z","fault_location_a":"A","fault_location_b":"A"})
+        self.assertIn("KB-R2-002", [e["rule_id"] for e in out["problems"]])
+
+    def test_60909_3_earth_fault_scope_and_page(self):
+        facts = kb.search("zwarcie podwójne", source="IEC60909_3_2010", limit=20)
+        self.assertTrue(facts)
+        self.assertTrue(all("60909-3:2010" in x["citation"] for x in facts))
+        self.assertTrue(any("PDF" in x["citation"] for x in facts))
+
+    def test_mv_50160_asymmetry(self):
+        facts = kb.search("asymetria 95%", source="EN50160_A1_2025", limit=30)
+        self.assertIn("PQ-A1-MV-UNBALANCE", [x["id"] for x in facts])
+        x = next(x for x in facts if x["id"] == "PQ-A1-MV-UNBALANCE")
+        self.assertIn("A1", x["citation"])
+
+    def test_lv_limit_not_reused_for_mv(self):
+        out = kb.validate_case({"network_voltage_level":"SN","voltage_limit_clause":"4.2.2.2"})
+        self.assertIn("KB-R2-009", [e["rule_id"] for e in out["problems"]])
 
     def test_not_a_normative_source(self):
         items = kb.load("knowledge.json")
