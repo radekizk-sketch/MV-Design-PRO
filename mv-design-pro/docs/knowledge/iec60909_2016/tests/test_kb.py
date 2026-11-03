@@ -21,7 +21,7 @@ class KnowledgeBaseTests(unittest.TestCase):
         cls.tmp.cleanup()
 
     def test_integrity(self):
-        self.assertEqual((self.stat["records"], self.stat["sources"], self.stat["rules"]), (112, 6, 37))
+        self.assertEqual((self.stat["records"], self.stat["sources"], self.stat["rules"]), (168, 7, 59))
         self.assertTrue(kb.check()["ok"])
 
     def test_15kv_cmin_source(self):
@@ -89,6 +89,39 @@ class KnowledgeBaseTests(unittest.TestCase):
     def test_lv_limit_not_reused_for_mv(self):
         out = kb.validate_case({"network_voltage_level":"SN","voltage_limit_clause":"4.2.2.2"})
         self.assertIn("KB-R2-009", [e["rule_id"] for e in out["problems"]])
+
+    def test_62271_1_source_and_locators(self):
+        facts = [x for x in kb.load("knowledge.json") if x["source_id"] == "IEC62271_1_2018"]
+        self.assertEqual(len(facts), 56)
+        self.assertTrue(all(x["source"]["pdf_page"] - 12 == x["source"]["printed_page"] for x in facts))
+        src = next(x for x in kb.load("sources.json") if x["id"] == "IEC62271_1_2018")
+        self.assertEqual(src["pages"], 136)
+        self.assertEqual(src["status"], "source_verified_amendment_missing")
+
+    def test_62271_voltage_insulation_references(self):
+        facts = {x["id"]:x for x in kb.load("knowledge.json")}
+        self.assertIn("17,5", facts["SG-INSULATION-17_5"]["content"])
+        self.assertIn("110 kV", facts["SG-INSULATION-17_5"]["content"])
+        self.assertEqual(facts["SG-INSULATION-17_5"]["source"]["pdf_page"], 45)
+
+    def test_62271_1_search_and_citation(self):
+        facts = kb.search("IP1XB", source="IEC62271_1_2018", limit=20)
+        self.assertIn("SG-IP-TOUCH", [x["id"] for x in facts])
+        x = next(x for x in facts if x["id"] == "SG-IP-TOUCH")
+        self.assertIn("bez zmiany A1", x["citation"])
+
+    def test_62271_1_apparatus_minimum_guard(self):
+        out = kb.validate_case({"un_kv": 15, "switchgear":{"rated_ur_kv":12,
+              "calculated_ip_ka":27, "rated_ip_ka":25,
+              "short_circuit_breaking_capacity_derived_from":"Ik"}})
+        ids = [x["rule_id"] for x in out["problems"]]
+        self.assertIn("KB-R3-003", ids)
+        self.assertIn("KB-R3-007", ids)
+        self.assertIn("KB-R3-006", ids)
+
+    def test_62271_1_missing_amendment_prevents_full_verdict(self):
+        out = kb.validate_case({"full_62271_1_compliance": True})
+        self.assertIn("KB-R3-002", [x["rule_id"] for x in out["problems"]])
 
     def test_not_a_normative_source(self):
         items = kb.load("knowledge.json")
