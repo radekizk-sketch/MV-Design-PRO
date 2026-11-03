@@ -811,12 +811,15 @@
         "pdf_page": 60,
         "printed_page": 48
       },
-      "title": "Odporność mechaniczna IK",
-      "content": "Dla zastosowań wnętrzowych norma wskazuje preferowaną odporność na uderzenia IK07. Nie wolno bez dalszych wymagań traktować IK07 jako obowiązkowego minimum dla każdej rozdzielnicy.",
+      "title": "Wnętrzowe IK07 (preferowane), napowietrzne IK10 (minimalne)",
+      "content": "§6.14.4: dla instalacji wnętrzowych preferuje się poziom IK07 (2 J). Dla napowietrznej aparatury **bez dodatkowej ochrony mechanicznej** minimalny stopień to IK10 (20 J). Izolatory i przepusty aparatury WN nie podlegają temu wymaganiu; istotne jest rozróżnienie preferred/shall i zakresu urządzenia.",
       "search_terms": [
         "IK07",
         "udar mechaniczny",
-        "osłona"
+        "osłona",
+        "IK10",
+        "20 J",
+        "2 J"
       ],
       "topic": "Aparatura rozdzielcza i sterownicza SN",
       "record_type": "interpretacja_normy",
@@ -1409,11 +1412,11 @@
     },
     {
       "id": "KB-R3-015",
-      "title": "IK07 jest preferowany",
+      "title": "IK07 preferowane wnętrzowo, IK10 obowiązkowe na zewnątrz",
       "source_ids": [
         "SG-IK-PREFERRED"
       ],
-      "action": "Nie zgłaszaj automatycznej niezgodności dla wartości innych niż IK07 bez uwzględnienia normy wyrobu i warunków projektowych.",
+      "action": "Nie traktuj IK07 jako obowiązkowego minimum wnętrzowego. Dla zewnętrznej aparatury bez dodatkowej ochrony mechanicznej sprawdź IK10; nie stosuj tej bramki do izolatorów i przepustów (§6.14.4).",
       "category": "scope",
       "level": "proposal_not_in_solver"
     },
