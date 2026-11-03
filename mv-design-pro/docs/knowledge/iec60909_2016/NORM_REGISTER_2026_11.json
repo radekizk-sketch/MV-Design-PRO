@@ -1,0 +1,115 @@
+{
+  "checked_at": "2026-11-03",
+  "scope": "Rejestr wydania/zakresu/kompletności źródła; dane katalogowe źródeł publicznych PKN i IEC, bez pełnych norm.",
+  "interpretation_contract": {
+    "attached_pdf": "Wydanie dostarczone przez użytkownika i sprawdzone przez hash; obecność PDF nie dowodzi pełnej aktualności wymagań.",
+    "national_status": "Status PKN jest osobną właściwością od statusu edycji IEC/EN; nie zastępować go automatycznie statusem IEC.",
+    "amendment_missing": "Nie wydawać pełnego werdyktu dla punktów objętych zmianą, dopóki jej tekst nie zostanie udostępniony.",
+    "other_standard_only": "Norma wyrobu jest osobnym materiałem; sam tytuł/zakres katalogowy nie upoważnia do tworzenia szczegółowych reguł technicznych.",
+    "approval": "Finalna zgodność projektu wymaga danych wyrobu, założeń projektu, aktualnych norm produktu i standardu OSD."
+  },
+  "documents": [
+    {
+      "id": "IEC60909_2016",
+      "national": "PN-EN 60909-0:2016-09",
+      "attached": true,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/pn-en-60909-0-2016-09e.html",
+      "status_in_pkn": "katalog_2026_11_wskazuje_wydanie_2016_bez_adnotacji_wycofana",
+      "iec_latest": "IEC 60909-0:2026, ed.3, publikacja 2026-07-23",
+      "iec_latest_url": "https://webstore.iec.ch/en/publication/68454",
+      "iec_2016_status": "IEC 60909-0:2016 wycofana na poziomie IEC 2026-07-23",
+      "status": "legacy_iec_current_pl_unconfirmed_change",
+      "needed_action": "Odseparować 2016 i 2026 w konfiguracji solvera; porównać pełny tekst 2026 przed przeniesieniem reguł, współczynników i numeracji wzorów.",
+      "evidence_scope": "IEC 2026 katalog; PKN 2016 katalog; załączony pełny skan 2016"
+    },
+    {
+      "id": "IEC60909_3_2010",
+      "national": "PN-EN 60909-3:2010",
+      "attached": true,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/catalogsearch/result/?q=60909",
+      "iec_latest": "IEC 60909-3:2009",
+      "iec_latest_url": "https://webstore.iec.ch/en/publication/3890",
+      "status": "attached_no_known_newer_edition",
+      "needed_action": "Pamiętać o datowanym powołaniu IEC 60909-0:2001 w §2 IEC 60909-3:2009; przy stosowaniu części 0:2016 lub :2026 wykonać analizę zgodności międzywydaniowej.",
+      "evidence_scope": "Załączony §2 i katalog IEC/PKN"
+    },
+    {
+      "id": "EN50160_A1_2025",
+      "national": "PN-EN 50160:2023-10/A1:2025-04",
+      "attached": true,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/pn-en-50160-2023-10e.html",
+      "base": "PN-EN 50160:2023-10",
+      "base_attached": false,
+      "status": "only_amendment_attached",
+      "needed_action": "Dopisać normę bazową przed pełnym audytem jakości napięcia. Brak progów dla poszczególnych harmonicznych z tablicy 5.",
+      "evidence_scope": "Załączony tekst A1 i katalog PKN"
+    },
+    {
+      "id": "IEC62271_1_2018",
+      "national": "PN-EN 62271-1:2018-02",
+      "attached": true,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/normy/pn-en-62271-1-2018-02e.html",
+      "amendment": "PN-EN 62271-1:2018-02/A1:2022-06",
+      "amendment_url": "https://sklep.pkn.pl/normy/pn-en-62271-1-2018-02-a1-2022-06e.html",
+      "amendment_attached": false,
+      "iec_consolidated": "IEC 62271-1:2017+AMD1:2021 CSV",
+      "iec_url": "https://webstore.iec.ch/en/publication/71439",
+      "status": "base_verified_amendment_missing",
+      "affected_clauses": [
+        "6.4.1",
+        "Bibliografia"
+      ],
+      "needed_action": "Pełny werdykt warunków obwodów pomocniczych §6.4.1 wstrzymać do czasu pozyskania A1. Do doboru wyłączników/odłączników/rozdzielnic dodatkowo wymagać normy wyrobu.",
+      "evidence_scope": "Pełny PDF 2018; oficjalny katalog PKN A1"
+    },
+    {
+      "id": "NEEDED_62271_200",
+      "national": "PN-EN IEC 62271-200:2022-02",
+      "attached": false,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/pn-en-iec-62271-200-2022-02e.html",
+      "amendment": "A1:2025-04",
+      "status": "outside_attached_corpus",
+      "needed_action": "Norma wyrobu dla metalowo-osłoniętych rozdzielnic >1 kV do 52 kV: klasyfikacje i próbę łuku wewnętrznego można ugruntować po pozyskaniu właściwego tekstu."
+    },
+    {
+      "id": "NEEDED_62271_100",
+      "national": "PN-EN IEC 62271-100:2022-04",
+      "attached": false,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/normy/pn-en-iec-62271-100-2022-04e.html",
+      "amendment": "A1:2025-05",
+      "status": "outside_attached_corpus",
+      "needed_action": "Norma wyrobu dla wyłączników i ich zdolności załączania/wyłączania zwarć; nie generować wartości z samego 62271-1."
+    },
+    {
+      "id": "NEEDED_62271_102",
+      "national": "PN-EN IEC 62271-102:2018-10",
+      "attached": false,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/pn-en-iec-62271-102-2018-10e.html",
+      "status": "outside_attached_corpus",
+      "needed_action": "Odłączniki i uziemniki; dobór funkcji i charakterystyk na podstawie pełnej normy wyrobu."
+    },
+    {
+      "id": "NEEDED_62271_103",
+      "national": "PN-EN IEC 62271-103:2024-04",
+      "attached": false,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/normy/pn-en-iec-62271-103-2024-04e.html",
+      "status": "outside_attached_corpus",
+      "needed_action": "Rozłączniki SN; zdolność łączenia prądu, klasy rozłączników i dane badań wymagają normy wyrobu."
+    },
+    {
+      "id": "NEEDED_62271_105",
+      "national": "PN-EN IEC 62271-105:2024-04",
+      "attached": false,
+      "status": "outside_attached_corpus",
+      "needed_action": "Zestawy rozłącznik–bezpieczniki; nie zakładać zamienności bezpieczników poza listą dopuszczoną dla danej kombinacji."
+    },
+    {
+      "id": "NEEDED_62271_202",
+      "national": "PN-EN IEC 62271-202:2023-03",
+      "attached": false,
+      "national_pkn_catalogue": "https://sklep.pkn.pl/pn-en-iec-62271-202-2023-03e.html",
+      "status": "outside_attached_corpus",
+      "needed_action": "Prefabrykowane stacje SN/nN; nie mylić normy zestawu stacji z wymaganiami dla samego łącznika."
+    }
+  ]
+}
