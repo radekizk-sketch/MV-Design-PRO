@@ -456,6 +456,71 @@ Zasady wspólne (obowiązują każdą kartę programu): (1) wyrocznia jest nieza
 (Wiersz „Modele odbiorów — przyrost po AB-5" usunięty 2026-09-23: był sprzeczny z O-22/AB-1b.3/AB-3b,
 przegląd #29.)
 
+### 5.1 Integracja obserwacji GFL/GFM z istniejącym E-32, W6-G i W6-F (2026-11-03)
+
+**Charakter zmiany:** doprecyzowanie wymagań i odbioru w istniejących kartach; **bez nowego modułu,
+silnika, statusu, kolejki, równoległego toru FRT, zmiany sekwencji §5 albo obejścia bramek B-01/B-02**.
+Nadrzędny status i odpowiedzialność pozostają wyłącznie w `PLANS.md` §C (UX-05 i sekwencja A/B).
+Inspiracja wizualna to pokaz GFL/GFM ze schematem i przebiegami udostępniony przez właściciela;
+wartości pokazu, np. 0,55/0,98 pu, „2 ms” czy „6°”, **nie są wyrocznią, progiem ani wynikiem produktu**.
+
+**Mapowanie na już istniejące karty:**
+
+| Funkcja | Miejsce w istniejącym programie | Granica / warunek |
+|---|---|---|
+| Kanoniczny bieg i przeglądarka przebiegów na E-32 | **AB-P1 — wykonane**; `resultset_dynamic_v2`, `EkranDynamiki`, `PrzegladarkaPrzebiegow` | Użyć istniejących API, nazwanych scenariuszy, wspólnego czasu wykresów, osi zdarzeń i sprzężenia z SLD; nie otwierać ponownie AB-P1. |
+| Jeden kursor czasu dla wykresów i schematu SLD | **UX-05**, W6-I (już istniejące powierzchnie); W7 jako dostawca projekcji ENM | SLD(t) jest **nakładką wyłącznie do odczytu** stanu z biegu RMS, z identyfikatorem biegu, rewizją, czasem i stroną próbki; nigdy nie wykonuje operacji łączeniowej, nie zmienia ENM ani nie udaje telemetrii. |
+| PLL, prąd falownika, limit, wsparcie bierne, skok kąta, FRT, odbudowa P | **AB-1b.2 + AB-1d_min → AB-1c**, dalej AB-2/AB-3 dla odpowiedzi f/P/Q/U | Wyłącznie kanały rzeczywiście wyliczone i zdefiniowane przez rdzeń, w jego konwencji baz i znaków; źródło parametrów — katalog/ENM. |
+| Napięcie i częstotliwość w wyspie, odpowiedź GFM/BESS, automatyka i zabezpieczenia | **AB-4a, AB-5** (oraz odpowiednie karty walidacji W6-F) | Prezentować rzeczywisty stan energii/SOC, granice mocy/prądu, bilans wyspy i status synchronizacji; nie zakładać, że dowolny GFM utrzymuje napięcie po otwarciu sieci. |
+| Dwa biegi GFL/GFM, porównanie wariantów i diagnoza | **W6-G/H na szkielecie AB-6** (F2/F3/G1/G2 zamrożenia) | Osobne rzeczywiste biegi; porównywalny bodziec sieciowy, jawne różnice nastaw/modeli, własny rozwiązany punkt pracy i `pf_run_id` każdego wariantu, identyfikowalność źródła danych i ważności modeli. Żadnych syntetycznych krzywych. |
+
+**Kontrakt prezentacji czasu i wyniku (UX-05).** Komponenty wykorzystują istniejącą
+`PrzegladarkaPrzebiegow`/`WykresPrzebiegow` oraz istniejący `SldCanvasV3`, bez alternatywnego
+rysownika SLD. Wybranie t daje odczyt danych z **tego samego `run_id`** dla wykresu i nakładki;
+przy zdarzeniu o dwóch próbkach `L/P` użytkownik wybiera jawnie stan **przed/po**. `None` i
+nieoznaczona wielkość są **brakiem**, nigdy 0; przerywanie linii, zmiana topologii i dyskretne
+zdarzenia nie mogą być wygładzane ani interpolowane przez granicę `L/P`. Wykresy pozostają
+zsynchronizowane czasowo; przy porównaniu biegów ich oś może zostać wyrównana względem
+**wskazanego zdarzenia**, lecz przesunięcie osi jest wyłącznie prezentacją. Dane z innej rewizji
+lub o innym statusie walidacji muszą zostać oznaczone. Brak próbki/stanu wymaganych do prezentacji
+SLD(t) oznacza **brak dostępnego wyniku**, nie zgadywanie po stanie bieżącej migawki ENM.
+Wszystkie metryki, kryteria i marginesy oblicza wyłącznie backend.
+
+**Granica fizyki.** Istniejący silnik liczy **RMS/DAE**: przebiegi wartości skutecznych,
+kątów, prądów fazorowych, mocy, regulatorów i zdarzeń. Nie jest symulatorem
+elektromagnetycznych stanów przejściowych **EMT** ani modelem przełączeń PWM. Trójfazowa
+sinusoida odtworzona wizualnie z fazorów może być pokazana tylko jako „ilustracja
+fazora — NIE przebieg chwilowy EMT”, nie jest dowodem NC RfG, zwłaszcza przy uskoku fazy,
+głębokim zapadzie, ograniczniku prądu i w pierwszych milisekundach zakłócenia.
+Na podstawie filmu nie wprowadza się nowego obowiązku regulacyjnego GFM.
+
+**W6-F — warunek dowodowy, równolegle z rozwojem modeli.** Sceny porównawcze obejmują:
+skok kąta źródła testowego (obserwacja PLL), zapad i odbudowę napięcia (limiter `|I|`,
+`I_q`, odbudowa `P`), zwarcie z wyłączeniem i — dla odpowiednio kwalifikowanego GFM/BESS —
+odłączenie sieci i zasilanie wyspy. Dla każdego modelu wskazać rodzaj wyroczni, niezależne
+drogi, zakres ważności, parametry z katalogu oraz wyniki walidacji; GFL przez
+AB-1d_min/AB-1d, GFM/BESS przez właściwą falę W6-F i karty modelu. Reguła dwóch
+niezależnych dróg i poziomów L4/L5 pozostaje jak w `FINAL_DYNAMICS_CAPABILITY_FREEZE.md` §5.
+Dopóki nie ma wymaganej walidacji konkretnej rodziny i przypadku: **`UNVALIDATED_MODEL`**,
+brak werdyktu FRT/stabilności oraz brak fałszywego „spełnia”. Nie należy mylić
+wierności wygenerowanego wykresu z walidacją fizyki.
+
+**Bramka E2E (realny backend, bez mocków), przypisana do kart, bez osobnej kolejki:**
+1. E-32: rozwiązany rozpływ → scenariusz → zapisany bieg → rzeczywiste próbki i zdarzenia
+   → wspólny kursor → odczyt SLD(t) z tej samej rewizji i biegu; kontrola braku mutacji ENM.
+2. Dwa zdarzenia z tą samą chwilą i próbki `L/P`; kontrola odróżnienia stanu przed/po,
+   przerw `None`, braku zer zastępczych i braku interpolacji przez nieciągłość.
+3. GFL/GFM: dwa warianty z jawnymi różnicami, osobnymi `pf_run_id`, tym samym opisanym
+   zakłóceniem, wspólną osią porównawczą, śladem `run_id` i poziomu walidacji.
+4. Negatywne: brak danych producenta, brak stanu GFM/BESS, brak próbek, nieważna rewizja
+   lub przypadek poza domeną wyroczni nie może dawać wykresu pozornego, fikcyjnej liczby
+   ani werdyktu zgodności; oba motywy UI i rzeczywisty schemat do odbioru B-02.
+
+**Kolejność pozostaje niezmieniona:** najpierw otwarte AB-1b.2 + AB-1d_min i AB-1c
+(z ich bramkami); AB-4a/AB-5 dla odpowiedzi wyspowej; AB-6 / W6-G/H do analiz porównawczych;
+W6-F prowadzi walidację równolegle. Warstwa UX-05 może przejąć przygotowanie wspólnego
+kursora wcześniej, ale bez wyprzedzania dostępnej fizyki i jej statusu.
+
 Poza zakresem A/B (DEFER, bez rozwijania): T02/T03/T04/T19 jako wymagania C/D (dla B tylko na
 żądanie OSD), T06–T08 jako wymagania C/D, T18 (praca wyspowa/rozruch autonomiczny jako wymagania
 OSP), PSS/HYGOV/duże turbiny, turbiny wiatrowe typu 1/2 (W6-J), EMT. NIE są odroczone (korekta
