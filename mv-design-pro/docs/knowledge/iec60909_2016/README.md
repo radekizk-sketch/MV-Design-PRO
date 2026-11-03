@@ -1,4 +1,4 @@
-# MV-DESIGN-PRO — baza wiedzy technicznej i normowej (R3)
+# MV-DESIGN-PRO — baza wiedzy technicznej, normowej i proceduralnej (R4)
 
 **Status:** źródłowy moduł wiedzy i narzędzia offline, PR do oceny; nie jest wpięty do produkcyjnego API i nie zmienia solvera B-01.
 **Podstawa:** licencjonowany załącznik dostarczony przez właściciela + dwa materiały dydaktyczne.
@@ -87,3 +87,28 @@ python kb.py ask "Ip Ik a prąd wyłączalny" --source IEC62271_1_2018
 ```
 
 **Status wykonania:** referencyjny indeks i wstępne reguły kontroli wejść; nie jest to pełne API zgodności wyrobu, nie zmienia B-01, SLD ani kontraktów obliczeń. Integracja do produkcyjnego przepływu wymaga osobnej kontroli i odbioru.
+
+## Rozszerzenie R4 — 2026-11-03: wzory strat liczników i NC RfG
+
+Dwa nowe źródła dodano do tej samej referencyjnej bazy wiedzy bez zmiany solvera i SLD.
+
+- [`extensions_metering_rfg_2026_11.json`](./extensions_metering_rfg_2026_11.json) — **62 karty, 20 reguł** i dwa źródła.
+- [`AUDYT_POMIARY_RFG_R4_2026_11.md`](./AUDYT_POMIARY_RFG_R4_2026_11.md) — pełny zakres, zestawienie mnożników, 18 programów ramowych, kontrola stron i ograniczenia.
+- **Stan R4: 230 kart / 9 źródeł / 79 propozycji reguł.**
+
+**Wzory EMH / Landis+Gyr / Pozyton (Poznań, 2018):** układy pośrednie, półpośrednie i bezpośrednie, składniki I²h i U²h, linie SN/nN i straty transformatorów. Uwaga ZMD: materiał wskazuje zastosowanie wyłącznie przy `Rcu=1 Ω`, `Rfe=1 kΩ`; relacja `U²h(LANDIS)=1000·U²h(EMH)` jest zapisana w określonym kontekście. **Brak słownika jednostek wszystkich symboli uniemożliwia bezpieczne uruchomienie automatycznego kalkulatora współczynników.**
+
+**PTPiREE v3.0:** 155 stron, wersja opublikowana **15.12.2025**, obowiązuje od **01.01.2026**. Procedura główna (PDF 1–15) + komplet **18 programów ramowych** (PDF 16–155): LFSM-O/U, FSM, odbudowa f, PPW, Q ≥/<110 kV, regulacje P/U/Q/cosφ, oscylacje, PMAX/PMIN, praca wyspowa, rozruch autonomiczny, zaprzestanie/redukcja P. Poddokumenty mają własną numerację stron drukowanych, dlatego wyszukiwarka wskazuje zarówno stronę poddokumentu, jak i globalny numer PDF.
+
+Przykładowe zapytania:
+```bash
+python kb.py check
+python kb.py build
+python -m unittest discover -s tests -v
+python build_html.py
+python kb.py ask "wzory współczynnika strat transformatora Pozyton" --source MTR_LOSSES_2018
+python kb.py ask "LFSM-O statyzm 2 12" --source PTPIREE_RFG3_2026
+python kb.py ask "program ramowy Q poniżej 110 kV" --source PTPIREE_RFG3_2026
+```
+
+**Granice:** materiały dotyczą współczynników pomiarowo-rozliczeniowych i procedury testowania PGM. Karty i reguły pozostają źródłowo opisanym indeksem; **nie są automatycznym werdyktem zgodności ani pozwoleniem na użytkowanie**. W szczególności pomiarowy `Aobc/Ajał` nie może zastąpić technicznych strat z rozpływu sieci w B-01. Nie rozpowszechniono oryginalnych PDF w repo.
