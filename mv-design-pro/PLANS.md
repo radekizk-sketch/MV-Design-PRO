@@ -46,14 +46,14 @@
    LITERAMI) nie są przenumerowywane. Kolizje nazw (W1–W5 „wygaszanie mostu wyników" w części B,
    F1–F5 trzech różnych programów, F1–F11 SLD V3) rozstrzyga §D.
 
-## B. Stan bazowy (pomiar 2026-10-23, nie deklaracja)
+## B. Stan bazowy (pomiar 2026-10-23; stan scalenia zweryfikowany 2026-11-03)
 
 | Pozycja | Stan | Dowód |
 |---|---|---|
-| Gałąź programu | `claude/mv-design-pro-twin-audit-u4lhy0` = `a5996c281` (partia integracji 2 linii programu `0e7a5e7d6` + PR #490 pakiet SEL + PR #491 UX-04 H5/ENEA) | `git log`, PR #490/#491 MERGED |
-| `main` | `8f7ed3c27`, przodek gałęzi programu; PR #489 integracja → `main` **OPEN** (296 commitów, 2 213 plików) | GitHub PR #489 |
+| Gałąź programu (punkt historyczny przed scaleniem) | `claude/mv-design-pro-twin-audit-u4lhy0` = `a5996c281` (partia integracji 2 linii programu `0e7a5e7d6` + PR #490 pakiet SEL + PR #491 UX-04 H5/ENEA) | `git log`, PR #490/#491 MERGED (pomiar 2026-10-23) |
+| `main` | `e973ad2cd419` (2026-10-23) — PR #489 **SCALONY**, zachowany merge commit; stan bazowy dla tej aktualizacji | GitHub PR #489, commit `e973ad2cd419` |
 | CI na `0e7a5e7d6` | 9/9 workflowów zielonych | GitHub Actions |
-| Weryfikacja lokalna przed scaleniem #489 | **NIEDOKOŃCZONA** — pełny backend przerwany dwukrotnie restartem kontenera (ostatnio 38 %); `guardy_z_ci.py` + samotesty 3 908 zielone; `npm test`, type-check, lint, e2e 4 shardy — do wykonania | logi sesji integratora |
+| Historyczna weryfikacja lokalna przed scaleniem #489 (2026-10-23) | **NIEDOKOŃCZONA w chwili pomiaru** — pełny backend przerwany dwukrotnie restartem kontenera (ostatnio 38 %); `guardy_z_ci.py` + samotesty 3 908 zielone; `npm test`, type-check, lint, e2e 4 shardy — niepotwierdzone tym pomiarem (PR #489 został następnie scalony; ten wpis nie jest oceną dzisiejszego CI) | logi sesji integratora |
 | Pełna regresja (ostatnia zmierzona) | backend 39 083 passed (KATALOG-APARATURA-WN, 2026-10-23, gałąź UI/UX); vitest 893 pliki / 16 269 (tamże); bramka scalenia partii 2: pytest 38 798, vitest 4 604, guardy RC=0 | plan A/B §7 wiersze 2026-10-23 |
 | PR nie do scalenia | #475 (laboratorium dynamiki, RESEARCH ONLY), #488 (audyt rdzenia — źródło kart, „NIE SCALAĆ JAKO ZWALIDOWANEJ NORMY") | plan A/B §14.4 |
 | Program UI/UX | stan bazowy **niezweryfikowany po PR #489** — audyt UX-00 pierwszy (PROGRAM §12.6); ostatni audyt bramek U2–U5: `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` (U2 8/11, U3 7/9, U4 3/7, U5 4/9 — sierpień, nieaktualny) | PROGRAM §8, §12.6 |
@@ -201,7 +201,7 @@ Jeden wykonawca na tor; granice plików wg `STAN_REPO.md` §7 F:
 
 | Tor | Kolejność (ID z §C) |
 |---|---|
-| I — integracja (Fable) | INT-489 → JEDEN-PLAN → partie integracji kolejnych kart (fast-forward programu po CI 9/9 i niezależnej weryfikacji) |
+| I — integracja (Fable) | INT-489 ✓ (scalone 2026-10-23) → JEDEN-PLAN (weryfikacja merytoryczna) → partie integracji kolejnych kart po CI i niezależnej weryfikacji |
 | U — UI/UX (Opus) | UX-00 → UX-04 (z GPZ-H5-APARATURA, GPZ-H5-SKLADOWA-ZEROWA) → UX-01 → UX-02 → UX-03 → UX-05 (z WKLADY-BEZ-ZRODLA, DANE-PRZYJETE-EKRANY) → UX-06 → UX-07 → UX-08; UX-09 STOP |
 | R — rdzeń dynamiki | AB-1b.2 (0/A/B/C/D → E/F/G/H) → AB-1c → AB-1d → AB-2 → AB-3 → AB-3b → AB-3c → AB-4a → W6-K → AB-4b → AB-5 → AB-5b → AB-6 → AB-6b → AB-7 |
 | H — dziedzina częstotliwości | AB-H1 (od zaraz) → AB-H2 (po AB-3) → AB-H3 (z AB-6) → AB-H4 (z AB-7) |
@@ -210,16 +210,16 @@ Jeden wykonawca na tor; granice plików wg `STAN_REPO.md` §7 F:
 | Z — zabezpieczenia | W4-0 (pomiar) → W4-2 → wejście do AB-5 |
 | D — dokumenty, UX, higiena | P0: SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, AB-H0b; P1: O-53b, KSR-SKLAD-DER, SZABLONY-BEZ-DOMYSLOW, CICHE-ZERO, O-52, ENDPOINTY-BEZ-KONSUMENTA; P2: KSR-KRYTERIA-POMIAR, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2; W10-1 → W9 → W10-2 → W11 → W12 |
 
-Ścieżka krytyczna produktu: INT-489 → UX-00 → UX-04 → UX-01/02 → UX-05 → UX-06 (odbiór właściciela) równolegle z R (AB-1b.2 → AB-1c) i M (W5-B → W7, dostawca dla UX-04/UX-01).
+Ścieżka krytyczna produktu: INT-489 ✓ → UX-00 → UX-04 → UX-01/02 → UX-05 → UX-06 (odbiór właściciela) równolegle z R (AB-1b.2 → AB-1c) i M (W5-B → W7, dostawca dla UX-04/UX-01).
 
-## E. Liczniki (stan 2026-10-23)
+## E. Liczniki (stan 2026-11-03; korekta statusu INT-489 po scaleniu)
 
 | Miara | Wartość |
 |---|---|
 | Wiersze kolejki §C.1–C.4 (zadania uporządkowane) | 64 |
 | w tym P0 / P1 / P2 / P3 | 19 / 35 / 7 / 3 (sekwencje AB-1d…AB-7 i AB-H2…H4 liczone jako po jednym wierszu) |
-| Nieukończone (OTWARTA/OTWARTE 46, W TOKU 3, DO WERYFIKACJI 5, CZĘŚCIOWE 1, NIEODEBRANE 1) | 56 |
-| DOMKNIĘTE w kolejce (zachowane dla ciągłości torów) | 5 |
+| Nieukończone (OTWARTA/OTWARTE 46, W TOKU 2, DO WERYFIKACJI 5, CZĘŚCIOWE 1, NIEODEBRANE 1) | 55 |
+| DOMKNIĘTE w kolejce (zachowane dla ciągłości torów) | 6 |
 | ZABLOKOWANA / ODRZUCONE / STOP | 1 / 1 / 1 |
 | Pozycje domknięte §C.5 (programy i karty, bez odtwarzania) | 16 wierszy zbiorczych |
 | Dokumenty scalone w jeden rejestr | 12: PLANS 5.1, PROGRAM_UIUX §8/§12, PROMPT_ZARZADCA, MAPA §8, PLAN_AB §2/§5/§7/§11/§14, PLAN_SLD_REWORK §0, STAN_REPO §7 B–D, sel-blueframe (README, GALERIA, REJESTR_32, KONTRAKT), audyty SLD 2026-10-20 ×2, PROMPT_KONTYNUACJI_2026-10-23 |
