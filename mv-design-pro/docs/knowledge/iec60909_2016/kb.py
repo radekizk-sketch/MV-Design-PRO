@@ -15,6 +15,8 @@ def normalize(text):
     s = unicodedata.normalize("NFKD", str(text)).lower()
     return "".join(c for c in s if not unicodedata.combining(c)).replace("ł", "l")
 
+EXTENSION_FILES = ("extensions_2026_11.json", "extensions_62271_2018.json")
+
 def load(name):
     base = json.loads((ROOT / name).read_text(encoding="utf-8"))
     extension_keys = {
@@ -23,8 +25,9 @@ def load(name):
         "rules.json": "rules",
     }
     if name in extension_keys:
-        addon = json.loads((ROOT / "extensions_2026_11.json").read_text(encoding="utf-8"))
-        return base + addon[extension_keys[name]]
+        for fname in EXTENSION_FILES:
+            addon = json.loads((ROOT / fname).read_text(encoding="utf-8"))
+            base.extend(addon[extension_keys[name]])
     return base
 
 def check():
@@ -55,6 +58,10 @@ def check():
             loc = f["source"]
             if not 5 <= loc.get("pdf_page", 0) <= 9 or loc.get("pdf_page") - 2 != loc.get("printed_page"):
                 errors.append("bad EN 50160 A1 page: " + f["id"])
+        elif f["source_id"] == "IEC62271_1_2018":
+            loc = f["source"]
+            if not 24 <= loc.get("pdf_page", 0) <= 136 or loc.get("pdf_page") - 12 != loc.get("printed_page"):
+                errors.append("bad IEC 62271-1 page: " + f["id"])
     for rule in rules:
         if set(rule["source_ids"]) - set(ids):
             errors.append("unknown rule reference: " + rule["id"])
@@ -96,13 +103,17 @@ def citation(record):
     elif record["source_id"] == "EN50160_A1_2025":
         s = (f"PN-EN 50160:2023-10/A1:2025-04, {loc['clause']}, "
              f"str. EN {loc['printed_page']} (PDF {loc['pdf_page']}); zmiana A1, nie pełna norma")
+    elif record["source_id"] == "IEC62271_1_2018":
+        s = (f"PN-EN 62271-1:2018-02, {loc['clause']}, "
+             f"str. IEC {loc['printed_page']} (PDF {loc['pdf_page']}); "
+             "bez zmiany A1:2022-06")
     else:
         s = (f"{record['source_id']}, {loc['clause']}, "
              f"s. {loc['printed_page']}")
     return s + (", wzór " + loc["equation"] if loc.get("equation") else "")
 
 def search(question, source=None, limit=5):
-    inputs = [ROOT / n for n in ("knowledge.json", "sources.json", "rules.json", "extensions_2026_11.json")]
+    inputs = [ROOT / n for n in ("knowledge.json", "sources.json", "rules.json", *EXTENSION_FILES)]
     if not DB.exists() or any(p.stat().st_mtime_ns > DB.stat().st_mtime_ns for p in inputs):
         build()
     words = [w for w in re.findall(r"\w+", normalize(question))
@@ -150,11 +161,29 @@ def validate_case(case):
     if case.get("network_voltage_level") == "SN" and case.get("voltage_limit_clause") == "4.2.2.2":
         problems.append({"rule_id": "KB-R2-009",
                          "detail": "Punkt 4.2.2.2 dotyczy nN; dla SN potrzebny §5.2.2.2 wydania bazowego."})
+    switchgear = case.get("switchgear")
+    if isinstance(switchgear, dict):
+        rated_ur = switchgear.get("rated_ur_kv")
+        if (isinstance(u, (int, float)) and isinstance(rated_ur, (int, float))
+                and rated_ur < u):
+            problems.append({"rule_id": "KB-R3-003",
+                             "detail": "Ur urządzenia nie może być niższe niż napięcie znamionowe sieci; sprawdź także najwyższe napięcie pracy."})
+        ip_calc, ip_rated = switchgear.get("calculated_ip_ka"), switchgear.get("rated_ip_ka")
+        if (isinstance(ip_calc, (int, float)) and isinstance(ip_rated, (int, float))
+                and ip_calc > ip_rated):
+            problems.append({"rule_id": "KB-R3-007",
+                             "detail": "Obliczony prąd udarowy ip jest większy niż znamionowa wytrzymałość Ip."})
+        if switchgear.get("short_circuit_breaking_capacity_derived_from") == "Ik":
+            problems.append({"rule_id": "KB-R3-006",
+                             "detail": "Ik oznacza wytrzymałość przy zamkniętych stykach, a nie zdolność wyłączeniową."})
+    if case.get("full_62271_1_compliance") and not case.get("has_62271_1_A1_2022"):
+        problems.append({"rule_id": "KB-R3-002",
+                         "detail": "Brak tekstu zmiany A1:2022-06 do PN-EN 62271-1, w tym zmiany §6.4.1."})
     return {"status": "WYMAGA_KOREKTY" if problems else "BRAK_WYKRYTEJ_SPRZECZNOSCI",
             "problems": problems, "disclaimer": "Nie jest werdyktem zgodności urządzenia ani wynikiem solvera."}
 
 def main():
-    p = argparse.ArgumentParser(description="MV-DESIGN-PRO, indeks IEC 60909 i EN 50160 A1")
+    p = argparse.ArgumentParser(description="MV-DESIGN-PRO, indeks IEC 60909, IEC 62271-1 i EN 50160 A1")
     s = p.add_subparsers(dest="cmd", required=True)
     s.add_parser("check")
     s.add_parser("build")
