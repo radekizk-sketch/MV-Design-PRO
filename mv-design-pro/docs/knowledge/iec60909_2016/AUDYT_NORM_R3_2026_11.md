@@ -42,7 +42,7 @@ Dla modelu IEC 60909-0 prąd udarowy `ip` należy obliczyć własnym obliczeniem
 - §6.3 (IEC 39 / PDF 51): punkt przyłączenia PE i oznaczenie IEC 60417-5019. To nie jest uniwersalny symbol uziemnika na schemacie.
 - §6.12–6.13 (IEC 48 / PDF 60): blokowanie niewłaściwych operacji i wiarygodna informacja o położeniu rzeczywistych styków. Norma wskazuje IEC 60073, IEC 60417 i IEC 60617; **nie ustanawia sama jednej pary barw dla każdego SLD**.
 - §6.14.2 (IEC 48 / PDF 60): minimalne IP1XB w zakresie ochrony przed dotykiem; dla aparatów zewnętrznych §6.14.3 przewiduje IPX3 względem wody. To wymogi wspólne — norma wyrobu/OSD może wymagać więcej.
-- §6.14.4 (IEC 48 / PDF 60): **IK07 jest wartością preferowaną** dla zastosowań wnętrzowych, a nie generalnym bezwarunkowym minimum.
+- §6.14.4 (IEC 48–49 / PDF 60–61): **IK07 (2 J) jest wartością preferowaną** dla wnętrz, ale dla aparatury zewnętrznej bez dodatkowej ochrony mechanicznej **IK10 (20 J) jest minimum obowiązkowym**. Izolatory i przepusty nie podlegają temu wymaganiu.
 
 ### 2.5. Dowody i odbiór
 - §6.11 i tablica 9 (PDF 58–59): tabliczka znamionowa, rozróżnienie znakowania obowiązkowego X (gdy dotyczy) i warunkowego Y.
