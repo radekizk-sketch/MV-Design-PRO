@@ -106,6 +106,8 @@ class KnowledgeBaseTests(unittest.TestCase):
         self.assertIn("95/110", facts["SG-INSULATION-24"]["content"])
         self.assertIn("125/145", facts["SG-INSULATION-24"]["content"])
         self.assertEqual(facts["SG-INSULATION-17_5"]["source"]["pdf_page"], 45)
+        self.assertIn("IK10", facts["SG-IK-PREFERRED"]["content"])
+        self.assertIn("Izolatory", facts["SG-IK-PREFERRED"]["content"])
 
     def test_62271_1_search_and_citation(self):
         facts = kb.search("IP1XB", source="IEC62271_1_2018", limit=20)
