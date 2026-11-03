@@ -102,7 +102,8 @@ def citation(record):
     return s + (", wzór " + loc["equation"] if loc.get("equation") else "")
 
 def search(question, source=None, limit=5):
-    if not DB.exists():
+    inputs = [ROOT / n for n in ("knowledge.json", "sources.json", "rules.json", "extensions_2026_11.json")]
+    if not DB.exists() or any(p.stat().st_mtime_ns > DB.stat().st_mtime_ns for p in inputs):
         build()
     words = [w for w in re.findall(r"\w+", normalize(question))
              if len(w) > 1]
@@ -153,7 +154,7 @@ def validate_case(case):
             "problems": problems, "disclaimer": "Nie jest werdyktem zgodności urządzenia ani wynikiem solvera."}
 
 def main():
-    p = argparse.ArgumentParser(description="MV-DESIGN-PRO, indeks IEC 60909-0:2016")
+    p = argparse.ArgumentParser(description="MV-DESIGN-PRO, indeks IEC 60909 i EN 50160 A1")
     s = p.add_subparsers(dest="cmd", required=True)
     s.add_parser("check")
     s.add_parser("build")
