@@ -15,7 +15,7 @@ def normalize(text):
     s = unicodedata.normalize("NFKD", str(text)).lower()
     return "".join(c for c in s if not unicodedata.combining(c)).replace("ł", "l")
 
-EXTENSION_FILES = ("extensions_2026_11.json", "extensions_62271_2018.json")
+EXTENSION_FILES = ("extensions_2026_11.json", "extensions_62271_2018.json", "extensions_metering_rfg_2026_11.json")
 
 def load(name):
     base = json.loads((ROOT / name).read_text(encoding="utf-8"))
@@ -62,6 +62,21 @@ def check():
             loc = f["source"]
             if not 24 <= loc.get("pdf_page", 0) <= 136 or loc.get("pdf_page") - 12 != loc.get("printed_page"):
                 errors.append("bad IEC 62271-1 page: " + f["id"])
+        elif f["source_id"] == "MTR_LOSSES_2018":
+            loc = f["source"]
+            if loc.get("pdf_page") not in (1, 2) or loc.get("pdf_page") != loc.get("printed_page"):
+                errors.append("bad metering table page: " + f["id"])
+        elif f["source_id"] == "PTPIREE_RFG3_2026":
+            loc = f["source"]
+            pg = loc.get("pdf_page", 0)
+            start = loc.get("document_start_page", 0)
+            programs = (1, 16, 28, 41, 53, 70, 76, 83, 89, 94, 99,
+                        106, 112, 118, 125, 130, 140, 148, 152)
+            if (not isinstance(pg, int) or not isinstance(start, int)
+                    or not 1 <= pg <= 155 or start not in programs
+                    or start > pg or any(start < p <= pg for p in programs)
+                    or loc.get("printed_page") != pg - start + 1):
+                errors.append("bad PTPiREE annex page: " + f["id"])
     for rule in rules:
         if set(rule["source_ids"]) - set(ids):
             errors.append("unknown rule reference: " + rule["id"])
@@ -107,6 +122,13 @@ def citation(record):
         s = (f"PN-EN 62271-1:2018-02, {loc['clause']}, "
              f"str. IEC {loc['printed_page']} (PDF {loc['pdf_page']}); "
              "bez zmiany A1:2022-06")
+    elif record["source_id"] == "MTR_LOSSES_2018":
+        s = (f"EMH/Landis+Gyr/Pozyton, wzory 2018, {loc['clause']}, "
+             f"str. {loc['printed_page']} (PDF {loc['pdf_page']}); materiał techniczny, nie norma")
+    elif record["source_id"] == "PTPIREE_RFG3_2026":
+        s = (f"PTPiREE v3.0 (od 01.01.2026), {loc['clause']}, "
+             f"str. dokumentu {loc['printed_page']} (PDF {loc['pdf_page']}); "
+             f"początek poddokumentu PDF {loc['document_start_page']}")
     else:
         s = (f"{record['source_id']}, {loc['clause']}, "
              f"s. {loc['printed_page']}")
@@ -183,7 +205,7 @@ def validate_case(case):
             "problems": problems, "disclaimer": "Nie jest werdyktem zgodności urządzenia ani wynikiem solvera."}
 
 def main():
-    p = argparse.ArgumentParser(description="MV-DESIGN-PRO, indeks IEC 60909, IEC 62271-1 i EN 50160 A1")
+    p = argparse.ArgumentParser(description="MV-DESIGN-PRO, wiedza z norm, pomiarów, PTPiREE RfG i materiałów technicznych")
     s = p.add_subparsers(dest="cmd", required=True)
     s.add_parser("check")
     s.add_parser("build")
