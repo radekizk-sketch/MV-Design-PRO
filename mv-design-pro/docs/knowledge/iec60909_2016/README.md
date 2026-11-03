@@ -73,7 +73,7 @@ python kb.py ask "asymetria SN 95%" --source EN50160_A1_2025
 
 **Bramka wersji 2026:** IEC 60909-0:2026 została opublikowana 23.07.2026, ale załączony skan i indeks obejmują PN-EN 60909-0:2016-09. Katalog PKN nadal wskazuje wydanie 2016 bez adnotacji o wycofaniu na dzień 2026-11-03. Nie należy automatycznie uznawać metody 2016 za metodę 2026. Załączona PN-EN 62271-1:2018-02 **nie zawiera A1:2022-06**, która zmienia §6.4.1. Wymagania wyłączników i rozdzielnic uzupełniają normy wyrobu m.in. 62271-100 i 62271-200.
 
-**Uwaga do tablicy 1 62271-1:** przy Ur=17,5 kV występują **dwa warianty** Up: **75/85** lub **95/110 kV** (wspólna izolacja/przerwa izolacyjna); nie koduj jednej pary jako bezwzględnego minimum. Dla Ur=24 kV odpowiednio Up 95/110 albo 125/145 kV. Dobór zależy od koordynacji izolacji i wymagań OSD.
+**Uwaga do tablicy 1 62271-1:** przy Ur=17,5 kV występują **dwa warianty** Up: **75/85** lub **95/110 kV** (wspólna izolacja/przerwa izolacyjna); nie koduj jednej pary jako bezwzględnego minimum. Dla Ur=24 kV odpowiednio Up 95/110 albo 125/145 kV. Dla wnętrz normowa wartość IK07 jest preferowana; przy aparaturze napowietrznej bez dodatkowej osłony wymaga się minimum IK10 (§6.14.4, z wyłączeniem izolatorów i przepustów). Dobór zależy od koordynacji izolacji i wymagań OSD.
 
 Przykładowe zapytania:
 
