@@ -280,14 +280,16 @@
         "printed_page": 33
       },
       "title": "Poziom izolacji dla Ur=17,5 kV",
-      "content": "W szeregu I tablica 1 podaje dla Ur=17,5 kV standardowe wartości Ud=38 kV i Up=95 kV, a dla przerwy izolacyjnej odpowiednio 45 kV i 110 kV. Kolumny wspólnego przebiegu i przerwy izolacyjnej nie są zamienne.",
+      "content": "Tablica 1 dla Ur=17,5 kV podaje Ud=38 kV (wspólna część izolacji) i 45 kV (przerwa izolacyjna). Dopuszcza dwa zestawy poziomu wytrzymałości udarowej: Up=75/85 kV albo Up=95/110 kV (wartość druga przez przerwę). Nie wolno bez koordynacji izolacji i wymagania OSD uznawać 95/110 za jedyną parę.",
       "search_terms": [
         "17.5 kV",
         "38 kV",
         "95 kV",
         "45 kV",
         "110 kV",
-        "udar piorunowy"
+        "udar piorunowy",
+        "75 kV",
+        "85 kV"
       ],
       "topic": "Aparatura rozdzielcza i sterownicza SN",
       "record_type": "interpretacja_normy",
@@ -304,12 +306,14 @@
         "printed_page": 33
       },
       "title": "Poziom izolacji dla Ur=24 kV",
-      "content": "W szeregu I dla Ur=24 kV tablica 1 wskazuje Ud=50 kV i Up=125 kV oraz dla przerwy izolacyjnej 60 kV i 145 kV. Porównanie wymaganej wytrzymałości musi uwzględnić odpowiednią drogę i rodzaj izolacji.",
+      "content": "Dla Ur=24 kV tablica 1 podaje Ud=50/60 kV (wspólny/przerwa) oraz dwa zestawy udarowe Up=95/110 kV albo Up=125/145 kV. Wybór wytrzymałości wynika z koordynacji izolacji i specyfikacji urządzenia, a nie z jednej z góry zadanej pary.",
       "search_terms": [
         "24 kV",
         "50 kV",
         "125 kV",
-        "145 kV"
+        "145 kV",
+        "95 kV",
+        "110 kV"
       ],
       "topic": "Aparatura rozdzielcza i sterownicza SN",
       "record_type": "interpretacja_normy",
@@ -1289,7 +1293,7 @@
         "SG-INSULATION-17_5",
         "SG-INSULATION-24"
       ],
-      "action": "Dla Ur=17,5 kV rozdziel Ud=38/45 i Up=95/110 kV dla normalnego przebiegu i przerwy izolacyjnej; analogicznie dla Ur=24 kV.",
+      "action": "Dla Ur=17,5 kV rozróżnij Ud=38/45 i dwie pary Up=75/85 albo 95/110 kV; dla Ur=24 kV rozróżnij Ud=50/60 i Up=95/110 albo 125/145 kV. Nie wybieraj wariantu bez koordynacji izolacji.",
       "category": "selection",
       "level": "proposal_not_in_solver"
     },
