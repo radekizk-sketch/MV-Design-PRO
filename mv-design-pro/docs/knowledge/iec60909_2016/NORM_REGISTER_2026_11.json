@@ -86,7 +86,9 @@
       "attached": false,
       "national_pkn_catalogue": "https://sklep.pkn.pl/pn-en-iec-62271-102-2018-10e.html",
       "status": "outside_attached_corpus",
-      "needed_action": "Odłączniki i uziemniki; dobór funkcji i charakterystyk na podstawie pełnej normy wyrobu."
+      "needed_action": "Odłączniki i uziemniki wraz ze zmianą A1:2023-01; dobór funkcji i charakterystyk na podstawie pełnej normy wyrobu.",
+      "amendment": "PN-EN IEC 62271-102:2018-10/A1:2023-01",
+      "iec_latest": "IEC 62271-102:2018+AMD1:2022"
     },
     {
       "id": "NEEDED_62271_103",
