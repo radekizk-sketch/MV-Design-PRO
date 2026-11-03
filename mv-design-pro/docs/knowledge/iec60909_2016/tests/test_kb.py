@@ -21,7 +21,7 @@ class KnowledgeBaseTests(unittest.TestCase):
         cls.tmp.cleanup()
 
     def test_integrity(self):
-        self.assertEqual((self.stat["records"], self.stat["sources"], self.stat["rules"]), (168, 7, 59))
+        self.assertEqual((self.stat["records"], self.stat["sources"], self.stat["rules"]), (230, 9, 79))
         self.assertTrue(kb.check()["ok"])
 
     def test_15kv_cmin_source(self):
@@ -127,6 +127,48 @@ class KnowledgeBaseTests(unittest.TestCase):
     def test_62271_1_missing_amendment_prevents_full_verdict(self):
         out = kb.validate_case({"full_62271_1_compliance": True})
         self.assertIn("KB-R3-002", [x["rule_id"] for x in out["problems"]])
+
+    def test_r4_source_count_and_document_index(self):
+        records = kb.load("knowledge.json")
+        meter = [x for x in records if x["source_id"] == "MTR_LOSSES_2018"]
+        rfg = [x for x in records if x["source_id"] == "PTPIREE_RFG3_2026"]
+        self.assertEqual(len(meter), 17)
+        self.assertEqual(len(rfg), 45)
+        programs = [x for x in rfg if x["id"].startswith("RFG-PROGRAM-")]
+        self.assertEqual(len(programs), 18)
+        self.assertEqual([x["source"]["pdf_page"] for x in programs],
+                         [16,28,41,53,70,76,83,89,94,99,106,112,118,125,130,140,148,152])
+
+    def test_r4_meters_keep_scaling_and_zmd_condition(self):
+        facts = {x["id"]: x for x in kb.load("knowledge.json")}
+        self.assertIn("10⁻³", facts["MTR-PO-01"]["content"])
+        self.assertIn("10⁶", facts["MTR-DIR-02"]["content"])
+        self.assertIn("Rcu=1 Ω", facts["MTR-ZMD-CONFIG"]["content"])
+        self.assertIn("Rfe=1 kΩ", facts["MTR-ZMD-CONFIG"]["content"])
+        self.assertIn("10³", facts["MTR-ZMD-CONVERT"]["content"])
+
+    def test_r4_18_programs_and_page_resets(self):
+        for rec in kb.load("knowledge.json"):
+            if rec["source_id"] != "PTPIREE_RFG3_2026":
+                continue
+            loc = rec["source"]
+            self.assertEqual(loc["pdf_page"] - loc["document_start_page"] + 1, loc["printed_page"])
+            self.assertGreaterEqual(loc["pdf_page"], loc["document_start_page"])
+        sources = {s["id"]:s for s in kb.load("sources.json")}
+        self.assertEqual(len(sources["PTPIREE_RFG3_2026"]["units"]), 19)
+        self.assertEqual(sources["PTPIREE_RFG3_2026"]["effective_from"], "2026-01-01")
+
+    def test_r4_search_sources_and_citation(self):
+        for phrase, src_id, expected_id in [
+            ("Rcu Rfe", "MTR_LOSSES_2018", "MTR-ZMD-CONFIG"),
+            ("LFSM-O", "PTPIREE_RFG3_2026", "RFG-PROGRAM-LFSM-O"),
+        ]:
+            hits = kb.search(phrase, source=src_id, limit=30)
+            self.assertIn(expected_id, [r["id"] for r in hits])
+        meter = kb.search("ZMD", source="MTR_LOSSES_2018",limit=20)
+        self.assertTrue(any("nie norma" in x["citation"] for x in meter))
+        rfg = kb.search("LFSM", source="PTPIREE_RFG3_2026",limit=30)
+        self.assertTrue(any("PDF 16" in x["citation"] for x in rfg))
 
     def test_not_a_normative_source(self):
         items = kb.load("knowledge.json")
