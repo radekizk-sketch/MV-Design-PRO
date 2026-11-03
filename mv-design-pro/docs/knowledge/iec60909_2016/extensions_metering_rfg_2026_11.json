@@ -1,0 +1,1804 @@
+{
+  "version": "R4-2026-11-03",
+  "description": "Dwie nowe pozycje źródłowe: zestawienie współczynników strat EMH/Landis+Gyr/Pozyton (2018) i procedura PTPiREE NC RfG v3.0 z 18 programami (od 01.01.2026). Parafrazy i metadane, bez kopii PDF i bez zmian solvera.",
+  "sources": [
+    {
+      "id": "MTR_LOSSES_2018",
+      "title": "Wzory EMH / Landis+Gyr / Pozyton — układy pomiarowe i straty I²h, U²h (Poznań, lipiec 2018)",
+      "kind": "material_techniczny",
+      "edition": "2018-07",
+      "local_filename": "OK _Wzory EMH LANDIS POZYTON.pdf",
+      "sha256": "da8f751f26566a49b6ea0cfa4f8c0a890486eacf0e8a068623e868ff3a484743",
+      "pages": 2,
+      "status": "source_verified_not_a_norm",
+      "notes": "Dwustronicowe zestawienie współczynników Aobc i Ajal dla EMH, Landis& Gyr i Pozyton. W tabelach pojawiają się różne mnożniki potęgowe. PDF nie definiuje pełnego słownika symboli ani jednostek wszystkich zmiennych: wzory nie są samodzielnym algorytmem obliczeniowym. Warunek Rcu=1 Ω i Rfe=1 kΩ odnosi się do konfiguracji ZMD wskazanej w uwagach.",
+      "include_licensed_original_in_repository": false
+    },
+    {
+      "id": "PTPIREE_RFG3_2026",
+      "title": "PTPiREE — Procedura testowania modułów wytwarzania energii wraz z 18 programami ramowymi v3.0",
+      "kind": "procedura_publiczna",
+      "edition": "3.0",
+      "published_at": "2025-12-15",
+      "effective_from": "2026-01-01",
+      "local_filename": "Procedura- zmieniona.pdf",
+      "sha256": "51dec3245466e2b12ac2960a627e20ba2a75cffaf3c5e8a933878420775076e8",
+      "pages": 155,
+      "units": [
+        {
+          "title": "Procedura główna",
+          "pdf_start": 1,
+          "pdf_end": 15,
+          "printed_page_reset": true,
+          "annex": "main"
+        },
+        {
+          "title": "LFSM-O",
+          "pdf_start": 16,
+          "pdf_end": 27,
+          "printed_page_reset": true,
+          "annex": "10.1"
+        },
+        {
+          "title": "LFSM-U",
+          "pdf_start": 28,
+          "pdf_end": 40,
+          "printed_page_reset": true,
+          "annex": "10.2"
+        },
+        {
+          "title": "FSM",
+          "pdf_start": 41,
+          "pdf_end": 52,
+          "printed_page_reset": true,
+          "annex": "10.3"
+        },
+        {
+          "title": "Regulacja odbudowy częstotliwości",
+          "pdf_start": 53,
+          "pdf_end": 69,
+          "printed_page_reset": true,
+          "annex": "10.4"
+        },
+        {
+          "title": "Praca na potrzeby własne",
+          "pdf_start": 70,
+          "pdf_end": 75,
+          "printed_page_reset": true,
+          "annex": "10.5"
+        },
+        {
+          "title": "Generacja Q ≥110 kV",
+          "pdf_start": 76,
+          "pdf_end": 82,
+          "printed_page_reset": true,
+          "annex": "10.6"
+        },
+        {
+          "title": "Generacja Q <110 kV",
+          "pdf_start": 83,
+          "pdf_end": 88,
+          "printed_page_reset": true,
+          "annex": "10.7"
+        },
+        {
+          "title": "Regulacja mocy czynnej",
+          "pdf_start": 89,
+          "pdf_end": 93,
+          "printed_page_reset": true,
+          "annex": "10.8"
+        },
+        {
+          "title": "Tłumienie oscylacji mocy",
+          "pdf_start": 94,
+          "pdf_end": 98,
+          "printed_page_reset": true,
+          "annex": "10.9"
+        },
+        {
+          "title": "Regulacja napięcia",
+          "pdf_start": 99,
+          "pdf_end": 105,
+          "printed_page_reset": true,
+          "annex": "10.10"
+        },
+        {
+          "title": "Regulacja mocy biernej",
+          "pdf_start": 106,
+          "pdf_end": 111,
+          "printed_page_reset": true,
+          "annex": "10.11"
+        },
+        {
+          "title": "Regulacja współczynnika mocy",
+          "pdf_start": 112,
+          "pdf_end": 117,
+          "printed_page_reset": true,
+          "annex": "10.12"
+        },
+        {
+          "title": "PMAX",
+          "pdf_start": 118,
+          "pdf_end": 124,
+          "printed_page_reset": true,
+          "annex": "10.13"
+        },
+        {
+          "title": "PMIN",
+          "pdf_start": 125,
+          "pdf_end": 129,
+          "printed_page_reset": true,
+          "annex": "10.14"
+        },
+        {
+          "title": "Praca wyspowa",
+          "pdf_start": 130,
+          "pdf_end": 139,
+          "printed_page_reset": true,
+          "annex": "10.15"
+        },
+        {
+          "title": "Rozruch autonomiczny",
+          "pdf_start": 140,
+          "pdf_end": 147,
+          "printed_page_reset": true,
+          "annex": "10.16"
+        },
+        {
+          "title": "Zaprzestanie generacji P",
+          "pdf_start": 148,
+          "pdf_end": 151,
+          "printed_page_reset": true,
+          "annex": "10.17"
+        },
+        {
+          "title": "Zmniejszenie generacji P",
+          "pdf_start": 152,
+          "pdf_end": 155,
+          "printed_page_reset": true,
+          "annex": "10.18"
+        }
+      ],
+      "status": "source_verified_public_procedure",
+      "notes": "Strony PDF 1–15 to główna procedura. Strony PDF 16–155 zawierają 18 osobno numerowanych programów v3.0 (drukowane strony liczone od 1 w każdym programie); art. NC RfG i WOS 2018 to zewnętrzne akty powołane w procedurze. Dokument jest bazą pytań i bramek proceduralnych, nie jest samodzielnym dowodem certyfikacji PGM.",
+      "include_licensed_original_in_repository": false
+    }
+  ],
+  "records": [
+    {
+      "id": "MTR-PO-01",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy pośrednie — prądowe",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ pośredni: Aobc (I²h)",
+      "content": "EMH i Landis+Gyr: Aobc=R₀·l·δp². Pozyton: ten sam iloczyn ×10⁻³. Wielkości i jednostki R₀, l oraz δp muszą być zgodne z konwencją urządzenia; zestawienie nie objaśnia ich w pełni.",
+      "search_terms": [
+        "pośredni",
+        "prądowe",
+        "EMH",
+        "Landis",
+        "Pozyton",
+        "10^-3"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-PO-02",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy pośrednie — kablowe",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ pośredni: Ajał linii kablowej (U²h)",
+      "content": "EMH: Ajał=ω·C·l·δN²·tgδ×10⁻⁹. Landis+Gyr i Pozyton: ten sam iloczyn ×10⁻⁶. Różnica mnożnika nie jest błędem do usunięcia bez sprawdzenia jednostek licznika.",
+      "search_terms": [
+        "pośredni",
+        "kabel",
+        "pojemność",
+        "tg delta",
+        "10^-9",
+        "10^-6"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-PO-03",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy pośrednie — napowietrzne",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ pośredni: Ajał linii napowietrznej",
+      "content": "EMH: Ajał=0,0262·l·δN²×10⁻⁹; Landis+Gyr i Pozyton: ×10⁻⁶. Dokument nie podaje pełnej genezy stałej 0,0262 i zakresu jej stosowania.",
+      "search_terms": [
+        "pośredni",
+        "linia napowietrzna",
+        "0.0262",
+        "10^-9",
+        "10^-6"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-SEMI-01",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy półpośrednie — linia SN",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ półpośredni: straty prądowe linii SN",
+      "content": "EMH i Landis+Gyr: Aobc_LSN=R₀·l·(δp/δTR)². Pozyton: ×10⁻³. Wzór dotyczy współczynnika, a nie obliczeń rozpływu mocy SN.",
+      "search_terms": [
+        "półpośredni",
+        "linia SN",
+        "δTR",
+        "prądowe"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-SEMI-02",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy półpośrednie — transformator",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ półpośredni: straty obciążeniowe transformatora",
+      "content": "EMH i Landis+Gyr: Aobc_TR=(δp/In₂)²·(1/3)·ΔPcu×10³. Pozyton: (δp/In₂)²·(1/3)·ΔPcu, bez ×10³. Wymaga poprawnego zdefiniowania In₂ i jednostki ΔPcu.",
+      "search_terms": [
+        "półpośredni",
+        "transformator",
+        "ΔPcu",
+        "In2",
+        "1/3",
+        "10^3"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-SEMI-03",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy półpośrednie — linia nN",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ półpośredni: współczynnik linii nN",
+      "content": "EMH i Landis+Gyr: Aobc_Lnn=R₀·l·δp²; Pozyton: ×10⁻³. Nie należy scalać tego wzoru z linią SN, która zawiera δTR.",
+      "search_terms": [
+        "półpośredni",
+        "nN",
+        "δp"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-SEMI-04",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy półpośrednie — kablowa U²h",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ półpośredni: jałowe straty linii kablowej",
+      "content": "EMH: Ajał_L=ω·C·l·δTR²·tgδ×10⁻⁹; Landis+Gyr i Pozyton: ×10⁻⁶.",
+      "search_terms": [
+        "półpośredni",
+        "kabel",
+        "δTR",
+        "tgδ"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-SEMI-05",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy półpośrednie — napowietrzna U²h",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ półpośredni: jałowe straty linii napowietrznej",
+      "content": "EMH: Ajał_L=0,0262·l·δTR²×10⁻⁹; Landis+Gyr i Pozyton: ×10⁻⁶.",
+      "search_terms": [
+        "półpośredni",
+        "napowietrzna",
+        "0.0262",
+        "δTR"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-SEMI-06",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.1, układy półpośrednie — transformator U²h",
+        "pdf_page": 1,
+        "printed_page": 1
+      },
+      "title": "Układ półpośredni: straty jałowe transformatora",
+      "content": "EMH: Ajał_TR=(1/Un₂)²·ΔPFe(S)×10⁻³. Landis+Gyr i Pozyton: bez mnożnika ×10⁻³. Nie mieszać strat w rdzeniu z obciążeniowymi ΔPcu.",
+      "search_terms": [
+        "półpośredni",
+        "transformator",
+        "ΔPFe",
+        "Un2",
+        "10^-3"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-DIR-01",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.2, układy bezpośrednie — linia SN",
+        "pdf_page": 2,
+        "printed_page": 2
+      },
+      "title": "Układ bezpośredni: współczynnik strat linii SN",
+      "content": "EMH i Landis+Gyr: Aobc_LSN=R₀·l·(1/δTR)². Pozyton: ×10³.",
+      "search_terms": [
+        "bezpośredni",
+        "SN",
+        "10^3",
+        "δTR"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-DIR-02",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.2, układy bezpośrednie — transformator",
+        "pdf_page": 2,
+        "printed_page": 2
+      },
+      "title": "Układ bezpośredni: współczynnik strat transformatora",
+      "content": "EMH i Landis+Gyr: Aobc_TR=(1/In₂)²·(1/3)·ΔPcu×10³. Pozyton: ten sam iloczyn ×10⁶.",
+      "search_terms": [
+        "bezpośredni",
+        "transformator",
+        "10^6",
+        "ΔPcu"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-DIR-03",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.2, układy bezpośrednie — linia nN",
+        "pdf_page": 2,
+        "printed_page": 2
+      },
+      "title": "Układ bezpośredni: współczynnik linii nN",
+      "content": "EMH i Landis+Gyr: Aobc_Lnn=R₀·l; Pozyton: ×10³.",
+      "search_terms": [
+        "bezpośredni",
+        "nN",
+        "10^3"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-DIR-04",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.2, układy bezpośrednie — kablowa U²h",
+        "pdf_page": 2,
+        "printed_page": 2
+      },
+      "title": "Układ bezpośredni: straty napięciowe kabla",
+      "content": "EMH: Ajał_L=ω·C·l·δTR²·tgδ×10⁻⁹; Landis+Gyr i Pozyton: ×10⁻⁶.",
+      "search_terms": [
+        "bezpośredni",
+        "kablowa",
+        "U2h"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-DIR-05",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.2, układy bezpośrednie — napowietrzna U²h",
+        "pdf_page": 2,
+        "printed_page": 2
+      },
+      "title": "Układ bezpośredni: straty napięciowe napowietrznej",
+      "content": "EMH: Ajał_L=0,0262·l·δTR²×10⁻⁹; Landis+Gyr i Pozyton: ×10⁻⁶.",
+      "search_terms": [
+        "bezpośredni",
+        "napowietrzna",
+        "U2h"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-DIR-06",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.2, układy bezpośrednie — transformator U²h",
+        "pdf_page": 2,
+        "printed_page": 2
+      },
+      "title": "Układ bezpośredni: jałowe straty transformatora",
+      "content": "EMH: Ajał_TR=(1/Un₂)²·ΔPFe(S)×10⁻³; Landis+Gyr i Pozyton: bez dodatkowego mnożnika.",
+      "search_terms": [
+        "bezpośredni",
+        "transformator",
+        "U2h",
+        "ΔPFe"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "source_derived"
+    },
+    {
+      "id": "MTR-ZMD-CONFIG",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.2, uwagi pkt 1",
+        "pdf_page": 2,
+        "printed_page": 2
+      },
+      "title": "Warunek konfiguracji licznika ZMD w ENEA Operator",
+      "content": "Dokument zastrzega stosowanie przedstawionych wzorów dla ZMD tylko przy konfiguracji ENEA Operator: Rcu=1 Ω i Rfe=1 kΩ. W pozostałych konfiguracjach nie należy automatycznie przenosić tych współczynników.",
+      "search_terms": [
+        "ZMD",
+        "ENEA",
+        "Rcu",
+        "Rfe",
+        "1 ohm",
+        "1 kohm"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "conditional"
+    },
+    {
+      "id": "MTR-ZMD-CONVERT",
+      "source_id": "MTR_LOSSES_2018",
+      "source": {
+        "clause": "str.2, uwagi pkt 2 a–b",
+        "pdf_page": 2,
+        "printed_page": 2
+      },
+      "title": "Przeliczenie EMH LZQJ-XC → Landis+Gyr ZMD",
+      "content": "W uwagach do dokumentu dla układów pośrednich, półpośrednich i bezpośrednich podano: I²h(LANDIS)=I²h(EMH), U²h(LANDIS)=U²h(EMH)×10³. Stosować tylko w określonym w źródle kontekście wyznaczania współczynników ZMD na podstawie LZQJ-XC.",
+      "search_terms": [
+        "ZMD",
+        "LZQJ-XC",
+        "I2h",
+        "U2h",
+        "Landis",
+        "EMH",
+        "1000"
+      ],
+      "topic": "Układy pomiarowe i straty energii",
+      "record_type": "material_techniczny",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Materiał porównawczy, nie norma: bez automatycznego wyniku obliczeniowego bez weryfikacji jednostek i konfiguracji",
+      "status": "conditional"
+    },
+    {
+      "id": "RFG-PROGRAM-LFSM-O",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.1",
+        "pdf_page": 16,
+        "printed_page": 1,
+        "document_start_page": 16,
+        "annex": "10.1"
+      },
+      "title": "LFSM-O: zmniejszanie P przy wzroście f",
+      "content": "Program weryfikuje odpowiedź redukcji mocy czynnej przy częstotliwości ponad nastawionym progiem; obejmuje nastawy statyzmu, strefę nieczułości, dynamikę i zmiany mocy bazowej. Strony PDF 16–27.",
+      "search_terms": [
+        "LFSM-O",
+        "LFS M-O",
+        "wzrost częstotliwości"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-LFSM-U",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.2",
+        "pdf_page": 28,
+        "printed_page": 1,
+        "document_start_page": 28,
+        "annex": "10.2"
+      },
+      "title": "LFSM-U: zwiększanie P przy spadku f",
+      "content": "Program weryfikuje odpowiedź zwiększenia mocy przy spadku częstotliwości; zakres testów obejmuje statyzm, próg aktywacji, dynamikę i próby na różnych punktach pracy. Strony PDF 28–40.",
+      "search_terms": [
+        "LFSM-U",
+        "spadek częstotliwości"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-FSM",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.3",
+        "pdf_page": 41,
+        "printed_page": 1,
+        "document_start_page": 41,
+        "annex": "10.3"
+      },
+      "title": "FSM: regulacja częstotliwości",
+      "content": "Program obejmuje regulację mocy czynnej w zależności od zmian częstotliwości i związane parametry odpowiedzi częstotliwościowej. Strony PDF 41–52.",
+      "search_terms": [
+        "FSM",
+        "regulacja pierwotna"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-REBUILD",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.4",
+        "pdf_page": 53,
+        "printed_page": 1,
+        "document_start_page": 53,
+        "annex": "10.4"
+      },
+      "title": "Regulacja odbudowy częstotliwości",
+      "content": "Ramowy program sprawdza zdolność do regulacji odbudowy częstotliwości, jako odrębną zdolność PGM typu C/D. Strony PDF 53–69.",
+      "search_terms": [
+        "odbudowa częstotliwości",
+        "regulacja wtórna"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-PPW",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.5",
+        "pdf_page": 70,
+        "printed_page": 1,
+        "document_start_page": 70,
+        "annex": "10.5"
+      },
+      "title": "Praca na potrzeby własne",
+      "content": "Program ramowy obejmuje zdolność do pracy na potrzeby własne w zakresie, w którym wynika ona z wymogów i właściwego trybu oceny dla PGM. Strony PDF 70–75.",
+      "search_terms": [
+        "praca na potrzeby własne",
+        "PPW"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-Q110PLUS",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.6",
+        "pdf_page": 76,
+        "printed_page": 1,
+        "document_start_page": 76,
+        "annex": "10.6"
+      },
+      "title": "Generacja mocy biernej przy napięciu ≥110 kV",
+      "content": "Program sprawdza zdolność generacji mocy biernej dla modułów przyłączonych na napięciu co najmniej 110 kV; wymaga właściwej charakterystyki i danych punktu przyłączenia. Strony PDF 76–82.",
+      "search_terms": [
+        "Q",
+        "110kV",
+        "PQ",
+        "UQ"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-QBELOW110",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.7",
+        "pdf_page": 83,
+        "printed_page": 1,
+        "document_start_page": 83,
+        "annex": "10.7"
+      },
+      "title": "Generacja mocy biernej poniżej 110 kV",
+      "content": "Osobny program do oceny zdolności generacji mocy biernej poniżej 110 kV. Dla przyłączeń SN stosować ten zakres, a nie program ≥110 kV. Strony PDF 83–88.",
+      "search_terms": [
+        "Q",
+        "15kV",
+        "SN",
+        "poniżej 110 kV"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-PACTIVE",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.8",
+        "pdf_page": 89,
+        "printed_page": 1,
+        "document_start_page": 89,
+        "annex": "10.8"
+      },
+      "title": "Regulacja mocy czynnej",
+      "content": "Program weryfikuje możliwość redukowania zadanej mocy czynnej i zachowanie zadanych punktów pracy PPM. Strony PDF 89–93.",
+      "search_terms": [
+        "regulacja P",
+        "PV",
+        "PPM"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-POD",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.9",
+        "pdf_page": 94,
+        "printed_page": 1,
+        "document_start_page": 94,
+        "annex": "10.9"
+      },
+      "title": "Tłumienie oscylacji mocy",
+      "content": "Program obejmuje sprawdzenie zdolności tłumienia oscylacji mocy dla modułów, dla których dana zdolność jest wymagana. Strony PDF 94–98.",
+      "search_terms": [
+        "POD",
+        "oscylacje mocy"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-UCTRL",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.10",
+        "pdf_page": 99,
+        "printed_page": 1,
+        "document_start_page": 99,
+        "annex": "10.10"
+      },
+      "title": "Tryb regulacji napięcia",
+      "content": "Program weryfikuje działanie regulacji napięcia przy pracy PPM i zmianach zadanej wartości napięcia oraz parametrów statycznych i dynamicznych. Strony PDF 99–105.",
+      "search_terms": [
+        "U",
+        "regulacja napięcia",
+        "Q(U)"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-QCTRL",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.11",
+        "pdf_page": 106,
+        "printed_page": 1,
+        "document_start_page": 106,
+        "annex": "10.11"
+      },
+      "title": "Tryb regulacji mocy biernej",
+      "content": "Program weryfikuje utrzymywanie zadanej wartości Q przez PPM i odpowiedź układu na zmiany nastawy. Strony PDF 106–111.",
+      "search_terms": [
+        "Q",
+        "regulacja mocy biernej"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-COSCTRL",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.12",
+        "pdf_page": 112,
+        "printed_page": 1,
+        "document_start_page": 112,
+        "annex": "10.12"
+      },
+      "title": "Tryb regulacji współczynnika mocy",
+      "content": "Program weryfikuje utrzymywanie i zmianę zadanej wartości cosφ przy pracy PPM. Strony PDF 112–117.",
+      "search_terms": [
+        "cosφ",
+        "współczynnik mocy"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-PMAX",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.13",
+        "pdf_page": 118,
+        "printed_page": 1,
+        "document_start_page": 118,
+        "annex": "10.13"
+      },
+      "title": "Dodatkowy test mocy maksymalnej",
+      "content": "Program ramowy dodatkowego testu PMAX służy weryfikacji deklarowanej mocy maksymalnej. Strony PDF 118–124.",
+      "search_terms": [
+        "PMAX",
+        "moc maksymalna"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-PMIN",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.14",
+        "pdf_page": 125,
+        "printed_page": 1,
+        "document_start_page": 125,
+        "annex": "10.14"
+      },
+      "title": "Dodatkowy test mocy minimalnej",
+      "content": "Program ramowy dodatkowego testu PMIN służy weryfikacji deklarowanego minimalnego poziomu stabilnej pracy. Strony PDF 125–129.",
+      "search_terms": [
+        "PMIN",
+        "moc minimalna"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-ISLAND",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.15",
+        "pdf_page": 130,
+        "printed_page": 1,
+        "document_start_page": 130,
+        "annex": "10.15"
+      },
+      "title": "Zdolność do pracy wyspowej",
+      "content": "Program obejmuje zdolność modułu wytwarzania do udziału w pracy wyspowej, o ile taka zdolność jest wymagana. Strony PDF 130–139.",
+      "search_terms": [
+        "praca wyspowa",
+        "wyspa"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-BLACKSTART",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.16",
+        "pdf_page": 140,
+        "printed_page": 1,
+        "document_start_page": 140,
+        "annex": "10.16"
+      },
+      "title": "Zdolność do rozruchu autonomicznego",
+      "content": "Program obejmuje rozruch autonomiczny PGM, gdy zdolność ta jest wymagana. Strony PDF 140–147.",
+      "search_terms": [
+        "black start",
+        "rozruch autonomiczny"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-STOP",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.17",
+        "pdf_page": 148,
+        "printed_page": 1,
+        "document_start_page": 148,
+        "annex": "10.17"
+      },
+      "title": "Dodatkowy test zaprzestania generacji P",
+      "content": "Program dotyczy sprawdzenia zdolności zaprzestania generacji mocy czynnej w przypadkach wynikających z procedury. Strony PDF 148–151.",
+      "search_terms": [
+        "zaprzestanie generacji",
+        "stop P"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-REDUCE",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Załącznik 10.18",
+        "pdf_page": 152,
+        "printed_page": 1,
+        "document_start_page": 152,
+        "annex": "10.18"
+      },
+      "title": "Dodatkowy test zmniejszenia generacji P",
+      "content": "Program dotyczy sprawdzenia zdolności ograniczenia generowanej mocy czynnej w przypadkach wynikających z procedury. Strony PDF 152–155.",
+      "search_terms": [
+        "ograniczenie P",
+        "zmniejszenie generacji"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-VERSION",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "strona tytułowa",
+        "pdf_page": 1,
+        "printed_page": 1,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Wersja i obowiązywanie procedury PTPiREE",
+      "content": "Dokument publiczny PTPiREE, wersja 3.0, opublikowany 15.12.2025; obowiązuje od 01.01.2026. Zawiera procedurę główną i 18 programów ramowych testowania zgodności.",
+      "search_terms": [
+        "PTPiREE",
+        "v3.0",
+        "2026"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-RESPONSIBILITY",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§3",
+        "pdf_page": 4,
+        "printed_page": 4,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Odpowiedzialność właściciela i uprawnienia właściwego OS",
+      "content": "Właściciel zakładu wytwarzania energii odpowiada za spełnienie wymagań i przeprowadzenie testów; właściwy operator systemu ma prawo wymagać testów ponownych, dodatkowych lub alternatywnych zgodnie z art. 40–42 NC RfG.",
+      "search_terms": [
+        "właściciel",
+        "OS",
+        "obowiązki",
+        "art.41"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-TYPE-MATRIX",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§4, tablica 1 (PDF 5–6)",
+        "pdf_page": 5,
+        "printed_page": 5,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Macierz testów według typu A/B/C/D i technologii PGM",
+      "content": "Tablica 1 rozdziela testy podstawowe i dodatkowe oraz synchroniczne PGM, PPM i morskie PPM. Znaki „–” oznaczają brak wymogu testu wynikającego z NC RfG, a nie automatyczną zgodność. Właściwy OS może określić dodatkowe sprawdzenia.",
+      "search_terms": [
+        "typ A",
+        "typ B",
+        "typ C",
+        "typ D",
+        "PPM",
+        "LFSM",
+        "certyfikat"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-CERT-A-B",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.1",
+        "pdf_page": 7,
+        "printed_page": 7,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Testy dla typów A i B w przypadku braku certyfikatu",
+      "content": "Gdy dla wymaganej zdolności typu A/B brak właściwego certyfikatu, właściciel przeprowadza odpowiednie testy na podstawie programu ramowego i dołącza sprawozdanie do dokumentu instalacji lub PGMD. Nie wolno uznać, że każdy test dla każdego typu wymaga tego samego dowodu.",
+      "search_terms": [
+        "certyfikat",
+        "typ B",
+        "PGMD",
+        "typ A"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-NO-CERT-OVERRIDE",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§4, tablica 1",
+        "pdf_page": 6,
+        "printed_page": 6,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Nie utożsamiaj obowiązku testu z brakiem certyfikatu",
+      "content": "Część sprawdzeń dla typów A i B jest warunkowa przy braku certyfikatu, ale w tablicy występują też wymagania testu niezależne od tego sformułowania. Zakres ustala się per zdolność, technologia i typ PGM.",
+      "search_terms": [
+        "certyfikat",
+        "brak certyfikatu",
+        "typ B"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PMAX-PMIN-RETEST",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5, akapit wprowadzający",
+        "pdf_page": 7,
+        "printed_page": 7,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Zmiana deklarowanych PMAX/PMIN a ponowne testy",
+      "content": "PMAX i PMIN są deklarowane przez właściciela, a wyniki testów weryfikują te wartości. Jeśli w którymś wymaganym teście deklaracje nie zostaną potwierdzone, należy ponownie przeprowadzić wszystkie testy zgodności z wartościami zaktualizowanymi.",
+      "search_terms": [
+        "PMAX",
+        "PMIN",
+        "ponowne testy"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-INDEPENDENT",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5, akapit końcowy",
+        "pdf_page": 7,
+        "printed_page": 7,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Niezależne podmioty wykonujące testy",
+      "content": "Procedura wymaga przeprowadzania testów zgodności przez odpowiednio wyspecjalizowane, niezależne podmioty trzecie niezwiązane z projektowaniem, budową, przyłączaniem lub własnością obiektu w zakresie badanych zdolności.",
+      "search_terms": [
+        "niezależność",
+        "wykonawca testu"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-OS-ATTEND",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.1 pkt 1",
+        "pdf_page": 7,
+        "printed_page": 7,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Udział przedstawicieli operatora w testach A/B",
+      "content": "Jeśli właściwy OS określi udział swojego przedstawiciela, właściciel ma zapewnić możliwość udziału. Pominięcie tego warunku powoduje, że próba nie zostaje uznana za test potwierdzający wymagania.",
+      "search_terms": [
+        "operator",
+        "udział",
+        "test",
+        "typ B"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-TEST-NORMAL",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.1 pkt 2 lit. c–e",
+        "pdf_page": 8,
+        "printed_page": 8,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Warunki rzeczywiste i czynne układy regulacji",
+      "content": "Co do zasady testy odbywają się w rzeczywistych warunkach obiektowych; symulacja sygnału wejściowego jest dopuszczana, gdy technicznie nie można zastosować rzeczywistego. Istotne układy automatyki i zabezpieczeń normalnie wykorzystywane muszą pracować; ręczny tryb istotnego układu skutkuje negatywną oceną próby.",
+      "search_terms": [
+        "symulacja sygnału",
+        "automatyka",
+        "tryb ręczny"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-NET-GROSS",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.1 pkt 2 lit. g",
+        "pdf_page": 8,
+        "printed_page": 8,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Pomiary mocy brutto i netto w teście PGM",
+      "content": "Rejestracja danych powinna obejmować pomiar mocy czynnej na zaciskach generatora (brutto) oraz w punkcie przyłączenia (netto). Nie wolno zastąpić jednego pomiaru drugim bez uwzględnienia różnicy miejsc i strat.",
+      "search_terms": [
+        "brutto",
+        "netto",
+        "punkt przyłączenia"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-RETEST-FAILED",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.1 pkt 2 lit. d",
+        "pdf_page": 8,
+        "printed_page": 8,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Negatywny wynik próby a powtórzenie testu",
+      "content": "W uzasadnionych ruchowo przypadkach można powtórzyć próbę. W razie negatywnego wyniku próby dany test powinien zostać powtórzony w całości w zakresie badanej zdolności.",
+      "search_terms": [
+        "test negatywny",
+        "powtórzenie",
+        "próba"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-TEST-OUTCOME-B",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.1 pkt 4 lit. a",
+        "pdf_page": 9,
+        "printed_page": 9,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Pozytywne testy a ostateczne pozwolenie typu B",
+      "content": "Dokument wskazuje pozytywny wynik wymaganych testów zgodności jako warunek konieczny do uzyskania ostatecznego pozwolenia na użytkowanie modułu typu B; sam pozytywny test nie jest wystarczającym pozwoleniem.",
+      "search_terms": [
+        "pozwolenie na użytkowanie",
+        "typ B"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PROGRAM-C-D",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.2 wprowadzenie",
+        "pdf_page": 9,
+        "printed_page": 9,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Program szczegółowy dla PGM typu C i D",
+      "content": "Właściciel PGM C/D opracowuje i uzgadnia z właściwym OS program szczegółowy na podstawie programów ramowych, z uwzględnieniem technologii i ograniczeń ruchowych KSE.",
+      "search_terms": [
+        "typ C",
+        "typ D",
+        "program szczegółowy"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-NOTICE-14D",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.2 pkt 5",
+        "pdf_page": 10,
+        "printed_page": 10,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Zgłoszenie terminu testu co najmniej 14 dni wcześniej",
+      "content": "Dla PGM typu C/D procedura wymaga poinformowania właściwego OS o planie testu co najmniej 14 dni przed terminem; termin i program szczegółowy muszą być uzgodnione.",
+      "search_terms": [
+        "14 dni",
+        "zgłoszenie",
+        "termin testu"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-RECORD-1S",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§5.2 pkt 8 lit. d",
+        "pdf_page": 11,
+        "printed_page": 11,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Rozdzielczość rejestrowanych sygnałów 1 s",
+      "content": "Dla PGM typu C/D rozdzielczość rejestrowanych sygnałów nie powinna być gorsza niż 1 s, chyba że właściwy OS określi inaczej. Ten parametr dotyczy testów i rejestracji sygnałów, nie próbkowania solvera rozpływu.",
+      "search_terms": [
+        "1 s",
+        "rejestracja",
+        "SCADA",
+        "logowanie"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-MODIFICATION",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "§7–9",
+        "pdf_page": 14,
+        "printed_page": 14,
+        "document_start_page": 1,
+        "annex": "main"
+      },
+      "title": "Testy zdarzeniowe po zmianach i incydentach",
+      "content": "Zmiany sprzętowe, algorytmiczne lub zakresów regulacji PGM C/D oraz istotne modernizacje mogą skutkować potrzebą testów zdarzeniowych. Właściciel informuje OS; o zakresie i trybie decyduje OS. Osobne postanowienia dotyczą incydentów.",
+      "search_terms": [
+        "modernizacja",
+        "ponowne testy",
+        "zdarzeniowe"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-LFSMO-SETTING",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.1 §5.5.1",
+        "pdf_page": 22,
+        "printed_page": 7,
+        "document_start_page": 16,
+        "annex": "10.1"
+      },
+      "title": "LFSM-O: zakres nastaw progu i statyzmu",
+      "content": "Sprawdza się możliwość nastawy progu aktywacji +200…+500 mHz (50,2–50,5 Hz) oraz statyzmu 2–12%. Przy technologii gazowo-parowej dolna granica może wynosić 3%. To zakres nastawialności w programie, nie stała wymagana nastawa eksploatacyjna.",
+      "search_terms": [
+        "LFSM-O",
+        "50.2",
+        "50.5",
+        "2%",
+        "12%"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-LFSMU-SETTING",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.2 §5.5.1",
+        "pdf_page": 34,
+        "printed_page": 7,
+        "document_start_page": 28,
+        "annex": "10.2"
+      },
+      "title": "LFSM-U: zakres nastaw progu i statyzmu",
+      "content": "Sprawdza się możliwość nastawy progu −200…−500 mHz (49,5–49,8 Hz) oraz statyzmu 2–12%. Dla technologii gazowo-parowej dopuszcza się dolną granicę 3%. Nie kodować jako jednej nastawy pracy.",
+      "search_terms": [
+        "LFSM-U",
+        "49.5",
+        "49.8",
+        "2%",
+        "12%"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-LFSM-TIMES",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.1 §2, definicje",
+        "pdf_page": 18,
+        "printed_page": 3,
+        "document_start_page": 16,
+        "annex": "10.1"
+      },
+      "title": "LFSM-O: t1/t2 są wartościami proponowanymi",
+      "content": "W definicjach LFSM-O wskazano proponowane wartości t1=2 s i t2=30 s, przy czym wartości dopuszczalne określa właściwy OS. Nie należy bez warunków OS używać 2/30 s jako uniwersalnej twardej bramki.",
+      "search_terms": [
+        "LFSM-O",
+        "t1",
+        "t2",
+        "2s",
+        "30s"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-LFSM-ERROR",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.1 §5.5.4, kryteria",
+        "pdf_page": 24,
+        "printed_page": 9,
+        "document_start_page": 16,
+        "annex": "10.1"
+      },
+      "title": "LFSM-O: odchyłka regulacji przy skoku P",
+      "content": "Program dla wskazanej próby podaje po stabilizacji wymóg względnej odchyłki regulacji mocy δP nie większej niż 1% PMAX, dodatkowo do czasów t1/t2; ostateczna zgodność zależy od pełnego programu szczegółowego.",
+      "search_terms": [
+        "LFSM-O",
+        "1% PMAX",
+        "regulacja"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-Q-SN-CORRECT",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.7 §1–3",
+        "pdf_page": 85,
+        "printed_page": 3,
+        "document_start_page": 83,
+        "annex": "10.7"
+      },
+      "title": "Test zdolności Q dla przyłączenia poniżej 110 kV",
+      "content": "Przy badaniu zdolności generacji mocy biernej PGM przyłączonego do sieci SN wybiera się program 10.7 (poniżej 110 kV), nie 10.6 (≥110 kV). Wymagania charakterystyki pochodzą również z właściwych dokumentów NC RfG/WOS/umowy.",
+      "search_terms": [
+        "Q",
+        "PQ",
+        "15kV",
+        "typ B"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-P-CONTROL-STEPS",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.8 §5.5",
+        "pdf_page": 93,
+        "printed_page": 5,
+        "document_start_page": 89,
+        "annex": "10.8"
+      },
+      "title": "Regulacja P: próby zmian nastawy",
+      "content": "Przykładowy ramowy program PPM przewiduje zmiany zadanej mocy o 20% PMAX z utrzymywaniem nowej nastawy przez co najmniej 25 minut, w punktach pracy określonych w §5.5. Kryteria i wyjątki należy odczytywać dla danej próby.",
+      "search_terms": [
+        "regulacja P",
+        "20%",
+        "25 minut"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-VOLTAGE-CTRL-MODE",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.10 §4–6",
+        "pdf_page": 102,
+        "printed_page": 4,
+        "document_start_page": 99,
+        "annex": "10.10"
+      },
+      "title": "Regulacja napięcia: test całego PPM",
+      "content": "Weryfikacja pracy w trybie regulacji napięcia zasadniczo odbywa się obiektowo dla całego PPM, z zachowaniem warunków programu oraz właściwych danych napięcia i mocy biernej.",
+      "search_terms": [
+        "regulacja U",
+        "Q(U)",
+        "PV",
+        "PPM"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-REACTIVE-CTRL-MODE",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.11 §5–6",
+        "pdf_page": 109,
+        "printed_page": 4,
+        "document_start_page": 106,
+        "annex": "10.11"
+      },
+      "title": "Regulacja Q: warunki i sygnały testu",
+      "content": "Program reguluje wymagane warunki pracy PPM i pomiary dla sprawdzenia zadanej mocy biernej. Ocena wyniku wymaga danych o rzeczywistym punkcie pracy i nastawach.",
+      "search_terms": [
+        "regulacja Q",
+        "moc bierna",
+        "PPM"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-COSPHI-CTRL-MODE",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.12 §4–6",
+        "pdf_page": 115,
+        "printed_page": 4,
+        "document_start_page": 112,
+        "annex": "10.12"
+      },
+      "title": "Regulacja cosφ: test całego PPM",
+      "content": "Weryfikacja trybu współczynnika mocy odbywa się co do zasady testem całego PPM, uwzględniając osiąganą moc czynną, moc bierną i zadany cosφ.",
+      "search_terms": [
+        "cosφ",
+        "cos fi",
+        "PPM"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PMAX-NET",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.13 §8",
+        "pdf_page": 122,
+        "printed_page": 5,
+        "document_start_page": 118,
+        "annex": "10.13"
+      },
+      "title": "PMAX: moc netto w procedurze dodatkowego testu",
+      "content": "Program testowania PMAX przewiduje pomiary mocy czynnej netto i mocy biernej netto oraz danych uzupełniających odpowiednich dla technologii.",
+      "search_terms": [
+        "PMAX",
+        "moc netto"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    },
+    {
+      "id": "RFG-PMIN-NET",
+      "source_id": "PTPIREE_RFG3_2026",
+      "source": {
+        "clause": "Zał.10.14 §8",
+        "pdf_page": 128,
+        "printed_page": 4,
+        "document_start_page": 125,
+        "annex": "10.14"
+      },
+      "title": "PMIN: pomiary dla minimalnej mocy stabilnej",
+      "content": "Program testowania PMIN przewiduje pomiary mocy czynnej netto, mocy biernej netto i parametrów technologicznych. PMIN nie można utożsamiać z mocą zainstalowaną.",
+      "search_terms": [
+        "PMIN",
+        "minimalna moc stabilna"
+      ],
+      "topic": "NC RfG — testy zgodności PGM",
+      "record_type": "procedura_operacyjna",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "PTPiREE v3.0, obowiązuje od 2026-01-01; wymagania oraz decyzje właściwego OS zachowują znaczenie",
+      "status": "source_derived"
+    }
+  ],
+  "rules": [
+    {
+      "id": "KB-R4-001",
+      "title": "Nie stosuj mnożników strat bez producenta i topologii",
+      "source_ids": [
+        "MTR-PO-01",
+        "MTR-DIR-01",
+        "MTR-SEMI-01"
+      ],
+      "category": "metering",
+      "level": "proposal_not_in_solver",
+      "action": "Wybierz producenta licznika i rodzaj układu: pośredni, półpośredni albo bezpośredni. Odrzucaj użycie wzoru innego typu; zachowuj mnożnik ×10^±n."
+    },
+    {
+      "id": "KB-R4-002",
+      "title": "Kontrola konfiguracji ZMD",
+      "source_ids": [
+        "MTR-ZMD-CONFIG"
+      ],
+      "category": "metering",
+      "level": "proposal_not_in_solver",
+      "action": "Dla ZMD bez potwierdzenia Rcu=1 Ω i Rfe=1 kΩ zwróć BRAK_DANYCH, a nie automatyczny współczynnik strat."
+    },
+    {
+      "id": "KB-R4-003",
+      "title": "Weryfikacja jednostek współczynników strat",
+      "source_ids": [
+        "MTR-PO-02",
+        "MTR-SEMI-02",
+        "MTR-DIR-02"
+      ],
+      "category": "metering",
+      "level": "proposal_not_in_solver",
+      "action": "Przed obliczeniami numerycznymi uzgodnij jednostki R0, C, l, δp, δTR, In2, Un2, ΔPcu, ΔPFe i definicje I²h/U²h. Materiał źródłowy nie jest pełną specyfikacją wymiarową."
+    },
+    {
+      "id": "KB-R4-004",
+      "title": "Konwersja EMH→ZMD tylko zgodnie z uwagą źródłową",
+      "source_ids": [
+        "MTR-ZMD-CONVERT"
+      ],
+      "category": "metering",
+      "level": "proposal_not_in_solver",
+      "action": "W kontekście ZMD konfiguracji ENEA użyj tylko opisanej relacji I²h=1×, U²h=1000×, bez przypisywania tego innym licznikom/konfiguracjom."
+    },
+    {
+      "id": "KB-R4-005",
+      "title": "Rozdziel współczynnik strat od obliczeń sieci",
+      "source_ids": [
+        "MTR-SEMI-01",
+        "MTR-SEMI-05"
+      ],
+      "category": "domain_boundary",
+      "level": "proposal_not_in_solver",
+      "action": "Nie zastępuj obliczeń strat technicznych rozpływu współczynnikami układu rozliczeniowego. To różne zadania domenowe."
+    },
+    {
+      "id": "KB-R4-006",
+      "title": "Dokument PTPiREE musi być wersjonowany",
+      "source_ids": [
+        "RFG-VERSION"
+      ],
+      "category": "rfg_edition",
+      "level": "proposal_not_in_solver",
+      "action": "Przechowuj PTPiREE v3.0 obowiązującą od 2026-01-01; nie mieszaj automatycznie z wcześniejszymi procedurami."
+    },
+    {
+      "id": "KB-R4-007",
+      "title": "Zakres testów per typ i technologia",
+      "source_ids": [
+        "RFG-TYPE-MATRIX",
+        "RFG-NO-CERT-OVERRIDE"
+      ],
+      "category": "rfg_scope",
+      "level": "proposal_not_in_solver",
+      "action": "Wymagane testy ustalaj z tabeli 1 dla konkretnego A/B/C/D i SyPGM/PPM/morskiego PPM; nie twórz jednej ogólnej listy dla każdego OZE."
+    },
+    {
+      "id": "KB-R4-008",
+      "title": "Certyfikat nie daje ogólnego zwolnienia",
+      "source_ids": [
+        "RFG-CERT-A-B",
+        "RFG-TYPE-MATRIX"
+      ],
+      "category": "rfg_scope",
+      "level": "proposal_not_in_solver",
+      "action": "Sprawdź warunek certyfikacji osobno dla każdej zdolności A/B i właściwy dokument; brak certyfikatu może uruchamiać obowiązek testu."
+    },
+    {
+      "id": "KB-R4-009",
+      "title": "Weryfikuj deklarowane PMAX/PMIN",
+      "source_ids": [
+        "RFG-PMAX-PMIN-RETEST"
+      ],
+      "category": "rfg_verdict",
+      "level": "proposal_not_in_solver",
+      "action": "Gdy test nie potwierdza PMAX/PMIN, nie akceptuj dotychczasowego zestawu wyników. Wymagane jest ponowne przeprowadzenie wszystkich testów po aktualizacji deklaracji."
+    },
+    {
+      "id": "KB-R4-010",
+      "title": "Udział operatora jest warunkiem uznania testu",
+      "source_ids": [
+        "RFG-OS-ATTEND"
+      ],
+      "category": "rfg_process",
+      "level": "proposal_not_in_solver",
+      "action": "Jeżeli OS wymaga uczestnictwa, termin musi umożliwić jego udział; bez tego test nie potwierdza spełnienia wymagania."
+    },
+    {
+      "id": "KB-R4-011",
+      "title": "Bramka C/D programu i terminu",
+      "source_ids": [
+        "RFG-PROGRAM-C-D",
+        "RFG-NOTICE-14D"
+      ],
+      "category": "rfg_process",
+      "level": "proposal_not_in_solver",
+      "action": "Dla C/D sprawdź uzgodniony program szczegółowy i powiadomienie co najmniej 14 dni wcześniej. Nie przenoś terminu na A/B bez źródła."
+    },
+    {
+      "id": "KB-R4-012",
+      "title": "Rejestracja co najmniej 1 s z wyjątkiem OS",
+      "source_ids": [
+        "RFG-RECORD-1S"
+      ],
+      "category": "rfg_data",
+      "level": "proposal_not_in_solver",
+      "action": "Dla C/D ostrzegaj, jeśli rozdzielczość rejestracji jest gorsza niż 1 s i nie ma uzgodnienia OS dopuszczającego odstępstwo."
+    },
+    {
+      "id": "KB-R4-013",
+      "title": "Nie mieszaj mocy brutto i netto",
+      "source_ids": [
+        "RFG-NET-GROSS"
+      ],
+      "category": "rfg_data",
+      "level": "proposal_not_in_solver",
+      "action": "Dane pomiarów PGM przechowuj osobno na zaciskach generatora i w punkcie przyłączenia; nie wnioskuj o zgodności z jednego kanału."
+    },
+    {
+      "id": "KB-R4-014",
+      "title": "Nie stosuj progów LFSM jako stałych globalnych",
+      "source_ids": [
+        "RFG-LFSMO-SETTING",
+        "RFG-LFSMU-SETTING",
+        "RFG-LFSM-TIMES"
+      ],
+      "category": "rfg_thresholds",
+      "level": "proposal_not_in_solver",
+      "action": "Zakres nastawialności LFSM i proponowane 2 s/30 s nie są pojedynczymi obowiązkowymi nastawami; kryterium rzeczywiste wynika z OS i programu."
+    },
+    {
+      "id": "KB-R4-015",
+      "title": "Prawidłowy program Q dla 15 kV",
+      "source_ids": [
+        "RFG-Q-SN-CORRECT",
+        "RFG-PROGRAM-QBELOW110"
+      ],
+      "category": "rfg_scope",
+      "level": "proposal_not_in_solver",
+      "action": "Dla przyłączenia na 15 kV kieruj do programu 10.7 (poniżej 110 kV), a nie 10.6, i sprawdź powiązane WOS i warunki przyłączenia."
+    },
+    {
+      "id": "KB-R4-016",
+      "title": "Testy po modernizacji i zdarzeniu",
+      "source_ids": [
+        "RFG-MODIFICATION"
+      ],
+      "category": "rfg_process",
+      "level": "proposal_not_in_solver",
+      "action": "Zmiany sterowania i incydenty dla C/D wymagają powiadomienia OS i ustalenia, czy potrzebny jest test zdarzeniowy; nie uznawaj automatycznie braku potrzeby."
+    },
+    {
+      "id": "KB-R4-017",
+      "title": "Ostateczne pozwolenie typu B",
+      "source_ids": [
+        "RFG-TEST-OUTCOME-B",
+        "RFG-CERT-A-B"
+      ],
+      "category": "rfg_verdict",
+      "level": "proposal_not_in_solver",
+      "action": "Nie wydawaj werdyktu 'pozwolenie na użytkowanie' wyłącznie na podstawie matematycznej symulacji; sprawdź pozytywne wymagane testy i resztę procesu."
+    },
+    {
+      "id": "KB-R4-018",
+      "title": "Próba negatywna to nie częściowy sukces",
+      "source_ids": [
+        "RFG-RETEST-FAILED"
+      ],
+      "category": "rfg_verdict",
+      "level": "proposal_not_in_solver",
+      "action": "Negatywna próba wymaga powtórzenia właściwego testu w całości zgodnie z §5.1; nie zamykaj walidacji na jednym prawidłowym podprzebiegu."
+    },
+    {
+      "id": "KB-R4-019",
+      "title": "Wymagana niezależność wykonawcy",
+      "source_ids": [
+        "RFG-INDEPENDENT"
+      ],
+      "category": "rfg_process",
+      "level": "proposal_not_in_solver",
+      "action": "W dokumentacji testów wykazuj specjalizację i niezależność podmiotu przeprowadzającego ocenę wymaganych zdolności."
+    },
+    {
+      "id": "KB-R4-020",
+      "title": "Bez automatyzacji bez pełnego programu",
+      "source_ids": [
+        "RFG-PROGRAM-UCTRL",
+        "RFG-PROGRAM-QCTRL",
+        "RFG-PROGRAM-COSCTRL"
+      ],
+      "category": "rfg_scope",
+      "level": "proposal_not_in_solver",
+      "action": "Wymogi Q(U), Q i cosφ oceniaj w odrębnych trybach zgodnie z właściwymi programami, danymi PGM i uzgodnieniami OS."
+    }
+  ]
+}
