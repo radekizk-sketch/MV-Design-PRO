@@ -102,6 +102,9 @@ class KnowledgeBaseTests(unittest.TestCase):
         facts = {x["id"]:x for x in kb.load("knowledge.json")}
         self.assertIn("17,5", facts["SG-INSULATION-17_5"]["content"])
         self.assertIn("110 kV", facts["SG-INSULATION-17_5"]["content"])
+        self.assertIn("75/85", facts["SG-INSULATION-17_5"]["content"])
+        self.assertIn("95/110", facts["SG-INSULATION-24"]["content"])
+        self.assertIn("125/145", facts["SG-INSULATION-24"]["content"])
         self.assertEqual(facts["SG-INSULATION-17_5"]["source"]["pdf_page"], 45)
 
     def test_62271_1_search_and_citation(self):
