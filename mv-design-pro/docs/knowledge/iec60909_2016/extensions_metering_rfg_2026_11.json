@@ -1233,7 +1233,7 @@
       "status": "source_derived"
     },
     {
-      "id": "RFG-PROGRAM-C-D",
+      "id": "RFG-C-D-PROGRAM",
       "source_id": "PTPIREE_RFG3_2026",
       "source": {
         "clause": "§5.2 wprowadzenie",
@@ -1697,7 +1697,7 @@
       "id": "KB-R4-011",
       "title": "Bramka C/D programu i terminu",
       "source_ids": [
-        "RFG-PROGRAM-C-D",
+        "RFG-C-D-PROGRAM",
         "RFG-NOTICE-14D"
       ],
       "category": "rfg_process",
