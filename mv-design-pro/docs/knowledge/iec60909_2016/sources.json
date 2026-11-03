@@ -1,0 +1,42 @@
+[
+  {
+    "id": "IEC60909_2016",
+    "title": "PN-EN 60909-0:2016 (EN/IEC 60909-0:2016)",
+    "kind": "norma",
+    "local_filename": "60909 2016.pdf",
+    "sha256": "76557bba63396e4340fb23deec563eb1fc9fbcc5dff4aef38aacba8b2e903193",
+    "edition": "2016",
+    "notes": "82 strony; skan; drukowana strona IEC = strona PDF - 8 dla stron merytorycznych; wyłącznie metadane, bez dystrybucji kopii",
+    "include_licensed_original_in_repository": false
+  },
+  {
+    "id": "ZDUN2022",
+    "title": "Z. Zdun, T. Zdun, Obliczanie stanów sieci SN przy niesymetrycznym obciążeniu",
+    "kind": "wykład",
+    "local_filename": "xWyklad_20_Praca_SN.pdf",
+    "sha256": "82853404a8f88fb0139f5c1a93bbef672382c637e76ee14e820a8569d62d5bc6",
+    "edition": "2022",
+    "notes": "Materiał obliczeniowy, nie norma; przykłady zależne od przyjętego modelu",
+    "include_licensed_original_in_repository": false
+  },
+  {
+    "id": "DOLEGA",
+    "title": "W. Dołęga, Stacje elektroenergetyczne",
+    "kind": "podręcznik",
+    "local_filename": "dolega_stacje_elektroenergetyczne.pdf",
+    "sha256": "a0ec70ec3db43080b39d280c3346b6abe89faf61019669749836b26558a61b59",
+    "edition": "wydanie z załącznika",
+    "notes": "Źródło dydaktyczne, nie standard ENEA; tekst PDF miejscami ma uszkodzone kodowanie",
+    "include_licensed_original_in_repository": false
+  },
+  {
+    "id": "QET499",
+    "title": "Przykłady schematów EPLAN.txt — notatka o przeglądzie symboli QElectroTech",
+    "kind": "notatka",
+    "local_filename": "Przykłady schematów EPLAN.txt",
+    "sha256": "bcdf368544742e6a2f1f87b99d59cec5249caa6fd55c1b412986f8277b97c069",
+    "edition": "nieustalone",
+    "notes": "Tytuł pliku jest mylący: materiał opisuje QElectroTech i PR #499, nie zweryfikowane wzorce EPLAN/IEC; nie używać do weryfikacji normowej",
+    "include_licensed_original_in_repository": false
+  }
+]
