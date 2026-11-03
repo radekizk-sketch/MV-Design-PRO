@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Referencyjne, lokalne wyszukiwanie z odsyłaczami; bez kopiowania normy i bez modyfikacji solvera."""
+import argparse
+import json
+import pathlib
+import re
+import sqlite3
+import sys
+import unicodedata
+
+ROOT = pathlib.Path(__file__).resolve().parent
+DB = ROOT / "mv_kb.sqlite3"
+
+def normalize(text):
+    s = unicodedata.normalize("NFKD", str(text)).lower()
+    return "".join(c for c in s if not unicodedata.combining(c)).replace("ł", "l")
+
+def load(name):
+    return json.loads((ROOT / name).read_text(encoding="utf-8"))
+
+def check():
+    facts, sources, rules = load("knowledge.json"), load("sources.json"), load("rules.json")
+    ids = [f["id"] for f in facts]
+    src = {s["id"] for s in sources}
+    errors = []
+    if len(set(ids)) != len(ids):
+        errors.append("duplicate fact id")
+    for f in facts:
+        if f["source_id"] not in src:
+            errors.append("unknown source: " + f["id"])
+        if not f["title"] or not f["content"]:
+            errors.append("empty text: " + f["id"])
+        if f["source_id"] == "IEC60909_2016":
+            loc = f["source"]
+            if loc.get("pdf_page", -1) - 8 != loc.get("printed_page"):
+                errors.append("bad physical page: " + f["id"])
+    for rule in rules:
+        if set(rule["source_ids"]) - set(ids):
+            errors.append("unknown rule reference: " + rule["id"])
+    return {"ok": not errors, "records": len(facts),
+            "sources": len(sources), "rules": len(rules), "errors": errors}
+
+def build():
+    info = check()
+    if not info["ok"]:
+        raise RuntimeError(info["errors"])
+    if DB.exists():
+        DB.unlink()
+    with sqlite3.connect(DB) as db:
+        db.executescript("""
+            CREATE TABLE records(id TEXT PRIMARY KEY, source_id TEXT, payload TEXT);
+            CREATE VIRTUAL TABLE idx USING fts5(id UNINDEXED, searchable,
+                                                 tokenize='unicode61 remove_diacritics 2');
+        """)
+        for record in load("knowledge.json"):
+            terms = record.get("search_terms", [])
+            searchable = normalize(" ".join(
+                [record["id"], record["title"], record["content"],
+                 record["topic"], " ".join(terms)]))
+            db.execute("INSERT INTO records VALUES(?,?,?)",
+                       (record["id"], record["source_id"],
+                        json.dumps(record, ensure_ascii=False)))
+            db.execute("INSERT INTO idx VALUES(?,?)",
+                       (record["id"], searchable))
+    return info
+
+def citation(record):
+    loc = record["source"]
+    if record["source_id"] == "IEC60909_2016":
+        s = (f"PN-EN 60909-0:2016, {loc['clause']}, str. IEC "
+             f"{loc['printed_page']} (PDF {loc['pdf_page']})")
+    else:
+        s = (f"{record['source_id']}, {loc['clause']}, "
+             f"s. {loc['printed_page']}")
+    return s + (", wzór " + loc["equation"] if loc.get("equation") else "")
+
+def search(question, source=None, limit=5):
+    if not DB.exists():
+        build()
+    words = [w for w in re.findall(r"\w+", normalize(question))
+             if len(w) > 1]
+    if not words:
+        return []
+    match = " OR ".join('"' + w + '"' for w in words)
+    with sqlite3.connect(DB) as db:
+        sql = ("""SELECT records.payload FROM idx JOIN records ON records.id=idx.id
+                   WHERE idx MATCH ?""")
+        args = [match]
+        if source:
+            sql += " AND records.source_id=?"
+            args.append(source)
+        sql += " ORDER BY bm25(idx) LIMIT ?"
+        args.append(max(1, min(limit, 30)))
+        result = []
+        for (payload,) in db.execute(sql, args):
+            fact = json.loads(payload)
+            fact["citation"] = citation(fact)
+            result.append(fact)
+        return result
+
+def validate_case(case):
+    """Wstępna kontrola danych; NIE jest walidacją solvera."""
+    problems = []
+    u, mode, c = case.get("un_kv"), case.get("scenario"), case.get("c_factor")
+    if isinstance(u, (int, float)) and 1 < u <= 230 and mode in ("MAX", "MIN") and c is not None:
+        expected = 1.10 if mode == "MAX" else 1.00
+        if abs(float(c) - expected) > 1e-9:
+            problems.append({"rule_id": "KB-R-002",
+                             "detail": f"IEC 60909-0:2016 tablica 1: c={expected:.2f} dla {u} kV / {mode}"})
+    if case.get("fault") == "1F_Z" and case.get("neutral") in ("IZOLOWANY", "KOMPENSOWANY"):
+        problems.append({"rule_id": "KB-R-001",
+                         "detail": "§1 normy: przypadek izolowany/kompensowany poza zakresem tej części"})
+    return {"status": "WYMAGA_KOREKTY" if problems else "BRAK_WYKRYTEJ_SPRZECZNOSCI",
+            "problems": problems, "disclaimer": "Nie jest werdyktem zgodności urządzenia ani wynikiem solvera."}
+
+def main():
+    p = argparse.ArgumentParser(description="MV-DESIGN-PRO, indeks IEC 60909-0:2016")
+    s = p.add_subparsers(dest="cmd", required=True)
+    s.add_parser("check")
+    s.add_parser("build")
+    q = s.add_parser("ask")
+    q.add_argument("question")
+    q.add_argument("--source")
+    q.add_argument("--limit", type=int, default=5)
+    v = s.add_parser("validate")
+    v.add_argument("json_file")
+    a = p.parse_args()
+    if a.cmd == "check":
+        out = check()
+    elif a.cmd == "build":
+        out = build()
+    elif a.cmd == "validate":
+        out = validate_case(json.loads(pathlib.Path(a.json_file).read_text(encoding="utf-8")))
+    else:
+        found = search(a.question, a.source, a.limit)
+        if not found:
+            print("BRAK_PODSTAWY: brak karty dla zapytania; nie wolno wymyślać podstawy.")
+            return
+        for item in found:
+            print(f"{item['id']}: {item['title']}\n{item['content']}\nŹródło: {item['citation']}\n")
+        return
+    print(json.dumps(out, ensure_ascii=False, indent=2))
+    if a.cmd == "check" and not out["ok"]:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
