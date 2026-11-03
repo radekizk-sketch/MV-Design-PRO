@@ -1,0 +1,1081 @@
+{
+  "version": "R2-2026-11-03",
+  "scope": "PN-EN 60909-3:2010 i PN-EN 50160:2023-10/A1:2025-04; autorskie streszczenia z odsyłaczami; bez kopii norm",
+  "sources": [
+    {
+      "id": "IEC60909_3_2010",
+      "title": "PN-EN 60909-3:2010 (EN 60909-3:2010; IEC 60909-3:2009)",
+      "kind": "norma",
+      "edition": "2010",
+      "local_filename": "PN-EN 60909-3_2010E_KOLOR.pdf",
+      "sha256": "4e44d538b1d4cc935295b9e391dfd57e5e8f4b728806b56359c3699bbafda013",
+      "pages": 66,
+      "notes": "Norma uzupełniająca część 0: dwa niezależne jednoczesne doziemienia; prądy częściowe w ziemi, przewodach odgromowych i ekranach kabli. Dla stron merytorycznych numer strony IEC = PDF - 8. Załączniki A–D informacyjne.",
+      "include_licensed_original_in_repository": false
+    },
+    {
+      "id": "EN50160_A1_2025",
+      "title": "PN-EN 50160:2023-10/A1:2025-04 (zmiana do EN 50160:2022)",
+      "kind": "zmiana_normy",
+      "edition": "2025-04",
+      "local_filename": "PN-EN 50160_2023-10_A1_2025-04E_KOLOR.pdf",
+      "sha256": "66e18898c473776e2bcdf1fc0cc031b21fd1f0abad7ba323b54f25c02f1037a3",
+      "pages": 9,
+      "notes": "TYLKO zmiana A1, nie pełne wydanie bazowe PN-EN 50160:2023-10. Dla stron 5–9 drukowana strona EN = PDF - 2. Brak tabel liczbowych oryginalnego wydania; nie imputować ich.",
+      "include_licensed_original_in_repository": false
+    }
+  ],
+  "records": [
+    {
+      "id": "SC3-SCOPE-01",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§1",
+        "pdf_page": 15,
+        "printed_page": 7
+      },
+      "title": "Zakres części 3",
+      "content": "Norma obejmuje dwa oddzielne jednoczesne zwarcia faza–ziemia w różnych miejscach w sieciach z punktem neutralnym izolowanym lub kompensowanym oraz wyznaczanie prądów częściowych w ziemi w sieciach z punktem neutralnym bezpośrednio lub niskoimpedancyjnie uziemionym. Częstotliwość 50 albo 60 Hz.",
+      "search_terms": [
+        "sieć SN",
+        "doziemienie",
+        "kompensacja",
+        "zwarcie podwójne"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-SCOPE-02",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§1, wyłączenia",
+        "pdf_page": 15,
+        "printed_page": 7
+      },
+      "title": "Granica: pojedyncze doziemienie w sieci izolowanej",
+      "content": "Wydanie to nie zawiera procedury obliczania pojedynczego zwarcia doziemnego w sieciach z izolowanym ani rezonansowo uziemionym punktem neutralnym. Nie przypisuj obliczeniom 1F-Z w takich sieciach podstawy z tej części normy.",
+      "search_terms": [
+        "izolowany punkt neutralny",
+        "cewka Petersena",
+        "1F Z"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-DEFINITIONS-01",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§3.1–3.6",
+        "pdf_page": 16,
+        "printed_page": 8
+      },
+      "title": "Rozróżnienie prądu zwarcia i prądów częściowych",
+      "content": "I″kEE opisuje prądy w dwóch różnych punktach zwarcia; I_Eδ oznacza część prądu płynącą przez ziemię. Prądy doziemne w stacji i w słupie to odrębne wielkości od całkowitego I″k1.",
+      "search_terms": [
+        "IkEE",
+        "I E delta",
+        "potencjał ziemi"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-REDUCTION-DEF",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§3.8–3.10",
+        "pdf_page": 17,
+        "printed_page": 9
+      },
+      "title": "Trzy różne współczynniki redukcyjne",
+      "content": "r dotyczy linii napowietrznych z przewodami odgromowymi; r1 kabla trójżyłowego z metalową osłoną lub ekranem uziemionym na obu końcach; r3 zespołu trzech kabli jednożyłowych z ekranami uziemionymi na obu końcach. Nie wolno tych wielkości zamieniać bez zmiany modelu.",
+      "search_terms": [
+        "r",
+        "r1",
+        "r3",
+        "ekran kabla",
+        "przewód odgromowy"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-DOUBLE-EQ4",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§5.1, wzór (4)",
+        "pdf_page": 20,
+        "printed_page": 12,
+        "equation": "(4)"
+      },
+      "title": "Zwarcie podwójne: impedancje dwóch punktów i sprzężenia",
+      "content": "I″kEE zależy od impedancji zgodnych i przeciwnych widzianych w obu miejscach uszkodzenia, impedancji sprzężeń M(1), M(2) i impedancji zerowej między punktami. Nie jest zwykłym przemnożeniem pojedynczego prądu doziemnego.",
+      "search_terms": [
+        "M1",
+        "M2",
+        "Z0",
+        "IkEE",
+        "dwa miejsca zwarcia"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-COUPLING",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§5.1.1, wzory (6)–(7)",
+        "pdf_page": 21,
+        "printed_page": 13,
+        "equation": "(6)–(7)"
+      },
+      "title": "Impedancje wzajemne M(1), M(2)",
+      "content": "Impedancje sprzęgające dwa punkty zwarcia wyznacza się z odpowiednich napięć i prądów składowej zgodnej i przeciwnej w liniowym modelu sieci. Błędne przyjęcie sprzężenia równego zeru może zmienić wynik.",
+      "search_terms": [
+        "sprzężenie",
+        "metoda węzłowa",
+        "M1",
+        "M2"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-TOPOLOGIES",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§5.1.2, tablica 1",
+        "pdf_page": 21,
+        "printed_page": 13
+      },
+      "title": "Schematy zwarć podwójnych",
+      "content": "Tablica 1 obejmuje uproszczone przypadki promieniowe i dwustronnie zasilane, przy założeniu zwarcia oddalonego od generatora oraz odpowiednich równości impedancji składowych.",
+      "search_terms": [
+        "promieniowa",
+        "przelotowa",
+        "dwustronne zasilanie",
+        "tablica 1"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-PEAK-EQ11",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§5.2, wzór (11)",
+        "pdf_page": 22,
+        "printed_page": 14,
+        "equation": "(11)"
+      },
+      "title": "Prąd udarowy przy dwóch doziemieniach",
+      "content": "Dla dwóch różnych miejsc zwarcia prąd udarowy wyznacza się z I″kEE, a współczynnik κ przyjmuje się jako większą wartość κ otrzymaną dla punktów A i B w porównywalnych obliczeniach trójfazowych.",
+      "search_terms": [
+        "ipEE",
+        "kappa",
+        "wytrzymałość dynamiczna"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-NO-EARTH-WIRE",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§5.3",
+        "pdf_page": 22,
+        "printed_page": 14
+      },
+      "title": "Linia bez przewodu odgromowego",
+      "content": "Przy podwójnym doziemieniu na linii napowietrznej bez przewodu odgromowego część prądu płynąca przez ziemię równa jest prądowi zwarcia między miejscami doziemienia, zgodnie z założonym modelem tej sekcji.",
+      "search_terms": [
+        "brak przewodu odgromowego",
+        "ziemia",
+        "powrót prądu"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-STATION-CURRENTS",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§6.2, wzory (14)–(16)",
+        "pdf_page": 23,
+        "printed_page": 15,
+        "equation": "(14)–(16)"
+      },
+      "title": "Rozdział prądów składowej zerowej w stacji",
+      "content": "Prąd I″k1 jest sumą wkładów 3I0 z gałęzi. Prąd płynący bezpośrednio do punktu gwiazdowego transformatora w stacji nie musi podwyższać potencjału uziomu stacji; dla oceny uziemienia istotne są gałęziowe prądy powrotne i redukcja przez przewody uziemione.",
+      "search_terms": [
+        "3I0",
+        "potencjał stacji",
+        "uziemienie",
+        "IBE"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-STATION-EPR",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§6.2, wzory (17)–(18)",
+        "pdf_page": 24,
+        "printed_page": 16,
+        "equation": "(17)–(18)"
+      },
+      "title": "Wzrost potencjału uziomu stacji",
+      "content": "W przyjętym układzie zastępczym potencjał stacji wynika z prądu częściowego wpływającego do ziemi i całkowitej impedancji uziemienia powiązanej z przewodami powrotnymi. Nie utożsamiaj automatycznie prądu uziomu z pełnym I″k1.",
+      "search_terms": [
+        "EPR",
+        "UEB",
+        "ZEBtot",
+        "prąd uziomu"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-TOWER-EPR",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§6.3, wzory (22)–(24)",
+        "pdf_page": 25,
+        "printed_page": 17,
+        "equation": "(22)–(24)"
+      },
+      "title": "Zwarcie na słupie z przewodem odgromowym",
+      "content": "Prąd do ziemi i wzrost potencjału słupa zależą od podziału prądu między uziomy słupów i przewód odgromowy; do obliczeń używa się impedancji zastępczych układu uziemień.",
+      "search_terms": [
+        "słup",
+        "uziemienie słupa",
+        "prąd doziemny"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-STATION-NEAR",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§6.4, wzory (27)–(32)",
+        "pdf_page": 27,
+        "printed_page": 19,
+        "equation": "(27)–(32)"
+      },
+      "title": "Doziemienie blisko stacji",
+      "content": "Gdy zwarcie wystąpi na słupie w pobliżu stacji, potencjał słupa i stacji mogą być większe niż oszacowania dla miejsca oddalonego; model wymaga uwzględnienia skończonego łańcucha uziemień.",
+      "search_terms": [
+        "blisko GPZ",
+        "słup przy stacji",
+        "łańcuch uziemień"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-OVERHEAD-R",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§7, wzór (33)",
+        "pdf_page": 28,
+        "printed_page": 20,
+        "equation": "(33)"
+      },
+      "title": "Współczynnik redukcyjny przewodu odgromowego",
+      "content": "Współczynnik r wynika z relacji impedancji własnej przewodu odgromowego i wzajemnej z przewodami fazowymi z uwzględnieniem powrotu przez ziemię. Jest wielkością zespoloną; do bilansów fazorowych nie wolno podstawiać jedynie jej modułu.",
+      "search_terms": [
+        "r",
+        "ZQ",
+        "ZQL",
+        "rezystywność gruntu"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-SOIL-RESISTIVITY",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§7, tablica 2",
+        "pdf_page": 28,
+        "printed_page": 20
+      },
+      "title": "Rezystywność gruntu w obliczeniach redukcji",
+      "content": "Tablica 2 wiąże rodzaje gruntu z orientacyjnymi przedziałami rezystywności i głębokością wnikania prądu do ziemi. Dane tabelaryczne nie zastępują pomiarów lokalnych w projekcie uziemienia.",
+      "search_terms": [
+        "rho",
+        "rezystywność",
+        "grunt",
+        "delta"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-THREECORE-R1",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§8.2.1, wzory (37), (40)–(41)",
+        "pdf_page": 30,
+        "printed_page": 22,
+        "equation": "(37), (40)–(41)"
+      },
+      "title": "Kabel trójżyłowy: redukcja r1",
+      "content": "Dla kabla trójżyłowego z ekranem lub powłoką metalową uziemioną na obu końcach norma określa rozkład prądu powrotnego między ekran a ziemię na podstawie r1. Należy modelować rezystancję i impedancję ekranu.",
+      "search_terms": [
+        "3-żyłowy",
+        "r1",
+        "prąd ekranu"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-THREECORE-FAULT",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§8.2.2, wzory (42)–(47)",
+        "pdf_page": 31,
+        "printed_page": 23,
+        "equation": "(42)–(47)"
+      },
+      "title": "Uszkodzenie pomiędzy końcami kabla trójżyłowego",
+      "content": "Przy uszkodzeniu wzdłuż kabla analizuje się podział prądu między oba kierunki, ekrany i ziemię. Norma rozpatruje osobno brak połączenia powłoki z otoczeniem oraz konserwatywne założenie impedancji w miejscu uszkodzenia; 5 Ω nie jest uniwersalną stałą każdego zwarcia.",
+      "search_terms": [
+        "REF",
+        "położenie zwarcia",
+        "ekrany kablowe"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-SINGLECORE-R3",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§8.3.1, wzory (48)–(50)",
+        "pdf_page": 34,
+        "printed_page": 26,
+        "equation": "(48)–(50)"
+      },
+      "title": "Trzy kable jednożyłowe: redukcja r3",
+      "content": "Dla trzech ekranów trzech kabli jednożyłowych uziemionych na obu końcach norma podaje odrębny współczynnik r3, zależny również od geometrii ułożenia żył. Nie wolno bezpośrednio zastępować go r1.",
+      "search_terms": [
+        "1x",
+        "układ trójkątny",
+        "układ płaski",
+        "r3"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-SINGLECORE-FAULT",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§8.3.2, wzory (51)–(55)",
+        "pdf_page": 35,
+        "printed_page": 27,
+        "equation": "(51)–(55)"
+      },
+      "title": "Uszkodzenie na trasie trzech kabli jednożyłowych",
+      "content": "Rozpływ prądów przez trzy ekrany i ziemię zależy od miejsca uszkodzenia, udziału źródeł z obu końców oraz przyjętego połączenia z gruntem w miejscu uszkodzenia.",
+      "search_terms": [
+        "1x240",
+        "żyły jednożyłowe",
+        "ekran",
+        "rozdział prądu"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-MANUFACTURER-ARMOUR",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "§8.2.2 i §8.3.2",
+        "pdf_page": 33,
+        "printed_page": 25
+      },
+      "title": "Pancerz ferromagnetyczny: dane producenta",
+      "content": "Dla kabli z dodatkowym pancerzem żelaznym norma wymaga korzystania z danych producenta w zakresie współczynnika redukcyjnego i rozpływu prądu, zamiast uniwersalnego współczynnika obliczonego dla osłon niemagnetycznych.",
+      "search_terms": [
+        "pancerz stalowy",
+        "datasheet",
+        "ekran kabla"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-ANNEX-A",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "Załącznik A (informacyjny)",
+        "pdf_page": 39,
+        "printed_page": 31
+      },
+      "title": "Przykład referencyjny: dwa doziemienia",
+      "content": "Przykład dla sieci 66 kV w załączniku A podaje w obliczonym przypadku I″kEE=1,732 kA oraz prąd przez uziom słupa około 0,262 kA. To wartości do odtworzenia dla danych przykładu, nie limity normowe.",
+      "search_terms": [
+        "przykład testowy",
+        "wyrocznia 1",
+        "732 kA"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-ANNEX-B",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "Załącznik B (informacyjny)",
+        "pdf_page": 43,
+        "printed_page": 35
+      },
+      "title": "Przykład: doziemienie w stacji",
+      "content": "Przykład sieci 132 kV zawiera obliczenie wkładów składowej zerowej i rozdziału prądu. Dla opisanego wariantu w stacji B otrzymano I_EBtot około 1,1528 kA i wzrost potencjału około 0,9722 kV.",
+      "search_terms": [
+        "przykład stacja B",
+        "wyrocznia",
+        "132 kV"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-ANNEX-C",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "Załącznik C (informacyjny)",
+        "pdf_page": 53,
+        "printed_page": 45
+      },
+      "title": "Przykład: ekran kabla trójżyłowego",
+      "content": "Przykład pokazuje r1 jako liczbę zespoloną o module około 0,7053; dla długości 5 km i danych przykładu potencjał uziomu stacji wynosi około 588 V. Nie przenosić tych liczb do katalogu kabli 15 kV jako stałych.",
+      "search_terms": [
+        "przykład testowy",
+        "r1",
+        "0.7053",
+        "588 V"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "SC3-ANNEX-D",
+      "source_id": "IEC60909_3_2010",
+      "source": {
+        "clause": "Załącznik D (informacyjny)",
+        "pdf_page": 57,
+        "printed_page": 49
+      },
+      "title": "Przykład: trzy ekrany kabli jednożyłowych",
+      "content": "Załącznik D przedstawia rozkład prądów powrotnych w trzech ekranach kabli jednożyłowych przy rozmaitych lokalizacjach zwarcia. Stanowi źródło przypadków testowych do niezależnego porównania numerycznego.",
+      "search_terms": [
+        "przykład r3",
+        "trzy jednożyłowe",
+        "wyrocznia"
+      ],
+      "topic": "Zwarcia doziemne i prądy powrotne",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wydanie PN-EN 60909-3:2010; wyłącznie przypadki z §1"
+    },
+    {
+      "id": "PQ-A1-STATUS",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "Przedmowa / wprowadzenie",
+        "pdf_page": 5,
+        "printed_page": 3
+      },
+      "title": "Zmiana A1 jest dodatkiem, nie kompletną normą",
+      "content": "PN-EN 50160:2023-10/A1:2025-04 modyfikuje tekst EN 50160:2022. Załączony 9-stronicowy dokument nie zawiera pełnego wydania bazowego i nie umożliwia samodzielnego odtworzenia wszystkich limitów tabelarycznych.",
+      "search_terms": [
+        "A1",
+        "wydanie bazowe",
+        "dokument zmiany"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-VOLTAGE-BANDS",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§1.1, zmiana 3.2.2",
+        "pdf_page": 6,
+        "printed_page": 4
+      },
+      "title": "Podział napięć MV/HV/EHV na potrzeby EN 50160",
+      "content": "W obrębie EN 50160 pojęcia MV, HV i EHV oznaczają osobne zakresy, mimo że w innych standardach HV może oznaczać zbiorczo napięcia powyżej 1 kV. Nie przenosić definicji zakresu napięć z innych norm.",
+      "search_terms": [
+        "MV",
+        "HV",
+        "EHV",
+        "definicje"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-10MIN-RMS",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§1.2, nowy 3.2.11",
+        "pdf_page": 6,
+        "printed_page": 4
+      },
+      "title": "Średnia 10-minutowa skuteczna",
+      "content": "Zmiana definiuje 10-minutową wartość skuteczną przez agregację kwadratową wartości wejściowych, a nie przez zwykłą średnią arytmetyczną napięć. Odsyła do EN IEC 61000-4-30.",
+      "search_terms": [
+        "rms",
+        "10 minut",
+        "pomiar",
+        "jakość napięcia"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-PLT",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§1.3, zmiana 3.3.5",
+        "pdf_page": 6,
+        "printed_page": 4
+      },
+      "title": "Korekta zapisu długookresowej migotliwości Plt",
+      "content": "Poprawiono matematyczny zapis agregacji długookresowego wskaźnika migotania Plt z dwunastu kolejnych wartości krótkookresowych Pst. Zmiana dotyczy definicji wskaźnika, a nie podaje tu nowej ogólnej granicy dopuszczalności.",
+      "search_terms": [
+        "migotanie",
+        "Plt",
+        "Pst",
+        "flicker"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-THD",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§1.4, zmiana 3.3.6",
+        "pdf_page": 6,
+        "printed_page": 4
+      },
+      "title": "Zapis THD napięcia",
+      "content": "Doprecyzowano obliczanie THD z harmonicznych napięcia od rzędu 2 do 40 w odniesieniu do składowej podstawowej U1. Nie utożsamiać THD z sumą arytmetyczną harmonicznych.",
+      "search_terms": [
+        "THD",
+        "U1",
+        "harmoniczne 2-40"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-MEASURE-WIRES",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§2.1, zmiana 4.1",
+        "pdf_page": 6,
+        "printed_page": 4
+      },
+      "title": "Wybór napięć mierzonych a liczba przewodów",
+      "content": "Dla trójfazowego układu trójprzewodowego należy badać trzy napięcia międzyfazowe, dla trójfazowego czteroprzewodowego trzy napięcia fazowe, a dla przyłącza jednofazowego odpowiednie napięcie zasilające.",
+      "search_terms": [
+        "3-wire",
+        "4-wire",
+        "ULL",
+        "ULN",
+        "pomiar"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-LV-RANGE",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§2.2, zmiana 4.2.2.2",
+        "pdf_page": 7,
+        "printed_page": 5
+      },
+      "title": "nN: tygodniowa ocena poziomu napięcia",
+      "content": "Dla normalnych warunków pracy w każdej analizowanej dobie tygodniowej co najmniej 95% 10-minutowych wartości skutecznych napięcia zasilającego ma mieścić się w Un ±10%, a wszystkie wartości w zakresie od Un−15% do Un+10%. Dotyczy punktu 4.2.2.2, tj. nN, nie bezpośrednio SN.",
+      "search_terms": [
+        "nN",
+        "95 procent",
+        "100 procent",
+        "tydzień",
+        "Un"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-LV-UNBALANCE",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§2.3, zmiana 4.2.4",
+        "pdf_page": 7,
+        "printed_page": 5
+      },
+      "title": "nN: asymetria napięcia w tygodniu",
+      "content": "W warunkach normalnych 95% 10-minutowych wartości skutecznych składowej przeciwnej podstawowej ma stanowić od 0 do 2% składowej zgodnej.",
+      "search_terms": [
+        "nN",
+        "asymetria",
+        "U2/U1",
+        "95 procent"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-LV-HARMONICS",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§2.4, zmiana 4.2.5",
+        "pdf_page": 7,
+        "printed_page": 5
+      },
+      "title": "nN: pojedyncze harmoniczne napięcia",
+      "content": "Zmiana uściśla kryterium tygodniowe dla pojedynczych harmonicznych: co najmniej 95% 10-minutowych wartości ma nie przekraczać wartości z tablicy 1 wydania bazowego. Nie udostępniono tu samych wartości tabeli.",
+      "search_terms": [
+        "harmoniczne",
+        "tablica 1",
+        "95 procent"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-MV-LL",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§3.1, zmiana 5.1",
+        "pdf_page": 8,
+        "printed_page": 6
+      },
+      "title": "SN: trzy napięcia międzyfazowe",
+      "content": "Dla oceny parametrów napięcia w sieciach średniego napięcia EN 50160:2022/A1:2025 wymaga uwzględnienia trzech napięć międzyfazowych.",
+      "search_terms": [
+        "SN",
+        "15 kV",
+        "ULL",
+        "trzy fazy"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-MV-RMS",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§3.2, zmiana 5.2.2.2",
+        "pdf_page": 8,
+        "printed_page": 6
+      },
+      "title": "SN: terminologia wartości 10-minutowych",
+      "content": "W §5.2.2.2 dla SN trzykrotnie zamieniono określenie średniej wartości skutecznej na 10-minutową wartość skuteczną; załączona zmiana nie zawiera kompletu progów napięciowych dla tego punktu.",
+      "search_terms": [
+        "SN",
+        "10 minut",
+        "wykres napięcia"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-MV-UNBALANCE",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§3.3, zmiana 5.2.4",
+        "pdf_page": 8,
+        "printed_page": 6
+      },
+      "title": "SN: obowiązkowe kryterium asymetrii",
+      "content": "W normalnych warunkach przez tydzień przynajmniej 95% 10-minutowych wartości skutecznych składowej przeciwnej napięcia zasilającego ma pozostawać w przedziale 0–2% składowej zgodnej. Użyto sformułowania shall.",
+      "search_terms": [
+        "SN",
+        "U2/U1",
+        "2 procent",
+        "asymetria",
+        "shall"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-MV-HARMONICS",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§3.4, zmiana 5.2.5",
+        "pdf_page": 8,
+        "printed_page": 6
+      },
+      "title": "SN: indywidualne harmoniczne napięcia",
+      "content": "Dla każdej harmonicznej w warunkach normalnych co najmniej 95% tygodniowych 10-minutowych wartości ma nie przekraczać granic podanych w tablicy 5 wydania bazowego. W załączonym A1 nie podano samych granic tabeli 5.",
+      "search_terms": [
+        "SN",
+        "harmoniczne",
+        "tablica 5",
+        "95 procent"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-HV-ASPECTS",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§4.1–4.3, zmiany 6.1, 6.2.4, 6.2.5",
+        "pdf_page": 9,
+        "printed_page": 7
+      },
+      "title": "WN: napięcia międzyfazowe i charakter kryteriów",
+      "content": "W części WN pomiary obejmują trzy napięcia międzyfazowe. Dla asymetrii 0–2% w 95% tygodniowych wartości 10-minutowych użyto should, podczas gdy dla indywidualnych harmonicznych i granic tablicy 8 użyto shall. Różnica jest istotna dla statusu wymagania.",
+      "search_terms": [
+        "WN",
+        "110 kV",
+        "should",
+        "shall",
+        "asymetria"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-EHV-ASPECTS",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§5.1–5.3, zmiany 7.1, 7.2.4, 7.2.5",
+        "pdf_page": 9,
+        "printed_page": 7
+      },
+      "title": "NNW: kryteria zaleceń i wymagań",
+      "content": "Dla napięć najwyższych potwierdzono pomiary trzech napięć międzyfazowych. Asymetria 0–2% w 95% tygodniowych próbek używa should, a wartości pojedynczych harmonicznych z tablicy 8 używają shall.",
+      "search_terms": [
+        "EHV",
+        "NNW",
+        "should",
+        "shall",
+        "harmoniczne"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-EXISTING-EQUIPMENT",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§4.4, zmiana 6.3.2.6",
+        "pdf_page": 9,
+        "printed_page": 7
+      },
+      "title": "Urządzenia pomiarowe istniejące wcześniej",
+      "content": "W odniesieniu do istniejącego wyposażenia pomiarowego lub monitorującego tablica 10 została wskazana jako zalecenie. Nie należy automatycznie traktować jej w tym kontekście jako nakazu wymiany.",
+      "search_terms": [
+        "aparatura istniejąca",
+        "tablica 10",
+        "pomiary"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-DIP-CROSSREF",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§5.4, zmiana 7.3.2.4",
+        "pdf_page": 9,
+        "printed_page": 7
+      },
+      "title": "Poprawione odwołanie klasyfikacji zapadów",
+      "content": "Skorygowano wewnętrzny odsyłacz w klasyfikacji zapadów napięcia. Nie stanowi to samodzielnej zmiany progów jakości napięcia.",
+      "search_terms": [
+        "zapady napięcia",
+        "odwołanie"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    },
+    {
+      "id": "PQ-A1-BASE-REQUIRED",
+      "source_id": "EN50160_A1_2025",
+      "source": {
+        "clause": "§2–5 (zmiany tekstu wydania bazowego)",
+        "pdf_page": 8,
+        "printed_page": 6
+      },
+      "title": "Granice pełnej oceny EN 50160 z samego A1",
+      "content": "Z samego załącznika A1 nie można przeprowadzić kompletnej oceny wszystkich progów SN, ponieważ w kilku punktach odsyła on do tabel liczbowych wydania bazowego (np. tablica 5). Brak tych danych nie oznacza zgodności ani niezgodności.",
+      "search_terms": [
+        "brak podstawy",
+        "wersjonowanie",
+        "tablica 5"
+      ],
+      "topic": "Jakość napięcia i pomiary",
+      "record_type": "interpretacja_normy",
+      "evidence": "zweryfikowane_w_zalaczniku",
+      "scope": "Wyłącznie zmiana A1:2025-04; interpretować łącznie z bazową PN-EN 50160"
+    }
+  ],
+  "rules": [
+    {
+      "id": "KB-R2-001",
+      "title": "Rozdzielenie pojedynczego i podwójnego doziemienia",
+      "source_ids": [
+        "SC3-SCOPE-01",
+        "SC3-SCOPE-02"
+      ],
+      "category": "scope",
+      "level": "technical_gate",
+      "action": "Nie używaj PN-EN 60909-3:2010 jako podstawy liczenia pojedynczego doziemienia sieci izolowanej/kompensowanej; dla 2 miejsc zwarcia stosuj scenariusz z dwoma punktami."
+    },
+    {
+      "id": "KB-R2-002",
+      "title": "Dwa osobne connection node",
+      "source_ids": [
+        "SC3-DOUBLE-EQ4",
+        "SC3-COUPLING"
+      ],
+      "category": "topology",
+      "level": "technical_gate",
+      "action": "Dla dwukrotnego jednoczesnego doziemienia wymagaj odrębnych miejsc A i B, składowych Z1,Z2,Z0 i sprzężeń M1,M2; nie redukuj do zwarcia pojedynczego."
+    },
+    {
+      "id": "KB-R2-003",
+      "title": "Maksymalny kappa z dwóch lokalizacji",
+      "source_ids": [
+        "SC3-PEAK-EQ11"
+      ],
+      "category": "calculation",
+      "level": "automatic_check",
+      "action": "Przy obliczeniu ipEE sprawdź wybór większego współczynnika κ z punktów A/B w granicach procedury §5.2."
+    },
+    {
+      "id": "KB-R2-004",
+      "title": "Rozdzielenie prądu uziomu od Ik1",
+      "source_ids": [
+        "SC3-STATION-CURRENTS",
+        "SC3-STATION-EPR"
+      ],
+      "category": "calculation",
+      "level": "technical_gate",
+      "action": "Nie utożsamiaj pełnego prądu I″k1 z prądem wpływającym do ziemi przez uziom stacji; uwzględnij wkłady składowej zerowej i drogi powrotne."
+    },
+    {
+      "id": "KB-R2-005",
+      "title": "Właściwy współczynnik r/r1/r3",
+      "source_ids": [
+        "SC3-REDUCTION-DEF",
+        "SC3-OVERHEAD-R",
+        "SC3-THREECORE-R1",
+        "SC3-SINGLECORE-R3"
+      ],
+      "category": "equipment",
+      "level": "automatic_check",
+      "action": "Powiąż redukcję z typem obiektu: linia z przewodem odgromowym r, kabel trójżyłowy r1, trzy jednożyłowe r3. Nie gub części urojonej przy sumowaniu prądów."
+    },
+    {
+      "id": "KB-R2-006",
+      "title": "REF=5 Ω nie jest stałą uniwersalną",
+      "source_ids": [
+        "SC3-THREECORE-FAULT",
+        "SC3-SINGLECORE-FAULT"
+      ],
+      "category": "assumption",
+      "level": "technical_gate",
+      "action": "5 Ω wolno stosować jako opisane założenie konserwatywne w określonych przypadkach, nie jako bezwarunkowy katalogowy opór każdego doziemienia."
+    },
+    {
+      "id": "KB-R2-007",
+      "title": "Dane producenta pancerza stalowego",
+      "source_ids": [
+        "SC3-MANUFACTURER-ARMOUR"
+      ],
+      "category": "catalog",
+      "level": "technical_gate",
+      "action": "W przypadku osłon ferromagnetycznych wymagaj danych producenta albo jawnie oznaczony model roboczy; nie podstawiaj automatycznie redukcji osłony niemagnetycznej."
+    },
+    {
+      "id": "KB-R2-008",
+      "title": "Amendment A1 nie jest pełną EN 50160",
+      "source_ids": [
+        "PQ-A1-STATUS",
+        "PQ-A1-BASE-REQUIRED"
+      ],
+      "category": "source_provenance",
+      "level": "technical_gate",
+      "action": "Nie generuj pełnego werdyktu PN-EN 50160 z samej zmiany A1; dla tabel 1/5/8 użyj odpowiedniego wydania bazowego i zachowaj ślad wersji."
+    },
+    {
+      "id": "KB-R2-009",
+      "title": "Nie przenoś limitów nN na SN",
+      "source_ids": [
+        "PQ-A1-LV-RANGE",
+        "PQ-A1-MV-RMS"
+      ],
+      "category": "voltage",
+      "level": "technical_gate",
+      "action": "Progi tygodniowe z §4.2.2.2 dotyczą nN. Dla SN korzystaj z §5.2.2.2 wydania bazowego, a nie kopiuj nN ±10% i -15% jako automatyczne kryterium SN."
+    },
+    {
+      "id": "KB-R2-010",
+      "title": "Pomiar zależny od układu przewodów",
+      "source_ids": [
+        "PQ-A1-MEASURE-WIRES",
+        "PQ-A1-MV-LL"
+      ],
+      "category": "measurement",
+      "level": "automatic_check",
+      "action": "W 3-fazowej sieci SN analizuj trzy napięcia międzyfazowe; w 4-przewodowym nN trzy fazowe; w 3-przewodowym nN trzy międzyfazowe."
+    },
+    {
+      "id": "KB-R2-011",
+      "title": "SN asymetria w tygodniu, nie w pojedynczej chwili",
+      "source_ids": [
+        "PQ-A1-MV-UNBALANCE"
+      ],
+      "category": "voltage_quality",
+      "level": "technical_gate",
+      "action": "Ocena §5.2.4 wymaga próbek 10-minutowych i tygodniowej statystyki 95% udziału składowej przeciwnej <=2% zgodnej. Jednorazowy wynik rozpływu nie dowodzi tej zgodności."
+    },
+    {
+      "id": "KB-R2-012",
+      "title": "Nie wymyślaj limitów harmonicznych tablicy 5",
+      "source_ids": [
+        "PQ-A1-MV-HARMONICS",
+        "PQ-A1-BASE-REQUIRED"
+      ],
+      "category": "harmonics",
+      "level": "technical_gate",
+      "action": "Gdy brak pełnej PN-EN 50160:2023-10, raportuj BRAK_PODSTAWY dla wartości granicznych indywidualnych harmonicznych SN; samo A1 ich nie zawiera."
+    },
+    {
+      "id": "KB-R2-013",
+      "title": "Rozróżniaj shall i should",
+      "source_ids": [
+        "PQ-A1-MV-UNBALANCE",
+        "PQ-A1-HV-ASPECTS",
+        "PQ-A1-EHV-ASPECTS"
+      ],
+      "category": "normative_strength",
+      "level": "automatic_check",
+      "action": "Obowiązkowe shall w SN i zalecające should dla asymetrii WN/NNW nie mogą otrzymać jednej klasy wymagania."
+    },
+    {
+      "id": "KB-R2-014",
+      "title": "Agregacja RMS, nie średnia arytmetyczna",
+      "source_ids": [
+        "PQ-A1-10MIN-RMS",
+        "PQ-A1-PLT",
+        "PQ-A1-THD"
+      ],
+      "category": "measurement",
+      "level": "technical_gate",
+      "action": "10-min rms licz według definicji z §3.2.11; Plt i THD licz według właściwych definicji. Nie stosuj zwykłego uśredniania wartości napięcia."
+    },
+    {
+      "id": "KB-R2-015",
+      "title": "Nie używaj przykładów jako limitów",
+      "source_ids": [
+        "SC3-ANNEX-A",
+        "SC3-ANNEX-B",
+        "SC3-ANNEX-C",
+        "SC3-ANNEX-D"
+      ],
+      "category": "evidence",
+      "level": "technical_gate",
+      "action": "Wyniki załączników informacyjnych wykorzystuj jako wyrocznie testowe dla ich danych, a nie normatywne wartości graniczne."
+    }
+  ]
+}
