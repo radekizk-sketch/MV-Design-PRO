@@ -16,4 +16,4 @@ for metric,num in [("m_records",len(records)),("m_norm",sum(x["source_id"] in ("
     html,changes=re.subn(fr'(<strong id="{metric}">)\d+(</strong>)',fr'\g<1>{num}\g<2>',html,count=1)
     assert changes==1
 (ROOT/"index.html").write_text(html,encoding="utf-8")
-print(f"{len(records)} records, {len(rules)} rules, offline viewer refreshed")
+print(f"{len(records)} records, {len(sources)} sources, {len(rules)} rules, offline viewer refreshed")
