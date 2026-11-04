@@ -12,13 +12,18 @@
  *     nazwę, nagłówek konfiguratora ją pokazuje;
  *  3. „Dodaj sekcję rozdzielni SN" → karta „Sekcje SN" → zmiana nazwy sekcji
  *     (`update_gpz_section`): model i etykieta sekcji na schemacie; formularz nowej sekcji
- *     uczciwie mówi, że każda szyna SN stacji ma już sekcję (operacja dodania sekcji przyjmuje
- *     wyłącznie istniejącą, wolną szynę stacji);
+ *     mówi, że każda szyna SN stacji ma już sekcję, i proponuje nową szynę (`create_bus`);
  *  4. „Pokaż dane zwarciowe sekcji" (menu szyny sekcji) → karta „Sieć zasilająca" tego GPZ;
  *  5. karta „Pola SN": „Dodaj pole" z rolą baterii kondensatorów i zespołu uziemiającego → kreator
  *     pola (`add_sn_bay`) z podstawioną sekcją i rolą → pole w modelu i na schemacie; „Dodaj baterię
  *     kondensatorów" → kreator baterii na zacisku pola → bateria w modelu; „Dodaj zespół
- *     uziemiający" → kreator zespołu przypięty do pola; „Konfiguruj" → karta pola E-11.
+ *     uziemiający" → kreator zespołu przypięty do pola; „Konfiguruj" → karta pola E-11;
+ *  6. nowa sekcja z NOWĄ szyną (`add_gpz_section` z `create_bus`) i sprzęgło między sekcją 2
+ *     a nową sekcją z „Dodaj pole" (rola „Sprzęgło", sekcja po drugiej stronie, stan normalny
+ *     otwarty): gałąź `bus_coupler` w modelu, oznaczenie sprzęgła na schemacie, opis w tabeli;
+ *  7. oznaczenie stacji z karty „Identyfikacja" i napięcie Un strony WN z karty „Sieć
+ *     zasilająca" (`update_gpz_hv_voltage`): niezgodne z transformatorem 110/SN → odmowa
+ *     z wyjaśnieniem, model bez zmian, a karta proponuje typ o tym napięciu (tu: brak w katalogu).
  */
 import { test, expect, type Page } from '@playwright/test';
 
@@ -226,4 +231,87 @@ test('GPZ: karta „Pola SN" — pola BKR i ZU z konfiguratora, bateria na zacis
   await page.getByTestId(`tabela-pol-sn-konfiguruj-${poleBkr.ref_id}`).click();
   await expect(page.getByTestId('bay-configurator-surface')).toBeVisible({ timeout: 20000 });
   await expect(page.getByTestId('bay-configurator-surface').locator('h2')).toHaveText('Pole BK 1');
+});
+
+test('GPZ: nowa sekcja z nową szyną i sprzęgło do niej z „Dodaj pole" — model, schemat, tabela', async ({ page, request }) => {
+  test.setTimeout(300000);
+  const seed = await siecGpz(request, 2);
+  const druga = (await enm(request, seed.caseId)).substations!.find((s) => s.ref_id === seed.stacjaRef)!.gpz_sections![1];
+
+  await otworzSchemat(page, seed);
+  await menuZrodla(page, seed.zrodloRef, 'add-section');
+  await page.getByTestId('gpz-sections-editor-add-lv').click();
+  await expect(page.getByTestId('gpz-sections-editor-no-free-bus')).toContainText('nowa sekcja dostaje nową szynę');
+  await page.getByTestId('gpz-sections-editor-input-name').fill('Sekcja 3');
+  await page.getByTestId('gpz-sections-editor-select-bus').selectOption({ label: 'Nowa szyna sekcji' });
+  await page.getByTestId('gpz-sections-editor-submit').click();
+  await expect
+    .poll(async () => (await enm(request, seed.caseId)).substations?.find((s) => s.ref_id === seed.stacjaRef)?.gpz_sections?.length, {
+      timeout: 20000,
+    })
+    .toBe(3);
+  const model = await enm(request, seed.caseId);
+  const stacja = model.substations!.find((s) => s.ref_id === seed.stacjaRef)!;
+  const trzecia = stacja.gpz_sections!.find((s) => s.name === 'Sekcja 3')!;
+  expect(stacja.bus_refs).toContain(trzecia.bus_ref);
+  expect(model.buses!.find((b) => b.ref_id === trzecia.bus_ref)?.voltage_kv).toBe(15);
+
+  // Sprzęgło z sekcji 2: kreator dostaje sekcję sąsiednią (nową) jako drugą stronę.
+  await page.getByTestId('gpz-card-tab-bays').click();
+  await page.getByTestId(`tabela-pol-sn-rola-${druga.bus_ref}`).selectOption('COUPLER');
+  await page.getByTestId(`tabela-pol-sn-dodaj-${druga.bus_ref}`).click();
+  await expect(page.getByTestId('mvd-kreator-pole')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('mvd-kreator-pole-sprzeglo-sekcja')).toHaveValue(trzecia.bus_ref);
+  await page.getByTestId('mvd-kreator-pole-sprzeglo-stan').selectOption('open');
+  await page.getByTestId('mvd-kreator-pole-nazwa').fill('Sprzęgło S2-S3');
+  const katalog = page.getByTestId('mvd-kreator-pole-katalog');
+  await expect(katalog.locator('option').nth(1)).toBeAttached({ timeout: 20000 });
+  await katalog.selectOption({ index: 1 });
+  await page.getByTestId('mvd-kreator-pole-zapisz').click();
+  await expect(page.getByTestId('mvd-kreator-pole')).toHaveCount(0, { timeout: 20000 });
+
+  const sprzeglo = async () =>
+    (await enm(request, seed.caseId)).branches?.find(
+      (g) =>
+        g.type === 'bus_coupler' &&
+        [g.from_bus_ref, g.to_bus_ref].sort().join('|') === [druga.bus_ref, trzecia.bus_ref].sort().join('|'),
+    );
+  await expect.poll(async () => (await sprzeglo())?.normal_state, { timeout: 20000 }).toBe('open');
+  expect((await sprzeglo())?.status).toBe('open');
+  const pole = (await enm(request, seed.caseId)).bays!.find((b) => b.name === 'Sprzęgło S2-S3')!;
+  expect(pole.bay_role).toBe('COUPLER');
+  await expect(page.getByTestId('sld-canvas-v3').getByText('Sprzęgło S2-S3').first()).toBeAttached({ timeout: 20000 });
+
+  await expect(page.getByTestId('gpz-configurator-surface')).toBeVisible({ timeout: 20000 });
+  await page.getByTestId('gpz-card-tab-bays').click();
+  await expect(page.getByTestId(`tabela-pol-sn-sprzeglo-${pole.ref_id}`)).toContainText('Łączy z: Sekcja 3 · normalnie otwarte');
+});
+
+test('GPZ: oznaczenie stacji i Un strony WN — zapis, odmowa z wyjaśnieniem, model bez zmian', async ({ page, request }) => {
+  test.setTimeout(240000);
+  const seed = await siecGpz(request);
+  await otworzSchemat(page, seed);
+  await menuZrodla(page, seed.zrodloRef, 'open-source');
+  const oznaczenie = page.getByTestId('gpz-designation');
+  await oznaczenie.fill('GPZ-15/1');
+  await oznaczenie.press('Enter');
+  await expect
+    .poll(async () => (await enm(request, seed.caseId)).substations?.find((s) => s.ref_id === seed.stacjaRef)?.designation, {
+      timeout: 20000,
+    })
+    .toBe('GPZ-15/1');
+
+  await page.getByTestId('gpz-card-tab-hv-side').click();
+  const un = page.getByTestId('gpz-supply-un');
+  await expect(un).toHaveValue('110');
+  await un.fill('115');
+  await un.press('Enter');
+  await expect(page.getByTestId('gpz-card-error-hv-side')).toContainText('115 kV');
+  await expect(page.getByTestId('gpz-card-error-hv-side')).toContainText('napięcie górne');
+  await expect(page.getByTestId('gpz-supply-un-typ-brak')).toContainText('115/15 kV');
+  await expect(un).toHaveValue('110');
+  const model = await enm(request, seed.caseId);
+  const szynyWn = model.buses!.filter((b) => (b.voltage_kv ?? 0) > 60);
+  expect(szynyWn.length).toBeGreaterThan(0);
+  expect(szynyWn.every((b) => b.voltage_kv === 110)).toBe(true);
 });

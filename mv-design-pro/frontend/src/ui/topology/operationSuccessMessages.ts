@@ -41,6 +41,7 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   add_gpz_section: 'Dodano sekcję GPZ',
   update_gpz_section: 'Zaktualizowano sekcję GPZ',
   delete_gpz_section: 'Usunięto sekcję GPZ',
+  update_gpz_hv_voltage: 'Zmieniono napięcie strony WN GPZ',
   // Bays / transformers / fields
   add_sn_bay: 'Dodano pole SN',
   add_transformer_sn_nn: 'Dodano transformator SN/nN',

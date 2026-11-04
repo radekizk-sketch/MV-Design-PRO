@@ -33,6 +33,16 @@ export const POLE_STRINGS = {
     + 'jest wolny w każdej topologii.',
   wierszRodzajPomiaru: 'Rodzaj pomiaru',
 
+  // Pole sprzęgła — etykiety pól `add_sn_bay.coupled_bus_ref` / `coupler_normal_state`
+  // (te same słowa co `NAZWY_POL_KONTRAKTU_PL` backendu).
+  sprzegloDruga: 'Sekcja po drugiej stronie sprzęgła',
+  sprzegloStan: 'Stan normalny sprzęgła',
+  sprzegloPomoc:
+    'Pole sprzęgła łączy dwie sekcje szyn: jego aparatem jest łącznik sekcji między szynami. '
+    + 'Stan normalny określa, czy sekcje pracują razem (zamknięte), czy osobno (otwarte).',
+  sprzegloBrakSekcji: 'Rozdzielnia nie ma drugiej sekcji — sprzęgło łączy dwie sekcje szyn.',
+  wierszSprzeglo: 'Sekcje sprzęgła',
+
   szablonTytul: 'Szablon pola producenta',
   szablonPomoc:
     'Powiąż pole z gotowym szablonem producenta (rodzina rozdzielnicy → szablon pola). '

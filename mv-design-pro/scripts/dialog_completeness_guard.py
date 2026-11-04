@@ -139,6 +139,11 @@ KLASYFIKACJA_BEZ_FORMULARZA: dict[str, BezOkna | SciezkaMenu] = {
     "add_gpz_section": _SEKCJE_GPZ,
     "update_gpz_section": _SEKCJE_GPZ,
     "delete_gpz_section": _SEKCJE_GPZ,
+    "update_gpz_hv_voltage": BezOkna(
+        ("ui/workspace/surfaces/GpzConfiguratorSurface.tsx",),
+        "Napięcie strony WN GPZ zmienia pole „Napięcie znamionowe Un” na karcie „Sieć "
+        "zasilająca” konfiguratora GPZ (E-10), razem z typem transformatora 110/SN przy odmowie.",
+    ),
     "set_source_operating_mode": BezOkna(
         ("ui2/oze/osd/EkranOsd.tsx",),
         "Tryb pracy źródła przełącza się na ekranie wymagań operatora (OSD) przy źródle.",

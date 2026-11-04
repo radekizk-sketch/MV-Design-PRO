@@ -120,18 +120,18 @@ Odpowiedź (HTTP 200) niesie:
 ## 4. Rejestr operacji
 
 <!-- GENEROWANE:rejestr-operacji:POCZATEK -->
-Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`REQUIRED_FIELD_ALIASES`): handler przyjmuje pole wymagane ALBO ten klucz. Nazwa z `{…}` to rodzina kluczy numerowanych. Kolumna „Tworzy” = `OperationSpec.creates_elements`.
+Rejestr liczy **53** operacji. Pole w nawiasie „albo” to klucz zastępczy (`REQUIRED_FIELD_ALIASES`): handler przyjmuje pole wymagane ALBO ten klucz. Nazwa z `{…}` to rodzina kluczy numerowanych. Kolumna „Tworzy” = `OperationSpec.creates_elements`.
 
-### Sieć SN (`sn_network`, 23)
+### Sieć SN (`sn_network`, 24)
 
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
 | `add_generator_sn` | Dodanie generatora synchronicznego wprost na szynę SN/WN (bez przekształtnika) | `bus_ref`, `p_mw` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `control_mode`, `dry_run`, `manual_params`, `name`, `q_max_mvar`, `q_min_mvar`, `q_mvar`, `source_name`, `u_set_pu` | tak | `enm/domain_operations_v2.py::add_generator_sn` |
-| `add_gpz_section` | Dodanie sekcji szyn GPZ (strona SN lub WN) do stacji GPZ | `substation_ref` | `bus_ref`, `line_field_name`, `name`, `order`, `section_id`, `side` | tak | `enm/domain_operations.py::add_gpz_section` |
+| `add_gpz_section` | Dodanie sekcji szyn GPZ (strona SN lub WN) do stacji GPZ | `substation_ref` | `bus_ref`, `create_bus`, `line_field_name`, `name`, `order`, `section_id`, `side` | tak | `enm/domain_operations.py::add_gpz_section` |
 | `add_grid_source_sn` | Dodanie źródła zasilania sieciowego (GPZ) do sieci SN | `voltage_kv` | `catalog_binding`, `catalog_ref`, `gpz_coupler_name`, `gpz_line_field_apparatus`, `gpz_line_field_name`, `gpz_section_name`, `gpz_sections`, `grounding`, `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `line_fields_per_section`, `lv_voltage_tolerance`, `manual_equivalent`, `manufacturer_ref`, `name_pl`, `overrides`, `parameter_source`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `sections_count`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `solution_ref`, `source_id`, `source_mode`, `source_name`, `switchgear_family_ref`, `transformer_catalog_binding`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_count`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_sn_mva`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv`, `transformer_{order}_name`, `u_set_pu`, `x0_ohm`, `x_ohm`, `z0_z1_ratio`, `zero_sequence`, `zespoly_uziemiajace` | tak | `enm/domain_operations.py::add_grid_source_sn` |
 | `add_load_sn` | Dodanie odbioru wprost na wskazaną szynę (bez pośredniej stacji SN/nN) | `bus_ref` | `a_p`, `a_q`, `active_power_kw`, `b_p`, `b_q`, `c_p`, `c_q`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection_type`, `cos_phi`, `f0_hz`, `k_pf`, `k_qf`, `load_kind`, `load_name`, `p_mw`, `phases`, `q_mvar`, `reactive_power_kvar`, `v0_pu` | tak | `enm/domain_operations_v2.py::add_load_sn` |
 | `add_shunt_compensator_sn` | Dodanie baterii kondensatorów (kompensatora bocznikowego) na szynę SN | — | `bus_nn_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `dry_run`, `name`, `status` | tak | `enm/domain_operations_v2.py::add_shunt_compensator_sn` |
-| `add_sn_bay` | Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego RMU) z trybem próby (werdykt konfiguracji bez zapisu) | — | `apparatus_kind`, `bay_kind`, `bay_role`, `bay_template_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `complete_bay_template_ref`, `dry_run`, `earthing_role`, `existing_field_ref`, `factory_configuration_ref`, `factory_unit_index`, `field_name`, `field_ref`, `funkcja_pomiaru`, `gpz_section_id`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `station_ref`, `switchgear_family_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_sn_bay` |
+| `add_sn_bay` | Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego RMU) z trybem próby (werdykt konfiguracji bez zapisu) | — | `apparatus_kind`, `bay_kind`, `bay_role`, `bay_template_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `complete_bay_template_ref`, `coupled_bus_ref`, `coupler_normal_state`, `dry_run`, `earthing_role`, `existing_field_ref`, `factory_configuration_ref`, `factory_unit_index`, `field_name`, `field_ref`, `funkcja_pomiaru`, `gpz_section_id`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `station_ref`, `switchgear_family_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_sn_bay` |
 | `add_surge_arrester_sn` | Dodanie ogranicznika przepięć w polu SN | — | `bay_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `dry_run`, `field_ref`, `station_ref` | tak | `enm/domain_operations_v2.py::add_surge_arrester_sn` |
 | `add_zespol_uziemiajacy_sn` | Dodanie albo przekonfigurowanie zespołu uziemiającego sieci SN (transformator uziemiający z dławikiem gaszącym, rezystorem albo układem równoległym) | — | `bay_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `dlawik`, `dry_run`, `name`, `odbior_pw_ref`, `rezystor`, `spz`, `uziemienie_bezposrednie`, `wylaczenie_od_transformatorow_refs`, `zespol_ref` | tak | `enm/domain_operations_v2.py::add_zespol_uziemiajacy_sn` |
 | `append_station_on_endpoint` | Dołączenie stacji na końcu istniejącego ciągu SN | — | `construction_type`, `designation`, `dry_run`, `endpoint_bus_ref`, `field_apparatus_catalog_ref`, `nn_block`, `nn_earthing`, `nn_voltage_kv`, `run_ref`, `sn_fields`, `station`, `station_auxiliary`, `station_name`, `station_type`, `switchgear`, `transformer` | tak | `enm/domain_operations.py::append_station_on_endpoint` |
@@ -148,6 +148,7 @@ Rejestr liczy **52** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `set_bay_equipment` | Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu pola albo usunięcie wyposażenia | `bay_ref`, `mode` | `bay_template_ref`, `devices` | nie | `enm/wyposazenie_pola.py::set_bay_equipment` |
 | `set_normal_open_point` | Przeniesienie punktu normalnie otwartego (NOP) na wskazany łącznik — poprzedni punkt podziału tego samego pierścienia zostaje zamknięty | `switch_ref` | `close_ref` | nie | `enm/operacje_lacznikow.py::set_normal_open_point` |
 | `start_branch_segment_sn` | Rozpoczęcie nowego odgałęzienia od magistrali SN | — | `catalog_binding`, `dlugosc_m`, `from_bus_ref`, `from_ref`, `segment` | tak | `enm/domain_operations.py::start_branch_segment_sn` |
+| `update_gpz_hv_voltage` | Zmiana napięcia znamionowego strony WN GPZ (szyny WN, szyny połączone z nimi galwanicznie i równoważnik sieci), opcjonalnie razem z typem transformatorów 110/SN | `substation_ref`, `voltage_kv` | `transformer_catalog_binding` | nie | `enm/domain_operations.py::update_gpz_hv_voltage` |
 | `update_gpz_section` | Aktualizacja sekcji szyn GPZ (nazwa, kolejność, sprzęgła) | `substation_ref`, `section_id` | `side`, `updates` | nie | `enm/domain_operations.py::update_gpz_section` |
 
 ### Stacja SN/nN i strona nN stacji (`station_nn`, 3)
@@ -868,7 +869,50 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 1; zdarzenia: `GPZ_SECTION_DELETED`; zaznaczenie: `gpz/32abcfb31cf95f951fb979573f45eca2/substation`.
 
-#### 20. `add_sn_bay` — dodatkowe pole liniowe w rozdzielnicy SN stacji S01
+#### 20. `update_gpz_hv_voltage` — napięcie strony WN GPZ razem z typem transformatora 110/SN (jedna operacja)
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "update_gpz_hv_voltage",
+    "idempotency_key": "przyklad-20",
+    "payload": {
+      "substation_ref": "gpz/32abcfb31cf95f951fb979573f45eca2/substation",
+      "voltage_kv": 110.0,
+      "transformer_catalog_binding": {
+        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "2024.1"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 2, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: `gpz/32abcfb31cf95f951fb979573f45eca2/substation`.
+
+#### 21. `update_gpz_hv_voltage` — napięcie strony WN inne niż napięcie górne transformatora 110/SN
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "update_gpz_hv_voltage",
+    "idempotency_key": "przyklad-21",
+    "payload": {
+      "substation_ref": "gpz/32abcfb31cf95f951fb979573f45eca2/substation",
+      "voltage_kv": 115.0
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200, odmowa nazwana `gpz_hv_voltage.transformer_mismatch` — „Napięcia szyn nie można zmienić na 115 kV: transformator „TR1 110/15 kV” ma napięcie górne 110 kV — uzwojenie transformatora musi mieć napięcie znamionowe sieci, do której jest przyłączone (przekładnia wchodzi wprost do rozpływu i zwarć, IEC 60909-0 §6.3.3). Zmień napięcie razem z typem transformatora o napięciu górnym 115 kV.” Model bez zmian.
+
+#### 22. `add_sn_bay` — dodatkowe pole liniowe w rozdzielnicy SN stacji S01
 
 ```json
 {
@@ -876,7 +920,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 1; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_sn_bay",
-    "idempotency_key": "przyklad-20",
+    "idempotency_key": "przyklad-22",
     "payload": {
       "station_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/station",
       "bus_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_bus",
@@ -890,7 +934,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 1; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 0; zdarzenia: `FIELDS_CREATED_SN`, `FIELD_DEVICE_CREATED_SN`, `FIELD_TERMINAL_CREATED_SN`; zaznaczenie: `sn/4e25c122e61bf16c44050a6a3cc6ad25/bay`.
 
-#### 21. `set_bay_equipment` — wyposażenie nowego pola z szablonu pola liniowego
+#### 23. `set_bay_equipment` — wyposażenie nowego pola z szablonu pola liniowego
 
 ```json
 {
@@ -898,7 +942,7 @@ Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "set_bay_equipment",
-    "idempotency_key": "przyklad-21",
+    "idempotency_key": "przyklad-23",
     "payload": {
       "bay_ref": "sn/4e25c122e61bf16c44050a6a3cc6ad25/bay",
       "mode": "szablon",
@@ -910,7 +954,7 @@ Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `BAY_EQUIPMENT_SET`; zaznaczenie: `sn/4e25c122e61bf16c44050a6a3cc6ad25/bay`.
 
-#### 22. `add_load_sn` — odbiór SN na węźle za pierwszym odcinkiem
+#### 24. `add_load_sn` — odbiór SN na węźle za pierwszym odcinkiem
 
 ```json
 {
@@ -918,7 +962,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_load_sn",
-    "idempotency_key": "przyklad-22",
+    "idempotency_key": "przyklad-24",
     "payload": {
       "bus_ref": "bus/c3947d92b7bae3acbe0466d8e2d90c31/downstream",
       "p_mw": 0.4,
@@ -931,7 +975,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `LOAD_SN_CREATED`; zaznaczenie: `load/b4e28f9f829afd6948a0b33c3a3a2ecc/sn`.
 
-#### 23. `add_generator_sn` — generator synchroniczny SN z tabliczką podaną ręcznie (katalog bez typu maszyny)
+#### 25. `add_generator_sn` — generator synchroniczny SN z tabliczką podaną ręcznie (katalog bez typu maszyny)
 
 ```json
 {
@@ -939,7 +983,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_generator_sn",
-    "idempotency_key": "przyklad-23",
+    "idempotency_key": "przyklad-25",
     "payload": {
       "bus_ref": "bus/75d9eee75d208ab70b09f39b7d218fd1/downstream",
       "p_mw": 1.0,
@@ -957,7 +1001,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `GENERATOR_SN_CREATED`; zaznaczenie: `gen/326b00c26c1a3072f7d12971b87a326b/sn`.
 
-#### 24. `add_shunt_compensator_sn` — bateria kondensatorów SN z katalogu
+#### 26. `add_shunt_compensator_sn` — bateria kondensatorów SN z katalogu
 
 ```json
 {
@@ -965,7 +1009,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_shunt_compensator_sn",
-    "idempotency_key": "przyklad-24",
+    "idempotency_key": "przyklad-26",
     "payload": {
       "bus_ref": "bus/75d9eee75d208ab70b09f39b7d218fd1/downstream",
       "name": "Bateria K1",
@@ -981,7 +1025,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `SHUNT_COMPENSATOR_CREATED`; zaznaczenie: `shunt/c6a0afd4ddb6da7f781ef759a1ff665d/cap`.
 
-#### 25. `add_zespol_uziemiajacy_sn` — zespół uziemiający z dławikiem gaszącym i rezystorem równolegle (ENEA Z.14) na szynie GPZ
+#### 27. `add_zespol_uziemiajacy_sn` — zespół uziemiający z dławikiem gaszącym i rezystorem równolegle (ENEA Z.14) na szynie GPZ
 
 ```json
 {
@@ -989,7 +1033,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_zespol_uziemiajacy_sn",
-    "idempotency_key": "przyklad-25",
+    "idempotency_key": "przyklad-27",
     "payload": {
       "bus_ref": "gpz/32abcfb31cf95f951fb979573f45eca2/section/001/bus_sn",
       "name": "Zespół uziemiający GPZ",
@@ -1008,7 +1052,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `ZESPOL_UZIEMIAJACY_CREATED`; zaznaczenie: `zu/522ba27545dd0fbe0d8e5e09b82b1856/zespol`.
 
-#### 26. `add_surge_arrester_sn` — ogranicznik przepięć w polu liniowym stacji S01
+#### 28. `add_surge_arrester_sn` — ogranicznik przepięć w polu liniowym stacji S01
 
 ```json
 {
@@ -1016,7 +1060,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_surge_arrester_sn",
-    "idempotency_key": "przyklad-26",
+    "idempotency_key": "przyklad-28",
     "payload": {
       "station_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/station",
       "field_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000",
@@ -1032,7 +1076,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `SURGE_ARRESTER_CREATED`; zaznaczenie: `stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000`.
 
-#### 27. `add_nn_outgoing_field` — pole odpływowe nN w stacji S01
+#### 29. `add_nn_outgoing_field` — pole odpływowe nN w stacji S01
 
 ```json
 {
@@ -1040,7 +1084,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_outgoing_field",
-    "idempotency_key": "przyklad-27",
+    "idempotency_key": "przyklad-29",
     "payload": {
       "station_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/station",
       "bus_nn_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/nn_bus",
@@ -1052,7 +1096,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `FIELDS_CREATED_NN`; zaznaczenie: `nn/cc0f24052d70bc67ad9ff48e113faeaa/outgoing`.
 
-#### 28. `add_nn_load` — odbiór nN z katalogu na nowym odpływie
+#### 30. `add_nn_load` — odbiór nN z katalogu na nowym odpływie
 
 ```json
 {
@@ -1060,7 +1104,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_load",
-    "idempotency_key": "przyklad-28",
+    "idempotency_key": "przyklad-30",
     "payload": {
       "bus_nn_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/nn_bus",
       "feeder_ref": "nn/cc0f24052d70bc67ad9ff48e113faeaa/outgoing",
@@ -1078,7 +1122,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `NN_LOAD_CREATED`; zaznaczenie: `nn/c4961f2a9c62ede815e4e90f1fe23b97/load`.
 
-#### 29. `add_nn_rcd` — wyłącznik różnicowoprądowy przed zaciskami instalacji odbioru nN 1
+#### 31. `add_nn_rcd` — wyłącznik różnicowoprądowy przed zaciskami instalacji odbioru nN 1
 
 ```json
 {
@@ -1086,7 +1130,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_rcd",
-    "idempotency_key": "przyklad-29",
+    "idempotency_key": "przyklad-31",
     "payload": {
       "load_ref": "nn/c4961f2a9c62ede815e4e90f1fe23b97/load",
       "catalog_binding": {
@@ -1102,7 +1146,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 1, usunięte 0; zdarzenia: `BUS_CREATED`, `NN_RCD_CREATED`; zaznaczenie: `nn/af9d80575ed48ae5c3dfefe43f7a8aad/rcd`.
 
-#### 30. `add_converter_source` — źródło PV na szynie nN stacji S01
+#### 32. `add_converter_source` — źródło PV na szynie nN stacji S01
 
 ```json
 {
@@ -1110,7 +1154,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_converter_source",
-    "idempotency_key": "przyklad-30",
+    "idempotency_key": "przyklad-32",
     "payload": {
       "source_technology": "PV",
       "connection_variant": "nn_side",
@@ -1130,7 +1174,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `NN_SOURCE_FIELD_CREATED`, `PV_INVERTER_CREATED`; zaznaczenie: `nn/1935b6a731cfcb1b828d2aa13b327737/source_field`.
 
-#### 31. `add_genset_nn` — agregat prądotwórczy w nowym polu źródłowym nN
+#### 33. `add_genset_nn` — agregat prądotwórczy w nowym polu źródłowym nN
 
 ```json
 {
@@ -1138,7 +1182,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_genset_nn",
-    "idempotency_key": "przyklad-31",
+    "idempotency_key": "przyklad-33",
     "payload": {
       "bus_nn_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/nn_bus",
       "station_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/station",
@@ -1161,7 +1205,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `GENSET_CREATED`, `NN_SOURCE_FIELD_CREATED`; zaznaczenie: `gen/975673dbd7a497bc241ee3fcbfa947a7/genset`.
 
-#### 32. `add_ups_nn` — UPS wprost na szynie nN
+#### 34. `add_ups_nn` — UPS wprost na szynie nN
 
 ```json
 {
@@ -1169,7 +1213,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_ups_nn",
-    "idempotency_key": "przyklad-32",
+    "idempotency_key": "przyklad-34",
     "payload": {
       "bus_nn_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/nn_bus",
       "ups_spec": {
@@ -1185,7 +1229,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `UPS_CREATED`; zaznaczenie: `ups/2f3fabcff1922f9821cf9626e7dd620a/ups`.
 
-#### 33. `set_source_operating_mode` — tryb pracy agregatu
+#### 35. `set_source_operating_mode` — tryb pracy agregatu
 
 ```json
 {
@@ -1193,7 +1237,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "set_source_operating_mode",
-    "idempotency_key": "przyklad-33",
+    "idempotency_key": "przyklad-35",
     "payload": {
       "source_ref": "gen/975673dbd7a497bc241ee3fcbfa947a7/genset",
       "mode": "gotowosc"
@@ -1204,7 +1248,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: brak.
 
-#### 34. `dodaj_karte_widmowa_projektu` — karta widmowa projektu typu falownika PV
+#### 36. `dodaj_karte_widmowa_projektu` — karta widmowa projektu typu falownika PV
 
 ```json
 {
@@ -1212,7 +1256,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "dodaj_karte_widmowa_projektu",
-    "idempotency_key": "przyklad-34",
+    "idempotency_key": "przyklad-36",
     "payload": {
       "karta": {
         "id": "karta-widmowa-pv-1",
@@ -1311,7 +1355,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `CATALOG_ASSIGNED`; zaznaczenie: brak.
 
-#### 35. `set_der_catalog_bindings` — wiązanie źródła PV z kartą widmową projektu
+#### 37. `set_der_catalog_bindings` — wiązanie źródła PV z kartą widmową projektu
 
 ```json
 {
@@ -1319,7 +1363,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "set_der_catalog_bindings",
-    "idempotency_key": "przyklad-35",
+    "idempotency_key": "przyklad-37",
     "payload": {
       "generator_ref": "pv/83c4ca0adb54c95d12eed1f7c909b2af/converter",
       "karty_widmowe_ref": [
@@ -1332,7 +1376,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: `pv/83c4ca0adb54c95d12eed1f7c909b2af/converter`.
 
-#### 36. `set_load_dynamic_binding` — profil modelu dynamicznego odbioru SN
+#### 38. `set_load_dynamic_binding` — profil modelu dynamicznego odbioru SN
 
 ```json
 {
@@ -1340,7 +1384,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "set_load_dynamic_binding",
-    "idempotency_key": "przyklad-36",
+    "idempotency_key": "przyklad-38",
     "payload": {
       "load_ref": "load/b4e28f9f829afd6948a0b33c3a3a2ecc/sn",
       "dynamic_model_ref": "load_dyn_zagregowany_sn"
@@ -1351,7 +1395,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: `load/b4e28f9f829afd6948a0b33c3a3a2ecc/sn`.
 
-#### 37. `add_ct` — przekładnik prądowy w polu liniowym stacji S01
+#### 39. `add_ct` — przekładnik prądowy w polu liniowym stacji S01
 
 ```json
 {
@@ -1359,7 +1403,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_ct",
-    "idempotency_key": "przyklad-37",
+    "idempotency_key": "przyklad-39",
     "payload": {
       "field_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000",
       "catalog_binding": {
@@ -1376,7 +1420,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `CT_CREATED`; zaznaczenie: `ct/0837f8bce764193b7bffcddcfc80f1c8/measurement`.
 
-#### 38. `add_vt` — przekładnik napięciowy w polu pomiarowym stacji S01
+#### 40. `add_vt` — przekładnik napięciowy w polu pomiarowym stacji S01
 
 ```json
 {
@@ -1384,7 +1428,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_vt",
-    "idempotency_key": "przyklad-38",
+    "idempotency_key": "przyklad-40",
     "payload": {
       "field_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/002",
       "catalog_binding": {
@@ -1401,7 +1445,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `VT_CREATED`; zaznaczenie: `vt/837c0db7bf6ac01dc281e9e7785954ab/measurement`.
 
-#### 39. `set_measurement_secondary_circuit` — obwód wtórny przekładnika prądowego
+#### 41. `set_measurement_secondary_circuit` — obwód wtórny przekładnika prądowego
 
 ```json
 {
@@ -1409,7 +1453,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "set_measurement_secondary_circuit",
-    "idempotency_key": "przyklad-39",
+    "idempotency_key": "przyklad-41",
     "payload": {
       "measurement_ref": "ct/0837f8bce764193b7bffcddcfc80f1c8/measurement",
       "obwod_wtorny": {
@@ -1423,7 +1467,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `MEASUREMENT_SECONDARY_CIRCUIT_SET`; zaznaczenie: `ct/0837f8bce764193b7bffcddcfc80f1c8/measurement`.
 
-#### 40. `add_relay` — zabezpieczenie nadprądowe pola liniowego z nastawami
+#### 42. `add_relay` — zabezpieczenie nadprądowe pola liniowego z nastawami
 
 ```json
 {
@@ -1431,7 +1475,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_relay",
-    "idempotency_key": "przyklad-40",
+    "idempotency_key": "przyklad-42",
     "payload": {
       "field_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000",
       "ct_ref": "ct/0837f8bce764193b7bffcddcfc80f1c8/measurement",
@@ -1459,7 +1503,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 1, usunięte 0; zdarzenia: `PROTECTION_CREATED`; zaznaczenie: `relay/b7cc15e9cadfb4e554fa7c1a33e6f20e/assignment`.
 
-#### 41. `update_protection_settings` — zmiana nastaw (zwłoka członu zwarciowego 0,3 s)
+#### 43. `update_protection_settings` — zmiana nastaw (zwłoka członu zwarciowego 0,3 s)
 
 ```json
 {
@@ -1467,7 +1511,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "update_protection_settings",
-    "idempotency_key": "przyklad-41",
+    "idempotency_key": "przyklad-43",
     "payload": {
       "protection_ref": "relay/b7cc15e9cadfb4e554fa7c1a33e6f20e/assignment",
       "settings": [
@@ -1493,7 +1537,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PROTECTION_SETTINGS_UPDATED`; zaznaczenie: `relay/b7cc15e9cadfb4e554fa7c1a33e6f20e/assignment`.
 
-#### 42. `add_nn_distribution_board` — rozdzielnica nN wolnostojąca
+#### 44. `add_nn_distribution_board` — rozdzielnica nN wolnostojąca
 
 ```json
 {
@@ -1501,7 +1545,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_distribution_board",
-    "idempotency_key": "przyklad-42",
+    "idempotency_key": "przyklad-44",
     "payload": {
       "voltage_kv": 0.4,
       "name": "RGnN-1"
@@ -1512,7 +1556,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED`, `SUBSTATION_CREATED`; zaznaczenie: `nn/c25020028ba761efaf39ad8d1717ad5a/board`.
 
-#### 43. `add_transformer_sn_nn` — transformator SN/nN zasilający rozdzielnicę RGnN-1 z węzła za trzecim odcinkiem
+#### 45. `add_transformer_sn_nn` — transformator SN/nN zasilający rozdzielnicę RGnN-1 z węzła za trzecim odcinkiem
 
 ```json
 {
@@ -1520,7 +1564,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_transformer_sn_nn",
-    "idempotency_key": "przyklad-43",
+    "idempotency_key": "przyklad-45",
     "payload": {
       "hv_bus_ref": "bus/75d9eee75d208ab70b09f39b7d218fd1/downstream",
       "lv_bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
@@ -1532,7 +1576,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `TRANSFORMER_CREATED`; zaznaczenie: `tr/5271f2f87cc958f47fa1f92fa1a28974/transformer`.
 
-#### 44. `add_nn_outgoing_field` — odpływ F1 rozdzielnicy RGnN-1 (aparat odpływu i zacisk odpływu)
+#### 46. `add_nn_outgoing_field` — odpływ F1 rozdzielnicy RGnN-1 (aparat odpływu i zacisk odpływu)
 
 ```json
 {
@@ -1540,7 +1584,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_outgoing_field",
-    "idempotency_key": "przyklad-44",
+    "idempotency_key": "przyklad-46",
     "payload": {
       "station_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
       "bus_nn_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
@@ -1553,7 +1597,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `FIELDS_CREATED_NN`; zaznaczenie: `nn/bebdda0970ed470f0f3fe9628896b9e6/outgoing`.
 
-#### 45. `add_nn_cable_segment` — kabel nN z zacisku odpływu F1
+#### 47. `add_nn_cable_segment` — kabel nN z zacisku odpływu F1
 
 ```json
 {
@@ -1561,7 +1605,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_cable_segment",
-    "idempotency_key": "przyklad-45",
+    "idempotency_key": "przyklad-47",
     "payload": {
       "from_bus_ref": "nn/da470729eec76c081755f9dde7dcc1f0/feeder_bus",
       "length_m": 80.0,
@@ -1574,7 +1618,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED`, `NN_CABLE_SEGMENT_CREATED`; zaznaczenie: `nn/55f7fa411878d7d44cee8664272d8683/cable`.
 
-#### 46. `add_nn_distribution_board` — podrozdzielnica RGnN-2
+#### 48. `add_nn_distribution_board` — podrozdzielnica RGnN-2
 
 ```json
 {
@@ -1582,7 +1626,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_distribution_board",
-    "idempotency_key": "przyklad-46",
+    "idempotency_key": "przyklad-48",
     "payload": {
       "voltage_kv": 0.4,
       "name": "RGnN-2"
@@ -1593,7 +1637,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED`, `SUBSTATION_CREATED`; zaznaczenie: `nn/a5f367b2ac8880036ad52060287b0d8e/board`.
 
-#### 47. `add_nn_switch_device` — bezpiecznik między końcem kabla K1 a szyną podrozdzielnicy RGnN-2
+#### 49. `add_nn_switch_device` — bezpiecznik między końcem kabla K1 a szyną podrozdzielnicy RGnN-2
 
 ```json
 {
@@ -1601,7 +1645,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_switch_device",
-    "idempotency_key": "przyklad-47",
+    "idempotency_key": "przyklad-49",
     "payload": {
       "from_bus_ref": "nn/a4123adfdaaa269d3381db688ef11b44/cable_bus",
       "to_bus_ref": "nn/a5f367b2ac8880036ad52060287b0d8e/board_bus",
@@ -1615,7 +1659,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `NN_SWITCH_DEVICE_CREATED`; zaznaczenie: `nn/ecd36c29d77863de5e0049fdd3c2b0a8/switch_device`.
 
-#### 48. `add_nn_section_coupler` — druga sekcja szyn rozdzielnicy RGnN-1 ze sprzęgłem
+#### 50. `add_nn_section_coupler` — druga sekcja szyn rozdzielnicy RGnN-1 ze sprzęgłem
 
 ```json
 {
@@ -1623,7 +1667,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "add_nn_section_coupler",
-    "idempotency_key": "przyklad-48",
+    "idempotency_key": "przyklad-50",
     "payload": {
       "station_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
       "catalog_ref": "cb_nn_630a"
@@ -1634,7 +1678,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED`, `NN_SECTION_COUPLER_CREATED`; zaznaczenie: `nn/0305362c25d978377161bddc379f8f3d/section_bus`.
 
-#### 49. `split_nn_segment` — podział kabla K1 w 30 m
+#### 51. `split_nn_segment` — podział kabla K1 w 30 m
 
 ```json
 {
@@ -1642,7 +1686,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "split_nn_segment",
-    "idempotency_key": "przyklad-49",
+    "idempotency_key": "przyklad-51",
     "payload": {
       "segment_ref": "nn/55f7fa411878d7d44cee8664272d8683/cable",
       "split_at_m": 30.0
@@ -1653,7 +1697,7 @@ Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 1; zdarzenia: `BRANCH_CREATED` ×2, `BUS_CREATED`, `SEGMENT_SPLIT`; zaznaczenie: `nn/267260b1b3f24b3939843ecd432a8d2f/split_bus`.
 
-#### 50. `set_nn_cable_laying_conditions` — warunki ułożenia pierwszej połówki kabla
+#### 52. `set_nn_cable_laying_conditions` — warunki ułożenia pierwszej połówki kabla
 
 ```json
 {
@@ -1661,7 +1705,7 @@ Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 1; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "set_nn_cable_laying_conditions",
-    "idempotency_key": "przyklad-50",
+    "idempotency_key": "przyklad-52",
     "payload": {
       "segment_ref": "nn/267260b1b3f24b3939843ecd432a8d2f/split_left",
       "cable_laying_conditions": {
@@ -1678,7 +1722,7 @@ Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 1; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `NN_CABLE_LAYING_CONDITIONS_SET`; zaznaczenie: `nn/267260b1b3f24b3939843ecd432a8d2f/split_left`.
 
-#### 51. `merge_nn_segments` — scalenie połówek kabla
+#### 53. `merge_nn_segments` — scalenie połówek kabla
 
 ```json
 {
@@ -1686,7 +1730,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "merge_nn_segments",
-    "idempotency_key": "przyklad-51",
+    "idempotency_key": "przyklad-53",
     "payload": {
       "segment_a_ref": "nn/267260b1b3f24b3939843ecd432a8d2f/split_left",
       "segment_b_ref": "nn/267260b1b3f24b3939843ecd432a8d2f/split_right"
@@ -1697,7 +1741,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 3; zdarzenia: `SEGMENTS_MERGED`; zaznaczenie: `nn/a596cb138b888ad43118e41761b716c5/merged`.
 
-#### 52. `copy_nn_feeder` — kopia odpływu F1 z kablem i bezpiecznikiem
+#### 54. `copy_nn_feeder` — kopia odpływu F1 z kablem i bezpiecznikiem
 
 ```json
 {
@@ -1705,7 +1749,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 3; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "copy_nn_feeder",
-    "idempotency_key": "przyklad-52",
+    "idempotency_key": "przyklad-54",
     "payload": {
       "feeder_apparatus_ref": "nn/da470729eec76c081755f9dde7dcc1f0/feeder_device",
       "name": "Odpływ F2"
@@ -1716,7 +1760,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 3; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 0; zdarzenia: `BRANCH_CREATED` ×3, `BUS_CREATED` ×3; zaznaczenie: `nn/a84872aea5829709f5e08383a185d1d6/copy_branch_1`.
 
-#### 53. `assign_catalog_to_element` — zmiana pozycji katalogu kabla pierwszego odcinka
+#### 55. `assign_catalog_to_element` — zmiana pozycji katalogu kabla pierwszego odcinka
 
 ```json
 {
@@ -1724,7 +1768,7 @@ Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "assign_catalog_to_element",
-    "idempotency_key": "przyklad-53",
+    "idempotency_key": "przyklad-55",
     "payload": {
       "element_ref": "seg/c3947d92b7bae3acbe0466d8e2d90c31/segment",
       "catalog_binding": {
@@ -1739,7 +1783,7 @@ Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `CATALOG_ASSIGNED`; zaznaczenie: `seg/c3947d92b7bae3acbe0466d8e2d90c31/segment`.
 
-#### 54. `update_element_parameters` — zmiana nazwy i mocy odbioru SN
+#### 56. `update_element_parameters` — zmiana nazwy i mocy odbioru SN
 
 ```json
 {
@@ -1747,7 +1791,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "update_element_parameters",
-    "idempotency_key": "przyklad-54",
+    "idempotency_key": "przyklad-56",
     "payload": {
       "element_ref": "load/b4e28f9f829afd6948a0b33c3a3a2ecc/sn",
       "parameters": {
@@ -1761,7 +1805,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: `load/b4e28f9f829afd6948a0b33c3a3a2ecc/sn`.
 
-#### 55. `set_connection_conditions` — warunki przyłączenia z dokumentu OSD
+#### 57. `set_connection_conditions` — warunki przyłączenia z dokumentu OSD
 
 ```json
 {
@@ -1769,7 +1813,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "set_connection_conditions",
-    "idempotency_key": "przyklad-55",
+    "idempotency_key": "przyklad-57",
     "payload": {
       "moc_przylaczeniowa_mw": 2.0,
       "wymagany_cos_phi": 0.95,
@@ -1781,7 +1825,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: brak.
 
-#### 56. `refresh_snapshot` — odświeżenie migawki bez zmiany modelu
+#### 58. `refresh_snapshot` — odświeżenie migawki bez zmiany modelu
 
 ```json
 {
@@ -1789,7 +1833,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "refresh_snapshot",
-    "idempotency_key": "przyklad-56",
+    "idempotency_key": "przyklad-58",
     "payload": {}
   }
 }
@@ -1797,7 +1841,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 0; zdarzenia: brak; zaznaczenie: brak.
 
-#### 57. `delete_element` — usunięcie baterii kondensatorów
+#### 59. `delete_element` — usunięcie baterii kondensatorów
 
 ```json
 {
@@ -1805,7 +1849,7 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 0; zdarzenia:
   "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
   "operation": {
     "name": "delete_element",
-    "idempotency_key": "przyklad-57",
+    "idempotency_key": "przyklad-59",
     "payload": {
       "element_ref": "shunt/c6a0afd4ddb6da7f781ef759a1ff665d/cap"
     }

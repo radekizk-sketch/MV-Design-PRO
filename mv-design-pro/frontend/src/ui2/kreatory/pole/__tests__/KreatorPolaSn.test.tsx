@@ -171,6 +171,81 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  describe('pole sprzęgła — druga sekcja i stan normalny', () => {
+    const MODEL_GPZ = {
+      buses: [
+        { ref_id: 'bus-1', name: 'Szyna 1' },
+        { ref_id: 'bus-2', name: 'Szyna 2' },
+      ],
+      substations: [
+        {
+          ref_id: 'st-1',
+          station_type: 'gpz',
+          bus_refs: ['bus-1', 'bus-2'],
+          gpz_sections: [
+            { section_id: 'a', order: 0, name: 'Sekcja 1', bus_ref: 'bus-1' },
+            { section_id: 'b', order: 1, name: 'Sekcja 2', bus_ref: 'bus-2' },
+          ],
+        },
+      ],
+    };
+    afterEach(() => {
+      snapshotState.snapshot = {};
+    });
+
+    it('kontekst z tabeli pól: sekcja sąsiednia i stan wstępnie wybrane, zapis niesie oba klucze', async () => {
+      snapshotState.snapshot = MODEL_GPZ;
+      kontekstOperacji = { bay_role: 'COUPLER', coupled_bus_ref: 'bus-2', coupler_normal_state: 'closed' };
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      render(<KreatorPolaSn />);
+      const sekcja = screen.getByTestId('mvd-kreator-pole-sprzeglo-sekcja') as HTMLSelectElement;
+      expect(sekcja.value).toBe('bus-2');
+      expect(Array.from(sekcja.options).map((o) => o.value)).toEqual(['', 'bus-2']); // bez własnej szyny
+      await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-sprzeglo-stan'), 'open');
+      await pick();
+      await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+      await waitFor(() =>
+        expect(executeDomainOperationMock).toHaveBeenCalledWith(
+          'case-1',
+          'add_sn_bay',
+          expect.objectContaining({ bay_role: 'COUPLER', coupled_bus_ref: 'bus-2', coupler_normal_state: 'open' }),
+        ),
+      );
+    });
+
+    it('sprzęgło bez drugiej sekcji: zapis zatrzymany z komunikatem, bez operacji', async () => {
+      snapshotState.snapshot = MODEL_GPZ;
+      kontekstOperacji = { bay_role: 'COUPLER' };
+      render(<KreatorPolaSn />);
+      await pick();
+      await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+      expect(await screen.findByText('Wskaż sekcję po drugiej stronie sprzęgła.')).toBeInTheDocument();
+      expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    });
+
+    it('zmiana roli ze sprzęgła na inną usuwa wybór sekcji z ekranu i klucze z ładunku', async () => {
+      snapshotState.snapshot = MODEL_GPZ;
+      kontekstOperacji = { bay_role: 'COUPLER', coupled_bus_ref: 'bus-2' };
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      render(<KreatorPolaSn />);
+      await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'OUT');
+      expect(screen.queryByTestId('mvd-kreator-pole-sprzeglo')).not.toBeInTheDocument();
+      await pick();
+      await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+      const payload = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
+      expect(payload.coupled_bus_ref).toBeUndefined();
+      expect(payload.coupler_normal_state).toBeUndefined();
+    });
+
+    it('rekonfiguracja istniejącego pola sprzęgła nie pokazuje wyboru sekcji (sprzęgło zostaje)', () => {
+      snapshotState.snapshot = MODEL_GPZ;
+      kontekstOperacji = { bay_role: 'COUPLER', existing_field_ref: 'pole-sp' };
+      render(<KreatorPolaSn />);
+      expect(screen.queryByTestId('mvd-kreator-pole-sprzeglo')).not.toBeInTheDocument();
+    });
+  });
+
   it('wiąże pole z szablonem producenta (rodzina → BayKind roli → szablon)', async () => {
     fetchBayTemplatesMock.mockResolvedValue([
       {

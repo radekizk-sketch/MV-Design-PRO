@@ -117,6 +117,8 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_gpz_section: null,
   update_gpz_section: null,
   delete_gpz_section: null,
+  // Napięcie strony WN zapisuje pole „Napięcie znamionowe Un” konfiguratora GPZ (E-10).
+  update_gpz_hv_voltage: null,
   // K5-B: nastawy trybu pracy źródła zapisuje formularz inline w oknie
   // „Odpowiedź na polecenia OSD" (ui2/oze/osd).
   set_source_operating_mode: null,

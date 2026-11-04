@@ -11,7 +11,7 @@ nie oferuje na napięcie szyny.
 
 ILOCZYN CECH:
 
-    droga budowy pola (6)  ×  deklaracja napięciowa rodziny wobec szyny 15 kV
+    droga budowy pola (7)  ×  deklaracja napięciowa rodziny wobec szyny 15 kV
                                (obejmuje / nie obejmuje)
 
 Inwentarz dróg pochodzi z pinu `test_pola_v1_przez_resolver.MIEJSCA_BUDOWY_POLA`
@@ -38,6 +38,8 @@ from tests.enm.test_pola_v1_przez_resolver import (
 )
 
 KOD_NIEZGODNOSCI = "sn.pole_katalogowe_niezgodne"
+#: Pole sprzęgła tej samej rodziny modularnej (rola COUPLER — szablon roli pola).
+POLE_SPRZEGLA_MODULARNE = "ZPUE_WLOSZCZOWA__RELF__COUPLER"
 
 #: Deklaracja obejmująca szynę 15 kV fikstur i deklaracja, która jej nie obejmuje
 #: (karta sieciowa 20 kV — 15 kV mieści się pod klasą 24 kV, ale karta wyrobu na sieć
@@ -55,6 +57,39 @@ def _add_sn_bay(operacja: str, klucz: str) -> dict[str, Any]:
             "station_ref": _stacja_ref(snapshot),
             "bus_ref": _szyna_sn_ref(snapshot),
             klucz: POLE_MODULARNE,
+            "switchgear_family_ref": RODZINA_MODULARNA,
+        },
+    )
+
+
+def gpz_z_druga_sekcja(snapshot: dict[str, Any]) -> tuple[dict[str, Any], str, str, str]:
+    """GPZ fikstury z drugą sekcją na NOWEJ szynie (`add_gpz_section` z `create_bus`) —
+    pole sprzęgła łączy dwie sekcje. Zwraca (migawka, stacja GPZ, szyna sekcji 1, szyna 2)."""
+    gpz = next(s for s in snapshot["substations"] if s.get("station_type") == "gpz")
+    wynik = execute_domain_operation(
+        snapshot,
+        "add_gpz_section",
+        {"substation_ref": gpz["ref_id"], "section_id": "sekcja-sprzegla", "create_bus": True},
+    )
+    assert not wynik.get("error"), wynik.get("error")
+    snapshot = wynik["snapshot"]
+    gpz = next(s for s in snapshot["substations"] if s["ref_id"] == gpz["ref_id"])
+    pierwsza = gpz["gpz_sections"][0]["bus_ref"]
+    druga = next(s["bus_ref"] for s in gpz["gpz_sections"] if s["section_id"] == "sekcja-sprzegla")
+    return snapshot, gpz["ref_id"], pierwsza, druga
+
+
+def _sprzeglo_gpz() -> dict[str, Any]:
+    snapshot, stacja, pierwsza, druga = gpz_z_druga_sekcja(copy.deepcopy(_siec_ze_stacja()))
+    return execute_domain_operation(
+        snapshot,
+        "add_sn_bay",
+        {
+            "station_ref": stacja,
+            "bus_ref": pierwsza,
+            "coupled_bus_ref": druga,
+            "bay_role": "COUPLER",
+            "bay_template_ref": POLE_SPRZEGLA_MODULARNE,
             "switchgear_family_ref": RODZINA_MODULARNA,
         },
     )
@@ -89,6 +124,8 @@ DROGI: dict[str, tuple[str, Any]] = {
         lambda: _uruchom("koniec_ciagu", POLE_MODULARNE, RODZINA_MODULARNA),
     ),
     "der_sn": ("domain_operations_v2.py:_add_converter_source_der_sn", _der_sn),
+    # Pole sprzęgła `add_sn_bay` (karta KATALOG-PRZEJECIE-PR): sprzęgło między sekcjami GPZ.
+    "add_sn_bay_sprzeglo": ("domain_operations_v2.py:_zapisz_pole_sprzegla", _sprzeglo_gpz),
 }
 
 

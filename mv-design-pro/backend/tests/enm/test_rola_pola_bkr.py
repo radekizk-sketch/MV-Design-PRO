@@ -86,15 +86,31 @@ def test_rola_bkr_nazwa_kategoria_i_profil_referencyjny() -> None:
 def _dodaj_pole(rola: object) -> dict[str, object]:
     enm = zbuduj_gpz_110kv()
     stacja = gpz(enm)
+    dodatek: dict[str, object] = {}
+    if isinstance(rola, str) and rola.strip().upper() == "COUPLER":
+        # Pole sprzęgła łączy dwie sekcje (karta KATALOG-PRZEJECIE-PR): druga sekcja z nową
+        # szyną, bo istniejące sekcje GPZ są już połączone sprzęgłem z budowy GPZ.
+        enm = ok(
+            op(
+                enm,
+                "add_gpz_section",
+                {"substation_ref": stacja["ref_id"], "section_id": "sek-sprz", "create_bus": True},
+            )
+        )
+        stacja = gpz(enm)
+        dodatek["coupled_bus_ref"] = next(
+            s["bus_ref"] for s in stacja["gpz_sections"] if s["section_id"] == "sek-sprz"
+        )
     return op(
         enm,
         "add_sn_bay",
         {
-            "bus_ref": stacja["gpz_sections"][0]["bus_ref"],
+            "bus_ref": stacja["gpz_sections"][-2 if dodatek else 0]["bus_ref"],
             "station_ref": stacja["ref_id"],
             "bay_role": rola,
             "apparatus_kind": "BREAKER",
             "catalog_binding": {"catalog_namespace": "APARAT_SN", "catalog_item_id": APARAT},
+            **dodatek,
         },
     )
 

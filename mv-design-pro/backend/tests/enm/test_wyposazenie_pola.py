@@ -100,8 +100,8 @@ APARATY_ROLI: dict[str, list[tuple[str, str]]] = {
 
 
 def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
-    """GPZ → 2 odcinki; stacja wcięta w ostatni odcinek (pola IN/OUT/FEEDER/TR) i pola
-    COUPLER/MEASUREMENT/OZE dodane ``add_sn_bay``. Zwraca (migawka, rola → pole SN,
+    """GPZ → 2 odcinki; stacja sekcyjna wcięta w ostatni odcinek (pola IN/OUT/FEEDER/TR
+    i pole sprzęgła sekcji) oraz pola MEASUREMENT/OZE dodane ``add_sn_bay``. Zwraca (migawka, rola → pole SN,
     pole nN stacji)."""
     enm = _odcinki(_gpz(), [200, 300])
     enm = wykonaj(
@@ -110,10 +110,14 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
         {
             "segment_ref": _kable(enm)[-1]["ref_id"],
             "field_apparatus_catalog_ref": APARAT_POLA,
-            "station_type": "B",
+            # Stacja sekcyjna (typ D): pole sprzęgła łączy DWIE sekcje szyny SN — jego aparatem
+            # jest sprzęgło między sekcjami (karta KATALOG-PRZEJECIE-PR). Dawniej fikstura
+            # dokładała sprzęgło `add_sn_bay` na jednej szynie: wyłącznik szyna → pusty zacisk,
+            # który niczego nie rozdzielał (martwe sprzęgło, dziś odmowa `sn.coupler_bus_missing`).
+            "station_type": "D",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-            "sn_fields": ["IN", "OUT", "FEEDER"],
+            "sn_fields": ["IN", "OUT", "FEEDER", "SPRZEGLO"],
             "transformer": {
                 "create": True,
                 "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
@@ -121,7 +125,7 @@ def _siec_z_polami() -> tuple[dict[str, Any], dict[str, str], str]:
         },
     )
     stacja = next(s for s in enm["substations"] if s.get("station_type") != "gpz")
-    for rola in ("COUPLER", "MEASUREMENT", "OZE"):
+    for rola in ("MEASUREMENT", "OZE"):
         enm = wykonaj(
             enm,
             "add_sn_bay",

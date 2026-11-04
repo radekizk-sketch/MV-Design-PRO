@@ -19,6 +19,7 @@ export type EnmGpz = {
   substations?: Array<{
     ref_id: string;
     name?: string;
+    designation?: string | null;
     station_type?: string | null;
     transformer_refs?: string[];
     bus_refs?: string[];
@@ -43,7 +44,15 @@ export type EnmGpz = {
     terminal_bus_ref?: string | null;
   }>;
   shunt_capacitors?: Array<{ ref_id: string; bus_ref: string }>;
-  buses?: Array<{ ref_id: string; name?: string }>;
+  buses?: Array<{ ref_id: string; name?: string; voltage_kv?: number }>;
+  branches?: Array<{
+    ref_id: string;
+    type?: string;
+    from_bus_ref?: string;
+    to_bus_ref?: string;
+    status?: string;
+    normal_state?: string | null;
+  }>;
 };
 
 export interface ZiarnoGpz {

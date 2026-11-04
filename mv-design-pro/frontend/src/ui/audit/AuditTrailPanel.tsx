@@ -72,6 +72,7 @@ export const OPERATION_LABELS_PL: Readonly<Record<CanonicalOpName, string>> = {
   add_gpz_section: 'Dodanie sekcji GPZ',
   update_gpz_section: 'Aktualizacja sekcji GPZ',
   delete_gpz_section: 'Usunięcie sekcji GPZ',
+  update_gpz_hv_voltage: 'Zmiana napięcia strony WN GPZ',
   add_ct: 'Dodanie przekładnika CT',
   add_vt: 'Dodanie przekładnika VT',
   add_relay: 'Dodanie zabezpieczenia',

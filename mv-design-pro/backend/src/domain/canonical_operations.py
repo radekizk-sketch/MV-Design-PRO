@@ -290,6 +290,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_item_version",
             "catalog_ref",
             "complete_bay_template_ref",
+            "coupled_bus_ref",
+            "coupler_normal_state",
             "dry_run",
             "earthing_role",
             "existing_field_ref",
@@ -763,6 +765,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "side",
             "section_id",
             "bus_ref",
+            "create_bus",
             "order",
             "name",
             "line_field_name",
@@ -785,6 +788,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=("substation_ref", "section_id"),
         optional_fields=("side",),
+        creates_elements=False,
+    ),
+    "update_gpz_hv_voltage": OperationSpec(
+        canonical_name="update_gpz_hv_voltage",
+        category=OperationCategory.SN_NETWORK,
+        description_pl=(
+            "Zmiana napięcia znamionowego strony WN GPZ (szyny WN, szyny połączone z nimi "
+            "galwanicznie i równoważnik sieci), opcjonalnie razem z typem transformatorów 110/SN"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("substation_ref", "voltage_kv"),
+        optional_fields=("transformer_catalog_binding",),
         creates_elements=False,
     ),
     "add_zespol_uziemiajacy_sn": OperationSpec(

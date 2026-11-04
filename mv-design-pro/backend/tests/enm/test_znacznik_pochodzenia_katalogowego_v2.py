@@ -308,6 +308,34 @@ def _znaczniki_aparatu_pola_sn(snapshot: dict[str, Any]) -> dict[str, str | None
     }
 
 
+def _payload_sprzegla_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Pole sprzęgła między sekcjami GPZ z aparatem pod CUDZĄ kategorią."""
+    gpz = next(s for s in snapshot["substations"] if s.get("station_type") == "gpz")
+    sekcje = [s["bus_ref"] for s in gpz["gpz_sections"]]
+    return {
+        "station_ref": gpz["ref_id"],
+        "bus_ref": sekcje[0],
+        "coupled_bus_ref": sekcje[-1],
+        "bay_role": "COUPLER",
+        "apparatus_kind": "BREAKER",
+        "catalog_binding": _wiazanie(REF_APARAT_SN),
+    }
+
+
+def _znaczniki_sprzegla(snapshot: dict[str, Any]) -> dict[str, str | None]:
+    sprzeglo = next(
+        g
+        for g in snapshot["branches"]
+        if g.get("type") == "bus_coupler" and (g.get("meta") or {}).get("bay_role") == "COUPLER"
+    )
+    return {
+        "element": _znacznik(sprzeglo),
+        "meta.catalog_binding": (sprzeglo.get("meta") or {})
+        .get("catalog_binding", {})
+        .get("catalog_namespace"),
+    }
+
+
 def _znaczniki_odbioru(snapshot: dict[str, Any]) -> dict[str, str | None]:
     odbior = _jedyny(snapshot.get("loads") or [], "load")
     return {
@@ -429,6 +457,8 @@ class ZnacznikPochodzenia:
     oczekiwane: dict[str, str]
     #: Czy operacja wymaga wcześniejszego CT w polu (dobór zabezpieczenia).
     wymaga_ct: bool = False
+    #: Czy operacja wymaga drugiej sekcji GPZ (pole sprzęgła łączy dwie sekcje).
+    wymaga_drugiej_sekcji: bool = False
 
 
 ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
@@ -465,6 +495,17 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
         _payload_sn_bay_obca,
         _znaczniki_aparatu_pola_sn,
         {"element": "APARAT_SN", "meta.catalog_binding": "APARAT_SN"},
+    ),
+    ZnacznikPochodzenia(
+        "add_sn_bay_sprzeglo",
+        "add_sn_bay",
+        # Pole sprzęgła: aparatem jest sprzęgło `bus_coupler` między sekcjami (karta
+        # KATALOG-PRZEJECIE-PR) — ten sam znacznik przestrzeni co aparat pola SN.
+        ("_zapisz_pole_sprzegla",),
+        _payload_sprzegla_obca,
+        _znaczniki_sprzegla,
+        {"element": "APARAT_SN", "meta.catalog_binding": "APARAT_SN"},
+        wymaga_drugiej_sekcji=True,
     ),
     ZnacznikPochodzenia(
         "add_nn_load",
@@ -584,6 +625,13 @@ def _migawka_dla(przypadek: ZnacznikPochodzenia) -> dict[str, Any]:
     snapshot = _siec_ze_stacja()
     if przypadek.wymaga_ct:
         snapshot = _wykonaj(snapshot, "add_ct", _payload_ct(snapshot))
+    if przypadek.wymaga_drugiej_sekcji:
+        gpz = next(s for s in snapshot["substations"] if s.get("station_type") == "gpz")
+        snapshot = _wykonaj(
+            snapshot,
+            "add_gpz_section",
+            {"substation_ref": gpz["ref_id"], "section_id": "sekcja-2", "create_bus": True},
+        )
     return snapshot
 
 

@@ -102,6 +102,8 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_gpz_section',
   'update_gpz_section',
   'delete_gpz_section',
+  // Napięcie strony WN GPZ (konfigurator GPZ, karta „Sieć zasilająca").
+  'update_gpz_hv_voltage',
   'delete_element',
   'refresh_snapshot',
 ] as const;
@@ -522,7 +524,9 @@ export interface AddGpzSectionPayload {
   substation_ref: string;
   side?: GpzSectionSide;
   section_id: string;
-  bus_ref: string;
+  /** Szyna istniejąca (wolna) albo — przy `create_bus` — brak: backend tworzy szynę sekcji. */
+  bus_ref?: string;
+  create_bus?: boolean;
   order?: number;
   name?: string;
   line_field_name?: string;

@@ -222,6 +222,7 @@ CANONICAL_OPS_V1 = frozenset(
         "refresh_snapshot",
         # Phase 0B-3: CRUD GPZ sekcji (LV i HV) — wymagane dla StationCard editora.
         "add_gpz_section",
+        "update_gpz_hv_voltage",
         "update_gpz_section",
         "delete_gpz_section",
         # Phase 0B (operator-grade SLD plan v2): append-on-endpoint workflow
@@ -10805,6 +10806,8 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             },
             "substations": {
                 "name",
+                # Oznaczenie stacji na dokumentacji (B-4) — kontrola wartości niżej.
+                "designation",
                 "entry_point_ref",
                 "meta",
                 # Karta ETYKIETA-STACJI-PRZELOTOWEJ: akcja naprawcza walidatora W043 (deklaracja
@@ -10861,6 +10864,48 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "wskazania rodzaju.",
                 "station.station_type_change_invalid",
             )
+    # Napięcie szyny: uzwojenie transformatora na tej szynie musi mieć to samo napięcie
+    # znamionowe — ten sam predykat co operacja strony WN GPZ. Do karty KATALOG-PRZEJECIE-PR
+    # zmiana napięcia szyny 110 kV na 115 kV przy transformatorze 110/15 kV przechodziła bez
+    # słowa (sprzeczność wychodziła dopiero w gotowości jako W023).
+    if coll == "buses" and "voltage_kv" in parameters and dodatnia(parameters["voltage_kv"]):
+        odmowa_uzwojen = _odmowa_napiecia_wobec_uzwojen(
+            enm,
+            {str(element_ref)},
+            float(parameters["voltage_kv"]),
+            "params.bus_voltage_transformer_mismatch",
+        )
+        if odmowa_uzwojen is not None:
+            return odmowa_uzwojen
+        rownowazniki = [
+            z
+            for z in enm.get("sources", [])
+            if isinstance(z, dict)
+            and z.get("bus_ref") == element_ref
+            and z.get("voltage_hv_kv") is not None
+            and not to_samo_napiecie_znamionowe(
+                z.get("voltage_hv_kv"), float(parameters["voltage_kv"])
+            )
+        ]
+        if rownowazniki:
+            return _error_response(
+                f"Na szynie stoi {opis_nazwy(rownowazniki[0].get('name'), 'równoważnik sieci')} "
+                "strony WN GPZ — napięcie strony WN zmienia konfigurator GPZ (karta „Sieć "
+                "zasilająca”), razem z napięciem równoważnika i szyn połączonych z nią.",
+                "params.bus_voltage_transformer_mismatch",
+            )
+    # Oznaczenie stacji na dokumentacji (np. „GPZ-15/1"): tekst niepusty albo `None` (zdjęcie
+    # oznaczenia). Zapis znormalizowany — bez spacji brzegowych, jak nazwa elementu.
+    if coll == "substations" and "designation" in parameters:
+        oznaczenie = parameters["designation"]
+        if oznaczenie is not None:
+            if not isinstance(oznaczenie, str) or not oznaczenie.strip():
+                return _error_response(
+                    f"Pole {pole('station.designation')}: oznaczenie stacji jest tekstem "
+                    "niepustym; puste pole zdejmuje oznaczenie.",
+                    "params.invalid_value",
+                )
+            parameters = {**parameters, "designation": oznaczenie.strip()}
 
     # Pola NC RfG modułu: JEDEN walidator z tworzeniem źródła (`add_converter_source`) —
     # wartość spoza kontraktu (nastawy bez źródła, data nie-ISO, status nie-logiczny) nie
@@ -11135,21 +11180,100 @@ _KOLEKCJE_WSKAZUJACE_POLE: tuple[tuple[str, str], ...] = (
     ("measurements", "przekładnik"),
     ("protection_assignments", "zabezpieczenie"),
     ("generators", "źródło"),
+    # Zespół uziemiający wskazuje pole ZU przez `bay_ref` — bez tej pozycji pole ZU dawało się
+    # usunąć spod zespołu (rekord zespołu zostawał z odwołaniem do pola, którego nie ma).
+    ("zespoly_uziemiajace", "zespół uziemiający"),
 )
+
+#: Kolekcje elementów przyłączanych do szyny polem `bus_ref` — element na ZACISKU pola
+#: (bateria pola BKR, odbiór, źródło) jest zależnością pola, nie jego częścią.
+_KOLEKCJE_NA_SZYNIE: tuple[tuple[str, str], ...] = (
+    ("shunt_capacitors", "bateria kondensatorów"),
+    ("loads", "odbiór"),
+    ("sources", "źródło"),
+    ("generators", "źródło"),
+    ("zespoly_uziemiajace", "zespół uziemiający"),
+)
+
+
+def _czesci_wlasne_pola(enm: dict[str, Any], rekord: dict[str, Any]) -> tuple[set[str], set[str]]:
+    """Aparat główny pola i jego zacisk — CZĘŚCI pola, które znikają razem z nim.
+
+    JEDNO źródło dla zależności pola (`_zaleznosci_pola`, co NIE blokuje usunięcia) i kaskady
+    `delete_element` (co znika razem z polem) — predykat parami. Część własna to gałąź z listy
+    `equipment_refs`, którą pisarz pola oznaczył `meta.field_ref` = to pole i która łączy szynę
+    pola z jego zaciskiem (pole odpływowe) albo dwie szyny sekcji (`bus_coupler` pola
+    sprzęgła). Zacisk jest częścią własną, gdy poza aparatem pola nic się do niego nie
+    przyłącza. Do karty KATALOG-PRZEJECIE-PR własny aparat był „zależnością", więc KAŻDE pole
+    dodane kreatorem było nieusuwalne (odmowa `field.has_dependencies` wskazywała aparat pola).
+    """
+    ref_pola = rekord.get("ref_id")
+    szyna = rekord.get("bus_ref")
+    zacisk = rekord.get("terminal_bus_ref")
+    sprzeglo = rekord.get("bay_role") == "COUPLER"
+    aparaty: set[str] = set()
+    galezie = {str(g.get("ref_id")): g for g in enm.get("branches", []) if isinstance(g, dict)}
+    for ref in rekord.get("equipment_refs") or []:
+        galaz = galezie.get(str(ref))
+        if galaz is None or (galaz.get("meta") or {}).get("field_ref") != ref_pola:
+            continue
+        konce = {galaz.get("from_bus_ref"), galaz.get("to_bus_ref")}
+        if zacisk and konce == {szyna, zacisk}:
+            aparaty.add(str(ref))
+        elif sprzeglo and galaz.get("type") == "bus_coupler" and szyna in konce:
+            aparaty.add(str(ref))
+    zaciski: set[str] = set()
+    if isinstance(zacisk, str) and zacisk:
+        inne_galezie = any(
+            zacisk in (g.get("from_bus_ref"), g.get("to_bus_ref")) and ref not in aparaty
+            for ref, g in galezie.items()
+        )
+        transformator = any(
+            zacisk in (t.get("hv_bus_ref"), t.get("lv_bus_ref"))
+            for t in enm.get("transformers", [])
+            if isinstance(t, dict)
+        )
+        na_zacisku = any(
+            isinstance(e, dict) and e.get("bus_ref") == zacisk
+            for kolekcja, _ in _KOLEKCJE_NA_SZYNIE
+            for e in enm.get(kolekcja, [])
+        )
+        if not (inne_galezie or transformator or na_zacisku):
+            zaciski.add(zacisk)
+    return aparaty, zaciski
 
 
 def _zaleznosci_pola(enm: dict[str, Any], field_ref: str) -> list[tuple[str, str, list[str]]]:
     """Zależności pola, które blokują jego usunięcie — dane, nie zdania: krotki
-    ``(rodzaj_zaleznosci, rodzaj_elementu, refs)``. Rodzaje: ``elementy`` (`equipment_refs`),
-    ``wskazuje`` (przekładniki, zabezpieczenia i źródła wskazujące pole przez `bay_ref`),
-    ``zajete`` (zajętość pola liniowego — JEDNO źródło `enm.zajetosc_pol`: odcinek przyłączony
-    do zacisku albo przydział ciągu) oraz ``zksn`` (pole rozdzielnicy odgałęźnej wynika z portu
-    punktu rozgałęzienia — znika razem z punktem). Opis po polsku: `_opis_zaleznosci_pola`."""
+    ``(rodzaj_zaleznosci, rodzaj_elementu, refs)``. Rodzaje: ``elementy`` (`equipment_refs`
+    poza częściami własnymi pola, `_czesci_wlasne_pola`), ``zacisk`` (elementy przyłączone do
+    zacisku pola — bateria pola BKR, odbiór, źródło), ``wskazuje`` (przekładniki,
+    zabezpieczenia, źródła i zespoły uziemiające wskazujące pole przez `bay_ref`), ``zajete``
+    (zajętość pola liniowego — JEDNO źródło `enm.zajetosc_pol`: odcinek przyłączony do zacisku
+    albo przydział ciągu) oraz ``zksn`` (pole rozdzielnicy odgałęźnej wynika z portu punktu
+    rozgałęzienia — znika razem z punktem). Opis po polsku: `_opis_zaleznosci_pola`."""
     rekord = pole_modelu(enm, field_ref) or {}
     zaleznosci: list[tuple[str, str, list[str]]] = []
-    elementy = [r for r in rekord.get("equipment_refs") or [] if isinstance(r, str)]
+    aparaty_wlasne, _ = _czesci_wlasne_pola(enm, rekord)
+    elementy = [
+        r
+        for r in rekord.get("equipment_refs") or []
+        if isinstance(r, str) and r not in aparaty_wlasne
+    ]
     if elementy:
         zaleznosci.append(("elementy", "element", elementy))
+    zacisk = rekord.get("terminal_bus_ref")
+    if isinstance(zacisk, str) and zacisk:
+        for kolekcja, rodzaj in _KOLEKCJE_NA_SZYNIE:
+            na_zacisku = [
+                str(e.get("ref_id"))
+                for e in enm.get(kolekcja, [])
+                if isinstance(e, dict) and e.get("bus_ref") == zacisk
+                # element wskazujący pole przez `bay_ref` opisuje zależność „wskazuje" niżej
+                and e.get("bay_ref") != field_ref
+            ]
+            if na_zacisku:
+                zaleznosci.append(("zacisk", rodzaj, na_zacisku))
     for kolekcja, rodzaj in _KOLEKCJE_WSKAZUJACE_POLE:
         wskazujace = [
             str(e.get("ref_id"))
@@ -11171,6 +11295,10 @@ def _opis_zaleznosci_pola(enm: dict[str, Any], zaleznosc: tuple[str, str, list[s
     rodzaj_zaleznosci, rodzaj, refs = zaleznosc
     if rodzaj_zaleznosci == "elementy":
         return "w polu są elementy: " + lista_pl((opis_elementu(enm, r, rodzaj) for r in refs), "i")
+    if rodzaj_zaleznosci == "zacisk":
+        return "do zacisku pola przyłączono " + lista_pl(
+            (opis_elementu(enm, r, rodzaj) for r in refs), "i"
+        )
     if rodzaj_zaleznosci == "wskazuje":
         return "pole wskazuje " + lista_pl((opis_elementu(enm, r, rodzaj) for r in refs), "i")
     if rodzaj_zaleznosci == "zajete":
@@ -11200,7 +11328,7 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 f"{_nazwa_pola_w_modelu(enm, element_ref)} nie może zostać usunięte — "
                 f"{lista_pl((_opis_zaleznosci_pola(enm, z) for z in zaleznosci), 'i')}. "
                 "Usuń najpierw elementy pola albo odepnij je od "
-                "pola; usunąć można wyłącznie pole puste (rezerwę).",
+                "pola; aparat pola i jego zacisk znikają razem z polem.",
                 "field.has_dependencies",
             )
 
@@ -11216,6 +11344,18 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 del items[item_idx]
                 return True
         return False
+
+    # Pole bez zależności zabiera swoje części własne — aparat główny i zacisk (ten sam
+    # predykat `_czesci_wlasne_pola`, którym `_zaleznosci_pola` je pomija). Pole sprzęgła
+    # zabiera sprzęgło; odwołania sekcji do niego czyści kaskada gałęzi niżej.
+    if coll == "bays":
+        aparaty_wlasne, zaciski_wlasne = _czesci_wlasne_pola(enm, enm["bays"][idx])
+        for ref in sorted(aparaty_wlasne):
+            if _delete_in_collection("branches", ref):
+                deleted_ids.append(ref)
+        for ref in sorted(zaciski_wlasne):
+            if _delete_in_collection("buses", ref):
+                deleted_ids.append(ref)
 
     # Cascade for bus deletion: remove dependent branches/transformers/sources/loads/generators.
     if coll == "buses":
@@ -11270,7 +11410,15 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     if deleted_branch_refs or deleted_bus_refs or deleted_transformer_refs:
         for rekord in list(pola(new_enm)):
             ref_pola = str(rekord.get("ref_id"))
-            if rekord.get("bus_ref") in deleted_bus_refs:
+            # Pole sprzęgła jest polem JEDNEGO aparatu — sprzęgła między sekcjami (meta
+            # `coupler_ref`); bez niego nie ma czego rekonfigurować (zmiana roli sprzęgła jest
+            # odmową `sn.coupler_role_change`), więc znika razem ze sprzęgłem, zamiast zostać
+            # pustym polem z odwołaniem do gałęzi, której nie ma.
+            meta_pola = rekord.get("meta") if isinstance(rekord.get("meta"), dict) else {}
+            if rekord.get("bus_ref") in deleted_bus_refs or (
+                rekord.get("bay_role") == "COUPLER"
+                and meta_pola.get("coupler_ref") in deleted_branch_refs
+            ):
                 usun_pole(new_enm, ref_pola)
                 deleted_set.add(ref_pola)
                 continue
@@ -11332,6 +11480,23 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                             isinstance(sekcja, dict) and sekcja.get("bus_ref") in deleted_bus_refs
                         )
                     ]
+
+    # Sprzęgło skasowane (wprost, kaskadą szyny albo z polem sprzęgła) znika z sekcji, które na
+    # nie wskazują (`left_coupler_ref`/`right_coupler_ref` sekcji GPZ, `coupler_ref` sekcji nN).
+    # Dawniej sekcja zostawała z odwołaniem do gałęzi, której nie ma, i blokowała nowe sprzęgło.
+    if deleted_branch_refs:
+        for sub in new_enm.get("substations", []):
+            for klucz_sekcji, klucze_sprzegla in (
+                ("gpz_sections", ("left_coupler_ref", "right_coupler_ref")),
+                ("gpz_hv_sections", ("left_coupler_ref", "right_coupler_ref")),
+                ("nn_sections", ("coupler_ref",)),
+            ):
+                for sekcja in sub.get(klucz_sekcji) or []:
+                    if not isinstance(sekcja, dict):
+                        continue
+                    for klucz in klucze_sprzegla:
+                        if sekcja.get(klucz) in deleted_branch_refs:
+                            sekcja[klucz] = None
 
     if deleted_branch_refs or deleted_bus_refs:
         branch_points_to_delete: set[str] = set()
@@ -11580,6 +11745,63 @@ def _blad_strony_sekcji_gpz(
     return None
 
 
+def _napiecie_strony_gpz(enm: dict[str, Any], sub: dict[str, Any], side: str) -> float | None:
+    """Napięcie znamionowe strony GPZ z modelu: szyna istniejącej sekcji tej strony, a bez
+    sekcji — szyna strony udowodniona transformatorem 110/SN (`_szyny_stron_gpz`)."""
+    napiecia = {
+        b.get("ref_id"): b.get("voltage_kv") for b in enm.get("buses", []) if isinstance(b, dict)
+    }
+    sekcje = sub.get(_resolve_gpz_sections_field(side)) or []
+    wn, sn = _szyny_stron_gpz(enm, sub)
+    kandydaci = [s.get("bus_ref") for s in sekcje if isinstance(s, dict)]
+    kandydaci += sorted(wn if side == "hv" else sn)
+    for ref in kandydaci:
+        napiecie = napiecia.get(ref)
+        if dodatnia(napiecie):
+            return float(napiecie)
+    return None
+
+
+def _szyna_utworzona_przez_sekcje(
+    enm: dict[str, Any], substation_ref: str, sekcja: dict[str, Any]
+) -> str | None:
+    """Szyna, którą utworzyło `add_gpz_section` z `create_bus` dla TEJ sekcji, gdy nic poza
+    sekcją się do niej nie przyłącza — znika razem z sekcją (para do tworzenia: ten sam
+    znacznik `meta.gpz_section_id` + `gpz_substation_ref`, który zapisuje tworzenie)."""
+    bus_ref = sekcja.get("bus_ref")
+    szyna = next(
+        (b for b in enm.get("buses", []) if isinstance(b, dict) and b.get("ref_id") == bus_ref),
+        None,
+    )
+    meta = (szyna or {}).get("meta") or {}
+    if meta.get("gpz_section_id") != sekcja.get("section_id") or (
+        meta.get("gpz_substation_ref") != substation_ref
+    ):
+        return None
+    if bus_ref in _referenced_bus_refs_bez_stacji(enm):
+        return None
+    return str(bus_ref)
+
+
+def _referenced_bus_refs_bez_stacji(enm: dict[str, Any]) -> set[str]:
+    """Szyny, do których przyłącza się element modelu (gałąź, transformator, pole, element
+    szynowy) — bez list szyn stacji i sekcji, które szynę tylko wymieniają."""
+    refs: set[str] = set()
+    for g in enm.get("branches", []):
+        if isinstance(g, dict):
+            refs.update(r for r in (g.get("from_bus_ref"), g.get("to_bus_ref")) if r)
+    for t in enm.get("transformers", []):
+        if isinstance(t, dict):
+            refs.update(r for r in (t.get("hv_bus_ref"), t.get("lv_bus_ref")) if r)
+    for p in pola(enm):
+        refs.update(r for r in (p.get("bus_ref"), p.get("terminal_bus_ref")) if r)
+    for kolekcja, _ in _KOLEKCJE_NA_SZYNIE:
+        for e in enm.get(kolekcja, []):
+            if isinstance(e, dict) and e.get("bus_ref"):
+                refs.add(e["bus_ref"])
+    return refs
+
+
 def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaje GPZ sekcję (LV lub HV) do istniejącej stacji typu 'gpz'.
 
@@ -11632,18 +11854,86 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         )
 
     bus_ref = payload.get("bus_ref")
+    tworz_szyne = payload.get("create_bus") is True
+    if tworz_szyne and bus_ref:
+        return _error_response(
+            f"Sekcja dostaje szynę wskazaną w polu {pole('gpz_section.bus_ref')} albo nową szynę "
+            "— nie obie naraz.",
+            "gpz_section.add.bus_ref_and_create_bus",
+        )
+    if payload.get("create_bus") not in (None, True, False):
+        return _error_response(
+            f"Pole {pole('create_bus', 'add_gpz_section')} przyjmuje wartość logiczną.",
+            "gpz_section.add.bus_ref_and_create_bus",
+        )
+    # Model, w którym sekcja dostaje szynę: przy `create_bus` — model z NOWĄ szyną tej stacji
+    # o napięciu strony; warunek szyny sekcji (`_blad_szyny_sekcji_gpz`) sprawdzany jest na
+    # nim tak samo jak dla szyny wskazanej i dla edycji sekcji (jeden predykat).
+    enm_szyny = enm
+    utworzone: list[str] = []
+    if tworz_szyne:
+        napiecie_strony = _napiecie_strony_gpz(enm, sub, side)
+        if napiecie_strony is None:
+            return _error_response(
+                f"Nie da się ustalić napięcia strony {_STRONA_SEKCJI_GPZ_PL.get(side, side)} "
+                f"{opis_nazwy(sub.get('name'), 'stacji GPZ')} — stacja nie ma jeszcze szyny "
+                "tej strony; wskaż istniejącą szynę.",
+                "gpz_section.add.voltage_unknown",
+            )
+        section_id_szyny = payload.get("section_id")
+        bus_ref = _make_id(
+            "gpz",
+            _compute_seed(
+                {"op": "gpz_section_bus", "sub": substation_ref, "sec": section_id_szyny}
+            ),
+            "section_bus",
+        )
+        if any(b.get("ref_id") == bus_ref for b in enm.get("buses", [])):
+            return _error_response(
+                "Szyna nowej sekcji już istnieje w modelu — sekcja o tym identyfikatorze była "
+                "już dodana.",
+                "gpz_section.add.duplicate_section_id",
+            )
+        enm_szyny = kopia_graniczna_enm(enm)
+        nazwa_sekcji = nazwa_nadana(payload.get("name"))
+        wynik_szyny = create_node(
+            enm_szyny,
+            {
+                "ref_id": bus_ref,
+                "name": f"Szyna {nazwa_sekcji or 'sekcji'} "
+                f"{opis_nazwy(sub.get('name'), 'GPZ')} {napiecie_strony:g} kV",
+                "voltage_kv": napiecie_strony,
+                "zone": "GPZ",
+                "meta": {
+                    "gpz_section_id": section_id_szyny,
+                    "gpz_substation_ref": substation_ref,
+                },
+            },
+        )
+        if not wynik_szyny.success:
+            return _error_response(
+                "Nie udało się utworzyć szyny sekcji: "
+                f"{wynik_szyny.issues[0].message_pl if wynik_szyny.issues else '?'}",
+                "gpz_section.add.bus_creation_failed",
+            )
+        enm_szyny = wynik_szyny.enm
+        sub_szyny = _find_substation(enm_szyny, substation_ref)
+        assert sub_szyny is not None
+        sub_szyny["bus_refs"] = [*(sub_szyny.get("bus_refs") or []), bus_ref]
+        sub = sub_szyny
+        utworzone.append(bus_ref)
     if not bus_ref:
         return _error_response(
             f"Uzupełnij pole {pole('gpz_section.bus_ref')} nowej sekcji.",
             "gpz_section.add.bus_ref_missing",
         )
-    if not any(b.get("ref_id") == bus_ref for b in enm.get("buses", [])):
+    if not any(b.get("ref_id") == bus_ref for b in enm_szyny.get("buses", [])):
         return _error_response(
             f"Szyna wskazana w polu {pole('gpz_section.bus_ref')} nie istnieje w modelu sieci.",
             "gpz_section.add.bus_ref_missing",
         )
 
-    blad_szyny = _blad_szyny_sekcji_gpz(enm, sub, side, bus_ref, "add")
+    blad_szyny = _blad_szyny_sekcji_gpz(enm_szyny, sub, side, bus_ref, "add")
     if blad_szyny is not None:
         return blad_szyny
 
@@ -11670,7 +11960,7 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     if jest_nazwa(payload.get("line_field_name")):
         new_section["line_field_name"] = nazwa_nadana(payload.get("line_field_name"))
 
-    new_enm = kopia_graniczna_enm(enm)
+    new_enm = kopia_graniczna_enm(enm_szyny)
     new_sub = _find_substation(new_enm, substation_ref)
     assert new_sub is not None  # already checked
     new_sections = list(new_sub.get(sections_field) or [])
@@ -11687,9 +11977,14 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         }
     ]
     events = [{"event_seq": 1, "event_type": "GPZ_SECTION_ADDED", "element_id": section_id}]
+    if utworzone:
+        events = [
+            {"event_seq": 1, "event_type": "BUS_CREATED", "element_id": bus_ref},
+            {"event_seq": 2, "event_type": "GPZ_SECTION_ADDED", "element_id": section_id},
+        ]
     return _response(
         new_enm,
-        created=[section_id],
+        created=[*utworzone, section_id],
         selection_id=substation_ref,
         selection_type="substation",
         audit=audit,
@@ -11853,7 +12148,18 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "Najpierw przepnij albo usuń te pola.",
             "gpz_section.delete.in_use",
         )
+    sprzegla = [
+        ref for ref in (usuwana.get("left_coupler_ref"), usuwana.get("right_coupler_ref")) if ref
+    ]
+    if sprzegla:
+        return _error_response(
+            f"Nie można usunąć: {opis_nazwy(usuwana.get('name'), 'sekcja')} jest połączona z inną "
+            f"sekcją przez {lista_pl((opis_elementu(enm, r, 'sprzęgło') for r in sprzegla), 'i')}"
+            ". Najpierw usuń pole sprzęgła.",
+            "gpz_section.delete.has_coupler",
+        )
 
+    szyna_sekcji = _szyna_utworzona_przez_sekcje(enm, substation_ref, usuwana)
     new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)
     assert new_sub is not None
@@ -11861,6 +12167,13 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         s for s in (new_sub.get(sections_field) or []) if s.get("section_id") != section_id
     ]
     new_sub[sections_field] = new_sections
+    usuniete = [section_id]
+    if szyna_sekcji is not None:
+        # Para do `add_gpz_section(create_bus)`: szyna utworzona dla sekcji, do której nic się
+        # nie przyłącza, znika razem z nią (bez tego zostawała pusta szyna stacji).
+        new_enm["buses"] = [b for b in new_enm.get("buses", []) if b.get("ref_id") != szyna_sekcji]
+        new_sub["bus_refs"] = [r for r in new_sub.get("bus_refs") or [] if r != szyna_sekcji]
+        usuniete.append(szyna_sekcji)
 
     audit = [
         {
@@ -11872,11 +12185,172 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     events = [{"event_seq": 1, "event_type": "GPZ_SECTION_DELETED", "element_id": section_id}]
     return _response(
         new_enm,
-        deleted=[section_id],
+        deleted=usuniete,
         selection_id=substation_ref,
         selection_type="substation",
         audit=audit,
         events=events,
+    )
+
+
+def _wyspa_galwaniczna(enm: dict[str, Any], szyny_startowe: set[str]) -> set[str]:
+    """Szyny połączone galwanicznie ze `szyny_startowe` gałęziami (linie, kable, łączniki —
+    w ENM transformator nie jest gałęzią, więc wyspa kończy się na uzwojeniach)."""
+    sasiedzi: dict[str, set[str]] = {}
+    for g in enm.get("branches", []):
+        if not isinstance(g, dict):
+            continue
+        a, b = g.get("from_bus_ref"), g.get("to_bus_ref")
+        if isinstance(a, str) and isinstance(b, str):
+            sasiedzi.setdefault(a, set()).add(b)
+            sasiedzi.setdefault(b, set()).add(a)
+    wyspa = set(szyny_startowe)
+    kolejka = sorted(szyny_startowe)
+    while kolejka:
+        szyna = kolejka.pop()
+        for nastepna in sorted(sasiedzi.get(szyna, set()) - wyspa):
+            wyspa.add(nastepna)
+            kolejka.append(nastepna)
+    return wyspa
+
+
+def _odmowa_napiecia_wobec_uzwojen(
+    enm: dict[str, Any], szyny: set[str], un: float, kod: str, *, napiecie_wn: bool = False
+) -> dict[str, Any] | None:
+    """Odmowa, gdy uzwojenie transformatora przyłączone do `szyny` ma napięcie znamionowe inne
+    niż nowe napięcie szyn `un` — JEDEN predykat obu dróg zmiany napięcia szyny (operacja strony
+    WN GPZ i `update_element_parameters` szyny), ta sama równość
+    (`to_samo_napiecie_znamionowe`) co tory tworzenia i przypisania typu transformatora."""
+    niespojne = [
+        (t, strona, znamionowe)
+        for t in enm.get("transformers", [])
+        if isinstance(t, dict)
+        for strona, znamionowe, szyna in (
+            ("górne", t.get("uhv_kv"), t.get("hv_bus_ref")),
+            ("dolne", t.get("ulv_kv"), t.get("lv_bus_ref")),
+        )
+        if szyna in szyny and not to_samo_napiecie_znamionowe(znamionowe, un)
+    ]
+    if not niespojne:
+        return None
+    opisy = lista_pl(
+        (
+            f"{opis_nazwy(t.get('name'), 'transformator')} ma napięcie {strona} "
+            + (f"{znamionowe:g} kV" if isinstance(znamionowe, int | float) else "nieznane")
+            for t, strona, znamionowe in niespojne
+        ),
+        "i",
+    )
+    rada = (
+        f"Zmień napięcie razem z typem transformatora o napięciu górnym {un:g} kV."
+        if napiecie_wn
+        else "Przypisz transformatorowi typ o tym napięciu albo zostaw napięcie szyny."
+    )
+    return _error_response(
+        f"Napięcia szyn nie można zmienić na {un:g} kV: {opisy} — uzwojenie transformatora "
+        "musi mieć napięcie znamionowe sieci, do której jest przyłączone (przekładnia wchodzi "
+        f"wprost do rozpływu i zwarć, IEC 60909-0 §6.3.3). {rada}",
+        kod,
+    )
+
+
+def update_gpz_hv_voltage(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Napięcie znamionowe Un strony WN GPZ — jedna operacja dla CAŁEJ strony WN.
+
+    Zmienia napięcie szyn strony WN stacji i szyn połączonych z nimi galwanicznie (linia 110 kV,
+    sprzęgła, łączniki — `_wyspa_galwaniczna`) oraz napięcie równoważnika sieci (`voltage_hv_kv`
+    źródła na tych szynach i jego tabliczki). Uzwojenie każdego transformatora przyłączone do
+    tych szyn musi mieć TO SAMO napięcie znamionowe (`to_samo_napiecie_znamionowe` — równość
+    torów tworzenia i przypisania typu transformatora); niespójność jest odmową z nazwą
+    transformatora. Zmiana razem z typem: `transformer_catalog_binding` przypisuje typ
+    transformatorom 110/SN stacji w TEJ SAMEJ operacji (`assign_catalog_to_element` na modelu
+    po zmianie napięcia) — bez tego zmiana Un i zmiana typu odmawiałyby sobie nawzajem.
+
+    Payload: ``substation_ref``, ``voltage_kv``, ``transformer_catalog_binding`` (opcjonalnie).
+    """
+    odmowa = _odmowa_typu_ladunku(
+        payload, "update_gpz_hv_voltage", {"substation_ref": "ref", "voltage_kv": "liczba"}
+    )
+    if odmowa is not None:
+        return odmowa
+    substation_ref = payload.get("substation_ref")
+    sub = _find_substation(enm, substation_ref) if isinstance(substation_ref, str) else None
+    if sub is None or sub.get("station_type") != "gpz":
+        return _error_response(
+            "Wskaż stację GPZ, której napięcie strony WN ma zostać zmienione.",
+            "gpz_hv_voltage.substation_missing",
+        )
+    napiecie = payload.get("voltage_kv")
+    if not dodatnia(napiecie) or pasmo_napieciowe(float(napiecie)) != "WN":
+        return _error_response(
+            f"Pole {pole('voltage_kv', 'update_gpz_hv_voltage')}: napięcie znamionowe strony WN "
+            "GPZ jest liczbą dodatnią z pasma wysokiego napięcia.",
+            "gpz_hv_voltage.invalid_value",
+        )
+    un = float(napiecie)
+    wn, _ = _szyny_stron_gpz(enm, sub)
+    szyny_wn = {
+        s.get("bus_ref") for s in sub.get("gpz_hv_sections") or [] if isinstance(s, dict)
+    } | wn
+    szyny_startowe = {s for s in szyny_wn if isinstance(s, str)}
+    if not szyny_startowe:
+        return _error_response(
+            f"{opis_nazwy(sub.get('name'), 'Stacja GPZ')} nie ma strony WN w modelu (szyny "
+            "110 kV ani transformatora 110/SN) — napięcie strony WN nie ma nośnika.",
+            "gpz_hv_voltage.no_hv_side",
+        )
+    wyspa = _wyspa_galwaniczna(enm, szyny_startowe)
+
+    new_enm = kopia_graniczna_enm(enm)
+    zmienione: list[str] = []
+    for szyna in new_enm.get("buses", []):
+        if szyna.get("ref_id") in wyspa and szyna.get("voltage_kv") != un:
+            szyna["voltage_kv"] = un
+            zmienione.append(str(szyna["ref_id"]))
+    for zrodlo in new_enm.get("sources", []):
+        if zrodlo.get("bus_ref") not in wyspa:
+            continue
+        zrodlo["voltage_hv_kv"] = un
+        tabliczka = zrodlo.get("materialized_params")
+        if isinstance(tabliczka, dict) and "voltage_hv_kv" in tabliczka:
+            tabliczka["voltage_hv_kv"] = un
+        zmienione.append(str(zrodlo.get("ref_id")))
+
+    wiazanie = payload.get("transformer_catalog_binding")
+    if wiazanie is not None:
+        for tr_ref in sub.get("transformer_refs") or []:
+            transformator = next(
+                (t for t in new_enm.get("transformers", []) if t.get("ref_id") == tr_ref), None
+            )
+            if transformator is None or transformator.get("hv_bus_ref") not in wyspa:
+                continue
+            wynik = assign_catalog_to_element(
+                new_enm, {"element_ref": tr_ref, "catalog_binding": wiazanie}
+            )
+            if wynik.get("error"):
+                return wynik
+            new_enm = wynik["snapshot"]
+            zmienione.append(str(tr_ref))
+
+    odmowa_uzwojen = _odmowa_napiecia_wobec_uzwojen(
+        new_enm, wyspa, un, "gpz_hv_voltage.transformer_mismatch", napiecie_wn=True
+    )
+    if odmowa_uzwojen is not None:
+        return odmowa_uzwojen
+
+    return _response(
+        new_enm,
+        updated=sorted(set(zmienione)),
+        selection_id=str(substation_ref),
+        selection_type="substation",
+        audit=[
+            {
+                "step": 1,
+                "action": f"Zmieniono napięcie strony WN na {un:g} kV",
+                "element_id": str(substation_ref),
+            }
+        ],
+        events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": substation_ref}],
     )
 
 
@@ -12823,6 +13297,7 @@ _HANDLERS: dict[str, Any] = {
     "add_gpz_section": add_gpz_section,
     "update_gpz_section": update_gpz_section,
     "delete_gpz_section": delete_gpz_section,
+    "update_gpz_hv_voltage": update_gpz_hv_voltage,
     "append_station_on_endpoint": append_station_on_endpoint,
 }
 

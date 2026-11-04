@@ -458,6 +458,9 @@ MIEJSCA_BUDOWY_POLA: dict[str, dict[str, int]] = {
         "domain_operations.py:append_station_on_endpoint": 1,  # pola z payloadu kreatora
         # pisarz pola SN obu planów operacji `add_sn_bay` (deklaracja i katalog)
         "domain_operations_v2.py:_zapisz_pole_sn": 1,
+        # pole sprzęgła `add_sn_bay`: aparat = sprzęgło między sekcjami, aparaty pierwotne
+        # i konfiguracja z tego samego resolvera co `_zapisz_pole_sn` (karta KATALOG-PRZEJECIE-PR)
+        "domain_operations_v2.py:_zapisz_pole_sprzegla": 1,
         "domain_operations_v2.py:_add_converter_source_der_sn": 1,  # pole źródłowe DER-SN
     },
     "bez_szablonu": {
@@ -511,7 +514,7 @@ def _wywolania_buildera() -> dict[str, dict[str, int]]:
 
 
 def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
-    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (14 wywołań buildera),
+    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (15 wywołań buildera),
     a drogi z wyborem katalogowym przekazują aparaty i konfigurację z resolvera."""
     znalezione = _wywolania_buildera()
     assert znalezione == MIEJSCA_BUDOWY_POLA, (
@@ -519,7 +522,7 @@ def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
         "rozstrzygnac, skad bierze aparaty pola (resolver katalogu vs jawny argument) i "
         f"dopisac sie do inwentarza. Jest: {znalezione}"
     )
-    assert sum(sum(g.values()) for g in znalezione.values()) == 14
+    assert sum(sum(g.values()) for g in znalezione.values()) == 15
 
 
 def test_zadna_operacja_nie_sklada_rekordu_pola_recznie() -> None:

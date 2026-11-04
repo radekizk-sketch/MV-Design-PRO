@@ -269,6 +269,7 @@
     "add_gpz_section": {
       "pola": [
         "bus_ref",
+        "create_bus",
         "line_field_name",
         "name",
         "order",
@@ -768,6 +769,8 @@
         "catalog_item_version",
         "catalog_ref",
         "complete_bay_template_ref",
+        "coupled_bus_ref",
+        "coupler_normal_state",
         "dry_run",
         "earthing_role",
         "existing_field_ref",
@@ -1844,6 +1847,14 @@
       "pola": [
         "element_ref",
         "parameters"
+      ],
+      "zagniezdzone": {}
+    },
+    "update_gpz_hv_voltage": {
+      "pola": [
+        "substation_ref",
+        "transformer_catalog_binding",
+        "voltage_kv"
       ],
       "zagniezdzone": {}
     },
@@ -6671,6 +6682,22 @@
     },
     {
       "operacja": "update_element_parameters",
+      "ladunek": {
+        "klucz_obcy": 1
+      },
+      "obce": [
+        "klucz_obcy"
+      ]
+    },
+    {
+      "operacja": "update_gpz_hv_voltage",
+      "ladunek": {
+        "substation_ref": 1
+      },
+      "obce": []
+    },
+    {
+      "operacja": "update_gpz_hv_voltage",
       "ladunek": {
         "klucz_obcy": 1
       },

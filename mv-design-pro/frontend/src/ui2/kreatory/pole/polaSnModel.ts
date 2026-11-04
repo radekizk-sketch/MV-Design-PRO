@@ -9,7 +9,7 @@
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import { ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA, type RolaUziemnika } from '../../../types/uziemienie';
 import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
-import { BAY_MODEL_ROLES, type BayModelRole } from '../../../types/enm';
+import { BAY_MODEL_ROLES, type BayModelRole, type EnergyNetworkModel } from '../../../types/enm';
 
 export type RolaPola = BayModelRole;
 export type RodzajAparatu = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
@@ -80,7 +80,20 @@ export interface PolaSnFormData {
   manufacturer_ref: string | null;
   /** W5-A: rola uziemnika pola (`BayPrimaryDevice.earthing_role`); pusty = wg szablonu (uziemnik pola). */
   earthing_role: RolaUziemnika | '';
+  /** Pole sprzęgła: szyna sekcji po drugiej stronie (`add_sn_bay.coupled_bus_ref`). */
+  coupled_bus_ref: string | null;
+  /** Pole sprzęgła: stan normalny łącznika sekcji (`add_sn_bay.coupler_normal_state`). */
+  coupler_normal_state: StanNormalnySprzegla;
 }
+
+/** Stan normalny sprzęgła — wartości `add_sn_bay.coupler_normal_state` (backend
+ *  `STANY_NORMALNE_SPRZEGLA`): `status` i `normal_state` łącznika sekcji. */
+export type StanNormalnySprzegla = 'closed' | 'open';
+
+export const STAN_SPRZEGLA_OPCJE: ReadonlyArray<{ id: StanNormalnySprzegla; etykieta: string }> = [
+  { id: 'closed', etykieta: 'Normalnie zamknięte' },
+  { id: 'open', etykieta: 'Normalnie otwarte' },
+];
 
 export interface BladPola {
   field: string;
@@ -108,12 +121,43 @@ export const DANE_DOMYSLNE: PolaSnFormData = {
   bay_template_ref: null,
   manufacturer_ref: null,
   earthing_role: '',
+  coupled_bus_ref: null,
+  coupler_normal_state: 'closed',
 };
 
 /**
  * Rola wstępnie wybrana w kreatorze: `bay_role` z kontekstu operacji (np. „Dodaj pole" z karty
  * pól konfiguratora z wybraną rolą), o ile należy do listy ról modelu; inaczej rola domyślna.
  */
+/** Stan normalny sprzęgła z kontekstu operacji; inaczej domyślny (zamknięte). */
+export function stanSprzeglaPoczatkowy(kontekstStan: unknown): StanNormalnySprzegla {
+  return kontekstStan === 'open' ? 'open' : DANE_DOMYSLNE.coupler_normal_state;
+}
+
+/**
+ * Sekcje, z którymi pole sprzęgła na szynie `busRef` może połączyć tę szynę — DANE modelu, bez
+ * reguł zgodności (napięcie, zajętość stron sprawdza backend: `_blad_sprzegla_sekcji`):
+ * w GPZ sekcje szyn SN (`gpz_sections`), w innej rozdzielni szyny stacji niebędące zaciskami pól.
+ */
+export function sekcjeDoSprzegla(
+  snapshot: EnergyNetworkModel | null,
+  stationRef: string | undefined,
+  busRef: string | undefined,
+): ReadonlyArray<{ id: string; etykieta: string }> {
+  const stacja = (snapshot?.substations ?? []).find((s) => s.ref_id === stationRef);
+  if (!stacja || !busRef) return [];
+  const szyny = new Map((snapshot?.buses ?? []).map((b) => [b.ref_id, b]));
+  if (stacja.station_type === 'gpz') {
+    return [...(stacja.gpz_sections ?? [])]
+      .sort((a, b) => a.order - b.order)
+      .filter((s) => s.bus_ref !== busRef)
+      .map((s) => ({ id: s.bus_ref, etykieta: s.name || szyny.get(s.bus_ref)?.name || 'Sekcja bez nazwy' }));
+  }
+  return (stacja.bus_refs ?? [])
+    .filter((ref) => ref !== busRef && !(szyny.get(ref)?.tags ?? []).includes('helper_bus'))
+    .map((ref) => ({ id: ref, etykieta: szyny.get(ref)?.name || 'Szyna bez nazwy' }));
+}
+
 export function rolaPoczatkowa(kontekstRola: unknown): RolaPola {
   return typeof kontekstRola === 'string' && (BAY_MODEL_ROLES as readonly string[]).includes(kontekstRola)
     ? (kontekstRola as RolaPola)
@@ -175,10 +219,18 @@ export function maSzyne(kontekst: KontekstPola): boolean {
   return Boolean(kontekst.bus_ref?.trim() && kontekst.station_ref?.trim());
 }
 
-export function walidujFormularz(data: PolaSnFormData): BladPola[] {
+/** Czy formularz dodaje NOWE pole sprzęgła (rekonfiguracja nie zmienia sekcji sprzęgła). */
+export function noweSprzeglo(data: PolaSnFormData, kontekst: KontekstPola): boolean {
+  return data.bay_role === 'COUPLER' && !kontekst.existing_field_ref?.trim();
+}
+
+export function walidujFormularz(data: PolaSnFormData, kontekst: KontekstPola = {}): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.catalog_ref?.trim()) {
     errors.push({ field: 'catalog_ref', message: 'Wybierz aparat pola z katalogu SN.' });
+  }
+  if (noweSprzeglo(data, kontekst) && !data.coupled_bus_ref?.trim()) {
+    errors.push({ field: 'coupled_bus_ref', message: 'Wskaż sekcję po drugiej stronie sprzęgła.' });
   }
   return errors;
 }
@@ -216,6 +268,10 @@ export function zbudujPayload(
     manufacturer_ref: data.manufacturer_ref?.trim() || undefined,
     // W5-A: rola uziemnika tylko gdy projektant ją wybrał (backend odrzuca rolę bez uziemnika w torze).
     earthing_role: data.earthing_role || undefined,
+    // Pole sprzęgła łączy dwie sekcje — druga szyna i stan normalny wyłącznie dla NOWEGO pola
+    // sprzęgła (na innej roli i przy rekonfiguracji backend odmawia tych kluczy).
+    coupled_bus_ref: noweSprzeglo(data, kontekst) ? data.coupled_bus_ref?.trim() || undefined : undefined,
+    coupler_normal_state: noweSprzeglo(data, kontekst) ? data.coupler_normal_state : undefined,
   };
 }
 

@@ -9,7 +9,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
-import { ROLE_DODAWANEGO_POLA, TabelaPolSn, obiektPola, polaSekcji } from '../cards/TabelaPolSn';
+import {
+  TabelaPolSn,
+  obiektPola,
+  opisSprzeglaPola,
+  polaSekcji,
+  roleDodawanegoPola,
+  sekcjaSasiednia,
+} from '../cards/TabelaPolSn';
 
 const executeDomainOperation = vi.fn();
 const openOperationForm = vi.fn();
@@ -95,11 +102,38 @@ describe('TabelaPolSn — pola z modelu', () => {
 });
 
 describe('TabelaPolSn — Dodaj pole', () => {
-  it('lista ról bez sprzęgła (add_sn_bay stawia pole na jednej szynie)', () => {
-    expect(ROLE_DODAWANEGO_POLA.map((o) => o.value)).not.toContain('COUPLER');
+  it('sprzęgło na liście ról wyłącznie przy ≥ 2 sekcjach (łączy dwie szyny sekcji)', () => {
+    expect(roleDodawanegoPola(1).map((o) => o.value)).not.toContain('COUPLER');
+    expect(roleDodawanegoPola(2).map((o) => o.value)).toContain('COUPLER');
     render(<TabelaPolSn stationRef="st" sekcje={SEKCJE} />);
     const opcje = Array.from((screen.getByTestId('tabela-pol-sn-rola-s1') as HTMLSelectElement).options).map((o) => o.value);
-    expect(opcje).toEqual(['OUT', 'IN', 'FEEDER', 'TR', 'MEASUREMENT', 'OZE', 'BKR', 'ZU']);
+    expect(opcje).toContain('COUPLER');
+    expect(opcje).toEqual(expect.arrayContaining(['OUT', 'IN', 'FEEDER', 'TR', 'MEASUREMENT', 'OZE', 'BKR', 'ZU']));
+  });
+
+  it('jedna sekcja: brak roli sprzęgła w wyborze', () => {
+    render(<TabelaPolSn stationRef="st" sekcje={[SEKCJE[0]]} />);
+    const opcje = Array.from((screen.getByTestId('tabela-pol-sn-rola-s1') as HTMLSelectElement).options).map((o) => o.value);
+    expect(opcje).not.toContain('COUPLER');
+  });
+
+  it.each([
+    ['s1', { bus_ref: 's1', station_ref: 'st', gpz_section_id: 'sek-1', bay_role: 'COUPLER', coupled_bus_ref: 's3', coupler_normal_state: 'closed' }],
+    ['s3', { bus_ref: 's3', station_ref: 'st', bay_role: 'COUPLER', coupled_bus_ref: 's1', coupler_normal_state: 'closed' }],
+  ])('sprzęgło z sekcji %s → kreator z sekcją sąsiednią po drugiej stronie i stanem zamkniętym', (bus, kontekst) => {
+    render(<TabelaPolSn stationRef="st" sekcje={SEKCJE} />);
+    fireEvent.change(screen.getByTestId(`tabela-pol-sn-rola-${bus}`), { target: { value: 'COUPLER' } });
+    fireEvent.click(screen.getByTestId(`tabela-pol-sn-dodaj-${bus}`));
+    expect(openOperationForm).toHaveBeenCalledWith('add_sn_bay', kontekst);
+  });
+
+  it('sekcjaSasiednia: następna, dla ostatniej poprzednia, nieznana → brak', () => {
+    const trzy = [...SEKCJE, { busRef: 's4', etykieta: 'Sekcja 4' }];
+    expect(sekcjaSasiednia(trzy, 's1')?.busRef).toBe('s3');
+    expect(sekcjaSasiednia(trzy, 's3')?.busRef).toBe('s4');
+    expect(sekcjaSasiednia(trzy, 's4')?.busRef).toBe('s3');
+    expect(sekcjaSasiednia(trzy, 'x')).toBeUndefined();
+    expect(sekcjaSasiednia([SEKCJE[0]], 's1')).toBeUndefined();
   });
 
   it.each([
@@ -177,5 +211,37 @@ describe('TabelaPolSn — Konfiguruj i Usuń', () => {
     fireEvent.click(screen.getByTestId('tabela-pol-sn-usun-pole-wy'));
     fireEvent.click(screen.getByTestId('tabela-pol-sn-usun-tak-pole-wy'));
     expect(await screen.findByTestId('tabela-pol-sn-blad')).toHaveTextContent('ma odcinek');
+  });
+});
+
+describe('TabelaPolSn — opis pola sprzęgła z modelu', () => {
+  const sprzeglo = pole('pole-sp', 'COUPLER', { equipment_refs: ['sp-1'] });
+  it.each([
+    ['open', undefined, 'Łączy z: Sekcja 3 · normalnie otwarte'],
+    ['closed', 'open', 'Łączy z: Sekcja 3 · normalnie zamknięte'],
+    [undefined, 'open', 'Łączy z: Sekcja 3 · normalnie otwarte'],
+  ])('stan normalny %s (stan bieżący %s) → %s', (normal, status, opis) => {
+    const snap = {
+      ...currentSnapshot,
+      branches: [{ ref_id: 'sp-1', type: 'bus_coupler', from_bus_ref: 's3', to_bus_ref: 's1', status: status ?? 'closed', ...(normal ? { normal_state: normal } : {}) }],
+    };
+    expect(opisSprzeglaPola(snap as never, sprzeglo as never, SEKCJE)).toBe(opis);
+  });
+
+  it('pole sprzęgła bez gałęzi sprzęgła mówi to wprost; inne pole — brak opisu', () => {
+    expect(opisSprzeglaPola({ ...currentSnapshot, branches: [] } as never, sprzeglo as never, SEKCJE)).toBe(
+      'Brak sprzęgła między sekcjami',
+    );
+    expect(opisSprzeglaPola(currentSnapshot as never, pole('x', 'OUT') as never, SEKCJE)).toBeNull();
+  });
+
+  it('wiersz pola sprzęgła pokazuje opis w tabeli', () => {
+    currentSnapshot = {
+      ...currentSnapshot,
+      bays: [sprzeglo],
+      branches: [{ ref_id: 'sp-1', type: 'bus_coupler', from_bus_ref: 's1', to_bus_ref: 's3', status: 'open', normal_state: 'open' }],
+    };
+    render(<TabelaPolSn stationRef="st" sekcje={SEKCJE} />);
+    expect(screen.getByTestId('tabela-pol-sn-sprzeglo-pole-sp')).toHaveTextContent('Łączy z: Sekcja 3 · normalnie otwarte');
   });
 });

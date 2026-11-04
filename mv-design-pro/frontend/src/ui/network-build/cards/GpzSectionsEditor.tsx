@@ -49,6 +49,10 @@ interface DeleteConfirmState {
   readonly section_id: string;
 }
 
+/** Wybór „Nowa szyna sekcji" — `add_gpz_section` z `create_bus` (backend tworzy szynę stacji
+ *  o napięciu strony i przypina do niej sekcję w jednej operacji). */
+export const NOWA_SZYNA = '__nowa_szyna__';
+
 const INITIAL_EDITOR_STATE: EditorState = {
   mode: 'idle',
   side: 'lv',
@@ -218,7 +222,7 @@ export function GpzSectionsEditor({ station }: Props) {
         substation_ref: station.ref_id,
         side: editor.side,
         section_id: sectionId,
-        bus_ref: editor.bus_ref,
+        ...(editor.bus_ref === NOWA_SZYNA ? { create_bus: true } : { bus_ref: editor.bus_ref }),
         ...(editor.name.trim() ? { name: editor.name.trim() } : {}),
         ...(orderNumber !== undefined ? { order: orderNumber } : {}),
       };
@@ -386,6 +390,7 @@ export function GpzSectionsEditor({ station }: Props) {
           onChange={(e) => setEditor({ ...editor, bus_ref: e.target.value })}
         >
           <option value="">— wybierz —</option>
+          {editor.mode === 'add' ? <option value={NOWA_SZYNA}>Nowa szyna sekcji</option> : null}
           {buses.map((b) => (
             <option key={b.ref_id} value={b.ref_id}>
               {b.name} · {b.voltage_kv} kV
@@ -394,7 +399,8 @@ export function GpzSectionsEditor({ station }: Props) {
         </select>
         {buses.length === 0 && (
           <span data-testid="gpz-sections-editor-no-free-bus" className="col-span-2 text-scada-muted">
-            Każda szyna tej strony stacji ma już sekcję — jedna szyna niesie jedną sekcję.
+            Każda szyna tej strony stacji ma już sekcję — jedna szyna niesie jedną sekcję
+            {editor.mode === 'add' ? '; nowa sekcja dostaje nową szynę.' : '.'}
           </span>
         )}
         {validationError ? (

@@ -148,6 +148,7 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   field_device: 'aparat pola',
   bay_terminal: 'zacisk pola',
   bay_device: 'aparat pola',
+  bay_coupler: 'sprzęgło sekcji',
   terminal: 'zacisk',
   apparatus: 'aparat',
   breaker: 'wyłącznik',

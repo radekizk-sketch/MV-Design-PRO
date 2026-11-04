@@ -131,6 +131,12 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "start_branch_segment_sn:from_ref": "Punkt startu",  # odgalezienie/strings.ts zrodloPunkt
     "funkcja_pomiaru": "Rodzaj pomiaru",  # pole/strings.ts rodzajPomiaru (jeden wybór funkcji i rodzaju)
     "gpz_section.bus_ref": "Szyna",  # ui/network-build/cards/GpzSectionsEditor.tsx
+    "create_bus": "Nowa szyna sekcji",  # ui/network-build/cards/GpzSectionsEditor.tsx
+    "coupled_bus_ref": "Sekcja po drugiej stronie sprzęgła",  # ui/network-build/cards/TabelaPolSn.tsx
+    "coupler_normal_state": "Stan normalny sprzęgła",  # ui/network-build/cards/TabelaPolSn.tsx
+    "station.designation": "Oznaczenie",  # ui/workspace/surfaces/GpzConfiguratorSurface.tsx
+    "update_gpz_hv_voltage:voltage_kv": "Napięcie znamionowe Un",  # ui/workspace/surfaces/GpzConfiguratorSurface.tsx
+    "update_gpz_hv_voltage:substation_ref": "Stacja GPZ",  # ui/workspace/surfaces/GpzConfiguratorSurface.tsx
     "gpz_section.left_coupler_ref": "Sprzęgło z lewej",  # sekcja GPZ (bez pola w edytorze)
     "gpz_section.line_field_name": "Nazwa pola liniowego",  # zrodlo/strings.ts nazwaPola
     "gpz_section.name": "Nazwa",  # ui/network-build/cards/GpzSectionsEditor.tsx

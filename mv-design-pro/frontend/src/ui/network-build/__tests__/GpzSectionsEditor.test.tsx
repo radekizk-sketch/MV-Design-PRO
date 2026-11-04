@@ -14,7 +14,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/react';
 
-import { GpzSectionsEditor } from '../cards/GpzSectionsEditor';
+import { GpzSectionsEditor, NOWA_SZYNA } from '../cards/GpzSectionsEditor';
 import type { Substation } from '../../../types/enm';
 
 const executeDomainOperation = vi.fn();
@@ -105,7 +105,8 @@ describe('GpzSectionsEditor — Add flow', () => {
     fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
     const select = getByTestId('gpz-sections-editor-select-bus') as HTMLSelectElement;
     const optionValues = Array.from(select.options).map((o) => o.value);
-    expect(optionValues).toEqual(['', 'b15-C']);
+    // „Nowa szyna sekcji" (create_bus) stoi przed wolnymi szynami — tylko w trybie dodawania.
+    expect(optionValues).toEqual(['', NOWA_SZYNA, 'b15-C']);
   });
 
   it('Form HV pokazuje TYLKO wolne szyny HV (bez sekcji, voltage >= 60)', () => {
@@ -113,7 +114,7 @@ describe('GpzSectionsEditor — Add flow', () => {
     fireEvent.click(getByTestId('gpz-sections-editor-add-hv'));
     const select = getByTestId('gpz-sections-editor-select-bus') as HTMLSelectElement;
     const optionValues = Array.from(select.options).map((o) => o.value);
-    expect(optionValues).toEqual(['', 'b110-B']);
+    expect(optionValues).toEqual(['', NOWA_SZYNA, 'b110-B']);
   });
 
   it('Edycja sekcji zostawia jej własną szynę na liście, cudzej nie pokazuje', () => {
@@ -134,6 +135,44 @@ describe('GpzSectionsEditor — Add flow', () => {
     const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
     expect(getByTestId('gpz-sections-editor-no-free-bus').textContent).toMatch(/jedna szyna/);
+  });
+
+  it.each(['lv', 'hv'] as const)(
+    'Nowa szyna sekcji (%s) → add_gpz_section z create_bus, bez bus_ref (szynę tworzy backend)',
+    async (strona) => {
+      const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+      fireEvent.click(getByTestId(`gpz-sections-editor-add-${strona}`));
+      fireEvent.change(getByTestId('gpz-sections-editor-select-bus'), {
+        target: { value: NOWA_SZYNA },
+      });
+      fireEvent.click(getByTestId('gpz-sections-editor-submit'));
+      await vi.waitFor(() => expect(executeDomainOperation).toHaveBeenCalledTimes(1));
+      const [, nazwa, payload] = executeDomainOperation.mock.calls[0];
+      expect(nazwa).toBe('add_gpz_section');
+      expect(payload).toMatchObject({ side: strona, create_bus: true });
+      expect(payload).not.toHaveProperty('bus_ref');
+    },
+  );
+
+  it('Edycja sekcji nie proponuje nowej szyny (create_bus istnieje tylko przy dodawaniu)', () => {
+    const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+    fireEvent.click(getByTestId('gpz-section-edit-lv-SEC-A'));
+    const select = getByTestId('gpz-sections-editor-select-bus') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).not.toContain(NOWA_SZYNA);
+  });
+
+  it('Brak wolnej szyny przy dodawaniu — nowa szyna nadal do wyboru', () => {
+    currentSnapshot = {
+      buses: [
+        { ref_id: 'b15-A', name: 'Szyna 15 A', voltage_kv: 15 },
+        { ref_id: 'b15-B', name: 'Szyna 15 B', voltage_kv: 15 },
+      ],
+    };
+    const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+    fireEvent.click(getByTestId('gpz-sections-editor-add-lv'));
+    const select = getByTestId('gpz-sections-editor-select-bus') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(['', NOWA_SZYNA]);
+    expect(getByTestId('gpz-sections-editor-no-free-bus').textContent).toMatch(/nową szynę/);
   });
 
   it('Nowa sekcja ma proponowany identyfikator (następny wolny numer)', () => {

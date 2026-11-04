@@ -48,7 +48,11 @@ import {
   maSzyne,
   rolaLabel,
   OPCJE_ROLI_UZIEMNIKA,
+  STAN_SPRZEGLA_OPCJE,
+  noweSprzeglo,
   rolaPoczatkowa,
+  sekcjeDoSprzegla,
+  stanSprzeglaPoczatkowy,
   walidujFormularz,
   wyborPomiaruLabel,
   zbudujPayload,
@@ -57,6 +61,7 @@ import {
   type PolaSnFormData,
   type RodzajAparatu,
   type RolaPola,
+  type StanNormalnySprzegla,
   type WyborPomiaru,
 } from './polaSnModel';
 import {
@@ -105,10 +110,17 @@ export function KreatorPolaSn() {
   }, [context, snapshot]);
   const hasSzyne = maSzyne(kontekst);
 
+  const opcjeSekcjiSprzegla = useMemo(
+    () => sekcjeDoSprzegla(snapshot, kontekst.station_ref, kontekst.bus_ref),
+    [snapshot, kontekst.station_ref, kontekst.bus_ref],
+  );
   const [dane, setDane] = useState<PolaSnFormData>(() => ({
     ...DANE_DOMYSLNE,
     bay_role: rolaPoczatkowa(context?.bay_role),
+    coupled_bus_ref: trimmed(context?.coupled_bus_ref) || null,
+    coupler_normal_state: stanSprzeglaPoczatkowy(context?.coupler_normal_state),
   }));
+  const sprzegloNowe = noweSprzeglo(dane, kontekst);
   const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('pole');
@@ -280,7 +292,7 @@ export function KreatorPolaSn() {
       setBladGlobalny(T.brakSzynyOpis);
       return;
     }
-    const walid = walidujFormularz(dane);
+    const walid = walidujFormularz(dane, kontekst);
     setBledy(walid);
     if (walid.length > 0) return;
     if (!activeCaseId) {
@@ -312,6 +324,15 @@ export function KreatorPolaSn() {
       wartosc: kontekst.station_label || (hasSzyne ? 'Wskazana' : 'Brak'),
     },
     { etykieta: T.wierszRola, stan: 'kompletne', wartosc: rolaLabel(dane.bay_role) },
+    ...(sprzegloNowe
+      ? [
+          {
+            etykieta: T.wierszSprzeglo,
+            stan: dane.coupled_bus_ref ? ('kompletne' as const) : ('brak' as const),
+            wartosc: opcjeSekcjiSprzegla.find((o) => o.id === dane.coupled_bus_ref)?.etykieta ?? 'Do wskazania',
+          },
+        ]
+      : []),
     {
       etykieta: T.wierszSzablon,
       stan: maSzablonProducenta(dane) ? 'kompletne' : 'ostrzezenie',
@@ -425,6 +446,28 @@ export function KreatorPolaSn() {
               pomoc={T.rolaUziemnikaPomoc}
               testid="mvd-kreator-pole-rola-uziemnika"
             />
+            {sprzegloNowe ? (
+              <div data-testid="mvd-kreator-pole-sprzeglo">
+                <KreatorInfo>{opcjeSekcjiSprzegla.length > 0 ? T.sprzegloPomoc : T.sprzegloBrakSekcji}</KreatorInfo>
+                <KreatorSiatka kolumny={2}>
+                  <PoleWyboru
+                    etykieta={T.sprzegloDruga}
+                    wartosc={dane.coupled_bus_ref ?? ''}
+                    onZmiana={(v) => zmien('coupled_bus_ref', v || null)}
+                    opcje={[{ id: '', etykieta: '—' }, ...opcjeSekcjiSprzegla]}
+                    blad={bladDlaPola('coupled_bus_ref')}
+                    testid="mvd-kreator-pole-sprzeglo-sekcja"
+                  />
+                  <PoleWyboru
+                    etykieta={T.sprzegloStan}
+                    wartosc={dane.coupler_normal_state}
+                    onZmiana={(v) => zmien('coupler_normal_state', v as StanNormalnySprzegla)}
+                    opcje={STAN_SPRZEGLA_OPCJE}
+                    testid="mvd-kreator-pole-sprzeglo-stan"
+                  />
+                </KreatorSiatka>
+              </div>
+            ) : null}
             {dane.bay_role === 'MEASUREMENT' ? (
               <>
                 <KreatorInfo>{T.rodzajPomiaruPomoc}</KreatorInfo>

@@ -12,7 +12,10 @@ import {
   bayKindZRoli,
   maSzablonProducenta,
   maSzyne,
+  noweSprzeglo,
   rolaLabel,
+  sekcjeDoSprzegla,
+  stanSprzeglaPoczatkowy,
   walidujFormularz,
   wyborPomiaruLabel,
   zbudujPayload,
@@ -199,5 +202,67 @@ describe('polaSnModel — szablon producenta (Reference Engine)', () => {
   it('wykrywa powiązanie z szablonem po bay_template_ref', () => {
     expect(maSzablonProducenta(dane())).toBe(false);
     expect(maSzablonProducenta(dane({ bay_template_ref: 'tmpl-1' }))).toBe(true);
+  });
+});
+
+describe('polaSnModel — pole sprzęgła (dwie sekcje, karta KATALOG-PRZEJECIE-PR)', () => {
+  const SPRZEGLO = dane({ bay_role: 'COUPLER', coupled_bus_ref: 'bus-2', coupler_normal_state: 'open' });
+
+  it('nowe sprzęgło wymaga drugiej sekcji; rekonfiguracja i inna rola — nie', () => {
+    expect(walidujFormularz(dane({ bay_role: 'COUPLER' }), KONTEKST).map((e) => e.field)).toEqual(['coupled_bus_ref']);
+    expect(walidujFormularz(SPRZEGLO, KONTEKST)).toEqual([]);
+    expect(walidujFormularz(dane({ bay_role: 'COUPLER' }), { ...KONTEKST, existing_field_ref: 'pole-sp' })).toEqual([]);
+    expect(walidujFormularz(dane({ bay_role: 'OUT' }), KONTEKST)).toEqual([]);
+  });
+
+  it.each([
+    ['nowe sprzęgło', SPRZEGLO, KONTEKST, { coupled_bus_ref: 'bus-2', coupler_normal_state: 'open' }],
+    ['rekonfiguracja sprzęgła', SPRZEGLO, { ...KONTEKST, existing_field_ref: 'pole-sp' }, { coupled_bus_ref: undefined, coupler_normal_state: undefined }],
+    ['inna rola z pozostałą sekcją', { ...SPRZEGLO, bay_role: 'OUT' as const }, KONTEKST, { coupled_bus_ref: undefined, coupler_normal_state: undefined }],
+  ])('%s → klucze sprzęgła w payloadzie tylko dla nowego pola sprzęgła', (_opis, d, k, oczekiwane) => {
+    expect(zbudujPayload(d, k)).toMatchObject(oczekiwane);
+    expect(noweSprzeglo(d, k)).toBe(oczekiwane.coupled_bus_ref !== undefined);
+  });
+
+  it('stan normalny z kontekstu: tylko „open” otwiera, reszta = zamknięte', () => {
+    expect(stanSprzeglaPoczatkowy('open')).toBe('open');
+    expect(stanSprzeglaPoczatkowy('closed')).toBe('closed');
+    expect(stanSprzeglaPoczatkowy(undefined)).toBe('closed');
+    expect(stanSprzeglaPoczatkowy('half')).toBe('closed');
+  });
+
+  const MODEL = {
+    buses: [
+      { ref_id: 'g1', name: 'Szyna 1' },
+      { ref_id: 'g2', name: 'Szyna 2' },
+      { ref_id: 'g3', name: 'Szyna 3' },
+      { ref_id: 'z1', name: 'Zacisk', tags: ['helper_bus'] },
+    ],
+    substations: [
+      {
+        ref_id: 'gpz',
+        station_type: 'gpz',
+        bus_refs: ['g1', 'g2', 'g3'],
+        gpz_sections: [
+          { section_id: 'c', order: 2, name: '', bus_ref: 'g3' },
+          { section_id: 'a', order: 0, name: 'Sekcja A', bus_ref: 'g1' },
+          { section_id: 'b', order: 1, name: 'Sekcja B', bus_ref: 'g2' },
+        ],
+      },
+      { ref_id: 'st', station_type: 'sectional', bus_refs: ['g1', 'g2', 'z1'] },
+    ],
+  } as never;
+
+  it.each([
+    ['GPZ: sekcje SN w kolejności, bez własnej szyny, nazwa sekcji albo szyny', 'gpz', 'g2', [['g1', 'Sekcja A'], ['g3', 'Szyna 3']]],
+    ['stacja: szyny stacji bez zacisków pól i bez własnej', 'st', 'g1', [['g2', 'Szyna 2']]],
+    ['nieznana stacja', 'x', 'g1', []],
+  ])('sekcjeDoSprzegla — %s', (_opis, stacja, szyna, oczekiwane) => {
+    expect(sekcjeDoSprzegla(MODEL, stacja, szyna).map((s) => [s.id, s.etykieta])).toEqual(oczekiwane);
+  });
+
+  it('sekcjeDoSprzegla bez szyny albo bez modelu → pusto', () => {
+    expect(sekcjeDoSprzegla(MODEL, 'gpz', undefined)).toEqual([]);
+    expect(sekcjeDoSprzegla(null, 'gpz', 'g1')).toEqual([]);
   });
 });

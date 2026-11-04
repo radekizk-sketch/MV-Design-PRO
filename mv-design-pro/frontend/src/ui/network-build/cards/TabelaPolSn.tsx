@@ -9,15 +9,18 @@
  *    stacją, sekcją GPZ i rolą (szablon producenta wybiera się w kreatorze);
  *  - „Konfiguruj" → karta pola E-11 (`BayConfiguratorSurface`: wyposażenie `set_bay_equipment`,
  *    przekładniki, zabezpieczenia) — ta sama nawigacja co pozycja menu SLD „open-bay";
- *  - „Usuń" → `delete_element` (backend odmawia pola z zależnościami — komunikat w tabeli);
+ *  - „Usuń" → `delete_element` (aparat pola i jego zacisk znikają razem z polem; pole z elementem
+ *    na zacisku albo wskazywane przez inny element backend odmawia — komunikat w tabeli);
  *  - pole baterii kondensatorów (BKR) i zespołu uziemiającego (ZU): powiązany obiekt z modelu
  *    (bateria na zacisku pola / zespół wskazujący pole) albo akcja jego dodania istniejącym
  *    kreatorem (`add_shunt_compensator_sn` na zacisku pola, `add_zespol_uziemiajacy_sn`
  *    z `bay_ref`).
  *
- * Rola „Pole sprzęgła" nie jest oferowana: `add_sn_bay` stawia pole na JEDNEJ szynie, a sprzęgło
- * między sekcjami tworzy wyłącznie budowa GPZ (`add_grid_source_sn`) — operacji sprzęgła
- * z wyborem sekcji po obu stronach model nie ma. Sprzęgła istniejące pokazuje nagłówek sekcji.
+ * Rola „Pole sprzęgła" jest oferowana przy co najmniej dwóch sekcjach: kreator dostaje szynę sekcji
+ * sąsiedniej (`coupled_bus_ref`) i stan normalny; sekcję po drugiej stronie i stan zmienia się
+ * w kreatorze. `add_sn_bay` z rolą sprzęgła tworzy łącznik `bus_coupler` między szynami sekcji
+ * (w GPZ także odwołania sekcji `left/right_coupler_ref`). Wiersz pola sprzęgła pokazuje sekcję
+ * po drugiej stronie i stan normalny; sprzęgło bez pola (budowa GPZ) pokazuje nagłówek sekcji.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -48,14 +51,45 @@ export interface TabelaPolSnProps {
   readonly sekcje: readonly SekcjaTabeliPol[];
 }
 
-/** Role oferowane przy dodawaniu pola — lista kreatora bez sprzęgła (patrz nagłówek pliku). */
-export const ROLE_DODAWANEGO_POLA: readonly { value: RolaPola; label: string }[] = ROLE_OPCJE.filter(
-  (o) => o.value !== 'COUPLER',
-);
+/** Role oferowane przy dodawaniu pola — lista kreatora; sprzęgło wyłącznie przy ≥ 2 sekcjach. */
+export function roleDodawanegoPola(liczbaSekcji: number): readonly { value: RolaPola; label: string }[] {
+  return liczbaSekcji >= 2 ? ROLE_OPCJE : ROLE_OPCJE.filter((o) => o.value !== 'COUPLER');
+}
+
+/** Sekcja sąsiednia (następna, a dla ostatniej — poprzednia): domyślna druga strona sprzęgła. */
+export function sekcjaSasiednia(
+  sekcje: readonly SekcjaTabeliPol[],
+  busRef: string,
+): SekcjaTabeliPol | undefined {
+  const i = sekcje.findIndex((s) => s.busRef === busRef);
+  if (i < 0) return undefined;
+  return sekcje[i + 1] ?? sekcje[i - 1];
+}
 
 /** Pola stacji na szynie sekcji w kolejności danych modelu. */
 export function polaSekcji(snapshot: EnergyNetworkModel | null, stationRef: string, busRef: string): Bay[] {
   return (snapshot?.bays ?? []).filter((b) => b.substation_ref === stationRef && b.bus_ref === busRef);
+}
+
+/** Opis sprzęgła pola sprzęgła z modelu: sekcja po drugiej stronie i stan normalny łącznika. */
+export function opisSprzeglaPola(
+  snapshot: EnergyNetworkModel | null,
+  pole: Bay,
+  sekcje: readonly SekcjaTabeliPol[],
+): string | null {
+  if (pole.bay_role !== 'COUPLER') return null;
+  const sprzeglo = (snapshot?.branches ?? []).find(
+    (g) => g.type === 'bus_coupler' && (pole.equipment_refs ?? []).includes(g.ref_id),
+  );
+  if (!sprzeglo || !('from_bus_ref' in sprzeglo)) return 'Brak sprzęgła między sekcjami';
+  const druga = sprzeglo.from_bus_ref === pole.bus_ref ? sprzeglo.to_bus_ref : sprzeglo.from_bus_ref;
+  const nazwaDrugiej =
+    sekcje.find((s) => s.busRef === druga)?.etykieta ??
+    (snapshot?.buses ?? []).find((b) => b.ref_id === druga)?.name ??
+    'sekcja bez nazwy';
+  const stanNormalny = 'normal_state' in sprzeglo ? sprzeglo.normal_state : undefined;
+  const stan = (stanNormalny ?? sprzeglo.status) === 'open' ? 'normalnie otwarte' : 'normalnie zamknięte';
+  return `Łączy z: ${nazwaDrugiej} · ${stan}`;
 }
 
 /** Obiekt fizyczny pola BKR/ZU z modelu: bateria na zacisku pola, zespół wskazujący pole. */
@@ -127,12 +161,17 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
     [sekcje, snapshot, stationRef],
   );
 
+  const roleDodawania = roleDodawanegoPola(sekcje.length);
+
   const dodajPole = (sekcja: SekcjaTabeliPol) => {
+    const rola = rolaNowego[sekcja.busRef] ?? roleDodawania[0].value;
+    const sasiednia = rola === 'COUPLER' ? sekcjaSasiednia(sekcje, sekcja.busRef) : undefined;
     openOperationForm('add_sn_bay', {
       bus_ref: sekcja.busRef,
       station_ref: stationRef,
       ...(sekcja.gpzSectionId ? { gpz_section_id: sekcja.gpzSectionId } : {}),
-      bay_role: rolaNowego[sekcja.busRef] ?? ROLE_DODAWANEGO_POLA[0].value,
+      bay_role: rola,
+      ...(sasiednia ? { coupled_bus_ref: sasiednia.busRef, coupler_normal_state: 'closed' } : {}),
     });
   };
 
@@ -176,10 +215,10 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
                 aria-label={`Rola nowego pola — ${sekcja.etykieta}`}
                 data-testid={`tabela-pol-sn-rola-${sekcja.busRef}`}
                 className={`${POLE_WYBORU} min-w-0 flex-1`}
-                value={rolaNowego[sekcja.busRef] ?? ROLE_DODAWANEGO_POLA[0].value}
+                value={rolaNowego[sekcja.busRef] ?? roleDodawania[0].value}
                 onChange={(e) => setRolaNowego((p) => ({ ...p, [sekcja.busRef]: e.target.value as RolaPola }))}
               >
-                {ROLE_DODAWANEGO_POLA.map((o) => (
+                {roleDodawania.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -207,6 +246,7 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
               <tbody>
                 {pola.map((pole, i) => {
                   const obiekt = obiektPola(snapshot, pole);
+                  const sprzeglo = opisSprzeglaPola(snapshot, pole, sekcje);
                   const stan = itemsByBayRef.get(pole.ref_id)?.canonical_model.base_model.equipment_data_state;
                   return (
                     <tr
@@ -227,6 +267,11 @@ export function TabelaPolSn({ stationRef, sekcje }: TabelaPolSnProps): JSX.Eleme
                             {stan ? stanWyposazeniaKrotko(STAN_DANYCH_WYPOSAZENIA_PL[stan]) : 'wyposażenie: brak odczytu'}
                           </span>
                         </div>
+                        {sprzeglo ? (
+                          <div data-testid={`tabela-pol-sn-sprzeglo-${pole.ref_id}`} className="text-scada-text">
+                            {sprzeglo}
+                          </div>
+                        ) : null}
                         {obiekt ? (
                           <div data-testid={`tabela-pol-sn-obiekt-${pole.ref_id}`}>
                             {obiekt.nazwa ? (

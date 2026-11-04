@@ -221,14 +221,15 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
     });
 
-    it('Identyfikacja: nazwa z modelu, zmiana = update_element_parameters na stacji; oznaczenie tylko do odczytu', async () => {
+    it('Identyfikacja: nazwa z modelu, zmiana = update_element_parameters na stacji', async () => {
       useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN, { name: 'GPZ Wschód', designation: 'RPZ-W' }) });
       const operacja = operacjaModelu();
       otworz();
       const nazwa = screen.getByTestId('gpz-name-input') as HTMLInputElement;
       expect(nazwa.value).toBe('GPZ Wschód');
-      expect(screen.getByTestId('gpz-designation')).toHaveTextContent('RPZ-W');
-      // Pola operatora i lokalizacji nie mają nośnika w modelu — nie ma ich na ekranie.
+      expect((screen.getByTestId('gpz-designation') as HTMLInputElement).value).toBe('RPZ-W');
+      // Lokalizacja nie ma nośnika w modelu ani konsumenta — nie ma jej na ekranie; operator
+      // sieci przychodzi z katalogu operatorów (karta danych GPZ), nie z pola tekstowego.
       expect(screen.queryByText(/OSD \/ operator/)).not.toBeInTheDocument();
       expect(screen.queryByText(/Lokalizacja/)).not.toBeInTheDocument();
       fireEvent.change(nazwa, { target: { value: 'GPZ Zachód' } });
@@ -246,12 +247,122 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(operacja).not.toHaveBeenCalled();
     });
 
+    it.each([
+      [' RPZ-X ', { designation: 'RPZ-X' }],
+      ['', { designation: null }],
+    ])('Identyfikacja: oznaczenie „%s” = update_element_parameters stacji %j', async (wpis, parametry) => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN, { designation: 'RPZ-W' }) });
+      const operacja = operacjaModelu();
+      otworz();
+      const oznaczenie = screen.getByTestId('gpz-designation');
+      fireEvent.change(oznaczenie, { target: { value: wpis } });
+      fireEvent.blur(oznaczenie);
+      await waitFor(() =>
+        expect(operacja).toHaveBeenCalledWith('case-gpz', 'update_element_parameters', {
+          element_ref: 'gpz/stacja',
+          parameters: parametry,
+        }),
+      );
+    });
+
+    it('Identyfikacja: oznaczenie bez zmiany nie wysyła operacji; odmowa wraca do wartości modelu', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN, { designation: 'RPZ-W' }) });
+      const operacja = operacjaModelu({ error: 'Pole „Oznaczenie”: wpisz oznaczenie.' });
+      otworz();
+      const oznaczenie = screen.getByTestId('gpz-designation') as HTMLInputElement;
+      fireEvent.change(oznaczenie, { target: { value: ' RPZ-W ' } });
+      fireEvent.blur(oznaczenie);
+      expect(operacja).not.toHaveBeenCalled();
+      fireEvent.change(oznaczenie, { target: { value: 'RPZ-Y' } });
+      fireEvent.blur(oznaczenie);
+      await waitFor(() => expect(screen.getByTestId('gpz-card-error-identification')).toHaveTextContent(/Oznaczenie/));
+      expect(oznaczenie.value).toBe('RPZ-W');
+    });
+
+    it('Sieć zasilająca: Un strony WN = update_gpz_hv_voltage; wartość spoza pasma WN nie wychodzi', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN) });
+      const operacja = operacjaModelu();
+      otworz('hv-side');
+      const un = screen.getByTestId('gpz-supply-un') as HTMLInputElement;
+      expect(un.value).toBe('110');
+      fireEvent.change(un, { target: { value: '15' } });
+      fireEvent.blur(un);
+      expect(operacja).not.toHaveBeenCalled();
+      expect(screen.getByTestId('gpz-card-error-hv-side')).toHaveTextContent(/pasma wysokiego napięcia/);
+      fireEvent.change(un, { target: { value: '110' } });
+      fireEvent.blur(un);
+      expect(operacja).not.toHaveBeenCalled(); // ta sama wartość
+      fireEvent.change(un, { target: { value: '220' } });
+      fireEvent.blur(un);
+      await waitFor(() =>
+        expect(operacja).toHaveBeenCalledWith('case-gpz', 'update_gpz_hv_voltage', {
+          substation_ref: 'gpz/stacja',
+          voltage_kv: 220,
+        }),
+      );
+      expect(screen.queryByTestId('gpz-supply-un-typ')).not.toBeInTheDocument();
+    });
+
+    it('Sieć zasilająca: odmowa Un z powodu typu → wybór typu o tym napięciu; brak w katalogu mówi to wprost', async () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], ZRODLO_WN) });
+      const operacja = operacjaModelu({ error: 'TR1 110/15 kV ma napięcie górne 110 kV.' });
+      otworz('hv-side');
+      const un = screen.getByTestId('gpz-supply-un') as HTMLInputElement;
+      fireEvent.change(un, { target: { value: '220' } });
+      fireEvent.blur(un);
+      await waitFor(() => expect(screen.getByTestId('gpz-supply-un-typ-brak')).toHaveTextContent('220/15 kV'));
+      expect(operacja).toHaveBeenCalledWith('case-gpz', 'update_gpz_hv_voltage', {
+        substation_ref: 'gpz/stacja',
+        voltage_kv: 220,
+      });
+      expect(un.value).toBe('110');
+      expect(screen.getByTestId('gpz-card-error-hv-side')).toHaveTextContent(/napięcie górne/);
+    });
+
+    it('Sieć zasilająca: wybór typu przy odmowie = update_gpz_hv_voltage z wiązaniem typu (tylko typy Un/SN)', async () => {
+      // Model z Un 115 kV (typ spoza katalogu): powrót do 110 kV odmówiony bez typu 110/15 kV.
+      const snap = snapshotGpz([{ ...TR1, uhv_kv: 115 }], ZRODLO_WN);
+      (snap.buses[0] as { voltage_kv: number }).voltage_kv = 115;
+      useSnapshotStore.setState({ snapshot: snap });
+      const operacja = operacjaModelu({ error: 'TR1 ma napięcie górne 115 kV.' });
+      otworz('hv-side');
+      await waitFor(() => expect(katalogTransformatorow.fetchTransformerTypes).toHaveBeenCalled());
+      const un = screen.getByTestId('gpz-supply-un');
+      fireEvent.change(un, { target: { value: '110' } });
+      fireEvent.blur(un);
+      const wybor = (await screen.findByTestId('gpz-supply-un-typ-select')) as HTMLSelectElement;
+      const opcje = Array.from(wybor.options).map((o) => o.value).filter(Boolean);
+      expect(opcje).toEqual(['tr-wn-sn-110-15-25mva-yd11']); // 110/20 kV i SN/nN odfiltrowane
+      operacja.mockClear();
+      operacja.mockResolvedValue({ error: null });
+      fireEvent.change(wybor, { target: { value: 'tr-wn-sn-110-15-25mva-yd11' } });
+      await waitFor(() =>
+        expect(operacja).toHaveBeenCalledWith('case-gpz', 'update_gpz_hv_voltage', {
+          substation_ref: 'gpz/stacja',
+          voltage_kv: 110,
+          transformer_catalog_binding: expect.objectContaining({
+            catalog_namespace: 'TRAFO_SN_NN',
+            catalog_item_id: 'tr-wn-sn-110-15-25mva-yd11',
+          }),
+        }),
+      );
+      await waitFor(() => expect(screen.queryByTestId('gpz-supply-un-typ')).not.toBeInTheDocument());
+    });
+
+    it('Sieć zasilająca: równoważnik na szynach SN — Un tylko do odczytu (brak strony WN w modelu)', () => {
+      useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], { ...ZRODLO_WN, source_side: 'SN' }) });
+      otworz('hv-side');
+      const un = screen.getByTestId('gpz-supply-un');
+      expect(un.tagName).toBe('TD');
+      expect(un).toHaveTextContent('110');
+    });
+
     it('Sieć zasilająca po stronie 110 kV: wartości z modelu, S″k 110 kV = operacja na źródle', async () => {
       useSnapshotStore.setState({ snapshot: snapshotGpz([TR1], { ...ZRODLO_WN, sk3_min_mva: 2000 }) });
       const operacja = operacjaModelu();
       otworz('hv-side');
       expect(screen.getByTestId('gpz-supply-side')).toHaveTextContent(/szyna 110 kV/);
-      expect(screen.getByTestId('gpz-supply-un')).toHaveTextContent('110');
+      expect((screen.getByTestId('gpz-supply-un') as HTMLInputElement).value).toBe('110');
       const sk = screen.getByTestId('gpz-supply-sk3_hv_mva') as HTMLInputElement;
       expect(sk.value).toBe('3000');
       expect((screen.getByTestId('gpz-supply-rx_ratio') as HTMLInputElement).value).toBe('0,1');

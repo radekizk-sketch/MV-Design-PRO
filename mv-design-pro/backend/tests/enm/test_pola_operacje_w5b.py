@@ -435,7 +435,27 @@ def test_usuniecie_pustego_pola_nn() -> None:
     assert rezerwa["ref_id"] in wynik["changes"]["deleted_element_ids"]
 
 
-@pytest.mark.parametrize("zaleznosc", ["aparat", "przekladnik", "zksn"])
+def test_usuniecie_pola_zabiera_wlasny_aparat_i_zacisk() -> None:
+    """Pole bez zależności obcych usuwa się RAZEM z częściami własnymi — aparatem głównym
+    i zaciskiem (karta KATALOG-PRZEJECIE-PR). Do karty własny aparat był „zależnością", więc
+    żadnego pola z aparatem nie dało się usunąć, a przycisk „Usuń" tabeli pól był pozorny."""
+    snap = _wstawiona_stacja()
+    rekord = _pole_sn(snap, "LINIA_ODG")
+    aparat = rekord["equipment_refs"][0]
+    zacisk = rekord["terminal_bus_ref"]
+    wynik = execute_domain_operation(snap, "delete_element", {"element_ref": rekord["ref_id"]})
+    assert not wynik.get("error"), wynik.get("error")
+    assert sorted(wynik["changes"]["deleted_element_ids"]) == sorted(
+        [rekord["ref_id"], aparat, zacisk]
+    )
+    po = wynik["snapshot"]
+    assert pole(po, rekord["ref_id"]) is None
+    assert all(g["ref_id"] != aparat for g in po["branches"])
+    assert all(b["ref_id"] != zacisk for b in po["buses"])
+    assert _stacja(po)["ref_id"] == _stacja(snap)["ref_id"]  # stacja zostaje
+
+
+@pytest.mark.parametrize("zaleznosc", ["zacisk", "przekladnik", "zksn"])
 def test_usuniecie_pola_z_zaleznosciami_to_odmowa(zaleznosc: str) -> None:
     if zaleznosc == "zksn":
         snap, segment_ref = _seed_with_cable_segment()
@@ -451,9 +471,15 @@ def test_usuniecie_pola_z_zaleznosciami_to_odmowa(zaleznosc: str) -> None:
             },
         )
         ref = pola_zksn(snap, snap["branch_points"][0]["ref_id"])[-1]["ref_id"]
-    elif zaleznosc == "aparat":
+    elif zaleznosc == "zacisk":
+        # Element przyłączony do ZACISKU pola (odbiór) jest zależnością obcą — pole nie znika
+        # spod niego (dawny przypadek „aparat": aparat własny pola już nie blokuje usunięcia).
         snap = _wstawiona_stacja()
-        ref = _pole_sn(snap, "LINIA_ODG")["ref_id"]
+        rekord = _pole_sn(snap, "LINIA_ODG")
+        ref = rekord["ref_id"]
+        snap = _op(
+            snap, "add_load_sn", {"bus_ref": rekord["terminal_bus_ref"], "p_mw": 0.5, "q_mvar": 0.1}
+        )
     else:
         snap = _wstawiona_stacja()
         stacja = _stacja(snap)

@@ -635,6 +635,23 @@ KROKI: tuple[Krok, ...] = (
         "usunięcie sekcji WN",
         lambda k: {"substation_ref": k.wskazany("gpz"), "side": "hv", "section_id": "WN-1"},
     ),
+    Krok(
+        "napiecie_wn_gpz",
+        "update_gpz_hv_voltage",
+        "napięcie strony WN GPZ razem z typem transformatora 110/SN (jedna operacja)",
+        lambda k: {
+            "substation_ref": k.wskazany("gpz"),
+            "voltage_kv": 110.0,
+            "transformer_catalog_binding": _wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
+        },
+    ),
+    Krok(
+        "napiecie_wn_gpz_odmowa",
+        "update_gpz_hv_voltage",
+        "napięcie strony WN inne niż napięcie górne transformatora 110/SN",
+        lambda k: {"substation_ref": k.wskazany("gpz"), "voltage_kv": 115.0},
+        odmowa="gpz_hv_voltage.transformer_mismatch",
+    ),
     # --- Pola SN i elementy przyłączane do szyn SN ------------------------------------------
     Krok(
         "pole_sn",
