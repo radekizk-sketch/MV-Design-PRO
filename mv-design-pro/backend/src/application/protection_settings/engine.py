@@ -429,13 +429,14 @@ class ProtectionSettingsEngine:
         if sensitivity < 1.5:
             is_valid = False
             notes.append(
-                f"Czułość zabezpieczenia I> niewystarczająca: " f"k_cz = {sensitivity:.2f} < 1.5"
+                f"Czułość zabezpieczenia nadprądowego zwłocznego niewystarczająca: "
+                f"współczynnik czułości {sensitivity:.2f} < 1.5"
             )
 
         if i_setting > inp.i_nominal_a:
             notes.append(
-                f"Nastawa I> = {i_setting:.0f} A przekracza prąd znamionowy "
-                f"przewodu In = {inp.i_nominal_a:.0f} A"
+                f"Nastawa członu nadprądowego zwłocznego {i_setting:.0f} A przekracza prąd "
+                f"znamionowy przewodu {inp.i_nominal_a:.0f} A"
             )
 
         return DelayedSettings(
@@ -832,7 +833,7 @@ class ProtectionSettingsEngine:
         elif inp.lokalna_generacja_typ_zrodla == "FALOWNIKOWE":
             uwagi.append(
                 "Źródło falownikowe — ograniczony wkład do prądów zwarciowych "
-                "(typowo 1,1–1,5 In falownika)."
+                "(typowo 1,1–1,5 prądu znamionowego falownika)."
             )
 
         return LocalGenerationDiagnostic(
@@ -907,14 +908,14 @@ class ProtectionSettingsEngine:
                 "jednocześnie."
             )
             recommendations.append(
-                f"Okno nastaw jest sprzeczne (I_min = {i_min/1000:.2f} kA > "
-                f"I_max = {i_max/1000:.2f} kA)."
+                f"Okno nastaw jest sprzeczne (dolna granica {i_min/1000:.2f} kA przekracza "
+                f"górną {i_max/1000:.2f} kA)."
             )
             if limiting_max == "sensitivity":
                 recommendations.append(
-                    "Możliwe rozwiązania: obniż współczynnik k_b, zwiększ zapas wobec "
+                    "Możliwe rozwiązania: obniż współczynnik bezpieczeństwa, zwiększ zapas wobec "
                     "kolejnej strefy selektywności, lub przenieś punkt kolejnego "
-                    "zabezpieczenia (next_bus_id)."
+                    "zabezpieczenia (pole `next_bus_id`)."
                 )
             else:
                 recommendations.append(

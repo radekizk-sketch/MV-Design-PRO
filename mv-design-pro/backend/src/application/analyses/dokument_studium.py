@@ -442,7 +442,7 @@ def build_dokument_studium_view(
         "i nie zastępuje uzgodnień z operatorem systemu dystrybucyjnego.",
         "Sekwencja per wariant: zdolność przyłączeniowa → obszar pracy P–Q → "
         "pokrycie wymagań P–Q (ta sama, którą liczy kreator studium).",
-        f"Przebieg bazowy rozpływu mocy (run_id: {run.id}, odcisk snapshotu: "
+        f"Przebieg bazowy rozpływu mocy (identyfikator {run.id}, odcisk snapshotu: "
         f"{run.snapshot_hash}).",
         f"Typ katalogowy przekształtnika: {converter.name} ({converter.id}).",
         f"Profil operatora: {profile.operator_name_pl} ({profile.operator_id}).",
@@ -559,7 +559,7 @@ def render_dokument_studium_docx(view: dict[str, Any]) -> bytes:
     doc.add_heading("Założenia", level=1)
     doc.add_paragraph(
         f"Typ modułu: {zal['typ_katalogowy']['nazwa']} "
-        f"(Pmax {_fmt(zal['typ_katalogowy']['pmax_mw'], 'MW')})"
+        f"(moc maksymalna {_fmt(zal['typ_katalogowy']['pmax_mw'], 'MW')})"
     )
     doc.add_paragraph(f"Operator: {zal['operator']['nazwa']} ({zal['operator']['id']})")
     doc.add_paragraph(
@@ -703,7 +703,7 @@ def render_dokument_studium_pdf(view: dict[str, Any]) -> bytes:
     para("Założenia", size=12, bold=True)
     para(
         f"Typ modułu: {zal['typ_katalogowy']['nazwa']} "
-        f"(Pmax {_fmt(zal['typ_katalogowy']['pmax_mw'], 'MW')})"
+        f"(moc maksymalna {_fmt(zal['typ_katalogowy']['pmax_mw'], 'MW')})"
     )
     para(f"Operator: {zal['operator']['nazwa']} ({zal['operator']['id']})")
     para(

@@ -152,7 +152,8 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
         tryb = "PRAD_ZWARCIOWY"
     if request.sk3_mva is not None and sk_min_mva > request.sk3_mva:
         raise OdmowaDanychError(
-            f"Sk3 min ({sk_min_mva:g} MVA) przekracza Sk3 max ({request.sk3_mva:g} MVA) — dane "
+            f"Minimalna moc zwarciowa ({sk_min_mva:g} MVA) przekracza maksymalną "
+            f"({request.sk3_mva:g} MVA) — dane "
             "scenariusza minimalnego muszą być nie większe niż maksymalnego."
         )
     rx_min: float | None
@@ -499,7 +500,7 @@ class CableLayingConditionsRequest(BaseModel):
         if podane and self.set_name != NAZWA_WLASNE:
             raise OdmowaDanychError(
                 f"Współczynniki {', '.join(podane)} można podać tylko dla "
-                f"set_name = {NAZWA_WLASNE}; zestaw {self.set_name} ma własne wartości."
+                f"zestawu `{NAZWA_WLASNE}`; zestaw {self.set_name} ma własne wartości."
             )
         return self
 
@@ -582,7 +583,10 @@ def preview_cable_ampacity_derating(
         derating_set=derating.nazwa,
         utilization_pct=request.design_current_a / effective * 100.0,
         ok=request.design_current_a <= effective,
-        formula_ref="I'z = Iz · f_grunt · f_wiazka · f_grupa;  I_obl ≤ I'z",
+        formula_ref=(
+            r"I'_{z} = I_{z} \cdot f_{grunt} \cdot f_{wiazka} \cdot f_{grupa},"
+            r"\quad I_{obl} \le I'_{z}"
+        ),
         assumption_pl=derating.zalozenie_pl(),
     )
 

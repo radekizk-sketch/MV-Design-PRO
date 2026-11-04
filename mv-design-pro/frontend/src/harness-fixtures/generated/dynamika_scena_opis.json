@@ -332,7 +332,7 @@
         },
         {
           "nazwa": "r_f_ohm",
-          "etykieta_pl": "Rezystancja przejścia R_f",
+          "etykieta_pl": "Rezystancja przejścia",
           "jednostka": "Ω",
           "wymagane": true,
           "dopuszcza_brak": false,
@@ -342,7 +342,7 @@
         },
         {
           "nazwa": "x_f_ohm",
-          "etykieta_pl": "Reaktancja przejścia X_f",
+          "etykieta_pl": "Reaktancja przejścia",
           "jednostka": "Ω",
           "wymagane": true,
           "dopuszcza_brak": false,

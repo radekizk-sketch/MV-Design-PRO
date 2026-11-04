@@ -760,11 +760,13 @@ def _moc_odbioru_nn_mva(overrides: Mapping[str, Any], moc_czynna_kw: float) -> f
         )
         return moc_pozorna_z_czynnej_i_biernej_mva(moc_czynna_mw, moc_bierna_mvar)
     cos_phi = liczba_rzeczywista_parametru(
-        overrides.get("nn_load_cos_phi", COS_PHI_ODBIORU_NN_SZABLONU), "cosφ odbioru nN", "p.u."
+        overrides.get("nn_load_cos_phi", COS_PHI_ODBIORU_NN_SZABLONU),
+        "Współczynnik mocy odbioru nN",
+        "p.u.",
     )
     if not 0.0 < cos_phi <= 1.0:
         raise NieprawidlowyParametrSzablonuError(
-            f"cosφ odbioru nN musi należeć do przedziału (0; 1] (podano: {cos_phi:g})."
+            f"Współczynnik mocy odbioru nN musi należeć do przedziału (0; 1] (podano: {cos_phi:g})."
         )
     return moc_pozorna_z_nastawy_mva(moc_czynna_mw, cos_phi)
 

@@ -188,7 +188,7 @@ export function widokBrakDoboruFixture(): WidokDoboruKompensacji {
     })),
     dobor: null,
     powod_braku:
-      'Żadna bateria z katalogu nie zapewnia wymaganego cosφ ≥ 0.95 w punkcie bus-a '
+      'Żadna bateria z katalogu nie zapewnia wymaganego współczynnika mocy ≥ 0.95 w punkcie bus-a '
       + '(dzień); największy przegląd nie spełnia wymagania.',
   };
 }

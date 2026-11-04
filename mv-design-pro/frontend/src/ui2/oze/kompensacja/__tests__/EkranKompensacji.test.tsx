@@ -206,7 +206,7 @@ describe('EkranKompensacji — werdykt doboru (kryterium 1.2)', () => {
     await uruchomBieg(widokBrakDoboruFixture());
     expect(screen.queryByTestId('mvd-komp-dobor')).not.toBeInTheDocument();
     expect(screen.getByTestId('mvd-komp-powod-braku')).toHaveTextContent(
-      'Żadna bateria z katalogu nie zapewnia wymaganego cosφ',
+      'Żadna bateria z katalogu nie zapewnia wymaganego współczynnika mocy',
     );
   });
 });

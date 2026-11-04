@@ -62,7 +62,7 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
     ("analysis/boundary/identifier.py", "confidence=0.95,"): (1, "pewność identyfikacji"),
     (
         "analysis/sanity_bounds/parametry_linii_bounds.py",
-        'PasmoParametruLinii("b0_do_b1", "Stosunek B′0/B′1", "—", 0.35, 0.90),',
+        '"b0_do_b1", "Stosunek susceptancji zerowej do zgodnej", "—", 0.35, 0.90',
     ): (
         1,
         "górna granica pasma wiarygodności stosunku B′0/B′1 linii napowietrznej, nie c",

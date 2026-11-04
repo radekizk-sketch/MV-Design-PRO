@@ -503,16 +503,16 @@ def _aktualnosc_wobec_modelu(
 #: o uszkodzonym zapisie (karta #145: komunikat nie niesie klucza zapisu).
 _WIELKOSCI_WIERSZA_PL: dict[str, str] = {
     "c_factor": "współczynnik napięciowy c",
-    "un_v": "napięcie znamionowe sieci Un",
-    "ikss_a": "prąd zwarciowy początkowy I″k",
-    "ip_a": "prąd zwarciowy udarowy ip",
-    "ith_a": "prąd zastępczy cieplny I_th",
-    "sk_mva": "moc zwarciowa S″k",
+    "un_v": "napięcie znamionowe sieci",
+    "ikss_a": "prąd zwarciowy początkowy",
+    "ip_a": "prąd zwarciowy udarowy",
+    "ith_a": "prąd zastępczy cieplny",
+    "sk_mva": "moc zwarciowa",
     "rx_ratio": "stosunek R/X",
     "kappa": "współczynnik udaru κ",
     "tk_s": "czas trwania zwarcia Tk",
-    "ib_a": "prąd wyłączeniowy symetryczny Ib",
-    "tb_s": "czas wyłączania tb",
+    "ib_a": "prąd wyłączeniowy symetryczny",
+    "tb_s": "czas wyłączania",
 }
 
 

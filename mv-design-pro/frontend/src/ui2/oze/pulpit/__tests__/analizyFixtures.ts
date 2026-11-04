@@ -161,7 +161,7 @@ export function adekwatnoscQFixture(): WidokAdekwatnosciQ {
         u_min_pu: 0.95,
         u_max_pu: 1.05,
         deviation_pu: 0.02,
-        kind_pl: 'przekroczenie U_max',
+        kind_pl: 'przekroczenie napięcia maksymalnego',
         why_pl: '|V| = 1,07 p.u. > 1,05 p.u.',
         white_box: [],
       },

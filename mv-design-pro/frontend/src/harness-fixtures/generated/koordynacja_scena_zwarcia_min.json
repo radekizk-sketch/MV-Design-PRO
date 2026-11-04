@@ -1789,7 +1789,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "d71a75cf91f1bcce53a037f80114e2b0df09f25b99ce9966984090c57f66951c",
-      "result_hash": "fbf7a0982f36c20a7cc1c8b4093df2b89cf99918430ff4df583ce2a89680a37f",
+      "result_hash": "56debbbc6c6994d655d441162797da98377aa7c0d0a2ce3e525b9ae66f35257e",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -1800,7 +1800,7 @@
       "catalog_materialization_status": "partial",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+      "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
       "model_revision": 2,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",
@@ -1824,7 +1824,7 @@
     "breaking_time_seconds": {
       "wartosc": null,
       "pochodzenie": "punkt_zwarcia",
-      "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+      "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
     },
     "metoda": "IEC 60909",
     "scenariusz": "MIN"

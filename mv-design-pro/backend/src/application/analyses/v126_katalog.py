@@ -373,7 +373,7 @@ _PARAMETRY_SILNIKA: tuple[ParametrUzytkownika, ...] = (
     ),
     ParametrUzytkownika(
         "motors[].rated_power_factor",
-        "Znamionowy współczynnik mocy (cos φ)",
+        "Znamionowy współczynnik mocy",
         "-",
         False,
         "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana "
@@ -874,7 +874,7 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ),
         ),
         uwagi_metody_pl=(
-            "Nastawy rozruchowe U0/P0/I5 nie są prezentowane — solver nie ma dla nich "
+            "Nastawy rozruchowe (napięcie, moc i prąd startu) nie są prezentowane — solver nie ma dla nich "
             "udokumentowanej podstawy.",
         ),
     ),

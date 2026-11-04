@@ -500,7 +500,7 @@
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [
-        "Nastawy rozruchowe U0/P0/I5 nie są prezentowane — solver nie ma dla nich udokumentowanej podstawy."
+        "Nastawy rozruchowe (napięcie, moc i prąd startu) nie są prezentowane — solver nie ma dla nich udokumentowanej podstawy."
       ],
       "zakres_oceny": "kryterium"
     },
@@ -863,7 +863,7 @@
           },
           {
             "klucz": "motors[].rated_power_factor",
-            "nazwa_pl": "Znamionowy współczynnik mocy (cos φ)",
+            "nazwa_pl": "Znamionowy współczynnik mocy",
             "jednostka": "-",
             "wymagane": false,
             "opis_pl": "Z tabliczki silnika; puste = wartość robocza rejestru maszyn indukcyjnych (dana przyjęta wyniku)."

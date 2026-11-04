@@ -213,7 +213,7 @@ def _module_view(
                 "flicker_c": _r(flicker_c),
                 "pst_i": None,
                 "included": False,
-                "info_pl": "brak mocy znamionowej Sn w katalogu — moduł pominięty w sumowaniu",
+                "info_pl": "brak mocy znamionowej w katalogu — moduł pominięty w sumowaniu",
                 "white_box": [],
             },
             None,
@@ -226,7 +226,7 @@ def _module_view(
                 "flicker_c": _r(flicker_c),
                 "pst_i": None,
                 "included": False,
-                "info_pl": "brak mocy zwarciowej Sk'' w węźle — moduł pominięty w sumowaniu",
+                "info_pl": "brak mocy zwarciowej w węźle — moduł pominięty w sumowaniu",
                 "white_box": [],
             },
             None,
@@ -257,16 +257,17 @@ def _module_view(
 
 def _zalozenia_pl() -> list[str]:
     return [
-        "Emisja pojedynczego źródła: Pst_i = c · Sn / Sk'' (c — współczynnik emisji "
-        "migotania z certyfikatu urządzenia; metodyka IEC 61400-21-1).",
-        "Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik "
-        "m = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).",
+        "Emisja pojedynczego źródła: wskaźnik krótkotrwałego migotania równy współczynnikowi "
+        "emisji migotania z certyfikatu urządzenia razy stosunek mocy znamionowej źródła do "
+        "mocy zwarciowej węzła (metodyka IEC 61400-21-1).",
+        "Sumowanie emisji wielu źródeł w węźle: pierwiastek trzeciego stopnia z sumy "
+        "sześcianów wskaźników źródeł (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).",
         "Plt = Pst — założenie konserwatywne dla ciągłej, ustalonej emisji źródeł OZE "
         "(równe wartości Pst w oknie 2 h dają Plt = Pst z definicji Plt).",
         "Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg "
         "IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.",
-        "Szybka zmiana napięcia d = kmax · Sn / Sk'' · 100, kmax = 1 (założenie "
-        "konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; "
+        "Szybka zmiana napięcia w procentach: współczynnik zmiany napięcia równy 1 razy "
+        "stosunek mocy znamionowej do mocy zwarciowej węzła (założenie konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; "
         "IEC/TR 61000-3-7:2008, §5.5).",
     ]
 
@@ -321,7 +322,8 @@ def _bus_entry(
             _step(
                 "P_lt",
                 r"P_{lt} = P_{st}",
-                f"P_lt = P_st = {pst} (emisja ciągła, założenie konserwatywne)",
+                f"Wskaźnik długotrwałego migotania równy krótkotrwałemu: {pst} (emisja ciągła, "
+                "założenie konserwatywne)",
                 f"P_lt = {plt}",
             )
         )

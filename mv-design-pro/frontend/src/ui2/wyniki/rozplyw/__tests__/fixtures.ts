@@ -36,7 +36,7 @@ export function kryteriaNapieciaFixture(
       'Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby ' +
       'napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un.',
     podstawa_przekroczenie_pl:
-      'PN-EN 50160 — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.',
+      'PN-EN 50160 — zmiany napięcia zasilającego w warunkach normalnej pracy: napięcie znamionowe ± 10 %.',
     pasmo_wiarygodnosci_pct: 10.0,
     ...over,
   };

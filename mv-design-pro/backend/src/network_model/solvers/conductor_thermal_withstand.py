@@ -250,7 +250,7 @@ class ConductorThermalResult:
         default_factory=lambda: (
             "Nagrzewanie zwarciowe adiabatyczne (bez odpływu ciepła do otoczenia).",
             "Równoważna energia cieplna I²·t = const (IEC 60949).",
-            "I_th to prąd zastępczy cieplny z obliczeń zwarciowych, nie prąd początkowy.",
+            "Prąd zastępczy cieplny pochodzi z obliczeń zwarciowych — nie jest prądem początkowym.",
             "Czas t to rzeczywisty czas wyłączenia zabezpieczenia przy tym prądzie.",
             "Wytrzymałość przewodu odniesiona do 1 s według danych katalogowych.",
         )
@@ -711,7 +711,8 @@ STANDARD_REFS: tuple[dict[str, str], ...] = (
         "norma": "IEC 60909-0",
         "punkt": "§ 12",
         "tresc_pl": (
-            "Prąd zastępczy cieplny I_th = I″k·√(m+n) — to on jest porównywany w kryterium, "
+            "Prąd zastępczy cieplny (prąd początkowy razy pierwiastek z sumy współczynników "
+            "cieplnych składowej nieokresowej i okresowej) — to on jest porównywany w kryterium, "
             "nie prąd początkowy."
         ),
     },
@@ -1045,9 +1046,9 @@ def _build_k_justification(
     if wyprowadzone:
         assert k_derivation is not None  # mypy
         tozsamosc_pl = (
-            "k WYPROWADZONE ze wzoru IEC 60949 § 4 dla materiału żyły i pary "
+            "Współczynnik materiałowy WYPROWADZONY ze wzoru IEC 60949 § 4 dla materiału żyły i pary "
             "temperatur podanych w karcie katalogowej tego przewodu — katalog nie "
-            "podaje ani Ith(1 s), ani Jth(1 s). Stałe materiałowe są tablicowe dla "
+            "podaje ani prądu, ani gęstości prądu jednosekundowego. Stałe materiałowe są tablicowe dla "
             "zadeklarowanego materiału, nie założeniem co do materiału."
         )
         wyprowadzenie: dict[str, Any] | None = {

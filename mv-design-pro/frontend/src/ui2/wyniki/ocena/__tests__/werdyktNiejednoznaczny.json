@@ -362,7 +362,7 @@
     },
     {
       "etap": "E4",
-      "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
+      "kryterium_pl": "Wytrzymałość aparatury (wyłączalność, wytrzymałość dynamiczna i cieplna) na całym modelu",
       "powod_pl": "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla wskazanego aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
     },
     {

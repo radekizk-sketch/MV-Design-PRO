@@ -136,12 +136,12 @@
         "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
         "dane_przyjete": [
           {
-            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
             "wartosc": {
               "wartosc": 1.2e-06,
               "jednostka": "S/km"
             },
-            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
             "jakosc": "ESTIMATED"
           }
         ],
@@ -591,12 +591,12 @@
         "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
         "dane_przyjete": [
           {
-            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
             "wartosc": {
               "wartosc": 1.2e-06,
               "jednostka": "S/km"
             },
-            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
             "jakosc": "ESTIMATED"
           }
         ],
@@ -760,12 +760,12 @@
         "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć izolowana (brak uziemienia punktu neutralnego) (brak uziemienia).",
         "dane_przyjete": [
           {
-            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
+            "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
             "wartosc": {
               "wartosc": 1.2e-06,
               "jednostka": "S/km"
             },
-            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
             "jakosc": "ESTIMATED"
           }
         ],
@@ -820,7 +820,7 @@
         "x0_ohm_per_km": 0.31,
         "length_km": 2.4
       },
-      "substitution": "Z0 = 1.008 + j0.744 Ω (szereg Szyna SN↔Stacja B SN)",
+      "substitution": "impedancja zerowa 1.008 + j0.744 Ω (szereg Szyna SN↔Stacja B SN)",
       "substitution_latex": null,
       "result": {
         "z0_ohm": {
@@ -840,7 +840,7 @@
         "x0_ohm_per_km": 1.2,
         "length_km": 3.1
       },
-      "substitution": "Z0 = 1.426 + j3.72 Ω (szereg Stacja B SN↔Stacja C SN)",
+      "substitution": "impedancja zerowa 1.426 + j3.72 Ω (szereg Stacja B SN↔Stacja C SN)",
       "substitution_latex": null,
       "result": {
         "z0_ohm": {
@@ -929,7 +929,7 @@
     },
     {
       "key": "tr_z0_zt[tr_hv_sn]",
-      "title": "Transformator TR 110/15: impedancja zerowa Z_T0",
+      "title": "Transformator TR 110/15: impedancja zerowa",
       "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
       "inputs": {
         "uk_percent": 12.0,
@@ -937,7 +937,7 @@
         "sn_mva": 25.0,
         "s_base_mva": 100.0
       },
-      "substitution": "Z_T0 = 0.0048 + j0.119904 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.479616 pu (na S_base = 100 MVA)",
+      "substitution": "impedancja zerowa 0.0048 + j0.119904 pu na moc znamionową 25 MVA; 0.0192 + j0.479616 pu na moc bazową 100 MVA",
       "substitution_latex": null,
       "result": {
         "z_t0_pu_sn": {
@@ -980,7 +980,7 @@
           "im": 0.479615846277
         }
       },
-      "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+      "notes": "Połączenie szeregowe: droga GN↔DN — impedancja zerowa transformatora plus trzykrotne impedancje uziemienia punktów neutralnych obu stron. Bocznik do ziemi po stronie GN albo DN — impedancja zerowa transformatora plus trzykrotna impedancja uziemienia tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
     },
     {
       "key": "tr_z0_parse[tr_sn_nn]",
@@ -1010,7 +1010,7 @@
     },
     {
       "key": "tr_z0_zt[tr_sn_nn]",
-      "title": "Transformator TR 15/0.4: impedancja zerowa Z_T0",
+      "title": "Transformator TR 15/0.4: impedancja zerowa",
       "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
       "inputs": {
         "uk_percent": 4.5,
@@ -1018,7 +1018,7 @@
         "sn_mva": 0.63,
         "s_base_mva": 100.0
       },
-      "substitution": "Z_T0 = 0.0103175 + j0.0438013 pu (na S_rT = 0.63 MVA); Z_T0 = 1.63769 + j6.95258 pu (na S_base = 100 MVA)",
+      "substitution": "impedancja zerowa 0.0103175 + j0.0438013 pu na moc znamionową 0.63 MVA; 1.63769 + j6.95258 pu na moc bazową 100 MVA",
       "substitution_latex": null,
       "result": {
         "z_t0_pu_sn": {
@@ -1061,7 +1061,7 @@
           "im": 6.95258029104
         }
       },
-      "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+      "notes": "Połączenie szeregowe: droga GN↔DN — impedancja zerowa transformatora plus trzykrotne impedancje uziemienia punktów neutralnych obu stron. Bocznik do ziemi po stronie GN albo DN — impedancja zerowa transformatora plus trzykrotna impedancja uziemienia tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
     },
     {
       "key": "z0_numerical_reference",
@@ -1176,7 +1176,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "90bab26e9e06effd30cf6b13addc27c3b5c273d9786c3d3ccc71f6d9229a062a",
+      "result_hash": "3a63fc8a0fe848a991750d7cc76cf38c01e78bd6144473930c232c07f1172f85",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -1187,7 +1187,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+      "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",
@@ -1211,7 +1211,7 @@
     "breaking_time_seconds": {
       "wartosc": null,
       "pochodzenie": "punkt_zwarcia",
-      "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+      "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
     },
     "metoda": "IEC 60909",
     "scenariusz": "MAX"

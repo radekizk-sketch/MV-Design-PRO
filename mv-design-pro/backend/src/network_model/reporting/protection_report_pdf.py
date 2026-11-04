@@ -253,7 +253,12 @@ def export_protection_coordination_to_pdf(
     # 5) SENSITIVITY CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Czułość — iloraz I_min / I_s", left_margin, font_size=14, bold=True)
+    draw_text(
+        "Czułość — iloraz minimalnego prądu zwarciowego i nastawy",
+        left_margin,
+        font_size=14,
+        bold=True,
+    )
     y -= 3 * mm
 
     sensitivity_checks = result.get("sensitivity_checks", [])
@@ -294,7 +299,12 @@ def export_protection_coordination_to_pdf(
     # 6) SELECTIVITY CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Selektywność czasowa — odstęp t_nad − t_pod", left_margin, font_size=14, bold=True)
+    draw_text(
+        "Selektywność czasowa — odstęp czasu zabezpieczenia nadrzędnego i podrzędnego",
+        left_margin,
+        font_size=14,
+        bold=True,
+    )
     y -= 3 * mm
 
     selectivity_checks = result.get("selectivity_checks", [])
@@ -346,7 +356,9 @@ def export_protection_coordination_to_pdf(
     # 7) OVERLOAD CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Przeciążalność — iloraz I_s / I_rob", left_margin, font_size=14, bold=True)
+    draw_text(
+        "Przeciążalność — iloraz nastawy i prądu roboczego", left_margin, font_size=14, bold=True
+    )
     y -= 3 * mm
 
     overload_checks = result.get("overload_checks", [])

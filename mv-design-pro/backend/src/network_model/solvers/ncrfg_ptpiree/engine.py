@@ -83,7 +83,11 @@ from .contracts import (
     technologia_modulu,
     werdykt_maszynowy,
 )
-from .stosowalnosc import NAZWA_TECHNOLOGII_PL, stosowalnosc_testu, stosowalnosc_wymagania
+from .stosowalnosc import (
+    NAZWA_TECHNOLOGII_PL,
+    stosowalnosc_testu,
+    stosowalnosc_wymagania,
+)
 
 #: 2.0 (plan AB §6, 2026-09-22/23): kontrakt V2 — rekord ``OcenaKryterium`` per test, kryteria
 #: z profilu (zero liczb kryterium w kodzie), jedna funkcja stosowalności, T12 wg NC RfG
@@ -123,7 +127,11 @@ _BRAK_BIEGU_DYNAMIKI = (
 
 def _canonical_payload(payload: Any) -> str:
     return json.dumps(
-        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
     )
 
 
@@ -133,7 +141,9 @@ def _hash(payload: Any) -> str:
 
 def _round(value: float, digits: int = 6) -> float:
     if not math.isfinite(value):
-        raise ValueError(f"Wartość nieskończona albo nieokreślona w wyniku testu: {value!r}.")
+        raise ValueError(
+            f"Wartość nieskończona albo nieokreślona w wyniku testu: {value!r}."
+        )
     return round(value, digits)
 
 
@@ -434,7 +444,8 @@ def _flagi(*pozycje: tuple[str, bool | None]) -> list[tuple[str, Wielkosc]]:
 
 def _obwiednia_pl(punkty: Sequence[NcRfgRideThroughPoint]) -> str:
     return "; ".join(
-        f"t = {format_liczba(p.time_s)} s: {format_liczba(p.voltage_pu)} {_J_U}" for p in punkty
+        f"t = {format_liczba(p.time_s)} s: {format_liczba(p.voltage_pu)} {_J_U}"
+        for p in punkty
     )
 
 
@@ -457,7 +468,9 @@ class NcRfgPtpireeSolver:
         modułu spoza żądania albo certyfikat w biegu z żądania to ``ValueError``.
         """
         znane = {definicja.test_id for definicja in TEST_CATALOG}
-        wymuszone = {item.strip().upper() for item in request.requested_test_ids if item.strip()}
+        wymuszone = {
+            item.strip().upper() for item in request.requested_test_ids if item.strip()
+        }
         nieznane = sorted(wymuszone - znane)
         if nieznane:
             raise ValueError(
@@ -504,9 +517,13 @@ class NcRfgPtpireeSolver:
             "solver_version": NCRFG_PTPiREE_SOLVER_VERSION,
             "input_hash": input_hash,
             "modules": [module.model_dump(mode="json") for module in modules],
-            "test_catalog": [definition.model_dump(mode="json") for definition in TEST_CATALOG],
+            "test_catalog": [
+                definition.model_dump(mode="json") for definition in TEST_CATALOG
+            ],
             "white_box_trace": [step.model_dump(mode="json") for step in trace.steps],
-            "report_pl": self._build_report(modules, procedura.tytul, procedura.wydanie),
+            "report_pl": self._build_report(
+                modules, procedura.tytul, procedura.wydanie
+            ),
         }
         return NcRfgPtpireeRunResult.model_validate(
             {**envelope, "deterministic_hash": _hash(envelope)}
@@ -630,15 +647,21 @@ class NcRfgPtpireeSolver:
                 "modul_istniejacy": k.modul.modul_istniejacy,
                 "wymagania_testu": [w.id for w in wymagania],
                 "zakres_procedury": list(definicja.default_for_modules),
-                "wymagany_bez_certyfikatu": list(definicja.required_without_certificate_for),
-                "certyfikat_rekord": None if k.certyfikat is None else k.certyfikat.rekord_id,
+                "wymagany_bez_certyfikatu": list(
+                    definicja.required_without_certificate_for
+                ),
+                "certyfikat_rekord": (
+                    None if k.certyfikat is None else k.certyfikat.rekord_id
+                ),
             },
             f"dotyczy = {stosowalnosc.dotyczy}",
             {"dotyczy": stosowalnosc.dotyczy, "powod_pl": stosowalnosc.powod_pl},
             "Wartości logiczne bez jednostek.",
         )
         spec = self._specyfikacja(definicja, k)
-        ocena = self._ocena(definicja, k, stosowalnosc, wymagania, spec, krok_stosowalnosci)
+        ocena = self._ocena(
+            definicja, k, stosowalnosc, wymagania, spec, krok_stosowalnosci
+        )
         krok_oceny = k.trace.add(
             definicja.test_id,
             "ocena_kryterium",
@@ -710,7 +733,10 @@ class NcRfgPtpireeSolver:
                 stan="UNVALIDATED_INPUT",
                 dane_przyjete=tuple(
                     DanaPrzyjeta(
-                        nazwa_pl=nazwa, wartosc=wartosc, powod_pl=_POWOD_DANEJ_KLIENTA, jakosc=None
+                        nazwa_pl=nazwa,
+                        wartosc=wartosc,
+                        powod_pl=_POWOD_DANEJ_KLIENTA,
+                        jakosc=None,
                     )
                     for nazwa, wartosc in dict.fromkeys(dane)
                 ),
@@ -744,7 +770,8 @@ class NcRfgPtpireeSolver:
             ),
             slad=[
                 OdnosnikSladu(
-                    krok=ref, opis_pl=f"krok śladu testu {definicja.test_id} ({ref.split(':')[3]})"
+                    krok=ref,
+                    opis_pl=f"krok śladu testu {definicja.test_id} ({ref.split(':')[3]})",
                 )
                 for ref in kroki
             ],
@@ -752,7 +779,9 @@ class NcRfgPtpireeSolver:
             braki_dodatkowe=spec.braki,
         )
 
-    def _specyfikacja(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _specyfikacja(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         test_id = definicja.test_id
         if test_id in {"T01", "T02", "T03"}:
             return self._statyzm(definicja, k)
@@ -780,20 +809,29 @@ class NcRfgPtpireeSolver:
             return self._obserwowalnosc(definicja, k)
         if test_id == "T20":
             return self._thd_u(definicja, k)
-        raise ValueError(f"Test {test_id} nie ma zdefiniowanego kryterium — kanon T01–T20.")
+        raise ValueError(
+            f"Test {test_id} nie ma zdefiniowanego kryterium — kanon T01–T20."
+        )
 
     # ------------------------------------------------------------------
     # Kryteria główne testów
     # ------------------------------------------------------------------
 
-    def _statyzm(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _statyzm(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         """T01–T03: statyzm P(f) modułu w tolerancji wokół wartości wymaganej (pasmo).
 
         Warunek strefy martwej i odpowiedź ΔP w punkcie częstotliwości testu są zapisane w
         śladzie informacyjnie — procedura nie rozróżnia ich jako osobnych testów."""
         modul, odpowiedz = k.modul, k.profile.frequency_response
-        kryteria, f_n = k.profile.kryteria_akceptacji, k.profile.czestotliwosc_znamionowa_hz
-        identyfikator = {"T01": "lfsm_o", "T02": "lfsm_u", "T03": "fsm"}[definicja.test_id]
+        kryteria, f_n = (
+            k.profile.kryteria_akceptacji,
+            k.profile.czestotliwosc_znamionowa_hz,
+        )
+        identyfikator = {"T01": "lfsm_o", "T02": "lfsm_u", "T03": "fsm"}[
+            definicja.test_id
+        ]
         spec = _Specyfikacja(
             kryterium_id=f"{identyfikator}.statyzm",
             kryterium=Kryterium(
@@ -807,13 +845,21 @@ class NcRfgPtpireeSolver:
                 "nie rozróżnia ich jako osobnych testów)"
             ),
         )
-        spec.dane.append(_flaga("funkcja P(f) modułu (has_pf_droop)", modul.has_pf_droop))
+        spec.dane.append(
+            _flaga("funkcja P(f) modułu (has_pf_droop)", modul.has_pf_droop)
+        )
         tolerancja = kryteria.tolerancja_statyzmu_pp
         if tolerancja > 0:
             spec.limit = LimitKryterium(
                 pasmo=(
-                    Wielkosc(wartosc=odpowiedz.pf_droop_percent - tolerancja, jednostka=_J_PROCENT),
-                    Wielkosc(wartosc=odpowiedz.pf_droop_percent + tolerancja, jednostka=_J_PROCENT),
+                    Wielkosc(
+                        wartosc=odpowiedz.pf_droop_percent - tolerancja,
+                        jednostka=_J_PROCENT,
+                    ),
+                    Wielkosc(
+                        wartosc=odpowiedz.pf_droop_percent + tolerancja,
+                        jednostka=_J_PROCENT,
+                    ),
                 ),
                 podstawa=_najslabsza(odpowiedz.zrodlo, kryteria.zrodlo),
                 zakres_stosowalnosci_pl=f"statyzm wymagany ± tolerancja testu ({definicja.test_id})",
@@ -878,7 +924,10 @@ class NcRfgPtpireeSolver:
                 "strefa_martwa_w_tolerancji": modul.dead_band_hz
                 <= odpowiedz.dead_band_hz + kryteria.tolerancja_strefy_martwej_hz,
             }
-            spec.metrics = {"delta_p_kw": _round(delta_p_kw, 3), "frequency_hz": czestotliwosc}
+            spec.metrics = {
+                "delta_p_kw": _round(delta_p_kw, 3),
+                "frequency_hz": czestotliwosc,
+            }
         spec.kroki.append(
             k.trace.add(
                 definicja.test_id,
@@ -894,7 +943,9 @@ class NcRfgPtpireeSolver:
         )
         return spec
 
-    def _rampa_odbudowy(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _rampa_odbudowy(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         """T04: tempo zmiany mocy modułu nie mniejsze niż wymagany udział tempa profilu."""
         modul, odpowiedz = k.modul, k.profile.frequency_response
         kryteria = k.profile.kryteria_akceptacji
@@ -918,10 +969,14 @@ class NcRfgPtpireeSolver:
             ),
         )
         if modul.ramp_rate_pct_per_min is None:
-            spec.braki.append("tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)")
+            spec.braki.append(
+                "tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)"
+            )
             return spec
         rampa = Wielkosc(wartosc=modul.ramp_rate_pct_per_min, jednostka=_J_RAMPA)
-        spec.dane.append(("tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)", rampa))
+        spec.dane.append(
+            ("tempo zmiany mocy czynnej modułu (ramp_rate_pct_per_min)", rampa)
+        )
         spec.wynik = WynikKryterium(
             wielkosc_pl="tempo zmiany mocy czynnej modułu (zadeklarowane)",
             symbol_latex="r",
@@ -960,9 +1015,19 @@ class NcRfgPtpireeSolver:
             if t05
             else kryteria.udzial_mocy_komendy_zmniejszenia
         )
-        krotnosc = kryteria.krotnosc_czasu_ustalenia if t05 else kryteria.krotnosc_czasu_komendy
-        minimum = kryteria.min_czas_ustalenia_min if t05 else kryteria.min_czas_komendy_min
-        funkcja = modul.active_power_control_enabled if t05 else modul.reduction_generation_enabled
+        krotnosc = (
+            kryteria.krotnosc_czasu_ustalenia
+            if t05
+            else kryteria.krotnosc_czasu_komendy
+        )
+        minimum = (
+            kryteria.min_czas_ustalenia_min if t05 else kryteria.min_czas_komendy_min
+        )
+        funkcja = (
+            modul.active_power_control_enabled
+            if t05
+            else modul.reduction_generation_enabled
+        )
         nazwa_funkcji = (
             "regulacja mocy czynnej (active_power_control_enabled)"
             if t05
@@ -972,7 +1037,9 @@ class NcRfgPtpireeSolver:
         czas_odniesienia = (1 - udzial) / _ulamek(odpowiedz.ramp_rate_pct_per_min)
         dopuszczalny = max(krotnosc * czas_odniesienia, minimum)
         spec = _Specyfikacja(
-            kryterium_id="regulacja_p.czas_ustalenia" if t05 else "zmniejszenie_generacji.czas",
+            kryterium_id=(
+                "regulacja_p.czas_ustalenia" if t05 else "zmniejszenie_generacji.czas"
+            ),
             kryterium=Kryterium(
                 opis_pl=(
                     f"{definicja.ability_pl}: czas przejścia do "
@@ -1040,14 +1107,18 @@ class NcRfgPtpireeSolver:
         )
         return spec
 
-    def _zakres_q(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _zakres_q(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         """T06/T07/T09: pokrycie wymaganego zakresu mocy biernej — ocena strony zakresu o
         mniejszym zapasie (strona dolna: Q_min ≤ Q_wym,min; górna: Q_max ≥ Q_wym,max).
 
         Margines rekordu jest zapasem strony krytycznej, więc najmniejszy zapas pokrycia jest
         zawsze tym, który orzeka; zapas drugiej strony jest w śladzie."""
         modul, bierna = k.modul, k.profile.reactive_power
-        identyfikator = {"T06": "regulacja_u", "T07": "regulacja_q", "T09": "q"}[definicja.test_id]
+        identyfikator = {"T06": "regulacja_u", "T07": "regulacja_q", "T09": "q"}[
+            definicja.test_id
+        ]
         podstawa_limitu = bierna.zrodlo
         spec = _Specyfikacja(
             kryterium_id=f"{identyfikator}.zakres_mocy_biernej",
@@ -1070,15 +1141,26 @@ class NcRfgPtpireeSolver:
         potrzebna_krzywa = definicja.test_id in {"T06", "T07"}
         if potrzebna_krzywa:
             spec.dane.append(
-                _flaga("krzywa Q(U) albo tryb regulacji Q (has_qu_curve)", modul.has_qu_curve)
+                _flaga(
+                    "krzywa Q(U) albo tryb regulacji Q (has_qu_curve)",
+                    modul.has_qu_curve,
+                )
             )
         for nazwa, wartosc in (
-            ("dolna granica zakresu Q modułu (q_range_pct_pn_min)", modul.q_range_pct_pn_min),
-            ("górna granica zakresu Q modułu (q_range_pct_pn_max)", modul.q_range_pct_pn_max),
+            (
+                "dolna granica zakresu Q modułu (q_range_pct_pn_min)",
+                modul.q_range_pct_pn_min,
+            ),
+            (
+                "górna granica zakresu Q modułu (q_range_pct_pn_max)",
+                modul.q_range_pct_pn_max,
+            ),
         ):
             if wartosc is not None:
                 spec.dane.append((nazwa, Wielkosc(wartosc=wartosc, jednostka=_J_Q)))
-        braki_danych = modul.q_range_pct_pn_min is None or modul.q_range_pct_pn_max is None
+        braki_danych = (
+            modul.q_range_pct_pn_min is None or modul.q_range_pct_pn_max is None
+        )
         if braki_danych or (potrzebna_krzywa and not modul.has_qu_curve):
             spec.limit = LimitKryterium(
                 wartosc=Wielkosc(wartosc=bierna.q_range_pct_pn_max, jednostka=_J_Q),
@@ -1088,17 +1170,28 @@ class NcRfgPtpireeSolver:
             )
             spec.braki.append(
                 "zakres mocy biernej modułu (q_range_pct_pn_min, q_range_pct_pn_max)"
-                + (" z deklaracją krzywej Q(U) (has_qu_curve)" if potrzebna_krzywa else "")
+                + (
+                    " z deklaracją krzywej Q(U) (has_qu_curve)"
+                    if potrzebna_krzywa
+                    else ""
+                )
             )
             return spec
-        assert modul.q_range_pct_pn_min is not None and modul.q_range_pct_pn_max is not None
+        assert (
+            modul.q_range_pct_pn_min is not None
+            and modul.q_range_pct_pn_max is not None
+        )
         zapas_dolny = bierna.q_range_pct_pn_min - modul.q_range_pct_pn_min
         zapas_gorny = modul.q_range_pct_pn_max - bierna.q_range_pct_pn_max
         dolna = zapas_dolny <= zapas_gorny
         relacja: Relacja = "NIE_WIECEJ" if dolna else "NIE_MNIEJ"
         wartosc_modulu = modul.q_range_pct_pn_min if dolna else modul.q_range_pct_pn_max
-        wartosc_wymagana = bierna.q_range_pct_pn_min if dolna else bierna.q_range_pct_pn_max
-        strona = "dolna (moc bierna minimalna)" if dolna else "górna (moc bierna maksymalna)"
+        wartosc_wymagana = (
+            bierna.q_range_pct_pn_min if dolna else bierna.q_range_pct_pn_max
+        )
+        strona = (
+            "dolna (moc bierna minimalna)" if dolna else "górna (moc bierna maksymalna)"
+        )
         spec.kryterium = Kryterium(
             opis_pl=(
                 f"{definicja.ability_pl}: pokrycie wymaganego zakresu mocy biernej — strona "
@@ -1135,8 +1228,14 @@ class NcRfgPtpireeSolver:
                 "zapas_dolny = Q_wym,min − Q_min; zapas_gorny = Q_max − Q_wym,max; orzeka "
                 "strona o mniejszym zapasie",
                 {
-                    "zakres_modulu_pu": [modul.q_range_pct_pn_min, modul.q_range_pct_pn_max],
-                    "zakres_wymagany_pu": [bierna.q_range_pct_pn_min, bierna.q_range_pct_pn_max],
+                    "zakres_modulu_pu": [
+                        modul.q_range_pct_pn_min,
+                        modul.q_range_pct_pn_max,
+                    ],
+                    "zakres_wymagany_pu": [
+                        bierna.q_range_pct_pn_min,
+                        bierna.q_range_pct_pn_max,
+                    ],
                     "p_max_kw": modul.p_max_kw,
                 },
                 f"min({format_liczba(zapas_dolny)}, {format_liczba(zapas_gorny)})",
@@ -1147,12 +1246,15 @@ class NcRfgPtpireeSolver:
                     "q_min_kvar": spec.metrics["q_min_kvar"],
                     "q_max_kvar": spec.metrics["q_max_kvar"],
                 },
-                "p.u. (P_n) − p.u. (P_n) = p.u. (P_n); kW · p.u. = kvar.",
+                "jednostka względna mocy znamionowej minus jednostka względna mocy znamionowej daje "
+                "jednostkę względną mocy znamionowej; kilowaty razy jednostka względna dają kvar.",
             )
         )
         return spec
 
-    def _cos_phi(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _cos_phi(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         """T08: najmniejszy cosφ modułu nie większy niż wymagany (zakres regulacji cosφ)."""
         modul, bierna = k.modul, k.profile.reactive_power
         spec = _Specyfikacja(
@@ -1173,7 +1275,9 @@ class NcRfgPtpireeSolver:
             spec.braki.append("najmniejszy współczynnik mocy modułu (cos_phi_min)")
             return spec
         wartosc = Wielkosc(wartosc=modul.cos_phi_min, jednostka=_J_BEZWYMIAROWA)
-        spec.dane.append(("najmniejszy współczynnik mocy modułu (cos_phi_min)", wartosc))
+        spec.dane.append(
+            ("najmniejszy współczynnik mocy modułu (cos_phi_min)", wartosc)
+        )
         spec.wynik = WynikKryterium(
             wielkosc_pl="najmniejszy współczynnik mocy modułu (zadeklarowany)",
             symbol_latex=r"\cos\varphi_{\min}",
@@ -1243,7 +1347,10 @@ class NcRfgPtpireeSolver:
             spec.braki.append("moc minimalna modułu (p_min_kw)")
             return spec
         spec.dane.append(
-            ("moc minimalna modułu (p_min_kw)", Wielkosc(wartosc=modul.p_min_kw, jednostka=_J_KW))
+            (
+                "moc minimalna modułu (p_min_kw)",
+                Wielkosc(wartosc=modul.p_min_kw, jednostka=_J_KW),
+            )
         )
         spojna = modul.p_min_kw < modul.p_max_kw
         spec.wynik = WynikKryterium(
@@ -1265,7 +1372,8 @@ class NcRfgPtpireeSolver:
 
         Dla modułu typu innego niż A wymaganie formalnie wynika z art. 14 ust. 2 (bez czasu
         w rozporządzeniu) — procedura stosuje ten sam czas, więc podstawa limitu ma stan
-        najsłabszej z podstaw (czas z NC RfG i kryteria akceptacji procedury) z uwagą."""
+        najsłabszej z podstaw (czas z NC RfG i kryteria akceptacji procedury) z uwagą.
+        """
         modul = k.modul
         wymaganie = k.profile.zaprzestanie_generacji
         podstawa = wymaganie.zrodlo
@@ -1301,7 +1409,9 @@ class NcRfgPtpireeSolver:
             spec.dane.append(
                 (
                     "czas zaprzestania generacji (cease_generation_time_s)",
-                    Wielkosc(wartosc=modul.cease_generation_time_s, jednostka=_J_SEKUNDY),
+                    Wielkosc(
+                        wartosc=modul.cease_generation_time_s, jednostka=_J_SEKUNDY
+                    ),
                 )
             )
         if not modul.stop_generation_enabled or modul.cease_generation_time_s is None:
@@ -1313,7 +1423,9 @@ class NcRfgPtpireeSolver:
         spec.wynik = WynikKryterium(
             wielkosc_pl="czas zaprzestania generacji po poleceniu (zadeklarowany)",
             symbol_latex=r"t_{\mathrm{zap}}",
-            wartosc=Wielkosc(wartosc=modul.cease_generation_time_s, jednostka=_J_SEKUNDY),
+            wartosc=Wielkosc(
+                wartosc=modul.cease_generation_time_s, jednostka=_J_SEKUNDY
+            ),
             metoda="DEKLARACJA",
         )
         spec.metrics = {"cease_generation_time_s": modul.cease_generation_time_s}
@@ -1347,9 +1459,13 @@ class NcRfgPtpireeSolver:
         lvrt = definicja.test_id == "T14"
         punkty = poziomy.lvrt if lvrt else poziomy.hvrt
         nazwa = "zapadu" if lvrt else "wzrostu"
-        relacja_pl = "nie niższe niż obwiednia LVRT" if lvrt else "nie wyższe niż obwiednia HVRT"
+        relacja_pl = (
+            "nie niższe niż obwiednia LVRT" if lvrt else "nie wyższe niż obwiednia HVRT"
+        )
         spec = _Specyfikacja(
-            kryterium_id="frt.pozostanie_w_pracy_lvrt" if lvrt else "frt.pozostanie_w_pracy_hvrt",
+            kryterium_id=(
+                "frt.pozostanie_w_pracy_lvrt" if lvrt else "frt.pozostanie_w_pracy_hvrt"
+            ),
             kryterium=Kryterium(
                 opis_pl=(
                     f"Pozostanie modułu w pracy podczas {nazwa} napięcia (moduł nie odłączony przez "
@@ -1362,7 +1478,9 @@ class NcRfgPtpireeSolver:
                     f"{', '.join(poziomy.lvrt_typy if lvrt else poziomy.hvrt_typy)}): "
                     f"{_obwiednia_pl(punkty)}"
                 ),
-                warunek_wstepny_podstawa=poziomy.lvrt_zrodlo if lvrt else poziomy.hvrt_zrodlo,
+                warunek_wstepny_podstawa=(
+                    poziomy.lvrt_zrodlo if lvrt else poziomy.hvrt_zrodlo
+                ),
             ),
             braki=[_BRAK_BIEGU_DYNAMIKI],
         )
@@ -1370,10 +1488,14 @@ class NcRfgPtpireeSolver:
             k.trace.add(
                 definicja.test_id,
                 "pozostanie_w_pracy_bez_biegu",
-                "moduł przyłączony ∀t, gdy U(t) " + ("≥" if lvrt else "≤") + " U_obwiedni(t)",
+                "moduł przyłączony ∀t, gdy U(t) "
+                + ("≥" if lvrt else "≤")
+                + " U_obwiedni(t)",
                 {
                     "obwiednia": [p.model_dump(mode="json") for p in punkty],
-                    "deklaracja_krzywej": modul.has_lvrt_curve if lvrt else modul.has_hvrt_curve,
+                    "deklaracja_krzywej": (
+                        modul.has_lvrt_curve if lvrt else modul.has_hvrt_curve
+                    ),
                     "deklaracja_modelu_dynamicznego": modul.has_dynamic_model,
                 },
                 "brak przebiegu U(t) i stanu przyłączenia modułu z biegu dynamiki — "
@@ -1384,7 +1506,9 @@ class NcRfgPtpireeSolver:
         )
         return spec
 
-    def _odbudowa_p(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _odbudowa_p(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         """T16: czas odbudowy mocy czynnej po zakłóceniu (zachowanie dynamiczne — wartość
         zadeklarowana wyłącznie informacyjnie; tempo odbudowy w śladzie)."""
         modul, odbudowa = k.modul, k.profile.p_recovery_after_fault
@@ -1396,7 +1520,9 @@ class NcRfgPtpireeSolver:
                 relacja="NIE_WIECEJ",
             ),
             limit=LimitKryterium(
-                wartosc=Wielkosc(wartosc=odbudowa.p_recovery_time_s, jednostka=_J_SEKUNDY),
+                wartosc=Wielkosc(
+                    wartosc=odbudowa.p_recovery_time_s, jednostka=_J_SEKUNDY
+                ),
                 podstawa=odbudowa.zrodlo,
                 zakres_stosowalnosci_pl=(
                     f"moduły typu {', '.join(odbudowa.required_for_modules)}; tempo odbudowy "
@@ -1408,7 +1534,9 @@ class NcRfgPtpireeSolver:
         )
         if modul.p_recovery_time_s is not None:
             wartosc = Wielkosc(wartosc=modul.p_recovery_time_s, jednostka=_J_SEKUNDY)
-            spec.dane.append(("czas odbudowy mocy czynnej (p_recovery_time_s)", wartosc))
+            spec.dane.append(
+                ("czas odbudowy mocy czynnej (p_recovery_time_s)", wartosc)
+            )
             spec.wynik = WynikKryterium(
                 wielkosc_pl="czas odbudowy mocy czynnej (wartość zadeklarowana)",
                 symbol_latex=r"t_{\mathrm{odb}}",
@@ -1432,7 +1560,9 @@ class NcRfgPtpireeSolver:
         )
         return spec
 
-    def _prad_bierny(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _prad_bierny(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         """T17: wzmocnienie prądu biernego podczas zwarcia (zachowanie dynamiczne — wartość
         zadeklarowana wyłącznie informacyjnie)."""
         modul, kryteria = k.modul, k.profile.kryteria_akceptacji
@@ -1458,8 +1588,12 @@ class NcRfgPtpireeSolver:
             braki=[_BRAK_BIEGU_DYNAMIKI],
         )
         if modul.reactive_current_gain is not None:
-            wartosc = Wielkosc(wartosc=modul.reactive_current_gain, jednostka=_J_BEZWYMIAROWA)
-            spec.dane.append(("wzmocnienie prądu biernego (reactive_current_gain)", wartosc))
+            wartosc = Wielkosc(
+                wartosc=modul.reactive_current_gain, jednostka=_J_BEZWYMIAROWA
+            )
+            spec.dane.append(
+                ("wzmocnienie prądu biernego (reactive_current_gain)", wartosc)
+            )
             spec.wynik = WynikKryterium(
                 wielkosc_pl="wzmocnienie prądu biernego (wartość zadeklarowana)",
                 symbol_latex=r"K_{\mathrm{FRT}}",
@@ -1493,8 +1627,16 @@ class NcRfgPtpireeSolver:
         wymagane = [
             (nazwa, zdolna)
             for nazwa, wymagana, zdolna in (
-                ("praca wyspowa", modul.island_operation_required, modul.island_operation_capable),
-                ("rozruch autonomiczny", modul.black_start_required, modul.black_start_capable),
+                (
+                    "praca wyspowa",
+                    modul.island_operation_required,
+                    modul.island_operation_capable,
+                ),
+                (
+                    "rozruch autonomiczny",
+                    modul.black_start_required,
+                    modul.black_start_capable,
+                ),
                 (
                     "tłumienie oscylacji mocy",
                     modul.power_oscillation_damping_required,
@@ -1515,7 +1657,9 @@ class NcRfgPtpireeSolver:
             ),
             braki=[_BRAK_BIEGU_DYNAMIKI],
         )
-        spec.dane.extend(_flagi(*((f"deklaracja zdolności: {n}", z) for n, z in wymagane)))
+        spec.dane.extend(
+            _flagi(*((f"deklaracja zdolności: {n}", z) for n, z in wymagane))
+        )
         if not wymagane:
             spec.braki.append(
                 "wskazanie w programie szczegółowym zdolności dodatkowej wymaganej przez "
@@ -1552,7 +1696,9 @@ class NcRfgPtpireeSolver:
         )
         return spec
 
-    def _obserwowalnosc(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _obserwowalnosc(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         """T19: komunikacja z operatorem i rejestrator zakłóceń zadeklarowane (logiczne)."""
         modul = k.modul
         spec = _Specyfikacja(
@@ -1566,7 +1712,10 @@ class NcRfgPtpireeSolver:
                 relacja="LOGICZNE",
             ),
         )
-        komunikacja, rejestrator = modul.has_scada_communication, modul.has_disturbance_recorder
+        komunikacja, rejestrator = (
+            modul.has_scada_communication,
+            modul.has_disturbance_recorder,
+        )
         spec.dane.extend(
             _flagi(
                 ("komunikacja z operatorem (has_scada_communication)", komunikacja),
@@ -1579,8 +1728,14 @@ class NcRfgPtpireeSolver:
                 + ", ".join(
                     nazwa
                     for nazwa, wartosc in (
-                        ("komunikacja z operatorem (has_scada_communication)", komunikacja),
-                        ("rejestrator zakłóceń (has_disturbance_recorder)", rejestrator),
+                        (
+                            "komunikacja z operatorem (has_scada_communication)",
+                            komunikacja,
+                        ),
+                        (
+                            "rejestrator zakłóceń (has_disturbance_recorder)",
+                            rejestrator,
+                        ),
                     )
                     if wartosc is None
                 )
@@ -1600,7 +1755,9 @@ class NcRfgPtpireeSolver:
         )
         return spec
 
-    def _thd_u(self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst) -> _Specyfikacja:
+    def _thd_u(
+        self, definicja: NcRfgPtpireeTestDefinition, k: _Kontekst
+    ) -> _Specyfikacja:
         """T20: THD_U źródła (wartość katalogowa) nie większe niż dopuszczalne."""
         modul, kryteria = k.modul, k.profile.kryteria_akceptacji
         spec = _Specyfikacja(
@@ -1668,7 +1825,7 @@ class NcRfgPtpireeSolver:
             lines.extend(
                 [
                     f"Moduł: {module.der_name or module.der_ref}",
-                    f"Operator: {module.operator_name_pl}; P_max: "
+                    f"Operator: {module.operator_name_pl}; moc czynna maksymalna: "
                     f"{format_wielkosc(Wielkosc(wartosc=module.p_max_kw, jednostka=_J_KW))}",
                     f"Klasyfikacja: {module.klasyfikacja.powod_pl}",
                     f"Technologia: {NAZWA_TECHNOLOGII_PL[module.technologia]}",

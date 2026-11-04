@@ -6,7 +6,10 @@ from typing import overload
 from analysis.koperta_kontekstu import pola_koperty
 from analysis.normative.models import NormativeReport, NormativeStatus
 from analysis.protection_curves_it.models import ProtectionCurvesITView
-from analysis.protection_insight.models import ProtectionInsightItem, ProtectionInsightView
+from analysis.protection_insight.models import (
+    ProtectionInsightItem,
+    ProtectionInsightView,
+)
 from analysis.sensitivity.models import (
     SensitivityContext,
     SensitivityDecision,
@@ -29,7 +32,9 @@ DEFAULT_TOP_N = 5
 
 
 class SensitivityBuilder:
-    def __init__(self, delta_pct: float = DEFAULT_DELTA_PCT, top_n: int = DEFAULT_TOP_N) -> None:
+    def __init__(
+        self, delta_pct: float = DEFAULT_DELTA_PCT, top_n: int = DEFAULT_TOP_N
+    ) -> None:
         self._delta_pct = float(delta_pct)
         self._top_n = int(top_n)
 
@@ -49,9 +54,13 @@ class SensitivityBuilder:
         if voltage_profile is not None:
             entries.extend(_entries_from_voltage(voltage_profile, self._delta_pct))
         if protection_insight is not None:
-            entries.extend(_entries_from_protection_insight(protection_insight, self._delta_pct))
+            entries.extend(
+                _entries_from_protection_insight(protection_insight, self._delta_pct)
+            )
         if protection_curves_it is not None:
-            entries.extend(_entries_from_protection_curves(protection_curves_it, self._delta_pct))
+            entries.extend(
+                _entries_from_protection_curves(protection_curves_it, self._delta_pct)
+            )
 
         entries_sorted = tuple(sorted(entries, key=_entry_sort_key))
         summary = _build_summary(entries_sorted)
@@ -91,7 +100,9 @@ def _resolve_context(
         if ctx is not None:
             return SensitivityContext(**pola_koperty(ctx))
     if proofs:
-        first = sorted(proofs, key=lambda doc: (doc.proof_type.value, doc.document_id.hex))[0]
+        first = sorted(
+            proofs, key=lambda doc: (doc.proof_type.value, doc.document_id.hex)
+        )[0]
         header = first.header
         return SensitivityContext(
             project_name=header.project_name,
@@ -109,8 +120,8 @@ def _entries_from_normative(
 ) -> list[SensitivityEntry]:
     entries: list[SensitivityEntry] = []
     mapping = {
-        "NR_P15_001": ("load_q", "Load Q (k_I)", "P20"),
-        "NR_P15_002": ("load_p", "Load P (k_S)", "P20"),
+        "NR_P15_001": ("load_q", "Moc bierna odbioru", "P20"),
+        "NR_P15_002": ("load_p", "Moc czynna odbioru", "P20"),
     }
     for item in report.items:
         mapped = mapping.get(item.rule_id)
@@ -537,7 +548,9 @@ def _entry_sort_key(entry: SensitivityEntry) -> tuple[str, str, str]:
 def _build_summary(entries: Iterable[SensitivityEntry]) -> SensitivitySummary:
     entries_list = list(entries)
     not_computed = sum(
-        1 for entry in entries_list if entry.base_decision == SensitivityDecision.NOT_COMPUTED
+        1
+        for entry in entries_list
+        if entry.base_decision == SensitivityDecision.NOT_COMPUTED
     )
     return SensitivitySummary(
         total_entries=len(entries_list),

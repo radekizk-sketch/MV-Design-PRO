@@ -5,7 +5,7 @@
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "4989466ec9f8830f8bff27a0f021c357d8491eec5006b6ba07a2f0c09be33571",
+    "snapshot_hash": "6254024ce3a386f4684af72b6aa9f007a2069b65f7edad14044a28dd81dc702c",
     "run_id": "run-sc-scena-oze-analiz"
   },
   "config": {
@@ -45,11 +45,11 @@
       "plt_limit": 0.7,
       "verdict_pl": "w granicach planowania",
       "zalozenia_pl": [
-        "Emisja pojedynczego źródła: Pst_i = c · Sn / Sk'' (c — współczynnik emisji migotania z certyfikatu urządzenia; metodyka IEC 61400-21-1).",
-        "Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik m = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).",
+        "Emisja pojedynczego źródła: wskaźnik krótkotrwałego migotania równy współczynnikowi emisji migotania z certyfikatu urządzenia razy stosunek mocy znamionowej źródła do mocy zwarciowej węzła (metodyka IEC 61400-21-1).",
+        "Sumowanie emisji wielu źródeł w węźle: pierwiastek trzeciego stopnia z sumy sześcianów wskaźników źródeł (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).",
         "Plt = Pst — założenie konserwatywne dla ciągłej, ustalonej emisji źródeł OZE (równe wartości Pst w oknie 2 h dają Plt = Pst z definicji Plt).",
         "Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.",
-        "Szybka zmiana napięcia d = kmax · Sn / Sk'' · 100, kmax = 1 (założenie konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; IEC/TR 61000-3-7:2008, §5.5)."
+        "Szybka zmiana napięcia w procentach: współczynnik zmiany napięcia równy 1 razy stosunek mocy znamionowej do mocy zwarciowej węzła (założenie konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; IEC/TR 61000-3-7:2008, §5.5)."
       ],
       "white_box": [
         {
@@ -61,7 +61,7 @@
         {
           "symbol": "P_lt",
           "formula_latex": "P_{lt} = P_{st}",
-          "substitution_pl": "P_lt = P_st = 0.001698 (emisja ciągła, założenie konserwatywne)",
+          "substitution_pl": "Wskaźnik długotrwałego migotania równy krótkotrwałemu: 0.001698 (emisja ciągła, założenie konserwatywne)",
           "result_pl": "P_lt = 0.001698"
         },
         {

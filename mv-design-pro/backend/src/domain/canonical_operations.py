@@ -2074,9 +2074,10 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Źródło sieciowe nie ma minimalnej mocy zwarciowej S''kQmin — scenariusz MIN "
-            "liczony z impedancji dla S''kQmax (założenie niekonserwatywne dla czułości "
-            "zabezpieczeń); wprowadź S''kQmin albo I''kQmin z warunków przyłączenia"
+            "Źródło sieciowe nie ma minimalnej mocy zwarciowej — scenariusz MIN "
+            "liczony z impedancji dla maksymalnej mocy zwarciowej (założenie niekonserwatywne "
+            "dla czułości zabezpieczeń); wprowadź minimalną moc zwarciową albo minimalny prąd "
+            "zwarciowy z warunków przyłączenia"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_min_mva"},
     ),
@@ -2088,8 +2089,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=1,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Minimalna moc zwarciowa źródła przekracza maksymalną (S''kQmin > S''kQmax "
-            "albo I''kQmin > I''kQmax) — dane warunków przyłączenia są sprzeczne"
+            "Minimalna moc zwarciowa źródła przekracza maksymalną (albo minimalny prąd "
+            "zwarciowy przekracza maksymalny) — dane warunków przyłączenia są sprzeczne"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "sk3_min_mva"},
     ),

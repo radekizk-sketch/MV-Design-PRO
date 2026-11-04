@@ -464,7 +464,7 @@ def ostrzezenie_poza_zakresem_iec60909(z_f_ohm: complex) -> str:
     oceniony (zakres IEC 60909) i do czego nie wolno go użyć (SI-117).
     """
     return (
-        f"Zwarcie przez impedancję przejścia Z_f = {z_f_ohm.real:.4f} + j{z_f_ohm.imag:.4f} Ω "
+        f"Zwarcie przez impedancję przejścia {z_f_ohm.real:.4f} + j{z_f_ohm.imag:.4f} Ω "
         "— wynik poza zakresem IEC 60909-0 (norma definiuje prąd zwarcia metalicznego). "
         "Nie jest podstawą doboru aparatury, wytrzymałości zwarciowej, nastaw zabezpieczeń "
         "nadprądowych, koordynacji, dowodu regulacyjnego ani analizy łuku elektrycznego."
@@ -828,7 +828,8 @@ class ProofGenerator:
         ostrzezenia_tb: list[str] = []
         if data.tb_zrodlo is not None and data.tb_zrodlo.get("wartosc_robocza"):
             ostrzezenia_tb.append(
-                "I_b i i_DC policzone przy czasie wyłączenia t_b będącym wartością roboczą "
+                "Prąd wyłączeniowy i składowa nieokresowa policzone przy czasie wyłączenia będącym "
+                "wartością roboczą "
                 f"(wynik obliczeniowy na danej przyjętej): {data.tb_zrodlo.get('opis_pl')}"
             )
         # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim — jedno zdanie z solvera.
@@ -3491,7 +3492,7 @@ class ProofGenerator:
                 t_prev = sorted_points[idx - 1].t_h
                 t_curr = sorted_points[idx].t_h
                 if t_curr <= t_prev:
-                    raise ValueError("Czasy t_h muszą być ściśle rosnące bez duplikatów.")
+                    raise ValueError("Czasy godzinowe muszą być ściśle rosnące bez duplikatów.")
 
                 delta_t = t_curr - t_prev
                 p_loss = sorted_points[idx].p_loss_kw
@@ -3784,17 +3785,17 @@ class ProofGenerator:
 
         if data.element_kind in (LoadElementKind.LINE, LoadElementKind.CABLE):
             if data.in_a is None:
-                raise ValueError("Brak prądu znamionowego in_a dla linii/kabla.")
+                raise ValueError("Brak prądu znamionowego linii albo kabla.")
         elif data.element_kind == LoadElementKind.TRANSFORMER:
             if data.sn_mva is None:
-                raise ValueError("Brak mocy znamionowej sn_mva dla transformatora.")
+                raise ValueError("Brak mocy znamionowej transformatora.")
         else:
             raise ValueError(f"Nieobsługiwany element_kind: {data.element_kind}")
 
         if data.u_ll_kv is None:
             raise ValueError("Brak napięcia międzyfazowego u_ll_kv.")
         if data.p_mw is None or data.q_mvar is None:
-            raise ValueError("Brak mocy czynnej/biernej p_mw/q_mvar.")
+            raise ValueError("Brak mocy czynnej albo biernej.")
 
         s_mva = math.sqrt(data.p_mw**2 + data.q_mvar**2)
 

@@ -105,7 +105,7 @@ def validate_generator_connections(
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
                         f"Generator OZE '{name}' ({ref_id}): brak wariantu przyłączenia "
-                        f"(nn_side lub block_transformer)"
+                        f"(po stronie nN albo przez transformator blokowy)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
@@ -193,7 +193,8 @@ def validate_generator_connections(
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
                         f"Generator OZE '{name}' ({ref_id}): nieznany wariant przyłączenia "
-                        f"'{connection_variant}' (dozwolone: nn_side, block_transformer)"
+                        f"'{connection_variant}' (dozwolone: po stronie nN albo przez transformator "
+                        "blokowy)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
@@ -328,8 +329,8 @@ class JawneWejsciaKontroliMocy:
             przyjete.append("Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).")
         if self.cos_phi is None:
             przyjete.append(
-                "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| "
-                "(dolna granica mocy pozornej)."
+                "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy "
+                "karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             )
         return {
             "cos_phi": self.cos_phi,
@@ -522,14 +523,17 @@ def sprawdz_moc_transformatora(
     if pozostale_zrodla:
         opis_wymagania = (
             f"Moc wymagana źródeł zasilanych przez ten sam transformator "
-            f"({mva_na_kva(obciazenie):.0f} kVA = Σ max(S_n,jedn·n; P/cosφ) · k_j po "
-            f"{len(wszystkie)} źródłach: to źródło {mva_na_kva(s_wymagana):.0f} kVA + "
-            f"pozostałe {mva_na_kva(s_grupy - s_wymagana):.0f} kVA, k_j = {k_j:g})"
+            f"({mva_na_kva(obciazenie):.0f} kVA — suma po {len(wszystkie)} źródłach większej "
+            f"z mocy znamionowej jednostek i mocy pozornej punktu pracy, razy współczynnik "
+            f"jednoczesności: to źródło {mva_na_kva(s_wymagana):.0f} kVA + "
+            f"pozostałe {mva_na_kva(s_grupy - s_wymagana):.0f} kVA, współczynnik "
+            f"jednoczesności {k_j:g})"
         )
     else:
         opis_wymagania = (
-            f"Moc wymagana źródła {technologia} ({mva_na_kva(obciazenie):.0f} kVA = "
-            f"max(S_n,jedn·n; P/cosφ) · k_j, k_j = {k_j:g})"
+            f"Moc wymagana źródła {technologia} ({mva_na_kva(obciazenie):.0f} kVA — większa "
+            f"z mocy znamionowej jednostek i mocy pozornej punktu pracy, razy współczynnik "
+            f"jednoczesności {k_j:g})"
         )
     return OdmowaKontroliMocy(
         KOD_MOC_TRANSFORMATORA,

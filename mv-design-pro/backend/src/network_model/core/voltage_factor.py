@@ -186,7 +186,8 @@ class NadpisanieC:
                 KOD_NADPISANIE_BEZ_UZASADNIENIA,
                 "Nadpisanie współczynnika napięciowego c wymaga uzasadnienia — IEC 60909-0 "
                 "dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu (np. uzgodnienie "
-                "z operatorem, ograniczenie c·Un ≤ Um).",
+                "z operatorem, ograniczenie iloczynu współczynnika i napięcia znamionowego do "
+                "napięcia najwyższego urządzenia).",
             )
 
     def to_dict(self) -> dict[str, Any]:

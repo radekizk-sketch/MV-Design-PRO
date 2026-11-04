@@ -5,7 +5,10 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-from network_model.core.czas_wylaczenia import POCHODZENIE_TB_PROJEKTANT, CzasWylaczeniaTb
+from network_model.core.czas_wylaczenia import (
+    POCHODZENIE_TB_PROJEKTANT,
+    CzasWylaczeniaTb,
+)
 from network_model.core.graph import NetworkGraph
 from network_model.core.impedancja_przejscia import (
     OPISY_ODMOW_IMPEDANCJI,
@@ -443,7 +446,9 @@ class ShortCircuitResult:
             data["wklady_zrodel_slad"] = serialize_value(list(self.wklady_zrodel_slad))
         # Karta PODSTAWA-Q (addytywnie, exclude-None): krzywe zaniku na założeniu inżynierskim.
         if self.zalozenia_zaniku is not None:
-            data["zalozenia_zaniku"] = serialize_value([dict(w) for w in self.zalozenia_zaniku])
+            data["zalozenia_zaniku"] = serialize_value(
+                [dict(w) for w in self.zalozenia_zaniku]
+            )
         return data
 
 
@@ -476,7 +481,8 @@ class PradWylaczeniowy:
     @property
     def zalozenia_zaniku(self) -> list[dict[str, Any]]:
         """Krzywe zaniku wkładów tego punktu o podstawie założenia inżynierskiego (karta
-        PODSTAWA-Q) — wyprowadzone z tych samych śladów, które dały μ i q (jedno źródło)."""
+        PODSTAWA-Q) — wyprowadzone z tych samych śladów, które dały μ i q (jedno źródło).
+        """
         return zalozenia_krzywych_wkladow(wklad for wklad, _ in self.zaniki)
 
 
@@ -516,7 +522,9 @@ class ShortCircuitIEC60909Solver:
         rozstrzyga warstwa wiązania (karta TB-WARTOSC-ROBOCZA) — rdzeń go nie zgaduje.
         """
         tb_s = czas_tb.wartosc_s
-        skladowa = skladowa_nieokresowa(ikss_a=ikss_thevenin_a, rx_ratio=rx_ratio, tb_s=tb_s)
+        skladowa = skladowa_nieokresowa(
+            ikss_a=ikss_thevenin_a, rx_ratio=rx_ratio, tb_s=tb_s
+        )
         if short_circuit_type != ShortCircuitType.THREE_PHASE:
             return PradWylaczeniowy(
                 przypadek=PRZYPADEK_IB_NIESYMETRYCZNE,
@@ -584,7 +592,9 @@ class ShortCircuitIEC60909Solver:
                         KOD_GALAZ_BEZ_NAZWY,
                         "Ślad obliczeń zwarciowych nazywa każdą gałąź w eksploatacji nazwą "
                         f"z modelu; gałęzi bez nazwy: {len(bez_nazwy)}.",
-                        tuple(OdwolanieElementu(RODZAJ_GALAZ, ref) for ref in bez_nazwy),
+                        tuple(
+                            OdwolanieElementu(RODZAJ_GALAZ, ref) for ref in bez_nazwy
+                        ),
                     )
                 ]
             )
@@ -653,7 +663,9 @@ class ShortCircuitIEC60909Solver:
             ikss_metaliczny_a=ikss_metaliczny_a,
             poza_zakresem_iec60909=True if z_f is not None else None,
             i_dc_a=i_dc_a,
-            tb_zrodlo=ShortCircuitIEC60909Solver._zrodlo_tb_wiersza(czas_tb, ib_przypadek),
+            tb_zrodlo=ShortCircuitIEC60909Solver._zrodlo_tb_wiersza(
+                czas_tb, ib_przypadek
+            ),
             wklady_pominiete=wklady_pominiete,
             wklady_zrodel=wklady_zrodel,
             wklady_zrodel_slad=wklady_zrodel_slad,
@@ -661,11 +673,14 @@ class ShortCircuitIEC60909Solver:
         )
 
     @staticmethod
-    def _zrodlo_tb_wiersza(czas_tb: CzasWylaczeniaTb, ib_przypadek: str) -> dict[str, Any] | None:
+    def _zrodlo_tb_wiersza(
+        czas_tb: CzasWylaczeniaTb, ib_przypadek: str
+    ) -> dict[str, Any] | None:
         """Pochodzenie t_b w wierszu wyniku (``None`` dla t_b projektanta) z flagą
         ``ib_z_udzialem_maszyn``: I_b zależy od t_b wyłącznie przez zanik prądów maszyn
         wirujących (μ, q — IEC 60909-0:2016 rozdz. 9), więc konsument oceny wyłączania wie,
-        czy wartość robocza t_b stoi za porównywanym I_b, czy tylko za informacyjną i_DC."""
+        czy wartość robocza t_b stoi za porównywanym I_b, czy tylko za informacyjną i_DC.
+        """
         zrodlo = ShortCircuitIEC60909Solver._zrodlo_tb_wyniku(czas_tb)
         if zrodlo is None:
             return None
@@ -707,7 +722,9 @@ class ShortCircuitIEC60909Solver:
         )
         if bilans_domkniety:
             reszta = f"reszta ≤ dopuszczalnej {fmt(tolerancja_a)} A"
-            reszta_latex = f"\\left| \\Delta \\right| \\le {fmt(tolerancja_a)}\\,\\mathrm{{A}}"
+            reszta_latex = (
+                f"\\left| \\Delta \\right| \\le {fmt(tolerancja_a)}\\,\\mathrm{{A}}"
+            )
         else:
             reszta = f"reszta {fmt(reszta_a)} A > dopuszczalna {fmt(tolerancja_a)} A"
             reszta_latex = (
@@ -745,7 +762,9 @@ class ShortCircuitIEC60909Solver:
         return f"\\left({real} {sign} j {imag}\\right)"
 
     @staticmethod
-    def _append_transformer_kt_trace(tracer: WhiteBoxTracer, graph: NetworkGraph) -> None:
+    def _append_transformer_kt_trace(
+        tracer: WhiteBoxTracer, graph: NetworkGraph
+    ) -> None:
         """WHITE BOX (IEC 60909-0 §3.3.3): jawny ślad korekcji impedancji K_T dla
         każdego transformatora sieciowego w modelu. Kolejność deterministyczna
         (sort po id gałęzi). Bez ukrytych korekcji — K_T ze wzorem i podstawieniem
@@ -785,7 +804,9 @@ class ShortCircuitIEC60909Solver:
                     "x_t_ohm_hv": x_t_ohm_hv,
                     "c_max": c_max,
                 },
-                substitution=(f"0.95 \\cdot \\frac{{{fmt(c_max)}}}{{1 + 0.6 \\cdot {fmt(x_t)}}}"),
+                substitution=(
+                    f"0.95 \\cdot \\frac{{{fmt(c_max)}}}{{1 + 0.6 \\cdot {fmt(x_t)}}}"
+                ),
                 substitution_latex=(
                     f"0.95 \\cdot \\frac{{{fmt(c_max)}}}{{1 + 0.6 \\cdot {fmt(x_t)}}}"
                 ),
@@ -801,7 +822,9 @@ class ShortCircuitIEC60909Solver:
             )
 
     @staticmethod
-    def _append_admitancje_poprzeczne_trace(tracer: WhiteBoxTracer, graph: NetworkGraph) -> None:
+    def _append_admitancje_poprzeczne_trace(
+        tracer: WhiteBoxTracer, graph: NetworkGraph
+    ) -> None:
         """WHITE BOX (karta BEZ-POJEMNOSCI): jawny krok pominięcia admitancji poprzecznych gałęzi
         w sieci zgodnej i przeciwnej — lista gałęzi, których B·ℓ NIE weszło do macierzy Z-bus
         (`AdmittanceMatrixBuilder.admitancje_poprzeczne_pominiete`, ten sam zbiór, który
@@ -874,7 +897,9 @@ class ShortCircuitIEC60909Solver:
         tracer = WhiteBoxTracer()
         if graph is not None:
             ShortCircuitIEC60909Solver._append_transformer_kt_trace(tracer, graph)
-            ShortCircuitIEC60909Solver._append_admitancje_poprzeczne_trace(tracer, graph)
+            ShortCircuitIEC60909Solver._append_admitancje_poprzeczne_trace(
+                tracer, graph
+            )
         z_equiv_abs = modul_zespolony(z_equiv)
         voltage_factor = voltage_factor_for_fault(short_circuit_type)
         if z_f is not None:
@@ -893,8 +918,10 @@ class ShortCircuitIEC60909Solver:
 
         if z_f is not None:
             z_inputs["z_f_ohm"] = z_f
-            formula, substitution = ShortCircuitIEC60909Solver._formula_petli_z_impedancja(
-                short_circuit_type, z1=z1, z2=z2, z0=z0, z_f=z_f
+            formula, substitution = (
+                ShortCircuitIEC60909Solver._formula_petli_z_impedancja(
+                    short_circuit_type, z1=z1, z2=z2, z0=z0, z_f=z_f
+                )
             )
         elif short_circuit_type == ShortCircuitType.THREE_PHASE:
             formula = r"Z_k = Z_1"
@@ -1006,7 +1033,11 @@ class ShortCircuitIEC60909Solver:
             key="Ith",
             title="Prąd zastępczy cieplny",
             formula_latex=r"I_{th} = I_{k}'' \cdot \sqrt{m + n}",
-            inputs={"ikss_a": ikss_a, "m_factor": post.m_factor, "n_factor": post.n_factor},
+            inputs={
+                "ikss_a": ikss_a,
+                "m_factor": post.m_factor,
+                "n_factor": post.n_factor,
+            },
             substitution=(
                 f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
                 f" \\cdot \\sqrt{{{ShortCircuitIEC60909Solver._format_float(post.m_factor)}"
@@ -1036,7 +1067,11 @@ class ShortCircuitIEC60909Solver:
             result={"sk_mva": post.sk_mva},
         )
 
-        if z_f is not None and z_equiv_metaliczne is not None and ikss_metaliczny_a is not None:
+        if (
+            z_f is not None
+            and z_equiv_metaliczne is not None
+            and ikss_metaliczny_a is not None
+        ):
             ShortCircuitIEC60909Solver._append_sanity_impedancji_trace(
                 tracer,
                 short_circuit_type=short_circuit_type,
@@ -1166,7 +1201,10 @@ class ShortCircuitIEC60909Solver:
 
     @staticmethod
     def _append_skladowa_nieokresowa_trace(
-        tracer: WhiteBoxTracer, *, czas_tb: CzasWylaczeniaTb, skladowa: SkladowaNieokresowa
+        tracer: WhiteBoxTracer,
+        *,
+        czas_tb: CzasWylaczeniaTb,
+        skladowa: SkladowaNieokresowa,
     ) -> None:
         """Krok śladu „iDC" — składowa nieokresowa w chwili t_b (IEC 60909-0:2016, rozdz. 10)."""
         fmt = ShortCircuitIEC60909Solver._format_float
@@ -1249,7 +1287,9 @@ class ShortCircuitIEC60909Solver:
         if z0 is None:
             # Nieosiągalne: `compute_equivalent_impedance` wymaga Z_0 dla 1F i 2F+G, zanim
             # powstanie ślad. Jawny błąd programu zamiast cichego zera we wzorze śladu.
-            raise ValueError(f"Z0 is required for {short_circuit_type.value} loop formula")
+            raise ValueError(
+                f"wzór pętli zwarcia {short_circuit_type.value} wymaga impedancji zerowej"
+            )
         z0_val = z0
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             return (
@@ -1287,7 +1327,9 @@ class ShortCircuitIEC60909Solver:
         # `bool`/`float` jawnie: impedancje z macierzy Z-bus są typu numpy, a ślad trafia do
         # artefaktu biegu (JSON) — `numpy.bool_` nie jest serializowalny ani równy `True`.
         przeslanka = bool(
-            szeregowa and z_equiv_metaliczne.real >= 0.0 and z_equiv_metaliczne.imag >= 0.0
+            szeregowa
+            and z_equiv_metaliczne.real >= 0.0
+            and z_equiv_metaliczne.imag >= 0.0
         )
         stosunek = float(ikss_a / ikss_metaliczny_a) if ikss_metaliczny_a > 0 else None
         tracer.add(
@@ -1382,7 +1424,9 @@ class ShortCircuitIEC60909Solver:
             if source_index is None or node is None or node.voltage_level <= 0:
                 continue
             z_kj = z_bus[fault_index, source_index]
-            factors[source.id] = modul_zespolony(z_kj / z_kk) * (node.voltage_level / un_k)
+            factors[source.id] = modul_zespolony(z_kj / z_kk) * (
+                node.voltage_level / un_k
+            )
         return factors
 
     @staticmethod
@@ -1404,7 +1448,9 @@ class ShortCircuitIEC60909Solver:
         sources = graph.get_inverter_sources()
         if not sources:
             return {}
-        factors = ShortCircuitIEC60909Solver._inverter_transfer_factors(graph, fault_node_id)
+        factors = ShortCircuitIEC60909Solver._inverter_transfer_factors(
+            graph, fault_node_id
+        )
         contributions: dict[str, float] = {}
         for source in sources:
             i_terminal = ShortCircuitIEC60909Solver._inverter_contribution_for_type(
@@ -1499,7 +1545,9 @@ class ShortCircuitIEC60909Solver:
                 )
             )
 
-        contributions.sort(key=lambda item: (item.source_type != SourceType.GRID, item.source_id))
+        contributions.sort(
+            key=lambda item: (item.source_type != SourceType.GRID, item.source_id)
+        )
         return contributions
 
     @staticmethod
@@ -1581,7 +1629,9 @@ class ShortCircuitIEC60909Solver:
                     continue
                 # Admitancja w PER-UNIT — Z-bus też jest w pu; wcześniej ten tor
                 # mieszał pu z omami (SI), co dawało niespójne moduły prądów.
-                admittance = ShortCircuitIEC60909Solver._series_admittance_pu(builder, branch)
+                admittance = ShortCircuitIEC60909Solver._series_admittance_pu(
+                    builder, branch
+                )
                 if admittance is None:
                     continue
                 y_series, ratio = admittance
@@ -1593,7 +1643,9 @@ class ShortCircuitIEC60909Solver:
                 v_to = v_nodes[to_index]
                 # Prąd po stronie `from` w modelu z przekładnią poza-znamionową
                 # (V12K-186); dla a = 1 redukuje się do (V_from − V_to)·y.
-                i_branch = (v_from / (ratio * ratio) - v_to / ratio) * y_series * i_contrib
+                i_branch = (
+                    (v_from / (ratio * ratio) - v_to / ratio) * y_series * i_contrib
+                )
                 i_mag = modul_zespolony(i_branch)
                 if jest_wkladem_pominietym(i_mag):
                     pominiete.append(
@@ -1606,7 +1658,9 @@ class ShortCircuitIEC60909Solver:
                     )
                     continue
                 direction = (
-                    "from_to" if modul_zespolony(v_from) >= modul_zespolony(v_to) else "to_from"
+                    "from_to"
+                    if modul_zespolony(v_from) >= modul_zespolony(v_to)
+                    else "to_from"
                 )
                 contributions.append(
                     ShortCircuitBranchContribution(
@@ -1624,7 +1678,9 @@ class ShortCircuitIEC60909Solver:
         return contributions, pominiete
 
     @staticmethod
-    def _series_admittance_pu(builder: object, branch: object) -> tuple[complex, float] | None:
+    def _series_admittance_pu(
+        builder: object, branch: object
+    ) -> tuple[complex, float] | None:
         """Admitancja szeregowa gałęzi w per-unit + przekładnia — SPÓJNE z Y-bus.
 
         Reużywa `AdmittanceMatrixBuilder._get_branch_admittances_pu` (ten sam
@@ -1727,7 +1783,9 @@ class ShortCircuitIEC60909Solver:
         for branch_id, branch in graph.branches.items():
             if not getattr(branch, "in_service", True):
                 continue
-            admittance = ShortCircuitIEC60909Solver._series_admittance_pu(builder, branch)
+            admittance = ShortCircuitIEC60909Solver._series_admittance_pu(
+                builder, branch
+            )
             if admittance is None:
                 continue
             y_series_pu, ratio = admittance
@@ -1755,7 +1813,11 @@ class ShortCircuitIEC60909Solver:
             # jednostkowej |V| rośnie w stronę zwarcia (największe |V| = węzeł
             # zwarcia), więc prąd płynie do węzła o większym |V|: "from_to" gdy
             # koniec "to" jest bliżej zwarcia (|V_to| >= |V_from|).
-            direction = "from_to" if modul_zespolony(v_to) >= modul_zespolony(v_from) else "to_from"
+            direction = (
+                "from_to"
+                if modul_zespolony(v_to) >= modul_zespolony(v_from)
+                else "to_from"
+            )
             # Bilans KCL: licz udział gałęzi WCHODZĄCEJ do węzła zwarcia.
             if branch.to_node_id == fault_node_id and direction == "from_to":
                 fraction_sum_into_fault += f_mag
@@ -1884,12 +1946,18 @@ class ShortCircuitIEC60909Solver:
                 graph, fault_node_id, ik_thevenin_a, builder=builder, z_bus=z_bus
             )
         )
-        combined = sorted(inverter + thevenin, key=lambda item: (item.source_id, item.branch_id))
+        combined = sorted(
+            inverter + thevenin, key=lambda item: (item.source_id, item.branch_id)
+        )
         pominiete = sorted(
-            pominiete_fal + pominiete_th, key=lambda item: (item.source_id, item.branch_id)
+            pominiete_fal + pominiete_th,
+            key=lambda item: (item.source_id, item.branch_id),
         )
         if pominiete:
-            trace = [*trace, ShortCircuitIEC60909Solver._krok_wkladow_pominietych(pominiete)]
+            trace = [
+                *trace,
+                ShortCircuitIEC60909Solver._krok_wkladow_pominietych(pominiete),
+            ]
         wklady_zrodel, slad_zrodel = ShortCircuitIEC60909Solver._wklady_zrodel(
             graph=graph,
             fault_node_id=fault_node_id,
@@ -2089,14 +2157,16 @@ class ShortCircuitIEC60909Solver:
         reszta_a = modul_zespolony(suma_bilansu - ik_thevenin_a)
         tolerancja_a = tolerancja_bilansu_a(ik_thevenin_a)
         bilans_domkniety = reszta_a <= tolerancja_a
-        tekst_bilansu, tekst_bilansu_latex = ShortCircuitIEC60909Solver._tekst_bilansu_wkladow(
-            suma_fazorowa=suma_fazorowa,
-            prad_czlonow=prad_czlonow,
-            suma_bilansu=suma_bilansu,
-            ik_thevenin_a=ik_thevenin_a,
-            reszta_a=reszta_a,
-            tolerancja_a=tolerancja_a,
-            bilans_domkniety=bilans_domkniety,
+        tekst_bilansu, tekst_bilansu_latex = (
+            ShortCircuitIEC60909Solver._tekst_bilansu_wkladow(
+                suma_fazorowa=suma_fazorowa,
+                prad_czlonow=prad_czlonow,
+                suma_bilansu=suma_bilansu,
+                ik_thevenin_a=ik_thevenin_a,
+                reszta_a=reszta_a,
+                tolerancja_a=tolerancja_a,
+                bilans_domkniety=bilans_domkniety,
+            )
         )
         ik_inverters_a = ik_total_a - ik_thevenin_a
         tracer.add(
@@ -2223,7 +2293,9 @@ class ShortCircuitIEC60909Solver:
                     )
                 ]
             )
-        return impedancja_przejscia_obliczeniowa(float(z_f_ohm.real), float(z_f_ohm.imag))
+        return impedancja_przejscia_obliczeniowa(
+            float(z_f_ohm.real), float(z_f_ohm.imag)
+        )
 
     @staticmethod
     def _petla_zwarcia(
@@ -2244,8 +2316,10 @@ class ShortCircuitIEC60909Solver:
         """
         ShortCircuitIEC60909Solver._sprawdz_wejscie(graph, fault_node_id)
         if c_factor <= 0:
-            raise ValueError("c_factor must be > 0")
-        z_f = ShortCircuitIEC60909Solver._sprawdz_impedancje_przejscia(z_f_ohm, fault_node_id)
+            raise ValueError("współczynnik napięciowy musi być dodatni")
+        z_f = ShortCircuitIEC60909Solver._sprawdz_impedancje_przejscia(
+            z_f_ohm, fault_node_id
+        )
 
         core = compute_equivalent_impedance(
             graph=graph,
@@ -2264,9 +2338,9 @@ class ShortCircuitIEC60909Solver:
         tlumienie_petli: float | None = None
         ikss_metaliczny_a: float | None = None
         if core.z_equiv_metaliczne is not None:
-            tlumienie_petli = modul_zespolony(core.z_equiv_metaliczne) / modul_zespolony(
-                core.z_equiv
-            )
+            tlumienie_petli = modul_zespolony(
+                core.z_equiv_metaliczne
+            ) / modul_zespolony(core.z_equiv)
             ikss_metaliczny_a = compute_ikss(
                 un_v=un_v,
                 c_factor=c_factor,
@@ -2345,7 +2419,7 @@ class ShortCircuitIEC60909Solver:
         w warstwie wiązania — rdzeń nie ma wartości domyślnej ani gałęzi „brak t_b".
         """
         if tk_s <= 0:
-            raise ValueError("tk_s must be > 0")
+            raise ValueError("czas trwania zwarcia musi być dodatni")
         petla = ShortCircuitIEC60909Solver._petla_zwarcia(
             short_circuit_type=short_circuit_type,
             graph=graph,
@@ -2405,7 +2479,13 @@ class ShortCircuitIEC60909Solver:
             ik_total_a=ik_total,
             tlumienie_petli=tlumienie_petli,
         )
-        branch_contributions, branch_flow_trace, wklady_pominiete, wklady_zrodel, slad_zrodel = (
+        (
+            branch_contributions,
+            branch_flow_trace,
+            wklady_pominiete,
+            wklady_zrodel,
+            slad_zrodel,
+        ) = (
             ShortCircuitIEC60909Solver._build_branch_contributions(
                 graph=graph,
                 fault_node_id=fault_node_id,
@@ -2509,7 +2589,7 @@ class ShortCircuitIEC60909Solver:
         ``z_f_ohm`` (karta OD-14): Zk = Z1 + Z2 + Z0 + 3·Zf.
         """
         if z0_bus is None:
-            raise ValueError("Z0 bus matrix is required for 1F fault computation")
+            raise ValueError("zwarcie 1F wymaga macierzy impedancji zerowej sieci")
         return ShortCircuitIEC60909Solver._oblicz_zwarcie(
             short_circuit_type=ShortCircuitType.SINGLE_PHASE_GROUND,
             graph=graph,
@@ -2570,7 +2650,7 @@ class ShortCircuitIEC60909Solver:
         ``z_f_ohm`` (karta OD-14): Zk = Z1 + Z2·(Z0 + 3Zf)/(Z2 + Z0 + 3Zf).
         """
         if z0_bus is None:
-            raise ValueError("Z0 bus matrix is required for 2F+G fault computation")
+            raise ValueError("zwarcie 2F+G wymaga macierzy impedancji zerowej sieci")
         return ShortCircuitIEC60909Solver._oblicz_zwarcie(
             short_circuit_type=ShortCircuitType.TWO_PHASE_GROUND,
             graph=graph,

@@ -195,7 +195,7 @@
             "x0_ohm_per_km": 0.3,
             "length_km": 2.0
           },
-          "substitution": "Z0 = 2.66112 + j0.6 Ω (szereg Szyna GPZ S1 15 kV↔Zacisk końcowy odcinka SN)",
+          "substitution": "impedancja zerowa 2.66112 + j0.6 Ω (szereg Szyna GPZ S1 15 kV↔Zacisk końcowy odcinka SN)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -203,7 +203,7 @@
               "im": 0.6
             }
           },
-          "notes": "Wartość robocza (zasada nr 4): R′0 = 1.33056 Ω/km — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; X′0 = 0.3 Ω/km — Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
+          "notes": "Wartość robocza (zasada nr 4): Rezystancja jednostkowa składowej zerowej = 1.33056 Ω/km — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej = 0.3 Ω/km — Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
         },
         {
           "key": "z0_warunek_pojemnosci[1]",
@@ -257,7 +257,7 @@
         },
         {
           "key": "tr_z0_zt[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
-          "title": "Transformator TR1 110/15 kV: impedancja zerowa Z_T0",
+          "title": "Transformator TR1 110/15 kV: impedancja zerowa",
           "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
           "inputs": {
             "uk_percent": 11.0,
@@ -265,7 +265,7 @@
             "sn_mva": 25.0,
             "s_base_mva": 100.0
           },
-          "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
+          "substitution": "impedancja zerowa 0.0048 + j0.109895 pu na moc znamionową 25 MVA; 0.0192 + j0.439581 pu na moc bazową 100 MVA",
           "substitution_latex": null,
           "result": {
             "z_t0_pu_sn": {
@@ -305,7 +305,7 @@
             "connection": "open",
             "z0_pu": null
           },
-          "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+          "notes": "Połączenie szeregowe: droga GN↔DN — impedancja zerowa transformatora plus trzykrotne impedancje uziemienia punktów neutralnych obu stron. Bocznik do ziemi po stronie GN albo DN — impedancja zerowa transformatora plus trzykrotna impedancja uziemienia tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         },
         {
           "key": "z0_numerical_reference",
@@ -330,40 +330,40 @@
         {
           "code": "branch.z0_wartosc_robocza",
           "element_ref": "seg/de6c34633e7795100583126168f7d5f6/segment",
-          "message_pl": "Magistrala 01 — odcinek 01: R′0 i X′0 z wartości roboczej katalogu — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: R′0 i X′0 w parametrach odcinka.",
+          "message_pl": "Magistrala 01 — odcinek 01: Rezystancja jednostkowa składowej zerowej i Reaktancja jednostkowa składowej zerowej z wartości roboczej katalogu — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Rezystancja jednostkowa składowej zerowej i Reaktancja jednostkowa składowej zerowej w parametrach odcinka.",
           "scenariusz": "MAX",
           "parametr": "r0_ohm_per_km",
           "dane_przyjete": [
             {
-              "nazwa_pl": "R′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Rezystancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 1.330562,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: R′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: Rezystancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "X′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Reaktancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 0.3,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: X′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Reaktancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             }
           ],
           "skladniki_z0": [
             {
               "pole": "r0_ohm_per_km",
-              "etykieta": "R′0",
+              "etykieta": "Rezystancja jednostkowa składowej zerowej",
               "zalozenie": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
               "wartosc": 1.330562,
               "nazwa": "Magistrala 01 — odcinek 01"
             },
             {
               "pole": "x0_ohm_per_km",
-              "etykieta": "X′0",
+              "etykieta": "Reaktancja jednostkowa składowej zerowej",
               "zalozenie": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
               "wartosc": 0.3,
               "nazwa": "Magistrala 01 — odcinek 01"
@@ -419,7 +419,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "66fc06fca0fcaa936524baff86db22ae104e4ed3a2c22cb1fb8f9476e06baa73",
-          "result_hash": "ac8f6fce5b17e1ea53651f2d716d1a0886bb9b66f0c0c082ca2bca96669765a1",
+          "result_hash": "699875e4f7dbdd96386ff88ae7d266d6f3ae89ef910fbf77ec3ba9e64869eb2d",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -430,7 +430,7 @@
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+          "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -454,7 +454,7 @@
         "breaking_time_seconds": {
           "wartosc": null,
           "pochodzenie": "punkt_zwarcia",
-          "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+          "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
         },
         "metoda": "IEC 60909",
         "scenariusz": "MAX",
@@ -775,7 +775,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "66fc06fca0fcaa936524baff86db22ae104e4ed3a2c22cb1fb8f9476e06baa73",
-          "result_hash": "ac8f6fce5b17e1ea53651f2d716d1a0886bb9b66f0c0c082ca2bca96669765a1",
+          "result_hash": "699875e4f7dbdd96386ff88ae7d266d6f3ae89ef910fbf77ec3ba9e64869eb2d",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -786,7 +786,7 @@
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+          "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -1368,33 +1368,33 @@
             "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć skompensowana — dławik gaszący (Zespół uziemiający sekcji 1: sieć skompensowana — dławik gaszący).",
             "dane_przyjete": [
               {
-                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)",
+                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
                 "wartosc": {
                   "wartosc": 1.5,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               },
               {
-                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający sekcji 1)",
+                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
                 "wartosc": {
                   "wartosc": 6.0,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               }
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:ea023fc2dfb756599a276eab261013b7721da16397dde5912199eafb37364113",
+          "proof_ref": "proof:short-circuit:20f117ef8bef50d319f772792b822c36b3c29113cbc6be445a8fd50a7a0005ea",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:ea023fc2dfb756599a276eab261013b7721da16397dde5912199eafb37364113",
+            "proof_ref": "proof:short-circuit:20f117ef8bef50d319f772792b822c36b3c29113cbc6be445a8fd50a7a0005ea",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [],
@@ -1444,7 +1444,7 @@
             "x0_ohm_per_km": 0.3,
             "length_km": 2.0
           },
-          "substitution": "Z0 = 2.66112 + j0.6 Ω (szereg Szyna GPZ S1 15 kV↔Zacisk końcowy odcinka SN)",
+          "substitution": "impedancja zerowa 2.66112 + j0.6 Ω (szereg Szyna GPZ S1 15 kV↔Zacisk końcowy odcinka SN)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -1452,7 +1452,7 @@
               "im": 0.6
             }
           },
-          "notes": "Wartość robocza (zasada nr 4): R′0 = 1.33056 Ω/km — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; X′0 = 0.3 Ω/km — Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
+          "notes": "Wartość robocza (zasada nr 4): Rezystancja jednostkowa składowej zerowej = 1.33056 Ω/km — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej = 0.3 Ω/km — Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
         },
         {
           "key": "z0_zespol_uziemiajacy[zu/13be655639046477e342658ff6b863fc/zespol]",
@@ -1489,19 +1489,19 @@
             "parametry": [
               {
                 "nazwa": "r0_ohm",
-                "etykieta_pl": "Rezystancja zerowa transformatora uziemiającego R0",
+                "etykieta_pl": "Rezystancja zerowa transformatora uziemiającego",
                 "wartosc": 1.5,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "x0_ohm",
-                "etykieta_pl": "Reaktancja zerowa transformatora uziemiającego X0",
+                "etykieta_pl": "Reaktancja zerowa transformatora uziemiającego",
                 "wartosc": 6.0,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "dlawik.i_min_a",
@@ -1592,7 +1592,7 @@
         },
         {
           "key": "tr_z0_zt[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
-          "title": "Transformator TR1 110/15 kV: impedancja zerowa Z_T0",
+          "title": "Transformator TR1 110/15 kV: impedancja zerowa",
           "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
           "inputs": {
             "uk_percent": 11.0,
@@ -1600,7 +1600,7 @@
             "sn_mva": 25.0,
             "s_base_mva": 100.0
           },
-          "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
+          "substitution": "impedancja zerowa 0.0048 + j0.109895 pu na moc znamionową 25 MVA; 0.0192 + j0.439581 pu na moc bazową 100 MVA",
           "substitution_latex": null,
           "result": {
             "z_t0_pu_sn": {
@@ -1640,7 +1640,7 @@
             "connection": "open",
             "z0_pu": null
           },
-          "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+          "notes": "Połączenie szeregowe: droga GN↔DN — impedancja zerowa transformatora plus trzykrotne impedancje uziemienia punktów neutralnych obu stron. Bocznik do ziemi po stronie GN albo DN — impedancja zerowa transformatora plus trzykrotna impedancja uziemienia tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         },
         {
           "key": "z0_numerical_reference",
@@ -1663,40 +1663,40 @@
         {
           "code": "branch.z0_wartosc_robocza",
           "element_ref": "seg/de6c34633e7795100583126168f7d5f6/segment",
-          "message_pl": "Magistrala 01 — odcinek 01: R′0 i X′0 z wartości roboczej katalogu — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: R′0 i X′0 w parametrach odcinka.",
+          "message_pl": "Magistrala 01 — odcinek 01: Rezystancja jednostkowa składowej zerowej i Reaktancja jednostkowa składowej zerowej z wartości roboczej katalogu — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Rezystancja jednostkowa składowej zerowej i Reaktancja jednostkowa składowej zerowej w parametrach odcinka.",
           "scenariusz": "MAX",
           "parametr": "r0_ohm_per_km",
           "dane_przyjete": [
             {
-              "nazwa_pl": "R′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Rezystancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 1.330562,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: R′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: Rezystancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "X′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Reaktancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 0.3,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: X′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Reaktancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             }
           ],
           "skladniki_z0": [
             {
               "pole": "r0_ohm_per_km",
-              "etykieta": "R′0",
+              "etykieta": "Rezystancja jednostkowa składowej zerowej",
               "zalozenie": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
               "wartosc": 1.330562,
               "nazwa": "Magistrala 01 — odcinek 01"
             },
             {
               "pole": "x0_ohm_per_km",
-              "etykieta": "X′0",
+              "etykieta": "Reaktancja jednostkowa składowej zerowej",
               "zalozenie": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
               "wartosc": 0.3,
               "nazwa": "Magistrala 01 — odcinek 01"
@@ -1707,25 +1707,25 @@
           "code": "zespol_uziemiajacy.wartosc_robocza",
           "element_ref": "zu/13be655639046477e342658ff6b863fc/zespol",
           "bus_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal",
-          "message_pl": "Zespół uziemiający sekcji 1: bocznik składowej zerowej z wartości roboczej — Rezystancja zerowa transformatora uziemiającego R0; Reaktancja zerowa transformatora uziemiającego X0. Zmień wartości w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+          "message_pl": "Zespół uziemiający sekcji 1: bocznik składowej zerowej z wartości roboczej — Rezystancja zerowa transformatora uziemiającego; Reaktancja zerowa transformatora uziemiającego. Zmień wartości w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
           "scenariusz": "MAX",
           "dane_przyjete": [
             {
-              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ]
@@ -1735,7 +1735,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
+        "snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-kompensowany",
@@ -1761,14 +1761,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-kompensowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141"
+          "snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
-          "enm_hash": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
-          "enm_snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
+          "snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
+          "enm_hash": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
+          "enm_snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -1778,19 +1778,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "0ef2a64b81ebb191c82511522b51e8ad4a9da61d29df5b5e23b9d5e62cefa3b6",
-          "result_hash": "44f5ebb5425827a2b6eb83016fc10bf9563168579b5b348d3c363d9f7d2d50c8",
+          "input_hash": "c5a12173cd6a55db4c48cefd5158d346b82b2b281cfeb96d4062b537827e1411",
+          "result_hash": "7ba8234dc6605daa202b4394d36a4783809d24c50c699389a17c5148223e4c07",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
+          "catalog_snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+          "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -1814,7 +1814,7 @@
         "breaking_time_seconds": {
           "wartosc": null,
           "pochodzenie": "punkt_zwarcia",
-          "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+          "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
         },
         "metoda": "IEC 60909",
         "scenariusz": "MAX",
@@ -1823,8 +1823,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-kompensowany",
-      "snapshot_id": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
-      "input_hash": "0ef2a64b81ebb191c82511522b51e8ad4a9da61d29df5b5e23b9d5e62cefa3b6",
+      "snapshot_id": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
+      "input_hash": "c5a12173cd6a55db4c48cefd5158d346b82b2b281cfeb96d4062b537827e1411",
       "white_box_trace": [],
       "selection_index": {},
       "catalog_context": [
@@ -2091,7 +2091,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
+        "snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-kompensowany",
@@ -2117,14 +2117,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-kompensowany",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141"
+          "snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
-          "enm_hash": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
-          "enm_snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
+          "snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
+          "enm_hash": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
+          "enm_snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -2134,19 +2134,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "0ef2a64b81ebb191c82511522b51e8ad4a9da61d29df5b5e23b9d5e62cefa3b6",
-          "result_hash": "44f5ebb5425827a2b6eb83016fc10bf9563168579b5b348d3c363d9f7d2d50c8",
+          "input_hash": "c5a12173cd6a55db4c48cefd5158d346b82b2b281cfeb96d4062b537827e1411",
+          "result_hash": "7ba8234dc6605daa202b4394d36a4783809d24c50c699389a17c5148223e4c07",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
+          "catalog_snapshot_ref": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+          "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -2473,7 +2473,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141",
+          "hash_sha256": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -2698,11 +2698,11 @@
               "u_pw_kv": 0.4,
               "wartosci_robocze": {
                 "grupa_polaczen": "ENEA Zeszyt 1 §16 s. 30: układ połączeń ZNyn 11",
-                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
-                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy U_n/√3 w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
+                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
+                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
                 "s_pw_kva": "ENEA Zeszyt 1 §16 s. 30: uzwojenie dolne 400 V, moc potrzeb własnych ≥ 100 kVA; przyjęto 160 kVA (najbliższa moc znormalizowana powyżej minimum) — założenie robocze",
                 "u_pw_kv": "ENEA Zeszyt 1 §16 s. 30: napięcie znamionowe uzwojenia dolnego – 400 V",
-                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               "x0_ohm": 6.0
             },
@@ -2733,7 +2733,7 @@
           }
         ]
       },
-      "snapshot_id": "998d58c8afd722e97ec3a94c07c5001d7a701e63a471e9343ad5d8a42e4f1141"
+      "snapshot_id": "dec6560950007cbd2de163cf810afceac5e8fced94f5d7efd39b8dde278a7050"
     }
   },
   "rezystor": {
@@ -2758,39 +2758,39 @@
           "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
           "dane_przyjete_galezi": [
             {
-              "nazwa_pl": "R′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Rezystancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 1.330562,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: R′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: Rezystancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "X′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Reaktancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 0.3,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: X′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Reaktancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -2799,7 +2799,7 @@
                 "wartosc": 43.3,
                 "jednostka": "Ω"
               },
-              "powod_pl": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu fazowym. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ],
@@ -2958,21 +2958,21 @@
             "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: sieć uziemiona przez rezystor (Z.15) (Zespół uziemiający sekcji 1: sieć uziemiona przez rezystor (Z.15)).",
             "dane_przyjete": [
               {
-                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)",
+                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
                 "wartosc": {
                   "wartosc": 1.5,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               },
               {
-                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający sekcji 1)",
+                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
                 "wartosc": {
                   "wartosc": 6.0,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               },
               {
@@ -2981,19 +2981,19 @@
                   "wartosc": 43.3,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu fazowym. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               }
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+            "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [
@@ -3052,7 +3052,7 @@
             "x0_ohm_per_km": 0.3,
             "length_km": 2.0
           },
-          "substitution": "Z0 = 2.66112 + j0.6 Ω (szereg Szyna GPZ S1 15 kV↔Zacisk końcowy odcinka SN)",
+          "substitution": "impedancja zerowa 2.66112 + j0.6 Ω (szereg Szyna GPZ S1 15 kV↔Zacisk końcowy odcinka SN)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -3060,7 +3060,7 @@
               "im": 0.6
             }
           },
-          "notes": "Wartość robocza (zasada nr 4): R′0 = 1.33056 Ω/km — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; X′0 = 0.3 Ω/km — Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
+          "notes": "Wartość robocza (zasada nr 4): Rezystancja jednostkowa składowej zerowej = 1.33056 Ω/km — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej = 0.3 Ω/km — Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
         },
         {
           "key": "z0_zespol_uziemiajacy[zu/13be655639046477e342658ff6b863fc/zespol]",
@@ -3097,19 +3097,19 @@
             "parametry": [
               {
                 "nazwa": "r0_ohm",
-                "etykieta_pl": "Rezystancja zerowa transformatora uziemiającego R0",
+                "etykieta_pl": "Rezystancja zerowa transformatora uziemiającego",
                 "wartosc": 1.5,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "x0_ohm",
-                "etykieta_pl": "Reaktancja zerowa transformatora uziemiającego X0",
+                "etykieta_pl": "Reaktancja zerowa transformatora uziemiającego",
                 "wartosc": 6.0,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "rezystor.r_ohm",
@@ -3117,7 +3117,7 @@
                 "wartosc": 43.3,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f"
+                "podstawa_pl": "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu fazowym"
               },
               {
                 "nazwa": "rezystor.i_n_a",
@@ -3237,7 +3237,7 @@
         },
         {
           "key": "tr_z0_zt[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
-          "title": "Transformator TR1 110/15 kV: impedancja zerowa Z_T0",
+          "title": "Transformator TR1 110/15 kV: impedancja zerowa",
           "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
           "inputs": {
             "uk_percent": 11.0,
@@ -3245,7 +3245,7 @@
             "sn_mva": 25.0,
             "s_base_mva": 100.0
           },
-          "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
+          "substitution": "impedancja zerowa 0.0048 + j0.109895 pu na moc znamionową 25 MVA; 0.0192 + j0.439581 pu na moc bazową 100 MVA",
           "substitution_latex": null,
           "result": {
             "z_t0_pu_sn": {
@@ -3285,7 +3285,7 @@
             "connection": "open",
             "z0_pu": null
           },
-          "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+          "notes": "Połączenie szeregowe: droga GN↔DN — impedancja zerowa transformatora plus trzykrotne impedancje uziemienia punktów neutralnych obu stron. Bocznik do ziemi po stronie GN albo DN — impedancja zerowa transformatora plus trzykrotna impedancja uziemienia tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         },
         {
           "key": "z0_numerical_reference",
@@ -3308,40 +3308,40 @@
         {
           "code": "branch.z0_wartosc_robocza",
           "element_ref": "seg/de6c34633e7795100583126168f7d5f6/segment",
-          "message_pl": "Magistrala 01 — odcinek 01: R′0 i X′0 z wartości roboczej katalogu — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: R′0 i X′0 w parametrach odcinka.",
+          "message_pl": "Magistrala 01 — odcinek 01: Rezystancja jednostkowa składowej zerowej i Reaktancja jednostkowa składowej zerowej z wartości roboczej katalogu — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Rezystancja jednostkowa składowej zerowej i Reaktancja jednostkowa składowej zerowej w parametrach odcinka.",
           "scenariusz": "MAX",
           "parametr": "r0_ohm_per_km",
           "dane_przyjete": [
             {
-              "nazwa_pl": "R′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Rezystancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 1.330562,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: R′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: Rezystancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "X′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Reaktancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 0.3,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: X′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Reaktancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             }
           ],
           "skladniki_z0": [
             {
               "pole": "r0_ohm_per_km",
-              "etykieta": "R′0",
+              "etykieta": "Rezystancja jednostkowa składowej zerowej",
               "zalozenie": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
               "wartosc": 1.330562,
               "nazwa": "Magistrala 01 — odcinek 01"
             },
             {
               "pole": "x0_ohm_per_km",
-              "etykieta": "X′0",
+              "etykieta": "Reaktancja jednostkowa składowej zerowej",
               "zalozenie": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
               "wartosc": 0.3,
               "nazwa": "Magistrala 01 — odcinek 01"
@@ -3352,25 +3352,25 @@
           "code": "zespol_uziemiajacy.wartosc_robocza",
           "element_ref": "zu/13be655639046477e342658ff6b863fc/zespol",
           "bus_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal",
-          "message_pl": "Zespół uziemiający sekcji 1: bocznik składowej zerowej z wartości roboczej — Rezystancja zerowa transformatora uziemiającego R0; Reaktancja zerowa transformatora uziemiającego X0; Rezystancja rezystora uziemiającego. Zmień wartości w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+          "message_pl": "Zespół uziemiający sekcji 1: bocznik składowej zerowej z wartości roboczej — Rezystancja zerowa transformatora uziemiającego; Reaktancja zerowa transformatora uziemiającego; Rezystancja rezystora uziemiającego. Zmień wartości w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
           "scenariusz": "MAX",
           "dane_przyjete": [
             {
-              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
@@ -3379,7 +3379,7 @@
                 "wartosc": 43.3,
                 "jednostka": "Ω"
               },
-              "powod_pl": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu fazowym. Zmień wartość: Rezystancja rezystora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ]
@@ -3408,7 +3408,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
+        "snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-rezystor",
@@ -3434,14 +3434,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-rezystor",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d"
+          "snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
-          "enm_hash": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
-          "enm_snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
+          "snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
+          "enm_hash": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
+          "enm_snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -3451,19 +3451,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "8b9e053ed73cabc14b230059f2ac58fdd84549ffb4fe43c1f5a333ccc8d28b5d",
-          "result_hash": "23c55e7c21a07b62b07e7724defb6075b8f2317176f3ee1caea34a73d04189f4",
+          "input_hash": "19f3930349f0debc59a28d63c0691f69c717ed99577a0490de65491a5a93e1e6",
+          "result_hash": "3f343815f0520c58ba837687ae3cdc8ee2ffefe416354b4ba3cb2e8837d943e7",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
+          "catalog_snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+          "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -3487,7 +3487,7 @@
         "breaking_time_seconds": {
           "wartosc": null,
           "pochodzenie": "punkt_zwarcia",
-          "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+          "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
         },
         "metoda": "IEC 60909",
         "scenariusz": "MAX",
@@ -3496,8 +3496,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-rezystor",
-      "snapshot_id": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
-      "input_hash": "8b9e053ed73cabc14b230059f2ac58fdd84549ffb4fe43c1f5a333ccc8d28b5d",
+      "snapshot_id": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
+      "input_hash": "19f3930349f0debc59a28d63c0691f69c717ed99577a0490de65491a5a93e1e6",
       "white_box_trace": [
         {
           "key": "KT[c28912fe-10f5-50e5-9652-ec62b0b43d09]",
@@ -3531,7 +3531,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3572,13 +3572,13 @@
           "result": {
             "pominieta_susceptancja_suma_s": 0.00024504422698
           },
-          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
+          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia (współczynnik napięciowy razy napięcie fazowe) w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (impedancja przeciwna równa zgodnej) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (połowa susceptancji na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
           "step": 2,
           "target_id": "38808155-8c48-5bba-bd1d-1ac3e5b8a6f1",
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3636,7 +3636,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3678,7 +3678,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3719,7 +3719,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3759,7 +3759,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3799,7 +3799,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3851,7 +3851,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3892,7 +3892,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -3932,7 +3932,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:e42831b76b45339fa954989af68805c486170e829ae1e6783d7cbd460d1623d5",
+          "proof_ref": "proof:short-circuit:1a746d41ff2f5ff9cf879cccee72e6b5ecd2ba5a4e51245d4e08fd0bb68c69c0",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -4222,7 +4222,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
+        "snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-rezystor",
@@ -4248,14 +4248,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-rezystor",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d"
+          "snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
-          "enm_hash": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
-          "enm_snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
+          "snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
+          "enm_hash": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
+          "enm_snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -4265,19 +4265,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "8b9e053ed73cabc14b230059f2ac58fdd84549ffb4fe43c1f5a333ccc8d28b5d",
-          "result_hash": "23c55e7c21a07b62b07e7724defb6075b8f2317176f3ee1caea34a73d04189f4",
+          "input_hash": "19f3930349f0debc59a28d63c0691f69c717ed99577a0490de65491a5a93e1e6",
+          "result_hash": "3f343815f0520c58ba837687ae3cdc8ee2ffefe416354b4ba3cb2e8837d943e7",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
+          "catalog_snapshot_ref": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+          "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -4604,7 +4604,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d",
+          "hash_sha256": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -4804,11 +4804,11 @@
               "u_pw_kv": 0.4,
               "wartosci_robocze": {
                 "grupa_polaczen": "ENEA Zeszyt 1 §16 s. 30: układ połączeń ZNyn 11",
-                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
-                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy U_n/√3 w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
+                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
+                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
                 "s_pw_kva": "ENEA Zeszyt 1 §16 s. 30: uzwojenie dolne 400 V, moc potrzeb własnych ≥ 100 kVA; przyjęto 160 kVA (najbliższa moc znormalizowana powyżej minimum) — założenie robocze",
                 "u_pw_kv": "ENEA Zeszyt 1 §16 s. 30: napięcie znamionowe uzwojenia dolnego – 400 V",
-                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               "x0_ohm": 6.0
             },
@@ -4839,7 +4839,7 @@
                 "u_n_kv": 15.0,
                 "wartosci_robocze": {
                   "i_n_a": "założenie robocze: prąd znamionowy rezystora sieci kablowej (§16 s. 29 nie podaje wartości) — do potwierdzenia analizą przepięć i działania zabezpieczeń ziemnozwarciowych",
-                  "r_ohm": "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f",
+                  "r_ohm": "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu fazowym",
                   "t_s": "założenie robocze: dopuszczalny czas przepływu prądu znamionowego 10 s — do potwierdzenia kartą producenta"
                 }
               },
@@ -4859,7 +4859,7 @@
           }
         ]
       },
-      "snapshot_id": "40e00cc8e9af90b91ed23f97518aaaad86fe0deb5a3aa1219c33ccbc9ecc2e6d"
+      "snapshot_id": "f389b03c7432789a98be4ec4039f472b5f3729785dbad705459f229849ff26ac"
     }
   },
   "bezposrednie": {
@@ -4884,39 +4884,39 @@
           "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
           "dane_przyjete_galezi": [
             {
-              "nazwa_pl": "R′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Rezystancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 1.330562,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: R′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: Rezystancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "X′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Reaktancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 0.3,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: X′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Reaktancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ],
@@ -5003,7 +5003,7 @@
                   "z_f_ohm": null,
                   "ikss_iec_a": 3456.1058
                 },
-                "substitution": "|Z_1 + Z_2 + Z_0 + 3Z_f| = |1,6055 + j8,1117| Ω; I″k1 = 3456,1058 A (rdzeń IEC 60909)",
+                "substitution": "moduł impedancji pętli (suma impedancji składowych i potrojonej impedancji przejścia) |1,6055 + j8,1117| Ω; prąd zwarcia jednofazowego 3456,1058 A (rdzeń IEC 60909)",
                 "substitution_latex": "\\left|Z_1 + Z_2 + Z_0 + 3 Z_f\\right| = \\left|1{,}6055 + j\\,8{,}1117\\right|\\ \\Omega;\\quad I''_{k1} = 3456{,}1058\\ \\mathrm{A}",
                 "result": {
                   "prad_a": 3456.1058,
@@ -5043,33 +5043,33 @@
             "opis_uziemienia_pl": "Punkt neutralny sieci 15 kV: punkt neutralny uziemiony bezpośrednio (Zespół uziemiający sekcji 1: punkt neutralny uziemiony bezpośrednio).",
             "dane_przyjete": [
               {
-                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)",
+                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
                 "wartosc": {
                   "wartosc": 1.5,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               },
               {
-                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający sekcji 1)",
+                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
                 "wartosc": {
                   "wartosc": 6.0,
                   "jednostka": "Ω"
                 },
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "jakosc": "ESTIMATED"
               }
             ],
             "kompletnosc_dowodu": "NIEPELNY"
           },
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_binding": {
             "reporting_status": "reportable",
             "reporting_status_pl": "raportowalny",
             "proof_status": "complete",
             "proof_status_pl": "pelny",
-            "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+            "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
             "proof_kind": "white_box_trace",
             "proof_engine_version": "white_box_trace_v1",
             "trace_step_refs": [
@@ -5128,7 +5128,7 @@
             "x0_ohm_per_km": 0.3,
             "length_km": 2.0
           },
-          "substitution": "Z0 = 2.66112 + j0.6 Ω (szereg Szyna GPZ S1 15 kV↔Zacisk końcowy odcinka SN)",
+          "substitution": "impedancja zerowa 2.66112 + j0.6 Ω (szereg Szyna GPZ S1 15 kV↔Zacisk końcowy odcinka SN)",
           "substitution_latex": null,
           "result": {
             "z0_ohm": {
@@ -5136,7 +5136,7 @@
               "im": 0.6
             }
           },
-          "notes": "Wartość robocza (zasada nr 4): R′0 = 1.33056 Ω/km — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; X′0 = 0.3 Ω/km — Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
+          "notes": "Wartość robocza (zasada nr 4): Rezystancja jednostkowa składowej zerowej = 1.33056 Ω/km — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej = 0.3 Ω/km — Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)."
         },
         {
           "key": "z0_zespol_uziemiajacy[zu/13be655639046477e342658ff6b863fc/zespol]",
@@ -5173,19 +5173,19 @@
             "parametry": [
               {
                 "nazwa": "r0_ohm",
-                "etykieta_pl": "Rezystancja zerowa transformatora uziemiającego R0",
+                "etykieta_pl": "Rezystancja zerowa transformatora uziemiającego",
                 "wartosc": 1.5,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               {
                 "nazwa": "x0_ohm",
-                "etykieta_pl": "Reaktancja zerowa transformatora uziemiającego X0",
+                "etykieta_pl": "Reaktancja zerowa transformatora uziemiającego",
                 "wartosc": 6.0,
                 "jednostka": "Ω",
                 "zrodlo": "KATALOG_ROBOCZA",
-                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "podstawa_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               }
             ]
           },
@@ -5297,7 +5297,7 @@
         },
         {
           "key": "tr_z0_zt[gpz/d9ed1ba8641f592d032d395502ccbff8/transformer/001/wn_sn]",
-          "title": "Transformator TR1 110/15 kV: impedancja zerowa Z_T0",
+          "title": "Transformator TR1 110/15 kV: impedancja zerowa",
           "formula_latex": "Z_{T0} = Z_T = \\left(\\frac{p_k}{S_{rT}} + j\\sqrt{\\left(\\frac{u_k}{100}\\right)^2 - \\left(\\frac{p_k}{S_{rT}}\\right)^2}\\right)\\cdot \\frac{S_{base}}{S_{rT}}",
           "inputs": {
             "uk_percent": 11.0,
@@ -5305,7 +5305,7 @@
             "sn_mva": 25.0,
             "s_base_mva": 100.0
           },
-          "substitution": "Z_T0 = 0.0048 + j0.109895 pu (na S_rT = 25 MVA); Z_T0 = 0.0192 + j0.439581 pu (na S_base = 100 MVA)",
+          "substitution": "impedancja zerowa 0.0048 + j0.109895 pu na moc znamionową 25 MVA; 0.0192 + j0.439581 pu na moc bazową 100 MVA",
           "substitution_latex": null,
           "result": {
             "z_t0_pu_sn": {
@@ -5345,7 +5345,7 @@
             "connection": "open",
             "z0_pu": null
           },
-          "notes": "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
+          "notes": "Połączenie szeregowe: droga GN↔DN — impedancja zerowa transformatora plus trzykrotne impedancje uziemienia punktów neutralnych obu stron. Bocznik do ziemi po stronie GN albo DN — impedancja zerowa transformatora plus trzykrotna impedancja uziemienia tej strony. Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         },
         {
           "key": "z0_numerical_reference",
@@ -5368,40 +5368,40 @@
         {
           "code": "branch.z0_wartosc_robocza",
           "element_ref": "seg/de6c34633e7795100583126168f7d5f6/segment",
-          "message_pl": "Magistrala 01 — odcinek 01: R′0 i X′0 z wartości roboczej katalogu — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: R′0 i X′0 w parametrach odcinka.",
+          "message_pl": "Magistrala 01 — odcinek 01: Rezystancja jednostkowa składowej zerowej i Reaktancja jednostkowa składowej zerowej z wartości roboczej katalogu — Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji; Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Rezystancja jednostkowa składowej zerowej i Reaktancja jednostkowa składowej zerowej w parametrach odcinka.",
           "scenariusz": "MAX",
           "parametr": "r0_ohm_per_km",
           "dane_przyjete": [
             {
-              "nazwa_pl": "R′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Rezystancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 1.330562,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: R′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji. Zmień wartość: Rezystancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "X′0 z katalogu (Magistrala 01 — odcinek 01)",
+              "nazwa_pl": "Reaktancja jednostkowa składowej zerowej z katalogu (Magistrala 01 — odcinek 01)",
               "wartosc": {
                 "wartosc": 0.3,
                 "jednostka": "Ω/km"
               },
-              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: X′0 w parametrach odcinka (dane producenta albo pomiar).",
+              "powod_pl": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku). Zmień wartość: Reaktancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
               "jakosc": "ESTIMATED"
             }
           ],
           "skladniki_z0": [
             {
               "pole": "r0_ohm_per_km",
-              "etykieta": "R′0",
+              "etykieta": "Rezystancja jednostkowa składowej zerowej",
               "zalozenie": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
               "wartosc": 1.330562,
               "nazwa": "Magistrala 01 — odcinek 01"
             },
             {
               "pole": "x0_ohm_per_km",
-              "etykieta": "X′0",
+              "etykieta": "Reaktancja jednostkowa składowej zerowej",
               "zalozenie": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
               "wartosc": 0.3,
               "nazwa": "Magistrala 01 — odcinek 01"
@@ -5412,25 +5412,25 @@
           "code": "zespol_uziemiajacy.wartosc_robocza",
           "element_ref": "zu/13be655639046477e342658ff6b863fc/zespol",
           "bus_ref": "sn/3ea3b26ddbd7c2cd8d305251b69b96a0/bay_terminal",
-          "message_pl": "Zespół uziemiający sekcji 1: bocznik składowej zerowej z wartości roboczej — Rezystancja zerowa transformatora uziemiającego R0; Reaktancja zerowa transformatora uziemiającego X0. Zmień wartości w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+          "message_pl": "Zespół uziemiający sekcji 1: bocznik składowej zerowej z wartości roboczej — Rezystancja zerowa transformatora uziemiającego; Reaktancja zerowa transformatora uziemiającego. Zmień wartości w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
           "scenariusz": "MAX",
           "dane_przyjete": [
             {
-              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 1.5,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             },
             {
-              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający sekcji 1)",
+              "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający sekcji 1)",
               "wartosc": {
                 "wartosc": 6.0,
                 "jednostka": "Ω"
               },
-              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+              "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
               "jakosc": "ESTIMATED"
             }
           ]
@@ -5459,7 +5459,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
+        "snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-bezposrednie",
@@ -5485,14 +5485,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-bezposrednie",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df"
+          "snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
-          "enm_hash": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
-          "enm_snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
+          "snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
+          "enm_hash": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
+          "enm_snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -5502,19 +5502,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "413361ea254166f4e10be70e7000df54614bb1bae25da29a79ed14bf5c05e0d2",
-          "result_hash": "ee4814bf8dbf798a85b43e0a4bd987a0b9ea8321656c5e83751f4a0e679d678d",
+          "input_hash": "65104c54a8a9f8c8007f986c4e01830152dc4eb27da5f0cdb80ef0eab719e14b",
+          "result_hash": "0c2a8695eaccce9590edf1c3607b4de1bbce8b09b539f8e87496fd6f4147fd0c",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
+          "catalog_snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+          "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -5538,7 +5538,7 @@
         "breaking_time_seconds": {
           "wartosc": null,
           "pochodzenie": "punkt_zwarcia",
-          "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+          "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
         },
         "metoda": "IEC 60909",
         "scenariusz": "MAX",
@@ -5547,8 +5547,8 @@
     },
     "slad": {
       "run_id": "run-sc-scena-doziemienie-bezposrednie",
-      "snapshot_id": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
-      "input_hash": "413361ea254166f4e10be70e7000df54614bb1bae25da29a79ed14bf5c05e0d2",
+      "snapshot_id": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
+      "input_hash": "65104c54a8a9f8c8007f986c4e01830152dc4eb27da5f0cdb80ef0eab719e14b",
       "white_box_trace": [
         {
           "key": "KT[c28912fe-10f5-50e5-9652-ec62b0b43d09]",
@@ -5582,7 +5582,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5623,13 +5623,13 @@
           "result": {
             "pominieta_susceptancja_suma_s": 0.00024504422698
           },
-          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
+          "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia (współczynnik napięciowy razy napięcie fazowe) w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (impedancja przeciwna równa zgodnej) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (połowa susceptancji na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Warunek sprawdza złożenie macierzy składowej zerowej (`enm/mapping.py`, krok śladu sieci zerowej „warunek współczynnika zwarcia doziemnego”). Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
           "step": 2,
           "target_id": "38808155-8c48-5bba-bd1d-1ac3e5b8a6f1",
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5687,7 +5687,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5729,7 +5729,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5770,7 +5770,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5810,7 +5810,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5850,7 +5850,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5902,7 +5902,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5943,7 +5943,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -5983,7 +5983,7 @@
           "element_id": "gpz/d9ed1ba8641f592d032d395502ccbff8/section/001/bus_sn",
           "element_type": "BUS",
           "graph_role": null,
-          "proof_ref": "proof:short-circuit:2606a7ba60a5e142c7b6025079a420f507f34ffe476d82d93514a0198459daa1",
+          "proof_ref": "proof:short-circuit:29cbc31831da4416814da464f17b224a548f944207471a7cb50f8f96d44dd7f2",
           "proof_status": "complete",
           "reporting_status": "reportable",
           "method_basis": "IEC_60909",
@@ -6273,7 +6273,7 @@
         "case_ref": "case-demo",
         "case_kind": "ZWARCIOWY_MAKS",
         "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-        "snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
+        "snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
         "rewizja_modelu": 1,
         "variant_ref": null,
         "run_ref": "run-sc-scena-doziemienie-bezposrednie",
@@ -6299,14 +6299,14 @@
           "project_ref": null,
           "run_ref": "run-sc-scena-doziemienie-bezposrednie",
           "analysis_type": "short_circuit_sn",
-          "snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df"
+          "snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c"
         },
         "reproducibility": {
           "case_ref": "case-demo",
           "analysis_case_ref": "case-demo",
-          "snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
-          "enm_hash": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
-          "enm_snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
+          "snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
+          "enm_hash": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
+          "enm_snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
           "enm_projection_version": "v12xx.m1.1",
           "variant_ref": null,
           "operating_variant_ref": null,
@@ -6316,19 +6316,19 @@
           "method_version": "canonical_run_v1",
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
-          "input_hash": "413361ea254166f4e10be70e7000df54614bb1bae25da29a79ed14bf5c05e0d2",
-          "result_hash": "ee4814bf8dbf798a85b43e0a4bd987a0b9ea8321656c5e83751f4a0e679d678d",
+          "input_hash": "65104c54a8a9f8c8007f986c4e01830152dc4eb27da5f0cdb80ef0eab719e14b",
+          "result_hash": "0c2a8695eaccce9590edf1c3607b4de1bbce8b09b539f8e87496fd6f4147fd0c",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
           "proof_renderer_version": "white_box_trace_v1",
-          "catalog_snapshot_ref": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
+          "catalog_snapshot_ref": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
           "catalog_materialization_ref": "catalog-materialization:db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_hash": "db6d62f26c84e04bf9e3a65ebf3c7073145a6b053bf242839f744a174b232f68",
           "catalog_materialization_status": "materialized",
           "catalog_materialization_contract_version": "catalog_materialization_v1",
           "catalog_schema_version": null,
-          "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+          "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
           "model_revision": 1,
           "tolerance_policy_ref": "solver_tolerance/default",
           "rounding_policy_ref": "rounding/default",
@@ -6655,7 +6655,7 @@
           },
           "description": null,
           "enm_version": "1.0",
-          "hash_sha256": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df",
+          "hash_sha256": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c",
           "name": "Karta ZU",
           "revision": 1,
           "updated_at": "2026-09-16T09:00:00Z"
@@ -6855,11 +6855,11 @@
               "u_pw_kv": 0.4,
               "wartosci_robocze": {
                 "grupa_polaczen": "ENEA Zeszyt 1 §16 s. 30: układ połączeń ZNyn 11",
-                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
-                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy U_n/√3 w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
+                "r0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
+                "s_n_kva": "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
                 "s_pw_kva": "ENEA Zeszyt 1 §16 s. 30: uzwojenie dolne 400 V, moc potrzeb własnych ≥ 100 kVA; przyjęto 160 kVA (najbliższa moc znormalizowana powyżej minimum) — założenie robocze",
                 "u_pw_kv": "ENEA Zeszyt 1 §16 s. 30: napięcie znamionowe uzwojenia dolnego – 400 V",
-                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+                "x0_ohm": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
               },
               "x0_ohm": 6.0
             },
@@ -6890,7 +6890,7 @@
           }
         ]
       },
-      "snapshot_id": "215bbf541372f3846747045920b3c1b10f702071bc03a653ae0b0bf6277245df"
+      "snapshot_id": "b00c4d064931ad0a49a3b14cba8edf9a1c7b443c69c108e201965498d1e3c00c"
     }
   }
 }

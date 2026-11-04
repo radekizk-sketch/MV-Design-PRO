@@ -542,7 +542,9 @@ def _kroki_tn(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[Pro
             ),
             substitution_latex=rf"$$\text{{{data.swz_przyczyna_pl}}}$$",
             result=_pv("\\text{SWZ}", data.swz_status, "—", "swz_status"),
-            unit_check=_uc("A", "A", "A ≥ A (przy dowiedzionym t ≤ t_wym)"),
+            unit_check=_uc(
+                "A", "A", "A ≥ A (przy dowiedzionym czasie wyłączenia nie dłuższym od wymaganego)"
+            ),
             source_keys={
                 "zrodlo_czasu": "Tab. 41.1 IEC 60364-4-41 (G-D3)",
                 "pasmo_u0": data.swz_pasmo_u0,
@@ -964,7 +966,9 @@ class LVCircuitVerificationProofPack:
             [
                 _sym("I_2", "A", "Prąd gwarantowanego zadziałania", "i2_a"),
                 _sym("I_z'", "A", "Obciążalność dopuszczalna po korektach", "iz_prime_a"),
-                _sym("1{,}45 \\cdot I_z'", "A", "Granica dopuszczalna I2", "limit_a"),
+                _sym(
+                    "1{,}45 \\cdot I_z'", "A", "Granica dopuszczalna prądu zadziałania", "limit_a"
+                ),
             ],
         )
         steps.append(

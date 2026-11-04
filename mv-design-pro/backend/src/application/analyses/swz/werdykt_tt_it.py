@@ -520,7 +520,10 @@ def _kryterium_pierwsze_zwarcie_it(
         wynik=wynik_k,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_OBLICZENIA,
-        dowod=_dowod_obliczenia(f"I_d = 3·ω·C_e·U_0 sieci IT ({format_liczba(i_d1_a)} A)"),
+        dowod=_dowod_obliczenia(
+            f"prąd pierwszego doziemienia sieci IT z pojemności doziemnej "
+            f"({format_liczba(i_d1_a)} A)"
+        ),
         zakres_waznosci=_zakres(
             "IT",
             "Pierwsze zwarcie doziemne IT: pojemności doziemne wszystkich odcinków sieci zasilanej z transformatora",

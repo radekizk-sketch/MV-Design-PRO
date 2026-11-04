@@ -211,7 +211,7 @@ class SC3FPackRequest(BaseModel):
 
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
-    tk_s: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
+    tk_s: float = Field(1.0, description="Czas trwania zwarcia [s]")
     #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] scenariusza biegu; brak = t_b punktu
     #: rozstrzyga warstwa wiązania tą samą funkcją co bieg (karta TB-WARTOSC-ROBOCZA:
     #: najkrótszy czas wyłączenia pól lokalnych, inaczej wartość robocza 0,1 s).

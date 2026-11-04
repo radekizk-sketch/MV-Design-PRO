@@ -99,7 +99,9 @@ def build_zbus(graph: NetworkGraph) -> tuple[AdmittanceMatrixBuilder, np.ndarray
     try:
         z_bus = np.linalg.inv(y_bus)
     except np.linalg.LinAlgError as exc:
-        raise ValueError("Y-bus is singular; cannot compute Z-bus for short-circuit") from exc
+        raise ValueError(
+            "Y-bus is singular; cannot compute Z-bus for short-circuit"
+        ) from exc
     return builder, z_bus
 
 
@@ -108,7 +110,10 @@ def voltage_factor_for_fault(short_circuit_type: ShortCircuitType) -> float:
         return 1.0 / math.sqrt(3.0)
     if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
         return math.sqrt(3.0)
-    if short_circuit_type in {ShortCircuitType.TWO_PHASE, ShortCircuitType.TWO_PHASE_GROUND}:
+    if short_circuit_type in {
+        ShortCircuitType.TWO_PHASE,
+        ShortCircuitType.TWO_PHASE_GROUND,
+    }:
         return 1.0
     raise ValueError(f"Unsupported short-circuit type: {short_circuit_type}")
 
@@ -155,14 +160,18 @@ def compute_equivalent_impedance(
         ShortCircuitType.TWO_PHASE_GROUND,
     }:
         z0 = require_z0_bus(
-            f"Z0 bus matrix is required for {short_circuit_type.value} fault computation"
+            f"zwarcie {short_circuit_type.value} wymaga macierzy impedancji zerowej sieci"
         )
     z_equiv = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0)
     if abs(z_equiv) == 0:
-        raise ZeroDivisionError("Equivalent impedance is zero; cannot compute Ik''")
+        raise ZeroDivisionError(
+            "impedancja zastępcza równa zeru — początkowego prądu zwarciowego nie da się policzyć"
+        )
     if z_f is None:
         return ShortCircuitCoreResult(z_equiv=z_equiv, z1=z1, z2=z2, z0=z0)
-    z_equiv_f = impedancja_petli_zwarcia(short_circuit_type, z1=z1, z2=z2, z0=z0, z_f=z_f)
+    z_equiv_f = impedancja_petli_zwarcia(
+        short_circuit_type, z1=z1, z2=z2, z0=z0, z_f=z_f
+    )
     return ShortCircuitCoreResult(
         z_equiv=z_equiv_f, z1=z1, z2=z2, z0=z0, z_f=z_f, z_equiv_metaliczne=z_equiv
     )
@@ -192,13 +201,18 @@ def impedancja_petli_zwarcia(
         ShortCircuitType.TWO_PHASE_GROUND,
     }:
         if z0 is None:
-            raise ValueError(f"Z0 is required for {short_circuit_type.value} fault computation")
+            raise ValueError(
+                f"zwarcie {short_circuit_type.value} wymaga impedancji zerowej"
+            )
         z0_toru = z0 if z_f is None else z0 + 3.0 * z_f
         if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             return z1 + z2 + z0_toru
         denominator = z2 + z0_toru
         if abs(denominator) == 0:
-            raise ZeroDivisionError("Z2 + Z0 is zero; cannot compute Ik''")
+            raise ZeroDivisionError(
+                "suma impedancji przeciwnej i zerowej równa zeru — początkowego prądu zwarciowego nie "
+                "da się policzyć"
+            )
         return z1 + (z2 * z0_toru) / denominator
     raise ValueError(f"Unsupported short-circuit type: {short_circuit_type}")
 
@@ -214,7 +228,9 @@ def compute_ikss(
     return (c_factor * un_v * voltage_factor) / modul_zespolony(z_equiv)
 
 
-def _thermal_mn_factors(kappa: float, tk_s: float, f_hz: float = 50.0) -> tuple[float, float]:
+def _thermal_mn_factors(
+    kappa: float, tk_s: float, f_hz: float = 50.0
+) -> tuple[float, float]:
     """Wspolczynniki cieplne m (skladowa DC) i n (skladowa AC) — IEC 60909-0 §4.7/§12.
 
     I_th = I_k'' * sqrt(m + n) (norma; patrz rowniez
@@ -323,7 +339,9 @@ class SkladowaNieokresowa:
     i_dc_a: float
 
 
-def skladowa_nieokresowa(*, ikss_a: float, rx_ratio: float, tb_s: float) -> SkladowaNieokresowa:
+def skladowa_nieokresowa(
+    *, ikss_a: float, rx_ratio: float, tb_s: float
+) -> SkladowaNieokresowa:
     """i_DC(t_b) = √2·I_k''·e^(−2π·f·t_b·R/X) — IEC 60909-0:2016, rozdz. 10, f = 50 Hz.
 
     ``ikss_a`` to prąd początkowy części sieci niosącej składową nieokresową (sieć zasilająca
@@ -332,7 +350,7 @@ def skladowa_nieokresowa(*, ikss_a: float, rx_ratio: float, tb_s: float) -> Skla
     z którego policzono κ: X = 0 daje R/X = ∞ i zerową składową, R = 0 — brak zaniku.
     """
     if tb_s <= 0.0:
-        raise ValueError("tb_s must be > 0")
+        raise ValueError("czas wyłączenia musi być dodatni")
     wykladnik = OMEGA_50HZ * tb_s * rx_ratio
     # Karta UX-04/POLE-ZU-SKLADOWA-ZEROWA (B-01, sonda w docs/uiux/UX04_POLE_ZU_SKLADOWA_
     # ZEROWA.md): R/X < 0 — pętla zwarcia doziemnego pojemnościowa (pojemność doziemna B0

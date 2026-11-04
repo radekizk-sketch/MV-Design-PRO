@@ -74,18 +74,18 @@ VERDICT_NIE_OCENIONO = "nie oceniono"
 #: Powód braku oceny — JEDNO miejsce, wspólne dla widoku stabilności SSCI i wyniku analizy
 #: V12.6 `ssci_impedance` na ekranie analiz specjalistycznych (tekst o stanie solvera).
 POWOD_BRAKU_OCENY_SSCI_PL = (
-    "impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez "
+    "impedancja sieci w funkcji częstotliwości obecnego solvera jest liczona na macierzy admitancyjnej bez "
     "przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy "
-    "za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista "
+    "za duża — więc wzmocnienie pętli (impedancja sieci do impedancji przekształtnika) i każdy wniosek z kryterium Nyquista "
     "są niewiarygodne; wynik nie ma też niezależnej wyroczni"
 )
 #: Konkretne braki powierzchni SSCI (po brakach nazwanych przez regułę K).
 BRAKI_OCENY_SSCI: tuple[str, ...] = (
-    "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią "
+    "Impedancja sieci w funkcji częstotliwości liczona na wspólnej macierzy admitancyjnej z przekładnią "
     "transformatora i impedancją źródła zasilania — " + POWOD_BRAKU_OCENY_SSCI_PL + ".",
     "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) "
     "dla węzła przyłączenia przekształtnika.",
-    "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane "
+    "Do czasu poprawnej impedancji sieci: badanie zewnętrzne interakcji przekształtnik–sieć albo dane "
     "producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego "
     "modelu i pozostaje informacją.",
 )
@@ -93,7 +93,7 @@ BRAKI_OCENY_SSCI: tuple[str, ...] = (
 #: Nagłówek sekcji audytowej metryk L(f) — tekst widoczny dla projektanta nad metrykami
 #: (max|L|, margines różnicy faz, częstotliwość winna, bliskość punktu −1, okrążenia).
 SEKCJA_AUDYTOWA_SSCI_PL = (
-    "Metryki kryterium impedancyjnego z Z_grid(f) liczonego bez przekładni transformatora "
+    "Metryki kryterium impedancyjnego z impedancji sieci liczonej bez przekładni transformatora "
     "— materiał audytowy, nie jest wynikiem inżynierskim"
 )
 
@@ -188,7 +188,7 @@ class ProvenanceTag:
 
 #: Brak tablic impedancji (solver zwrócił status „dane niekompletne").
 BRAK_TABLIC_SSCI_PL = (
-    "Tablice impedancji Z_grid(f), Z_conv(f) i L(f) — solver ich nie zwrócił (dane "
+    "Tablice impedancji sieci, impedancji przekształtnika i wzmocnienia pętli — solver ich nie zwrócił (dane "
     "niekompletne)."
 )
 #: Opis braku dla pól ``missing_fields`` solvera, które NIE są polami karty przekształtnika.
@@ -266,7 +266,7 @@ def ocena_ssci_niewykonana(
             poziom=EvidenceTier.UNVALIDATED_MODEL,
             status_modelu="UNVALIDATED_MODEL",
             zakres_waznosci=ZakresWaznosci(
-                opis_pl="Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+                opis_pl="Skan impedancji sieci i przekształtnika w paśmie podsynchronicznym",
                 wykluczenia=("impedancja sieci z przekładnią transformatora",),
             ),
             powod_braku_niepewnosci_pl=(

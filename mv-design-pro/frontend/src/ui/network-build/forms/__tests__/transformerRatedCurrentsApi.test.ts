@@ -18,8 +18,8 @@ function solverResponse(body: TransformerRatedCurrentsRequest) {
   return {
     primary_current_a: apparentVa / (Math.sqrt(3) * body.primary_voltage_kv * 1000),
     secondary_current_a: apparentVa / (Math.sqrt(3) * body.secondary_voltage_kv * 1000),
-    formula_ref: 'I = S_n / (√3·U_n)',
-    assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
+    formula_ref: String.raw`I = \frac{S_{n}}{\sqrt{3}\,U_{n}}`,
+    assumptions: ['Układ 3-fazowy symetryczny; współczynnik linii √3.'],
   };
 }
 

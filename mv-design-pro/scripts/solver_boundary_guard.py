@@ -55,9 +55,9 @@ DODATKOWE_CHRONIONE: tuple[str, ...] = (
 #: obejmuje każdy plik w nim, także nowy) + `DODATKOWE_CHRONIONE`. Partia integracji 10:
 #: dawna ręczna lista pomijała rozpływ NR/GS/FD, NC RfG z profilami, FRT/HVRT, WLS, stan
 #: fazowy SN i V12.6 — zmiana tych rdzeni przechodziła bez sankcji.
-WATCHED_PATHS: list[str] = [f"backend/src/{sciezka}" for sciezka in sciezki_b01()] + list(
-    DODATKOWE_CHRONIONE
-)
+WATCHED_PATHS: list[str] = [
+    f"backend/src/{sciezka}" for sciezka in sciezki_b01()
+] + list(DODATKOWE_CHRONIONE)
 
 # Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
 # (docs/v12xx/REJESTR_KONFLIKTOW.md). Wpis usuwamy po scaleniu do main.
@@ -289,6 +289,11 @@ SANCTIONED_CHANGES = {
         "niefinitowy oznacza bramka `canonical_analysis`. Dla wykladnika >= -700 liczby bit w "
         "bit. Sonda: docs/uiux/UX04_POLE_ZU_SKLADOWA_ZEROWA.md. Wpis do usuniecia po scaleniu "
         "do main."
+        " Karta UX-04/ZU punkt 4 (decyzja koordynatora 2026-10-30, B-01 WYLACZNIE TEKSTY): "
+        "komunikaty odmowy (macierz zerowa, impedancja zastepcza zerowa, czas wylaczenia) "
+        "napisane slowami po polsku zamiast prozy angielskiej z symbolami splaszczonymi; AST z "
+        "normalizacja stalych tekstowych IDENTYCZNE, parytet liczbowy bit w bit. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/core/ybus.py": (
         "Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): jeden predykat `siec_zwarciowa` w"

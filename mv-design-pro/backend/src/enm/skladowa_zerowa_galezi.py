@@ -103,19 +103,22 @@ def _brak_podstawy(
     if pasmo is None:
         return "napięcie szyny odcinka nieznane — pasma sieci (SN albo nN) nie da się ustalić"
     if pasmo == "SN":
-        return "R′1 albo X′1 odcinka nieznane albo niedodatnie (R′0 = 3·R′1, X′0 = 3·X′1)"
+        return (
+            "rezystancja albo reaktancja zgodna odcinka nieznana albo niedodatnia (wartość "
+            "robocza składowej zerowej to trzykrotność składowej zgodnej)"
+        )
     if pasmo == "WN":
         return (
             f"odcinek sieci {napiecie_kv:g} kV — reguła wartości roboczej obejmuje sieci SN "
-            "i nN; R′0/X′0 linii WN wyznacza geometria słupa albo dana operatora"
+            "i nN; składową zerową linii WN wyznacza geometria słupa albo dana operatora"
         )
     if not kabel:
         return "linia nN — droga powrotna prądu zerowego (przewód neutralny) nieopisana w modelu"
     if r1 is None or x1 is None or r1 <= 0 or x1 <= 0:
-        return "R′1 albo X′1 odcinka nieznane albo niedodatnie"
+        return "rezystancja albo reaktancja zgodna odcinka nieznana albo niedodatnia"
     return (
-        "kabel nN bez rezystancji albo reaktancji żyły powrotnej PE/PEN "
-        "(R′0 = R′1 + 3·R′PE, X′0 = X′1 + 3·X′PE)"
+        "kabel nN bez rezystancji albo reaktancji żyły powrotnej PE/PEN (składowa zerowa "
+        "to składowa zgodna powiększona o trzykrotność żyły powrotnej)"
     )
 
 
@@ -185,7 +188,7 @@ def _brak_podstawy_b0(*, napiecie_kv: float | None, b1: float | None) -> str:
         return "napięcie szyny odcinka nieznane — pasma sieci (SN albo nN) nie da się ustalić"
     if pasmo == "WN":
         return (
-            f"odcinek sieci {napiecie_kv:g} kV — B′0 linii WN wyznacza geometria słupa albo "
+            f"odcinek sieci {napiecie_kv:g} kV — susceptancję zerową linii WN wyznacza geometria słupa albo "
             "dana operatora"
         )
     if pasmo == "nN":
@@ -194,8 +197,11 @@ def _brak_podstawy_b0(*, napiecie_kv: float | None, b1: float | None) -> str:
             "kabla: dana producenta albo pomiar"
         )
     if b1 is None or b1 <= 0:
-        return "B′1 odcinka nieznane albo niedodatnie (B′0 kabla = B′1, linii = 0,4·B′1)"
-    return "B′0 nieznane"
+        return (
+            "susceptancja zgodna odcinka nieznana albo niedodatnia (wartość robocza składowej "
+            "zerowej: kabel — równa zgodnej, linia — 0,4 zgodnej)"
+        )
+    return "susceptancja zerowa nieznana"
 
 
 def susceptancja_zerowa_odcinka(

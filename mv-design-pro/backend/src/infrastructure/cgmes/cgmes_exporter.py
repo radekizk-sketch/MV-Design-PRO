@@ -360,7 +360,8 @@ def _emit_transformer(eq: ET.Element, tp: ET.Element, trafo: Transformer) -> Non
     if r_hv_ohm > z_hv_ohm:
         raise OdmowaDanychError(
             f"Transformator „{trafo.name}”: straty obciążeniowe {trafo.pk_kw} kW dają "
-            f"rezystancję większą niż impedancja zwarciowa (uk = {trafo.uk_percent} %) — dane "
+            f"rezystancję większą niż impedancja zwarciowa (napięcie zwarcia "
+            f"{trafo.uk_percent} %) — dane "
             "sprzeczne; popraw parametry przed eksportem CGMES."
         )
     x_hv_ohm = (z_hv_ohm**2 - r_hv_ohm**2) ** 0.5
@@ -435,17 +436,17 @@ _LTC_FLAG: dict[str, str] = {"OLTC": "true", "DETC": "false"}
 #: side-car (tor wewnętrzny, bezstratny); tor obcy EQ+TP je traci — każda pozycja jest
 #: przypięta testem ``tests/cgmes/test_cgmes_regulator_zaczepow.py``.
 REGULATOR_ZACZEPOW_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
-    "tap_changer.delay_seconds — CGMES 3.0 nie ma TapChanger.initialDelay",
-    "tap_changer.line_drop_compensation — CGMES 3.0 nie ma TapChangerControl.lineDrop*",
-    "tap_changer.control_mode PROFILE/REMOTE — CIM zna tylko regulację włączoną/wyłączoną "
-    "(TapChanger.controlEnabled, RegulatingControl.enabled); import odtwarza AUTOMATIC, "
-    "fizyka (TapChanger.is_automatic) identyczna",
-    "tap_changer.catalog_ref — CIM nie niesie referencji katalogowej",
-    "tap_changer z regulation_type=NONE — brak odrębnej semantyki CIM, import daje "
-    "tap_changer=None (fizyka identyczna: get_tap_ratio i tak czyta pola legacy)",
-    "pola legacy tap_* obok AKTYWNEGO regulatora kanonicznego — jeden RatioTapChanger "
+    "`tap_changer.delay_seconds` — CGMES 3.0 nie ma `TapChanger.initialDelay`",
+    "`tap_changer.line_drop_compensation` — CGMES 3.0 nie ma `TapChangerControl.lineDrop*`",
+    "`tap_changer.control_mode` PROFILE/REMOTE — CIM zna tylko regulację włączoną/wyłączoną "
+    "(`TapChanger.controlEnabled`, `RegulatingControl.enabled`); import odtwarza AUTOMATIC, "
+    "fizyka (`TapChanger.is_automatic`) identyczna",
+    "`tap_changer.catalog_ref` — CIM nie niesie referencji katalogowej",
+    "`tap_changer` z `regulation_type=NONE` — brak odrębnej semantyki CIM, import daje "
+    "`tap_changer=None` (fizyka identyczna: `get_tap_ratio` i tak czyta pola legacy)",
+    "pola legacy `tap_*` obok AKTYWNEGO regulatora kanonicznego — jeden RatioTapChanger "
     "na transformator niesie jedno źródło prawdy (kanoniczne, V12K-045)",
-    "tap_changer.controlled_bus_ref wskazujący szynę bez żadnego zacisku (Terminal) — "
+    "`tap_changer.controlled_bus_ref` wskazujący szynę bez żadnego zacisku (Terminal) — "
     "RegulatingControl.Terminal musi wskazać zacisk urządzenia; szyna izolowana go nie ma",
 )
 
@@ -691,15 +692,18 @@ _SUFIKS_JEDNOSTKI: dict[str, str] = {
 
 #: Dane generatora, których tor obcy EQ+TP NIE odtworzy (side-car je niesie).
 GENERATOR_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
-    "gen_type fw_pmsg/fw_dfig — EQ zna tylko PowerElectronicsWindUnit (typ 3 od typu 4 "
-    "odróżnia profil DY); import daje wind_inverter z ostrzeżeniem",
-    "podział mocy znamionowej na jednostki (quantity/n_parallel) — ratedS niesie moc "
-    "CAŁEJ instalacji; import: sn_mva = ratedS, jedna jednostka (ta sama moc łączna)",
-    "limits (GenLimits), catalog_ref, connection_variant/station_ref/blocking_transformer_ref, "
+    "`gen_type` `fw_pmsg`/`fw_dfig` — EQ zna tylko PowerElectronicsWindUnit (typ 3 od typu 4 "
+    "odróżnia profil DY); import daje `wind_inverter` z ostrzeżeniem",
+    "podział mocy znamionowej na jednostki (`quantity`/`n_parallel`) — `ratedS` niesie moc "
+    "CAŁEJ instalacji; import: `sn_mva = ratedS`, jedna jednostka (ta sama moc łączna)",
+    "`limits` (GenLimits), `catalog_ref`, `connection_variant`/`station_ref`/"
+    "`blocking_transformer_ref`, "
     "dynamika, modele widmowe, nastawy i deklaracje modułu — brak odpowiednika w EQ",
-    "parametry zwarciowe maszyny DFIG (pr_mw, pole_pairs, i_lr_ratio, cos_phi, efficiency) — "
+    "parametry zwarciowe maszyny DFIG (`pr_mw`, `pole_pairs`, `i_lr_ratio`, `cos_phi`, "
+    "`efficiency`) — "
     "PowerElectronicsConnection nie ma atrybutów maszyny wirującej",
-    "pozostałe klucze materialized_params poza sn_mva, un_kv i parametrami zwarciowymi maszyn "
+    "pozostałe klucze `materialized_params` poza `sn_mva`, `un_kv` i parametrami zwarciowymi "
+    "maszyn "
     "SynchronousMachine/AsynchronousMachine",
     "wartości projektanta parametrów zwarciowych maszyny (overrides) — EQ niesie wyłącznie "
     "tabliczkę; wartość projektanta wpisana do atrybutu udawałaby daną tabliczki odbiorcy",

@@ -177,7 +177,7 @@ def komunikat_blokady(*, ref_zrodla: str, k_sc_zrodlo: str) -> str:
     """Komunikat blokady — mówi, CZEGO brakuje i SKĄD to wziąć."""
     if k_sc_zrodlo == K_SC_ZRODLO_PRAD_NIEPOPRAWNY:
         return (
-            f"Źródło falownikowe '{ref_zrodla}' nie ma poprawnego prądu znamionowego I_n "
+            f"Źródło falownikowe '{ref_zrodla}' nie ma poprawnego prądu znamionowego "
             f"(wymagana liczba skończona i dodatnia), więc jego wkładu zwarciowego NIE DA SIĘ "
             f"policzyć. Wkład zerowy ZANIŻYŁBY prąd zwarciowy i przepuścił aparat o za małej "
             f"zdolności wyłączalnej — uzupełnij daną tabliczkową źródła."
@@ -185,18 +185,18 @@ def komunikat_blokady(*, ref_zrodla: str, k_sc_zrodlo: str) -> str:
     if k_sc_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
         return (
             f"Źródło falownikowe '{ref_zrodla}': iloczyn współczynnika wkładu zwarciowego "
-            f"k_sc i prądu znamionowego I_n wykracza poza zakres liczb skończonych, więc "
+            f"i prądu znamionowego wykracza poza zakres liczb skończonych, więc "
             f"pierwsza wielkość fizyczna rachunku nie istnieje. Popraw dane znamionowe źródła."
         )
     if k_sc_zrodlo == K_SC_ZRODLO_NIEPOPRAWNE:
         return (
             f"Źródło falownikowe '{ref_zrodla}' ma niemożliwą do przyjęcia deklarację "
-            f"współczynnika wkładu zwarciowego k_sc (wymagana liczba skończona i dodatnia). "
+            f"współczynnika wkładu zwarciowego (wymagana liczba skończona i dodatnia). "
             f"Wynik zwarciowy nie może być miarodajny — popraw daną wejściową."
         )
     return (
         f"Źródło falownikowe '{ref_zrodla}' nie ma zadeklarowanego współczynnika wkładu "
-        f"zwarciowego k_sc. Wartość domyślna systemu NIE JEST daną inżynierską: podaj k_sc "
+        f"zwarciowego. Wartość domyślna systemu NIE JEST daną inżynierską: podaj współczynnik "
         f"z karty producenta albo certyfikatu jednostki wytwórczej. Rozpływ mocy, topologia "
         f"i schemat pozostają dostępne."
     )

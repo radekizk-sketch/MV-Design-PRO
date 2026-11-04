@@ -37,7 +37,9 @@ def _bess(
     use_case: str,
 ) -> StationTemplate:
     der_options = (
-        replace(DER_BESS_SN, default_p_mw_each=bess_p_mw_each, default_count=bess_count),
+        replace(
+            DER_BESS_SN, default_p_mw_each=bess_p_mw_each, default_count=bess_count
+        ),
     )
     nc_rfg_type = typ_modulu_nc_rfg_skladu(der_options, 15.0)
     return StationTemplate(
@@ -66,7 +68,10 @@ def _bess(
             nn_feeder_cb_options=NN_CB_OPTIONS,
             der_options=(*der_options,),
             der_total_count=TemplateParamInt(
-                default=bess_count, min_value=1, max_value=10, label_pl="Liczba kontenerów BESS"
+                default=bess_count,
+                min_value=1,
+                max_value=10,
+                label_pl="Liczba kontenerów BESS",
             ),
             ct_options=CT_OPTIONS,
             vt_options=VT_OPTIONS,
@@ -115,12 +120,12 @@ BESS_TEMPLATES = (
     ),
     _bess(
         "tpl_bess_5mw_10mwh_fcr_n",
-        "BESS 5 MW / 10 MWh (FCR_N services)",
-        "Duży magazyn 5 MW/10 MWh do usług FCR_N (rezerwa pierwotna) — 5 kontenerów po "
+        "BESS 5 MW / 10 MWh (usługi rezerwy FCR-N)",
+        "Duży magazyn 5 MW/10 MWh do usług rezerwy pierwotnej FCR-N — 5 kontenerów po "
         "1 MW / 2 MWh.",
         bess_count=5,
         bess_p_mw_each=1.0,
-        use_case="FCR_N — automatyczna rezerwa pierwotna częstotliwości.",
+        use_case="FCR-N — automatyczna rezerwa pierwotna częstotliwości.",
     ),
     _bess(
         "tpl_bess_5mw_10mwh_afrr",

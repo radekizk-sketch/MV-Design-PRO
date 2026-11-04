@@ -277,7 +277,7 @@ class P14PowerFlowProof:
         if data.v_min_pu < 0.9 or data.v_max_pu > 1.1:
             warnings.append(
                 f"Napięcia poza typowym zakresem: "
-                f"U_min={data.v_min_pu:.4f} p.u., U_max={data.v_max_pu:.4f} p.u."
+                f"minimalne {data.v_min_pu:.4f} p.u., maksymalne {data.v_max_pu:.4f} p.u."
             )
 
         # Build summary

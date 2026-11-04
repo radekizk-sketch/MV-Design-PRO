@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "6096ad7e937f20f8a16d426ef81f675e14074e31a28fe84c44c7e4b42d388106",
+  "projection_hash": "58a89060f12a2bed5d53e5c209d6928aff0e5b1dea9057a3917b10f83ffa1abc",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1675,8 +1675,8 @@
         "ostrzezenie_min_pu": 0.95,
         "ostrzezenie_pct": 5.0,
         "pasmo_wiarygodnosci_pct": 10.0,
-        "podstawa_ostrzezenie_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
-        "podstawa_przekroczenie_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.",
+        "podstawa_ostrzezenie_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % napięcia znamionowego. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+        "podstawa_przekroczenie_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: napięcie znamionowe ± 10 %.",
         "przekroczenie_max_pu": 1.1,
         "przekroczenie_min_pu": 0.9,
         "przekroczenie_pct": 10.0
@@ -2156,7 +2156,7 @@
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
                     "pasmo_u0": "120<U0<=230",
-                    "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma U0). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
+                    "podstawa": "IEC 60364-4-41 Tab. 41.1 (edycje 2005 i 2017 — te same progi czasowe dla układu TN, obwody odbiorcze, wg pasma napięcia fazowego). Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) GT Engineering, „IEC 60364-4-41 — TN Systems” (gt-engineering.it/en/technical-standards/en-iec-standards/iec-60364-4-41/tn-systems/) — tabela 50–120V:0,8s / 120–230V:0,4s / 230–400V:0,2s / >400V:0,1s; (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)” (elec-mate.com/tools/disconnection-time-calculator) — BS 7671 Tab. 41.1 (norma brytyjska implementująca IEC 60364-4-41 z identycznymi progami czasowymi TN), potwierdza 120–230V:0,4s i 230–400V:0,2s. Norma źródłowa (pełny tekst IEC) NIE była dostępna do bezpośredniego odczytu w tej sesji (403/PDF nieczytelny) — status REFERENCYJNY do potwierdzenia właściciela przy dostępie do kopii normy (flip-to-verified, wzorzec G-D1).",
                     "rodzaj_obwodu": "odbiorczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 0.4,
@@ -2682,7 +2682,7 @@
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
                     "pasmo_u0": "120<U0<=230",
-                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
+                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,
@@ -3016,7 +3016,7 @@
                   {
                     "method": "Tab. 41.1 IEC 60364-4-41 (TN)",
                     "pasmo_u0": "120<U0<=230",
-                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma U0. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
+                    "podstawa": "IEC 60364-4-41 §411.3.2.3 — obwody rozdzielcze (distribution circuits) i obwody spoza §411.3.2.2 w układzie TN: czas wyłączenia 5 s, NIEZALEŻNY od pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” (professional-electrician.com/technical/the-requirements-for-automatic-disconnection-in-case-of-a-fault-napit/); (2) Elec-Mate, „Disconnection Time Calculator (BS 7671)”. Status REFERENCYJNY (jak wyżej — do potwierdzenia przy dostępie do normy).",
                     "rodzaj_obwodu": "rozdzielczy",
                     "step": "tabela_czasow_41_1",
                     "t_wymagany_s": 5.0,

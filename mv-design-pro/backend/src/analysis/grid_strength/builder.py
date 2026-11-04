@@ -48,7 +48,9 @@ class GridStrengthBuilder:
         very_weak_threshold: float = DEFAULT_VERY_WEAK_THRESHOLD,
     ) -> None:
         if very_weak_threshold > weak_threshold:
-            raise ValueError("very_weak_threshold nie może być większy niż weak_threshold")
+            raise ValueError(
+                "very_weak_threshold nie może być większy niż weak_threshold"
+            )
         self.weak_threshold = float(weak_threshold)
         self.very_weak_threshold = float(very_weak_threshold)
 
@@ -99,8 +101,8 @@ class GridStrengthBuilder:
             why = (
                 "Dane niekompletne — brak: "
                 + ", ".join(missing)
-                + ". SCR wymaga dodatniej mocy zwarciowej S_sc'' (z solvera "
-                "IEC 60909 w węźle) oraz mocy zainstalowanej źródeł S_n."
+                + ". SCR wymaga dodatniej mocy zwarciowej (z solvera "
+                "IEC 60909 w węźle) oraz mocy zainstalowanej źródeł."
             )
             return BusStrengthEntry(
                 bus_ref=item.bus_ref,
@@ -187,14 +189,16 @@ class GridStrengthBuilder:
             return (
                 None,
                 VERDICT_NO_DATA,
-                "WSCR niepoliczony — brak węzłów z kompletem danych (S_sc'' i S_n).",
+                "WSCR niepoliczony — brak węzłów z kompletem danych (moc zwarciowa i moc zainstalowana).",
                 (),
             )
 
         numerator = sum(float(i.s_sc_mva) * float(i.s_installed_mva) for i in valid)  # type: ignore[arg-type]
         sum_sn = sum(float(i.s_installed_mva) for i in valid)  # type: ignore[arg-type]
         wscr = _round(numerator / (sum_sn**2))
-        verdict, _is_weak = _classify(wscr, self.weak_threshold, self.very_weak_threshold)
+        verdict, _is_weak = _classify(
+            wscr, self.weak_threshold, self.very_weak_threshold
+        )
         why = (
             f"WSCR = {wscr} dla {len(valid)} źródeł — sieć {verdict}. "
             "WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu "
@@ -208,8 +212,9 @@ class GridStrengthBuilder:
                     r"{\left(\sum_i S_{n,i}\right)^2}"
                 ),
                 substitution_pl=(
-                    f"licznik Σ(S_sc·S_n) = {_round(numerator)} MVA²; "
-                    f"(Σ S_n)² = {_round(sum_sn**2)} MVA²"
+                    f"licznik: suma iloczynów mocy zwarciowej i mocy znamionowej = "
+                    f"{_round(numerator)} MVA²; kwadrat sumy mocy znamionowych = "
+                    f"{_round(sum_sn**2)} MVA²"
                 ),
                 result_pl=f"WSCR = {wscr} (–), n = {len(valid)}",
             ),

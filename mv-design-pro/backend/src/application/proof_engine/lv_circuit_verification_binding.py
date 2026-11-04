@@ -134,8 +134,8 @@ def resolve_urzadzenie_ochronne(
         klasa = params.get("curve_class")
         if in_a is None or klasa is None:
             return None, (
-                f"MCB '{breaker.ref_id}' bez kompletu danych (in_a i/lub curve_class) "
-                "w materialized_params."
+                f"MCB '{breaker.ref_id}' bez kompletu danych (prąd znamionowy i/lub "
+                "klasa charakterystyki) w parametrach zmaterializowanych."
             )
         return (
             UrzadzenieOchronneNn(
@@ -154,7 +154,10 @@ def resolve_urzadzenie_ochronne(
     if namespace == "WKLADKA_NN":
         in_a = params.get("in_a")
         if in_a is None:
-            return None, f"Wkładka '{breaker.ref_id}' bez in_a w materialized_params."
+            return (
+                None,
+                f"Wkładka '{breaker.ref_id}' bez prądu znamionowego w parametrach zmaterializowanych.",
+            )
         conditional_ka: float | None = None
         if apparatus_branch is not None:
             ap_params = (

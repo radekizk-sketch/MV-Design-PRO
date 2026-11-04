@@ -87,7 +87,9 @@ class SynchronousMachineSource:
     # rejestru `network_model.catalog.wartosci_robocze`, jedyne miejsce wartości roboczych).
     xd_subtransient_pu: float = field(kw_only=True)  # x″d [pu], saturated subtransient
     cos_phi_r: float = field(kw_only=True)  # rated power factor cos φ_rG
-    un_kv: float | None = field(default=None)  # system nominal voltage U_n [kV]; default U_rG
+    un_kv: float | None = field(
+        default=None
+    )  # system nominal voltage U_n [kV]; default U_rG
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_max we wzorze K_G to c_max tabeli 1 IEC 60909-0 dla
     # U_n sieci, do której przyłączona jest maszyna — czytany z JEDYNEGO źródła tabeli
     # (`voltage_factor.c_for_node`) z klasą tolerancji sieci nN szyny maszyny
@@ -144,7 +146,9 @@ class SynchronousMachineSource:
         """Impedance correction factor K_G (IEC 60909-0:2016 §6.3.3)."""
         un = self._un_sieci_kv
         sin_phi = math.sqrt(max(0.0, 1.0 - self.cos_phi_r**2))
-        return (un / self.ur_kv) * (self.c_max / (1.0 + self.xd_subtransient_pu * sin_phi))
+        return (un / self.ur_kv) * (
+            self.c_max / (1.0 + self.xd_subtransient_pu * sin_phi)
+        )
 
     @property
     def z_internal_ohm(self) -> complex:
@@ -160,7 +164,7 @@ class SynchronousMachineSource:
         """Auditable derivation (WHITE BOX) — every factor pinned to a clause."""
         z = self.z_internal_ohm
         return {
-            "model": "IEC 60909-0:2016 §6.3 — maszyna synchroniczna (źródło za Z″)",
+            "model": "IEC 60909-0:2016 §6.3 — maszyna synchroniczna (źródło za impedancją podprzejściową)",
             "sr_mva": self.sr_mva,
             "ur_kv": self.ur_kv,
             "xd_subtransient_pu": self.xd_subtransient_pu,
@@ -235,7 +239,9 @@ class AsynchronousMachineSource:
         """Moc pozorna znamionowa S_rM [MVA]: z tabliczki albo P_rM/(η_r·cos φ_r) (pkt 6.7)."""
         if self.sr_mva_tabliczki is not None:
             return self.sr_mva_tabliczki
-        return moc_pozorna_maszyny_asynchronicznej_mva(self.pr_mw, self.efficiency, self.cos_phi_r)
+        return moc_pozorna_maszyny_asynchronicznej_mva(
+            self.pr_mw, self.efficiency, self.cos_phi_r
+        )
 
     @property
     def ir_a(self) -> float:
@@ -295,9 +301,10 @@ class AsynchronousMachineSource:
         z = self.z_internal_ohm
         return {
             "model": (
-                "IEC 60909-0:2016 §6.7 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za Z_M"
+                "IEC 60909-0:2016 §6.7 — DFIG (Typ 3): crowbar → maszyna asynchroniczna za "
+                "impedancją zwarciową"
                 if self.wind_type_3
-                else "IEC 60909-0:2016 §6.7 — maszyna asynchroniczna (źródło za Z_M)"
+                else "IEC 60909-0:2016 §6.7 — maszyna asynchroniczna (źródło za impedancją zwarciową silnika)"
             ),
             "wind_type_3": self.wind_type_3,
             "pr_mw": self.pr_mw,

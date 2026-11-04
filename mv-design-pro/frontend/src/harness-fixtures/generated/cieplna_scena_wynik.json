@@ -29,7 +29,7 @@
     {
       "norma": "IEC 60909-0",
       "punkt": "§ 12",
-      "tresc_pl": "Prąd zastępczy cieplny I_th = I″k·√(m+n) — to on jest porównywany w kryterium, nie prąd początkowy."
+      "tresc_pl": "Prąd zastępczy cieplny (prąd początkowy razy pierwiastek z sumy współczynników cieplnych składowej nieokresowej i okresowej) — to on jest porównywany w kryterium, nie prąd początkowy."
     }
   ],
   "ocena": {

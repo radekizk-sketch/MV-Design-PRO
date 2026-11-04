@@ -75,13 +75,17 @@ class EquipmentProofGenerator:
 
         return (
             cls._check_u(device, required),
-            cls._check_icu(device, required, zalozenia_zaniku=proof_input.zalozenia_zaniku),
+            cls._check_icu(
+                device, required, zalozenia_zaniku=proof_input.zalozenia_zaniku
+            ),
             cls._check_idyn(device, required),
             cls._check_ith(device, required),
         )
 
     @classmethod
-    def _check_u(cls, device: DeviceRating, required: dict[str, Any]) -> EquipmentProofCheckResult:
+    def _check_u(
+        cls, device: DeviceRating, required: dict[str, Any]
+    ) -> EquipmentProofCheckResult:
         """Kryterium poziomu izolacji: U_m aparatu ≥ napięcie najwyższe SIECI U_s.
 
         Wartość wymagana to U_s dla napięcia znamionowego punktu U_n z tabeli IEC 60038
@@ -301,7 +305,9 @@ class EquipmentProofGenerator:
                     "czasem albo wymaganego prądu cieplnego zastępczego z czasem zwarcia."
                 ),
             )
-        if _porownanie_energii_i2t(device_time=device_time, required_time=required_time):
+        if _porownanie_energii_i2t(
+            device_time=device_time, required_time=required_time
+        ):
             # Karta S-C (2026-07-22, zgoda właściciela): przy czasie zwarcia DŁUŻSZYM od
             # czasu znamionowego porównanie energii cieplnej I²t (kryterialne, bez
             # fizyki): Ith_req²·tk ≤ Ithr²·t_thr. Wielkości z kontraktu:
@@ -395,17 +401,29 @@ class EquipmentProofGenerator:
             cls._step_check_u(checks[0]),
             cls._step_check_icu(
                 checks[1],
-                _wielkosc_wylaczania(proof_input.device, proof_input.required_fault_results),
+                _wielkosc_wylaczania(
+                    proof_input.device, proof_input.required_fault_results
+                ),
             ),
             cls._step_check_idyn(checks[2]),
-            cls._step_check_ith(checks[3], proof_input.device, proof_input.required_fault_results),
+            cls._step_check_ith(
+                checks[3], proof_input.device, proof_input.required_fault_results
+            ),
         ]
         summary = ProofSummary(
             key_results={
-                "u_m_ok": _status_value("U_{m,ok}", result.key_results["u_m_ok"], "u_m_ok"),
-                "icu_ok": _status_value("I_{cu,ok}", result.key_results["icu_ok"], "icu_ok"),
-                "idyn_ok": _status_value("I_{dyn,ok}", result.key_results["idyn_ok"], "idyn_ok"),
-                "ith_ok": _status_value("I_{th,ok}", result.key_results["ith_ok"], "ith_ok"),
+                "u_m_ok": _status_value(
+                    "U_{m,ok}", result.key_results["u_m_ok"], "u_m_ok"
+                ),
+                "icu_ok": _status_value(
+                    "I_{cu,ok}", result.key_results["icu_ok"], "icu_ok"
+                ),
+                "idyn_ok": _status_value(
+                    "I_{dyn,ok}", result.key_results["idyn_ok"], "idyn_ok"
+                ),
+                "ith_ok": _status_value(
+                    "I_{th,ok}", result.key_results["ith_ok"], "ith_ok"
+                ),
                 "overall_ok": _status_value(
                     "OK_{overall}", result.key_results["overall_ok"], "overall_ok"
                 ),
@@ -495,7 +513,12 @@ class EquipmentProofGenerator:
             "PN-EN 60909",
             (
                 _symbol("D_{req}", "—", "Zestaw danych wymaganych", "required"),
-                _symbol("U_{req}", "kV", "Napięcie znamionowe sieci w punkcie zabudowy", "u_kv"),
+                _symbol(
+                    "U_{req}",
+                    "kV",
+                    "Napięcie znamionowe sieci w punkcie zabudowy",
+                    "u_kv",
+                ),
                 _symbol("I_k''", "kA", "Prąd zwarciowy początkowy", "ikss_ka"),
                 _symbol("i_p", "kA", "Prąd udarowy", "ip_ka"),
                 _symbol("I_{dyn}", "kA", "Prąd dynamiczny", "idyn_ka"),
@@ -504,20 +527,31 @@ class EquipmentProofGenerator:
                 _symbol("I_b", "kA", "Prąd wyłączeniowy symetryczny", "ib_ka"),
                 _symbol("t_b", "s", "Czas wyłączenia", "tb_s"),
                 _symbol(
-                    "i_{DC}", "kA", "Składowa nieokresowa w chwili wyłączenia zwarcia", "i_dc_ka"
+                    "i_{DC}",
+                    "kA",
+                    "Składowa nieokresowa w chwili wyłączenia zwarcia",
+                    "i_dc_ka",
                 ),
             ),
         )
         input_values = (
             _value_or_missing("U_{req}", _as_float(required.get("u_kv")), "kV", "u_kv"),
-            _value_or_missing("I_k''", _as_float(required.get("ikss_ka")), "kA", "ikss_ka"),
+            _value_or_missing(
+                "I_k''", _as_float(required.get("ikss_ka")), "kA", "ikss_ka"
+            ),
             _value_or_missing("I_b", _as_float(required.get("ib_ka")), "kA", "ib_ka"),
             _value_or_missing("i_p", _as_float(required.get("ip_ka")), "kA", "ip_ka"),
-            _value_or_missing("I_{dyn}", _as_float(required.get("idyn_ka")), "kA", "idyn_ka"),
-            _value_or_missing("I_{th}", _as_float(required.get("ith_ka")), "kA", "ith_ka"),
+            _value_or_missing(
+                "I_{dyn}", _as_float(required.get("idyn_ka")), "kA", "idyn_ka"
+            ),
+            _value_or_missing(
+                "I_{th}", _as_float(required.get("ith_ka")), "kA", "ith_ka"
+            ),
             _value_or_missing("t_k", _as_float(required.get("tk_s")), "s", "tk_s"),
             _value_or_missing("t_b", _as_float(required.get("tb_s")), "s", "tb_s"),
-            _value_or_missing("i_{DC}", _as_float(required.get("i_dc_ka")), "kA", "i_dc_ka"),
+            _value_or_missing(
+                "i_{DC}", _as_float(required.get("i_dc_ka")), "kA", "i_dc_ka"
+            ),
         )
         substitution = _substitution_from_values(input_values)
         return ProofStep(
@@ -563,7 +597,9 @@ class EquipmentProofGenerator:
 
     @classmethod
     def _step_check_icu(
-        cls, check: EquipmentProofCheckResult, wielkosc: WielkoscKryteriumWylaczania | None
+        cls,
+        check: EquipmentProofCheckResult,
+        wielkosc: WielkoscKryteriumWylaczania | None,
     ) -> ProofStep:
         """Krok kryterium wyłączania — wzór i symbol porównywanej wielkości z TEGO SAMEGO
         predykatu co `_check_icu` (`_wielkosc_wylaczania`: I_b dla wyłącznika SN/WN, I_k'' dla
@@ -625,13 +661,16 @@ class EquipmentProofGenerator:
         input_values = (
             _value_or_missing("I_{dyn}", check.device_value, "kA", "device.i_dyn_ka"),
             _value_or_missing(
-                "I_{dyn,req}", check.required_value, "kA", check.required_source_key or "idyn_ka"
+                "I_{dyn,req}",
+                check.required_value,
+                "kA",
+                check.required_source_key or "idyn_ka",
             ),
         )
         substitution = _substitution_from_values(input_values)
         return _check_step(
             step_number=5,
-            title_pl="Check Idyn",
+            title_pl="Sprawdzenie wytrzymałości dynamicznej",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -666,7 +705,9 @@ class EquipmentProofGenerator:
             and device_time is not None
             and required_val is not None
             and required_time is not None
-            and _porownanie_energii_i2t(device_time=device_time, required_time=required_time)
+            and _porownanie_energii_i2t(
+                device_time=device_time, required_time=required_time
+            )
         ):
             equation = _equation(
                 "EQ_P12_006b",
@@ -675,7 +716,9 @@ class EquipmentProofGenerator:
                 "PN-EN 60909",
                 (
                     _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),
-                    _symbol("t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"),
+                    _symbol(
+                        "t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"
+                    ),
                     _symbol("I_{th,req}", "kA", "Prąd cieplny wymagany", "ith_ka"),
                     _symbol("t_k", "s", "Czas zwarcia", "tk_s"),
                 ),
@@ -696,7 +739,9 @@ class EquipmentProofGenerator:
                 "PN-EN 60909",
                 (
                     _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),
-                    _symbol("t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"),
+                    _symbol(
+                        "t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"
+                    ),
                     _symbol("I_{th,req}", "kA", "Prąd cieplny wymagany", "ith_ka"),
                     _symbol("t_k", "s", "Czas zwarcia", "tk_s"),
                 ),
@@ -704,7 +749,7 @@ class EquipmentProofGenerator:
             substitution = _substitution_from_values(input_values)
         return _check_step(
             step_number=6,
-            title_pl="Check Ith",
+            title_pl="Sprawdzenie wytrzymałości cieplnej",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
@@ -771,7 +816,8 @@ def _uwagi_wylaczania(
 
 
 def _uwaga_zalozen_zaniku(
-    wielkosc: WielkoscKryteriumWylaczania | None, zalozenia_zaniku: tuple[dict[str, Any], ...]
+    wielkosc: WielkoscKryteriumWylaczania | None,
+    zalozenia_zaniku: tuple[dict[str, Any], ...],
 ) -> str | None:
     """Karta PODSTAWA-Q: zdanie o założeniach inżynierskich krzywych zaniku μ/q, na których
     stoi I_b porównywany z I_cu — JEDNO źródło dla uwagi kryterium i ostrzeżenia dowodu.
@@ -796,7 +842,9 @@ def _porownanie_energii_i2t(*, device_time: float, required_time: float) -> bool
     return required_time > device_time
 
 
-def _dane_przyjete_wejscia(proof_input: EquipmentProofInput) -> tuple[DanaPrzyjeta, ...]:
+def _dane_przyjete_wejscia(
+    proof_input: EquipmentProofInput,
+) -> tuple[DanaPrzyjeta, ...]:
     """Dane przyjęte wymaganych wielkości — stoją w wyniku i w ostrzeżeniu dowodu.
 
     Punkt zabudowy w sieci nN liczonej z wartością roboczą tolerancji napięcia (karta
@@ -837,14 +885,18 @@ def _as_float(value: Any) -> float | None:
     return None
 
 
-def _status_from_checks(checks: tuple[EquipmentProofCheckResult, ...], name: str) -> str:
+def _status_from_checks(
+    checks: tuple[EquipmentProofCheckResult, ...], name: str
+) -> str:
     for check in checks:
         if check.name == name:
             return check.status
     return STATUS_FAIL
 
 
-def _compare_message(nazwa: str, jednostka: str, device_val: float, required_val: float) -> str:
+def _compare_message(
+    nazwa: str, jednostka: str, device_val: float, required_val: float
+) -> str:
     """Treść porównania: wielkość aparatu, wartość wymagana, jednostka i warunek.
 
     Status kryterium niesie wyłącznie pole ``status`` wyniku sprawdzenia — tekst nie składa
@@ -875,7 +927,9 @@ def _unit_check() -> UnitCheckResult:
     )
 
 
-def _symbol(symbol: str, unit: str, description: str, mapping_key: str) -> SymbolDefinition:
+def _symbol(
+    symbol: str, unit: str, description: str, mapping_key: str
+) -> SymbolDefinition:
     return SymbolDefinition(
         symbol=symbol,
         unit=unit,
@@ -996,7 +1050,9 @@ def _check_step(
     result_key: str,
 ) -> ProofStep:
     return ProofStep(
-        step_id=ProofStep.generate_step_id(ProofType.EQUIPMENT_PROOF.value, step_number),
+        step_id=ProofStep.generate_step_id(
+            ProofType.EQUIPMENT_PROOF.value, step_number
+        ),
         step_number=step_number,
         title_pl=title_pl,
         equation=equation,

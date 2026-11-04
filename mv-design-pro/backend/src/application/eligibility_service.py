@@ -635,7 +635,7 @@ class EligibilityService:
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
                             f"{opis_obiektu(trafo, 'Transformator')} nie ma napięcia zwarcia "
-                            "(uk ≤ 0 %). Wprowadź uk."
+                            "(wartość nie większa od zera). Wprowadź napięcie zwarcia."
                         ),
                         element_ref=trafo.ref_id,
                         element_type="transformer",
@@ -662,7 +662,7 @@ class EligibilityService:
                         severity=IssueSeverity.BLOCKER,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło')} nie ma parametrów zwarciowych "
-                            "(brak Sk'', Ik'' lub R/X). Wprowadź dane."
+                            "(brak mocy zwarciowej, prądu zwarciowego lub stosunku R/X). Wprowadź dane."
                         ),
                         element_ref=source.ref_id,
                         element_type="source",
@@ -700,10 +700,10 @@ class EligibilityService:
                             code="ELIG_SC1_MISSING_Z0",
                             severity=IssueSeverity.BLOCKER,
                             message_pl=(
-                                f"{_opis_galezi(branch)} nie ma danych składowej zerowej (Z₀), "
+                                f"{_opis_galezi(branch)} nie ma danych składowej zerowej, "
                                 "a wartości roboczej nie da się przyjąć "
                                 f"({skladowa.brak_podstawy_pl}). Zwarcie jednofazowe wymaga "
-                                "R₀/X₀."
+                                "rezystancji i reaktancji zerowej."
                             ),
                             element_ref=branch.ref_id,
                             element_type="branch",
@@ -744,9 +744,9 @@ class EligibilityService:
                         severity=IssueSeverity.WARNING,
                         message_pl=(
                             f"{opis_obiektu(source, 'Źródło')} nie ma danych składowej zerowej "
-                            "(Z₀) — zwarcia doziemne w węzłach sieci składowej zerowej tego "
-                            "źródła nie będą liczone (brak danych). Podaj R₀/X₀ lub stosunek "
-                            "Z₀/Z₁ sieci zasilającej."
+                            "— zwarcia doziemne w węzłach sieci składowej zerowej tego "
+                            "źródła nie będą liczone (brak danych). Podaj rezystancję i reaktancję "
+                            "zerową lub stosunek impedancji zerowej do zgodnej sieci zasilającej."
                         ),
                         element_ref=source.ref_id,
                         element_type="source",

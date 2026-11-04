@@ -31,16 +31,16 @@ REFMAP_SCHEMA_VERSION = "1.0.0"
 # Human-readable catalogue of what only survives via the side-car (i.e. is lost
 # for EQ-only third-party tools). Surfaced in docs + manifest for honesty.
 LOSSY_BOUNDARY: tuple[str, ...] = (
-    "ENM ref_id identity (CIM uses mRID; recovered via ref_to_mrid map)",
+    "ENM `ref_id` identity (CIM uses mRID; recovered via `ref_to_mrid` map)",
     "catalog_ref / catalog_namespace / parameter_source / source_mode",
     "materialized_params and ParameterOverride lists",
     "OZE connection_variant / station_ref / blocking_transformer_ref / n_parallel",
     "Source/Transformer lv_voltage_tolerance (nN row of IEC 60909-0 Table 1) and controller "
     "bandwidths",
-    "Switch series impedance (r_ohm/x_ohm) — CIM Switch carries no impedance",
+    "Switch series impedance (`r_ohm`/`x_ohm`) — CIM Switch carries no impedance",
     "ENM topology helpers: Junction, Corridor, BranchPointSN, LineRun, "
     "ConnectionNode, CableJoint, Bay, Measurement, ProtectionAssignment",
-    "GPZ sections (gpz_sections / gpz_hv_sections) and Substation external_ports",
+    "GPZ sections (`gpz_sections` / `gpz_hv_sections`) and Substation `external_ports`",
     "Source neutral grounding, bus limits beyond BaseVoltage, transformer neutrals/tap metadata",
 )
 
@@ -73,7 +73,9 @@ class CgmesRefMap:
 
     def to_json(self) -> str:
         """Canonical JSON (sorted keys, no whitespace) — deterministic bytes."""
-        return json.dumps(self.to_dict(), sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        return json.dumps(
+            self.to_dict(), sort_keys=True, ensure_ascii=False, separators=(",", ":")
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CgmesRefMap:

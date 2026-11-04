@@ -236,7 +236,7 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     for gen in enm.generators:
         if _generator_q_mvar_jawne(gen) is None:
             missing.append(
-                f"Q generatora '{nazwa_elementu(gen, 'generators')}' (kod 'generator.q_missing')"
+                f"Moc bierna generatora '{nazwa_elementu(gen, 'generators')}' (kod 'generator.q_missing')"
             )
             blockers.append(gen.ref_id)
     # D6: falownik PV bez trybu sterowania (control_mode) => BLOCKER
@@ -301,7 +301,7 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     blockers: list[str] = []
 
     if not enm.sources:
-        missing.append('źródło zwarciowe (S_k")')
+        missing.append("źródło zwarciowe (moc zwarciowa)")
         blockers.append("project")
 
     # CV-4.3 K7: predykat wspólny z mapperem (`enm/zrodlo_zwarcie.py`) — do tej karty ta
@@ -310,14 +310,16 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     for src in enm.sources:
         if not dane_zwarciowe_zrodla(src).policzalne:
             missing.append(
-                'parametry zwarciowe (S_k", I_k" albo R+jX) źródła '
+                "parametry zwarciowe (moc zwarciowa, prąd zwarciowy albo impedancja) źródła "
                 f"'{nazwa_elementu(src, 'sources')}'"
             )
             blockers.append(src.ref_id)
 
     for tr in enm.transformers:
         if tr.uk_percent is None or tr.uk_percent <= 0:
-            missing.append(f"u_k transformatora '{nazwa_elementu(tr, 'transformers')}'")
+            missing.append(
+                f"Napięcie zwarcia transformatora '{nazwa_elementu(tr, 'transformers')}'"
+            )
             blockers.append(tr.ref_id)
 
     # Karta S-2 AUTORYTET (dawniej FAB-H/W3-I; dyrektywa właściciela 2026-09-16:
@@ -368,7 +370,7 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             status="partial" if len(blockers) <= 3 else "blocked",
             missing_fields_pl=missing,
             blocking_object_refs=blockers,
-            recommended_action_pl='Uzupełnij dane zwarciowe źródła i transformatorów (u_k, S_k").',
+            recommended_action_pl="Uzupełnij dane zwarciowe źródła (moc zwarciowa) i transformatorów (napięcie zwarcia).",
         )
     # CV-4.3 K7: źródła policzalne w MAX, ale bez danych scenariusza MIN (S''kQmin/I''kQmin,
     # tryb mocy zwarciowej / prądu) — bieg MIN liczy Z_Q z danych MAX z JAWNYM założeniem
@@ -383,8 +385,8 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     ]
     nota_min = (
         (
-            f" Scenariusz MIN: {len(bez_danych_min)} źródło(-a) bez S''kQmin/I''kQmin "
-            f"({', '.join(bez_danych_min)}) — Z_Q z danych MAX (kod 'source.sk_min_missing', "
+            f" Scenariusz MIN: {len(bez_danych_min)} źródło(-a) bez minimalnej mocy zwarciowej i minimalnego prądu zwarciowego "
+            f"({', '.join(bez_danych_min)}) — impedancja sieci zasilającej z danych maksymalnych (kod 'source.sk_min_missing', "
             "założenie niekonserwatywne dla czułości zabezpieczeń)."
         )
         if bez_danych_min
@@ -397,10 +399,10 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             status="partial",
             recommended_action_pl=(
                 "Zwarcia można policzyć — WYNIK ROBOCZY. "
-                f"{len(zalozone_k_sc_refs)} konwerter(ów) bez miarodajnej deklaracji k_sc w "
+                f"{len(zalozone_k_sc_refs)} konwerter(ów) bez miarodajnej deklaracji współczynnika udziału zwarciowego w "
                 "karcie katalogowej dostało wartość domyślną IEC 1,1 (kod 'inverter."
                 "k_sc_default_forbidden') — NIE jest to podstawa doboru aparatury, nastaw "
-                "zabezpieczeń ani pakietu dowodowego. Uzupełnij k_sc z karty producenta albo "
+                "zabezpieczeń ani pakietu dowodowego. Uzupełnij współczynnik udziału zwarciowego z karty producenta albo "
                 "certyfikatu jednostki wytwórczej." + nota_min
             ),
         )
@@ -452,7 +454,7 @@ def _check_asymmetry(enm: EnergyNetworkModel) -> ReadinessTypeReport:
         missing_fields_pl=missing[:5],
         blocking_object_refs=blockers[:10],
         recommended_action_pl=(
-            "Doprowadź sieć do postaci promieniowej, uzupełnij R0/X0 odcinków i grupy "
+            "Doprowadź sieć do postaci promieniowej, uzupełnij rezystancję i reaktancję zerową odcinków i grupy "
             "połączeń transformatorów, wskaż fazy odbiorów faza–N."
         ),
     )
@@ -477,7 +479,7 @@ def _check_loadability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             status="blocked",
             missing_fields_pl=missing[:5],
             blocking_object_refs=blockers[:10],
-            recommended_action_pl="Uzupełnij parametry znamionowe (I_n, I_th) odcinków z katalogu.",
+            recommended_action_pl="Uzupełnij parametry znamionowe odcinków z katalogu (prąd znamionowy i prąd krótkotrwały wytrzymywany).",
         )
     if blockers:
         return ReadinessTypeReport(

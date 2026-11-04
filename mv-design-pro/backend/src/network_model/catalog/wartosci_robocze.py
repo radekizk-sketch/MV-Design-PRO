@@ -1263,8 +1263,8 @@ ZALOZENIE_ITH_ZYLY_POWROTNEJ = (
 
 #: Pola składowej zerowej gałęzi objęte daną przyjętą (kolejność stała — determinizm).
 POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
-    ("r0_ohm_per_km", "R′0"),
-    ("x0_ohm_per_km", "X′0"),
+    ("r0_ohm_per_km", "Rezystancja jednostkowa składowej zerowej"),
+    ("x0_ohm_per_km", "Reaktancja jednostkowa składowej zerowej"),
 )
 
 # Odcinek MODELU bez składowej zerowej (zasada nr 4): linia albo kabel, którego R′0/X′0 nie ma
@@ -1358,7 +1358,7 @@ ZALOZENIA_Z0_ODCINKA: frozenset[str] = frozenset(
 
 #: Pole susceptancji zerowej gałęzi i jego etykieta (dana przyjęta, ślad, komunikaty).
 POLE_B0: Final[str] = "b0_siemens_per_km"
-ETYKIETA_B0: Final[str] = "B′0"
+ETYKIETA_B0: Final[str] = "Susceptancja jednostkowa składowej zerowej"
 
 #: Jednostka pola składowej zerowej w danej przyjętej.
 JEDNOSTKI_POL_SKLADOWEJ_ZEROWEJ: Mapping[str, str] = {

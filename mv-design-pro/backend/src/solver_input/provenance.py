@@ -165,7 +165,7 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "Szybki prąd bierny podczas zwarcia (T17) jest twierdzeniem o zachowaniu "
                 "dynamicznym; bez biegu dynamiki porównanie deklaracji nie wykazuje "
                 "zachowania dynamicznego — wzmocnienie zadeklarowane jest pokazywane "
-                "wyłącznie informacyjnie, przebiegu Iq(t) narzędzie nie liczy."
+                "wyłącznie informacyjnie, przebiegu prądu biernego w czasie narzędzie nie liczy."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T17); karta AB-1a Pakiet C pkt 5",
         ),
@@ -185,7 +185,8 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
-                "Regulacja P (T05), deklaracje Pmax/Pmin (T10/T11), zaprzestanie i "
+                "Regulacja mocy czynnej (T05), deklaracje mocy maksymalnej i minimalnej (T10/T11), "
+                "zaprzestanie i "
                 "zmniejszenie generacji (T12/T13) oraz komunikacja i rejestrator zakłóceń "
                 "(T19) są faktami konfiguracyjnymi porównanymi z wymaganiem profilu — "
                 "deklaracja jest tu właściwą podstawą dowodową."
@@ -197,7 +198,7 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
-                "Tryby regulacji U/Q/cos φ i zakres mocy biernej (T06–T09) pochodzą z "
+                "Tryby regulacji napięcia, mocy biernej i współczynnika mocy oraz zakres mocy biernej (T06–T09) pochodzą z "
                 "deklaracji modułu porównanej z profilem operatora — fakty konfiguracyjne."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T06-T09); karta AB-1a Pakiet C pkt 5",
@@ -290,7 +291,7 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             claim_kind=ClaimKind.STATIC_CALCULATION,
             rationale_pl=(
                 "Spadek napięcia odcinka i ciągu magistrali SN liczony przybliżeniem składowej "
-                "podłużnej ΔU = √3·I·(R·cosφ + X·sinφ) z sumą po odcinkach "
+                "podłużnej spadku z sumą po odcinkach "
                 "(network_model/solvers/cable_voltage_drop.py) — obliczenie jest wykonywane, "
                 "ale jego zgodności z rozpływem mocy na sieci referencyjnej nie wykazano, więc "
                 "wynik nie jest dowodem regulacyjnym; rzeczywisty profil napięcia daje rozpływ "
@@ -311,7 +312,7 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
                 "przybliżeniem, którego zgodności z rozpływem fazorowym nie wykazano na sieci "
                 "referencyjnej — wynik nie jest dowodem regulacyjnym."
             ),
-            audit_ref="karta BIEG-ZABEZPIECZEN-Z-MODELU (P0, 2026-09)",
+            audit_ref="karta oceny zadziałania zabezpieczeń z modelu (2026-09)",
         ),
         CapabilityEvidence(
             capability_id="aparatura.wytrzymalosc_zwarciowa_pola",

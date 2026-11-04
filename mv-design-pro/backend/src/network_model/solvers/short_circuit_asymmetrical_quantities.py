@@ -218,8 +218,8 @@ def _compute_ikss(
     z_abs = modul_zespolony(z_equiv)
     if z_abs == 0:
         raise OdmowaDanychError(
-            "Impedancja zastępcza pętli zwarcia jest równa zeru — prądu I″k nie da się "
-            "wyznaczyć."
+            "Impedancja zastępcza pętli zwarcia jest równa zeru — początkowego prądu "
+            "zwarciowego nie da się wyznaczyć."
         )
     if fault_type == "SC1FZ":
         return math.sqrt(3.0) * c_factor * u_n_kv / z_abs

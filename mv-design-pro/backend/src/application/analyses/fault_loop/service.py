@@ -432,7 +432,8 @@ OPISY_BRAKOW_PREDYKATU_PL: dict[str, str] = {
         "L-PE/L-PEN nie ma drogi powrotnej przez transformator (np. Dyn ją daje)"
     ),
     KOD_PK_SPRZECZNE_Z_UK: (
-        "„Straty obciążeniowe Pk” sprzeczne z „Napięciem zwarcia uk” (Pk/Sn większe niż uk)"
+        "„Straty obciążeniowe” sprzeczne z „Napięciem zwarcia” (straty odniesione do mocy "
+        "znamionowej większe niż napięcie zwarcia)"
     ),
 }
 
@@ -485,7 +486,9 @@ def impedancja_transformatora_dla_ukladu(
 
 
 #: Etykieta zerowej składowej powrotnej pętli TT (PE kabla nie należy do pętli doziemnej).
-ETYKIETA_POWROT_TT = "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)"
+ETYKIETA_POWROT_TT = (
+    "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy instalacji i stacji)"
+)
 
 
 @dataclass(frozen=True)

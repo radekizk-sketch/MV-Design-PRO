@@ -1382,7 +1382,7 @@ def _moce_urzadzen_pu(
             KOD_PODZIAL_MOCY_NIESPOJNY,
             f"Na szynie {szyna!r} pracuje kilku wytwórców ({', '.join(sorted(z_modelu))}), "
             "ale suma ich mocy z modelu nie odtwarza wypadkowej szyny z rozpływu "
-            f"(niezgodność {niezgodnosc_pradu:.3e} pu prądu wobec eps_init {eps_init:.3e}). "
+            f"(niezgodność {niezgodnosc_pradu:.3e} pu prądu wobec tolerancji inicjalizacji {eps_init:.3e}). "
             "Rozpływ przesunął moc węzła (regulacja napięcia, ograniczenie mocy biernej "
             "albo bilans szyny bilansującej), a podziału tego przesunięcia między "
             "wytwórców nie da się wyprowadzić z danych wejściowych",
@@ -1671,7 +1671,7 @@ def zalozenia_wejscia(snapshot: dict[str, Any]) -> tuple[str, ...]:
         "Punkt pracy pochodzi z biegu rozpływu na tej samej migawce efektywnej "
         "(zero płaskiego startu).",
         "Impedancja zastępcza sieci nadrzędnej jest tą samą impedancją, którą model "
-        "podaje obliczeniom zwarciowym (Z_Q wg IEC 60909).",
+        "podaje obliczeniom zwarciowym (impedancja sieci zasilającej wg IEC 60909).",
         "Łącznik zamknięty wchodzi do macierzy admitancyjnej jako gałąź o impedancji "
         "zastępczej łącznika — tak samo jak w rozpływie mocy.",
     ]

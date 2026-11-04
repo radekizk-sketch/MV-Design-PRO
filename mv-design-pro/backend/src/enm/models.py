@@ -1024,13 +1024,13 @@ class Generator(ENMElement):
         elif variant == "nn_side":
             if self.station_ref is None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant='nn_side' "
-                    f"wymaga station_ref (wskazuje stację SN/nN)."
+                    f"Generator '{self.ref_id}': przyłączenie po stronie nN "
+                    f"wymaga wskazania stacji SN/nN."
                 )
             if self.blocking_transformer_ref is not None:
                 raise ValueError(
-                    f"Generator '{self.ref_id}': connection_variant='nn_side' "
-                    f"nie może mieć blocking_transformer_ref "
+                    f"Generator '{self.ref_id}': przyłączenie po stronie nN "
+                    f"nie może mieć transformatora blokowego "
                     f"(generator po stronie nN, transformator stacji wystarczy)."
                 )
         elif variant == "block_transformer":
@@ -1160,14 +1160,18 @@ class Measurement(ENMElement):
         `domain_no_guessing_guard`). Dodatnia liczba rdzeni jest egzekwowana
         przez `Field(gt=0)`."""
         if self.ct_cores is not None and self.measurement_type != "CT":
-            raise ValueError(f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'.")
+            raise ValueError(
+                f"Pomiar '{self.ref_id}': rdzenie przekładnika prądowego wymagają pomiaru typu CT."
+            )
         if self.vt_mounting is not None and self.measurement_type != "VT":
             raise ValueError(
-                f"Measurement '{self.ref_id}': vt_mounting wymaga measurement_type='VT'."
+                f"Pomiar '{self.ref_id}': sposób montażu przekładnika napięciowego wymaga pomiaru "
+                "typu VT."
             )
         if self.vt_uzwojenie is not None and self.measurement_type != "VT":
             raise ValueError(
-                f"Measurement '{self.ref_id}': vt_uzwojenie wymaga measurement_type='VT'."
+                f"Pomiar '{self.ref_id}': uzwojenie przekładnika napięciowego wymaga pomiaru "
+                "typu VT."
             )
         return self
 

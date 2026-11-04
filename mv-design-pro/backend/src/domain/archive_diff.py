@@ -402,7 +402,7 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     "time_multiplier": "Mnożnik czasowy",
     "is_directional": "Kierunkowe",
     "moc_przylaczeniowa_mw": "Moc przyłączeniowa [MW]",
-    "wymagany_cos_phi": "Wymagany cos φ",
+    "wymagany_cos_phi": "Wymagany współczynnik mocy",
     "tryb_pracy": "Tryb pracy",
     "enm_hash": "Odcisk modelu sieci",
     "archive_hash": "Odcisk archiwum",

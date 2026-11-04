@@ -1,7 +1,7 @@
 {
   "_meta": {
     "branch_count": 89,
-    "builder_snapshot_hash": "265973b5160497dafca2b6549a2387f44e4bc955a3677b838045ca54377f2e4b",
+    "builder_snapshot_hash": "a1044ee50ec7edc19a71ee6a028fe4a0a35c1e11cdbd37b12ef8f19ac3d20cbf",
     "der_count": 20,
     "der_types": [
       "bess",
@@ -43320,7 +43320,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43387,7 +43387,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43454,7 +43454,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43521,7 +43521,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43591,7 +43591,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43665,7 +43665,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43739,7 +43739,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43813,7 +43813,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43884,7 +43884,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -43951,7 +43951,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44018,7 +44018,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44085,7 +44085,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44152,7 +44152,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44222,7 +44222,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44293,7 +44293,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44363,7 +44363,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44434,7 +44434,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44504,7 +44504,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44575,7 +44575,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44645,7 +44645,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -44689,7 +44689,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "265973b5160497dafca2b6549a2387f44e4bc955a3677b838045ca54377f2e4b",
+      "hash_sha256": "a1044ee50ec7edc19a71ee6a028fe4a0a35c1e11cdbd37b12ef8f19ac3d20cbf",
       "name": "SLD Substrate 52 stacji",
       "revision": 0,
       "updated_at": "2026-05-29T00:00:00Z"

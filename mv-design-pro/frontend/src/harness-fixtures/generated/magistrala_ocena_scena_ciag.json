@@ -4,12 +4,12 @@
       "Ciąg promieniowy zasilany z jednego końca; odcinki w kolejności od zasilania.",
       "Każdy odcinek liczony przy prądzie roboczym podanym dla TEGO odcinka (prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu).",
       "Spadki odcinków sumowane algebraicznie (składowa podłużna; kąt między napięciami końców odcinka pominięty — to samo przybliżenie co dla odcinka).",
-      "Jedno napięcie międzyfazowe ciągu (U_linii) dla wszystkich odcinków."
+      "Jedno napięcie międzyfazowe ciągu dla wszystkich odcinków."
     ],
     "delta_u_pct": 0.803810896361,
     "delta_u_v": 160.762179272,
     "dlugosc_m": 2000.0,
-    "formula_ref": "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100",
+    "formula_ref": "\\Delta U_{ciągu} = \\sum_i \\Delta U_i,\\quad \\Delta U_{ciągu}\\% = \\frac{\\Delta U_{ciągu}}{U_{linii}}\\cdot 100",
     "liczba_odcinkow": 2
   },
   "ocena_ciagu": {
@@ -44,11 +44,11 @@
       "obwiednia": null,
       "pasmo": null,
       "podstawa": {
-        "dokument": "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN",
+        "dokument": "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN",
         "jednostka_redakcyjna": null,
         "rodzaj": "ZALOZENIE_PROJEKTOWE",
         "status": "NIEUSTALONE",
-        "uwagi_pl": "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw",
+        "uwagi_pl": "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw",
         "wydanie": null
       },
       "wartosc": {
@@ -56,7 +56,7 @@
         "wartosc": 5.0
       },
       "wersja_profilu": null,
-      "zakres_stosowalnosci_pl": "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym Un"
+      "zakres_stosowalnosci_pl": "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym znamionowemu"
     },
     "margines": {
       "definicja_latex": "m = x_{\\lim} - x",
@@ -81,16 +81,16 @@
       "wartosc": null
     },
     "podstawa": {
-      "dokument": "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN",
+      "dokument": "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN",
       "jednostka_redakcyjna": null,
       "rodzaj": "ZALOZENIE_PROJEKTOWE",
       "status": "NIEUSTALONE",
-      "uwagi_pl": "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw",
+      "uwagi_pl": "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw",
       "wydanie": null
     },
     "powody_niepelnosci": [
       "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-      "Podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+      "Podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
     ],
     "przedmiot": {
       "element_ref": null,
@@ -100,7 +100,7 @@
     "slad": [
       {
         "krok": "magistrala-sn:ciag:spadek-napiecia",
-        "opis_pl": "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100; odcinek 1: I = 200 A, L = 1,2 km, R = 0,2472 Ω, X = 0,1284 Ω, cosφ = 0,9, ΔU = 96,46 V (0,4823 %); odcinek 2: I = 200 A, L = 0,8 km, R = 0,1648 Ω, X = 0,0856 Ω, cosφ = 0,9, ΔU = 64,3 V (0,3215 %); suma ΔU = 160,8 V",
+        "opis_pl": "\\Delta U_{ciągu} = \\sum_i \\Delta U_i,\\quad \\Delta U_{ciągu}\\% = \\frac{\\Delta U_{ciągu}}{U_{linii}}\\cdot 100; odcinek 1: prąd 200 A, długość 1,2 km, rezystancja 0,2472 Ω, reaktancja 0,1284 Ω, współczynnik mocy 0,9, spadek napięcia 96,46 V (0,4823 %); odcinek 2: prąd 200 A, długość 0,8 km, rezystancja 0,1648 Ω, reaktancja 0,0856 Ω, współczynnik mocy 0,9, spadek napięcia 64,3 V (0,3215 %); suma ΔU = 160,8 V",
         "run_id": null,
         "wersja_silnika": null
       }
@@ -117,15 +117,15 @@
     },
     "wyjasnienie": {
       "czego_brakuje": [
-        "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw)."
+        "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw)."
       ],
-      "przyczyna_pl": "podstawa limitu „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone”",
+      "przyczyna_pl": "podstawa limitu „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone”",
       "zastrzezenia": [
-        "Podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe): stan źródła „nieustalone” — pochodzenie wartości nieustalone (zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw).",
+        "Podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe): stan źródła „nieustalone” — pochodzenie wartości nieustalone (zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw).",
         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-        "Zakres ważności: Ciąg promieniowy od startu (szyny SN GPZ o napięciu Un) przez odcinki zapisane w tej sesji kreatora do końca odcinka bieżącego; każdy odcinek liczony przy prądzie roboczym podanym dla tego odcinka (prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu), spadki odcinków sumowane — wynik nie obejmuje: kąt między napięciami końców odcinka (przybliżenie składowej podłużnej spadku); napięcie szyn SN GPZ różne od Un (położenie zaczepów, obciążenie transformatora); odbiory i generacja rozłożone wzdłuż odcinka; odcinki ciągu zbudowane przed otwarciem kreatora (poza tą sesją budowy)."
+        "Zakres ważności: Ciąg promieniowy od startu (szyny SN GPZ o napięciu znamionowym) przez odcinki zapisane w tej sesji kreatora do końca odcinka bieżącego; każdy odcinek liczony przy prądzie roboczym podanym dla tego odcinka (prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu), spadki odcinków sumowane — wynik nie obejmuje: kąt między napięciami końców odcinka (przybliżenie składowej podłużnej spadku); napięcie szyn SN GPZ różne od napięcia znamionowego (położenie zaczepów, obciążenie transformatora); odbiory i generacja rozłożone wzdłuż odcinka; odcinki ciągu zbudowane przed otwarciem kreatora (poza tą sesją budowy)."
       ],
-      "zdanie_pl": "Spadek napięcia skumulowany wzdłuż budowanego ciągu SN nie przekracza dopuszczalnego spadku napięcia (Ciąg magistrali SN budowany w kreatorze) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): spadek napięcia skumulowany wzdłuż ciągu względem napięcia ciągu: 0,8038 % wobec wymaganych ≤ 5 % wg „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (margines +4,196 pp, punkt: koniec odcinka 2 (koniec budowanego ciągu), względnie +83,92 % wartości granicznej)."
+      "zdanie_pl": "Spadek napięcia skumulowany wzdłuż budowanego ciągu SN nie przekracza dopuszczalnego spadku napięcia (Ciąg magistrali SN budowany w kreatorze) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): spadek napięcia skumulowany wzdłuż ciągu względem napięcia ciągu: 0,8038 % wobec wymaganych ≤ 5 % wg „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (margines +4,196 pp, punkt: koniec odcinka 2 (koniec budowanego ciągu), względnie +83,92 % wartości granicznej)."
     },
     "wynik": {
       "chwila_s": null,
@@ -141,7 +141,7 @@
     "zakres_waznosci": {
       "model_urzadzenia": null,
       "ograniczniki": [],
-      "opis_pl": "Ciąg promieniowy od startu (szyny SN GPZ o napięciu Un) przez odcinki zapisane w tej sesji kreatora do końca odcinka bieżącego; każdy odcinek liczony przy prądzie roboczym podanym dla tego odcinka (prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu), spadki odcinków sumowane.",
+      "opis_pl": "Ciąg promieniowy od startu (szyny SN GPZ o napięciu znamionowym) przez odcinki zapisane w tej sesji kreatora do końca odcinka bieżącego; każdy odcinek liczony przy prądzie roboczym podanym dla tego odcinka (prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu), spadki odcinków sumowane.",
       "parametry_sieci": [],
       "regulator": null,
       "rodzaj_analizy": "POWER_FLOW",
@@ -149,7 +149,7 @@
       "technologia": null,
       "wykluczenia": [
         "kąt między napięciami końców odcinka (przybliżenie składowej podłużnej spadku)",
-        "napięcie szyn SN GPZ różne od Un (położenie zaczepów, obciążenie transformatora)",
+        "napięcie szyn SN GPZ różne od napięcia znamionowego (położenie zaczepów, obciążenie transformatora)",
         "odbiory i generacja rozłożone wzdłuż odcinka",
         "odcinki ciągu zbudowane przed otwarciem kreatora (poza tą sesją budowy)"
       ]
@@ -243,7 +243,7 @@
       "slad": [
         {
           "krok": "magistrala-sn:odcinek-2:obciazalnosc",
-          "opis_pl": "I_B = 200 A (projektant); I_z = 310 A (karta katalogowa, warunki odniesienia producenta)",
+          "opis_pl": "prąd roboczy 200 A (projektant); obciążalność 310 A (karta katalogowa, warunki odniesienia producenta)",
           "run_id": null,
           "wersja_silnika": null
         }
@@ -327,11 +327,11 @@
         "obwiednia": null,
         "pasmo": null,
         "podstawa": {
-          "dokument": "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN",
+          "dokument": "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN",
           "jednostka_redakcyjna": null,
           "rodzaj": "ZALOZENIE_PROJEKTOWE",
           "status": "NIEUSTALONE",
-          "uwagi_pl": "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw",
+          "uwagi_pl": "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw",
           "wydanie": null
         },
         "wartosc": {
@@ -339,7 +339,7 @@
           "wartosc": 5.0
         },
         "wersja_profilu": null,
-        "zakres_stosowalnosci_pl": "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym Un"
+        "zakres_stosowalnosci_pl": "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym znamionowemu"
       },
       "margines": {
         "definicja_latex": "m = x_{\\lim} - x",
@@ -364,16 +364,16 @@
         "wartosc": null
       },
       "podstawa": {
-        "dokument": "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN",
+        "dokument": "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN",
         "jednostka_redakcyjna": null,
         "rodzaj": "ZALOZENIE_PROJEKTOWE",
         "status": "NIEUSTALONE",
-        "uwagi_pl": "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw",
+        "uwagi_pl": "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw",
         "wydanie": null
       },
       "powody_niepelnosci": [
         "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-        "Podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+        "Podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
       ],
       "przedmiot": {
         "element_ref": null,
@@ -383,7 +383,7 @@
       "slad": [
         {
           "krok": "magistrala-sn:odcinek-2:spadek-napiecia",
-          "opis_pl": "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ); odcinek 2: I = 200 A, L = 0,8 km, R = 0,1648 Ω, X = 0,0856 Ω, cosφ = 0,9, ΔU = 64,3 V (0,3215 %)",
+          "opis_pl": "\\Delta U = \\sqrt{3}\\,I\\,(s_P\\,R\\cos\\varphi + s_Q\\,X\\sin\\varphi); odcinek 2: prąd 200 A, długość 0,8 km, rezystancja 0,1648 Ω, reaktancja 0,0856 Ω, współczynnik mocy 0,9, spadek napięcia 64,3 V (0,3215 %)",
           "run_id": null,
           "wersja_silnika": null
         }
@@ -400,15 +400,15 @@
       },
       "wyjasnienie": {
         "czego_brakuje": [
-          "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw)."
+          "Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw)."
         ],
-        "przyczyna_pl": "podstawa limitu „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone”",
+        "przyczyna_pl": "podstawa limitu „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone”",
         "zastrzezenia": [
-          "Podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe): stan źródła „nieustalone” — pochodzenie wartości nieustalone (zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw).",
+          "Podstawa „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe): stan źródła „nieustalone” — pochodzenie wartości nieustalone (zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 ± 10 % napięcia znamionowego) przy napięciu szyn SN GPZ równym znamionowemu; to nie jest zapis PN-EN 50160 wprost, a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze podstaw).",
           "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-          "Zakres ważności: Spadek napięcia na jednym odcinku przy prądzie odcinka skupionym na jego końcu, przybliżenie składowej podłużnej ΔU = √3·I·(R·cosφ + X·sinφ), odbiór o charakterze indukcyjnym, napięcie szyn SN GPZ równe Un — wynik nie obejmuje: kąt między napięciami końców odcinka (przybliżenie składowej podłużnej spadku); napięcie szyn SN GPZ różne od Un (położenie zaczepów, obciążenie transformatora); odbiory i generacja rozłożone wzdłuż odcinka."
+          "Zakres ważności: Spadek napięcia na jednym odcinku przy prądzie odcinka skupionym na jego końcu, przybliżenie składowej podłużnej spadku (pierwiastek z trzech razy prąd razy suma rezystancji pomnożonej przez współczynnik mocy i reaktancji pomnożonej przez sinus kąta mocy), odbiór o charakterze indukcyjnym, napięcie szyn SN GPZ równe znamionowemu — wynik nie obejmuje: kąt między napięciami końców odcinka (przybliżenie składowej podłużnej spadku); napięcie szyn SN GPZ różne od napięcia znamionowego (położenie zaczepów, obciążenie transformatora); odbiory i generacja rozłożone wzdłuż odcinka."
         ],
-        "zdanie_pl": "Spadek napięcia na odcinku nie przekracza dopuszczalnego spadku napięcia wzdłuż ciągu SN (Odcinek 2 magistrali SN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): spadek napięcia na odcinku względem napięcia ciągu: 0,3215 % wobec wymaganych ≤ 5 % wg „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un zastosowane do spadku napięcia wzdłuż ciągu SN” (margines +4,678 pp, punkt: koniec odcinka (odbiór skupiony na końcu), względnie +93,57 % wartości granicznej)."
+        "zdanie_pl": "Spadek napięcia na odcinku nie przekracza dopuszczalnego spadku napięcia wzdłuż ciągu SN (Odcinek 2 magistrali SN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (założenie projektowe) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): spadek napięcia na odcinku względem napięcia ciągu: 0,3215 % wobec wymaganych ≤ 5 % wg „Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % napięcia znamionowego zastosowane do spadku napięcia wzdłuż ciągu SN” (margines +4,678 pp, punkt: koniec odcinka (odbiór skupiony na końcu), względnie +93,57 % wartości granicznej)."
       },
       "wynik": {
         "chwila_s": null,
@@ -424,7 +424,7 @@
       "zakres_waznosci": {
         "model_urzadzenia": null,
         "ograniczniki": [],
-        "opis_pl": "Spadek napięcia na jednym odcinku przy prądzie odcinka skupionym na jego końcu, przybliżenie składowej podłużnej ΔU = √3·I·(R·cosφ + X·sinφ), odbiór o charakterze indukcyjnym, napięcie szyn SN GPZ równe Un.",
+        "opis_pl": "Spadek napięcia na jednym odcinku przy prądzie odcinka skupionym na jego końcu, przybliżenie składowej podłużnej spadku (pierwiastek z trzech razy prąd razy suma rezystancji pomnożonej przez współczynnik mocy i reaktancji pomnożonej przez sinus kąta mocy), odbiór o charakterze indukcyjnym, napięcie szyn SN GPZ równe znamionowemu.",
         "parametry_sieci": [],
         "regulator": null,
         "rodzaj_analizy": "POWER_FLOW",
@@ -432,7 +432,7 @@
         "technologia": null,
         "wykluczenia": [
           "kąt między napięciami końców odcinka (przybliżenie składowej podłużnej spadku)",
-          "napięcie szyn SN GPZ różne od Un (położenie zaczepów, obciążenie transformatora)",
+          "napięcie szyn SN GPZ różne od napięcia znamionowego (położenie zaczepów, obciążenie transformatora)",
           "odbiory i generacja rozłożone wzdłuż odcinka"
         ]
       }
@@ -440,19 +440,19 @@
   ],
   "spadek_odcinka": {
     "assumptions": [
-      "Uklad 3-fazowy symetryczny; wspolczynnik linii √3.",
-      "sinφ = √(1 − cos²φ); znak skladowej biernej z charakteru Q.",
-      "s_P = +1 dla odbioru, −1 dla generacji (moc czynna).",
-      "s_Q = +1 dla poboru Q (indukcyjny), −1 dla oddawania Q (pojemnosciowy).",
-      "ΔU > 0 = spadek napiecia; ΔU < 0 = WZROST (typowy przy generacji).",
-      "R = r_jedn · L, X = x_jedn · L (impedancja odcinka).",
-      "ΔU% = ΔU / U_linii · 100 (U_linii miedzyfazowe)."
+      "Układ 3-fazowy symetryczny; współczynnik linii √3.",
+      "Sinus kąta mocy z współczynnika mocy; znak składowej biernej z charakteru mocy biernej.",
+      "Znak składowej czynnej: +1 dla odbioru, −1 dla generacji (moc czynna).",
+      "Znak składowej biernej: +1 dla poboru mocy biernej (indukcyjny), −1 dla jej oddawania (pojemnościowy).",
+      "Spadek dodatni = spadek napięcia; spadek ujemny = WZROST (typowy przy generacji).",
+      "Rezystancja i reaktancja odcinka = wartość jednostkowa × długość.",
+      "Spadek procentowy = spadek / napięcie międzyfazowe linii · 100."
     ],
     "delta_u_pct": 0.321524358545,
     "delta_u_reactive_v": 12.9253165532,
     "delta_u_resistive_v": 51.3795551557,
     "delta_u_v": 64.3048717089,
-    "formula_ref": "ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)",
+    "formula_ref": "\\Delta U = \\sqrt{3}\\,I\\,(s_P\\,R\\cos\\varphi + s_Q\\,X\\sin\\varphi)",
     "prad_obliczeniowy_a": 200.0,
     "prad_z_obciazalnosci": false,
     "r_total_ohm": 0.1648,

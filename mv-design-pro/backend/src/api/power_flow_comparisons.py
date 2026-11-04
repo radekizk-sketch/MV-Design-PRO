@@ -266,7 +266,7 @@ def _build_service(uow_factory: Any) -> PowerFlowComparisonService:
     response_model_exclude_none=True,
     summary="Utwórz porównanie dwóch analiz rozpływu mocy",
     description="""
-P20c: Porównuje dwa PowerFlowRun i generuje deterministyczny ranking problemów.
+Porównuje dwa przebiegi rozpływu mocy i generuje deterministyczny ranking problemów.
 
 **Walidacje:**
 - Oba runy muszą istnieć
@@ -275,13 +275,13 @@ P20c: Porównuje dwa PowerFlowRun i generuje deterministyczny ranking problemów
 
 **Zwraca:**
 - PowerFlowComparisonResult z:
-  - bus_diffs: porównanie per szyna (posortowane po bus_id)
-  - branch_diffs: porównanie per gałąź (posortowane po branch_id)
+  - `bus_diffs`: porównanie per szyna (posortowane po `bus_id`)
+  - `branch_diffs`: porównanie per gałąź (posortowane po `branch_id`)
   - ranking: lista problemów posortowana wg severity (5->1)
   - summary: statystyki porównania
 
 **Cache:**
-- Ta sama para (A, B) -> ten sam comparison_id
+- Ta sama para (A, B) -> ten sam `comparison_id`
 - A->B != B->A (kierunkowe)
 """,
 )

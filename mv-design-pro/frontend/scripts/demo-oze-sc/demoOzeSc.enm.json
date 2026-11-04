@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "builder_snapshot_hash": "4abf250cc5fab088bbd7c23189704c2cbb0f394632131c09f0d7223c5fd96ad7",
+    "builder_snapshot_hash": "c4fdcead407252e0617e82affc49ca86a61a5593fb82eae7fe87185d2e50795e",
     "config_count": 12,
     "der_count": 15,
     "der_types": [
@@ -5486,10 +5486,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -5573,10 +5573,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -5649,8 +5649,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.999,
           "x_ohm_per_km": 0.333
@@ -5723,10 +5723,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -5807,10 +5807,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -5883,8 +5883,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.999,
           "x_ohm_per_km": 0.333
@@ -5957,10 +5957,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -6041,10 +6041,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -6269,10 +6269,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -6569,10 +6569,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -6869,10 +6869,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -6953,10 +6953,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -7253,10 +7253,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -7553,10 +7553,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -7853,10 +7853,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -7937,10 +7937,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -8237,10 +8237,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -8537,10 +8537,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -8621,10 +8621,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -8921,10 +8921,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -9221,10 +9221,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -9305,10 +9305,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -9605,10 +9605,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -9905,10 +9905,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -9989,10 +9989,10 @@
           "trade_name": "YAKXS 3x120/16",
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
-            "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
-            "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa sumie rezystancji składowej zgodnej i rezystancji żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+            "return_conductor_ith_1s_a": "Prąd zwarciowy jednosekundowy żyły powrotnej jako gęstość prądu żyły fazowej tego materiału pomnożona przez przekrój (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+            "return_conductor_r_ohm_per_km_20c": "Rezystancja jednostkowa żyły powrotnej jako rezystywność w 20 °C przez przekrój odczytany z oznaczenia kabla (rezystywność miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.3,
           "x_ohm_per_km": 0.1
@@ -10496,8 +10496,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.312,
           "x_ohm_per_km": 0.104
@@ -10645,8 +10645,8 @@
           "trade_name": null,
           "voltage_rating_kv": 20.0,
           "wartosci_robocze": {
-            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
-            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+            "r0_ohm_per_km": "Rezystancja jednostkowa składowej zerowej równa trzykrotności rezystancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "Reaktancja jednostkowa składowej zerowej równa trzykrotności reaktancji składowej zgodnej — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
           },
           "x0_ohm_per_km": 0.312,
           "x_ohm_per_km": 0.104
@@ -13631,7 +13631,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -13701,7 +13701,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -13772,7 +13772,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -13839,7 +13839,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -13909,7 +13909,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -13980,7 +13980,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14047,7 +14047,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14128,7 +14128,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14212,7 +14212,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14283,7 +14283,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14350,7 +14350,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14420,7 +14420,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14491,7 +14491,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14561,7 +14561,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14632,7 +14632,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -14672,7 +14672,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "4abf250cc5fab088bbd7c23189704c2cbb0f394632131c09f0d7223c5fd96ad7",
+      "hash_sha256": "c4fdcead407252e0617e82affc49ca86a61a5593fb82eae7fe87185d2e50795e",
       "name": "Sieć demonstracyjna OZE + zwarcia",
       "revision": 0,
       "updated_at": "2026-07-24T00:00:00Z"

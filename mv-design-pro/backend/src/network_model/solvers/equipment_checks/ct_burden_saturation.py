@@ -177,20 +177,21 @@ def _zalozenia(*, rezystywnosc: float, wariant: str) -> tuple[str, ...]:
         "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s (dlugosc L liczona w jedna strone).",
         f"Rezystywnosc zyly ρ = {rezystywnosc} Ω·mm²/m (miedz, 20 °C, IEC 60228) "
         "— zalozenie jawne, nie dane katalogu przekladnika.",
-        "Moc przewodow S_przewodow = I2n²·Rp liczona RAZ (nie jest osobnym skladnikiem "
-        "obok siebie samej).",
+        "Moc przewodów (kwadrat prądu znamionowego wtórnego razy rezystancja przewodów) "
+        "liczona RAZ (nie jest osobnym składnikiem obok siebie samej).",
         "Moc stykow wchodzi do bilansu wylacznie wtedy, gdy podano ja jawnie.",
     )
     if wariant == WARIANT_ALF_PELNY:
         return podstawa + (
-            "ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw) — wariant PELNY (IEC 61869-2 § 5.6), "
-            "Sw = I2n²·Rct z rezystancji uzwojenia wtornego.",
+            "Efektywny współczynnik graniczny dokładności w wariancie PEŁNYM (IEC 61869-2 § 5.6), "
+            "z mocą wewnętrzną uzwojenia z rezystancji uzwojenia wtórnego.",
         )
     return podstawa + (
-        "ALF_eff = ALF·Sn/S2obl — wariant UPROSZCZONY (Sw = 0), bo katalog nie niesie "
-        "rezystancji uzwojenia wtornego Rct.",
-        "Wariant uproszczony przy S2obl < Sn daje ALF_eff WIEKSZY niz pelny — wynik jest "
-        "optymistyczny i wymaga potwierdzenia rezystancja uzwojenia z karty producenta.",
+        "Efektywny współczynnik graniczny dokładności w wariancie UPROSZCZONYM (bez mocy "
+        "wewnętrznej uzwojenia), bo katalog nie niesie rezystancji uzwojenia wtórnego.",
+        "Wariant uproszczony przy obciążeniu mniejszym od mocy znamionowej daje efektywny "
+        "współczynnik WIĘKSZY niż pełny — wynik jest optymistyczny i wymaga potwierdzenia "
+        "rezystancją uzwojenia z karty producenta.",
     )
 
 
@@ -439,7 +440,8 @@ def _slad_ct(
             wzor = r"ALF_{eff} = ALF \cdot \frac{S_n}{S_{2obl}} \quad (S_w = 0)"
             uwaga = (
                 "Wariant UPROSZCZONY — katalog nie niesie rezystancji uzwojenia wtórnego. "
-                "Przy S2obl < Sn wynik jest WIĘKSZY niż w wariancie pełnym, czyli "
+                "Przy obciążeniu mniejszym od mocy znamionowej wynik jest WIĘKSZY niż w wariancie "
+                "pełnym, czyli "
                 "optymistyczny; potwierdź rezystancją uzwojenia z karty producenta."
             )
         kroki.append(

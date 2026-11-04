@@ -321,7 +321,7 @@ def _sprawdz_liczby(segment: SegmentProfilu) -> None:
             )
     if segment.t_s < 0.0:
         raise _odmowa_profilu(
-            f"segment {type(segment).__name__} zaczyna się przed t = 0 (t_s={segment.t_s})",
+            f"segment {type(segment).__name__} zaczyna się przed chwilą zero ({segment.t_s} s)",
             segment=type(segment).__name__,
             t_s=segment.t_s,
         )

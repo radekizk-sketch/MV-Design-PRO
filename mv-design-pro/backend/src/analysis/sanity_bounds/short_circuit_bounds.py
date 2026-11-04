@@ -87,7 +87,7 @@ def evaluate_short_circuit_current(
             upper_ka=None,
             in_range=False,
             status=INCOMPLETE,
-            why_pl="Brak poprawnego napięcia lub Ik'' do oceny wiarygodności.",
+            why_pl="Brak poprawnego napięcia lub początkowego prądu zwarciowego do oceny wiarygodności.",
             blocks_osd_package=False,
         )
     min_ka, max_ka = _GRANICE_IKSS_KA[name]
@@ -97,16 +97,16 @@ def evaluate_short_circuit_current(
         # surowy `repr` floata (15–17 cyfr) różnił się ostatnią cyfrą między maszynami
         # (CI 2026-09-16, run 5030: „4.611507168332454" vs „…455" w tym samym commicie),
         # a projektant i tak czyta kA z dokładnością do ampera.
-        why = f"Ik'' = {ikss_ka:.3f} kA mieści się w zakresie [{min_ka:g}; {max_ka:g}] kA dla {name} ({voltage_kv:g} kV)."
+        why = f"Początkowy prąd zwarciowy {ikss_ka:.3f} kA mieści się w zakresie [{min_ka:g}; {max_ka:g}] kA dla {name} ({voltage_kv:g} kV)."
     elif ikss_ka > max_ka:
         why = (
-            f"Ik'' = {ikss_ka:.3f} kA przekracza górną granicę wiarygodności {max_ka:g} kA "
+            f"Początkowy prąd zwarciowy {ikss_ka:.3f} kA przekracza górną granicę wiarygodności {max_ka:g} kA "
             f"dla {name} ({voltage_kv:g} kV) — wartość fizycznie wątpliwa (błąd jednostek/poziomu?). "
             "Zablokowane przed wejściem do pakietu OSD."
         )
     else:
         why = (
-            f"Ik'' = {ikss_ka:.3f} kA poniżej dolnej granicy {min_ka:g} kA dla {name} ({voltage_kv:g} kV) "
+            f"Początkowy prąd zwarciowy {ikss_ka:.3f} kA poniżej dolnej granicy {min_ka:g} kA dla {name} ({voltage_kv:g} kV) "
             "— sprawdź model źródła/impedancje."
         )
     return ShortCircuitSanityVerdict(

@@ -16,7 +16,7 @@
     "pn_mw": 2.0,
     "q_wymagane_min_mvar": -0.66,
     "q_wymagane_max_mvar": 0.66,
-    "opis": "Prostokątne wymaganie zakresu Q operatora: [udzial_min * Pn, udzial_max * Pn] w każdym punkcie pracy."
+    "opis": "Prostokątne wymaganie zakresu mocy biernej operatora: od udziału minimalnego do udziału maksymalnego mocy znamionowej w każdym punkcie pracy."
   },
   "punkty": [
     {
@@ -98,7 +98,7 @@
         "wartosc": -0.26,
         "jednostka": "Mvar"
       },
-      "punkt_krytyczny_pl": "P = 2 MW, strona dolna (Q_min): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
+      "punkt_krytyczny_pl": "P = 2 MW, strona dolna (moc bierna minimalna): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
       "chwila_s": null,
       "metoda": "DEKLARACJA"
     },
@@ -118,7 +118,7 @@
         "status": "NIEUSTALONE",
         "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
       },
-      "zakres_stosowalnosci_pl": "wymagany zakres mocy biernej operatora PSE — Polskie Sieci Elektroenergetyczne: [−0,33 · Pn, 0,33 · Pn] = [−0,66 Mvar, 0,66 Mvar] przy Pn = 2 MW, w każdym punkcie mocy czynnej krzywej",
+      "zakres_stosowalnosci_pl": "wymagany zakres mocy biernej operatora PSE — Polskie Sieci Elektroenergetyczne: od −0,33 do 0,33 mocy znamionowej, czyli od −0,66 Mvar do 0,66 Mvar przy mocy znamionowej 2 MW, w każdym punkcie mocy czynnej krzywej",
       "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · PSE — Polskie Sieci Elektroenergetyczne (rewizja 2024-Q4)"
     },
     "margines": {
@@ -127,7 +127,7 @@
         "jednostka": "Mvar"
       },
       "definicja_latex": "m = x - x_{\\lim}",
-      "punkt_pl": "P = 2 MW, strona dolna (Q_min): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
+      "punkt_pl": "P = 2 MW, strona dolna (moc bierna minimalna): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
       "skala": null,
       "skala_rodzaj": null,
       "wzgledny": null,
@@ -153,7 +153,7 @@
       "czego_brakuje": [],
       "zastrzezenia": [
         "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
-        "Dana przyjęta bez walidacji: moc znamionowa czynna typu (pmax_mw) — moc odniesienia Pn wymagania = 2 MW, jakość danej: oszacowane — jakość danej karty katalogowej: oszacowane.",
+        "Dana przyjęta bez walidacji: moc znamionowa czynna typu (pole `pmax_mw`) — moc odniesienia wymagania = 2 MW, jakość danej: oszacowane — jakość danej karty katalogowej: oszacowane.",
         "Zakres ważności: punkty krzywej zdolności P–Q producenta z karty katalogowej typu wobec prostokątnego wymagania zakresu mocy biernej profilu operatora — wynik nie obejmuje: obszar między punktami krzywej producenta (porównanie wyłącznie w punktach krzywej); zależność zdolności mocy biernej od napięcia sieci (krzywa producenta bez parametru napięcia)."
       ]
     },
@@ -166,7 +166,7 @@
         "stan": "UNVALIDATED_INPUT",
         "dane_przyjete": [
           {
-            "nazwa_pl": "moc znamionowa czynna typu (pmax_mw) — moc odniesienia Pn wymagania",
+            "nazwa_pl": "moc znamionowa czynna typu (pole `pmax_mw`) — moc odniesienia wymagania",
             "wartosc": {
               "wartosc": 2.0,
               "jednostka": "MW"

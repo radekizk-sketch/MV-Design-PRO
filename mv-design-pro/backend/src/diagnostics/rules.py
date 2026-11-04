@@ -216,12 +216,12 @@ def rule_e_d06_sc1f_no_zero_sequence(graph: NetworkGraph) -> list[DiagnosticIssu
                 severity=DiagnosticSeverity.WARN,
                 message_pl=(
                     f"Zwarcie jednofazowe niedostępne — "
-                    f"{len(lines_without_z0)} gałęzi bez danych Z0 (impedancja zerowa)"
+                    f"{len(lines_without_z0)} gałęzi bez danych impedancji zerowej"
                 ),
                 affected_refs=tuple(sorted(lines_without_z0)),
                 hints=(
-                    "Uzupełnij dane impedancji zerowej (R0, X0) dla gałęzi",
-                    "Lub przypisz typ z katalogu zawierający dane Z0",
+                    "Uzupełnij rezystancję i reaktancję zerową gałęzi",
+                    "Lub przypisz typ z katalogu zawierający dane impedancji zerowej",
                 ),
             )
         ]
@@ -286,11 +286,11 @@ def rule_w_d01_no_zero_sequence_data(graph: NetworkGraph) -> list[DiagnosticIssu
                 code="W-D01",
                 severity=DiagnosticSeverity.WARN,
                 message_pl=(
-                    f"{count} gałęzi bez danych impedancji zerowej (Z0). "
+                    f"{count} gałęzi bez danych impedancji zerowej. "
                     f"Analiza zwarcia jednofazowego może być niedostępna"
                 ),
                 affected_refs=tuple(sorted(refs)),
-                hints=("Uzupełnij dane Z0 lub przypisz typy z katalogu",),
+                hints=("Uzupełnij dane impedancji zerowej lub przypisz typy z katalogu",),
             )
         ]
     return []

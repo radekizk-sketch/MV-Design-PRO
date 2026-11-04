@@ -67,12 +67,12 @@ MEASUREMENT_TYPES: tuple[dict[str, Any], ...] = (
     },
     {
         "code": MeasurementType.P_FLOW.value,
-        "label_pl": "Przepływ mocy czynnej w gałęzi P_ij [pu]",
+        "label_pl": "Przepływ mocy czynnej w gałęzi [pu]",
         "requires_bus_j": True,
     },
     {
         "code": MeasurementType.Q_FLOW.value,
-        "label_pl": "Przepływ mocy biernej w gałęzi Q_ij [pu]",
+        "label_pl": "Przepływ mocy biernej w gałęzi [pu]",
         "requires_bus_j": True,
     },
 )

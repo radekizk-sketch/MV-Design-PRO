@@ -170,7 +170,7 @@ function zamontujBackend(
         const tb = body.config?.breaking_time_seconds;
         if (typeof tb === 'number' && !(tb > 0)) {
           return new Response(
-            JSON.stringify({ detail: 'Czas wyłączenia t_b musi być dodatni', kod: 'fault.czas_tb_niepoprawny' }),
+            JSON.stringify({ detail: 'Czas wyłączenia musi być dodatni', kod: 'fault.czas_tb_niepoprawny' }),
             { status: 422, headers: JSON_NAGLOWKI },
           );
         }

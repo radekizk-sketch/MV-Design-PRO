@@ -90,7 +90,7 @@ function odmowaBackendu(config: unknown, wymagany: boolean): Response | null {
   const tb = c.breaking_time_seconds;
   if (tb !== undefined && tb !== null && !(typeof tb === 'number' && Number.isFinite(tb) && tb > 0)) {
     return odpowiedz(422, {
-      detail: `Czas wyłączenia t_b ${String(tb)} musi być skończoną liczbą dodatnią w sekundach.`,
+      detail: `Czas wyłączenia ${String(tb)} musi być skończoną liczbą dodatnią w sekundach.`,
       kod: 'fault.czas_tb_niepoprawny',
       dane: {},
     });
@@ -403,7 +403,7 @@ describe('FaultScenarioModal — czas wyłączenia t_b', () => {
       'fetch',
       vi.fn(async () =>
         odpowiedz(422, {
-          detail: 'Czas wyłączenia t_b 0 musi być skończoną liczbą dodatnią w sekundach.',
+          detail: 'Czas wyłączenia 0 musi być skończoną liczbą dodatnią w sekundach.',
           kod: 'fault.czas_tb_niepoprawny',
           dane: {},
         }),

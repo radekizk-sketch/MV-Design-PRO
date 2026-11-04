@@ -263,7 +263,7 @@ def _validate_input(data: FaultLoopInput) -> None:
             )
             raise OdmowaDanychError(
                 f"Układ {data.network_type.value}: pętla zwarcia doziemnego wymaga danych "
-                "TT/IT (uziomy R_A/R_B i I_Δn dla TT; pojemności doziemne i częstotliwość dla "
+                "TT/IT (uziomy instalacji i stacji oraz znamionowy prąd różnicowy dla TT; pojemności doziemne i częstotliwość dla "
                 "IT) — brak danej nie jest zastępowany wartością."
             )
     elif data.dane_tt_it is not None:
@@ -379,9 +379,9 @@ def prad_z_petli(
             },
         )
         raise OdmowaDanychError(
-            f"Z_loop = {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
-            "fizycznie niemożliwa (degenerated case). Realna nN ma Z_loop "
-            "≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
+            f"Impedancja pętli {z_magnitude:.3e} Ω < {Z_MIN_OHM:.0e} Ω — pętla zerowa lub "
+            "fizycznie niemożliwa (przypadek zdegenerowany). Realna pętla nN ma "
+            "impedancję ≥ kilkudziesięciu mΩ. Sprawdź dane wejściowe."
         )
     ik_min = (c.c_min * u_v) / z_magnitude
     ik_max = (c.c_max * u_v) / z_magnitude

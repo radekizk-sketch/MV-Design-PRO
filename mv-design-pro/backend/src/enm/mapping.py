@@ -103,7 +103,11 @@ from network_model.solvers.power_flow_zip import (
 )
 from werdykt.kontrakt import WyjasnienieWerdyktu
 
-from .bateria_kondensatorow import admitancja_baterii, ma_droge_zerowa, parametry_baterii
+from .bateria_kondensatorow import (
+    admitancja_baterii,
+    ma_droge_zerowa,
+    parametry_baterii,
+)
 from .models import (
     Cable,
     EnergyNetworkModel,
@@ -126,7 +130,9 @@ from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
 #: Kody odmów nazwanych mapowania ENM → graf (identyfikatory w `dane`, nigdy w treści —
 #: partia integracji 10).
 KOD_DWA_GENERATORY_REGULACJI_NAPIECIA = "mapping.dwa_generatory_regulacji_napiecia"
-KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA = "mapping.szyna_bilansujaca_z_regulacja_napiecia"
+KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA = (
+    "mapping.szyna_bilansujaca_z_regulacja_napiecia"
+)
 
 
 def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
@@ -354,7 +360,11 @@ def impedancja_zasilania_systemowego(
         tryb_uzyty = tryb
         c = c_for_node(u_nq_kv, "MAX", tolerancja_nn=tolerancja_nn)
         sk_deklarowane, ik_deklarowane = sk3_mva, ik3_ka
-        etykieta = tryb_uzyty.value if scenario == "MAX" else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
+        etykieta = (
+            tryb_uzyty.value
+            if scenario == "MAX"
+            else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
+        )
         if dodatnia(rx_ratio):
             rx_zrodlo, rx_wartosc = "MODEL", rx_ratio
         else:
@@ -531,7 +541,8 @@ class BrakWynikuZerowego:
     """Nazwana przyczyna braku wyniku składowej zerowej w węźle (karta UX-04/POLE-ZU-
     SKLADOWA-ZEROWA, §0 pkt 7): kod, przyczyna, status maszynowy ZWIĄZANY z wyjaśnieniem
     (kontrakt werdyktu wyjaśnialnego — zdanie, przyczyna, czego brakuje, zastrzeżenia).
-    ``elementy`` — identyfikatory elementów modelu (dana maszynowa); zdanie niesie nazwy."""
+    ``elementy`` — identyfikatory elementów modelu (dana maszynowa); zdanie niesie nazwy.
+    """
 
     przyczyna: str
     kod: str
@@ -571,7 +582,9 @@ class SiecZerowa:
     #: Gałąź → pola wartości roboczej B′0 (``skladowa_zerowa_galezi.robocze_b0``) gałęzi, której
     #: pojemność doziemna z wartości roboczej WESZŁA do Y0 (warunek pkt 5.2 f) spełniony w jej
     #: sieci zerowej) — jedno źródło danych przyjętych B′0 wierszy zwarć doziemnych.
-    b0_robocze: dict[str, tuple[tuple[str, str, str, float], ...]] = field(default_factory=dict)
+    b0_robocze: dict[str, tuple[tuple[str, str, str, float], ...]] = field(
+        default_factory=dict
+    )
 
 
 @dataclass(frozen=True)
@@ -677,7 +690,9 @@ def _assemble_zero_sequence_y0(
         # gotowości i dane przyjęte (``enm.skladowa_zerowa_galezi``).
         skladowa = skladowa_zerowa_galezi(branch, bus_voltage.get(branch.from_bus_ref))
         if skladowa.r0_ohm_per_km is None or skladowa.x0_ohm_per_km is None:
-            galezie_bez_z0.append((branch.ref_id, branch.from_bus_ref, branch.to_bus_ref))
+            galezie_bez_z0.append(
+                (branch.ref_id, branch.from_bus_ref, branch.to_bus_ref)
+            )
             powody_bez_z0[branch.ref_id] = skladowa.brak_podstawy_pl or ""
             continue
         r0_ohm_per_km, x0_ohm_per_km = skladowa.r0_ohm_per_km, skladowa.x0_ohm_per_km
@@ -686,7 +701,9 @@ def _assemble_zero_sequence_y0(
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
             brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
-            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
+            raise OdmowaDanychError(
+                _odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca)
+            )
         if from_id not in node_index or to_id not in node_index:
             continue
         from_idx = node_index[from_id]
@@ -694,7 +711,9 @@ def _assemble_zero_sequence_y0(
         z0_ohm = complex(r0_ohm_per_km, x0_ohm_per_km) * branch.length_km
         if z0_ohm == 0 and from_idx != to_idx:
             raise OdmowaDanychError(
-                _odmowa_zerowej_impedancji_z0(f"Gałąź {nazwa_elementu(branch, 'branches')}")
+                _odmowa_zerowej_impedancji_z0(
+                    f"Gałąź {nazwa_elementu(branch, 'branches')}"
+                )
             )
         z_base_ohm = builder.get_zbase_ohm(from_id)
         _add_series_admittance(
@@ -715,7 +734,7 @@ def _assemble_zero_sequence_y0(
                 "length_km": branch.length_km,
             },
             substitution=(
-                f"Z0 = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω "
+                f"impedancja zerowa {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω "
                 f"(szereg {nazwa_szyny[branch.from_bus_ref]}↔{nazwa_szyny[branch.to_bus_ref]})"
             ),
             result={"z0_ohm": z0_ohm},
@@ -774,7 +793,9 @@ def _assemble_zero_sequence_y0(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
         if bus_id not in node_index:
-            raise OdmowaDanychError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+            raise OdmowaDanychError(
+                _odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref)
+            )
         # Karta FAB-D1 (D7): `bus_voltage`/`ref_to_node_id` powstają z TEGO SAMEGO
         # `enm.buses` (w. 198-199), więc szyna, która przeszła kontrolę `bus_id
         # not in node_index` wyżej, ma zawsze wpis w `bus_voltage` — sentinel
@@ -806,7 +827,11 @@ def _assemble_zero_sequence_y0(
             # uziemienia sieci SN — Z0 źródła na szynie SN nie wchodzi do Y0 (walidator
             # E-W5-01 zgłasza takie dane jako sprzeczne z jedyną prawdą: zespół uziemiający
             # albo punkt neutralny uzwojenia transformatora).
-            if source.r0_ohm is not None or source.x0_ohm is not None or source.z0_z1_ratio:
+            if (
+                source.r0_ohm is not None
+                or source.x0_ohm is not None
+                or source.z0_z1_ratio
+            ):
                 tracer.add(
                     key=f"z0_source_sn_pominiete[{source.ref_id}]",
                     title=(
@@ -830,15 +855,23 @@ def _assemble_zero_sequence_y0(
         # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
         # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
         z0_source_ohm = _source_zero_impedance_ohm(
-            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+            source,
+            bus_voltage_kv,
+            scenario,
+            tolerancja_nn=tolerancje_nn.get(source.bus_ref),
         )
         if z0_source_ohm is None:
-            if source.neutral_grounding is None or source.neutral_grounding.type != "isolated":
+            if (
+                source.neutral_grounding is None
+                or source.neutral_grounding.type != "isolated"
+            ):
                 zrodla_bez_z0.append((source.ref_id, source.bus_ref))
             continue
         if z0_source_ohm == 0:
             raise OdmowaDanychError(
-                _odmowa_zerowej_impedancji_z0(f"Źródło {nazwa_elementu(source, 'sources')}")
+                _odmowa_zerowej_impedancji_z0(
+                    f"Źródło {nazwa_elementu(source, 'sources')}"
+                )
             )
         idx = node_index[bus_id]
         y0_bus[idx, idx] += 1.0 / (z0_source_ohm / builder.get_zbase_ohm(bus_id))
@@ -870,7 +903,9 @@ def _assemble_zero_sequence_y0(
         bus_id = ref_to_node_id.get(bateria.bus_ref)
         if bus_id is None:
             raise OdmowaDanychError(
-                _odmowa_elementu_bez_szyny("Bateria kondensatorów", bateria.ref_id, bateria.bus_ref)
+                _odmowa_elementu_bez_szyny(
+                    "Bateria kondensatorów", bateria.ref_id, bateria.bus_ref
+                )
             )
         if bus_id not in node_index:
             continue
@@ -942,7 +977,9 @@ def _assemble_zero_sequence_y0(
         model = build_transformer_zero_seq_model(trafo)
         transformer_trace.extend(model.trace)
         if not trafo.vector_group:
-            transformatory_bez_grupy.append((trafo.ref_id, trafo.hv_bus_ref, trafo.lv_bus_ref))
+            transformatory_bez_grupy.append(
+                (trafo.ref_id, trafo.hv_bus_ref, trafo.lv_bus_ref)
+            )
         if model.z0_pu is None or model.z0_pu == 0:
             continue
         y_pu = 1.0 / model.z0_pu
@@ -1007,7 +1044,10 @@ def _assemble_zero_sequence_y0(
                     f"uziemiającego ({stan_awsc}) {_opis_z(z0_zu_ohm)} (bocznik "
                     f"{nazwa_szyny[punkt.bus_ref]})"
                 ),
-                result={"z0_ohm": _z_sladu(z0_zu_ohm), "wariant": punkt.wariant(stan_awsc)},
+                result={
+                    "z0_ohm": _z_sladu(z0_zu_ohm),
+                    "wariant": punkt.wariant(stan_awsc),
+                },
                 notes=punkt.odmowa_pl,
             )
             if z0_zu_ohm is None:
@@ -1101,7 +1141,12 @@ def _assemble_zero_sequence_y0(
         node_index=node_index,
         size=size,
         y0_bus=y0_bus,
-        trace=(tracer.to_list() + slad_pojemnosci + transformer_trace + slad_odniesienia.to_list()),
+        trace=(
+            tracer.to_list()
+            + slad_pojemnosci
+            + transformer_trace
+            + slad_odniesienia.to_list()
+        ),
         przyczyny=przyczyny,
         sekcje_wezlow={
             wezel: sekcja
@@ -1154,7 +1199,10 @@ def _przyczyny_braku_zerowej(
     from scipy.sparse import csr_matrix
     from scipy.sparse.csgraph import connected_components
 
-    from .uziemienie_sekcji import KOD_PRZYCZYNY_BRAKU_ZEROWEJ, STATUS_PRZYCZYNY_BRAKU_ZEROWEJ
+    from .uziemienie_sekcji import (
+        KOD_PRZYCZYNY_BRAKU_ZEROWEJ,
+        STATUS_PRZYCZYNY_BRAKU_ZEROWEJ,
+    )
 
     size = y0_bus.shape[0]
     if size == 0:
@@ -1178,13 +1226,17 @@ def _przyczyny_braku_zerowej(
         for szyna in (a, b):
             wezel_trafo = ref_to_node_id.get(szyna)
             if wezel_trafo in node_index:
-                trafo_bez_grupy.setdefault(int(etykiety[node_index[wezel_trafo]]), []).append(ref)
+                trafo_bez_grupy.setdefault(
+                    int(etykiety[node_index[wezel_trafo]]), []
+                ).append(ref)
     zrodla_bez_danych: dict[int, list[str]] = {}
     for ref, szyna in zrodla_bez_z0:
         wezel_zrodla = ref_to_node_id.get(szyna)
         if wezel_zrodla not in node_index:
             continue
-        zrodla_bez_danych.setdefault(int(etykiety[node_index[wezel_zrodla]]), []).append(ref)
+        zrodla_bez_danych.setdefault(
+            int(etykiety[node_index[wezel_zrodla]]), []
+        ).append(ref)
     wynik: dict[str, BrakWynikuZerowego] = {}
     # Bocznik pojemnościowy (B0) klasyfikuje drogę, ale nie domyka macierzy: B0 wchodzi do Y0
     # wyłącznie w sieci zerowej z węzłem liczonym zwarciem IEC 60909 — a ten wymaga bocznika
@@ -1231,7 +1283,9 @@ def _przyczyny_braku_zerowej(
             continue
         if skladowa in brakujace or skladowa in trafo_bez_grupy:
             przyczyna = "brak_danych"
-            galezie = () if uziemiona else tuple(sorted(set(brakujace.get(skladowa, ()))))
+            galezie = (
+                () if uziemiona else tuple(sorted(set(brakujace.get(skladowa, ()))))
+            )
             transformatory = tuple(sorted(set(trafo_bez_grupy.get(skladowa, ()))))
             elementy = tuple(sorted({*galezie, *transformatory}))
             zdania: list[str] = []
@@ -1239,7 +1293,9 @@ def _przyczyny_braku_zerowej(
             czego_brakuje: list[str] = []
             if galezie:
                 nazwy_galezi = ", ".join(nazwy[ref] for ref in galezie)
-                powody = "; ".join(f"{nazwy[ref]}: {powody_bez_z0[ref]}" for ref in galezie)
+                powody = "; ".join(
+                    f"{nazwy[ref]}: {powody_bez_z0[ref]}" for ref in galezie
+                )
                 zdania.append(
                     "Węzeł odcięty od uziemienia punktu neutralnego brakiem danych składowej "
                     f"zerowej gałęzi ({nazwy_galezi}): jednostkowa rezystancja i reaktancja "
@@ -1280,7 +1336,9 @@ def _przyczyny_braku_zerowej(
                     "założenie jawne). Doziemienie ocenia analiza projektu uziemienia punktu "
                     "neutralnego."
                 ),
-                przyczyna_pl=("Zakres IEC 60909-0 obejmuje sieci uziemione przez małą impedancję."),
+                przyczyna_pl=(
+                    "Zakres IEC 60909-0 obejmuje sieci uziemione przez małą impedancję."
+                ),
             )
         else:
             przyczyna = "brak_drogi"
@@ -1372,12 +1430,16 @@ def _warunek_pojemnosci_zerowej(
     for wezel, idx in sorted(node_index.items()):
         wezly_indeksu.setdefault(idx, []).append(wezel)
     liczone = {
-        idx for idx, wezly in wezly_indeksu.items() if not any(w in przyczyny for w in wezly)
+        idx
+        for idx, wezly in wezly_indeksu.items()
+        if not any(w in przyczyny for w in wezly)
     }
     sieci: dict[int, list[_KandydatB0]] = {}
     for kandydat in kandydaci:
         sieci.setdefault(int(etykiety0[kandydat.from_idx]), []).append(kandydat)
-    porzadek = sorted(sieci, key=lambda e: min(wezly_indeksu[i][0] for i in _indeksy(etykiety0, e)))
+    porzadek = sorted(
+        sieci, key=lambda e: min(wezly_indeksu[i][0] for i in _indeksy(etykiety0, e))
+    )
     slad = WhiteBoxTracer()
     b0_robocze: dict[str, tuple[tuple[str, str, str, float], ...]] = {}
     for numer, etykieta in enumerate(porzadek, start=1):
@@ -1392,7 +1454,9 @@ def _warunek_pojemnosci_zerowej(
             k = round(wspolczynnik_zwarcia_doziemnego(z1[idx], z1[idx], z0[idx]), 6)
             wezly_k.append(
                 {
-                    "wezel": nazwa_elementu(graph.nodes[wezly_indeksu[idx][0]], "buses"),
+                    "wezel": nazwa_elementu(
+                        graph.nodes[wezly_indeksu[idx][0]], "buses"
+                    ),
                     "z1_pu": _z_sladu(z1[idx]),
                     "z0_pu": _z_sladu(z0[idx]),
                     "k": k,
@@ -1414,7 +1478,9 @@ def _warunek_pojemnosci_zerowej(
         else:
             wezel_max = next(w["wezel"] for w in wezly_k if w["k"] == k_max)
             relacja = ">" if wchodzi else "≤"
-            skutek = "WCHODZĄ do macierzy Y0." if wchodzi else "nie wchodzą do macierzy Y0."
+            skutek = (
+                "WCHODZĄ do macierzy Y0." if wchodzi else "nie wchodzą do macierzy Y0."
+            )
             # Zapis liczb po polsku (przecinek dziesiętny) — podstawienie czyta projektant.
             k_tekst = f"{k_max:.6g}".replace(".", ",")
             prog = f"{PROG_WSPOLCZYNNIKA_ZWARCIA_DOZIEMNEGO:g}".replace(".", ",")
@@ -1515,7 +1581,10 @@ def _przyczyny_trybu_sieci_sn(
     sieć SN ma pojemności doziemne, a brak ich danych nazywa wynik doziemienia). Przyczyna
     ``brak_danych`` zostaje (brak danych składowej zerowej to brak podstawy, nie tryb).
     Sieć z odmową nazwaną punktu uziemienia nie ma trybu — klasyfikacja bez zmian."""
-    from .uziemienie_sekcji import KOD_PRZYCZYNY_BRAKU_ZEROWEJ, STATUS_PRZYCZYNY_BRAKU_ZEROWEJ
+    from .uziemienie_sekcji import (
+        KOD_PRZYCZYNY_BRAKU_ZEROWEJ,
+        STATUS_PRZYCZYNY_BRAKU_ZEROWEJ,
+    )
 
     for sekcja in sekcje:
         if sekcja.odmowy:
@@ -1576,7 +1645,9 @@ class WynikSieciZerowej:
     #: Węzeł grafu → sieć SN (tryb doziemienia wiersza zwarcia jednofazowego).
     sekcje_wezlow: dict[str, Any] = field(default_factory=dict)
     #: Gałęzie z wartością roboczą B′0 w macierzy Y0 (``SiecZerowa.b0_robocze``).
-    b0_robocze: dict[str, tuple[tuple[str, str, str, float], ...]] = field(default_factory=dict)
+    b0_robocze: dict[str, tuple[tuple[str, str, str, float], ...]] = field(
+        default_factory=dict
+    )
 
 
 def zbuduj_siec_zerowa(
@@ -1691,7 +1762,10 @@ def skladowe_i_b0_sieci_zerowej(
         return {}, dict(siec.b0_robocze)
     _, etykiety = connected_components(csr_matrix(siec.y0_bus != 0), directed=False)
     return (
-        {wezel: int(etykiety[indeks]) for wezel, indeks in sorted(siec.node_index.items())},
+        {
+            wezel: int(etykiety[indeks])
+            for wezel, indeks in sorted(siec.node_index.items())
+        },
         dict(siec.b0_robocze),
     )
 
@@ -1845,7 +1919,9 @@ def _add_generator_sc_sources(
             continue
         node_id = ref_to_node_id.get(gen.bus_ref)
         if node_id is None:
-            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Wytworca", gen.ref_id, gen.bus_ref))
+            raise OdmowaDanychError(
+                _odmowa_elementu_bez_szyny("Wytworca", gen.ref_id, gen.bus_ref)
+            )
         mp = gen.materialized_params or {}
         un_kv = _gen_rated_voltage_kv(gen, mp, bus_voltage_by_ref)
         if un_kv is None:
@@ -1885,7 +1961,9 @@ def _add_generator_sc_sources(
                         "generator_ref": gen.ref_id,
                         "catalog_ref": gen.catalog_ref,
                     },
-                    substitution=_k_sc_substytucja_zalozenia(zrodlo_sc, gen.catalog_ref),
+                    substitution=_k_sc_substytucja_zalozenia(
+                        zrodlo_sc, gen.catalog_ref
+                    ),
                     result={"k_sc": zrodlo_sc.k_sc_efektywny},
                     notes=_k_sc_notatka_zalozenia(zrodlo_sc.wklad_zrodlo),
                 )
@@ -1899,7 +1977,9 @@ def _add_generator_sc_sources(
             parametry_s = rozstrzygnij_parametry_maszyny(
                 rodzina_s,
                 tabliczka=mp,
-                wartosci_projektanta=wartosci_projektanta_maszyny(rodzina_s, gen.overrides),
+                wartosci_projektanta=wartosci_projektanta_maszyny(
+                    rodzina_s, gen.overrides
+                ),
                 moc_czynna_punktu_pracy_mw=gen.p_mw,
                 liczba_jednostek=liczba_s,
             )
@@ -1927,9 +2007,14 @@ def _add_generator_sc_sources(
                 )
             )
             _zapisz_wartosci_robocze_maszyny(
-                graph, gen, parametry_s, wielkosci_wg_parametru=dict.fromkeys(parametry_s, None)
+                graph,
+                gen,
+                parametry_s,
+                wielkosci_wg_parametru=dict.fromkeys(parametry_s, None),
             )
-        elif RODZINA_MASZYNY_WG_GEN_TYPE.get(gen_type) == RODZINA_MASZYNA_ASYNCHRONICZNA:
+        elif (
+            RODZINA_MASZYNY_WG_GEN_TYPE.get(gen_type) == RODZINA_MASZYNA_ASYNCHRONICZNA
+        ):
             # Karta PODSTAWA-Q (decyzja architekta do meldunku 0a90bbc97): moc znamionowa P_rM
             # (IEC 60909-0:2016 pkt 6.7, m = P_rM/p pkt 9.1.2) to dana MASZYNY, nie punkt pracy
             # |p_mw|. Rejestr wartości roboczych: projektant > tabliczka `pr_mw` > P_rM z mocy
@@ -1941,7 +2026,9 @@ def _add_generator_sc_sources(
             parametry_a = rozstrzygnij_parametry_maszyny(
                 rodzina_a,
                 tabliczka=mp,
-                wartosci_projektanta=wartosci_projektanta_maszyny(rodzina_a, gen.overrides),
+                wartosci_projektanta=wartosci_projektanta_maszyny(
+                    rodzina_a, gen.overrides
+                ),
                 moc_czynna_punktu_pracy_mw=gen.p_mw,
                 liczba_jednostek=liczba_a,
             )
@@ -1953,10 +2040,14 @@ def _add_generator_sc_sources(
                 id=gen.ref_id,
                 name=gen.name,
                 node_id=node_id,
-                pr_mw=_moc_grupy(moc_znamionowa, liczba_a, moc_grupy_z_punktu_pracy=abs(gen.p_mw)),
+                pr_mw=_moc_grupy(
+                    moc_znamionowa, liczba_a, moc_grupy_z_punktu_pracy=abs(gen.p_mw)
+                ),
                 ur_kv=un_kv,
                 sr_mva_tabliczki=(
-                    None if moc_pozorna_jednostki is None else moc_pozorna_jednostki * liczba_a
+                    None
+                    if moc_pozorna_jednostki is None
+                    else moc_pozorna_jednostki * liczba_a
                 ),
                 cos_phi_r=_wartosc_parametru(parametry_a, PARAMETR_COS_PHI_MASZYNY),
                 efficiency=_wartosc_parametru(parametry_a, PARAMETR_SPRAWNOSC),
@@ -1970,22 +2061,31 @@ def _add_generator_sc_sources(
                 graph,
                 gen,
                 parametry_a,
-                wielkosci_wg_parametru=_wielkosci_parametrow_asynchronicznej(maszyna, parametry_a),
+                wielkosci_wg_parametru=_wielkosci_parametrow_asynchronicznej(
+                    maszyna, parametry_a
+                ),
             )
 
     return tracer.to_list()
 
 
-def _wartosc_parametru(parametry: dict[str, WartoscRozstrzygnieta], parametr: str) -> float:
+def _wartosc_parametru(
+    parametry: dict[str, WartoscRozstrzygnieta], parametr: str
+) -> float:
     """Wartość rozstrzygniętego parametru maszyny — rejestr ma propozycję dla każdego z nich."""
     wartosc = parametry[parametr].wartosc
     if wartosc is None:
-        raise AssertionError(f"Rejestr wartości roboczych nie rozstrzygnął parametru {parametr!r}.")
+        raise AssertionError(
+            f"Rejestr wartości roboczych nie rozstrzygnął parametru {parametr!r}."
+        )
     return wartosc
 
 
 def _moc_grupy(
-    moc: WartoscRozstrzygnieta, liczba_jednostek: int, *, moc_grupy_z_punktu_pracy: float
+    moc: WartoscRozstrzygnieta,
+    liczba_jednostek: int,
+    *,
+    moc_grupy_z_punktu_pracy: float,
 ) -> float:
     """Moc znamionowa CAŁEJ grupy jednakowych maszyn z mocy rozstrzygniętej dla jednej.
 
@@ -2015,7 +2115,9 @@ def _wielkosci_parametrow_asynchronicznej(
 
     def wg_m(m_od_mw: float, m_do_mw: float) -> tuple[str, ...] | None:
         return (
-            None if maszyna.r_over_x_zalezy_od_mocy_na_pare(m_od_mw, m_do_mw) else WIELKOSC_TYLKO_IB
+            None
+            if maszyna.r_over_x_zalezy_od_mocy_na_pare(m_od_mw, m_do_mw)
+            else WIELKOSC_TYLKO_IB
         )
 
     def zakres(parametr: str) -> tuple[float, float]:
@@ -2024,14 +2126,18 @@ def _wielkosci_parametrow_asynchronicznej(
 
     wielkosci: dict[str, tuple[str, ...] | None] = dict.fromkeys(parametry, None)
     moc_jednostki = maszyna.moc_jednostki_mw
-    wielkosci[PARAMETR_PARY_BIEGUNOW] = wg_m(moc_jednostki / PARY_BIEGUNOW_MAX, moc_jednostki)
+    wielkosci[PARAMETR_PARY_BIEGUNOW] = wg_m(
+        moc_jednostki / PARY_BIEGUNOW_MAX, moc_jednostki
+    )
     if maszyna.sr_mva_tabliczki is None:
         return wielkosci
     pary = max(1, maszyna.pole_pairs)
     p_od, p_do = zakres(PARAMETR_MOC_ZNAMIONOWA_MASZYNY)
     wielkosci[PARAMETR_MOC_ZNAMIONOWA_MASZYNY] = wg_m(p_od / pary, p_do / pary)
     for parametr in (PARAMETR_SPRAWNOSC, PARAMETR_COS_PHI_MASZYNY):
-        if not moc_znamionowa_z_mocy_pozornej(parametry[PARAMETR_MOC_ZNAMIONOWA_MASZYNY]):
+        if not moc_znamionowa_z_mocy_pozornej(
+            parametry[PARAMETR_MOC_ZNAMIONOWA_MASZYNY]
+        ):
             wielkosci[parametr] = ()
             continue
         od, do = zakres(parametr)
@@ -2240,7 +2346,9 @@ def map_enm_to_network_graph(
             (
                 load.p_mw,
                 load.q_mvar,
-                zip_coeffs_from_materialized_params(load.materialized_params, f_studium_hz),
+                zip_coeffs_from_materialized_params(
+                    load.materialized_params, f_studium_hz
+                ),
             )
         )
     # Karta FAB-H (H2, KLASA NIE INSTANCJA): moc bierna wytwórcy rozstrzygana przez
@@ -2285,7 +2393,10 @@ def map_enm_to_network_graph(
                 f" i {opis_obiektu(gen, 'generator')}) — kontrakt rozpływu dopuszcza jedną "
                 "nastawę napięcia na węzeł.",
                 kod=KOD_DWA_GENERATORY_REGULACJI_NAPIECIA,
-                dane={"element_ref": gen.bus_ref, "generatory_ref": (pierwszy_ref, gen.ref_id)},
+                dane={
+                    "element_ref": gen.bus_ref,
+                    "generatory_ref": (pierwszy_ref, gen.ref_id),
+                },
             )
         u_set_raw = meta.get("u_set_pu")
         bus_voltage_control[gen.bus_ref] = (
@@ -2387,14 +2498,18 @@ def map_enm_to_network_graph(
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
             brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
-            raise OdmowaDanychError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
+            raise OdmowaDanychError(
+                _odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca)
+            )
 
         branch_id = _ref_to_uuid(branch.ref_id)
 
         if isinstance(branch, OverheadLine | Cable):
             b_us_per_km = 0.0
             if branch.b_siemens_per_km is not None:
-                b_us_per_km = simens_na_mikrosimens(branch.b_siemens_per_km)  # S/km → μS/km
+                b_us_per_km = simens_na_mikrosimens(
+                    branch.b_siemens_per_km
+                )  # S/km → μS/km
 
             rated_a = 0.0
             if branch.rating and branch.rating.in_a:
@@ -2466,8 +2581,12 @@ def map_enm_to_network_graph(
                 # jest poprawna informacja, nie brak danej (patrz `conductor_kind`).
                 conductor_material=getattr(branch, "conductor_material", None),
                 insulation=getattr(branch, "insulation", None),
-                operating_temperature_c=getattr(branch, "operating_temperature_c", None),
-                short_circuit_temperature_c=getattr(branch, "short_circuit_temperature_c", None),
+                operating_temperature_c=getattr(
+                    branch, "operating_temperature_c", None
+                ),
+                short_circuit_temperature_c=getattr(
+                    branch, "short_circuit_temperature_c", None
+                ),
                 thermal_source_ref=getattr(branch, "thermal_source_ref", None),
             )
             graph.add_branch(lb)
@@ -2485,7 +2604,11 @@ def map_enm_to_network_graph(
                 from_node_id=from_id,
                 to_node_id=to_id,
                 switch_type=sw_type_map.get(branch.type, SwitchType.LOAD_SWITCH),
-                state=(SwitchState.CLOSED if branch.status == "closed" else SwitchState.OPEN),
+                state=(
+                    SwitchState.CLOSED
+                    if branch.status == "closed"
+                    else SwitchState.OPEN
+                ),
                 in_service=True,
             )
             graph.add_switch(sw)
@@ -2497,7 +2620,11 @@ def map_enm_to_network_graph(
                 from_node_id=from_id,
                 to_node_id=to_id,
                 switch_type=SwitchType.FUSE,
-                state=(SwitchState.CLOSED if branch.status == "closed" else SwitchState.OPEN),
+                state=(
+                    SwitchState.CLOSED
+                    if branch.status == "closed"
+                    else SwitchState.OPEN
+                ),
                 in_service=True,
                 # Ta sama reguła, co przy transformatorze: rozstrzyga BRAK
                 # (`is None`), nie prawdziwościowość liczby. Bezpiecznik z jawnie
@@ -2505,10 +2632,14 @@ def map_enm_to_network_graph(
                 # dojść do walidacji nietknięty — a nie zostać po drodze
                 # zrównany z bezpiecznikiem bez danych.
                 rated_current_a=(
-                    branch.rated_current_a if branch.rated_current_a is not None else 0.0
+                    branch.rated_current_a
+                    if branch.rated_current_a is not None
+                    else 0.0
                 ),
                 rated_voltage_kv=(
-                    branch.rated_voltage_kv if branch.rated_voltage_kv is not None else 0.0
+                    branch.rated_voltage_kv
+                    if branch.rated_voltage_kv is not None
+                    else 0.0
                 ),
             )
             graph.add_switch(sw)
@@ -2552,7 +2683,9 @@ def map_enm_to_network_graph(
             # wchodzi wprost do przekładni t = 1 + poz·skok/100, czyli do rozpływu.
             i0_percent=trafo.i0_percent if trafo.i0_percent is not None else 0.0,
             p0_kw=trafo.p0_kw if trafo.p0_kw is not None else 0.0,
-            vector_group=(trafo.vector_group if trafo.vector_group is not None else "Dyn11"),
+            vector_group=(
+                trafo.vector_group if trafo.vector_group is not None else "Dyn11"
+            ),
             tap_position=trafo.tap_position if trafo.tap_position is not None else 0,
             tap_step_percent=(
                 trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5
@@ -2577,7 +2710,9 @@ def map_enm_to_network_graph(
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_node_id = ref_to_node_id.get(source.bus_ref)
         if bus_node_id is None:
-            raise OdmowaDanychError(_odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref))
+            raise OdmowaDanychError(
+                _odmowa_zrodla_bez_szyny(source.ref_id, source.bus_ref)
+            )
 
         # Find bus voltage
         bus_voltage_kv = 0.0
@@ -2594,7 +2729,10 @@ def map_enm_to_network_graph(
         # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
         # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
         z_ohm = _source_positive_impedance_ohm(
-            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+            source,
+            bus_voltage_kv,
+            scenario,
+            tolerancja_nn=tolerancje_nn.get(source.bus_ref),
         )
         if z_ohm is None or z_ohm == 0:
             continue

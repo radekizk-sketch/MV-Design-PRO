@@ -56,8 +56,8 @@ from network_model.solvers.fault_loop_iec60364 import (
 )
 
 #: Etykiety składowych ziemnych pętli TT (po polsku, do śladu i dowodu).
-ETYKIETA_R_B = "Uziom punktu neutralnego transformatora R_B"
-ETYKIETA_R_A = "Uziom instalacji odbiorczej R_A"
+ETYKIETA_R_B = "Uziom punktu neutralnego transformatora"
+ETYKIETA_R_A = "Uziom instalacji odbiorczej"
 
 #: Opis prądu niesionego przez ``FaultLoopResult.ik_min_a`` dla każdego układu (pole
 #: ``WynikTtIt.rodzaj_pradu_pl``) — bez niego wartość „Ik1_min" układu IT byłaby czytana

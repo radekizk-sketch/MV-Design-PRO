@@ -235,7 +235,7 @@ def check_missing_base_values(
             ProtectionSanityCheckResult(
                 severity=SanityCheckSeverity.INFO,
                 code=SanityCheckCode.GEN_PARTIAL_ANALYSIS,
-                message_pl="Brak wartości Un — analiza napięciowa częściowa",
+                message_pl="Brak napięcia znamionowego — analiza napięciowa częściowa",
                 element_id=ctx.element_id,
                 element_type=ctx.element_type,
                 evidence={"missing": "Un", "source_un": base_values.source_un.value},
@@ -247,7 +247,7 @@ def check_missing_base_values(
             ProtectionSanityCheckResult(
                 severity=SanityCheckSeverity.INFO,
                 code=SanityCheckCode.GEN_PARTIAL_ANALYSIS,
-                message_pl="Brak wartości In — analiza prądowa częściowa",
+                message_pl="Brak prądu znamionowego — analiza prądowa częściowa",
                 element_id=ctx.element_id,
                 element_type=ctx.element_type,
                 evidence={"missing": "In", "source_in": base_values.source_in.value},
@@ -289,7 +289,7 @@ def check_voltage_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.VOLT_MISSING_UN,
-                    message_pl=f"Brak wartości Un dla nastawy {fn.label_pl} ({fn.setpoint.display_pl})",
+                    message_pl=f"Brak napięcia znamionowego dla nastawy {fn.label_pl} ({fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi=fn.ansi[0] if fn.ansi else None,
@@ -308,7 +308,7 @@ def check_voltage_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.VOLT_OVERLAP,
-                    message_pl=f"Próg U< ({undervoltage_fn.setpoint.display_pl}) jest większy lub równy progowi U> ({overvoltage_fn.setpoint.display_pl})",
+                    message_pl=f"Próg podnapięciowy ({undervoltage_fn.setpoint.display_pl}) jest większy lub równy progowi nadnapięciowemu ({overvoltage_fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="27/59",
@@ -325,7 +325,7 @@ def check_voltage_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.VOLT_U_LT_TOO_LOW,
-                    message_pl=f"Próg U< ({undervoltage_fn.setpoint.display_pl}) jest zbyt niski (< 0,5×Un)",
+                    message_pl=f"Próg podnapięciowy ({undervoltage_fn.setpoint.display_pl}) jest zbyt niski (poniżej połowy napięcia znamionowego)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="27",
@@ -342,7 +342,7 @@ def check_voltage_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.VOLT_U_GT_TOO_HIGH,
-                    message_pl=f"Próg U> ({overvoltage_fn.setpoint.display_pl}) jest zbyt wysoki (> 1,2×Un)",
+                    message_pl=f"Próg nadnapięciowy ({overvoltage_fn.setpoint.display_pl}) jest zbyt wysoki (powyżej 1,2 napięcia znamionowego)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="59",
@@ -519,7 +519,7 @@ def check_overcurrent_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.OC_MISSING_IN,
-                    message_pl=f"Brak wartości In dla nastawy {fn.label_pl} ({fn.setpoint.display_pl})",
+                    message_pl=f"Brak prądu znamionowego dla nastawy {fn.label_pl} ({fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi=fn.ansi[0] if fn.ansi else None,
@@ -538,7 +538,7 @@ def check_overcurrent_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.ERROR,
                     code=SanityCheckCode.OC_OVERLAP,
-                    message_pl=f"Próg I> ({oc_time_fn.setpoint.display_pl}) jest większy lub równy progowi I>> ({oc_inst_fn.setpoint.display_pl})",
+                    message_pl=f"Próg nadprądowy zwłoczny ({oc_time_fn.setpoint.display_pl}) jest większy lub równy progowi nadprądowemu bezzwłocznemu ({oc_inst_fn.setpoint.display_pl})",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="50/51",
@@ -555,7 +555,7 @@ def check_overcurrent_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.OC_I_GT_TOO_LOW,
-                    message_pl=f"Próg I> ({oc_time_fn.setpoint.display_pl}) jest zbyt niski (< 1,0×In)",
+                    message_pl=f"Próg nadprądowy zwłoczny ({oc_time_fn.setpoint.display_pl}) jest zbyt niski (poniżej prądu znamionowego)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="51",
@@ -572,7 +572,7 @@ def check_overcurrent_rules(
                 ProtectionSanityCheckResult(
                     severity=SanityCheckSeverity.WARN,
                     code=SanityCheckCode.OC_I_INST_TOO_LOW,
-                    message_pl=f"Próg I>> ({oc_inst_fn.setpoint.display_pl}) jest zbyt niski (< 1,5×In)",
+                    message_pl=f"Próg nadprądowy bezzwłoczny ({oc_inst_fn.setpoint.display_pl}) jest zbyt niski (poniżej 1,5 prądu znamionowego)",
                     element_id=ctx.element_id,
                     element_type=ctx.element_type,
                     function_ansi="50",

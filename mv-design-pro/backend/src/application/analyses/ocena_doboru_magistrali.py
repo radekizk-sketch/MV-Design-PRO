@@ -144,7 +144,7 @@ _NIEPEWNOSC_SPADKU = Niepewnosc(
 )
 _WYKLUCZENIA_SPADKU: tuple[str, ...] = (
     "kąt między napięciami końców odcinka (przybliżenie składowej podłużnej spadku)",
-    "napięcie szyn SN GPZ różne od Un (położenie zaczepów, obciążenie transformatora)",
+    "napięcie szyn SN GPZ różne od napięcia znamionowego (położenie zaczepów, obciążenie transformatora)",
     "odbiory i generacja rozłożone wzdłuż odcinka",
 )
 
@@ -380,7 +380,7 @@ def _ocena_obciazalnosci(r: _Rozwiazany, napiecie_kv: float) -> OcenaKryterium:
     if r.brak_typu is not None:
         braki.append(r.brak_typu)
     if r.odcinek.prad_roboczy_a is None:
-        braki.append("prąd roboczy odcinka I_B — bez niego nie ma czego porównać z obciążalnością")
+        braki.append("prąd roboczy odcinka — bez niego nie ma czego porównać z obciążalnością")
     if r.typ is not None:
         if r.odcinek.prad_roboczy_a is not None:
             wynik = WynikKryterium(
@@ -449,7 +449,7 @@ def _ocena_obciazalnosci(r: _Rozwiazany, napiecie_kv: float) -> OcenaKryterium:
             OdnosnikSladu(
                 krok=f"magistrala-sn:odcinek-{r.indeks}:obciazalnosc",
                 opis_pl=(
-                    f"I_B = {prad_sladu} (projektant); I_z = {sladu_iz} (karta katalogowa, "
+                    f"prąd roboczy {prad_sladu} (projektant); obciążalność {sladu_iz} (karta katalogowa, "
                     "warunki odniesienia producenta)"
                 ),
             ),
@@ -475,7 +475,7 @@ def _limit_spadku(podstawa: PodstawaWymagania) -> LimitKryterium:
         wartosc=Wielkosc(wartosc=KRYTERIUM_SPADKU_CIAGU_SN_PROCENT, jednostka=_J_PROC),
         podstawa=podstawa,
         zakres_stosowalnosci_pl=(
-            "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym Un"
+            "spadek napięcia wzdłuż ciągu SN liczony od szyn SN GPZ o napięciu równym znamionowemu"
         ),
     )
 
@@ -516,10 +516,12 @@ def _opis_wejscia_sladu(r: _Rozwiazany, wynik: CableVoltageDropResult) -> str:
     assert r.wejscie is not None
     w = r.wejscie
     return (
-        f"odcinek {r.indeks}: I = {format_liczba(_r(w.current_a))} A, "
-        f"L = {format_liczba(_r(w.length_km))} km, R = {format_liczba(_r(wynik.r_total_ohm))} Ω, "
-        f"X = {format_liczba(_r(wynik.x_total_ohm))} Ω, cosφ = {format_liczba(_r(w.cos_phi))}, "
-        f"ΔU = {format_liczba(_r(wynik.delta_u_v))} V "
+        f"odcinek {r.indeks}: prąd {format_liczba(_r(w.current_a))} A, "
+        f"długość {format_liczba(_r(w.length_km))} km, "
+        f"rezystancja {format_liczba(_r(wynik.r_total_ohm))} Ω, "
+        f"reaktancja {format_liczba(_r(wynik.x_total_ohm))} Ω, "
+        f"współczynnik mocy {format_liczba(_r(w.cos_phi))}, "
+        f"spadek napięcia {format_liczba(_r(wynik.delta_u_v))} V "
         f"({format_liczba(_r(wynik.delta_u_pct))} %)"
     )
 
@@ -567,8 +569,10 @@ def _ocena_spadku_odcinka(
             rodzaj_analizy="POWER_FLOW",
             opis_pl=(
                 "Spadek napięcia na jednym odcinku przy prądzie odcinka skupionym na jego "
-                "końcu, przybliżenie składowej podłużnej ΔU = √3·I·(R·cosφ + X·sinφ), odbiór "
-                "o charakterze indukcyjnym, napięcie szyn SN GPZ równe Un."
+                "końcu, przybliżenie składowej podłużnej spadku (pierwiastek z trzech razy prąd razy "
+                "suma rezystancji pomnożonej przez współczynnik mocy i reaktancji pomnożonej "
+                "przez sinus kąta mocy), odbiór o charakterze indukcyjnym, napięcie szyn SN GPZ "
+                "równe znamionowemu."
             ),
             wykluczenia=_WYKLUCZENIA_SPADKU,
         ),
@@ -649,7 +653,7 @@ def _ocena_spadku_ciagu(
         zakres_waznosci=ZakresWaznosci(
             rodzaj_analizy="POWER_FLOW",
             opis_pl=(
-                "Ciąg promieniowy od startu (szyny SN GPZ o napięciu Un) przez odcinki "
+                "Ciąg promieniowy od startu (szyny SN GPZ o napięciu znamionowym) przez odcinki "
                 "zapisane w tej sesji kreatora do końca odcinka bieżącego; każdy odcinek "
                 "liczony przy prądzie roboczym podanym dla tego odcinka (prąd płynący przez "
                 "odcinek, obejmujący odbiory dalej w ciągu), spadki odcinków sumowane."

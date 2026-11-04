@@ -307,7 +307,7 @@ def _evaluate_availability_rule(
         limit_value=None,
         limit_unit=None,
         margin=None,
-        why_pl="Wyniki SC3F dostępne (Ik″, ip, Ith).",
+        why_pl="Wyniki zwarcia trójfazowego dostępne (prąd początkowy, udarowy i zastępczy cieplny).",
         requires=(),
     )
 

@@ -502,7 +502,8 @@ def build_compensation_sizing_view(
         else:
             zakres = "dzień i noc" if uwzglednij_noc else "dzień"
             powod = (
-                f"Żadna bateria z katalogu nie zapewnia wymaganego cosφ ≥ {cos_phi_min} "
+                f"Żadna bateria z katalogu nie zapewnia wymaganego współczynnika mocy "
+                f"≥ {cos_phi_min} "
                 f"w punkcie {bus_ref} ({zakres}); największy przegląd nie spełnia wymagania."
             )
 

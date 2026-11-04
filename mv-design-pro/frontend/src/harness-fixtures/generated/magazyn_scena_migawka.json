@@ -516,7 +516,7 @@
           "przyjete_pl": [
             "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
             "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+            "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
           ],
           "wspolczynnik_jednoczesnosci": null
         },
@@ -560,7 +560,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "139afe145c7f146e17d4caf59f1ae1bc7e2dd0d9941854b4ef3890767d97c4d7",
+    "hash_sha256": "5e2d571a3818339e8b030dc018814a83dc51075de23efe85f986835ede54359f",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"

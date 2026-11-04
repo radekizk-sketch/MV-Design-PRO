@@ -1347,12 +1347,18 @@ class TestNnFullChain:
             k
             for k in dobor["kandydaci"]
             if k["kandydat"]["kind"] == "MCCB"
-            and any(kr["nazwa"] == "I2<=1,45·Iz′" for kr in k["kryteria"])
+            and any(
+                kr["nazwa"]
+                == "Prąd zadziałania zabezpieczenia nie większy od 1,45 obciążalności skorygowanej"
+                for kr in k["kryteria"]
+            )
         ]
         assert mccb_decyzyjne, "Brak kandydatów MCCB w wyniku doboru"
         assert all(
             any(
-                kr["nazwa"] == "I2<=1,45·Iz′" and kr["status"] in ("spełnia", "nie spełnia")
+                kr["nazwa"]
+                == "Prąd zadziałania zabezpieczenia nie większy od 1,45 obciążalności skorygowanej"
+                and kr["status"] in ("spełnia", "nie spełnia")
                 for kr in k["kryteria"]
             )
             for k in mccb_decyzyjne
@@ -1370,7 +1376,8 @@ class TestNnFullChain:
             for k in dobor["kandydaci"]
             if k["kandydat"]["kind"] == "FUSE_SWITCH"
             and any(
-                kr["nazwa"] == "SWZ przy Ik_min" and kr["status"] == "nierozstrzygalne"
+                kr["nazwa"] == "Samoczynne wyłączenie zasilania przy minimalnym prądzie zwarcia"
+                and kr["status"] == "nierozstrzygalne"
                 for kr in k["kryteria"]
             )
         ]

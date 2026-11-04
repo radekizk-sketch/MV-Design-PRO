@@ -689,8 +689,12 @@ def zdanie_zalozenia_krzywej_pl(wpis: Mapping[str, Any]) -> str:
     (zdanie z jedynej tablicy podstaw). Nazwa maszyny z modelu (``source_name``); brak nazwy
     nazywa rodzaj, nigdy identyfikator.
     """
-    symbol = "μ" if wpis.get("wielkosc") == "mu" else "q"
-    argument_pl = "I″k/I_r" if wpis.get("wielkosc") == "mu" else "m"
+    symbol = "współczynnik μ" if wpis.get("wielkosc") == "mu" else "współczynnik q"
+    argument_pl = (
+        "krotność prądu zwarciowego względem znamionowego"
+        if wpis.get("wielkosc") == "mu"
+        else "moc czynna na parę biegunów"
+    )
     jednostka = "" if wpis.get("wielkosc") == "mu" else " MW"
     maszyna = opis_rodzaju_i_nazwy("maszyna", wpis.get("source_name"))
     # Wpis z `zalozenia_krzywych_wkladow` zawsze niesie liczby — brak klucza to błąd programu
@@ -699,7 +703,8 @@ def zdanie_zalozenia_krzywej_pl(wpis: Mapping[str, Any]) -> str:
     argument = f"{float(wpis['argument']):.4g}".replace(".", ",")
     wynik = f"{float(wpis['wynik']):.4f}".replace(".", ",")
     return (
-        f"{symbol} = {wynik} ({maszyna}, t_min = {t_min} s, {argument_pl} = {argument}{jednostka})"
+        f"{symbol} = {wynik} ({maszyna}, minimalny czas zwłoki {t_min} s, {argument_pl} "
+        f"{argument}{jednostka})"
         f" — {wpis.get('podstawa_reguly_pl')}"
     )
 

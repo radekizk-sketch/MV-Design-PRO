@@ -45,7 +45,9 @@ class GridSourcePreviewResult:
     formula_ref: str = "IEC 60909 / short_circuit_core"
 
 
-def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePreviewResult:
+def compute_grid_source_preview(
+    data: GridSourcePreviewInput,
+) -> GridSourcePreviewResult:
     """Compute a GPZ short-circuit source preview with the same core formulas as IEC 60909.
 
     Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c = tabela 1 IEC 60909-0 dla U_nQ i scenariusza
@@ -93,22 +95,34 @@ def compute_grid_source_preview(data: GridSourcePreviewInput) -> GridSourcePrevi
     )
 
 
-def _build_positive_sequence_impedance(data: GridSourcePreviewInput, c: float) -> complex:
+def _build_positive_sequence_impedance(
+    data: GridSourcePreviewInput, c: float
+) -> complex:
     if data.voltage_kv <= 0:
-        raise OdmowaDanychError("voltage_kv must be positive")
+        raise OdmowaDanychError(
+            "napięcie znamionowe sieci zasilającej musi być dodatnie"
+        )
 
     mode = data.short_circuit_mode.upper().strip()
     if mode == "IMPEDANCE":
         if data.r_ohm is None or data.r_ohm < 0:
-            raise OdmowaDanychError("r_ohm must be non-negative in impedance mode")
+            raise OdmowaDanychError(
+                "w trybie impedancji rezystancja sieci zasilającej nie może być ujemna"
+            )
         if data.x_ohm is None or data.x_ohm <= 0:
-            raise OdmowaDanychError("x_ohm must be positive in impedance mode")
+            raise OdmowaDanychError(
+                "w trybie impedancji reaktancja sieci zasilającej musi być dodatnia"
+            )
         return complex(data.r_ohm, data.x_ohm)
 
     if data.sk3_mva is None or data.sk3_mva <= 0:
-        raise OdmowaDanychError("sk3_mva must be positive in short-circuit-power mode")
+        raise OdmowaDanychError(
+            "w trybie mocy zwarciowej moc zwarciowa sieci zasilającej musi być dodatnia"
+        )
     if data.rx_ratio is None or data.rx_ratio < 0:
-        raise OdmowaDanychError("rx_ratio must be non-negative in short-circuit-power mode")
+        raise OdmowaDanychError(
+            "w trybie mocy zwarciowej stosunek rezystancji do reaktancji nie może być ujemny"
+        )
 
     z_magnitude_ohm = c * (data.voltage_kv**2) / data.sk3_mva
     x_ohm = z_magnitude_ohm / math.sqrt(1.0 + data.rx_ratio**2)
@@ -129,7 +143,9 @@ def _build_zero_sequence_impedance(
                 "r0_ohm must be non-negative when zero-sequence impedance is set"
             )
         if data.x0_ohm is None or data.x0_ohm <= 0:
-            raise OdmowaDanychError("x0_ohm must be positive when zero-sequence impedance is set")
+            raise OdmowaDanychError(
+                "x0_ohm must be positive when zero-sequence impedance is set"
+            )
         return complex(data.r0_ohm, data.x0_ohm)
 
     if data.z0_z1_ratio is not None:

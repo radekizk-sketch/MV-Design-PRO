@@ -770,7 +770,7 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
     # — osobna linia; t_b ze scenariusza projektanta nie dodaje linii (raport bez zmian).
     zrodlo_tb = row_data.get("tb_zrodlo")
     if isinstance(zrodlo_tb, dict) and zrodlo_tb.get("opis_pl"):
-        linie = (*linie, f"Czas wyłączenia tb: {zrodlo_tb['opis_pl']}")
+        linie = (*linie, f"Czas wyłączenia: {zrodlo_tb['opis_pl']}")
     # Karta PODSTAWA-Q: μ/q maszyn wyznaczone na założeniu inżynierskim — osobna linia na
     # założenie (szerokość PDF); I_b na samej normie nie dodaje linii (raport bez zmian).
     zalozenia = row_data.get("zalozenia_zaniku")
@@ -778,7 +778,7 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
         linie = (
             *linie,
             *(
-                f"Założenie krzywej zaniku Ib: {zdanie_zalozenia_krzywej_pl(wpis)}"
+                f"Założenie krzywej zaniku prądu wyłączeniowego: {zdanie_zalozenia_krzywej_pl(wpis)}"
                 for wpis in zalozenia
                 if isinstance(wpis, dict)
             ),
@@ -817,18 +817,18 @@ def _linie_doziemienia(doziemienie: dict[str, Any]) -> tuple[str, ...]:
     linie = [
         f"Doziemienie sieci ({doziemienie.get('tryb_pl')}): "
         f"{doziemienie.get('charakter_pl')} = {_fmt_liczba(doziemienie.get('prad_a'))} A"
-        f" | I_C={_fmt_liczba(doziemienie.get('i_c_a'))} A"
-        f" | I_L={_fmt_liczba(doziemienie.get('i_l_a'))} A"
-        f" | I_w={_fmt_liczba(doziemienie.get('i_w_a'))} A"
+        f" | prąd pojemnościowy {_fmt_liczba(doziemienie.get('i_c_a'))} A"
+        f" | prąd dławika {_fmt_liczba(doziemienie.get('i_l_a'))} A"
+        f" | prąd wymuszony {_fmt_liczba(doziemienie.get('i_w_a'))} A"
         + (
             f" | v={_fmt_liczba(doziemienie.get('rozstrojenie'))}"
             if doziemienie.get("rozstrojenie") is not None
             else ""
         ),
-        f"Napięcia przy doziemieniu: U0={_fmt_liczba(doziemienie.get('u0_v'))} V"
-        f" | U_b={_fmt_liczba(doziemienie.get('u_faza_b_v'))} V"
-        f" | U_c={_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
-        f" | k={_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
+        f"Napięcia przy doziemieniu: składowa zerowa {_fmt_liczba(doziemienie.get('u0_v'))} V"
+        f" | faza B {_fmt_liczba(doziemienie.get('u_faza_b_v'))} V"
+        f" | faza C {_fmt_liczba(doziemienie.get('u_faza_c_v'))} V"
+        f" | współczynnik zwarcia doziemnego {_fmt_liczba(doziemienie.get('wspolczynnik_k'))}",
         f"Podstawa doziemienia: {doziemienie.get('podstawa_pl')}",
         # Ślad WHITE BOX trybu (model nazwany krokami: I_C, I_N, prąd trybu, napięcia).
         *(
@@ -1587,8 +1587,7 @@ def build_nn_circuit_report_section(
                 iz_katalogowe = branch.materialized_params.get("i_max_a")
             wpis["iz_katalogowe_a"] = iz_katalogowe
             wpis["iz_prime_a"] = (
-                "niedostępne — wymaga warunków ułożenia (G-D1), "
-                "poza zakresem sekcji minimalnej P0"
+                "niedostępne — wymaga warunków ułożenia (G-D1), " "poza zakresem sekcji minimalnej"
             )
         odcinki.append(wpis)
 
@@ -1645,7 +1644,7 @@ def build_nn_circuit_report_section(
     else:
         dobor = {
             "status": "niedostępne",
-            "reason_pl": "Dobór wymaga ib_a i iz_prime_a jako parametrów wejściowych.",
+            "reason_pl": "Dobór wymaga prądu obliczeniowego i obciążalności skorygowanej jako parametrów wejściowych.",
             "provenance": provenance,
         }
 

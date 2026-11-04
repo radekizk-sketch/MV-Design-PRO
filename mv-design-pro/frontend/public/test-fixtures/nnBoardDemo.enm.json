@@ -2557,7 +2557,7 @@
             "przyjete_pl": [
               "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
               "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-              "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+              "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
             ],
             "wspolczynnik_jednoczesnosci": null
           },
@@ -2597,7 +2597,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "e27f207b3e34347c6fe53ff1a798801a6d18361f951d6263c4d62ae78a461d0c",
+      "hash_sha256": "80f90185aa00eefdd7d554928383e1014fee8b13ece28b92b9bc0b930c3244f2",
       "name": "Stacja z rozdzielnicą nN",
       "revision": 41,
       "updated_at": "2026-09-25T00:00:00Z"

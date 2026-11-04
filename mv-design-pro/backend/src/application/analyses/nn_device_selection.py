@@ -114,6 +114,18 @@ class KryteriumStatus(StrEnum):
 KIND_MCB = "MCB"
 KIND_FUSE_SWITCH = "FUSE_SWITCH"
 KIND_MCCB = "MCCB"
+
+#: Nazwy kryteriów oceny kandydata — jedno źródło prawdy dla producenta
+#: (`oceniaj_kandydata`, `oceniaj_przeciazenie_kandydata`) i konsumentów, którzy
+#: wyszukują kryterium po nazwie (`nn_circuit_sheet`).
+NAZWA_KRYTERIUM_I = (
+    "Prąd obliczeniowy nie większy od prądu znamionowego zabezpieczenia, a ten nie większy "
+    "od obciążalności skorygowanej"
+)
+NAZWA_KRYTERIUM_II = (
+    "Prąd zadziałania zabezpieczenia nie większy od 1,45 obciążalności skorygowanej"
+)
+NAZWA_KRYTERIUM_SWZ = "Samoczynne wyłączenie zasilania przy minimalnym prądzie zwarcia"
 _KINDY_DOZWOLONE = (KIND_MCB, KIND_FUSE_SWITCH, KIND_MCCB)
 
 
@@ -312,7 +324,7 @@ def _kryterium_ib_in_iz(*, ib_a: float, iz_prime_a: float, in_a: float) -> Kryte
             f"{iz_prime_a:g} A — aparat NIE CHRONI przewodu."
         )
     return KryteriumWynik(
-        nazwa="Ib<=In<=Iz′",
+        nazwa=NAZWA_KRYTERIUM_I,
         status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
         uzasadnienie_pl=uzasadnienie,
         wartosci={"ib_a": ib_a, "in_a": in_a, "iz_prime_a": iz_prime_a},
@@ -341,11 +353,12 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
         assert gate.gwarancja == GwarancjaNormy.WYZWOLENIE_GWARANTOWANE  # I2 z definicji progu
         spelnia = i2 <= limit
         uzasadnienie = (
-            f"I2={i2:g} A (={PROG_CIEPLNY_WYZWALA_X_IN:g}×In MCB, IEC 60898-1) "
-            f"{'<=' if spelnia else '>'} 1,45·Iz′={limit:g} A."
+            f"Prąd zadziałania {i2:g} A ({PROG_CIEPLNY_WYZWALA_X_IN:g} prądu znamionowego "
+            f"wyłącznika MCB, IEC 60898-1) {'nie przekracza' if spelnia else 'przekracza'} "
+            f"1,45 obciążalności skorygowanej, czyli {limit:g} A."
         )
         return KryteriumWynik(
-            nazwa="I2<=1,45·Iz′",
+            nazwa=NAZWA_KRYTERIUM_II,
             status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
             uzasadnienie_pl=uzasadnienie,
             wartosci={"i2_a": i2, "limit_a": limit, "zrodlo": "IEC 60898-1 (1,45×In)"},
@@ -361,10 +374,14 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
             f"{'≤' if spelnia else '>'} 1,45 × obciążalność skorygowana przewodu = {limit:g} A."
         )
         return KryteriumWynik(
-            nazwa="I2<=1,45·Iz′",
+            nazwa=NAZWA_KRYTERIUM_II,
             status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
             uzasadnienie_pl=uzasadnienie,
-            wartosci={"i2_a": i2, "limit_a": limit, "zrodlo": "IEC 60269-1 (If=1,6×In)"},
+            wartosci={
+                "i2_a": i2,
+                "limit_a": limit,
+                "zrodlo": "IEC 60269-1 (If=1,6×In)",
+            },
         )
     # KIND_MCCB — karta D1: I2 = MCCB_I2_MULTIPLIER×Ir (IEC 60947-2), gdy
     # nastawa długozwłoczna jest rozwiązana; w przeciwnym razie trzeci stan,
@@ -372,7 +389,7 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
     # `ir_range`/`tr_range` (nie zaszyty na stałe niezależnie od danych).
     if kandydat.ir_a is None or kandydat.tr_s is None:
         return KryteriumWynik(
-            nazwa="I2<=1,45·Iz′",
+            nazwa=NAZWA_KRYTERIUM_II,
             status=KryteriumStatus.NIEROZSTRZYGALNE,
             uzasadnienie_pl=(
                 "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
@@ -403,13 +420,13 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
         f"przewodu = {limit:g} A."
     )
     return KryteriumWynik(
-        nazwa="I2<=1,45·Iz′",
+        nazwa=NAZWA_KRYTERIUM_II,
         status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
         uzasadnienie_pl=uzasadnienie,
         wartosci={
             "i2_a": i2,
             "limit_a": limit,
-            "zrodlo": "IEC 60947-2 (1,3×Ir, wyzwalacz elektroniczny)",
+            "zrodlo": "IEC 60947-2 (1,3 prądu nastawy wyzwalacza elektronicznego)",
             "ir_a": kandydat.ir_a,
             "mccb_stopien": punkt_mccb.stopien,
         },
@@ -529,7 +546,7 @@ def _kryterium_swz(
     )
     wynik = ocen_swz(ik1_min_a=ik1_min_a, u0_v=u0_v, aparat=aparat, dane_przyjete=dane_przyjete)
     return KryteriumWynik(
-        nazwa="SWZ przy Ik_min",
+        nazwa=NAZWA_KRYTERIUM_SWZ,
         status=_SWZ_STATUS_MAP[wynik.status],
         uzasadnienie_pl=wynik.przyczyna_pl,
         wartosci=wynik.to_dict(),

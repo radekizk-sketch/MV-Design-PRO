@@ -829,7 +829,7 @@
           "przyjete_pl": [
             "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
             "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+            "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
           ],
           "wspolczynnik_jednoczesnosci": null
         },
@@ -869,7 +869,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "4989466ec9f8830f8bff27a0f021c357d8491eec5006b6ba07a2f0c09be33571",
+    "hash_sha256": "6254024ce3a386f4684af72b6aa9f007a2069b65f7edad14044a28dd81dc702c",
     "name": "Scena analiz OZE",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

@@ -81,7 +81,7 @@ const PODGLAD = {
     ],
   },
   pasma_wiarygodnosci: [
-    { parametr: 'x1_ohm_per_km', nazwa_pl: 'Reaktancja X′1', wartosc: 0.40901, jednostka: 'Ω/km', dolna: 0.3, gorna: 0.45, w_pasmie: true, ocena_wiarygodnosci: 'WIARYGODNY', wyjasnienie_pl: 'X′1 = 0,409 Ω/km mieści się w paśmie [0,3; 0,45] Ω/km', podstawa_pl: 'Kersting, rozdz. 4' },
+    { parametr: 'x1_ohm_per_km', nazwa_pl: 'Reaktancja jednostkowa składowej zgodnej', wartosc: 0.40901, jednostka: 'Ω/km', dolna: 0.3, gorna: 0.45, w_pasmie: true, ocena_wiarygodnosci: 'WIARYGODNY', wyjasnienie_pl: 'X′1 = 0,409 Ω/km mieści się w paśmie [0,3; 0,45] Ω/km', podstawa_pl: 'Kersting, rozdz. 4' },
   ],
 };
 
@@ -275,7 +275,7 @@ describe('KreatorEdycjiParametrow — linia napowietrzna 110 kV', () => {
       czestotliwosc_hz: 50,
     });
     expect(wynik).toHaveTextContent('Kompletność dowodu: niepełna');
-    expect(wynik).toHaveTextContent('Reaktancja X′1');
+    expect(wynik).toHaveTextContent('Reaktancja jednostkowa składowej zgodnej');
     expect(wynik).toHaveTextContent('X′1 = 0,409 Ω/km mieści się w paśmie');
     expect(screen.getByTestId(`${S}-skladowa-rezystywnosc_gruntu_ohm_m`)).toHaveTextContent('wartość robocza');
     // Podgląd niczego nie zapisuje.

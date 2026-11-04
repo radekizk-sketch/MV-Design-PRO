@@ -38,12 +38,12 @@ from application.station_templates.schema import (
 #: ok. 1 MW, transformator blokowy > 3150 kVA) zmienia pin i przywraca szablon.
 SZABLONY_WIATROWE_WYCOFANE: dict[str, str] = {
     "tpl_wiatr_1mw_pojedyncza": (
-        "Katalog nie ma pozycji turbiny wiatrowej poniżej 2 MW (najmniejsza P_max pozycji "
+        "Katalog nie ma pozycji turbiny wiatrowej poniżej 2 MW (najmniejsza moc maksymalna pozycji "
         "WIND to 2 MW), więc szablon turbiny 1 MW zbudowałby turbinę 2 MW nastawioną na "
         "1 MW — ciche niedowymiarowanie, które decyzja właściciela z 2026-10-15 wyklucza."
     ),
     "tpl_wiatr_3mw": (
-        "Turbina 3 MW ma S_n 3,3 MVA, a katalog nie ma transformatora blokowego powyżej "
+        "Turbina 3 MW ma moc znamionową 3,3 MVA, a katalog nie ma transformatora blokowego powyżej "
         "3150 kVA (rozporządzenie 548/2014 podaje dla tych mocy tylko PEI, karty producenta "
         "brak) — tor DER-SN odmawia `converter.der_sn.dobor_tr_brak_kandydata`."
     ),

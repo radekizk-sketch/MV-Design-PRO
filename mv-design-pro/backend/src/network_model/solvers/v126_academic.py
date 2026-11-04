@@ -2963,7 +2963,11 @@ class V126AcademicSolver:
         sanity = _sanity_block(
             [
                 ("method_selected", bool(recommended), "Brak rekomendowanej metody detekcji"),
-                ("u0_start_range", 0.0 < u0_start <= 100.0, "Nastawa U0 poza zakresem (0,100]%"),
+                (
+                    "u0_start_range",
+                    0.0 < u0_start <= 100.0,
+                    "Nastawa napięcia startu poza zakresem (0,100]%",
+                ),
             ],
             has_inputs=True,
         )

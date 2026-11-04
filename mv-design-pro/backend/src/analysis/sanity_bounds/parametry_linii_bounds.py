@@ -34,7 +34,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from analysis.sanity_bounds.short_circuit_bounds import CREDIBLE, INCOMPLETE, OUT_OF_RANGE
+from analysis.sanity_bounds.short_circuit_bounds import (
+    CREDIBLE,
+    INCOMPLETE,
+    OUT_OF_RANGE,
+)
 from network_model.pochodne import simens_na_mikrosimens
 
 #: Podstawa wszystkich pasm (zdanie dla projektanta).
@@ -58,12 +62,28 @@ class PasmoParametruLinii:
 
 #: Pasma w kolejności prezentacji (determinizm). Granice wyprowadzone w docstringu modułu.
 PASMA_LINII_110KV: tuple[PasmoParametruLinii, ...] = (
-    PasmoParametruLinii("r1_ohm_per_km", "Rezystancja R′1 (20 °C)", "Ω/km", 0.02, 0.30),
-    PasmoParametruLinii("x1_ohm_per_km", "Reaktancja X′1", "Ω/km", 0.20, 0.48),
-    PasmoParametruLinii("b1_us_per_km", "Susceptancja B′1", "μS/km", 2.2, 6.0),
-    PasmoParametruLinii("r0_ohm_per_km", "Rezystancja R′0", "Ω/km", 0.10, 0.80),
-    PasmoParametruLinii("x0_do_x1", "Stosunek X′0/X′1", "—", 1.8, 5.0),
-    PasmoParametruLinii("b0_do_b1", "Stosunek B′0/B′1", "—", 0.35, 0.90),
+    PasmoParametruLinii(
+        "r1_ohm_per_km",
+        "Rezystancja jednostkowa składowej zgodnej (20 °C)",
+        "Ω/km",
+        0.02,
+        0.30,
+    ),
+    PasmoParametruLinii(
+        "x1_ohm_per_km", "Reaktancja jednostkowa składowej zgodnej", "Ω/km", 0.20, 0.48
+    ),
+    PasmoParametruLinii(
+        "b1_us_per_km", "Susceptancja jednostkowa składowej zgodnej", "μS/km", 2.2, 6.0
+    ),
+    PasmoParametruLinii(
+        "r0_ohm_per_km", "Rezystancja jednostkowa składowej zerowej", "Ω/km", 0.10, 0.80
+    ),
+    PasmoParametruLinii(
+        "x0_do_x1", "Stosunek reaktancji zerowej do zgodnej", "—", 1.8, 5.0
+    ),
+    PasmoParametruLinii(
+        "b0_do_b1", "Stosunek susceptancji zerowej do zgodnej", "—", 0.35, 0.90
+    ),
 )
 
 

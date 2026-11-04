@@ -1581,3 +1581,33 @@ przegenerowany. Wykryta luka detektora: `POLSKI_RE` nie widzi prozy polskiej bez
 diakrytycznych i bez słów funkcyjnych z listy (pomiar szerszą listą: 108 nowych trafień), a
 symbol składany parametrem `{}` umyka skanowi — rozszerzenie strażnika osobnym commitem
 z pinem z pomiaru.
+
+**Punkt 4, partia 3 (2026-11-04): pin 0 w każdym pliku.** Detektor prozy strukturalny zamiast
+listy słów: tekst dla człowieka to znak diakrytyczny albo słowo z co najmniej czterech liter
+(wielka litera tylko na początku), więc trafia też proza polska bez diakrytyków i proza
+angielska komunikatów odmowy. Reguły strukturalne dopisane z uzasadnieniem w nagłówku strażnika:
+docstring atrybutu, kody błędów w przestrzeni nazw, klucze rejestru `wzory_sladu.py`, wartość
+pola `latex`/`*_latex`, znakowanie (`<…`), indeks w klamrach jako LaTeX oraz reguła 9 —
+`Field(description=...)` w `domain/result_contract_v1.py` (tekst zamrożonego schematu
+`resultset_v1_schema.json`; każdy inny tekst pliku liczony). Pomiar po rozszerzeniu: 68 tekstów
+w 34 plikach, napisane słowami do zera; pin `backend_proza_symboli_pin.json` = `{}`. Rdzenie
+B-01 tylko teksty (AST z normalizacją stałych tekstowych równe bazie `01c5def16`):
+`short_circuit_core.py` (5 komunikatów odmowy, nowa sankcja w `solver_boundary_guard`),
+`short_circuit_iec60909.py` (5), `ncrfg_ptpiree/engine.py` (2), `v126_academic.py` (1);
+`solver_diff_guard --init` odświeżył odciski. Klasa „symbol składany parametrem": etykiety
+składowej zerowej `R′0`/`X′0`/`B′0` w `wartosci_robocze.py` (wstawiane do nazw danych
+przyjętych i podpowiedzi „Zmień wartość") oraz nazwy kryteriów nN (`NAZWA_KRYTERIUM_I/II`)
+napisane słowami; zdanie założenia krzywej zaniku (`machine_sc_iec60909.py`) słowami.
+Parytet assemblera: odmowy, ścieżki i liczby identyczne z HEAD w 366 przypadkach, szkielet
+różni się w 169 przypadkach wyłącznie tekstem. Fikstury przegenerowane (harness, nN, SLD,
+archetypy, V12.6, oceny, OpenAPI, słownik gotowości, sieć pokazowa, DEMO-OZE-SC): 0 różnic
+liczbowych liść po liściu. Odcisk katalogu kart widmowych `6f6e9ae2… → ba710f9e…`, łańcuch:
+cofnięcie 888 liści parą z `teksty_katalogu_przed_karta_zu.json` (111 par) daje dokładnie
+odcisk po zespole uziemiającym.
+
+Zostaje zmierzone (sąsiednia klasa, nie proza): 44 teksty w 25 plikach to wzór albo podstawienie
+bez żadnego słowa (`Z_k = {} + {} = {}`, `U0 = {} V; U_b = {} V`, etykiety eksportu
+`Ik''={} kA`) — skan prozy ich nie liczy z definicji. Większość ma bliźniaczy zapis LaTeX
+(`substitution_latex`, `_napiecia_latex`), reszta to podstawienia kroków śladu bez pola LaTeX
+i komórki eksportu tekstowego; domknięcie wymaga decyzji kontraktu (pole `*_latex` podstawienia
+w rekordach kroków śladu analiz), lista z pomiaru w meldunku karty.

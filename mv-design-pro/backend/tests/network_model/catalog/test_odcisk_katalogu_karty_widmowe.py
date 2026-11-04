@@ -192,13 +192,14 @@ ODCISK_PO_ZESPOLE_UZIEMIAJACYM = "1837706969c59dcbc3eacfb0c018c7d20e55f94ccce127
 #: Karta ZU, punkt 4 (2026-11-04): proza katalogu dla projektanta słowami zamiast symboli
 #: spłaszczonych (`I_th`, `P0/Pk/u_k`, `R′0 = R′1 + …`, `cos φ`). Dowód liść po liściu (zrzut
 #: kanoniczny bazy karty `01c5def16` vs drzewo karty): identyczny zbiór kluczy i długości list,
-#: zero zmian liczb i identyfikatorów; różni się 839 liści tekstowych pełnego zrzutu, z czego
+#: zero zmian liczb i identyfikatorów; różni się 918 liści tekstowych pełnego zrzutu, z czego
 #: ``LICZBA_TEKSTOW_KARTY_ZU`` poza polami karty projekcji (verification_note,
-#: source_reference, note, source_ref i opisy założeń map ``wartosci_robocze``), a każdy z nich jest jednoznacznie odwracalny parą (tekst po karcie →
-#: tekst przed kartą) z ``teksty_katalogu_przed_karta_zu.json``. Zrzut z cofniętymi tekstami
-#: daje DOKŁADNIE ``ODCISK_PO_ZESPOLE_UZIEMIAJACYM``.
-ODCISK_PO_KARCIE_ZU = "161dee98606b23918f532e776ef164f03012f1ae0ac22acc2bf078e47ae8ca6a"
-LICZBA_TEKSTOW_KARTY_ZU = 809
+#: source_reference, note, source_ref i opisy założeń map ``wartosci_robocze``), a każdy
+#: z nich jest jednoznacznie odwracalny parą (tekst po karcie → tekst przed kartą)
+#: z ``teksty_katalogu_przed_karta_zu.json``. Zrzut z cofniętymi tekstami daje DOKŁADNIE
+#: ``ODCISK_PO_ZESPOLE_UZIEMIAJACYM``.
+ODCISK_PO_KARCIE_ZU = "ba710f9ec339f33eafeebd9b0f57a37bdee73a36f6419dfe89f7348050fc06de"
+LICZBA_TEKSTOW_KARTY_ZU = 888
 _TEKSTY_PRZED_KARTA_ZU: dict[str, str] = dict(
     json.loads(
         (Path(__file__).parent / "teksty_katalogu_przed_karta_zu.json").read_text(encoding="utf-8")

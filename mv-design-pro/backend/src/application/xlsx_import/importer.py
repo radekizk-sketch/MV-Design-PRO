@@ -826,8 +826,8 @@ class XlsxNetworkImporter:
                         arkusz=ARKUSZ_ZRODLA,
                         wiersz=zrodlo["_wiersz"],
                         komunikat=(
-                            "Źródło musi mieć podaną moc zwarciową Sk_MVA "
-                            "albo prąd zwarciowy Ik_kA (tryb prądowy)"
+                            "Źródło musi mieć podaną moc zwarciową (kolumna `Sk_MVA`) "
+                            "albo prąd zwarciowy (kolumna `Ik_kA`, tryb prądowy)"
                         ),
                     )
                 )
@@ -1388,12 +1388,12 @@ class XlsxNetworkImporter:
                 if u_hv is None:
                     u_hv = napiecia_szyn[transformator["szyna_HV"]]
                     przyjete.append(
-                        f"U_HV = napięcie szyny {transformator['szyna_HV']} ({u_hv:g} kV)"
+                        f"Napięcie strony górnej równe napięciu szyny {transformator['szyna_HV']} ({u_hv:g} kV)"
                     )
                 if u_lv is None:
                     u_lv = napiecia_szyn[transformator["szyna_LV"]]
                     przyjete.append(
-                        f"U_LV = napięcie szyny {transformator['szyna_LV']} ({u_lv:g} kV)"
+                        f"Napięcie strony dolnej równe napięciu szyny {transformator['szyna_LV']} ({u_lv:g} kV)"
                     )
                 if przyjete:
                     ostrzezenia.append(
@@ -1474,20 +1474,22 @@ class XlsxNetworkImporter:
             sk_min, sk_max = zrodlo.get("Sk_min_MVA"), zrodlo.get("Sk_MVA")
             if sk_min is not None and sk_max is not None and sk_min > sk_max:
                 ostrzezenia.append(
-                    f"Źródło '{zrodlo['id']}': Sk_min_MVA ({sk_min:g}) przekracza Sk_MVA "
+                    f"Źródło '{zrodlo['id']}': minimalna moc zwarciowa (kolumna `Sk_min_MVA`, {sk_min:g}) "
+                    f"przekracza maksymalną (kolumna `Sk_MVA`) "
                     f"({sk_max:g}) — dane scenariusza minimalnego muszą być nie większe "
                     "niż maksymalnego, sprawdź arkusz przed użyciem tego źródła."
                 )
             ik_min, ik_max = zrodlo.get("Ik_min_kA"), zrodlo.get("Ik_kA")
             if ik_min is not None and ik_max is not None and ik_min > ik_max:
                 ostrzezenia.append(
-                    f"Źródło '{zrodlo['id']}': Ik_min_kA ({ik_min:g}) przekracza Ik_kA "
+                    f"Źródło '{zrodlo['id']}': minimalny prąd zwarciowy (kolumna `Ik_min_kA`, {ik_min:g}) "
+                    f"przekracza maksymalny (kolumna `Ik_kA`) "
                     f"({ik_max:g}) — dane scenariusza minimalnego muszą być nie większe "
                     "niż maksymalnego, sprawdź arkusz przed użyciem tego źródła."
                 )
             if zrodlo.get("RX_min") is not None and sk_min is None and ik_min is None:
                 ostrzezenia.append(
-                    f"Źródło '{zrodlo['id']}': RX_min podany bez Sk_min_MVA/Ik_min_kA — "
+                    f"Źródło '{zrodlo['id']}': kolumna `RX_min` podana bez `Sk_min_MVA` ani `Ik_min_kA` — "
                     "stosunek R/X scenariusza minimalnego nie ma zastosowania bez własnej "
                     "mocy zwarciowej minimalnej tego źródła."
                 )

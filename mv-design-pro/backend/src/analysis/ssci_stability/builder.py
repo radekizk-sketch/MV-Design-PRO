@@ -70,7 +70,9 @@ class SsciStabilityBuilder:
                 przedmiot oceny nazywa przekształtnik i szynę nazwami z modelu.
         """
         verdict = self._build_verdict(solver_payload, converter, nazwy)
-        analysis_id = compute_ssci_stability_id(context, self.gain_crossover_mag, verdict)
+        analysis_id = compute_ssci_stability_id(
+            context, self.gain_crossover_mag, verdict
+        )
         return SsciStabilityView(
             analysis_id=analysis_id,
             context=context,
@@ -99,7 +101,9 @@ class SsciStabilityBuilder:
                 consumed.append(name)
         consumed = sorted(set(consumed))
 
-        qualities = [quality_map[name].quality for name in consumed if name in quality_map]
+        qualities = [
+            quality_map[name].quality for name in consumed if name in quality_map
+        ]
         worst = worst_field_quality(qualities)
         if worst is None:
             return None
@@ -121,7 +125,10 @@ class SsciStabilityBuilder:
         )
 
     def _no_data_verdict(
-        self, solver_payload: dict[str, Any], converter: Any | None, nazwy: Mapping[str, str]
+        self,
+        solver_payload: dict[str, Any],
+        converter: Any | None,
+        nazwy: Mapping[str, str],
     ) -> SsciStabilityVerdict:
         missing = list(solver_payload.get("missing_fields") or ())
         # Brak tablic impedancji: ocena niewykonana z brakiem tablic i brakami danych
@@ -157,7 +164,10 @@ class SsciStabilityBuilder:
         )
 
     def _build_verdict(
-        self, solver_payload: dict[str, Any], converter: Any | None, nazwy: Mapping[str, str]
+        self,
+        solver_payload: dict[str, Any],
+        converter: Any | None,
+        nazwy: Mapping[str, str],
     ) -> SsciStabilityVerdict:
         # Przepływ „brak danych”: solver zwrócił niekompletne dane.
         if solver_payload.get("status") == SOLVER_INCOMPLETE_STATUS:
@@ -182,8 +192,14 @@ class SsciStabilityBuilder:
 
         neg = solver_payload.get("z_conv_negative_resistance") or {}
         neg_present = bool(neg.get("present"))
-        neg_f = float(neg["f_at_re_min_hz"]) if neg.get("f_at_re_min_hz") is not None else None
-        neg_re_min = float(neg["re_min_ohm"]) if neg.get("re_min_ohm") is not None else None
+        neg_f = (
+            float(neg["f_at_re_min_hz"])
+            if neg.get("f_at_re_min_hz") is not None
+            else None
+        )
+        neg_re_min = (
+            float(neg["re_min_ohm"]) if neg.get("re_min_ohm") is not None else None
+        )
 
         # Metryki L(f) zostają materiałem AUDYTOWYM (wywód White Box), ale NIE składają
         # się w werdykt: Z_grid(f) solvera jest liczone bez przekładni transformatora.
@@ -216,9 +232,15 @@ class SsciStabilityBuilder:
             max_minor_loop_gain=_round(max_mag),
             has_magnitude_crossover=has_crossover,
             gain_crossover=gain_crossover,
-            worst_phase_margin_deg=(_round(worst_pm, 3) if worst_pm is not None else None),
-            worst_phase_margin_f_hz=(_round(worst_pm_f, 4) if worst_pm_f is not None else None),
-            offending_frequency_hz=(_round(offending, 4) if offending is not None else None),
+            worst_phase_margin_deg=(
+                _round(worst_pm, 3) if worst_pm is not None else None
+            ),
+            worst_phase_margin_f_hz=(
+                _round(worst_pm_f, 4) if worst_pm_f is not None else None
+            ),
+            offending_frequency_hz=(
+                _round(offending, 4) if offending is not None else None
+            ),
             nearest_to_minus_one=nearest,
             encirclement_count=encirclements,
             negative_resistance_present=neg_present,
@@ -243,7 +265,9 @@ class SsciStabilityBuilder:
                 denom = mb - ma
                 t = (1.0 - ma) / denom if denom else 0.0
                 fc = float(a["f_hz"]) + t * (float(b["f_hz"]) - float(a["f_hz"]))
-                ph = float(a["phase_deg"]) + t * (float(b["phase_deg"]) - float(a["phase_deg"]))
+                ph = float(a["phase_deg"]) + t * (
+                    float(b["phase_deg"]) - float(a["phase_deg"])
+                )
                 return CrossoverPoint(
                     f_hz=_round(fc, 4),
                     phase_l_deg=_round(ph, 3),
@@ -340,7 +364,10 @@ class SsciStabilityBuilder:
                         else "NIE przecinają się (|L| < 1)"
                     )
                 ),
-                unit_check_pl="L = Ω/Ω → bezwymiarowe; |L|=1 ⟺ |Z_grid|=|Z_conv|.",
+                unit_check_pl=(
+                    "wzmocnienie pętli to iloraz omów przez omy, więc jest bezwymiarowe; "
+                    "moduł równy 1 oznacza równość modułów impedancji sieci i przekształtnika."
+                ),
             )
         )
 
@@ -354,8 +381,8 @@ class SsciStabilityBuilder:
                         f"przy |L|=1: f = {gain_crossover.f_hz} Hz, "
                         f"∠L = {gain_crossover.phase_l_deg}°"
                     ),
-                    result_pl=f"Δφ = {gain_crossover.phase_margin_deg}° (margines fazy przy przecięciu)",
-                    unit_check_pl="∠L w stopniach; Δφ = 180° − |∠L| w stopniach.",
+                    result_pl=f"Margines fazy przy przecięciu: {gain_crossover.phase_margin_deg}°",
+                    unit_check_pl="Kąt wzmocnienia pętli w stopniach; margines fazy to 180° minus moduł tego kąta.",
                 )
             )
         if worst_pm is not None:
@@ -371,7 +398,8 @@ class SsciStabilityBuilder:
                         f"f = {_round(worst_pm_f, 2) if worst_pm_f is not None else '—'} Hz"
                     ),
                     result_pl=f"Δφ_min = {_round(worst_pm, 3)}°",
-                    unit_check_pl="stopnie; Δφ ≤ 0° ⟺ ∠L osiąga ±180° ⟺ okrążenie −1.",
+                    unit_check_pl="stopnie; niedodatni margines fazy oznacza, że kąt wzmocnienia pętli osiąga ±180°, "
+                    "czyli okrążenie punktu −1.",
                 )
             )
 

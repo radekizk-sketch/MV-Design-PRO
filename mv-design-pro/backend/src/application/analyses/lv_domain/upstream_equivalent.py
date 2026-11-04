@@ -100,18 +100,18 @@ def _hv_zero_sequence_ohm(
     try:
         graph = map_enm_to_network_graph(enm)
     except OdmowaDanychError:
-        return None, "Topologia sieci SN niepoprawna — Z0 nieobliczalne."
+        return None, "Topologia sieci SN niepoprawna — impedancja zerowa nieobliczalna."
     # Ta sama wyspa zasilania co dla Z1 (`compute_upstream_hv_thevenin`) —
     # węzły odcięte otwartym łącznikiem nie mogą czynić sieci osobliwą.
     if not restrict_graph_to_island_of(graph, hv_node_id):
-        return None, "Szyna HV poza rozwiązywalną siecią — Z0 nieobliczalne."
+        return None, "Szyna HV poza rozwiązywalną siecią — impedancja zerowa nieobliczalna."
     try:
         builder, _z1_bus = build_zbus(graph)
     except (ValueError, ZeroDivisionError):
-        return None, "Sieć SN osobliwa — Z0 nieobliczalne."
+        return None, "Sieć SN osobliwa — impedancja zerowa nieobliczalna."
     node_index = builder.node_id_to_index.get(hv_node_id)
     if node_index is None:
-        return None, "Szyna HV poza rozwiązywalną siecią — Z0 nieobliczalne."
+        return None, "Szyna HV poza rozwiązywalną siecią — impedancja zerowa nieobliczalna."
     try:
         z0_bus = build_zero_sequence_zbus(enm, graph)
     except OdmowaDanychError as exc:

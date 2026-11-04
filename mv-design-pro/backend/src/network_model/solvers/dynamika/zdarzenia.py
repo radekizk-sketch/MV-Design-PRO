@@ -1036,8 +1036,9 @@ def odbiory_po_zdarzeniach(
             szczegoly.update({"t_s": t_s, "delta_p_pu": delta.real, "delta_q_pu": delta.imag})
             raise OdmowaDynamiki(
                 odmowa.kod,
-                f"Skok obciążenia odbioru {odbior.ident!r} w chwili t = {t_s} s (ΔP0 = "
-                f"{delta.real} pu, ΔQ0 = {delta.imag} pu względem P0 = {odbior.p_pu} pu) "
+                f"Skok obciążenia odbioru {odbior.ident!r} w chwili {t_s} s (moc czynna "
+                f"{delta.real} pu, bierna {delta.imag} pu względem mocy czynnej bazowej "
+                f"{odbior.p_pu} pu) "
                 f"daje odbiór sprzeczny z kontraktem: {odmowa}",
                 **szczegoly,
             ) from odmowa

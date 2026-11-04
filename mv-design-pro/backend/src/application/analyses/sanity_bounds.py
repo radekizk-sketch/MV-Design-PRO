@@ -101,7 +101,7 @@ def build_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
     """
     if run.analysis_type != "short_circuit_sn":
         raise OdmowaDanychError(
-            "Ocena wiarygodności Ik'' wymaga przebiegu zwarciowego; "
+            "Ocena wiarygodności początkowego prądu zwarciowego wymaga przebiegu zwarciowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(run.analysis_type)}."
         )
     if run.status != "FINISHED":

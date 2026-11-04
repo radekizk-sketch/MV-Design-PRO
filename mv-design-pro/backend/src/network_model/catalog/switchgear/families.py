@@ -182,11 +182,11 @@ ELEKTROMETAL__E2ALPHA = SwitchgearFamily(
     status="repo_verified",
     source_refs=["https://elektrometal-energetyka.pl/rozdzielnice-sn-e²alpha/"],
     notes_pl=(
-        "e²ALPHA — rozdzielnica wnętrzowa SN, 4-przedziałowa, izolacja "
+        "e2ALPHA — rozdzielnica wnętrzowa SN, 4-przedziałowa, izolacja "
         "powietrzna, pojedynczy system szyn. Napięcia 12/17.5/24 kV, prąd "
         "znamionowy 630-2000 A (szyna do 2500 A), krótkotrwały do 31.5 kA "
         "(12/17.5 kV) lub 25 kA (24 kV). Klasy LSC2B + PM + AFLR + IP4X/IP54. "
-        "Konstrukcja Al-Zn 2-3 mm. Status repo_verified."
+        "Konstrukcja z blachy aluminiowo-cynkowej 2-3 mm. Status repo_verified."
     ),
 )
 
@@ -467,8 +467,8 @@ SIEMENS__8DJH = SwitchgearFamily(
     ],
     notes_pl=(
         "8DJH — Ring Main Unit (RMU) Siemens, izolacja SF6, sealed-for-life "
-        "(metal-enclosed). Katalog 500-83849 (odczyt 2026-08-14): rated "
-        "voltage Ur 7,2/12/15/17,5/24 kV — klasy urządzenia. Prąd znamionowy 630 A (busbar + "
+        "(metal-enclosed). Katalog 500-83849 (odczyt 2026-08-14): napięcie "
+        "znamionowe 7,2/12/15/17,5/24 kV — klasy urządzenia. Prąd znamionowy 630 A (busbar + "
         "feeder), krótkotrwały do 25 kA/1s (variant 17.5 kV) lub 20 kA/1s "
         "(variant 24 kV), making current do 50 kA. Standard IEC 62271-200. "
         "Katalog HA 40.2 (2017) wymienia pola K (kablowe), K(E) (kablowe z "
@@ -1197,8 +1197,8 @@ SCHNEIDER__RM6 = SwitchgearFamily(
     notes_pl=(
         "RM6 — kompaktowa rozdzielnica pierścieniowa (RMU) Schneider Electric "
         "w izolacji SF6 dla sieci rozdzielczych SN, sieci otwartego pierścienia "
-        "i promieniowe. Katalog AMTED398032EN (odczyt 2026-08-14): rated "
-        "voltage Ur 12/17,5/24 kV — klasy urządzenia, 630 A, "
+        "i promieniowe. Katalog AMTED398032EN (odczyt 2026-08-14): napięcie "
+        "znamionowe 12/17,5/24 kV — klasy urządzenia, 630 A, "
         "prąd zwarciowy do 21 kA, odporność na łuk wewnętrzny do 20 kA AFLR. "
         "Status repo_verified — dane z publicznej strony produktowej, NIE "
         "official_catalog."
@@ -1256,8 +1256,8 @@ SCHNEIDER__RM_AIRSET = SwitchgearFamily(
     notes_pl=(
         "RM AirSeT — rozdzielnica pierścieniowa (RMU) Schneider Electric bez "
         "SF6: izolacja czystym powietrzem + technika próżniowa, odpowiednik "
-        "funkcjonalny RM6. Katalog NRJCAT20014EN (odczyt 2026-08-14): rated "
-        "voltage Ur 12/24 kV — klasy urządzenia, 630 A, "
+        "funkcjonalny RM6. Katalog NRJCAT20014EN (odczyt 2026-08-14): napięcie "
+        "znamionowe 12/24 kV — klasy urządzenia, 630 A, "
         "20 kA / 1 s (warianty również 20 kA / 3 s), jednostki funkcjonalne "
         "I (rozłącznik), B/Q (rozłącznik z bezpiecznikami), konfiguracje 3- i "
         "4-funkcyjne. Status repo_verified — dane z publicznych stron "

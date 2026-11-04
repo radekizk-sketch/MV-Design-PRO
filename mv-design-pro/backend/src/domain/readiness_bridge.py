@@ -153,7 +153,7 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
         "napięcia SZYNY — inny obiekt, więc odwzorowanie byłoby podmianą treści."
     ),
     "E005": "Kanon nie ma kodu dla zerowej impedancji gałęzi.",
-    "E006": "Kanon nie ma kodu dla braku napięcia zwarcia transformatora (uk%).",
+    "E006": "Kanon nie ma kodu dla braku napięcia zwarcia transformatora.",
     "E007": "Kanon nie ma kodu dla niespójności stron HV/LV transformatora.",
     "E010": "Kanon nie ma kodu dla nadpisań (overrides) bez podstawy katalogowej.",
     "E020": "Kanon nie ma kodu dla gałęzi łączącej różne pasma napięciowe.",
@@ -177,7 +177,7 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
         "kanoniczny, więc odwzorowanie idzie przez E009."
     ),
     "I003": "Kanon ma kod braku WYMAGANEGO pola; brak jakichkolwiek pól to inny warunek.",
-    "W002": "Kanon nie ma kodu dla braku składowej zerowej źródła (Z0).",
+    "W002": "Kanon nie ma kodu dla braku składowej zerowej źródła.",
     "W003": "Kanon ma `load.power_zero`; brak odbiorów I generatorów to inny warunek.",
     "W004": "Kanon nie ma kodu dla braku grupy połączeń transformatora.",
     "W005": "Referencja do nieistniejącego obiektu to spójność modelu, nie gotowość danych.",
@@ -201,11 +201,12 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
         "zasilania 110 kV bez typu (reguła wiązania katalogowego), nie braku danych projektu."
     ),
     "sources.sk_ik_voltage_inconsistent": (
-        "Kanon nie ma kodu dla niespójności Ik''/Sk''/napięcia źródła."
+        "Kanon nie ma kodu dla niespójności prądu zwarciowego, mocy zwarciowej i napięcia źródła."
     ),
     "sources.sk_min_ik_min_voltage_inconsistent": (
         "Ta sama klasa co `sources.sk_ik_voltage_inconsistent` (CV-4.3 K7, dane MIN): "
-        "kanon nie ma kodu dla niespójności Ik''min/Sk''min/napięcia źródła."
+        "kanon nie ma kodu dla niespójności minimalnego prądu zwarciowego, minimalnej mocy "
+        "zwarciowej i napięcia źródła."
     ),
     # ------------------------------------------------------------------
     # P0.1 nN (karta P0.1, topologia obwodow nN — `enm/validator.py::_check_nn_topology`).

@@ -69,7 +69,8 @@ _POWOD_KOTWICA_ZLY_RODZAJ = (
 )
 _POWOD_KOTWICA_NIE_JEST_MAX = (
     "Ten przebieg nie jest biegiem scenariusza MAKSYMALNEGO — pakiet nastaw wymaga "
-    "kotwicy z gałęzi maksymalnej (c_max per węzeł, IEC 60909-0 tabela 1); gałąź "
+    "kotwicy z gałęzi maksymalnej (maksymalny współczynnik napięciowy per węzeł, "
+    "IEC 60909-0 tabela 1); gałąź "
     "minimalną serwer dolicza sam scenariuszem MIN. Uruchom zwarcie trójfazowe "
     "scenariusza MAX."
 )

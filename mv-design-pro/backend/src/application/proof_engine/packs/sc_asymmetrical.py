@@ -281,7 +281,7 @@ class SCAsymmetricalProofPack:
         result = zwarcie.wynik
         if result.z1_ohm is None or result.z2_ohm is None or result.z0_ohm is None:
             raise ValueError(
-                "Wynik zwarcia nie niesie impedancji składowych Z1/Z2/Z0 — "
+                "Wynik zwarcia nie niesie impedancji składowych zgodnej, przeciwnej i zerowej — "
                 "pakietu zwarć niesymetrycznych nie da się złożyć dla tego punktu"
             )
         u_n_kv = v_na_kv(result.un_v)

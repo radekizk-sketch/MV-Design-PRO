@@ -922,7 +922,7 @@ class NastawySolvera:
         if not (self.dt_min_s <= self.dt_s <= self.dt_max_s):
             raise OdmowaDynamiki(
                 KOD_NASTAWY_SPRZECZNE,
-                f"dt_s={self.dt_s} poza granicami [{self.dt_min_s}, {self.dt_max_s}]",
+                f"krok czasowy {self.dt_s} s poza granicami [{self.dt_min_s}, {self.dt_max_s}] s",
                 dt_s=self.dt_s,
                 dt_min_s=self.dt_min_s,
                 dt_max_s=self.dt_max_s,

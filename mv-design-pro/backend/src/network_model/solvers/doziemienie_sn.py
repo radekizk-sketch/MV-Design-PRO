@@ -401,8 +401,9 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                         "z_f_ohm": _z(dane.z_f_ohm),
                         "ikss_iec_a": _r(prad),
                     },
-                    f"|Z_1 + Z_2 + Z_0 + 3Z_f| = |{_zespolona_pl(petla)}| Ω; "
-                    f"I″k1 = {_pl(prad, '.4f')} A (rdzeń IEC 60909)",
+                    f"moduł impedancji pętli (suma impedancji składowych i potrojonej impedancji "
+                    f"przejścia) |{_zespolona_pl(petla)}| Ω; prąd zwarcia jednofazowego "
+                    f"{_pl(prad, '.4f')} A (rdzeń IEC 60909)",
                     rf"\left|Z_1 + Z_2 + Z_0 + 3 Z_f\right| = \left|{_zespolona_tex(petla)}\right|"
                     rf"\ \Omega;\quad I''_{{k1}} = {_tex(prad, '.4f')}\ \mathrm{{A}}",
                     {"prad_a": _r(prad), "petla_ohm": _r(abs(petla))},
@@ -506,7 +507,7 @@ def oblicz_doziemienie(dane: DaneDoziemienia) -> WynikDoziemienia:
                     },
                     f"|{_zespolona_pl(i_metal)}| A"
                     + (
-                        f" przez Z_f → {_pl(prad, '.4f')} A"
+                        f" przez impedancję przejścia → {_pl(prad, '.4f')} A"
                         if dane.z_f_ohm
                         else f" = {_pl(prad, '.4f')} A"
                     )

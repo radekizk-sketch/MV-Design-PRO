@@ -38,7 +38,7 @@ EQ_OHL_001 = EquationDefinition(
 EQ_OHL_002 = EquationDefinition(
     equation_id="EQ_OHL_002",
     name_pl="Rezystancja fazy w temperaturze przewodu",
-    standard_ref="IEC 60909-0:2016, wzór R_L(θ_e)",
+    standard_ref="IEC 60909-0:2016, wzór rezystancji przewodu w temperaturze końcowej",
     latex=r"R'_{\theta} = R'_{20}\,[1 + \alpha(\theta - 20\ ^{\circ}\text{C})]",
     symbols=(
         _s(r"R'_{\theta}", "Ω/km", "Rezystancja w temperaturze przewodu", "ohl_r_theta"),
@@ -191,7 +191,12 @@ EQ_OHL_012 = EquationDefinition(
     standard_ref=_PODSTAWA_TRANSPOZYCJA,
     latex=r"Z'_{0,\text{bez}} = Z_{s,ff} + 2Z_{m,ff}",
     symbols=(
-        _s(r"Z'_{0,\text{bez}}", "Ω/km", "Z′0 bez przewodów odgromowych", "ohl_z0_bez"),
+        _s(
+            r"Z'_{0,\text{bez}}",
+            "Ω/km",
+            "Impedancja jednostkowa składowej zerowej bez przewodów odgromowych",
+            "ohl_z0_bez",
+        ),
         _s("Z_{s,ff}", "Ω/km", "Średnia impedancja własna faz", "ohl_zs_ff"),
         _s("Z_{m,ff}", "Ω/km", "Średnia impedancja wzajemna faz", "ohl_zm_ff"),
     ),

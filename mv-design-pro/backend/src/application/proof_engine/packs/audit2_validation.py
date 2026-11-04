@@ -476,7 +476,7 @@ def generate_vt_grounding_validation_proof(
         summary_pl=f"Pole {bay_designation}: "
         + (
             message
-            or f"OK: VT U_th={vt_voltage_factor} pasuje do sieci o punkcie neutralnym "
+            or f"OK: przekładnik napięciowy o współczynniku napięciowym {vt_voltage_factor} pasuje do sieci o punkcie neutralnym "
             f"{ETYKIETA_PL_PUNKTU_NEUTRALNEGO[grounding_type]}."
         ),
         details={

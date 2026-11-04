@@ -61,7 +61,7 @@ from network_model.pochodne import a_na_ka
 NORMA_NAPIECIA_PL = (
     "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach "
     "elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej "
-    "pracy: Un ± 10 %."
+    "pracy: napięcie znamionowe ± 10 %."
 )
 
 #: Szerokość pasma wiarygodności napięcia [%] wokół Un (± PASMO_NAPIECIA_PROCENT).
@@ -153,13 +153,13 @@ def evaluate_bus_voltage(
     in_range = lower_kv <= actual_kv <= upper_kv
     if in_range:
         why = (
-            f"U = {actual_kv} kV mieści się w paśmie [{lower_kv:.3f}; {upper_kv:.3f}] kV "
-            f"(Un = {nominal_kv} kV ± {PASMO_NAPIECIA_PROCENT:.0f} %)."
+            f"Napięcie {actual_kv} kV mieści się w paśmie [{lower_kv:.3f}; {upper_kv:.3f}] kV "
+            f"(napięcie znamionowe {nominal_kv} kV ± {PASMO_NAPIECIA_PROCENT:.0f} %)."
         )
     else:
         why = (
-            f"U = {actual_kv} kV jest poza pasmem [{lower_kv:.3f}; {upper_kv:.3f}] kV "
-            f"(Un = {nominal_kv} kV ± {PASMO_NAPIECIA_PROCENT:.0f} %, odchylenie "
+            f"Napięcie {actual_kv} kV jest poza pasmem [{lower_kv:.3f}; {upper_kv:.3f}] kV "
+            f"(napięcie znamionowe {nominal_kv} kV ± {PASMO_NAPIECIA_PROCENT:.0f} %, odchylenie "
             f"{deviation_pct:.2f} %) — wynik fizycznie wątpliwy (błąd modelu/jednostek?)."
         )
     return VoltageBandSanityVerdict(
@@ -254,12 +254,12 @@ def evaluate_branch_loading(obciazenie: ObciazenieGalezi) -> BranchLoadingSanity
     in_range = loading_pct <= 100.0
     if in_range:
         why = (
-            f"I = {abs(prad_ka):.4f} kA (zacisk {zacisk}) nie przekracza I_r = "
+            f"Prąd {abs(prad_ka):.4f} kA (zacisk {zacisk}) nie przekracza prądu znamionowego "
             f"{znamionowy_ka:.4f} kA tego zacisku (obciążenie {loading_pct:.1f} %)."
         )
     else:
         why = (
-            f"I = {abs(prad_ka):.4f} kA (zacisk {zacisk}) przekracza I_r = "
+            f"Prąd {abs(prad_ka):.4f} kA (zacisk {zacisk}) przekracza prąd znamionowy "
             f"{znamionowy_ka:.4f} kA tego zacisku (obciążenie {loading_pct:.1f} %) — wynik "
             "fizycznie wątpliwy (błąd modelu/doboru przekroju?)."
         )

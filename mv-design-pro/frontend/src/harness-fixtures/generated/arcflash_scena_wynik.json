@@ -752,7 +752,7 @@
           "substitution_pl": "$I_{bf}$ = 8.9701 kA, $G$ = 104.0 mm, $U$ = 15.0 kV [VCB]; kotwy: V14300 = 8.4719 kA, V2700 = 7.7469 kA, V600 = 6.584 kA; $\\mathrm{VarCf}$ = 0.0217",
           "result_pl": "$I_{arc}$ = 8.5157 kA, $I_{arc,min}$ = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Prąd zwarcia bolted i prąd łuku w kA; odstęp elektrod w mm; współczynnik zmienności bezwymiarowy; interpolacja po napięciu w kV.",
-          "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
+          "table_ref": "prąd łuku dla konfiguracji VCB, kotwy 600/2700/14300 V (Tab. 1) i współczynnik zmienności VarCf dla VCB (Tab. 2); źródło open_source_IEEE_1584"
         },
         {
           "symbol": "CF",
@@ -1068,7 +1068,7 @@
           "substitution_pl": "$I_{bf}$ = 8.9701 kA, $G$ = 104.0 mm, $U$ = 15.0 kV [VCB]; kotwy: V14300 = 8.4719 kA, V2700 = 7.7469 kA, V600 = 6.584 kA; $\\mathrm{VarCf}$ = 0.0217",
           "result_pl": "$I_{arc}$ = 8.5157 kA, $I_{arc,min}$ = 8.4233 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Prąd zwarcia bolted i prąd łuku w kA; odstęp elektrod w mm; współczynnik zmienności bezwymiarowy; interpolacja po napięciu w kV.",
-          "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
+          "table_ref": "prąd łuku dla konfiguracji VCB, kotwy 600/2700/14300 V (Tab. 1) i współczynnik zmienności VarCf dla VCB (Tab. 2); źródło open_source_IEEE_1584"
         },
         {
           "symbol": "CF",
@@ -1184,7 +1184,7 @@
           "substitution_pl": "$I_{bf}$ = 4.6116 kA, $G$ = 104.0 mm, $U$ = 15.0 kV [VCB]; kotwy: V14300 = 4.3593 kA, V2700 = 4.0235 kA, V600 = 3.303 kA; $\\mathrm{VarCf}$ = 0.0217",
           "result_pl": "$I_{arc}$ = 4.3796 kA, $I_{arc,min}$ = 4.3321 kA (IEEE 1584-2018, współczynniki open-source)",
           "unit_check_pl": "Prąd zwarcia bolted i prąd łuku w kA; odstęp elektrod w mm; współczynnik zmienności bezwymiarowy; interpolacja po napięciu w kV.",
-          "table_ref": "I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584"
+          "table_ref": "prąd łuku dla konfiguracji VCB, kotwy 600/2700/14300 V (Tab. 1) i współczynnik zmienności VarCf dla VCB (Tab. 2); źródło open_source_IEEE_1584"
         },
         {
           "symbol": "CF",

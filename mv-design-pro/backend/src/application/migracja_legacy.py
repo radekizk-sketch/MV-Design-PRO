@@ -253,7 +253,7 @@ def graf_z_modelu_legacy(
         if wezel_id not in napiecia:
             raise OdmowaMigracji(f"{element}: węzeł przyłączenia nie istnieje w modelu zastanym")
         if payload.get("sk3_mva") is None and payload.get("ik3_ka") is None:
-            raise OdmowaMigracji(f"{element}: brak mocy zwarciowej Sk'' i prądu Ik''")
+            raise OdmowaMigracji(f"{element}: brak mocy zwarciowej i prądu zwarciowego")
         rekordy_zrodel.append(
             ZrodloSpec(
                 lit=wezel_id,

@@ -158,7 +158,9 @@ class RegulaKatalogu:
             raise BladRejestruNiezmiennikow(
                 f"{self.kod}: reguła klasy twardej wymaga kodu {PRZEDROSTEK_TWARDY}nnn."
             )
-        if self.klasa in KLASY_MIEKKIE and not self.kod.startswith(PRZEDROSTEK_WIARYGODNOSCI):
+        if self.klasa in KLASY_MIEKKIE and not self.kod.startswith(
+            PRZEDROSTEK_WIARYGODNOSCI
+        ):
             raise BladRejestruNiezmiennikow(
                 f"{self.kod}: reguła miękka wymaga kodu {PRZEDROSTEK_WIARYGODNOSCI}nnn."
             )
@@ -209,7 +211,9 @@ def _rejestr(*reguly: RegulaKatalogu) -> dict[str, RegulaKatalogu]:
     wynik: dict[str, RegulaKatalogu] = {}
     for regula in reguly:
         if regula.kod in wynik:
-            raise BladRejestruNiezmiennikow(f"Duplikat kodu reguły katalogu: {regula.kod}.")
+            raise BladRejestruNiezmiennikow(
+                f"Duplikat kodu reguły katalogu: {regula.kod}."
+            )
         wynik[regula.kod] = regula
     return dict(sorted(wynik.items()))
 
@@ -275,7 +279,7 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-T-005",
         nazwa="Punkt krzywej P-Q ma trzy współrzędne",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt pola `pq_curve` — (p_mw, q_min_mvar, q_max_mvar)",
+        podstawa="Kontrakt pola `pq_curve` — punkty (moc czynna, moc bierna minimalna, moc bierna maksymalna)",
         uzasadnienie=(
             "Kształt punktu jest częścią kontraktu katalogu; punkt o innej długości to "
             "uszkodzony import, a nie krzywa o innej rozdzielczości."
@@ -294,7 +298,7 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     ),
     RegulaKatalogu(
         kod="KAT-T-007",
-        nazwa="Punkt krzywej P-Q wymaga q_min <= q_max",
+        nazwa="Punkt krzywej P-Q wymaga mocy biernej minimalnej nie większej od maksymalnej",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         podstawa="Definicja przedziału mocy biernej w punkcie obwiedni",
         uzasadnienie=(
@@ -363,7 +367,7 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-T-012",
         nazwa="Statyzm P/f przekształtnika grid-forming dodatni",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja statyzmu s = -(df/f_n)/(dP/P_n) regulatora pierwotnego",
+        podstawa="Definicja statyzmu regulatora pierwotnego: względna zmiana częstotliwości do względnej zmiany mocy, ze znakiem ujemnym",
         uzasadnienie=(
             "Statyzm zerowy znaczy regulator o nieskończonym wzmocnieniu, ujemny — "
             "dodatnie sprzężenie zwrotne rozbiegające częstotliwość. Żaden z tych "
@@ -432,7 +436,7 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-T-017",
         nazwa="Hierarchia mocy karty przekształtnika",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt karty mocy: Pzainst >= Pn,AC >= Pprzylacz >= Posiagl",
+        podstawa="Kontrakt karty mocy: moc zainstalowana nie mniejsza od mocy znamionowej AC, ta od mocy przyłączeniowej, ta od mocy osiągalnej",
         uzasadnienie=(
             "Cztery moce karty są zdefiniowane jako coraz węższe ograniczenia tego samego "
             "źródła, więc kolejność wynika z definicji pól karty, a nie z prawa fizyki. "
@@ -929,7 +933,7 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-W-001",
-        nazwa="R0 >= R1 przewodu",
+        nazwa="Rezystancja zerowa przewodu nie mniejsza od zgodnej",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
         podstawa="Typowa konstrukcja żyły powrotnej / ekranu z powrotem ziemnym",
         uzasadnienie=(
@@ -943,7 +947,7 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     ),
     RegulaKatalogu(
         kod="KAT-W-002",
-        nazwa="P0 < Pk transformatora",
+        nazwa="Straty jałowe mniejsze od strat obciążeniowych transformatora",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
         podstawa="Relacja typowa dla transformatorów rozdzielczych",
         uzasadnienie=(
@@ -955,7 +959,7 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     ),
     RegulaKatalogu(
         kod="KAT-W-003",
-        nazwa="Icw <= Icu aparatu SN",
+        nazwa="Prąd krótkotrwały wytrzymywany nie większy od prądu wyłączalnego granicznego aparatu SN",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
         podstawa=(
             "IEC 62271-100 — prąd krótkotrwały wytrzymywany i zdolność wyłączania są "
@@ -971,9 +975,9 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     ),
     RegulaKatalogu(
         kod="KAT-W-004",
-        nazwa="Icw <= Icu aparatu nN",
+        nazwa="Prąd krótkotrwały wytrzymywany nie większy od prądu wyłączalnego granicznego aparatu nN",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
-        podstawa="IEC 60947-2 § 4.3.5.4 (Icw) wobec § 4.3.5.2.2 (Ics jako % Icu)",
+        podstawa="IEC 60947-2 § 4.3.5.4 (prąd krótkotrwały wytrzymywany) wobec § 4.3.5.2.2 (prąd wyłączalny eksploatacyjny jako procent granicznego)",
         uzasadnienie=(
             "Norma definiuje eksploatacyjną zdolność wyłączania JAWNIE jako procent graniczną "
             "zdolność wyłączania (§ 4.3.5.2.2) — tamta relacja mogłaby być twarda. Dla prądu "
@@ -1228,7 +1232,8 @@ RODZINY_BEZ_REGUL: dict[str, str] = {
     ),
     "bess-inverter": "Przekształtnik magazynu: jak PV.",
     "bess-battery": (
-        "Pakiet baterii: pojemność / napięcie DC / C-rate są bramkami TWARDYMI " "(KAT-T-018..020)."
+        "Pakiet baterii: pojemność / napięcie DC / C-rate są bramkami TWARDYMI "
+        "(KAT-T-018..020)."
     ),
     "converter": "Przekształtnik (PV/BESS/WIND) — jak PV.",
     "wind-inverter": "Przekształtnik farmy wiatrowej — podzbiór rodziny przekształtników.",
@@ -1345,7 +1350,9 @@ def _sprawdz_kat_w_003(pozycja: Any) -> _WynikReguly:
     if icw is None or icu is None or icu <= 0.0:
         return _NIEPOLICZONA
     if icw > icu * LUZ_POROWNANIA:
-        return _odstepstwo("KAT-W-003", pozycja, f"Icw (I_th) = {icw} kA, Icu = {icu} kA")
+        return _odstepstwo(
+            "KAT-W-003", pozycja, f"Icw (I_th) = {icw} kA, Icu = {icu} kA"
+        )
     return _WynikReguly(policzona=True)
 
 
@@ -1415,7 +1422,9 @@ POWODY_POMINIECIA: dict[str, str] = {
 }
 
 
-def przeglad_rodziny(rodzina: str, pozycje: Iterable[Any]) -> WynikPrzegladuWiarygodnosci:
+def przeglad_rodziny(
+    rodzina: str, pozycje: Iterable[Any]
+) -> WynikPrzegladuWiarygodnosci:
     """Przeglad wiarygodnosci JEDNEJ rodziny katalogu.
 
     ZERO ODMOWY, ZERO ZMIAN DANYCH. Regula wiarygodnosci nigdy nie podnosi
@@ -1486,5 +1495,7 @@ def przeglad_wiarygodnosci(
         )
     nadmiarowe = sorted(set(rodziny) - set(RODZINY_PRZEGLADU))
     if nadmiarowe:
-        raise BladRejestruNiezmiennikow(f"Rodziny spoza przeglądu: {', '.join(nadmiarowe)}.")
+        raise BladRejestruNiezmiennikow(
+            f"Rodziny spoza przeglądu: {', '.join(nadmiarowe)}."
+        )
     return tuple(przeglad_rodziny(nazwa, rodziny[nazwa]) for nazwa in sorted(rodziny))

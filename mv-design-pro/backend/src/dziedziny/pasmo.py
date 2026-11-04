@@ -43,7 +43,7 @@ class PasmoWidma(KontraktDziedziny):
             raise ValueError(
                 naruszenie(
                     "pasmo.definicja",
-                    f"Pasmo '{self.ident}': f_min < f_max wymagane ({self.f_min_hz} ≥ "
+                    f"Pasmo '{self.ident}': wymagana dolna granica mniejsza od górnej ({self.f_min_hz} ≥ "
                     f"{self.f_max_hz} Hz).",
                 )
             )

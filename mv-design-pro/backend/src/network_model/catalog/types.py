@@ -746,8 +746,8 @@ def _validate_katalogowy_k_sc(k_sc: float | None, *, kontekst: str) -> None:
     if not math.isfinite(k_sc) or k_sc <= 0:
         odmowa_twarda(
             "KAT-T-003",
-            "Współczynnik udziału zwarciowego k_sc musi być liczbą skończoną > 0, "
-            f"otrzymano k_sc={k_sc!r} ({kontekst}).",
+            "Współczynnik udziału zwarciowego musi być liczbą skończoną dodatnią, "
+            f"otrzymano {k_sc!r} ({kontekst}).",
         )
 
 
@@ -764,26 +764,28 @@ def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None
         if len(point) != 3:
             odmowa_twarda(
                 "KAT-T-005",
-                "Punkt krzywej P-Q musi mieć 3 wartości (p_mw, q_min_mvar, q_max_mvar), "
+                "Punkt krzywej P-Q musi mieć 3 wartości (moc czynna, moc bierna minimalna, "
+                "moc bierna maksymalna), "
                 f"otrzymano: {point!r}.",
             )
         p_mw, q_min_mvar, q_max_mvar = point
         if p_mw < 0:
             odmowa_twarda(
                 "KAT-T-006",
-                f"Moc czynna punktu krzywej P-Q musi być >= 0, otrzymano p_mw={p_mw}.",
+                f"Moc czynna punktu krzywej P-Q musi być nieujemna, otrzymano {p_mw} MW.",
             )
         if q_min_mvar > q_max_mvar:
             odmowa_twarda(
                 "KAT-T-007",
-                "Punkt krzywej P-Q wymaga q_min_mvar <= q_max_mvar, otrzymano "
-                f"q_min_mvar={q_min_mvar} > q_max_mvar={q_max_mvar} (p_mw={p_mw}).",
+                "Punkt krzywej P-Q wymaga mocy biernej minimalnej nie większej od maksymalnej, "
+                f"otrzymano minimalną {q_min_mvar} Mvar wobec maksymalnej {q_max_mvar} Mvar "
+                f"(moc czynna {p_mw} MW).",
             )
         if prev_p is not None and p_mw <= prev_p:
             odmowa_twarda(
                 "KAT-T-008",
-                "Punkty krzywej P-Q muszą być uporządkowane rosnąco po p_mw, "
-                f"otrzymano p_mw={p_mw} po p_mw={prev_p}.",
+                "Punkty krzywej P-Q muszą być uporządkowane rosnąco po mocy czynnej, "
+                f"otrzymano {p_mw} MW po {prev_p} MW.",
             )
         prev_p = p_mw
 
@@ -2088,7 +2090,8 @@ class ConverterType:
                     "KAT-T-017",
                     f"Naruszenie hierarchii mocy karty falownika: "
                     f"{lower_name}={lower} > {upper_name}={upper} "
-                    f"(wymagane Pzainst >= Pn,AC >= Pprzylacz >= Posiagl)",
+                    f"(wymagane: moc zainstalowana nie mniejsza od mocy znamionowej AC, ta od "
+                    "mocy przyłączeniowej, ta od mocy osiągalnej)",
                 )
 
     def to_dict(self) -> dict[str, Any]:
@@ -2265,7 +2268,10 @@ class BESSBatteryType:
                 f"{self.id}: nominal_voltage_dc_v musi być > 0 (jest {self.nominal_voltage_dc_v}).",
             )
         if self.c_rate <= 0:
-            odmowa_twarda("KAT-T-020", f"{self.id}: c_rate musi być > 0 (jest {self.c_rate}).")
+            odmowa_twarda(
+                "KAT-T-020",
+                f"{self.id}: krotność prądu ładowania magazynu musi być dodatnia (jest {self.c_rate}).",
+            )
 
     def to_dict(self) -> dict[str, Any]:
         return {

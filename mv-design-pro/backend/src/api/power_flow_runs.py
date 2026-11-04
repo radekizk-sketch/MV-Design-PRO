@@ -31,7 +31,9 @@ from domain.execution import StanBiegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run
-from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
+from enm.canonical_analysis import (
+    list_runs_for_project as list_canonical_runs_for_project,
+)
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -50,7 +52,7 @@ class PowerFlowRunCreateRequest(BaseModel):
 
     options: dict[str, Any] | None = Field(
         default=None,
-        description="Opcje solvera (tolerance, max_iter, trace_level, etc.)",
+        description="Opcje solvera: `tolerance`, `max_iter`, `trace_level`",
     )
 
 
@@ -119,7 +121,11 @@ def _catalog_context_lines(bundle: dict[str, Any], *, max_items: int = 20) -> li
                     str(entry.get("element_id") or "-"),
                     str(entry.get("element_type") or "-"),
                     _format_catalog_binding(entry),
-                    str(entry.get("parameter_source") or entry.get("parameter_origin") or "-"),
+                    str(
+                        entry.get("parameter_source")
+                        or entry.get("parameter_origin")
+                        or "-"
+                    ),
                     _truncate_catalog_params(entry.get("materialized_params")),
                 ]
             )
@@ -179,7 +185,10 @@ def _build_power_flow_xlsx(bundle: dict[str, Any]) -> bytes:
                 ["Pole", "Wartosc"],
                 ["Run ID", metadata.get("run_id")],
                 ["StudyCase ID", metadata.get("study_case_id")],
-                ["Status zbieżności", "Zbiezny" if result.get("converged") else "Niezbiezny"],
+                [
+                    "Status zbieżności",
+                    "Zbiezny" if result.get("converged") else "Niezbiezny",
+                ],
                 ["Liczba iteracji", result.get("iterations_count")],
                 ["Węzeł bilansujący", result.get("slack_bus_id")],
                 ["Straty P [MW]", summary.get("total_losses_p_mw")],
@@ -347,8 +356,12 @@ def list_power_flow_runs(
             "snapshot_hash": run.snapshot_hash,
             "model_revision": (run.envelope or {}).get("model_revision"),
             "scenario_ref": (run.envelope or {}).get("scenario_ref"),
-            "converged": ((run.raw_result or {}).get("result_v1") or {}).get("converged"),
-            "iterations": ((run.raw_result or {}).get("result_v1") or {}).get("iterations_count"),
+            "converged": ((run.raw_result or {}).get("result_v1") or {}).get(
+                "converged"
+            ),
+            "iterations": ((run.raw_result or {}).get("result_v1") or {}).get(
+                "iterations_count"
+            ),
         }
         for run in list_canonical_runs_for_project(str(project_id), analysis_type="PF")
         if status is None or run.status == status
@@ -423,7 +436,9 @@ def execute_power_flow_run(
 @router.get("/power-flow-runs/{run_id}")
 def get_power_flow_run(run_id: UUID) -> dict[str, Any]:
     try:
-        return canonicalize_json(build_power_flow_run_header(_require_canonical_run(run_id)))
+        return canonicalize_json(
+            build_power_flow_run_header(_require_canonical_run(run_id))
+        )
     except OdmowaDanychError as exc:
         raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
@@ -431,7 +446,9 @@ def get_power_flow_run(run_id: UUID) -> dict[str, Any]:
 @router.get("/power-flow-runs/{run_id}/results")
 def get_power_flow_results(run_id: UUID) -> dict[str, Any]:
     try:
-        return canonicalize_json(get_canonical_power_flow_result(_require_canonical_run(run_id)))
+        return canonicalize_json(
+            get_canonical_power_flow_result(_require_canonical_run(run_id))
+        )
     except OdmowaDanychError as exc:
         raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
@@ -439,7 +456,9 @@ def get_power_flow_results(run_id: UUID) -> dict[str, Any]:
 @router.get("/power-flow-runs/{run_id}/trace")
 def get_power_flow_trace(run_id: UUID) -> dict[str, Any]:
     try:
-        return canonicalize_json(get_canonical_power_flow_trace(_require_canonical_run(run_id)))
+        return canonicalize_json(
+            get_canonical_power_flow_trace(_require_canonical_run(run_id))
+        )
     except OdmowaDanychError as exc:
         raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
@@ -526,8 +545,13 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
     add_row("Status zbieżności", "Zbiezny" if result.get("converged") else "Niezbiezny")
     add_row("Liczba iteracji", result.get("iterations_count"))
     add_row("Węzeł bilansujący", result.get("slack_bus_id"))
-    add_row("Całkowite straty P [MW]", format_wynik(summary.get("total_losses_p_mw"), ".4g"))
-    add_row("Całkowite straty Q [Mvar]", format_wynik(summary.get("total_losses_q_mvar"), ".4g"))
+    add_row(
+        "Całkowite straty P [MW]", format_wynik(summary.get("total_losses_p_mw"), ".4g")
+    )
+    add_row(
+        "Całkowite straty Q [Mvar]",
+        format_wynik(summary.get("total_losses_q_mvar"), ".4g"),
+    )
     add_row("Min. napięcie [pu]", format_wynik(summary.get("min_v_pu"), ".4g"))
     add_row("Max. napięcie [pu]", format_wynik(summary.get("max_v_pu"), ".4g"))
     add_row("Elementy z katalogiem", metadata.get("catalog_context_count"))
@@ -548,7 +572,9 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
     if white_box_trace:
         for step in white_box_trace[:12]:
             title = step.get("title") or step.get("key") or "Krok"
-            doc.add_paragraph(f"{title}: {json.dumps(step, ensure_ascii=False, sort_keys=True)}")
+            doc.add_paragraph(
+                f"{title}: {json.dumps(step, ensure_ascii=False, sort_keys=True)}"
+            )
         if len(white_box_trace) > 12:
             doc.add_paragraph(f"... oraz {len(white_box_trace) - 12} kolejnych kroków")
     else:
@@ -562,10 +588,10 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
         bus_table.style = "Table Grid"
         header = bus_table.rows[0].cells
         header[0].text = "ID szyny"
-        header[1].text = "V [pu]"
+        header[1].text = "Napięcie [pu]"
         header[2].text = "Kąt [deg]"
-        header[3].text = "P_inj [MW]"
-        header[4].text = "Q_inj [Mvar]"
+        header[3].text = "Moc czynna wstrzykiwana [MW]"
+        header[4].text = "Moc bierna wstrzykiwana [Mvar]"
         for cell in header:
             for paragraph in cell.paragraphs:
                 for run in paragraph.runs:
@@ -588,7 +614,9 @@ def export_power_flow_run_docx(run_id: UUID) -> Response:
     return Response(
         content=make_docx_bytes_deterministic(buffer.getvalue()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="power_flow_run_{run_id}.docx"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="power_flow_run_{run_id}.docx"'
+        },
     )
 
 
@@ -601,7 +629,9 @@ def export_power_flow_run_xlsx(run_id: UUID) -> Response:
     return Response(
         content=workbook_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="power_flow_run_{run_id}.xlsx"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="power_flow_run_{run_id}.xlsx"'
+        },
     )
 
 
@@ -747,7 +777,9 @@ def export_power_flow_run_pdf(run_id: UUID) -> Response:
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="power_flow_run_{run_id}.pdf"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="power_flow_run_{run_id}.pdf"'
+        },
     )
 
 

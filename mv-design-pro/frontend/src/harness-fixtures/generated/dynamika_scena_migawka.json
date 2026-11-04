@@ -1190,7 +1190,7 @@
           "przyjete_pl": [
             "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
             "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+            "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
           ],
           "wspolczynnik_jednoczesnosci": null
         },
@@ -1230,7 +1230,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "dcab25f3797c60c7e3d493ea07726a187f9b7edeae4ce966f91f34cfc79de64a",
+    "hash_sha256": "bc46a481375c36fc62fa3fa31359c2dc2c8e16a4574029352b7395326f188271",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

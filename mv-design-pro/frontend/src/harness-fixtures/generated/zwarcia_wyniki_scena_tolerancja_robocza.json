@@ -727,7 +727,7 @@
     {
       "code": "fault.c_tolerancja_nn_robocza",
       "element_ref": "tr_sn_nn",
-      "message_pl": "Sieć nN (szyny: Szyna nN; zasilanie: transformator TR 15/0.4 (bez deklaracji)): wartość robocza tolerancji +10 % (założenie inżynierskie: IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji +10 %: c_max 1,10, c_min 0,90 (sieć +6 %: c_max 1,05, c_min 0,95)) — żaden element zasilający sieć nN nie deklaruje tolerancji napięcia. Przyjęto klasę +10 % (c_max 1,10, c_min 0,90) — wybór zachowawczy w obu kierunkach: największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1. Wpływ: prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji projektanta; sieć o tolerancji +6 % ma prąd maksymalny mniejszy o 4,5 %, a minimalny większy o 5,6 % — ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności. Ta sama wartość robocza wyznacza c_max we wzorze K_T transformatora i K_G maszyny tej sieci. Zmień wartość: tolerancja napięcia sieci nN na elemencie zasilającym.",
+      "message_pl": "Sieć nN (szyny: Szyna nN; zasilanie: transformator TR 15/0.4 (bez deklaracji)): wartość robocza tolerancji +10 % (założenie inżynierskie: IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji +10 %: c_max 1,10, c_min 0,90 (sieć +6 %: c_max 1,05, c_min 0,95)) — żaden element zasilający sieć nN nie deklaruje tolerancji napięcia. Przyjęto klasę +10 % (c_max 1,10, c_min 0,90) — wybór zachowawczy w obu kierunkach: największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1. Wpływ: prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji projektanta; sieć o tolerancji +6 % ma prąd maksymalny mniejszy o 4,5 %, a minimalny większy o 5,6 % — ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności. Ta sama wartość robocza wyznacza maksymalny współczynnik napięciowy we współczynnikach korekcyjnych transformatora i maszyny tej sieci. Zmień wartość: tolerancja napięcia sieci nN na elemencie zasilającym.",
       "scenariusz": "MAX",
       "parametr": "lv_voltage_tolerance",
       "element_type": "Transformer"
@@ -852,7 +852,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-      "result_hash": "6068225d06395dbe8abb726716ce5f61cd0e38e3bce5391638d84dbef2d15ffb",
+      "result_hash": "cc548b5dabb3b5b24ffe8dca96e87ab86af58f74ef7f839baa93539a73ebe50e",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -863,7 +863,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "43e41069c9f63d5a7a0c219ece13302071c94f9038af730c7d832854c377d852",
+      "catalog_fingerprint": "bbcc65ebab694047814cd1898b2c6d22fe2f5efe1f0989f0914b92301fcface2",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",
@@ -887,7 +887,7 @@
     "breaking_time_seconds": {
       "wartosc": null,
       "pochodzenie": "punkt_zwarcia",
-      "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
+      "opis_pl": "Scenariusz zwarciowy nie podaje czasu wyłączenia — czas wyłączenia każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), minimalny czas zwłoki 0,1 s))."
     },
     "metoda": "IEC 60909",
     "scenariusz": "MAX"

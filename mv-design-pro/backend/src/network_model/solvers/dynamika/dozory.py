@@ -67,7 +67,9 @@ from .kontrakty import (
 from .obserwable import czestotliwosci_wezlow, moc_urzadzenia_pu, wielkosci_galezi
 from .siec import ModelSieci
 
-if TYPE_CHECKING:  # pragma: no cover — wylacznie adnotacja (zdarzenia importuje ten modul)
+if (
+    TYPE_CHECKING
+):  # pragma: no cover — wylacznie adnotacja (zdarzenia importuje ten modul)
     from .zdarzenia import WpisHarmonogramu
 
 KierunekDozoru = Literal["w_dol", "w_gore"]
@@ -200,9 +202,13 @@ class Dozor:
         if not math.isfinite(self.prog):
             raise _odmowa(self, f"próg {self.prog!r} nie jest liczba skończona")
         if self.kierunek not in ("w_dol", "w_gore"):
-            raise _odmowa(self, f"kierunek {self.kierunek!r} spoza {{w_dol, w_gore}}")
+            raise _odmowa(
+                self, f"kierunek {self.kierunek!r} nie jest ani `w_dol`, ani `w_gore`"
+            )
         if not (math.isfinite(self.opoznienie_s) and self.opoznienie_s >= 0.0):
-            raise _odmowa(self, f"opóźnienie {self.opoznienie_s!r} s nie jest liczba nieujemna")
+            raise _odmowa(
+                self, f"opóźnienie {self.opoznienie_s!r} s nie jest liczba nieujemna"
+            )
         if self.kasowanie_przy_powrocie and self.opoznienie_s == 0.0:
             raise _odmowa(
                 self,
@@ -221,7 +227,7 @@ class Dozor:
             if akcja.t_s != 0.0:
                 raise _odmowa(
                     self,
-                    f"akcja {type(akcja).__name__} ma t_s={akcja.t_s} — chwila akcji jest "
+                    f"akcja {type(akcja).__name__} ma chwilę {akcja.t_s} s — chwila akcji jest "
                     "WZGLEDNA (0 = chwila wykonania dozoru)",
                 )
 
@@ -295,7 +301,9 @@ def wartosc_wielkosci(
     return float(moc.real if wielkosc.skladowa == "p" else moc.imag)
 
 
-def funkcja_warunku(dozor: Dozor, uklad: StanUkladu, *, f_bazowa_hz: float) -> float | None:
+def funkcja_warunku(
+    dozor: Dozor, uklad: StanUkladu, *, f_bazowa_hz: float
+) -> float | None:
     """`h = s (wartosc - prog)`; warunek spelniony przy `h > 0`; `None` — nieoceniane."""
     wartosc = wartosc_wielkosci(dozor.wielkosc, uklad, f_bazowa_hz=f_bazowa_hz)
     if wartosc is None:
@@ -462,7 +470,8 @@ class NadzorDozorow:
 
     def ocen(self, uklad: StanUkladu) -> list[float | None]:
         return [
-            funkcja_warunku(dozor, uklad, f_bazowa_hz=self.f_bazowa_hz) for dozor in self.dozory
+            funkcja_warunku(dozor, uklad, f_bazowa_hz=self.f_bazowa_hz)
+            for dozor in self.dozory
         ]
 
     def start(self, t_s: float, uklad: StanUkladu) -> None:
@@ -489,7 +498,9 @@ class NadzorDozorow:
                     wartosc > 0.0,
                     Lokalizacja(
                         t_s=t_s,
-                        szerokosc_s=0.0 if znany_w_chwili else t_s - self.t_znany_s[indeks],
+                        szerokosc_s=(
+                            0.0 if znany_w_chwili else t_s - self.t_znany_s[indeks]
+                        ),
                         iteracje=0,
                         g_przed=self.h[indeks] if znany_w_chwili else None,
                         g_po=wartosc,
@@ -567,7 +578,8 @@ class NadzorDozorow:
                 przejscia.append(_Przejscie(indeks, w_gore, lokalizacja))
             najwczesniej = min(
                 (
-                    przejscie.lokalizacja.t_s + self.dozory[przejscie.dozor].opoznienie_s
+                    przejscie.lokalizacja.t_s
+                    + self.dozory[przejscie.dozor].opoznienie_s
                     for przejscie in przejscia
                     if przejscie.w_gore
                     and self.uzbrojony[przejscie.dozor]
@@ -639,7 +651,9 @@ class NadzorDozorow:
                             lokalizacja=lokalizacja,
                         )
                     )
-                self.oczekujace.sort(key=lambda akcja: (akcja.t_s, akcja.dozor, akcja.akcja))
+                self.oczekujace.sort(
+                    key=lambda akcja: (akcja.t_s, akcja.dozor, akcja.akcja)
+                )
             else:
                 self.warunek[indeks] = False
                 if not dozor.kasowanie_przy_powrocie:
@@ -650,7 +664,9 @@ class NadzorDozorow:
                     if akcja.dozor == indeks and akcja.t_s > lokalizacja.t_s
                 ]
                 if skasowane:
-                    self.oczekujace = [akcja for akcja in self.oczekujace if akcja not in skasowane]
+                    self.oczekujace = [
+                        akcja for akcja in self.oczekujace if akcja not in skasowane
+                    ]
                     self.zapisy.append(
                         {
                             "powod": "kasowanie_akcji_dozoru",
@@ -675,10 +691,14 @@ class NadzorDozorow:
                 return akcja.t_s
         return None
 
-    def akcje_chwili(self, t_s: float, tolerancja_czasu_s: float) -> list[AkcjaOczekujaca]:
+    def akcje_chwili(
+        self, t_s: float, tolerancja_czasu_s: float
+    ) -> list[AkcjaOczekujaca]:
         """Akcje do wykonania w chwili `t_s` (prefiks listy — nie rownosc bitowa, jak wpisy
         planowane w `silnik._wpisy_chwili`)."""
-        return [akcja for akcja in self.oczekujace if akcja.t_s <= t_s + tolerancja_czasu_s]
+        return [
+            akcja for akcja in self.oczekujace if akcja.t_s <= t_s + tolerancja_czasu_s
+        ]
 
     def zdejmij(self, akcje: list[AkcjaOczekujaca]) -> None:
         self.oczekujace = [akcja for akcja in self.oczekujace if akcja not in akcje]

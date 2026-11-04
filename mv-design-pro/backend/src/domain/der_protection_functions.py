@@ -183,7 +183,7 @@ def dobierz_funkcje(fakty: FaktyPolaWytworcy) -> WynikDoboru:
             [
                 FunkcjaWymagana(
                     kod="50N",
-                    nazwa_pl="Ziemnozwarciowe bezzwłoczne (I0>>)",
+                    nazwa_pl="Ziemnozwarciowe bezzwłoczne",
                     podstawa_pl=(
                         "Prąd zerowy mierzony jako suma prądów fazowych "
                         "(połączenie Holmgreena) — rodzina N."
@@ -193,7 +193,7 @@ def dobierz_funkcje(fakty: FaktyPolaWytworcy) -> WynikDoboru:
                 ),
                 FunkcjaWymagana(
                     kod="51N",
-                    nazwa_pl="Ziemnozwarciowe zależnoczasowe (I0>)",
+                    nazwa_pl="Ziemnozwarciowe zależnoczasowe",
                     podstawa_pl=(
                         "Selektywność zwarć doziemnych przy pomiarze sumy prądów "
                         "fazowych (IEC 60255-151)."

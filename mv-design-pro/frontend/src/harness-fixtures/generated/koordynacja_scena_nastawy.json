@@ -182,8 +182,8 @@
       "limiting_criterion_max": "sensitivity",
       "limiting_criterion_min": "selectivity",
       "recommendations_pl": [
-        "Okno nastaw jest sprzeczne (I_min = 10.26 kA > I_max = 6.64 kA).",
-        "Możliwe rozwiązania: obniż współczynnik k_b, zwiększ zapas wobec kolejnej strefy selektywności, lub przenieś punkt kolejnego zabezpieczenia (next_bus_id)."
+        "Okno nastaw jest sprzeczne (dolna granica 10.26 kA przekracza górną 6.64 kA).",
+        "Możliwe rozwiązania: obniż współczynnik bezpieczeństwa, zwiększ zapas wobec kolejnej strefy selektywności, lub przenieś punkt kolejnego zabezpieczenia (pole `next_bus_id`)."
       ],
       "trace": [
         {

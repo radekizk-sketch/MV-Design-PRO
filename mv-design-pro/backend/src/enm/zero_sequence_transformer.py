@@ -244,7 +244,7 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             title=f"Transformator {nazwa}: brak grupy wektorowej",
             formula_latex=r"\text{brak grupy połączeń} \Rightarrow Z_0\ \text{otwarte}",
             inputs={"ref_id": trafo.ref_id, "vector_group": None},
-            substitution="brak grupy połączeń → brak drogi prądu zerowego I0",
+            substitution="brak grupy połączeń → brak drogi prądu składowej zerowej",
             result={"connection": ZeroSeqConnection.OPEN.value},
             notes=(
                 "Transformator bez grupy połączeń nie wnosi wkładu do sieci składowej "
@@ -308,7 +308,7 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
 
     tracer.add(
         key=f"tr_z0_zt[{trafo.ref_id}]",
-        title=f"Transformator {nazwa}: impedancja zerowa Z_T0",
+        title=f"Transformator {nazwa}: impedancja zerowa",
         formula_latex=(
             r"Z_{T0} = Z_T = \left(\frac{p_k}{S_{rT}} + j\sqrt{"
             r"\left(\frac{u_k}{100}\right)^2 - \left(\frac{p_k}{S_{rT}}\right)^2}\right)"
@@ -321,8 +321,8 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             "s_base_mva": S_BASE_MVA,
         },
         substitution=(
-            f"Z_T0 = {_fmt_c(z_t_pu_sn)} pu (na S_rT = {trafo.sn_mva:g} MVA); "
-            f"Z_T0 = {_fmt_c(z_t_pu_base)} pu (na S_base = {S_BASE_MVA:g} MVA)"
+            f"impedancja zerowa {_fmt_c(z_t_pu_sn)} pu na moc znamionową {trafo.sn_mva:g} MVA; "
+            f"{_fmt_c(z_t_pu_base)} pu na moc bazową {S_BASE_MVA:g} MVA"
         ),
         result={"z_t0_pu_sn": z_t_pu_sn, "z_t0_pu_base": z_t_pu_base},
     )
@@ -351,8 +351,10 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             "z0_pu": z0_pu,
         },
         notes=(
-            "Połączenie szeregowe: droga GN↔DN, Z = Z_T0 + 3Z_N,GN + 3Z_N,DN. "
-            "Bocznik do ziemi po stronie GN albo DN: Z = Z_T0 + 3Z_N tej strony. "
+            "Połączenie szeregowe: droga GN↔DN — impedancja zerowa transformatora plus "
+            "trzykrotne impedancje uziemienia punktów neutralnych obu stron. Bocznik do ziemi "
+            "po stronie GN albo DN — impedancja zerowa transformatora plus trzykrotna "
+            "impedancja uziemienia tej strony. "
             "Brak drogi prądu zerowego: trójkąt albo gwiazda nieuziemiona po obu stronach."
         ),
     )

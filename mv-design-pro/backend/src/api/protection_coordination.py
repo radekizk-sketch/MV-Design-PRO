@@ -53,10 +53,10 @@ class CoordinationConfigRequest(BaseModel):
     relay_overtravel_s: float = Field(0.05, ge=0, description="Wybieg przekaźnika [s]")
     safety_factor_s: float = Field(0.1, ge=0, description="Zapas bezpieczeństwa [s]")
     sensitivity_ratio_required: float = Field(
-        1.5, ge=1.0, description="Wymagany iloraz czułości I_min/I_s"
+        1.5, ge=1.0, description="Wymagany iloraz czułości (minimalny prąd zwarciowy do nastawy)"
     )
     overload_ratio_required: float = Field(
-        1.2, ge=1.0, description="Wymagany iloraz przeciążalności I_s/I_rob"
+        1.2, ge=1.0, description="Wymagany iloraz przeciążalności (nastawa do prądu roboczego)"
     )
 
 

@@ -388,15 +388,15 @@
               "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
               "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
               "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
-              "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+              "Impedancja sieci w funkcji częstotliwości liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci w funkcji częstotliwości obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli (impedancja sieci do impedancji przekształtnika) i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
               "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
-              "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+              "Do czasu poprawnej impedancji sieci: badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
             ],
             "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
             "zastrzezenia": [
               "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
               "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
-              "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+              "Zakres ważności: Skan impedancji sieci i przekształtnika w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
             ],
             "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
           },
@@ -404,7 +404,7 @@
           "zakres_waznosci": {
             "model_urzadzenia": null,
             "ograniczniki": [],
-            "opis_pl": "Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+            "opis_pl": "Skan impedancji sieci i przekształtnika w paśmie podsynchronicznym",
             "parametry_sieci": [],
             "regulator": null,
             "rodzaj_analizy": null,
@@ -415,7 +415,7 @@
             ]
           }
         },
-        "sekcja_audytowa_pl": "Metryki kryterium impedancyjnego z Z_grid(f) liczonego bez przekładni transformatora — materiał audytowy, nie jest wynikiem inżynierskim",
+        "sekcja_audytowa_pl": "Metryki kryterium impedancyjnego z impedancji sieci liczonej bez przekładni transformatora — materiał audytowy, nie jest wynikiem inżynierskim",
         "verdict": {
           "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
           "converter_ref": "pv/9d008ed355939bef762652554f56b2e4/converter",
@@ -503,15 +503,15 @@
                 "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
                 "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
                 "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
-                "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+                "Impedancja sieci w funkcji częstotliwości liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci w funkcji częstotliwości obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli (impedancja sieci do impedancji przekształtnika) i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
                 "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
-                "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+                "Do czasu poprawnej impedancji sieci: badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
               ],
               "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
               "zastrzezenia": [
                 "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
                 "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
-                "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+                "Zakres ważności: Skan impedancji sieci i przekształtnika w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
               ],
               "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
             },
@@ -519,7 +519,7 @@
             "zakres_waznosci": {
               "model_urzadzenia": null,
               "ograniczniki": [],
-              "opis_pl": "Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+              "opis_pl": "Skan impedancji sieci i przekształtnika w paśmie podsynchronicznym",
               "parametry_sieci": [],
               "regulator": null,
               "rodzaj_analizy": null,
@@ -552,14 +552,14 @@
               "result_pl": "moduły impedancji przecinają się (|L| ≥ 1)",
               "substitution_pl": "max|L| = 144.8886 przy f = 250.0 Hz; próg przecięcia |L| = 1.0",
               "symbol": "L(jω)",
-              "unit_check_pl": "L = Ω/Ω → bezwymiarowe; |L|=1 ⟺ |Z_grid|=|Z_conv|."
+              "unit_check_pl": "wzmocnienie pętli to iloraz omów przez omy, więc jest bezwymiarowe; moduł równy 1 oznacza równość modułów impedancji sieci i przekształtnika."
             },
             {
               "formula_latex": "\\Delta\\varphi_{min} = \\min_{f:\\,|L(f)|\\geq 1}\\left(180^\\circ - |\\angle L(f)|\\right)",
               "result_pl": "Δφ_min = 0.403°",
               "substitution_pl": "min po paśmie |L| ≥ 1.0; f = 47.7 Hz",
               "symbol": "Δφ_min",
-              "unit_check_pl": "stopnie; Δφ ≤ 0° ⟺ ∠L osiąga ±180° ⟺ okrążenie −1."
+              "unit_check_pl": "stopnie; niedodatni margines fazy oznacza, że kąt wzmocnienia pętli osiąga ±180°, czyli okrążenie punktu −1."
             },
             {
               "formula_latex": "d_{-1} = \\min_{f}\\left|L(j\\omega) + 1\\right|",
@@ -1157,15 +1157,15 @@
                   "Metoda dowodu właściwa dla twierdzenia z obliczenia statycznego: certyfikat urządzenia, raport z testu, obliczenie albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
                   "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
                   "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
-                  "Impedancja sieci Z_grid(f) liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci Z_grid(f) obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli L = Z_grid/Z_conv i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
+                  "Impedancja sieci w funkcji częstotliwości liczona na wspólnej macierzy admitancyjnej z przekładnią transformatora i impedancją źródła zasilania — impedancja sieci w funkcji częstotliwości obecnego solvera jest liczona na macierzy admitancyjnej bez przekładni transformatora — dla przekształtnika na szynie 0,4 kV wychodzi około 1400 razy za duża — więc wzmocnienie pętli (impedancja sieci do impedancji przekształtnika) i każdy wniosek z kryterium Nyquista są niewiarygodne; wynik nie ma też niezależnej wyroczni.",
                   "Niezależna wyrocznia kryterium impedancyjnego (obliczenie ręczne albo program zewnętrzny) dla węzła przyłączenia przekształtnika.",
-                  "Do czasu poprawnego Z_grid(f): badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
+                  "Do czasu poprawnej impedancji sieci: badanie zewnętrzne interakcji przekształtnik–sieć albo dane producenta; wskaźnik strefy ujemnej rezystancji przekształtnika zależy wyłącznie od jego modelu i pozostaje informacją."
                 ],
                 "przyczyna_pl": "brak metody dowodu, która wykazuje wielkości z obliczenia statycznego",
                 "zastrzezenia": [
                   "Podstawa „Kryterium impedancyjne stabilności (Sun 2011, Wen 2016)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryterium z literatury — brak wymagania normatywnego operatora dla SSCI).",
                   "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
-                  "Zakres ważności: Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
+                  "Zakres ważności: Skan impedancji sieci i przekształtnika w paśmie podsynchronicznym — wynik nie obejmuje: impedancja sieci z przekładnią transformatora."
                 ],
                 "zdanie_pl": "Stabilność podsynchronicznej interakcji regulacyjnej (kryterium impedancyjne Nyquista) (Przekształtnik Farma PV) — ocena niewykonana: brak metody dowodu, która wykazuje wielkości z obliczenia statycznego; właściwa metoda: certyfikat urządzenia, raport z testu, obliczenie albo pomiar."
               },
@@ -1173,7 +1173,7 @@
               "zakres_waznosci": {
                 "model_urzadzenia": null,
                 "ograniczniki": [],
-                "opis_pl": "Skan impedancji Z_grid(f) i Z_conv(f) w paśmie podsynchronicznym",
+                "opis_pl": "Skan impedancji sieci i przekształtnika w paśmie podsynchronicznym",
                 "parametry_sieci": [],
                 "regulator": null,
                 "rodzaj_analizy": null,
@@ -2765,10 +2765,10 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "b3a92d27bc51c62bfd2ce13fcf6e4f4f93375d03af31169a7013a1995f3b4cf5",
-        "proof_id": "proof:v126:earthing_safety:3b6911a73a991180",
+        "proof_hash": "12cfb1bd1f55d1f32ae5d6ba13ebb0bf9957f186de77eaa8d6d1d98aac2f5d57",
+        "proof_id": "proof:v126:earthing_safety:e9ea3fa45d0f9a52",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
-        "source_result_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750",
+        "source_result_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3",
         "steps": [
           {
             "data": {
@@ -2842,7 +2842,7 @@
       "koperta": {
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
-        "deterministic_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750",
+        "deterministic_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety",
@@ -2855,19 +2855,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "7dc162b9629705d4f330d3d5ba16ff620b12f6068c3242dd39ea637218b066b1",
-        "report_id": "report:v126:earthing_safety:3b6911a73a991180",
+        "report_hash": "f0c3ef64ad72e893bd673e76b039ea670f6059b7a9fa710b161c3917cc2588b3",
+        "report_id": "report:v126:earthing_safety:e9ea3fa45d0f9a52",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earthing_safety:3b6911a73a991180"
+                "value": "proof:v126:earthing_safety:e9ea3fa45d0f9a52"
               },
               {
                 "label": "proof_hash",
-                "value": "b3a92d27bc51c62bfd2ce13fcf6e4f4f93375d03af31169a7013a1995f3b4cf5"
+                "value": "12cfb1bd1f55d1f32ae5d6ba13ebb0bf9957f186de77eaa8d6d1d98aac2f5d57"
               },
               {
                 "label": "trace_step_count",
@@ -2881,7 +2881,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750"
+                "value": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3"
               },
               {
                 "label": "solver_version",
@@ -2889,19 +2889,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "089b1066e40cab4f2e77a5aff9c7399612a5193b86d60133e604b592fb2d7103"
+                "value": "d705513b858aff490fdff786a1669d767a104a1adfb24982a5e9d99a238de4b5"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "b3a92d27bc51c62bfd2ce13fcf6e4f4f93375d03af31169a7013a1995f3b4cf5",
-        "source_result_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750"
+        "source_proof_hash": "12cfb1bd1f55d1f32ae5d6ba13ebb0bf9957f186de77eaa8d6d1d98aac2f5d57",
+        "source_result_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3"
       },
       "slad": {
         "analysis_type": "earthing_safety",
-        "deterministic_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750",
+        "deterministic_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "steps": [
           {
@@ -2981,20 +2981,20 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earthing_safety:3b6911a73a991180",
-        "report_ref": "report:v126:earthing_safety:3b6911a73a991180",
+        "proof_ref": "proof:v126:earthing_safety:e9ea3fa45d0f9a52",
+        "report_ref": "report:v126:earthing_safety:e9ea3fa45d0f9a52",
         "result": {
           "analysis_type": "earthing_safety",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "3b6911a73a991180dcfb51ae1c8784a0772745f6835bfa692e7a4abffa389750",
-          "input_hash": "089b1066e40cab4f2e77a5aff9c7399612a5193b86d60133e604b592fb2d7103",
+          "deterministic_hash": "e9ea3fa45d0f9a52dc2416df630786f6698755396783fa058292642430aee9b3",
+          "input_hash": "d705513b858aff490fdff786a1669d767a104a1adfb24982a5e9d99a238de4b5",
           "result": {
             "bus_ref": "bus_sn_main",
             "dane_przyjete": [
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
-                "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
+                "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                 "wartosc": {
                   "jednostka": "S/km",
                   "wartosc": 1.2e-06
@@ -3002,8 +3002,8 @@
               },
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV)",
-                "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV)",
+                "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                 "wartosc": {
                   "jednostka": "S/km",
                   "wartosc": 9.73893722613e-05
@@ -3011,8 +3011,8 @@
               },
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ)",
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "Ω",
                   "wartosc": 1.5
@@ -3020,8 +3020,8 @@
               },
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ)",
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "Ω",
                   "wartosc": 6.0
@@ -3048,7 +3048,7 @@
               {
                 "jakosc": "ESTIMATED",
                 "nazwa_pl": "Prąd nastawy dławika (Zespół uziemiający GPZ)",
-                "powod_pl": "środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "A",
                   "wartosc": 220.0
@@ -3098,15 +3098,15 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 3b6911a73a991180)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk e9ea3fa45d0f9a52)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
                     "dane_przyjete": [
                       {
                         "jakosc": "ESTIMATED",
-                        "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
-                        "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                        "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
+                        "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                         "wartosc": {
                           "jednostka": "S/km",
                           "wartosc": 1.2e-06
@@ -3114,8 +3114,8 @@
                       },
                       {
                         "jakosc": "ESTIMATED",
-                        "nazwa_pl": "B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV)",
-                        "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                        "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV)",
+                        "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                         "wartosc": {
                           "jednostka": "S/km",
                           "wartosc": 9.73893722613e-05
@@ -3123,8 +3123,8 @@
                       },
                       {
                         "jakosc": "ESTIMATED",
-                        "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ)",
-                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "Ω",
                           "wartosc": 1.5
@@ -3132,8 +3132,8 @@
                       },
                       {
                         "jakosc": "ESTIMATED",
-                        "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ)",
-                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "Ω",
                           "wartosc": 6.0
@@ -3160,7 +3160,7 @@
                       {
                         "jakosc": "ESTIMATED",
                         "nazwa_pl": "Prąd nastawy dławika (Zespół uziemiający GPZ)",
-                        "powod_pl": "środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "powod_pl": "środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "A",
                           "wartosc": 220.0
@@ -3227,15 +3227,15 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk 3b6911a73a991180)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk e9ea3fa45d0f9a52)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
                         "dane_przyjete": [
                           {
                             "jakosc": "ESTIMATED",
-                            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
-                            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                            "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
+                            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                             "wartosc": {
                               "jednostka": "S/km",
                               "wartosc": 1.2e-06
@@ -3243,8 +3243,8 @@
                           },
                           {
                             "jakosc": "ESTIMATED",
-                            "nazwa_pl": "B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV)",
-                            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                            "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV)",
+                            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                             "wartosc": {
                               "jednostka": "S/km",
                               "wartosc": 9.73893722613e-05
@@ -3252,8 +3252,8 @@
                           },
                           {
                             "jakosc": "ESTIMATED",
-                            "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ)",
-                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "Ω",
                               "wartosc": 1.5
@@ -3261,8 +3261,8 @@
                           },
                           {
                             "jakosc": "ESTIMATED",
-                            "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ)",
-                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "Ω",
                               "wartosc": 6.0
@@ -3289,7 +3289,7 @@
                           {
                             "jakosc": "ESTIMATED",
                             "nazwa_pl": "Prąd nastawy dławika (Zespół uziemiający GPZ)",
-                            "powod_pl": "środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "powod_pl": "środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "A",
                               "wartosc": 220.0
@@ -3398,13 +3398,13 @@
                     },
                     "powody_niepelnosci": [
                       "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                      "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                      "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                      "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                      "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                      "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                      "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                      "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
@@ -3439,13 +3439,13 @@
                       "zastrzezenia": [
                         "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-4 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-                        "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                        "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                        "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                        "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                        "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                        "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                        "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                         "Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                         "Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
@@ -3484,15 +3484,15 @@
                     "dowod": {
                       "domena_pl": null,
                       "metoda": "OBLICZENIE",
-                      "odniesienie": "bieg analizy specjalistycznej (odcisk 3b6911a73a991180)",
+                      "odniesienie": "bieg analizy specjalistycznej (odcisk e9ea3fa45d0f9a52)",
                       "poziom": "UNVALIDATED_MODEL",
                       "rodzaj_twierdzenia": "STATIC_CALCULATION",
                       "status_danych": {
                         "dane_przyjete": [
                           {
                             "jakosc": "ESTIMATED",
-                            "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
-                            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                            "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
+                            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                             "wartosc": {
                               "jednostka": "S/km",
                               "wartosc": 1.2e-06
@@ -3500,8 +3500,8 @@
                           },
                           {
                             "jakosc": "ESTIMATED",
-                            "nazwa_pl": "B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV)",
-                            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                            "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV)",
+                            "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                             "wartosc": {
                               "jednostka": "S/km",
                               "wartosc": 9.73893722613e-05
@@ -3509,8 +3509,8 @@
                           },
                           {
                             "jakosc": "ESTIMATED",
-                            "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ)",
-                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "Ω",
                               "wartosc": 1.5
@@ -3518,8 +3518,8 @@
                           },
                           {
                             "jakosc": "ESTIMATED",
-                            "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ)",
-                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                            "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "Ω",
                               "wartosc": 6.0
@@ -3546,7 +3546,7 @@
                           {
                             "jakosc": "ESTIMATED",
                             "nazwa_pl": "Prąd nastawy dławika (Zespół uziemiający GPZ)",
-                            "powod_pl": "środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                            "powod_pl": "środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                             "wartosc": {
                               "jednostka": "A",
                               "wartosc": 220.0
@@ -3655,13 +3655,13 @@
                     },
                     "powody_niepelnosci": [
                       "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                      "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                      "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                      "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                      "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                      "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                      "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                      "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                      "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                       "Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                       "Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                       "Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
@@ -3696,13 +3696,13 @@
                       "zastrzezenia": [
                         "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-5 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                         "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-                        "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                        "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                        "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                        "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                        "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                        "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                        "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                         "Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                         "Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
@@ -3751,38 +3751,38 @@
                 "pokrycie_programu_pl": "wymaganie wykazywane obliczeniem jednego biegu analizy — program badań nie dotyczy",
                 "powody_niepelnosci": [
                   "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                  "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                  "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                  "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                  "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                  "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                   "Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                   "Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                   "Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 1,5 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
                   "Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 6 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                   "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 1,5 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                   "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
@@ -3816,38 +3816,38 @@
                 "wyjasnienie": {
                   "czego_brakuje": [
                     "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                    "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 1,5 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
                     "Dana przyjęta bez walidacji: Kryterium napięcia krokowego (Z-5 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie krokowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 6 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
                     "Napięcie dotykowe rażeniowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Kryterium napięcia dotykowego rażeniowego (Z-4 rejestru założeń) (bez wartości liczbowej), jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Napięcie dotykowe rażeniowe uziomu nie większe od dopuszczalnego (wzór Sveraka: 1000 plus 1,5 × współczynnik warstwy powierzchniowej × jej rezystywność, razy 0,157, przez pierwiastek z czasu rażenia; ciało 70 kg). Wzór dopuszczalnego napięcia z praktyki IEEE 80, metoda Sveraka (wydanie i jednostka redakcyjna niepotwierdzone w programie).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "Napięcie krokowe nie większe od dopuszczalnego (Szyna SN): Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
@@ -3857,13 +3857,13 @@
                   "zastrzezenia": [
                     "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-4 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                     "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-                    "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny” = 2,5 MVA, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez znamionowy współczynnik mocy; IEC 60909-0:2016 pkt 6.3 wymaga mocy pozornej znamionowej z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto ją z mocy czynnej punktu pracy elementu. Wpływ: impedancja podprzejściowa skorygowana maszyny jest odwrotnie proporcjonalna do mocy pozornej znamionowej — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
                     "Dana przyjęta bez walidacji: reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny” = 0,15 p.u. (S_rG, U_rG), jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga reaktancji podprzejściowej z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto 0,15 p.u. Wpływ: impedancja zwarciowa maszyny jest proporcjonalna do reaktancji podprzejściowej — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
                     "Dana przyjęta bez walidacji: znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” = 0,8, jakość danej: oszacowane — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik korekcyjny impedancji generatora) wymaga znamionowego współczynnika mocy z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto 0,8. Wpływ: współczynnik korekcyjny impedancji maszyny zależy od znamionowego współczynnika mocy — inna wartość zmienia udział maszyny w prądach zwarciowych.",
@@ -4990,10 +4990,10 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "c8e77664e745d1197968df439f2934ef2034098a62c661f500b58c12f257f0b3",
-        "proof_id": "proof:v126:earth_fault_detection:206759489cf1e9a4",
+        "proof_hash": "d261cdc7dca7e52af3d639e11aa8289b50e5507f8a049e55164c67eee1ef95b5",
+        "proof_id": "proof:v126:earth_fault_detection:c684cda7126b2862",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
-        "source_result_hash": "206759489cf1e9a450e00e1bfdc40944ce76fd656ac801490d60d4b6f44ff9f1",
+        "source_result_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc",
         "steps": [
           {
             "data": {
@@ -5026,7 +5026,7 @@
       "koperta": {
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
-        "deterministic_hash": "206759489cf1e9a450e00e1bfdc40944ce76fd656ac801490d60d4b6f44ff9f1",
+        "deterministic_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection",
@@ -5039,19 +5039,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "57adcd5de5a776323fba328401fbbf74e3b01fb6c14c601f4482841fb2cd1c37",
-        "report_id": "report:v126:earth_fault_detection:206759489cf1e9a4",
+        "report_hash": "ed614e866f80febebf308d42ae56703065807b88816a549c0d5f94284f424036",
+        "report_id": "report:v126:earth_fault_detection:c684cda7126b2862",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earth_fault_detection:206759489cf1e9a4"
+                "value": "proof:v126:earth_fault_detection:c684cda7126b2862"
               },
               {
                 "label": "proof_hash",
-                "value": "c8e77664e745d1197968df439f2934ef2034098a62c661f500b58c12f257f0b3"
+                "value": "d261cdc7dca7e52af3d639e11aa8289b50e5507f8a049e55164c67eee1ef95b5"
               },
               {
                 "label": "trace_step_count",
@@ -5065,7 +5065,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "206759489cf1e9a450e00e1bfdc40944ce76fd656ac801490d60d4b6f44ff9f1"
+                "value": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc"
               },
               {
                 "label": "solver_version",
@@ -5073,19 +5073,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "379c0fc59cfe3da4d4a6f9f699f1f11a761e6da38a253cd0b75ebcf40fdac17e"
+                "value": "efcf27ca8104870eee0b11f9c1adda5444a2431be140a22ba1d8d12054f7fbaf"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "c8e77664e745d1197968df439f2934ef2034098a62c661f500b58c12f257f0b3",
-        "source_result_hash": "206759489cf1e9a450e00e1bfdc40944ce76fd656ac801490d60d4b6f44ff9f1"
+        "source_proof_hash": "d261cdc7dca7e52af3d639e11aa8289b50e5507f8a049e55164c67eee1ef95b5",
+        "source_result_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc"
       },
       "slad": {
         "analysis_type": "earth_fault_detection",
-        "deterministic_hash": "206759489cf1e9a450e00e1bfdc40944ce76fd656ac801490d60d4b6f44ff9f1",
+        "deterministic_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "steps": [
           {
@@ -5122,13 +5122,13 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earth_fault_detection:206759489cf1e9a4",
-        "report_ref": "report:v126:earth_fault_detection:206759489cf1e9a4",
+        "proof_ref": "proof:v126:earth_fault_detection:c684cda7126b2862",
+        "report_ref": "report:v126:earth_fault_detection:c684cda7126b2862",
         "result": {
           "analysis_type": "earth_fault_detection",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "206759489cf1e9a450e00e1bfdc40944ce76fd656ac801490d60d4b6f44ff9f1",
-          "input_hash": "379c0fc59cfe3da4d4a6f9f699f1f11a761e6da38a253cd0b75ebcf40fdac17e",
+          "deterministic_hash": "c684cda7126b2862cf35a9052550b9b7321712fa0439fb9055d61da063f702bc",
+          "input_hash": "efcf27ca8104870eee0b11f9c1adda5444a2431be140a22ba1d8d12054f7fbaf",
           "result": {
             "alternative_method": "fifth_harmonic",
             "kompletnosc_dowodu": "NIEPELNY",
@@ -5138,7 +5138,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "DEKLARACJA",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 206759489cf1e9a4)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk c684cda7126b2862)",
                   "poziom": "DECLARATION",
                   "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
                   "status_danych": {
@@ -5316,10 +5316,10 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "7e9a6b3dd1b09e9f5539fca70d30d00b5bd9d85635d263405cf866884ef60162",
-        "proof_id": "proof:v126:transient_trv:be1f7b49982f047d",
+        "proof_hash": "473ee3279434994472652ce5ecf0ab5996172f9508615bd7bf038d733bac023f",
+        "proof_id": "proof:v126:transient_trv:5444c55d04105bdd",
         "run_id": "run-v126-scena-akademickie-transient_trv",
-        "source_result_hash": "be1f7b49982f047d5ca552600d0e73a77fbf307c0283ac8074f762bba62eb83d",
+        "source_result_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50",
         "steps": [
           {
             "data": {
@@ -5347,7 +5347,7 @@
       "koperta": {
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
-        "deterministic_hash": "be1f7b49982f047d5ca552600d0e73a77fbf307c0283ac8074f762bba62eb83d",
+        "deterministic_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv",
@@ -5360,19 +5360,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "d4dd75d8640391973d6c1272dd59e0b6e925b47c0d5aecad48a575acd8128ae7",
-        "report_id": "report:v126:transient_trv:be1f7b49982f047d",
+        "report_hash": "29fc8b84cee513ce1f4cc63fbe2af127406d22f32499956093137963057eadd4",
+        "report_id": "report:v126:transient_trv:5444c55d04105bdd",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:transient_trv:be1f7b49982f047d"
+                "value": "proof:v126:transient_trv:5444c55d04105bdd"
               },
               {
                 "label": "proof_hash",
-                "value": "7e9a6b3dd1b09e9f5539fca70d30d00b5bd9d85635d263405cf866884ef60162"
+                "value": "473ee3279434994472652ce5ecf0ab5996172f9508615bd7bf038d733bac023f"
               },
               {
                 "label": "trace_step_count",
@@ -5386,7 +5386,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "be1f7b49982f047d5ca552600d0e73a77fbf307c0283ac8074f762bba62eb83d"
+                "value": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50"
               },
               {
                 "label": "solver_version",
@@ -5394,19 +5394,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "24feb381078be3c9bbe510982ea241fcc3d784a6d28cc25c832eb5bc8a219bdb"
+                "value": "f22a1c9bc42cef22a76f4532589c2fdb5f77ac39f8324c8e464e630acc0b891e"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "7e9a6b3dd1b09e9f5539fca70d30d00b5bd9d85635d263405cf866884ef60162",
-        "source_result_hash": "be1f7b49982f047d5ca552600d0e73a77fbf307c0283ac8074f762bba62eb83d"
+        "source_proof_hash": "473ee3279434994472652ce5ecf0ab5996172f9508615bd7bf038d733bac023f",
+        "source_result_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50"
       },
       "slad": {
         "analysis_type": "transient_trv",
-        "deterministic_hash": "be1f7b49982f047d5ca552600d0e73a77fbf307c0283ac8074f762bba62eb83d",
+        "deterministic_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "steps": [
           {
@@ -5438,13 +5438,13 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:transient_trv:be1f7b49982f047d",
-        "report_ref": "report:v126:transient_trv:be1f7b49982f047d",
+        "proof_ref": "proof:v126:transient_trv:5444c55d04105bdd",
+        "report_ref": "report:v126:transient_trv:5444c55d04105bdd",
         "result": {
           "analysis_type": "transient_trv",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "be1f7b49982f047d5ca552600d0e73a77fbf307c0283ac8074f762bba62eb83d",
-          "input_hash": "24feb381078be3c9bbe510982ea241fcc3d784a6d28cc25c832eb5bc8a219bdb",
+          "deterministic_hash": "5444c55d04105bddbb06a9e00167e3ca09191f164df03550d76d70c5cc4f2a50",
+          "input_hash": "f22a1c9bc42cef22a76f4532589c2fdb5f77ac39f8324c8e464e630acc0b891e",
           "result": {
             "ferroresonance": {
               "recommendation": "brak przesłanek do ferrorezonansu",
@@ -5461,7 +5461,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk be1f7b49982f047d)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 5444c55d04105bdd)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -7152,10 +7152,10 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "117cdb948f3b8ec24a6747ced554ee80a2742b0c933a8eece32d2f151ada7a6a",
-        "proof_id": "proof:v126:neutral_earthing_design:29c2cea4851eba98",
+        "proof_hash": "9a5f905dea155ffa8eb7ebb0dbc8a34cc6a18563ae1f9d912bf903a120d49f56",
+        "proof_id": "proof:v126:neutral_earthing_design:938af6d7dea03b31",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
-        "source_result_hash": "29c2cea4851eba9870a8055cf5f47023ec3961379e94c8bae000e234e88c45bd",
+        "source_result_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a",
         "steps": [
           {
             "data": {
@@ -7258,7 +7258,7 @@
       "koperta": {
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
-        "deterministic_hash": "29c2cea4851eba9870a8055cf5f47023ec3961379e94c8bae000e234e88c45bd",
+        "deterministic_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design",
@@ -7271,19 +7271,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "77aaac60cb88304869b8cd5141819966f3cf03e88bc96e18a10e81f831317dc6",
-        "report_id": "report:v126:neutral_earthing_design:29c2cea4851eba98",
+        "report_hash": "bfa38d535000d1820f9506f1d8ab876cabe11e43e5230870b9d2c39466d8eea1",
+        "report_id": "report:v126:neutral_earthing_design:938af6d7dea03b31",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:neutral_earthing_design:29c2cea4851eba98"
+                "value": "proof:v126:neutral_earthing_design:938af6d7dea03b31"
               },
               {
                 "label": "proof_hash",
-                "value": "117cdb948f3b8ec24a6747ced554ee80a2742b0c933a8eece32d2f151ada7a6a"
+                "value": "9a5f905dea155ffa8eb7ebb0dbc8a34cc6a18563ae1f9d912bf903a120d49f56"
               },
               {
                 "label": "trace_step_count",
@@ -7297,7 +7297,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "29c2cea4851eba9870a8055cf5f47023ec3961379e94c8bae000e234e88c45bd"
+                "value": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a"
               },
               {
                 "label": "solver_version",
@@ -7305,19 +7305,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "3ce9498f3106e231587a63bfcf7caac9bd80725696271908a1827ed247617a6b"
+                "value": "3137ffb603700dda6852031f88d0bcc8ea9b7b5eb08c714c47e16858e1d08a9c"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "117cdb948f3b8ec24a6747ced554ee80a2742b0c933a8eece32d2f151ada7a6a",
-        "source_result_hash": "29c2cea4851eba9870a8055cf5f47023ec3961379e94c8bae000e234e88c45bd"
+        "source_proof_hash": "9a5f905dea155ffa8eb7ebb0dbc8a34cc6a18563ae1f9d912bf903a120d49f56",
+        "source_result_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a"
       },
       "slad": {
         "analysis_type": "neutral_earthing_design",
-        "deterministic_hash": "29c2cea4851eba9870a8055cf5f47023ec3961379e94c8bae000e234e88c45bd",
+        "deterministic_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "steps": [
           {
@@ -7430,13 +7430,13 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:neutral_earthing_design:29c2cea4851eba98",
-        "report_ref": "report:v126:neutral_earthing_design:29c2cea4851eba98",
+        "proof_ref": "proof:v126:neutral_earthing_design:938af6d7dea03b31",
+        "report_ref": "report:v126:neutral_earthing_design:938af6d7dea03b31",
         "result": {
           "analysis_type": "neutral_earthing_design",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "29c2cea4851eba9870a8055cf5f47023ec3961379e94c8bae000e234e88c45bd",
-          "input_hash": "3ce9498f3106e231587a63bfcf7caac9bd80725696271908a1827ed247617a6b",
+          "deterministic_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a",
+          "input_hash": "3137ffb603700dda6852031f88d0bcc8ea9b7b5eb08c714c47e16858e1d08a9c",
           "result": {
             "active_component_a": 2.5303,
             "active_component_awsc_a": null,
@@ -7473,8 +7473,8 @@
             "dane_przyjete": [
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
-                "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
+                "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                 "wartosc": {
                   "jednostka": "S/km",
                   "wartosc": 1.2e-06
@@ -7482,8 +7482,8 @@
               },
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV)",
-                "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV)",
+                "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                 "wartosc": {
                   "jednostka": "S/km",
                   "wartosc": 9.73893722613e-05
@@ -7491,8 +7491,8 @@
               },
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ)",
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "Ω",
                   "wartosc": 1.5
@@ -7500,8 +7500,8 @@
               },
               {
                 "jakosc": "ESTIMATED",
-                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ)",
-                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "Ω",
                   "wartosc": 6.0
@@ -7528,7 +7528,7 @@
               {
                 "jakosc": "ESTIMATED",
                 "nazwa_pl": "Prąd nastawy dławika (Zespół uziemiający GPZ)",
-                "powod_pl": "środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                "powod_pl": "środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                 "wartosc": {
                   "jednostka": "A",
                   "wartosc": 220.0
@@ -7546,15 +7546,15 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 29c2cea4851eba98)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 938af6d7dea03b31)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
                     "dane_przyjete": [
                       {
                         "jakosc": "ESTIMATED",
-                        "nazwa_pl": "B′0 wartość robocza (Linia SN 1)",
-                        "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                        "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1)",
+                        "powod_pl": "Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                         "wartosc": {
                           "jednostka": "S/km",
                           "wartosc": 1.2e-06
@@ -7562,8 +7562,8 @@
                       },
                       {
                         "jakosc": "ESTIMATED",
-                        "nazwa_pl": "B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV)",
-                        "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
+                        "nazwa_pl": "Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV)",
+                        "powod_pl": "Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
                         "wartosc": {
                           "jednostka": "S/km",
                           "wartosc": 9.73893722613e-05
@@ -7571,8 +7571,8 @@
                       },
                       {
                         "jakosc": "ESTIMATED",
-                        "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ)",
-                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "nazwa_pl": "Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "Ω",
                           "wartosc": 1.5
@@ -7580,8 +7580,8 @@
                       },
                       {
                         "jakosc": "ESTIMATED",
-                        "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ)",
-                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "nazwa_pl": "Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ)",
+                        "powod_pl": "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "Ω",
                           "wartosc": 6.0
@@ -7608,7 +7608,7 @@
                       {
                         "jakosc": "ESTIMATED",
                         "nazwa_pl": "Prąd nastawy dławika (Zespół uziemiający GPZ)",
-                        "powod_pl": "środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                        "powod_pl": "środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                         "wartosc": {
                           "jednostka": "A",
                           "wartosc": 220.0
@@ -7693,13 +7693,13 @@
                 },
                 "powody_niepelnosci": [
                   "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
-                  "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                  "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                  "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                  "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                  "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                  "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                  "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                   "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie — prąd dławika równy prądowi pojemnościowemu sieci (s. 30), wartości dopuszczalnej nie podaje."
                 ],
                 "przedmiot": {
@@ -7731,13 +7731,13 @@
                   "zastrzezenia": [
                     "Podstawa „Rejestr założeń inżynierskich kryteriów analiz specjalistycznych MV-DESIGN-PRO”, wydanie 2026-10-29, § Z-6 (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                     "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-                    "Dana przyjęta bez walidacji: B′0 wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: B′0 wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: B′0 w parametrach odcinka (dane producenta albo pomiar).",
-                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego R0 (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego R0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego X0 (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego X0 w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Linia SN 1) = 0,0000012 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa 0,4 susceptancji składowej zgodnej — wartość robocza linii SN bez pojemności doziemnej w modelu (założenie inżynierskie: linia bez przewodu odgromowego, metoda odbić zwierciadlanych — stosunek pojemności składowej zerowej do zgodnej dla typowych słupów SN 0,34–0,45; rozrzut ±15 % wobec geometrii rzeczywistej). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Dana przyjęta bez walidacji: Susceptancja jednostkowa składowej zerowej wartość robocza (Kabel SN przyłączeniowy Farma PV) = 0,00009739 S/km, jakość danej: oszacowane — Susceptancja jednostkowa składowej zerowej równa susceptancji składowej zgodnej — wartość robocza kabla SN bez pojemności doziemnej w modelu (założenie inżynierskie: żyły z ekranem nad izolacją każdej żyły, pole promieniowe — IEC 60502-2; jedyną pojemnością żyły jest pojemność żyła–ekran, więc pojemności obu składowych są równe). Zmień wartość: Susceptancja jednostkowa składowej zerowej w parametrach odcinka (dane producenta albo pomiar).",
+                    "Dana przyjęta bez walidacji: Rezystancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 1,5 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Rezystancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Reaktancja zerowa transformatora uziemiającego (Zespół uziemiający GPZ) = 6 Ω, jakość danej: oszacowane — założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta. Zmień wartość: Reaktancja zerowa transformatora uziemiającego w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd minimalny zakresu dławika (Zespół uziemiający GPZ) = 40 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd minimalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Prąd maksymalny zakresu dławika (Zespół uziemiający GPZ) = 400 A, jakość danej: oszacowane — ENEA Zeszyt 1 §16 s. 29: parametry dławika minimum 40–400 A; s. 31: płynna regulacja prądu kompensacyjnego 10–100 %. Zmień wartość: Prąd maksymalny zakresu dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
-                    "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (I_min + I_max)/2 — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
+                    "Dana przyjęta bez walidacji: Prąd nastawy dławika (Zespół uziemiający GPZ) = 220 A, jakość danej: oszacowane — środek zakresu regulacji dławika (połowa sumy prądu minimalnego i maksymalnego) — wartość robocza do zastąpienia nastawą regulatora albo położeniem zaczepu (zakres z wartości roboczej). Zmień wartość: Prąd nastawy dławika w parametrach zespołu uziemiającego (dane producenta albo nastawa).",
                     "Dana przyjęta bez walidacji: Kryterium prądu resztkowego sieci kompensowanej (Z-6 rejestru założeń) = 10 %, jakość danej: oszacowane — Założenie inżynierskie programu, nie wartość normowa: Prąd resztkowy dławika modelu nie większy niż 10 % prądu pojemnościowego doziemienia sieci. Założenie projektowe bez podstawy normowej w programie: udziału prądu resztkowego ani rozstrojenia kompensacji nie podaje żadna norma ani wytyczna zapisana w rejestrze źródeł — ENEA Zeszyt 1 §16 wymaga doboru uziemienia punktu neutralnego w analizie projektu i zakazuje pracy w rezonansie — prąd dławika równy prądowi pojemnościowemu sieci (s. 30), wartości dopuszczalnej nie podaje.",
                     "Zakres ważności: Galwanicznie połączona sieć SN z zespołem uziemiającym modelu; prąd pojemnościowy z susceptancji zerowej linii, kabli i baterii tej sieci; prąd doziemienia z impedancji punktów neutralnych w ruchu — wynik nie obejmuje: straty czynne dławika i upływność izolacji sieci (rzeczywisty prąd resztkowy jest nie mniejszy); impedancje zgodna i przeciwna sieci w prądzie rezystora (strona bezpieczna)."
                   ],

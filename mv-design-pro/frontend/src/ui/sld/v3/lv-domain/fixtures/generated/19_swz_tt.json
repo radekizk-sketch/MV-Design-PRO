@@ -656,7 +656,7 @@
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "3723db6d6dfc273d91ead11562aecb7be0b0a77a1cb234a9c4657bbefcf1d656",
+  "projection_hash": "89ab727da6caac7a69d731fddaf02c44a209800948b4fb675959dee9a5bf40e0",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -712,13 +712,13 @@
                       "x_ohm": 0.000355555556
                     },
                     {
-                      "label": "Uziom punktu neutralnego transformatora R_B",
+                      "label": "Uziom punktu neutralnego transformatora",
                       "magnitude_ohm": 2.0,
                       "r_ohm": 2.0,
                       "x_ohm": 0.0
                     },
                     {
-                      "label": "Uziom instalacji odbiorczej R_A",
+                      "label": "Uziom instalacji odbiorczej",
                       "magnitude_ohm": 25.0,
                       "r_ohm": 25.0,
                       "x_ohm": 0.0
@@ -752,7 +752,7 @@
                       "method": "TT: droga powrotu prądu zwarcia doziemnego przez uziom instalacji i uziom punktu neutralnego; przewód ochronny kabla zasilającego nie należy do pętli",
                       "r_a_ohm": 25.0,
                       "r_b_ohm": 2.0,
-                      "return_conductor_pominiety": "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)",
+                      "return_conductor_pominiety": "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy instalacji i stacji)",
                       "step": "uklad_tt_droga_powrotu"
                     },
                     {
@@ -773,12 +773,12 @@
                           "x_ohm": 0.000355555556
                         },
                         {
-                          "label": "Uziom punktu neutralnego transformatora R_B",
+                          "label": "Uziom punktu neutralnego transformatora",
                           "r_ohm": 2.0,
                           "x_ohm": 0.0
                         },
                         {
-                          "label": "Uziom instalacji odbiorczej R_A",
+                          "label": "Uziom instalacji odbiorczej",
                           "r_ohm": 25.0,
                           "x_ohm": 0.0
                         }
@@ -852,7 +852,7 @@
                 "fault_loop": null,
                 "hop_count": 3,
                 "kod_odmowy": "nn.brak_r_a",
-                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „Zacisk Odbiór z RCD” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej — żaden odbiór na szynie „Zacisk Odbiór z RCD” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij rezystancję uziomu odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
                 "status": "brak danych",
                 "tt_it": null
               },
@@ -861,7 +861,7 @@
                 "fault_loop": null,
                 "hop_count": 2,
                 "kod_odmowy": "nn.brak_r_a",
-                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-01 zacisk wyjściowy” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej — żaden odbiór na szynie „QF-01 zacisk wyjściowy” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij rezystancję uziomu odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
                 "status": "brak danych",
                 "tt_it": null
               }
@@ -896,13 +896,13 @@
                     "x_ohm": 0.000355555556
                   },
                   {
-                    "label": "Uziom punktu neutralnego transformatora R_B",
+                    "label": "Uziom punktu neutralnego transformatora",
                     "magnitude_ohm": 2.0,
                     "r_ohm": 2.0,
                     "x_ohm": 0.0
                   },
                   {
-                    "label": "Uziom instalacji odbiorczej R_A",
+                    "label": "Uziom instalacji odbiorczej",
                     "magnitude_ohm": 25.0,
                     "r_ohm": 25.0,
                     "x_ohm": 0.0
@@ -936,7 +936,7 @@
                     "method": "TT: droga powrotu prądu zwarcia doziemnego przez uziom instalacji i uziom punktu neutralnego; przewód ochronny kabla zasilającego nie należy do pętli",
                     "r_a_ohm": 25.0,
                     "r_b_ohm": 2.0,
-                    "return_conductor_pominiety": "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy R_A i R_B)",
+                    "return_conductor_pominiety": "Przewód ochronny kabla — poza pętlą TT (powrót przez uziomy instalacji i stacji)",
                     "step": "uklad_tt_droga_powrotu"
                   },
                   {
@@ -957,12 +957,12 @@
                         "x_ohm": 0.000355555556
                       },
                       {
-                        "label": "Uziom punktu neutralnego transformatora R_B",
+                        "label": "Uziom punktu neutralnego transformatora",
                         "r_ohm": 2.0,
                         "x_ohm": 0.0
                       },
                       {
-                        "label": "Uziom instalacji odbiorczej R_A",
+                        "label": "Uziom instalacji odbiorczej",
                         "r_ohm": 25.0,
                         "x_ohm": 0.0
                       }
@@ -1226,7 +1226,7 @@
                           "jednostka_redakcyjna": "Tab. 41.1 (układ TT, obwody odbiorcze)",
                           "rodzaj": "NORMA",
                           "status": "WSKAZANE",
-                          "uwagi_pl": "IEC 60364-4-41 Tab. 41.1, układ TT, obwody odbiorcze, wg pasma U0. Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” — cytuje 0,2 s (TT, 230 V) wprost; (2) rcddisconnectiontime.co.uk, „BS 7671:2018+A4:2026 Table 41.1” — tabela pełna TT AC: 50–120V:0,3s / 120–230V:0,2s / 230–400V:0,07s / >400V:0,04s. Status REFERENCYJNY (jak wyżej).",
+                          "uwagi_pl": "IEC 60364-4-41 Tab. 41.1, układ TT, obwody odbiorcze, wg pasma napięcia fazowego. Zweryfikowano w dwóch niezależnych źródłach publicznych: (1) NAPIT / Professional Electrician, „The requirements for automatic disconnection in case of a fault” — cytuje 0,2 s (TT, 230 V) wprost; (2) rcddisconnectiontime.co.uk, „BS 7671:2018+A4:2026 Table 41.1” — tabela pełna TT AC: 50–120V:0,3s / 120–230V:0,2s / 230–400V:0,07s / >400V:0,04s. Status REFERENCYJNY (jak wyżej).",
                           "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
                         },
                         "wartosc": {
@@ -1569,7 +1569,7 @@
                 "fault_loop": null,
                 "hop_count": 3,
                 "kod_odmowy": "nn.brak_rcd",
-                "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „Zacisk Odbiór bez RCD” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
+                "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „Zacisk Odbiór bez RCD” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (znamionowy prąd różnicowy zadziałania, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
                 "status": "brak danych",
                 "tt_it": null
               },
@@ -1578,7 +1578,7 @@
                 "fault_loop": null,
                 "hop_count": 2,
                 "kod_odmowy": "nn.brak_r_a",
-                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej R_A — żaden odbiór na szynie „QF-02 zacisk wyjściowy” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij R_A odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
+                "reason_pl": "Pętla zwarcia doziemnego układu TT domyka się przez uziom instalacji odbiorczej — żaden odbiór na szynie „QF-02 zacisk wyjściowy” nie deklaruje rezystancji uziomu (pole odbioru nN „rezystancja uziomu instalacji”). Uzupełnij rezystancję uziomu odbioru w tym punkcie; napięcie dotykowe i prąd doziemny nie są liczone bez niej.",
                 "status": "brak danych",
                 "tt_it": null
               }
@@ -1593,7 +1593,7 @@
                 "rcd"
               ],
               "network_system": "TT",
-              "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „Zacisk Odbiór bez RCD” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (prąd różnicowy znamionowy I_Δn, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
+              "reason_pl": "Ochrona przeciwporażeniowa w układzie TT opiera się na wyłączniku różnicowoprądowym — na trasie do punktu „Zacisk Odbiór bez RCD” nie ma aparatu z wiązaniem katalogowym wyłącznika różnicowoprądowego (znamionowy prąd różnicowy zadziałania, czasy wyłączenia). Dodaj wyłącznik różnicowoprądowy w torze instalacji odbiorczej.",
               "station_name": "Stacja TT",
               "station_ref": "stTT",
               "status": "brak danych"

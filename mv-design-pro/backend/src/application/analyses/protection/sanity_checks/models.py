@@ -166,10 +166,10 @@ class ProtectionSanityCheckResult:
 
 SANITY_CHECK_CODE_LABELS_PL: dict[SanityCheckCode, str] = {
     # Napieciowe
-    SanityCheckCode.VOLT_MISSING_UN: "Brak wartości Un dla nastawy napięciowej",
+    SanityCheckCode.VOLT_MISSING_UN: "Brak napięcia znamionowego dla nastawy napięciowej",
     SanityCheckCode.VOLT_OVERLAP: "Nakładanie się progów U< i U> (U< >= U>)",
-    SanityCheckCode.VOLT_U_LT_TOO_LOW: "Próg U< zbyt niski (< 0,5×Un)",
-    SanityCheckCode.VOLT_U_GT_TOO_HIGH: "Próg U> zbyt wysoki (> 1,2×Un)",
+    SanityCheckCode.VOLT_U_LT_TOO_LOW: "Próg podnapięciowy zbyt niski (poniżej połowy napięcia znamionowego)",
+    SanityCheckCode.VOLT_U_GT_TOO_HIGH: "Próg nadnapięciowy zbyt wysoki (powyżej 1,2 napięcia znamionowego)",
     # Czestotliwosciowe
     SanityCheckCode.FREQ_OVERLAP: "Nakładanie się progów f< i f> (f< >= f>)",
     SanityCheckCode.FREQ_F_LT_TOO_LOW: "Próg f< zbyt niski (< 45 Hz)",
@@ -178,10 +178,10 @@ SANITY_CHECK_CODE_LABELS_PL: dict[SanityCheckCode, str] = {
     SanityCheckCode.ROCOF_NON_POSITIVE: "df/dt nieadodatnie (<= 0)",
     SanityCheckCode.ROCOF_TOO_HIGH: "df/dt zbyt wysokie (> 10 Hz/s)",
     # Nadpradowe
-    SanityCheckCode.OC_MISSING_IN: "Brak wartości In dla nastawy prądowej",
+    SanityCheckCode.OC_MISSING_IN: "Brak prądu znamionowego dla nastawy prądowej",
     SanityCheckCode.OC_OVERLAP: "Nakładanie się progów I> i I>> (I> >= I>>)",
-    SanityCheckCode.OC_I_GT_TOO_LOW: "Próg I> zbyt niski (< 1,0×In)",
-    SanityCheckCode.OC_I_INST_TOO_LOW: "Próg I>> zbyt niski (< 1,5×In)",
+    SanityCheckCode.OC_I_GT_TOO_LOW: "Próg nadprądowy zwłoczny zbyt niski (poniżej prądu znamionowego)",
+    SanityCheckCode.OC_I_INST_TOO_LOW: "Próg nadprądowy bezzwłoczny zbyt niski (poniżej 1,5 prądu znamionowego)",
     # SPZ
     SanityCheckCode.SPZ_NO_TRIP_FUNCTION: "SPZ aktywne bez funkcji wyzwalającej",
     SanityCheckCode.SPZ_MISSING_CYCLE_DATA: "Brak danych cyklu SPZ",

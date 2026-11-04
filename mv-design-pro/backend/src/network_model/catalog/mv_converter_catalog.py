@@ -578,8 +578,9 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
         q_mvar=1.32,
         zrodlo=_ZRODLO_SMA_SC2200,
         nota=(
-            "Karta: S_n = 2200 kVA przy cos φ = 1 (35 °C; 2000 kVA przy 50 °C), 1760 kW przy "
-            "cos φ = 0,8, U_n = 385 V (308–462 V), I_AC,nom = I_AC,max = 3300 A, cos φ "
+            "Karta: moc znamionowa 2200 kVA przy współczynniku mocy 1 (35 °C; 2000 kVA przy "
+            "50 °C), 1760 kW przy współczynniku 0,8, napięcie znamionowe 385 V (308–462 V), "
+            "prąd AC znamionowy równy maksymalnemu 3300 A, współczynnik mocy "
             "regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie."
         ),
         nota_q=_NOTA_Q_SMA,
@@ -595,8 +596,9 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
         q_mvar=1.485,
         zrodlo=_ZRODLO_SMA_SC2200,
         nota=(
-            "Karta: S_n = 2475 kVA przy cos φ = 1 (35 °C; 2250 kVA przy 50 °C), 1980 kW przy "
-            "cos φ = 0,8, U_n = 434 V (347–521 V), I_AC,nom = I_AC,max = 3300 A, cos φ "
+            "Karta: moc znamionowa 2475 kVA przy współczynniku mocy 1 (35 °C; 2250 kVA przy "
+            "50 °C), 1980 kW przy współczynniku 0,8, napięcie znamionowe 434 V (347–521 V), "
+            "prąd AC znamionowy równy maksymalnemu 3300 A, współczynnik mocy "
             "regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie."
         ),
         nota_q=_NOTA_Q_SMA,
@@ -640,8 +642,10 @@ CONVERTER_PV_NN_KARTY_PRODUCENTOW: list[dict[str, Any]] = [
         pn_ac_mw=0.3,
         zrodlo=_ZRODLO_HUAWEI_330KTL,
         nota=(
-            "Karta: P_n,AC = 300 kW, S_max = 330 kVA, P_max (cos φ = 1) = 330 kW, U_n = 800 V "
-            "(3W + PE), I_n = 216,6 A, I_max = 238,2 A, cos φ regulowany 0,8 LG – 0,8 LD."
+            "Karta: moc znamionowa AC 300 kW, moc pozorna maksymalna 330 kVA, moc czynna "
+            "maksymalna przy współczynniku mocy 1 — 330 kW, napięcie znamionowe 800 V (3W + PE), "
+            "prąd znamionowy 216,6 A, prąd maksymalny 238,2 A, współczynnik mocy regulowany "
+            "0,8 LG – 0,8 LD."
         ),
         nota_q=(
             "Moduł mocy biernej 0,6 mocy pozornej maksymalnej: zakres współczynnika mocy "

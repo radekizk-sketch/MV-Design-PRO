@@ -416,7 +416,7 @@ PRZESTRZENIE_BEZ_SEKCJI: Mapping[str, str] = MappingProxyType(
         ),
         "PRZEWOD_LINII_WN": (
             "przewód linii 110 kV — dane wyrobu wejściowe obliczenia; model obwodu linii "
-            "(R′, X′, B′, Z′0) powstaje z geometrii słupa projektu, nie z typu przewodu"
+            "(rezystancja, reaktancja, susceptancja, impedancja zerowa) powstaje z geometrii słupa projektu, nie z typu przewodu"
         ),
     }
 )

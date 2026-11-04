@@ -126,7 +126,7 @@ class OcenaWarunkowPrzylaczenia:
             "Wielkości z węzła bilansującego biegu rozpływu (punkt przyłączenia do sieci OSD).",
             "P > 0 oznacza pobór z sieci, P < 0 — oddawanie do sieci.",
             "Limit mocy przyłączeniowej dotyczy modułu mocy czynnej (oba kierunki).",
-            "cosφ liczone z mocy czynnej i biernej w punkcie, bez korekty kierunku.",
+            "Współczynnik mocy liczony z mocy czynnej i biernej w punkcie, bez korekty kierunku.",
             "Brak danej daje kryterium niesprawdzone z nazwanym brakiem, nigdy wartość "
             "zastępczą.",
         )
@@ -298,7 +298,7 @@ def ocen_warunki_przylaczenia(
             _pozycja_niedostepna(
                 KRYTERIUM_COS_PHI,
                 "-",
-                "Nie można ocenić cosφ w punkcie przyłączenia — brak danych wejściowych.",
+                "Nie można ocenić współczynnika mocy w punkcie przyłączenia — brak danych wejściowych.",
                 braki_cos,
             )
         )
@@ -315,7 +315,7 @@ def ocen_warunki_przylaczenia(
                 wymagana=_round6(cos_phi_wymagany),
                 jednostka="-",
                 opis_pl=(
-                    f"cosφ w punkcie {format_liczba(round(cos_phi, 4))} wobec wymaganego "
+                    f"Współczynnik mocy w punkcie {format_liczba(round(cos_phi, 4))} wobec wymaganego "
                     f"{format_liczba(round(cos_phi_wymagany, 4))}"
                     f" (wymaganie {'niedotrzymane' if naruszony else 'dotrzymane'})."
                 ),

@@ -79,7 +79,9 @@ class ActionEnvelope:
             action_type=str(data["action_type"]),
             payload=dict(data.get("payload", {})),
             created_at=str(data["created_at"]),
-            status=stan_akcji(data["status"]) if data.get("status") is not None else None,
+            status=(
+                stan_akcji(data["status"]) if data.get("status") is not None else None
+            ),
             actor=data.get("actor"),
             schema_version=data.get("schema_version"),
         )
@@ -159,23 +161,30 @@ class BatchActionResult:
             parent_snapshot_id=str(data["parent_snapshot_id"]),
             new_snapshot_id=data.get("new_snapshot_id"),
             action_results=[
-                ActionResult.from_dict(result) for result in data.get("action_results", [])
+                ActionResult.from_dict(result)
+                for result in data.get("action_results", [])
             ],
             errors=[ActionIssue.from_dict(err) for err in data.get("errors", [])],
         )
 
 
-def validate_action_envelope(envelope: ActionEnvelope, snapshot: NetworkSnapshot) -> ActionResult:
+def validate_action_envelope(
+    envelope: ActionEnvelope, snapshot: NetworkSnapshot
+) -> ActionResult:
     errors: list[ActionIssue] = []
 
     _validate_envelope_fields(envelope, errors)
 
-    if isinstance(envelope.action_type, str) and envelope.action_type not in ACTION_TYPES:
+    if (
+        isinstance(envelope.action_type, str)
+        and envelope.action_type not in ACTION_TYPES
+    ):
         errors.append(
             ActionIssue(
                 code="unknown_action_type",
                 message=(
-                    "Unrecognized action_type. " f"Expected one of: {', '.join(ACTION_TYPES)}."
+                    "Unrecognized action_type. "
+                    f"Expected one of: {', '.join(ACTION_TYPES)}."
                 ),
                 path="action_type",
             )
@@ -184,7 +193,9 @@ def validate_action_envelope(envelope: ActionEnvelope, snapshot: NetworkSnapshot
     if isinstance(envelope.payload, dict) and envelope.action_type in ACTION_TYPES:
         _validate_payload_required_keys(envelope.action_type, envelope.payload, errors)
         _validate_payload_values(envelope.action_type, envelope.payload, errors)
-        _validate_referential_integrity(envelope.action_type, envelope.payload, snapshot, errors)
+        _validate_referential_integrity(
+            envelope.action_type, envelope.payload, snapshot, errors
+        )
 
     status: StanAkcji = "accepted" if not errors else "rejected"
     return ActionResult(
@@ -196,7 +207,9 @@ def validate_action_envelope(envelope: ActionEnvelope, snapshot: NetworkSnapshot
     )
 
 
-def _validate_envelope_fields(envelope: ActionEnvelope, errors: list[ActionIssue]) -> None:
+def _validate_envelope_fields(
+    envelope: ActionEnvelope, errors: list[ActionIssue]
+) -> None:
     required_fields = [
         ("action_id", envelope.action_id, str),
         ("parent_snapshot_id", envelope.parent_snapshot_id, str),
@@ -233,7 +246,9 @@ def _validate_envelope_fields(envelope: ActionEnvelope, errors: list[ActionIssue
             )
         )
 
-    if envelope.schema_version is not None and not isinstance(envelope.schema_version, str | int):
+    if envelope.schema_version is not None and not isinstance(
+        envelope.schema_version, str | int
+    ):
         errors.append(
             ActionIssue(
                 code="invalid_type",
@@ -335,7 +350,7 @@ def _validate_payload_values(
             errors.append(
                 ActionIssue(
                     code="invalid_type",
-                    message="in_service must be a boolean.",
+                    message="Pole `in_service` musi być wartością logiczną.",
                     path="payload.in_service",
                 )
             )
@@ -367,7 +382,9 @@ def _validate_referential_integrity(
             errors.append(
                 ActionIssue(
                     code="unknown_node",
-                    message=(f"from_node_id '{from_node_id}' does not exist in snapshot."),
+                    message=(
+                        f"from_node_id '{from_node_id}' does not exist in snapshot."
+                    ),
                     path="payload.from_node_id",
                 )
             )

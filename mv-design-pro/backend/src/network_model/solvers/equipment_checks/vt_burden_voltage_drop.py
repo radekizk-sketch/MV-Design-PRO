@@ -160,7 +160,8 @@ def _zalozenia(*, rezystywnosc: float, kategoria: str, limit: float) -> tuple[st
         "Obwod wtorny DWUPRZEWODOWY: Rp = 2·ρ·L/s (dlugosc L liczona w jedna strone).",
         f"Rezystywnosc zyly ρ = {rezystywnosc} Ω·mm²/m (miedz, 20 °C, IEC 60228) "
         "— zalozenie jawne, nie dane katalogu przekladnika.",
-        "Prad obwodu wyprowadzony z mocy pozornej odbiornikow: I2 = S2obl/U2n.",
+        "Prąd obwodu wyprowadzony z mocy pozornej odbiorników podzielonej przez napięcie "
+        "znamionowe wtórne.",
         "Zmiana napiecia liczona na skladowej REZYSTANCYJNEJ przewodow "
         "(reaktancja obwodu pomiarowego pomijalna przy tych dlugosciach).",
         f"Limit ΔU = {limit} % dla kategorii „{ETYKIETA_KATEGORII_PL[kategoria]}” "

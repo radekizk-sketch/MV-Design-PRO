@@ -906,7 +906,7 @@
           "przyjete_pl": [
             "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
             "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
-            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+            "współczynnika mocy nie podano — człon nastawy liczony ze współczynnika mocy karty, a bez niego z modułu mocy czynnej (dolna granica mocy pozornej)."
           ],
           "wspolczynnik_jednoczesnosci": null
         },
@@ -946,7 +946,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "49c02f067d60965213b2d99930fe5e246ee75d4c1f9b61f964f84a803e588526",
+    "hash_sha256": "a9a194380f38e9920b00241a72536a3fe346d4ac3264a0852d6835e92d6d1c1e",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"

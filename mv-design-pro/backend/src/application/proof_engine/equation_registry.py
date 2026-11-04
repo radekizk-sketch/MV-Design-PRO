@@ -1609,7 +1609,7 @@ EQ_LVCV_003 = EquationDefinition(
         SymbolDefinition(
             symbol="1{,}45 \\cdot I_z'",
             unit="A",
-            description_pl="Granica dopuszczalna I2",
+            description_pl="Granica dopuszczalna prądu zadziałania",
             mapping_key="limit_a",
         ),
     ),
@@ -1669,7 +1669,7 @@ EQ_LVCV_005 = EquationDefinition(
         SymbolDefinition(
             symbol="\\int i^{2}\\,dt",
             unit="A²s",
-            description_pl="Energia zwarciowa rzeczywista (I_th² · t)",
+            description_pl="Energia zwarciowa rzeczywista (kwadrat prądu zastępczego cieplnego razy czas)",
             mapping_key="i2t_a2s",
         ),
         SymbolDefinition(
@@ -1773,7 +1773,7 @@ EQ_LVCV_007 = EquationDefinition(
             mapping_key="t_wymagany_s",
         ),
     ),
-    unit_derivation="A ≥ A (przy dowiedzionym t ≤ t_wym)",
+    unit_derivation="A ≥ A (przy dowiedzionym czasie wyłączenia nie dłuższym od wymaganego)",
     notes=(
         "REUSE `application.analyses.swz.werdykt.ocen_swz` — werdykt 3-STANOWY "
         "(spełnia / nie spełnia / NIEROZSTRZYGALNE, nigdy ciche PASS bez danych; "

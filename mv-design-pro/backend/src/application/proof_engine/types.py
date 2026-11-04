@@ -88,27 +88,27 @@ SEMANTIC_ALIASES: dict[str, SemanticAlias] = {
     "ikss_ka": SemanticAlias(
         alias_pl="prąd wyłączalny",
         target_key="ikss_ka",
-        notes="I_k'' wg IEC 60909",
+        notes="początkowy prąd zwarciowy wg IEC 60909",
     ),
     "ip_ka": SemanticAlias(
         alias_pl="prąd udarowy",
         target_key="ip_ka",
-        notes="i_p wg IEC 60909",
+        notes="prąd udarowy wg IEC 60909",
     ),
     "ith_ka": SemanticAlias(
         alias_pl="prąd cieplny",
         target_key="ith_ka",
-        notes="I_th wg IEC 60909",
+        notes="prąd zastępczy cieplny wg IEC 60909",
     ),
     "idyn_ka": SemanticAlias(
         alias_pl="prąd dynamiczny",
         target_key="idyn_ka",
-        notes="I_dyn; jeśli brak, używa ip_ka jako proxy (BINDING: I_dyn = i_p)",
+        notes="prąd dynamiczny; jeśli brak, przyjmuje się prąd udarowy (BINDING)",
     ),
     "sk_mva": SemanticAlias(
         alias_pl="moc zwarciowa",
         target_key="sk_mva",
-        notes="S_k'' wg IEC 60909",
+        notes="moc zwarciowa wg IEC 60909",
     ),
 }
 

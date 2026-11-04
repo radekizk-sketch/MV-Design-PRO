@@ -114,8 +114,8 @@ class WspolczynnikiObciazalnosci:
             )
         return (
             f"Obciążalność skorygowana dla warunków: {self.etykieta_pl}; "
-            f"f_grunt = {self.f_grunt:g}, f_wiazka = {self.f_wiazka:g}, "
-            f"f_grupa = {self.f_grupa:g}, iloczyn = {self.iloczyn:.4f}. "
+            f"współczynnik gruntu {self.f_grunt:g}, wiązki {self.f_wiazka:g}, "
+            f"grupy {self.f_grupa:g}, iloczyn {self.iloczyn:.4f}. "
             f"Podstawa: {self.podstawa}."
         )
 
@@ -244,7 +244,7 @@ def wspolczynniki_z_opisu(
     if f_grunt is None or f_wiazka is None or f_grupa is None:
         raise OdmowaDanychError(
             "Własne warunki ułożenia wymagają trzech współczynników "
-            "(f_grunt, f_wiazka, f_grupa) oraz opisu warunków."
+            "(gruntu, wiązki i grupy) oraz opisu warunków."
         )
     return wspolczynniki_wlasne(
         f_grunt=f_grunt,

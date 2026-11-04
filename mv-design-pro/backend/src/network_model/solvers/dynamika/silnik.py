@@ -263,11 +263,15 @@ class SilnikDynamiki:
             stan_scenariusza, urzadzenia, stany_urzadzen
         )
         model = self._model_dla(stan_scenariusza, beznapieciowe)
-        odbiory = self._modele_odbiorow(stan_scenariusza, beznapieciowe, 0.0, frozenset())
+        odbiory = self._modele_odbiorow(
+            stan_scenariusza, beznapieciowe, 0.0, frozenset()
+        )
         # Stan estymatora czestotliwosci odbioru czulego: `x(0) = arg V_pf` (e(0) = 0, f = f_n).
         stany = (
             *(
-                odbior.stan_poczatkowy_odbioru(complex(napiecia[model.indeks_wezla[odbior.wezel]]))
+                odbior.stan_poczatkowy_odbioru(
+                    complex(napiecia[model.indeks_wezla[odbior.wezel]])
+                )
                 for odbior in odbiory
             ),
             *stany_urzadzen,
@@ -283,8 +287,8 @@ class SilnikDynamiki:
         _sprawdz_odbiory(model, odbiory, stany, napiecia, 0.0, bledy_fazy_przed=None)
         kontekst = KontekstKroku(model, odbiory, urzadzenia, nastawy)
         slad_inicjalizacji = self._bramka_rownowagi(kontekst, stany, napiecia)
-        napiecia, stany, slad_inicjalizacji["korekta_algebry"] = self._korekta_algebry_t0(
-            kontekst, stany, napiecia
+        napiecia, stany, slad_inicjalizacji["korekta_algebry"] = (
+            self._korekta_algebry_t0(kontekst, stany, napiecia)
         )
         slad_odbiorow = [
             opis_odbioru_sladu(
@@ -299,7 +303,9 @@ class SilnikDynamiki:
             for odbior in odbiory
         ]
         odciete = tuple(
-            odbior.odbior for odbior in odbiory if odbior.tryb_poza_obwodem == TRYB_ODCIETY
+            odbior.odbior
+            for odbior in odbiory
+            if odbior.tryb_poza_obwodem == TRYB_ODCIETY
         )
         slad_inicjalizacji["wezly_beznapieciowe"] = [
             ident for ident in model.identy_wezlow if ident in beznapieciowe
@@ -355,7 +361,11 @@ class SilnikDynamiki:
             dopoki ocena dozorow w probce `P` pobudza akcje bez zwloki w tej samej chwili
             (kazda runda ma wlasna pare `L`/`P`; dozor pobudzony drugi raz w tej samej
             chwili to odmowa `dynamika.petla_zdarzen_warunkowych`)."""
-            akcje = [] if nadzor is None else nadzor.akcje_chwili(t_chwili, TOLERANCJA_CZASU_S)
+            akcje = (
+                []
+                if nadzor is None
+                else nadzor.akcje_chwili(t_chwili, TOLERANCJA_CZASU_S)
+            )
             nowa = self._chwila_z_probkami(
                 t_chwili,
                 wpisy,
@@ -402,7 +412,9 @@ class SilnikDynamiki:
         if nadzor is not None and not planowane_w_zerze:
             nadzor.start(t_s, _uklad_chwili(chwila, "C"))
             kroki_szczegolne.extend(_zapisy_nadzoru(nadzor, t_s))
-        akcje_zera = [] if nadzor is None else nadzor.akcje_chwili(t_s, TOLERANCJA_CZASU_S)
+        akcje_zera = (
+            [] if nadzor is None else nadzor.akcje_chwili(t_s, TOLERANCJA_CZASU_S)
+        )
         chwila = self._chwila_z_probkami(
             t_s,
             wpisy,
@@ -423,7 +435,9 @@ class SilnikDynamiki:
                 nadzor.po_chwili(t_s, _uklad_chwili(chwila, "P"))
             kroki_szczegolne.extend(_zapisy_nadzoru(nadzor, t_s))
             if nadzor.akcje_chwili(t_s, TOLERANCJA_CZASU_S):
-                chwila = chwila_zdarzen(t_s, chwila, chwila.stany, chwila.napiecia, na_siatce=False)
+                chwila = chwila_zdarzen(
+                    t_s, chwila, chwila.stany, chwila.napiecia, na_siatce=False
+                )
         model, odbiory, urzadzenia = chwila.model, chwila.odbiory, chwila.urzadzenia
         stany, napiecia, kontekst = chwila.stany, chwila.napiecia, chwila.kontekst
         indeks_wpisu = chwila.indeks_wpisu
@@ -435,7 +449,9 @@ class SilnikDynamiki:
 
         dt_biezace = nastawy.dt_s
         while nastawy.horyzont_s - t_s > TOLERANCJA_CZASU_S:
-            cel = self._punkt_obowiazkowy(t_s, wpisy, indeks_wpisu, indeks_probki, nastawy, nadzor)
+            cel = self._punkt_obowiazkowy(
+                t_s, wpisy, indeks_wpisu, indeks_probki, nastawy, nadzor
+            )
             while cel - t_s > TOLERANCJA_CZASU_S:
                 krok = min(dt_biezace, cel - t_s)
                 wynik_kroku = integrator.krok(kontekst, stany, napiecia, t_s, krok)
@@ -468,7 +484,9 @@ class SilnikDynamiki:
                         continue
                     dt_biezace = min(
                         max(
-                            self._nowy_krok(krok, blad, nastawy.tolerancja_kroku, integrator.rzad),
+                            self._nowy_krok(
+                                krok, blad, nastawy.tolerancja_kroku, integrator.rzad
+                            ),
                             nastawy.dt_min_s,
                         ),
                         nastawy.dt_max_s,
@@ -508,7 +526,12 @@ class SilnikDynamiki:
                     t_s,
                 )
                 _sprawdz_odbiory(
-                    model, odbiory, stany, napiecia, t_s, bledy_fazy_przed=bledy_fazy_przed
+                    model,
+                    odbiory,
+                    stany,
+                    napiecia,
+                    t_s,
+                    bledy_fazy_przed=bledy_fazy_przed,
                 )
                 kroki += 1
                 if self.nadzorca is not None:
@@ -548,7 +571,9 @@ class SilnikDynamiki:
                     }
                 )
         if indeks_wpisu != len(wpisy):
-            pominiete = [(wpis.rodzaj, wpis.ref, wpis.t_s) for wpis in wpisy[indeks_wpisu:]]
+            pominiete = [
+                (wpis.rodzaj, wpis.ref, wpis.t_s) for wpis in wpisy[indeks_wpisu:]
+            ]
             raise AssertionError(
                 "Bieg zakończył się z NIEWYKONANYMI zdarzeniami harmonogramu: "
                 f"{pominiete}. Każde zdarzenie w horyzoncie musi zostać wykonane — "
@@ -566,7 +591,8 @@ class SilnikDynamiki:
                     zdarzenie.rodzaj in RODZAJE_PRZYPISAN for zdarzenie in wykonane
                 ),
                 utrata_czesciowa=any(
-                    zdarzenie.rodzaj == "utrata_czesciowa_zrodla" for zdarzenie in wykonane
+                    zdarzenie.rodzaj == "utrata_czesciowa_zrodla"
+                    for zdarzenie in wykonane
                 ),
             )
         )
@@ -608,7 +634,9 @@ class SilnikDynamiki:
 
     # -- inicjalizacja ----------------------------------------------------
 
-    def _stany_poczatkowe(self, urzadzenia: tuple[Urzadzenie, ...]) -> tuple[np.ndarray, ...]:
+    def _stany_poczatkowe(
+        self, urzadzenia: tuple[Urzadzenie, ...]
+    ) -> tuple[np.ndarray, ...]:
         punkt = self.wejscie.punkt_pracy
         stany: list[np.ndarray] = []
         for urzadzenie in urzadzenia:
@@ -625,7 +653,8 @@ class SilnikDynamiki:
                 )
             stany.append(
                 urzadzenie.stan_poczatkowy(
-                    punkt.napiecia_pu[urzadzenie.wezel], punkt.moce_zrodel_pu[urzadzenie.ident]
+                    punkt.napiecia_pu[urzadzenie.wezel],
+                    punkt.moce_zrodel_pu[urzadzenie.ident],
                 )
             )
         return tuple(stany)
@@ -654,11 +683,17 @@ class SilnikDynamiki:
         # TEN SAM predykat i ta sama funkcja, co w chwilach zdarzen (predykaty parami):
         # napiecie 0 podstawione za brak wchodzi wylacznie do wezlow BEZ urzadzen, bo
         # urzadzenie bez napiecia punktu pracy odmowilo juz w `_stany_poczatkowe`.
-        beznapieciowe, _ = self._obszary_beznapieciowe(stan, urzadzenia, stany, wartosci)
+        beznapieciowe, _ = self._obszary_beznapieciowe(
+            stan, urzadzenia, stany, wartosci
+        )
         for wezel in wezly:
-            if wezel.ident not in punkt.napiecia_pu and wezel.ident not in beznapieciowe:
+            if (
+                wezel.ident not in punkt.napiecia_pu
+                and wezel.ident not in beznapieciowe
+            ):
                 raise odmowa_braku_pola(
-                    "punkt_pracy_napiecie", f"Punkt pracy nie ma napięcia węzła {wezel.ident}."
+                    "punkt_pracy_napiecie",
+                    f"Punkt pracy nie ma napięcia węzła {wezel.ident}.",
                 )
         return wartosci, beznapieciowe
 
@@ -702,7 +737,11 @@ class SilnikDynamiki:
             except OdmowaDynamiki as odmowa:
                 szczegoly = dict(odmowa.szczegoly)
                 szczegoly.update(
-                    {"wezel": urzadzenie.wezel, "urzadzenie": urzadzenie.ident, "t_s": t_s}
+                    {
+                        "wezel": urzadzenie.wezel,
+                        "urzadzenie": urzadzenie.ident,
+                        "t_s": t_s,
+                    }
                 )
                 raise OdmowaDynamiki(
                     odmowa.kod,
@@ -785,7 +824,9 @@ class SilnikDynamiki:
             pozycja = model.indeks_wezla[urzadzenie.wezel]
             if pozycja not in do_uzupelnienia or pozycja in odwiedzone:
                 continue
-            if not urzadzenie_wnosi_do_algebry(urzadzenie, stan, complex(start[pozycja])):
+            if not urzadzenie_wnosi_do_algebry(
+                urzadzenie, stan, complex(start[pozycja])
+            ):
                 continue
             start[pozycja] = urzadzenie.napiecie_bez_obciazenia(stan)
             odwiedzone.add(pozycja)
@@ -796,7 +837,11 @@ class SilnikDynamiki:
             for pozycja in sorted(do_uzupelnienia)
             if pozycja in odwiedzone and pozycja not in od_sem
         )
-        return start, od_sasiada, tuple(model.identy_wezlow[pozycja] for pozycja in sorted(od_sem))
+        return (
+            start,
+            od_sasiada,
+            tuple(model.identy_wezlow[pozycja] for pozycja in sorted(od_sem)),
+        )
 
     def _bramka_rownowagi(
         self,
@@ -816,7 +861,9 @@ class SilnikDynamiki:
         # urzadzen sa sprawdzane TU, z adresem, zanim cokolwiek je porowna. Napiecia t = 0
         # pochodza z kontraktu `PunktPracy` (skonczonosc przy konstrukcji) albo z kroku
         # Newtona korekty (straznik kandydata w `siec`).
-        sprawdz_wektor(spakuj_stany(stany), kontekst.adresy_stanow, "stany równowagi", 0.0)
+        sprawdz_wektor(
+            spakuj_stany(stany), kontekst.adresy_stanow, "stany równowagi", 0.0
+        )
         pochodne = pochodne_ukladu(kontekst, stany, napiecia, 0.0)
         reszta_algebry = residuum_algebry(
             kontekst.model, kontekst.odbiory, kontekst.urzadzenia, stany, napiecia
@@ -838,7 +885,11 @@ class SilnikDynamiki:
             przesuniecie += len(element.nazwy_stanow)
         pochodne_rownowagi = pochodne[maska_rownowagi]
 
-        norma_f = float(np.max(np.abs(pochodne_rownowagi))) if pochodne_rownowagi.size else 0.0
+        norma_f = (
+            float(np.max(np.abs(pochodne_rownowagi)))
+            if pochodne_rownowagi.size
+            else 0.0
+        )
         norma_g = float(np.max(np.abs(reszta_algebry))) if reszta_algebry.size else 0.0
 
         # Residua per ELEMENT: urzadzenia (kazde, jak dotad) i odbiory ZE STANEM (estymator
@@ -855,7 +906,9 @@ class SilnikDynamiki:
                 element.ident,
                 tuple(
                     (nazwa, kwantyzuj(float(wartosc)))
-                    for nazwa, wartosc in zip(element.nazwy_stanow, wycinek, strict=True)
+                    for nazwa, wartosc in zip(
+                        element.nazwy_stanow, wycinek, strict=True
+                    )
                 ),
             )
             if indeks >= liczba_odbiorow:
@@ -888,7 +941,8 @@ class SilnikDynamiki:
             raise OdmowaDynamiki(
                 KOD_INICJALIZACJA_NIEZBIEZNA,
                 f"{przedmiot} nie jest równowagą układu: "
-                f"||f|| = {norma_f}, ||g|| = {norma_g}, eps_init = {nastawy.eps_init}",
+                f"norma residuum równań różniczkowych {norma_f}, algebraicznych {norma_g}, "
+                f"tolerancja inicjalizacji {nastawy.eps_init}",
                 residuum_f=norma_f,
                 residuum_g=norma_g,
                 eps_init=nastawy.eps_init,
@@ -906,20 +960,29 @@ class SilnikDynamiki:
                 for nazwa in urzadzenie.stany_bez_rownowagi
             ],
             "urzadzenia": [
-                {"urzadzenie": ident, "residua_stanow": [list(pozycja) for pozycja in residua]}
+                {
+                    "urzadzenie": ident,
+                    "residua_stanow": [list(pozycja) for pozycja in residua],
+                }
                 for ident, residua in residua_urzadzen
             ],
             "wezly": [list(pozycja) for pozycja in residua_wezlow],
         }
         if residua_odbiorow:
             slad["odbiory_ze_stanem"] = [
-                {"odbior": ident, "residua_stanow": [list(pozycja) for pozycja in residua]}
+                {
+                    "odbior": ident,
+                    "residua_stanow": [list(pozycja) for pozycja in residua],
+                }
                 for ident, residua in residua_odbiorow
             ]
         return slad
 
     def _korekta_algebry_t0(
-        self, kontekst: KontekstKroku, stany: tuple[np.ndarray, ...], napiecia: np.ndarray
+        self,
+        kontekst: KontekstKroku,
+        stany: tuple[np.ndarray, ...],
+        napiecia: np.ndarray,
     ) -> tuple[np.ndarray, tuple[np.ndarray, ...], dict[str, Any]]:
         """Spojna inicjalizacja zmiennych algebraicznych: probka `t = 0` lezy na ALGEBRZE RDZENIA.
 
@@ -987,15 +1050,23 @@ class SilnikDynamiki:
         zmiane mocy urzadzenia oraz obie normy bramki na stanie `t = 0` (`residuum_f_po`,
         `residuum_g_po`). Nic nie dzieje sie w tle.
         """
-        model, odbiory, urzadzenia = kontekst.model, kontekst.odbiory, kontekst.urzadzenia
+        model, odbiory, urzadzenia = (
+            kontekst.model,
+            kontekst.odbiory,
+            kontekst.urzadzenia,
+        )
         residuum = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
         norma_przed = float(np.linalg.norm(residuum))
-        granica = granica_zaokraglen_residuum(model, odbiory, urzadzenia, stany, napiecia)
+        granica = granica_zaokraglen_residuum(
+            model, odbiory, urzadzenia, stany, napiecia
+        )
         # Klucz sladu dla odbiorow ze stanem — bieg bez odbiorow czulych ma slad bitowo taki
         # jak przed wprowadzeniem stanow odbiorow (ta sama konwencja, co `odbiory_ze_stanem`).
         z_estymatorami = any(odbior.nazwy_stanow for odbior in odbiory)
         if not residuum_ponad_granica_zaokraglen(residuum, granica):
-            ocena = self._bramka_rownowagi(kontekst, stany, napiecia, PRZEDMIOT_STANU_T0)
+            ocena = self._bramka_rownowagi(
+                kontekst, stany, napiecia, PRZEDMIOT_STANU_T0
+            )
             slad_pusty: dict[str, Any] = {
                 "wykonana": False,
                 "residuum_przed": kwantyzuj(norma_przed),
@@ -1013,8 +1084,12 @@ class SilnikDynamiki:
         # stan estymatora dostaje po niej `arg V0` punktu skorygowanego, wiec prad odbioru
         # w stanie `t = 0` jest dokladnie tym, przy ktorym algebra zbiegla. Odbior bez stanu
         # albo bez obwodu jest tym samym obiektem (bitowo dotychczasowa algebra).
-        odbiory_rownowagi = tuple(odbior.w_rownowadze_estymatora() for odbior in odbiory)
-        residuum_rownowagi = residuum_algebry(model, odbiory_rownowagi, urzadzenia, stany, napiecia)
+        odbiory_rownowagi = tuple(
+            odbior.w_rownowadze_estymatora() for odbior in odbiory
+        )
+        residuum_rownowagi = residuum_algebry(
+            model, odbiory_rownowagi, urzadzenia, stany, napiecia
+        )
         try:
             rozklad = sparse_linalg.splu(
                 jakobian_algebry(model, odbiory_rownowagi, urzadzenia, stany, napiecia)
@@ -1070,24 +1145,36 @@ class SilnikDynamiki:
         stany_urzadzen_po: list[np.ndarray] = []
         zmiana_mocy = 0.0
         for urzadzenie, stan in zip(urzadzenia, stany_urzadzen, strict=True):
-            para = None if urzadzenie.sprzezenie == "napieciowe" else przesuniety(urzadzenie.wezel)
+            para = (
+                None
+                if urzadzenie.sprzezenie == "napieciowe"
+                else przesuniety(urzadzenie.wezel)
+            )
             if para is None:
                 stany_urzadzen_po.append(stan)
                 continue
             napiecie_przed, napiecie_po = para
-            moc_przed = napiecie_przed * urzadzenie.prad_pu(stan, napiecie_przed).conjugate()
+            moc_przed = (
+                napiecie_przed * urzadzenie.prad_pu(stan, napiecie_przed).conjugate()
+            )
             moc_po = napiecie_po * urzadzenie.prad_pu(stan, napiecie_po).conjugate()
             stany_urzadzen_po.append(urzadzenie.stan_poczatkowy(napiecie_po, moc_po))
             zmiana_mocy = max(zmiana_mocy, abs(moc_po - moc_przed))
         stany_rownowagi = (*stany_odbiorow_po, *stany_urzadzen_po)
-        residuum_po = residuum_algebry(model, odbiory, urzadzenia, stany_rownowagi, napiecia_po)
-        ocena = self._bramka_rownowagi(kontekst, stany_rownowagi, napiecia_po, PRZEDMIOT_STANU_T0)
+        residuum_po = residuum_algebry(
+            model, odbiory, urzadzenia, stany_rownowagi, napiecia_po
+        )
+        ocena = self._bramka_rownowagi(
+            kontekst, stany_rownowagi, napiecia_po, PRZEDMIOT_STANU_T0
+        )
         slad: dict[str, Any] = {
             "wykonana": True,
             "residuum_przed": kwantyzuj(norma_przed),
             "residuum_po": kwantyzuj(float(np.linalg.norm(residuum_po))),
             "iteracje_newtona": 1 + wynik.iteracje,
-            "max_przesuniecie_pu": kwantyzuj(float(np.max(np.abs(napiecia_po - napiecia)))),
+            "max_przesuniecie_pu": kwantyzuj(
+                float(np.max(np.abs(napiecia_po - napiecia)))
+            ),
             "max_zmiana_mocy_urzadzen_pu": kwantyzuj(zmiana_mocy),
             "residuum_f_po": ocena["residuum_f"],
             "residuum_g_po": ocena["residuum_g"],
@@ -1152,9 +1239,9 @@ class SilnikDynamiki:
         `L` jest punktem pracy z rozplywu po spojnej inicjalizacji algebry — punkt 3a
         naglowka) i dla chwili horyzontu.
         """
-        zdarzenia_chwili = bool(self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu)) or bool(
-            akcje
-        )
+        zdarzenia_chwili = bool(
+            self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu)
+        ) or bool(akcje)
         if zdarzenia_chwili:
             self._probkuj(
                 probkowanie,
@@ -1234,7 +1321,9 @@ class SilnikDynamiki:
                 reset_estymatorow=False,
             )
 
-        stany_przed_chwila = tuple(np.array(stan, dtype=float, copy=True) for stan in stany)
+        stany_przed_chwila = tuple(
+            np.array(stan, dtype=float, copy=True) for stan in stany
+        )
         stany_odbiorow, stany_urzadzen = rozdziel_stany(
             poprzednia.odbiory, poprzednia.urzadzenia, stany
         )
@@ -1251,7 +1340,9 @@ class SilnikDynamiki:
                 spakuj_stany(stany_urzadzen_po),
                 dolne_wazne,
                 gorne_wazne,
-                KontekstKroku(poprzednia.model, (), urzadzenia_po, wejscie.nastawy).adresy_stanow,
+                KontekstKroku(
+                    poprzednia.model, (), urzadzenia_po, wejscie.nastawy
+                ).adresy_stanow,
                 wejscie.nastawy,
                 t_s,
             )
@@ -1303,12 +1394,17 @@ class SilnikDynamiki:
             napiecia_startowe=napiecia_startowe,
         )
         odbiory = self._modele_odbiorow(nowy_stan, beznapieciowe, t_s, frozenset())
-        stany_odbiorow_po, przypisania_estymatorow, przypisane_odbiorow = _reinicjalizuj_estymatory(
-            model, odbiory_algebry, stany_odbiorow, napiecia_po
+        stany_odbiorow_po, przypisania_estymatorow, przypisane_odbiorow = (
+            _reinicjalizuj_estymatory(
+                model, odbiory_algebry, stany_odbiorow, napiecia_po
+            )
         )
         stany_po = (*stany_odbiorow_po, *stany_urzadzen_po)
         przypisane = frozenset(
-            {(len(odbiory) + indeks, pozycja) for indeks, pozycja in przypisane_urzadzen}
+            {
+                (len(odbiory) + indeks, pozycja)
+                for indeks, pozycja in przypisane_urzadzen
+            }
             | przypisane_odbiorow
         )
         if przypisania_estymatorow:
@@ -1318,7 +1414,9 @@ class SilnikDynamiki:
                 *przypisania_wpisow[:-1],
                 (*przypisania_wpisow[-1], *przypisania_estymatorow),
             )
-        _sprawdz_odbiory(model, odbiory, stany_po, napiecia_po, t_s, bledy_fazy_przed=None)
+        _sprawdz_odbiory(
+            model, odbiory, stany_po, napiecia_po, t_s, bledy_fazy_przed=None
+        )
         delta_x_nieprzypisane = _skok_stanow_nieprzypisanych(
             stany_przed_chwila, stany_po, przypisane
         )
@@ -1330,7 +1428,9 @@ class SilnikDynamiki:
                 odbior_przed.ident,
                 odbior_przed.moc_poboru_pu(
                     stan_przed,
-                    complex(napiecia[poprzednia.model.indeks_wezla[odbior_przed.wezel]]),
+                    complex(
+                        napiecia[poprzednia.model.indeks_wezla[odbior_przed.wezel]]
+                    ),
                 ),
             )
             for odbior_przed, stan_przed, odbior in zip(
@@ -1357,8 +1457,12 @@ class SilnikDynamiki:
                     obszary_zasilone_ponownie=obszary_zasilone,
                     przypisania=przypisania,
                     t_zlokalizowany_s=None if lokalizacja is None else lokalizacja.t_s,
-                    szerokosc_przedzialu_s=None if lokalizacja is None else lokalizacja.szerokosc_s,
-                    iteracje_lokalizacji=None if lokalizacja is None else lokalizacja.iteracje,
+                    szerokosc_przedzialu_s=(
+                        None if lokalizacja is None else lokalizacja.szerokosc_s
+                    ),
+                    iteracje_lokalizacji=(
+                        None if lokalizacja is None else lokalizacja.iteracje
+                    ),
                     g_przed=None if lokalizacja is None else lokalizacja.g_przed,
                     g_po=None if lokalizacja is None else lokalizacja.g_po,
                 )
@@ -1377,7 +1481,9 @@ class SilnikDynamiki:
                 "obszary_odciete": list(obszary_odciete),
                 "odbiory_odciete": _opis_odbiorow(
                     tuple(
-                        odbior.odbior for odbior in odbiory if odbior.ident in dict(odbiory_odciete)
+                        odbior.odbior
+                        for odbior in odbiory
+                        if odbior.ident in dict(odbiory_odciete)
                     )
                 ),
                 "obszary_zasilone_ponownie": list(obszary_zasilone),
@@ -1385,7 +1491,11 @@ class SilnikDynamiki:
                 "wezly_start_od_sasiada": list(start_od_sasiada),
                 "wezly_start_od_sem_urzadzenia": list(start_od_sem),
                 "przypisania": [
-                    [przypisanie.adres, kwantyzuj(przypisanie.przed), kwantyzuj(przypisanie.po)]
+                    [
+                        przypisanie.adres,
+                        kwantyzuj(przypisanie.przed),
+                        kwantyzuj(przypisanie.po),
+                    ]
                     for przypisania in przypisania_wpisow
                     for przypisanie in przypisania
                 ],
@@ -1443,7 +1553,8 @@ class SilnikDynamiki:
                     przylaczone.get(odbior.ident, odbior),
                     wejscie.f_bazowa_hz,
                     tryb_poza_obwodem=tryb,
-                    estymator_wyzerowany=tryb is None and odbior.wezel in zasilone_ponownie,
+                    estymator_wyzerowany=tryb is None
+                    and odbior.wezel in zasilone_ponownie,
                 )
             )
         return tuple(modele)
@@ -1469,7 +1580,9 @@ class SilnikDynamiki:
         utracie i zakres nastawy (ten sam predykat, co punkt poczatkowy) sa tam.
         """
         nowe = [np.array(stan, dtype=float, copy=True) for stan in stany]
-        indeksy = {urzadzenie.ident: pozycja for pozycja, urzadzenie in enumerate(urzadzenia)}
+        indeksy = {
+            urzadzenie.ident: pozycja for pozycja, urzadzenie in enumerate(urzadzenia)
+        }
         przypisane: set[tuple[int, int]] = set()
         wszystkie: list[tuple[PrzypisanieWykonane, ...]] = []
         for wpis in do_wykonania:
@@ -1514,7 +1627,9 @@ class SilnikDynamiki:
                 przypisane.add((indeks, pozycja_stanu))
                 wpisu.append(
                     PrzypisanieWykonane(
-                        adres=f"{urzadzenie.ident}.{nazwa}", przed=przed, po=wartosc_stanu
+                        adres=f"{urzadzenie.ident}.{nazwa}",
+                        przed=przed,
+                        po=wartosc_stanu,
                     )
                 )
             wszystkie.append(tuple(wpisu))
@@ -1546,7 +1661,9 @@ class SilnikDynamiki:
         )
         zywe, _ = klasyfikuj_wyspy(przydzial, indeks, urzadzenia, stany, napiecia)
         beznapieciowe = frozenset(
-            wezel.ident for pozycja, wezel in enumerate(wezly) if przydzial[pozycja] not in zywe
+            wezel.ident
+            for pozycja, wezel in enumerate(wezly)
+            if przydzial[pozycja] not in zywe
         )
         return beznapieciowe, przydzial
 
@@ -1587,20 +1704,27 @@ class SilnikDynamiki:
                 odizolowane = wpis.ref not in stan.galezie_aktywne or all(
                     wezel in beznapieciowe for wezel in zaciski
                 )
-                miejsce = {"galaz": wpis.ref, "polozenie_wzgledne": wpis.polozenie_wzgledne}
+                miejsce = {
+                    "galaz": wpis.ref,
+                    "polozenie_wzgledne": wpis.polozenie_wzgledne,
+                }
             if odizolowane:
                 continue
             zasilany = next(wezel for wezel in zaciski if wezel not in beznapieciowe)
             numer = przydzial[indeks[zasilany]]
             wyspa = tuple(
-                wezel.ident for pozycja, wezel in enumerate(wezly) if przydzial[pozycja] == numer
+                wezel.ident
+                for pozycja, wezel in enumerate(wezly)
+                if przydzial[pozycja] == numer
             )
             wnoszace = tuple(
                 urzadzenie.ident
                 for urzadzenie, stan_urzadzenia in zip(urzadzenia, stany, strict=True)
                 if przydzial[indeks[urzadzenie.wezel]] == numer
                 and urzadzenie_wnosi_do_algebry(
-                    urzadzenie, stan_urzadzenia, complex(napiecia[indeks[urzadzenie.wezel]])
+                    urzadzenie,
+                    stan_urzadzenia,
+                    complex(napiecia[indeks[urzadzenie.wezel]]),
                 )
             )
             raise OdmowaDynamiki(
@@ -1616,7 +1740,9 @@ class SilnikDynamiki:
                 **miejsce,
             )
 
-    def _model_dla(self, stan: StanScenariusza, beznapieciowe: frozenset[str]) -> ModelSieci:
+    def _model_dla(
+        self, stan: StanScenariusza, beznapieciowe: frozenset[str]
+    ) -> ModelSieci:
         return zloz_model_sieci(
             self.wejscie.wezly,
             self.wejscie.galezie,
@@ -1654,7 +1780,9 @@ class SilnikDynamiki:
             akcja = nadzor.nastepna_akcja_s(t_s, TOLERANCJA_CZASU_S)
             if akcja is not None:
                 kandydaci.append(akcja)
-        return min(kandydat for kandydat in kandydaci if kandydat > t_s + TOLERANCJA_CZASU_S)
+        return min(
+            kandydat for kandydat in kandydaci if kandydat > t_s + TOLERANCJA_CZASU_S
+        )
 
     def _jest_chwila_zdarzen(
         self,
@@ -1671,7 +1799,8 @@ class SilnikDynamiki:
     def _nadzor(self) -> NadzorDozorow | None:
         """Nadzor dozorow biegu — `None`, gdy harmonogram nie niesie dozorow (sciezka bez
         zmian, bitowo). Dozory bez tolerancji lokalizacji to odmowa `nastawy_sprzeczne`;
-        akcje i wielkosci sa walidowane PRZED biegiem (`zdarzenia.szablony_akcji_dozorow`)."""
+        akcje i wielkosci sa walidowane PRZED biegiem (`zdarzenia.szablony_akcji_dozorow`).
+        """
         wejscie = self.wejscie
         dozory = wejscie.harmonogram.dozory
         if not dozory:
@@ -1754,11 +1883,15 @@ class SilnikDynamiki:
             return ladowanie, wynik_kroku
         return ladowanie, proby[ladowanie - t0_s]
 
-    def _jest_chwila_probki(self, t_s: float, indeks_probki: int, nastawy: NastawySolvera) -> bool:
+    def _jest_chwila_probki(
+        self, t_s: float, indeks_probki: int, nastawy: NastawySolvera
+    ) -> bool:
         chwila = indeks_probki * nastawy.krok_wyjscia_s
         return abs(chwila - t_s) <= TOLERANCJA_CZASU_S and chwila <= nastawy.horyzont_s
 
-    def _nowy_krok(self, krok: float, blad: float, tolerancja: float, rzad: int) -> float:
+    def _nowy_krok(
+        self, krok: float, blad: float, tolerancja: float, rzad: int
+    ) -> float:
         if blad <= 0.0:
             return krok * MAX_WZROST_KROKU
         wspolczynnik = MARGINES_DOBORU_KROKU * (tolerancja / blad) ** (1.0 / (rzad + 1))
@@ -1990,15 +2123,25 @@ class SilnikDynamiki:
             napiecie = complex(napiecia[pozycja])
             probki[f"u_pu@{ident}"].append(abs(napiecie))
             probki[f"kat_deg@{ident}"].append(_kat_deg(napiecie))
-        for indeks, (urzadzenie, stan) in enumerate(zip(urzadzenia, stany_urzadzen, strict=True)):
+        for indeks, (urzadzenie, stan) in enumerate(
+            zip(urzadzenia, stany_urzadzen, strict=True)
+        ):
             for nazwa, wartosc in zip(urzadzenie.nazwy_stanow, stan, strict=True):
                 probki[f"{nazwa}@{urzadzenie.ident}"].append(float(wartosc))
             moc = moc_urzadzenia_pu(model, odbiory, urzadzenia, stany, napiecia, indeks)
             probki[f"p_pu@{urzadzenie.ident}"].append(float(moc.real))
             probki[f"q_pu@{urzadzenie.ident}"].append(float(moc.imag))
-        self._probkuj_obserwable(probki, strona, model, odbiory, urzadzenia, stany, napiecia)
+        self._probkuj_obserwable(
+            probki, strona, model, odbiory, urzadzenia, stany, napiecia
+        )
         self._probkuj_zwarcia(
-            probki, model, odbiory, urzadzenia, stany, napiecia, probkowanie.miejsca_zwarc
+            probki,
+            model,
+            odbiory,
+            urzadzenia,
+            stany,
+            napiecia,
+            probkowanie.miejsca_zwarc,
         )
         self._probkuj_stany_i_katy(probki, model, urzadzenia, napiecia)
         _probkuj_odbiory(probki, model, odbiory, stany_odbiorow, napiecia)
@@ -2012,7 +2155,8 @@ class SilnikDynamiki:
     ) -> None:
         """Stan zasilania wezlow, stan galezi i katy fazorow pradow zaciskow."""
         narzucone = {
-            model.identy_wezlow[pozycja] for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)
+            model.identy_wezlow[pozycja]
+            for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)
         }
         for ident in model.identy_wezlow:
             if ident in model.wezly_beznapieciowe:
@@ -2130,13 +2274,16 @@ class SilnikDynamiki:
         czestotliwosci: list[CzestotliwoscWezla]
         if strona != "C":
             czestotliwosci = [
-                czestotliwosc_niedostepna(JAKOSC_CHWILA_ZDARZENIA) for _ in model.identy_wezlow
+                czestotliwosc_niedostepna(JAKOSC_CHWILA_ZDARZENIA)
+                for _ in model.identy_wezlow
             ]
         else:
             czestotliwosci = czestotliwosci_wezlow(
                 model, odbiory, urzadzenia, stany, napiecia, f_bazowa_hz=f_bazowa_hz
             )
-        for ident, czestotliwosc in zip(model.identy_wezlow, czestotliwosci, strict=True):
+        for ident, czestotliwosc in zip(
+            model.identy_wezlow, czestotliwosci, strict=True
+        ):
             probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
             probki[f"u_f_est_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
             probki[f"jakosc_f@{ident}"].append(czestotliwosc.jakosc)
@@ -2162,7 +2309,9 @@ class SilnikDynamiki:
                 (_min_liczb(probki[kanal.klucz]), kanal.element_ref or "", kanal.klucz)
                 for kanal in napieciowe
             )
-            metryki.append(Metryka("u_min_pu", wartosc, "pu", "min_t min_k |V_k(t)|", element))
+            metryki.append(
+                Metryka("u_min_pu", wartosc, "pu", "min_t min_k |V_k(t)|", element)
+            )
             metryki.append(
                 Metryka(
                     "t_u_min_s",
@@ -2179,19 +2328,31 @@ class SilnikDynamiki:
                 ident = klucz.split("@", 1)[1]
                 metryki.append(
                     Metryka(
-                        f"omega_max_pu@{ident}", _max_liczb(szereg), "pu", "max_t omega(t)", ident
+                        f"omega_max_pu@{ident}",
+                        _max_liczb(szereg),
+                        "pu",
+                        "maksimum prędkości kątowej w czasie",
+                        ident,
                     )
                 )
                 metryki.append(
                     Metryka(
-                        f"omega_min_pu@{ident}", _min_liczb(szereg), "pu", "min_t omega(t)", ident
+                        f"omega_min_pu@{ident}",
+                        _min_liczb(szereg),
+                        "pu",
+                        "minimum prędkości kątowej w czasie",
+                        ident,
                     )
                 )
             elif klucz.startswith("delta_rad@"):
                 ident = klucz.split("@", 1)[1]
                 metryki.append(
                     Metryka(
-                        f"delta_max_rad@{ident}", _max_liczb(szereg), "rad", "max_t delta(t)", ident
+                        f"delta_max_rad@{ident}",
+                        _max_liczb(szereg),
+                        "rad",
+                        "maksimum kąta wirnika w czasie",
+                        ident,
                     )
                 )
         return tuple(metryki)
@@ -2261,7 +2422,9 @@ class SilnikDynamiki:
             "kroki_szczegolne": kroki_szczegolne,
             # Zalozenia BIEGU (idealizacje harmonogramu, tryb stanowiska, mechanizmy uzyte w
             # biegu) — te same rekordy, co w `zalozenia` wyniku; slad nie moze ich przemilczec.
-            "idealizacje_harmonogramu": [rekord_zalozenia(zalozenie) for zalozenie in idealizacje],
+            "idealizacje_harmonogramu": [
+                rekord_zalozenia(zalozenie) for zalozenie in idealizacje
+            ],
             "podsumowanie_krokow": {
                 "kroki": kroki,
                 "kroki_odrzucone": kroki_odrzucone,
@@ -2281,7 +2444,9 @@ class SilnikDynamiki:
 #: jeszcze po karcie W6-3A, ktora dolozyla piec rodzin. Pozycje rekordu `rodziny_urzadzen`
 #: to `RODZINY_OBSLUGIWANE` fabryki, a zgodnosc w OBIE STRONY pilnuje
 #: `test_zalozenia_wymieniaja_dokladnie_rodziny_fabryki`.
-def zalozenia_modelu(odbiory: tuple[OdbiorDynamiki, ...]) -> tuple[ZalozenieRdzenia, ...]:
+def zalozenia_modelu(
+    odbiory: tuple[OdbiorDynamiki, ...]
+) -> tuple[ZalozenieRdzenia, ...]:
     """Zalozenia STALE modelu (kazdy wynik) plus estymator czestotliwosci odbiorow czulych."""
     stale = (
         ZalozenieRdzenia("model_rms_skladowej_zgodnej", (), (), ()),
@@ -2291,11 +2456,15 @@ def zalozenia_modelu(odbiory: tuple[OdbiorDynamiki, ...]) -> tuple[ZalozenieRdze
         ZalozenieRdzenia("probki_obustronne", (), (), ()),
     )
     czule = tuple(
-        odbior.ident for odbior in odbiory if jest_czuly_czestotliwosciowo(odbior.charakterystyka)
+        odbior.ident
+        for odbior in odbiory
+        if jest_czuly_czestotliwosciowo(odbior.charakterystyka)
     )
     if not czule:
         return stale
-    return stale + (ZalozenieRdzenia("estymator_czestotliwosci_odbiorow", czule, (), ()),)
+    return stale + (
+        ZalozenieRdzenia("estymator_czestotliwosci_odbiorow", czule, (), ()),
+    )
 
 
 def _zalozenia_warunkowe(
@@ -2439,7 +2608,12 @@ def _skok_stanow_nieprzypisanych(
 def _uklad_chwili(chwila: _Chwila, strona: StronaOceny) -> StanUkladu:
     """Punkt oceny dozorow w stanie chwili (probka `C` albo `P`)."""
     return StanUkladu(
-        chwila.model, chwila.odbiory, chwila.urzadzenia, chwila.stany, chwila.napiecia, strona
+        chwila.model,
+        chwila.odbiory,
+        chwila.urzadzenia,
+        chwila.stany,
+        chwila.napiecia,
+        strona,
     )
 
 
@@ -2450,7 +2624,11 @@ def _zapisy_nadzoru(nadzor: NadzorDozorow, t_s: float) -> list[dict[str, Any]]:
     for zapis in nadzor.zapisy:
         wpis: dict[str, Any] = {"t_s": kwantyzuj(t_s)}
         for klucz, wartosc in zapis.items():
-            if isinstance(wartosc, bool) or wartosc is None or isinstance(wartosc, str | int):
+            if (
+                isinstance(wartosc, bool)
+                or wartosc is None
+                or isinstance(wartosc, str | int)
+            ):
                 wpis[klucz] = wartosc
             elif isinstance(wartosc, float):
                 wpis[klucz] = kwantyzuj(wartosc)
@@ -2489,7 +2667,11 @@ class _MiejsceZwarcia:
 
     @property
     def klucz(self) -> str:
-        return self.element if self.polozenie is None else f"{self.element}:x={self.polozenie!r}"
+        return (
+            self.element
+            if self.polozenie is None
+            else f"{self.element}:x={self.polozenie!r}"
+        )
 
     @property
     def opis_pl(self) -> str:
@@ -2526,7 +2708,8 @@ def _odbiory_odciete(
     return frozenset(
         odbior.ident
         for odbior in odbiory
-        if odbior.tryb_poza_obwodem == TRYB_ODCIETY and odbior.ident in stan.odbiory_aktywne
+        if odbior.tryb_poza_obwodem == TRYB_ODCIETY
+        and odbior.ident in stan.odbiory_aktywne
     )
 
 
@@ -2535,7 +2718,9 @@ def _reinicjalizuj_estymatory(
     odbiory_algebry: tuple[OdbiorCharakterystyczny, ...],
     stany_odbiorow: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
-) -> tuple[tuple[np.ndarray, ...], tuple[PrzypisanieWykonane, ...], frozenset[tuple[int, int]]]:
+) -> tuple[
+    tuple[np.ndarray, ...], tuple[PrzypisanieWykonane, ...], frozenset[tuple[int, int]]
+]:
     """Regula PONOWNEGO ZASILENIA estymatora czestotliwosci odbioru: `x := arg V+`.
 
     Odbior odciety nie mierzyl; faza napiecia po przerwie beznapieciowej jest dowolna,
@@ -2548,7 +2733,9 @@ def _reinicjalizuj_estymatory(
     nowe: list[np.ndarray] = []
     przypisania: list[PrzypisanieWykonane] = []
     pozycje: set[tuple[int, int]] = set()
-    for indeks, (odbior, stan) in enumerate(zip(odbiory_algebry, stany_odbiorow, strict=True)):
+    for indeks, (odbior, stan) in enumerate(
+        zip(odbiory_algebry, stany_odbiorow, strict=True)
+    ):
         if not (odbior.estymator_wyzerowany and odbior.nazwy_stanow):
             nowe.append(stan)
             continue
@@ -2576,7 +2763,9 @@ def _bledy_fazy(
     stany_odbiorow = stany[: len(odbiory)]
     return tuple(
         (
-            odbior.blad_fazy_rad(stan, complex(napiecia[model.indeks_wezla[odbior.wezel]]))
+            odbior.blad_fazy_rad(
+                stan, complex(napiecia[model.indeks_wezla[odbior.wezel]])
+            )
             if odbior.nazwy_stanow
             else None
         )
@@ -2597,7 +2786,9 @@ def _sprawdz_odbiory(
     sprawdz_zakres_waznosci(
         odbiory,
         stany[: len(odbiory)],
-        tuple(complex(napiecia[model.indeks_wezla[odbior.wezel]]) for odbior in odbiory),
+        tuple(
+            complex(napiecia[model.indeks_wezla[odbior.wezel]]) for odbior in odbiory
+        ),
         t_s,
         bledy_fazy_przed=bledy_fazy_przed,
     )
@@ -2712,7 +2903,9 @@ def _probkuj_odbiory(
             probki[f"{STAN_KATA_POMIARU}@{odbior.ident}"].append(float(stan[0]))
 
 
-def zalozenia_harmonogramu(harmonogram: HarmonogramDynamiki) -> tuple[ZalozenieRdzenia, ...]:
+def zalozenia_harmonogramu(
+    harmonogram: HarmonogramDynamiki,
+) -> tuple[ZalozenieRdzenia, ...]:
     """Idealizacje ZADEKLAROWANE w harmonogramie biegu — dopisywane do zalozen wyniku.
 
     Usuniecie zwarcia `samoczynne` (karta AB-1b.1 par. 0 pkt 4) nie jest wykonywane
@@ -2735,12 +2928,20 @@ def zalozenia_harmonogramu(harmonogram: HarmonogramDynamiki) -> tuple[ZalozenieR
             ]
             if isinstance(zdarzenie, ZwarcieGalezi):
                 wielkosci.append(
-                    WielkoscZalozenia("polozenie_wzgledne", zdarzenie.polozenie_wzgledne, "1")
+                    WielkoscZalozenia(
+                        "polozenie_wzgledne", zdarzenie.polozenie_wzgledne, "1"
+                    )
                 )
             zalozenia.append(
                 ZalozenieRdzenia(
                     "zwarcie_usuniete_samoczynnie",
-                    (zdarzenie.wezel if isinstance(zdarzenie, ZwarcieWezla) else zdarzenie.galaz,),
+                    (
+                        (
+                            zdarzenie.wezel
+                            if isinstance(zdarzenie, ZwarcieWezla)
+                            else zdarzenie.galaz
+                        ),
+                    ),
                     tuple(wielkosci),
                     ("wezel" if isinstance(zdarzenie, ZwarcieWezla) else "galaz",),
                 )

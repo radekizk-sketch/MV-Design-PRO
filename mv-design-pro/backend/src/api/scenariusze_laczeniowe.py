@@ -49,7 +49,7 @@ class ZapisScenariuszaLaczeniowego(BaseModel):
     scenario_id: str | None = Field(None, description="Identyfikator istniejącego scenariusza")
     name: str = Field(..., min_length=1, description="Nazwa scenariusza")
     switch_states: dict[str, Literal["closed", "open"]] = Field(
-        ..., min_length=1, description="Łącznik (ref_id) → położenie w scenariuszu"
+        ..., min_length=1, description="Łącznik (`ref_id`) → położenie w scenariuszu"
     )
 
 

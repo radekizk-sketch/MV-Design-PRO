@@ -172,7 +172,7 @@ describe('SekcjaWalidacji — ślad WHITE BOX per pozycja (R2-A / K3-G1)', () =>
     expect(formuly[0].getAttribute('data-latex')).toContain('\\delta U');
     expect(formuly[1].getAttribute('data-latex')).toContain('= 12.00');
     // Kroki bez formuły (dane/progi/porównanie z progami) pozostają tekstowe.
-    expect(within(slad).getByText(/U = 13,2000 kV \(wynik rozpływu\)/)).toBeTruthy();
+    expect(within(slad).getByText(/napięcie 13,2000 kV \(wynik rozpływu\)/)).toBeTruthy();
     expect(
       within(slad).getByText('Porównanie z progami: Odchylenie napięcia 12,00 % przekracza limit 10,0 %.'),
     ).toBeTruthy();

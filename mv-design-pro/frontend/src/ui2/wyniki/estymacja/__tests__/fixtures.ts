@@ -11,8 +11,8 @@ export const TYPY_POMIAROW: MetaTypuPomiaru[] = [
   { code: 'V_MAGNITUDE', label_pl: 'Moduł napięcia węzła |V| [pu]', requires_bus_j: false },
   { code: 'P_INJECTION', label_pl: 'Iniekcja mocy czynnej w węźle P [pu]', requires_bus_j: false },
   { code: 'Q_INJECTION', label_pl: 'Iniekcja mocy biernej w węźle Q [pu]', requires_bus_j: false },
-  { code: 'P_FLOW', label_pl: 'Przepływ mocy czynnej w gałęzi P_ij [pu]', requires_bus_j: true },
-  { code: 'Q_FLOW', label_pl: 'Przepływ mocy biernej w gałęzi Q_ij [pu]', requires_bus_j: true },
+  { code: 'P_FLOW', label_pl: 'Przepływ mocy czynnej w gałęzi [pu]', requires_bus_j: true },
+  { code: 'Q_FLOW', label_pl: 'Przepływ mocy biernej w gałęzi [pu]', requires_bus_j: true },
 ];
 
 export function wymaganiaFixture(): WymaganiaEstymacji {

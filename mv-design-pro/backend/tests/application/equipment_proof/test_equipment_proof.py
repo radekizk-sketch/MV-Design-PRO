@@ -153,7 +153,9 @@ def test_equipment_proof_ith_equal_times_unchanged():
         in check.message_pl
     )
     # Krok wywodu: równanie prądowe (nie energetyczne).
-    step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
+    step = next(
+        s for s in bundle.proof_document.steps if s.title_pl == "Sprawdzenie wytrzymałości cieplnej"
+    )
     assert step.equation.equation_id == "EQ_P12_006"
 
 
@@ -171,7 +173,9 @@ def test_equipment_proof_ith_time_mismatch_i2t_pass():
     assert any("Całka Joule'a wymagana" in note for note in check.notes)
     assert any("Całka Joule'a aparatu" in note for note in check.notes)
     # Krok wywodu: równanie energetyczne z jawnym podstawieniem.
-    step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
+    step = next(
+        s for s in bundle.proof_document.steps if s.title_pl == "Sprawdzenie wytrzymałości cieplnej"
+    )
     assert step.equation.equation_id == "EQ_P12_006b"
     assert "324.0000" in step.substitution_latex
     assert "450.0000" in step.substitution_latex
@@ -210,7 +214,9 @@ def test_equipment_proof_ith_krotszy_czas_zwarcia_porownuje_prad_wprost(
 
     assert check.status == status
     assert "I²t" not in check.message_pl
-    step = next(s for s in bundle.proof_document.steps if s.title_pl == "Check Ith")
+    step = next(
+        s for s in bundle.proof_document.steps if s.title_pl == "Sprawdzenie wytrzymałości cieplnej"
+    )
     assert step.equation.equation_id == "EQ_P12_006"
 
 

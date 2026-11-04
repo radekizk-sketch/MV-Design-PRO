@@ -1333,7 +1333,7 @@ def _oceb_karte_przeksztaltnika(
     if rated_mva is None:
         converter_kod = "generator.converter_card_missing"
         converter_powod = (
-            "Karta katalogowa przekształtnika nie niesie mocy znamionowej (Sn) — "
+            "Karta katalogowa przekształtnika nie niesie mocy znamionowej — "
             "przekształtnik pominięty w wejściu V12.6."
         )
 

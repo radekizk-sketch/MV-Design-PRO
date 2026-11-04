@@ -1,5 +1,17 @@
 [
  [
+  "ABB NAL katalog 1VCL100001 str.9 tabela I (napięcie znamionowe 12 kV; rozłącznik bez prądu wyłączalnego zwarciowego — brak zdolności wyłączania z definicji urządzenia)",
+  "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozłącznik bez Isc — brak zdolności wyłączania z definicji urządzenia)"
+ ],
+ [
+  "ABB NAL katalog 1VCL100001 str.9 tabela I (napięcie znamionowe 12 kV; rozłącznik bez prądu wyłączalnego zwarciowego)",
+  "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=12kV; rozłącznik bez Isc)"
+ ],
+ [
+  "ABB NAL katalog 1VCL100001 str.9 tabela I (napięcie znamionowe 24 kV; rozłącznik bez prądu wyłączalnego zwarciowego)",
+  "ABB NAL katalog 1VCL100001 str.9 tabela I (Un=24kV; rozłącznik bez Isc)"
+ ],
+ [
   "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), tabela zamówieniowa str. 252, 266 — rama E2.2N, prąd znamionowy ciągły 2000 A, zdolność wyłączania graniczna przy 440 V 66 kA, prąd krótkotrwały 1 s 66 kA, kody zamówieniowe 1SDA071031R1 / 1SDA072381R1",
   "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), tabela zamówieniowa str. 252, 266 — rama E2.2N, Iu=2000 A, Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071031R1 / 1SDA072381R1"
  ],
@@ -16,12 +28,56 @@
   "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), tabela zamówieniowa str. 256, 270 — rama E4.2N, Iu=4000 A, Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071191R1 / 1SDA072541R1"
  ],
  [
+  "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.6 (rama XT1C 160, prąd wyłączalny graniczny 25 kA przy 415 V, prąd znamionowy 100 A)",
+  "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.6 (rama XT1C 160, Icu 415V=25kA @ In=100A)"
+ ],
+ [
+  "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.6 (rama XT1C 160, prąd wyłączalny graniczny 25 kA przy 415 V, prąd znamionowy 150 A/160 A)",
+  "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.6 (rama XT1C 160, Icu 415V=25kA @ In=150A/160A)"
+ ],
+ [
+  "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.7 (rama XT3C 250, prąd wyłączalny graniczny 25 kA przy 415 V, prąd znamionowy 250 A)",
+  "ABB Tmax XT katalog 1SDA066835R1 / ABB Tmax XT katalog 1SDC210064D0201 str.7 (rama XT3C 250, Icu 415V=25kA @ In=250A)"
+ ],
+ [
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 12 kV, prąd wyłączalny zwarciowy 20 kA przy prądzie znamionowym 630 A)",
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=20kA @ 630A)"
+ ],
+ [
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 12 kV, prąd wyłączalny zwarciowy 25 kA przy prądzie znamionowym 1250 A)",
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=25kA @ 1250A)"
+ ],
+ [
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 12 kV, prąd wyłączalny zwarciowy 40 kA przy prądzie znamionowym 2500 A, VD4 12.25.40 p275)",
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=12kV, Isc=40kA @ 2500A, VD4 12.25.40 p275)"
+ ],
+ [
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 17,5 kV, prąd wyłączalny zwarciowy 20 kA przy prądzie znamionowym 630 A)",
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=17.5kV, Isc=20kA @ 630A)"
+ ],
+ [
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 17,5 kV, prąd wyłączalny zwarciowy 25 kA przy prądzie znamionowym 1250 A)",
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=17.5kV, Isc=25kA @ 1250A)"
+ ],
+ [
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 24 kV, prąd wyłączalny zwarciowy 20 kA przy prądzie znamionowym 630 A)",
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=24kV, Isc=20kA @ 630A)"
+ ],
+ [
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (napięcie znamionowe 24 kV, prąd wyłączalny zwarciowy 25 kA przy prądzie znamionowym 1250 A)",
+  "ABB VD4 katalog 1VCP000015 / TK 521_VD4_40kA_E (Ur=24kV, Isc=25kA @ 1250A)"
+ ],
+ [
   "Dane znamionowe (prąd znamionowy ciągły, zdolność wyłączania graniczna przy 440 V, prąd krótkotrwały 1 s, kody zamówieniowe) z wyciągu katalogu technicznego ABB SACE Emax 2 nr 1SDC200023D0205 (edycja 2017.01), wyciąg przypięty odciskiem SHA-256 dokumentu 4502f57f72a92209798e1792b415709d4ba8f40993c1bfb054d824f689582612. Kontrola krzyżowa importera zestawia tabele zamówieniowe z tabelą zbiorczą str. 2/3 TEGO SAMEGO dokumentu — wyklucza błąd ekstrakcji układu tabeli, NIE jest weryfikacją wobec producenta. Nastawy wyzwalacza elektronicznego Ekip (wspólna platforma ABB SACE Emax2/Tmax XT, ABB 1SPC801398B0201) — zakresy regulacji GENERYCZNE dla platformy, NIE zweryfikowane osobno per rama (E1.2/E2.2/E4.2/E6.2 wzgl. XT1/XT3/XT5). Zweryfikowane podwójnie, niezależnie: (1) stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide + stoklink.com/blogs/technical/abb-emax-2-ekip-hi-touch-protection-functions-settings (nastawa długozwłoczna 0,4-1,0 × prąd znamionowy; nastawa bezzwłoczna 1,5-15 × prąd znamionowy; czas krótkozwłoczny 0,05-0,8 s; czas długozwłoczny 3-144 s przy sześciokrotności nastawy długozwłocznej — JEDNO źródło numeryczne dla czasu długozwłocznego, NIE podwójnie potwierdzone); (2) VIOX viox.com/mccb-trip-unit-settings-ir-isd-ii-explained (nastawa długozwłoczna 0,4-1,0 × prąd znamionowy; nastawa krótkozwłoczna 1,5-10 × nastawa długozwłoczna — rozstrzyga jednostkę nastawy krótkozwłocznej jako krotność nastawy długozwłocznej; czas krótkozwłoczny 0,05-0,5 s).",
   "Dane znamionowe (Iu, Icu@440V, Icw 1s, kody zamówieniowe) z wyciągu katalogu technicznego ABB SACE Emax 2 nr 1SDC200023D0205 (edycja 2017.01), wyciąg przypięty odciskiem SHA-256 dokumentu 4502f57f72a92209798e1792b415709d4ba8f40993c1bfb054d824f689582612. Kontrola krzyżowa importera zestawia tabele zamówieniowe z tabelą zbiorczą str. 2/3 TEGO SAMEGO dokumentu — wyklucza błąd ekstrakcji układu tabeli, NIE jest weryfikacją wobec producenta. Nastawy wyzwalacza elektronicznego Ekip (wspólna platforma ABB SACE Emax2/Tmax XT, ABB 1SPC801398B0201) — zakresy regulacji GENERYCZNE dla platformy, NIE zweryfikowane osobno per rama (E1.2/E2.2/E4.2/E6.2 wzgl. XT1/XT3/XT5). Zweryfikowane podwójnie, niezależnie: (1) stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide + stoklink.com/blogs/technical/abb-emax-2-ekip-hi-touch-protection-functions-settings (Ir 0,4-1,0×In; Ii 1,5-15×In; tsd 0,05-0,8s; tr 3-144s@6×Ir — JEDNO źródło numeryczne dla tr, NIE podwójnie potwierdzone); (2) VIOX viox.com/mccb-trip-unit-settings-ir-isd-ii-explained (Ir 0,4-1,0×In; Isd 1,5-10×Ir — rozstrzyga jednostkę Isd jako ×Ir; tsd 0,05-0,5s)."
  ],
  [
   "Deklaracja (dokument nieodczytany): turbina 3450 kW, wirnik 112 m; generator asynchroniczny klatkowy VND SFIG V2 – DASG 560/6M, 750 V, 1450 obr./min, izolacja H, IP54; przekształtnik pełnej mocy Vestas — strona generatora 750 V AC, strona sieci 650 V AC, moc pozorna znamionowa 4,4 MVA, napięcie obwodu DC 1150 V, 50/60 Hz po stronie sieci. Transformator blokowy tej konfiguracji (suchy 4000 kVA, 0,65/33 kV, Dyn5) nie wchodzi do katalogu: 33 kV nie jest napięciem sieci polskiej, a deklaracja nie podaje napięcia zwarcia ani strat. Zdolność bierna, częstotliwość stojana, udział zwarciowy i profil dynamiczny — brak w deklaracji (pola puste).",
   "Deklaracja (dokument nieodczytany): turbina 3450 kW, wirnik 112 m; generator asynchroniczny klatkowy VND SFIG V2 – DASG 560/6M, 750 V, 1450 obr./min, izolacja H, IP54; przekształtnik pełnej mocy Vestas — strona generatora 750 V AC, strona sieci 650 V AC, S_n 4,4 MVA, U_DC 1150 V, 50/60 Hz po stronie sieci. Transformator blokowy tej konfiguracji (suchy 4000 kVA, 0,65/33 kV, Dyn5) nie wchodzi do katalogu: 33 kV nie jest napięciem sieci polskiej, a deklaracja nie podaje u_k ani strat. Zdolność bierna, częstotliwość stojana, udział zwarciowy i profil dynamiczny — brak w deklaracji (pola puste)."
+ ],
+ [
+  "ENEA Operator, Standard „Stacje elektroenergetyczne 110 kV. Zeszyt 1. Stacje dwutransformatorowe 110 kV/SN”, wersja 02.2023-2, §10.1 tab. 5, str. I 16/76 (napięcie najwyższe urządzenia 123 kV dla 110 kV)",
+  "ENEA Operator, Standard „Stacje elektroenergetyczne 110 kV. Zeszyt 1. Stacje dwutransformatorowe 110 kV/SN”, wersja 02.2023-2, §10.1 tab. 5, str. I 16/76 (U_m = 123 kV dla 110 kV)"
  ],
  [
   "IEC 60269-1 (wartości znamionowe normatywne) — znamionowa zdolność wyłączania 120 kA AC przy 500 V dla wkładek NH gG, potwierdzone podwójnie w katalogach producenckich niezależnych od siebie: Socomec (emea.socomec.com/en/p/knife-edge-fuses-nh-gg-type), EFEN (katalog.efen.sk/en/c/nh-fuse-links/nh-fuse-links-ac-500-v-gg), ETI Group (etigroup.eu, seria NH gG 500V), Mersen (DS-NH-fuse-links-gG-500VAC), Eaton Bussmann (bus-iec-ds-10164-nh500voltsfuselinks.pdf) — wszystkie zgodnie 120 kA.",
@@ -58,6 +114,18 @@
  [
   "Karta: moc pozorna znamionowa 4600 kVA przy współczynniku mocy 1 (35 °C), 3680 kW przy współczynniku mocy 0,8, napięcie znamionowe 690 V, prąd znamionowy AC 3850 A (35 °C), współczynnik mocy regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie. Moc > 3150 kVA: transformator blokowy wymaga pozycji powyżej typoszeregu normatywnego (zablokowany danymi).",
   "Karta: S_n = 4600 kVA przy cos φ = 1 (35 °C), 3680 kW przy cos φ = 0,8, U_n = 690 V, I_AC,nom = 3850 A (35 °C), cos φ regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie. Moc > 3150 kVA: transformator blokowy wymaga pozycji powyżej typoszeregu normatywnego (zablokowany danymi)."
+ ],
+ [
+  "Karta: moc znamionowa 2200 kVA przy współczynniku mocy 1 (35 °C; 2000 kVA przy 50 °C), 1760 kW przy współczynniku 0,8, napięcie znamionowe 385 V (308–462 V), prąd AC znamionowy równy maksymalnemu 3300 A, współczynnik mocy regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie.",
+  "Karta: S_n = 2200 kVA przy cos φ = 1 (35 °C; 2000 kVA przy 50 °C), 1760 kW przy cos φ = 0,8, U_n = 385 V (308–462 V), I_AC,nom = I_AC,max = 3300 A, cos φ regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie."
+ ],
+ [
+  "Karta: moc znamionowa 2475 kVA przy współczynniku mocy 1 (35 °C; 2250 kVA przy 50 °C), 1980 kW przy współczynniku 0,8, napięcie znamionowe 434 V (347–521 V), prąd AC znamionowy równy maksymalnemu 3300 A, współczynnik mocy regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie.",
+  "Karta: S_n = 2475 kVA przy cos φ = 1 (35 °C; 2250 kVA przy 50 °C), 1980 kW przy cos φ = 0,8, U_n = 434 V (347–521 V), I_AC,nom = I_AC,max = 3300 A, cos φ regulowany 0,8 przewzbudzenie – 0,8 niedowzbudzenie."
+ ],
+ [
+  "Karta: moc znamionowa AC 300 kW, moc pozorna maksymalna 330 kVA, moc czynna maksymalna przy współczynniku mocy 1 — 330 kW, napięcie znamionowe 800 V (3W + PE), prąd znamionowy 216,6 A, prąd maksymalny 238,2 A, współczynnik mocy regulowany 0,8 LG – 0,8 LD.",
+  "Karta: P_n,AC = 300 kW, S_max = 330 kVA, P_max (cos φ = 1) = 330 kW, U_n = 800 V (3W + PE), I_n = 216,6 A, I_max = 238,2 A, cos φ regulowany 0,8 LG – 0,8 LD."
  ],
  [
   "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, prąd dynamiczny równy 2,5-krotności prądu cieplnego, współczynnik bezpieczeństwa przyrządu) / IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)",
@@ -236,8 +304,20 @@
   "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony"
  ],
  [
-  "Rozporządzenie Komisji (UE) nr 548/2014, załącznik I, w brzmieniu rozporządzenia (UE) 2019/1783 — Tier 2 (od 1.07.2021): tab. I.1 (olejowe) i I.2 (suche), pułapy strat jałowych i obciążeniowych; tekst: https://www.legislation.gov.uk/eur/2014/548/annex/I (dostęp 2026-10-15) || u_k, i0, zaczepy: Siemens AG, broszura „GEAFOL Neo / CARECO” MSDT201901 (2019), tabela „Selection of ordering data for Standard 20kV/22kV/24kV” (str. 7): napięcie zwarcia 6 % dla 200–2500 kVA, 8 % dla 3150 kVA (przypisanie napięcia zwarcia z kolumny scalonej do wierszy jest interpretacją układu tabeli), prąd jałowy z kolumny „No-load Current”, zaczepy ±2×2,5 %; https://assets.new.siemens.com/siemens/assets/api/uuid:87d559ac-1ef0-4230-bff6-8ecd2897827a/gzbianyaqi.pdf (dostęp 2026-10-15)",
+  "Rozporządzenie Komisji (UE) nr 548/2014, załącznik I, w brzmieniu rozporządzenia (UE) 2019/1783 — Tier 2 (od 1.07.2021): tab. I.1 (olejowe) i I.2 (suche), pułapy strat jałowych i obciążeniowych; tekst: https://www.legislation.gov.uk/eur/2014/548/annex/I (dostęp 2026-10-15) || napięcie zwarcia, prąd jałowy, zaczepy: Siemens AG, broszura „GEAFOL Neo / CARECO” MSDT201901 (2019), tabela „Selection of ordering data for Standard 20kV/22kV/24kV” (str. 7): napięcie zwarcia 6 % dla 200–2500 kVA, 8 % dla 3150 kVA (przypisanie napięcia zwarcia z kolumny scalonej do wierszy jest interpretacją układu tabeli), prąd jałowy z kolumny „No-load Current”, zaczepy ±2×2,5 %; https://assets.new.siemens.com/siemens/assets/api/uuid:87d559ac-1ef0-4230-bff6-8ecd2897827a/gzbianyaqi.pdf (dostęp 2026-10-15)",
   "Rozporządzenie Komisji (UE) nr 548/2014, załącznik I, w brzmieniu rozporządzenia (UE) 2019/1783 — Tier 2 (od 1.07.2021): tab. I.1 (olejowe) i I.2 (suche), pułapy strat P0 i Pk; tekst: https://www.legislation.gov.uk/eur/2014/548/annex/I (dostęp 2026-10-15) || u_k, i0, zaczepy: Siemens AG, broszura „GEAFOL Neo / CARECO” MSDT201901 (2019), tabela „Selection of ordering data for Standard 20kV/22kV/24kV” (str. 7): u_k 6 % dla 200–2500 kVA, 8 % dla 3150 kVA (przypisanie u_k z kolumny scalonej do wierszy jest interpretacją układu tabeli), prąd jałowy i0 z kolumny „No-load Current”, zaczepy ±2×2,5 %; https://assets.new.siemens.com/siemens/assets/api/uuid:87d559ac-1ef0-4230-bff6-8ecd2897827a/gzbianyaqi.pdf (dostęp 2026-10-15)"
+ ],
+ [
+  "Siemens 3AH5 karta katalogowa / Siemens 3AH5 katalog HG 11.05 (2017) str.13 (napięcie znamionowe 17,5 kV, prąd wyłączalny zwarciowy 25 kA przy prądzie znamionowym 1250 A)",
+  "Siemens 3AH5 karta katalogowa / Siemens 3AH5 katalog HG 11.05 (2017) str.13 (Ur=17.5kV, Isc=25kA @ 1250A)"
+ ],
+ [
+  "Siemens 3AH5 katalog HG 11.05 (2017) str. 13 — KOREKTA z widma 630 A: linia 12 kV nie ma 630 A; zachowano prąd wyłączalny zwarciowy 25 kA, najmniejszy realny prąd znamionowy dla 25 kA to 800 A (dyrektywa właściciela 2026-08-13: korekta na realny wariant)",
+  "Siemens 3AH5 katalog HG 11.05 (2017) str. 13 — KOREKTA z widma 630 A: linia 12 kV nie ma 630 A; zachowano Isc=25 kA, najmniejszy realny Ir dla 25 kA to 800 A (dyrektywa właściciela 2026-08-13: korekta na realny wariant)"
+ ],
+ [
+  "Siemens 3AH5 katalog HG 11.05 (2017) str. 14 — KOREKTA z widma 630 A: linia 24 kV nie ma 630 A, a 20 kA idzie dopiero od prądu znamionowego 1250 A (800 A występuje wyłącznie z 16 kA); zachowano prąd wyłączalny zwarciowy 20 kA (dyrektywa właściciela 2026-08-13: korekta na realny wariant)",
+  "Siemens 3AH5 katalog HG 11.05 (2017) str. 14 — KOREKTA z widma 630 A: linia 24 kV nie ma 630 A, a 20 kA idzie dopiero od Ir=1250 A (800 A występuje wyłącznie z 16 kA); zachowano Isc=20 kA (dyrektywa właściciela 2026-08-13: korekta na realny wariant)"
  ],
  [
   "Siemens Energy, „Product information requirements according to Commission Regulation (EU) No 548/2014”, typ 4GY6364-1EC (nr seryjny B382978), GEAFOL Neo, Budapeszt, grudzień 2025; https://assets.siemens-energy.com/dam/21d60220-d7c1-473c-8eef-b3db0095a922/GEAFOL-Distribution-Transformer-Information-acc--to-EU-Regulation-548-2014-pdf_Original%20file.pdf (dostęp 2026-10-15)",
@@ -248,8 +328,104 @@
   "Szeregi I_Δn (0,03 / 0,1 / 0,3 / 0,5 A) i I_n (25 / 40 / 63 / 100 A) rodziny generycznej potwierdzono jako wartości wyrobów w katalogach producentów (Eaton FRBmM, Iskra RCCB Ver3.1, Terasaki DinSafe); tabela wartości znormalizowanych kl. 5.3.2/5.3.3 IEC 61008-1 odczytana w jednym źródle wtórnym (asutpp.com) — bez drugiego źródła, więc rodzina nie twierdzi, że jest kompletnym szeregiem normy. Typ S: I_Δn > 0,03 A i I_n ≥ 25 A (TRF, BEAMA). Rodzaje F i B (IEC 62423) nie wchodzą do rodziny: Tabela 1 dotyczy AC i A."
  ],
  [
+  "Typ minimalny łącznika topologii zasilania 110 kV: klasa napięcia i prąd znamionowy jako wartości robocze (ESTIMATED), bez danych wytrzymałościowych (prąd zwarciowy, prąd krótkotrwały wytrzymywany i prąd wyłączalny graniczny — brak danej) i bez producenta.",
+  "Typ minimalny łącznika topologii zasilania 110 kV: klasa napięcia i prąd znamionowy jako wartości robocze (ESTIMATED), bez danych wytrzymałościowych (I_k, I_cw, I_cu — brak danej) i bez producenta."
+ ],
+ [
   "Współczynnik emisji migotania (zależny od kąta impedancji sieci) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
   "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 100 MVA / R/X 0.08",
+  "Zasilanie GPZ 15 kV / Sk3 100 MVA / R/X 0.08"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 150 MVA / R/X 0.08",
+  "Zasilanie GPZ 15 kV / Sk3 150 MVA / R/X 0.08"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 200 MVA / R/X 0.10",
+  "Zasilanie GPZ 15 kV / Sk3 200 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 250 MVA / R/X 0.10",
+  "Zasilanie GPZ 15 kV / Sk3 250 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 300 MVA / R/X 0.10",
+  "Zasilanie GPZ 15 kV / Sk3 300 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 350 MVA / R/X 0.10",
+  "Zasilanie GPZ 15 kV / Sk3 350 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 400 MVA / R/X 0.10",
+  "Zasilanie GPZ 15 kV / Sk3 400 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 500 MVA / R/X 0.10",
+  "Zasilanie GPZ 15 kV / Sk3 500 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 500 MVA / R/X 0.12",
+  "Zasilanie GPZ 15 kV / Sk3 500 MVA / R/X 0.12"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 630 MVA / R/X 0.12",
+  "Zasilanie GPZ 15 kV / Sk3 630 MVA / R/X 0.12"
+ ],
+ [
+  "Zasilanie GPZ 15 kV / moc zwarciowa 750 MVA / R/X 0.12",
+  "Zasilanie GPZ 15 kV / Sk3 750 MVA / R/X 0.12"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 100 MVA / R/X 0.08",
+  "Zasilanie GPZ 20 kV / Sk3 100 MVA / R/X 0.08"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 150 MVA / R/X 0.08",
+  "Zasilanie GPZ 20 kV / Sk3 150 MVA / R/X 0.08"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 200 MVA / R/X 0.10",
+  "Zasilanie GPZ 20 kV / Sk3 200 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 250 MVA / R/X 0.10",
+  "Zasilanie GPZ 20 kV / Sk3 250 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 300 MVA / R/X 0.10",
+  "Zasilanie GPZ 20 kV / Sk3 300 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 350 MVA / R/X 0.12",
+  "Zasilanie GPZ 20 kV / Sk3 350 MVA / R/X 0.12"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 400 MVA / R/X 0.12",
+  "Zasilanie GPZ 20 kV / Sk3 400 MVA / R/X 0.12"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 500 MVA / R/X 0.10",
+  "Zasilanie GPZ 20 kV / Sk3 500 MVA / R/X 0.10"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 500 MVA / R/X 0.12",
+  "Zasilanie GPZ 20 kV / Sk3 500 MVA / R/X 0.12"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 630 MVA / R/X 0.12",
+  "Zasilanie GPZ 20 kV / Sk3 630 MVA / R/X 0.12"
+ ],
+ [
+  "Zasilanie GPZ 20 kV / moc zwarciowa 750 MVA / R/X 0.12",
+  "Zasilanie GPZ 20 kV / Sk3 750 MVA / R/X 0.12"
+ ],
+ [
+  "rezystancja wyznaczona z napięcia fazowego i prądu znamionowego przy pełnym napięciu fazowym",
+  "R = U_n/(√3·I_n) — rezystancja wyznaczona z prądu znamionowego przy pełnym U_f"
  ],
  [
   "tryb regulacji mocy biernej jest nastawą projektu; karta podaje zdolność (regulowany współczynnik mocy), nie tryb",
@@ -258,5 +434,13 @@
  [
   "wyprowadzona: moc znamionowa 3,3 MW / współczynnik mocy 0,863 (rys. 9-2) — dokument nie podaje mocy pozornej przekształtnika",
   "wyprowadzona: P_n 3,3 MW / cos φ 0,863 (rys. 9-2) — dokument nie podaje mocy pozornej przekształtnika"
+ ],
+ [
+  "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy napięciu znamionowym SN (§16 jej nie podaje) — do potwierdzenia kartą producenta",
+  "założenie inżynierskie: impedancja zerowa uzwojenia zygzak ZN na fazę rzędu kilku Ω przy U_n SN (§16 jej nie podaje) — do potwierdzenia kartą producenta"
+ ],
+ [
+  "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy napięciu fazowym w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)",
+  "założenie robocze: moc znamionowa uzwojenia SN dobrana do prądu punktu neutralnego 400 A przy U_n/√3 w pracy dorywczej (§16 s. 30: „moc uzwojenia kompensującego dostosowana do wartości maksymalnej prądu dławika”)"
  ]
 ]

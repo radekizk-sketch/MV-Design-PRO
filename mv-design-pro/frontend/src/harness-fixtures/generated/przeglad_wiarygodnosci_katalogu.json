@@ -228,26 +228,26 @@
   "reguly": [
     {
       "kod": "KAT-W-001",
-      "nazwa": "R0 >= R1 przewodu",
+      "nazwa": "Rezystancja zerowa przewodu nie mniejsza od zgodnej",
       "podstawa": "Typowa konstrukcja żyły powrotnej / ekranu z powrotem ziemnym",
       "uzasadnienie": "Rezystancja składowej zerowej zależy od konstrukcji żyły powrotnej, ekranu i drogi powrotu przez ziemię. Dla konstrukcji z powrotem ziemnym rezystancja składowej zerowej jest zwykle kilkukrotnie większe, ale nie jest to nierówność uniwersalna dla każdej konstrukcji kabla i linii. Twarda bramka odrzuciłaby poprawny rekord spoza dotychczasowego zbioru."
     },
     {
       "kod": "KAT-W-002",
-      "nazwa": "P0 < Pk transformatora",
+      "nazwa": "Straty jałowe mniejsze od strat obciążeniowych transformatora",
       "podstawa": "Relacja typowa dla transformatorów rozdzielczych",
       "uzasadnienie": "Straty jałowe są zwykle ułamkiem strat obciążeniowych, ale nie jest to konieczność matematyczna dla każdej rodziny konstrukcyjnej. Odwrócenie pary zwykle oznacza zamienione kolumny przy imporcie — i o tym ma powiedzieć ostrzeżenie, a nie odmowa wczytania pozycji."
     },
     {
       "kod": "KAT-W-003",
-      "nazwa": "Icw <= Icu aparatu SN",
+      "nazwa": "Prąd krótkotrwały wytrzymywany nie większy od prądu wyłączalnego granicznego aparatu SN",
       "podstawa": "IEC 62271-100 — prąd krótkotrwały wytrzymywany i zdolność wyłączania są ODDZIELNYMI wielkościami znamionowymi",
       "uzasadnienie": "Prąd krótkotrwały wytrzymywany (przewodzenie bez uszkodzenia) i zdolność wyłączania (przerwanie prądu) to różne zdolności, znamionowane osobno. Globalna nierówność po całej rodzinie aparatów SN nie ma podstawy normowej i mogłaby odrzucić poprawny rekord aparatu, dla którego norma tej relacji nie narzuca."
     },
     {
       "kod": "KAT-W-004",
-      "nazwa": "Icw <= Icu aparatu nN",
-      "podstawa": "IEC 60947-2 § 4.3.5.4 (Icw) wobec § 4.3.5.2.2 (Ics jako % Icu)",
+      "nazwa": "Prąd krótkotrwały wytrzymywany nie większy od prądu wyłączalnego granicznego aparatu nN",
+      "podstawa": "IEC 60947-2 § 4.3.5.4 (prąd krótkotrwały wytrzymywany) wobec § 4.3.5.2.2 (prąd wyłączalny eksploatacyjny jako procent granicznego)",
       "uzasadnienie": "Norma definiuje eksploatacyjną zdolność wyłączania JAWNIE jako procent graniczną zdolność wyłączania (§ 4.3.5.2.2) — tamta relacja mogłaby być twarda. Dla prądu krótkotrwałego wytrzymywanego takiej definicji NIE MA: norma opisuje go osobno (§ 4.3.5.4), jako wytrzymałość krótkotrwała wyłącznika kategorii B przez zadany czas, a nie jako ułamek zdolności wyłączalnej. Porównywać je wolno wyłącznie dla tego samego wariantu, napięcia i czasu."
     },
     {
