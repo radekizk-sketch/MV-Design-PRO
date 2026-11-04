@@ -265,16 +265,22 @@ def test_brak_warunkow_ulozenia_zachowuje_dawne_zachowanie(app_client) -> None:
 def test_warunki_ziemne_podnosza_przekroj_na_realnym_katalogu(app_client) -> None:
     """DOWÓD LICZBOWY na REALNYM katalogu, że warunki ułożenia zmieniają dobór.
 
-    ΣP = 2,4 MW ⇒ TR 2,5 MVA ⇒ I_SN = 96,2 A; rezerwa kabla 0,3 ⇒ próg 125,1 A.
-      warunki katalogowe: najmniejszy kabel 50 mm² (Iz 160 A ≥ 125,1 A) ⇒ 50 mm²
-      ziemia/3 kable:     160 × 0,74538 = 119,3 A < 125,1 A ⇒ 50 mm² ODRZUCONY ⇒ 70 mm²
+    ΣP = 3,0 MW ⇒ TR 3,15 MVA ⇒ I_SN = 121,2 A; rezerwa kabla 0,5 ⇒ próg 181,9 A.
+      warunki katalogowe: najmniejszy kabel Tele-Fonika XRUHKXS 1×35/16 Cu (Iz 231 A
+        z tablicy producenta, grunt, trójkąt) ≥ 181,9 A ⇒ 35 mm²
+      ziemia/3 kable:     231 × 0,74538 = 172,2 A < 181,9 A ⇒ 35 mm² ODRZUCONY ⇒
+        XRUHKXS 1×50/16 Cu: 274 × 0,74538 = 204,2 A ⇒ 50 mm²
+    Do karty KATALOG-PRZEJECIE-PR scenariusz stał na ΣP = 2,4 MW i rezerwie 0,3 (próg 125,1 A,
+    najmniejszy kabel 50 mm² Al 160 A); kable z kart producentów (#508) wniosły Cu 35 mm²
+    o Iz 231 A, który przy tamtym progu przechodził w obu warunkach — intencja testu
+    (warunki ułożenia podnoszą przekrój) wymaga progu między 172,2 a 231 A.
     """
     payload = {
-        "sum_active_power_mw": 2.4,
+        "sum_active_power_mw": 3.0,
         "inverter_output_kv": 0.4,
         "sn_bus_voltage_kv": 15.0,
         "cable_length_km": 1.0,
-        "cable_reserve_pu": 0.3,
+        "cable_reserve_pu": 0.5,
         "max_delta_u_pct": 2.0,
     }
     katalogowe = app_client.post("/api/solver/der-selection-preview", json=payload).json()
@@ -283,9 +289,9 @@ def test_warunki_ziemne_podnosza_przekroj_na_realnym_katalogu(app_client) -> Non
         json={**payload, "laying_conditions": {"set_name": "ziemia_3_kable_warstwa_200mm"}},
     ).json()
 
-    assert katalogowe["cable"]["required_ampacity_a"] == pytest.approx(125.1, abs=0.1)
-    assert katalogowe["cable"]["proposal"]["cross_section_mm2"] == pytest.approx(50.0)
-    assert w_ziemi["cable"]["proposal"]["cross_section_mm2"] == pytest.approx(70.0)
+    assert katalogowe["cable"]["required_ampacity_a"] == pytest.approx(181.9, abs=0.1)
+    assert katalogowe["cable"]["proposal"]["cross_section_mm2"] == pytest.approx(35.0)
+    assert w_ziemi["cable"]["proposal"]["cross_section_mm2"] == pytest.approx(50.0)
     # Próg prądowy się NIE zmienił — zmieniła się obciążalność kandydatów.
     assert w_ziemi["cable"]["required_ampacity_a"] == pytest.approx(
         katalogowe["cable"]["required_ampacity_a"]
@@ -343,11 +349,11 @@ def test_wlasne_wspolczynniki_z_opisem_wchodza_do_doboru(app_client) -> None:
     response = app_client.post(
         "/api/solver/der-selection-preview",
         json={
-            "sum_active_power_mw": 2.4,
+            "sum_active_power_mw": 3.0,
             "inverter_output_kv": 0.4,
             "sn_bus_voltage_kv": 15.0,
             "cable_length_km": 1.0,
-            "cable_reserve_pu": 0.3,
+            "cable_reserve_pu": 0.5,
             "laying_conditions": {
                 "set_name": "wlasne",
                 "f_grunt": 0.85,
@@ -362,8 +368,10 @@ def test_wlasne_wspolczynniki_z_opisem_wchodza_do_doboru(app_client) -> None:
     assert cable["derating_set"] == "wlasne"
     assert cable["derating_total"] == pytest.approx(0.765, abs=1e-9)
     assert "rurach osłonowych" in cable["derating_assumption_pl"]
-    # 160 × 0,765 = 122,4 A < 125,1 A ⇒ 50 mm² nie przechodzi także tu.
-    assert cable["proposal"]["cross_section_mm2"] == pytest.approx(70.0)
+    # Próg 181,9 A (ΣP 3,0 MW, TR 3,15 MVA, rezerwa 0,5): Cu 35 mm² 231 × 0,765 = 176,7 A
+    # nie przechodzi, Cu 50 mm² 274 × 0,765 = 209,6 A przechodzi.
+    assert cable["proposal"]["cross_section_mm2"] == pytest.approx(50.0)
+    assert cable["proposal"]["effective_ampacity_a"] == pytest.approx(274.0 * 0.765, abs=1e-6)
 
 
 def test_wspolczynniki_przy_nazwanym_zestawie_sa_odrzucane(app_client) -> None:

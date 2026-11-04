@@ -99,6 +99,13 @@ def test_picker_modelu_pozostaje_katalogiem_kanonicznym(klient: TestClient) -> N
     kanon = {p["id"] for p in klient.get("/api/catalog/mv-protection-device-types").json()}
     biblioteka = {d.device_id for d in list_devices()}
     assert kanon, "Katalog kanoniczny nie może być pusty"
-    # Biblioteka jest SZERSZA — kanon jest jej podzbiorem, nie odwrotnie.
-    assert kanon <= biblioteka
-    assert len(biblioteka) > len(kanon)
+    # Picker niesie DOKŁADNIE katalog kanoniczny — ani jednego wyrobu dopisanego z biblioteki.
+    assert kanon == set(get_default_mv_catalog().protection_device_types)
+    assert biblioteka - kanon, "biblioteka niesie wyroby spoza kanonu — nie mogą wejść do pickera"
+    # Do karty KATALOG-PRZEJECIE-PR test żądał `kanon <= biblioteka`. Pozycje z kart producenta
+    # (rodzina e²TANGO pola SN: 100, 150, 200, 250, 400 nie mają profilu analitycznego) są
+    # w kanonie bez odpowiednika w bibliotece — uczciwie, z `analytical_library_ref = None`
+    # i kodem gotowości `protection.curve_library_missing` zamiast zgadniętych krzywych.
+    katalog = get_default_mv_catalog()
+    for ident in kanon - biblioteka:
+        assert katalog.protection_device_types[ident].analytical_library_ref is None, ident

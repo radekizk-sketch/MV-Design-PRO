@@ -298,50 +298,72 @@ def _odstepstwo_przekroju(body: dict) -> dict | None:
     return None
 
 
-def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa(app_client) -> None:
-    """Kabel 70 mm² dobrany dla warunków ziemnych NIE MOŻE być odstępstwem.
+#: Warunki ułożenia zapisane w modelu, przy których korekta obciążalności zmienia dobór
+#: dla prądu toru 121,2 A (TR 3,15 MVA). Do karty KATALOG-PRZEJECIE-PR testy stały na zestawie
+#: „ziemia_3_kable_warstwa_200mm” (0,74538): najmniejszy kabel katalogu był 50 mm² Al 160 A,
+#: więc 160 × 0,74538 = 119,3 A < 121,2 A przesuwało dobór na 70 mm². Kable z kart producentów
+#: (#508) wniosły Tele-Fonika XRUHKXS 1×35/16 Cu o Iz 231 A (tablica producenta, grunt,
+#: trójkąt), który w tym zestawie przenosi 172,2 A — dobór już się nie zmieniał i intencja
+#: testu (warunki z MODELU decydują o propozycji) przestała być sprawdzana. Zestaw własny
+#: projektanta o iloczynie 0,7 × 1,0 × 0,7 = 0,49 (grunt o dużej rezystywności cieplnej,
+#: cztery obwody obok siebie) przywraca różnicę: Cu 35 → 231 × 0,49 = 113,2 A < 121,2 A
+#: (odrzucony), Al 50 → 212 × 0,49 = 103,9 A (odrzucony), Cu 50 → 274 × 0,49 = 134,3 A
+#: (przechodzi) ⇒ propozycja 50 mm²; w warunkach katalogowych propozycja to Cu 35 mm².
+_WARUNKI_ZMIENIAJACE_DOBOR = {
+    "set_name": "wlasne",
+    "f_grunt": 0.7,
+    "f_wiazka": 1.0,
+    "f_grupa": 0.7,
+    "opis_pl": "Ziemia o dużej rezystywności cieplnej, cztery obwody obok siebie",
+}
+_KABEL_CU_35 = "cable-tfk-2025-xruhkxs-35-16-12-20"
+_KABEL_CU_50 = "cable-tfk-2025-xruhkxs-50-16-12-20"
 
-    Propozycja przy warunkach ziemnych to 70 mm² (50 mm² odpada: 119,3 A < 121,2 A),
-    więc zastosowanie 70 mm² jest zgodne z propozycją. Gdyby raport liczył propozycję
-    dla warunków katalogowych, dostałby 50 mm² i zgłosił ⚠ za dobrą decyzję.
+
+def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa(app_client) -> None:
+    """Kabel 50 mm² dobrany dla warunków z modelu NIE MOŻE być odstępstwem.
+
+    Propozycja przy warunkach z modelu to 50 mm² (Cu 35 mm² odpada: 113,2 A < 121,2 A),
+    więc zastosowanie 50 mm² jest zgodne z propozycją. Gdyby raport liczył propozycję
+    dla warunków katalogowych, dostałby 35 mm².
     """
     case_id = _nowy_przypadek(app_client)
     _seed_case_3p15mva(
         app_client,
         case_id,
-        cable_ref="cable-base-xlpe-cu-1c-70",
-        laying_conditions={"set_name": "ziemia_3_kable_warstwa_200mm"},
+        cable_ref=_KABEL_CU_50,
+        laying_conditions=_WARUNKI_ZMIENIAJACE_DOBOR,
     )
     resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
     assert resp.status_code == 200, resp.text
     pozycja = _odstepstwo_przekroju(resp.json())
     assert pozycja is not None, "sekcja odstępstw D2 musi zawierać przekrój kabla"
-    assert pozycja["zastosowano"] == pytest.approx(70.0)
-    assert pozycja["propozycja"] == pytest.approx(70.0)
+    assert pozycja["zastosowano"] == pytest.approx(50.0)
+    assert pozycja["propozycja"] == pytest.approx(50.0)
     assert pozycja["status"] == "PASS"
     assert pozycja["code"] == "der_sn.d2.zgodne"
 
 
 def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane(app_client) -> None:
-    """Odwrotna strona: 50 mm² przy warunkach ziemnych to PRAWDZIWE odstępstwo (⚠).
+    """Odwrotna strona: Cu 35 mm² przy warunkach z modelu to PRAWDZIWE odstępstwo (⚠).
 
-    Kabel przechodzi katalogowo (160 A ≥ 121,2 A), ale w ziemi w grupie przenosi
-    119,3 A — czyli mniej niż prąd toru. Powiązanie warunków z modelem musi ten
+    Kabel przechodzi katalogowo (231 A ≥ 121,2 A), ale w tych warunkach przenosi
+    113,2 A — czyli mniej niż prąd toru. Powiązanie warunków z modelem musi ten
     przypadek nadal wyłapać, a nie „wyciszyć" odstępstw w ogóle.
     """
     case_id = _nowy_przypadek(app_client)
     _seed_case_3p15mva(
         app_client,
         case_id,
-        cable_ref="cable-polish-yhakxs-1c-50",
-        laying_conditions={"set_name": "ziemia_3_kable_warstwa_200mm"},
+        cable_ref=_KABEL_CU_35,
+        laying_conditions=_WARUNKI_ZMIENIAJACE_DOBOR,
     )
     resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
     assert resp.status_code == 200, resp.text
     pozycja = _odstepstwo_przekroju(resp.json())
     assert pozycja is not None
-    assert pozycja["zastosowano"] == pytest.approx(50.0)
-    assert pozycja["propozycja"] == pytest.approx(70.0)
+    assert pozycja["zastosowano"] == pytest.approx(35.0)
+    assert pozycja["propozycja"] == pytest.approx(50.0)
     assert pozycja["status"] == "WARN"
     assert pozycja["code"] == "der_sn.d2.odstepstwo"
 
@@ -431,19 +453,21 @@ def test_odmowa_solvera_doboru_to_sekcja_d2_nieoceniona_z_powodem(app_client, mo
 
 
 def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad(app_client) -> None:
-    """Tory zbudowane przed tą kartą: warunki katalogowe ⇒ propozycja 50 mm²."""
+    """Tory zbudowane przed tą kartą: warunki katalogowe ⇒ propozycja Cu 35 mm² (najmniejszy
+    kabel katalogu z Iz ≥ 121,2 A: Tele-Fonika XRUHKXS 1×35/16, 231 A); zastosowany ten sam
+    przekrój jest zgodny z propozycją."""
     case_id = _nowy_przypadek(app_client)
     _seed_case_3p15mva(
         app_client,
         case_id,
-        cable_ref="cable-polish-yhakxs-1c-50",
+        cable_ref=_KABEL_CU_35,
         laying_conditions=None,
     )
     resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
     assert resp.status_code == 200, resp.text
     pozycja = _odstepstwo_przekroju(resp.json())
     assert pozycja is not None
-    assert pozycja["propozycja"] == pytest.approx(50.0)
+    assert pozycja["propozycja"] == pytest.approx(35.0)
     assert pozycja["status"] == "PASS"
 
 
