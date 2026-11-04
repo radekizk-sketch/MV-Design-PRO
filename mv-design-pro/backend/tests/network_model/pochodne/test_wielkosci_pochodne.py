@@ -470,3 +470,26 @@ def test_susceptancja_z_mocy_biernej_s_poprawnie_zaokraglona_czesciej_niz_postac
     )
     zle_odwrotna = sum(1.0 / (u**2 / q) != float(Fraction(q) / Fraction(u) ** 2) for q, u in siatka)
     assert (zle_bezposrednia, zle_odwrotna) == (13, 28)
+
+
+# ---------------------------------------------------------------------------
+# Rodzina K — reaktancja z indukcyjności X = 2πf·L (karta KATALOG-PRZEJECIE-PR)
+# ---------------------------------------------------------------------------
+
+INDUKCYJNOSCI_BRZEGOWE_MH_PER_KM = [0.0, 1e-6, 0.21, 0.29, 0.36, 0.51, 1.0, 1.0e6]
+
+
+@pytest.mark.parametrize("f", CZESTOTLIWOSCI_BRZEGOWE_HZ)
+@pytest.mark.parametrize("l_mh", INDUKCYJNOSCI_BRZEGOWE_MH_PER_KM)
+def test_reaktancja_z_indukcyjnosci_tozsamosc_z_torem_katalogu(l_mh: float, f: float) -> None:
+    """Moduły katalogowe kabli liczyły inline ``tau * 50 * l_mh / 1000`` (NKT nN) albo
+    ``tau * 50.0 * l_mh / 1000.0`` (TFK, NKT SN) — funkcja jest bit w bit tą samą
+    sekwencją dla obu form literału, więc odcisk katalogu nie zmienia się."""
+    assert wp.reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, f) == math.tau * f * l_mh / 1000.0
+    if f == 50.0:
+        assert wp.reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, 50.0) == math.tau * 50 * l_mh / 1000
+
+
+def test_reaktancja_z_indukcyjnosci_przyklad_karty() -> None:
+    """L = 0,36 mH/km przy 50 Hz → X = 2π·50·0,36e-3 ≈ 0,1131 Ω/km (karta TFK)."""
+    assert wp.reaktancja_z_indukcyjnosci_ohm_per_km(0.36, 50.0) == pytest.approx(0.113097, abs=1e-6)

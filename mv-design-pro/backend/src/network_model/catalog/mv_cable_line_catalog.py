@@ -26,6 +26,12 @@ import re
 from collections import Counter
 from typing import Any
 
+from network_model.pochodne import (
+    ka_na_a,
+    mikrofarad_na_nanofarad,
+    reaktancja_z_indukcyjnosci_ohm_per_km,
+)
+
 from .mv_cable_tfk_full import (
     get_all_tfk_1220_cable_types,
     get_all_tfk_1830_cable_types,
@@ -2055,8 +2061,6 @@ def _kabel_nkt_zgodny_z_enea_2026(
     rodzina: str = "XRUHAKXS1",
 ) -> dict[str, Any]:
     """Wariant z tab. 3 ENEA i karty NKT; reaktancja X = 2π·50 Hz·L (układ trójkątny)."""
-    import math
-
     if przekroj not in (70, 150, 240) or rodzina not in ("XRUHAKXS1", "XUHAKXS1"):
         raise ValueError("Typ/przekrój nie występuje w tab. 3 ENEA 03.2026")
     nazwa_zrodla = (
@@ -2079,10 +2083,12 @@ def _kabel_nkt_zgodny_z_enea_2026(
             "cross_section_mm2": float(przekroj),
             "number_of_cores": 1,
             "r_ohm_per_km": r20,
-            "x_ohm_per_km": round(math.tau * 50.0 * indukcyjnosc_mh / 1000.0, 6),
-            "c_nf_per_km": pojemnosc_uf * 1000.0,
+            "x_ohm_per_km": round(
+                reaktancja_z_indukcyjnosci_ohm_per_km(indukcyjnosc_mh, czestotliwosc_hz=50.0), 6
+            ),
+            "c_nf_per_km": mikrofarad_na_nanofarad(pojemnosc_uf),
             "rated_current_a": iz_ziemia_trojkat_a,
-            "ith_1s_a": ith_fazowy_ka * 1000.0,
+            "ith_1s_a": ka_na_a(ith_fazowy_ka),
             "jth_1s_a_per_mm2": JTH_AL_XLPE,
             "voltage_rating_kv": 20.0,
             "max_temperature_c": TEMP_OPERATING_XLPE_C,
@@ -2199,8 +2205,6 @@ _NKT_CTL00109_PELNY_TYPO_SZEREG: tuple[
 
 def _nkt_pelny_odcinek_od_punktu_przylaczenia() -> list[dict[str, Any]]:
     """Warianty CTL00109 poza 3 typami już istniejącymi jako ENEA 2026."""
-    import math
-
     pokryte_enea = {(70, 25), (150, 25), (240, 25)}
     wynik = []
     for (
@@ -2225,17 +2229,19 @@ def _nkt_pelny_odcinek_od_punktu_przylaczenia() -> list[dict[str, Any]]:
                     "conductor_material": "AL",
                     "return_conductor_material": "CU",
                     "return_conductor_cross_section_mm2": float(powrot),
-                    "return_conductor_ith_1s_a": ith_powrot * 1000.0,
-                    "return_conductor_jth_1s_a_per_mm2": ith_powrot * 1000.0 / powrot,
+                    "return_conductor_ith_1s_a": ka_na_a(ith_powrot),
+                    "return_conductor_jth_1s_a_per_mm2": ka_na_a(ith_powrot) / powrot,
                     "insulation_type": "XLPE",
                     "cross_section_mm2": float(przekroj),
                     "number_of_cores": 1,
                     "r_ohm_per_km": r20,
-                    "x_ohm_per_km": round(math.tau * 50.0 * l_mh / 1000, 6),
-                    "c_nf_per_km": pojemnosc * 1000.0,
+                    "x_ohm_per_km": round(
+                        reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, czestotliwosc_hz=50.0), 6
+                    ),
+                    "c_nf_per_km": mikrofarad_na_nanofarad(pojemnosc),
                     "rated_current_a": float(iz),
-                    "ith_1s_a": ith * 1000.0,
-                    "jth_1s_a_per_mm2": ith * 1000.0 / przekroj,
+                    "ith_1s_a": ka_na_a(ith),
+                    "jth_1s_a_per_mm2": ka_na_a(ith) / przekroj,
                     "voltage_rating_kv": 20.0,
                     "max_temperature_c": TEMP_OPERATING_XLPE_C,
                     "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,

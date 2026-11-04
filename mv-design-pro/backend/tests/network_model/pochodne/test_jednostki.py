@@ -113,6 +113,19 @@ def test_ka_na_a_tozsamosc(x: float) -> None:
 
 
 # =============================================================================
+# Pojemność
+# =============================================================================
+
+
+@pytest.mark.parametrize("x", VALUES)
+def test_mikrofarad_na_nanofarad_tozsamosc(x: float) -> None:
+    """network_model/catalog/mv_cable_tfk_full.py — ``cap * 1000.0`` (µF/km z karty
+    producenta → pole ``c_nf_per_km``)."""
+    assert jedn.mikrofarad_na_nanofarad(x) == x * 1000.0
+    assert jedn.mikrofarad_na_nanofarad(x) == x * 1000
+
+
+# =============================================================================
 # Napięcie
 # =============================================================================
 

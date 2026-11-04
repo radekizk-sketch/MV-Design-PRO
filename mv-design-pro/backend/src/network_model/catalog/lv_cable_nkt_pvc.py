@@ -11,8 +11,9 @@ z powodu minimalnego przekroju PEN Cu 10 mm².
 
 from __future__ import annotations
 
-from math import tau
 from typing import Any
+
+from network_model.pochodne import ka_na_a, reaktancja_z_indukcyjnosci_ohm_per_km
 
 SOURCE = (
     "NKT, YKY/YKYżo 0,6/1 kV, IEC 60502-1:2004, "
@@ -67,7 +68,7 @@ def get_all_nkt_yky_lv_cable_types() -> list[dict[str, Any]]:
             sec_id = (
                 str(int(section)) if section == int(section) else str(section).replace(".", "p")
             )
-            x = round(tau * 50 * l_mh / 1000, 6)
+            x = round(reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, czestotliwosc_hz=50.0), 6)
             result.append(
                 {
                     "id": f"kab-nn-nkt-yky-{cores}x{sec_id}",
@@ -86,7 +87,7 @@ def get_all_nkt_yky_lv_cable_types() -> list[dict[str, Any]]:
                         "return_conductor_cross_section_mm2": float(section),
                         "return_conductor_r_ohm_per_km_20c": r20,
                         "return_conductor_x_ohm_per_km": x,
-                        "ith_1s_a": ith * 1000.0,
+                        "ith_1s_a": ka_na_a(ith),
                         "jth_1s_a_per_mm2": JTH_CU_PVC_IEC60949_A_PER_MM2,
                         "max_temperature_c": 70.0,
                         "short_circuit_temperature_c": 160.0,

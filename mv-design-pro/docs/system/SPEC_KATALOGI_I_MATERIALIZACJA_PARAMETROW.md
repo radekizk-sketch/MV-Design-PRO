@@ -312,7 +312,7 @@ decyzje podejmuje czlowiek.
 | `arc-suppression-coil` | 3 | 0 | 3 | 44,4 | 3 | `manufacturer` | brak |
 | `bess-battery` | 2 | 0 | 0 | — | 2 | brak | brak |
 | `bess-inverter` | 66 | 0 | 43 | 9,9 | 66 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
-| `cable` | 63 | 54 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
+| `cable` | 160 | 147 | 18 | 68,4 | 160 | `b0_siemens_per_km`, `z0_reference_bonding` | brak |
 | `converter` | 192 | 9 | 56 | 19,2 | 192 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `ct` | 12 | 0 | 7 | 60,7 | 12 | `idyn_ka_peak`, `rct_ohm` | brak |
 | `earthing-transformer` | 2 | 0 | 3 | 66,7 | 2 | `manufacturer` | brak |
@@ -320,14 +320,14 @@ decyzje podejmuje czlowiek.
 | `load` | 3 | 0 | 4 | 58,3 | 3 | `profile_id` | brak |
 | `lv-apparatus` | 18 | 18 | 15 | 55,9 | 18 | `curve_ref`, `ics_ka`, `poles`, `trip_unit` | brak |
 | `lv-breaker-mcb` | 60 | 0 | 2 | 0,0 | 60 | `manufacturer`, `poles` | brak |
-| `lv-cable` | 17 | 0 | 14 | 78,6 | 17 | `ith_1s_a`, `r0_ohm_per_km`, `x0_ohm_per_km` | brak |
+| `lv-cable` | 96 | 79 | 14 | 84,4 | 96 | `r0_ohm_per_km`, `x0_ohm_per_km` | brak |
 | `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | `i2t_prearc_a2s`, `manufacturer` | brak |
 | `lv-rcd` | 56 | 0 | 5 | 48,6 | 56 | `manufacturer`, `poles` | brak |
 | `mv-apparatus` | 50 | 33 | 8 | 40,2 | 50 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
 | `neutral-earthing-resistor` | 4 | 0 | 1 | 0,0 | 4 | `manufacturer` | brak |
 | `overhead-conductor` | 4 | 4 | 7 | 67,9 | 4 | `gmr_mm`, `manufacturer` | brak |
 | `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
-| `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak | brak |
+| `protection-device` | 22 | 0 | 6 | 60,6 | 22 | `rated_current_a` | brak |
 | `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `ptpiree-certificate` | 6887 | 6887 | 3 | 100,0 | 6887 | brak | brak |
 | `pv-inverter` | 76 | 9 | 46 | 18,1 | 76 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
@@ -337,10 +337,10 @@ decyzje podejmuje czlowiek.
 | `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |
 | `switch-equipment` | 50 | 33 | 7 | 68,6 | 50 | brak | brak |
 | `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | `manufacturer` | brak |
-| `transformer` | 263 | 1 | 5 | 80,5 | 263 | brak | brak |
+| `transformer` | 263 | 1 | 5 | 82,3 | 263 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 30. Pozycji łącznie: 8114, w tym produkcyjnych: 7095. Pozycji z proweniencją strukturalną: 8114.
+Rodzin objętych pomiarem: 30. Pozycji łącznie: 8300, w tym produkcyjnych: 7267. Pozycji z proweniencją strukturalną: 8300.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 

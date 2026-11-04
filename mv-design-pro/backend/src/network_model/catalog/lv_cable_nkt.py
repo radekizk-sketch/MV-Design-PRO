@@ -12,8 +12,9 @@ przyjęciem modelowym (nie przypisujemy mu statusu DATASHEET).
 
 from __future__ import annotations
 
-from math import tau
 from typing import Any
+
+from network_model.pochodne import ka_na_a, reaktancja_z_indukcyjnosci_ohm_per_km
 
 SOURCE = (
     "NKT cables, YKXS/YKXSżo 0,6/1 kV, IEC 60502-1:2004, "
@@ -89,7 +90,7 @@ def get_all_nkt_yakxs_lv_cable_types() -> list[dict[str, Any]]:
     result = []
     for cores, rows in ((4, NKT_YAKXS_4Z), (5, NKT_YAKXS_5Z)):
         for section, r20, l_mh, ith_ka, iz_air, iz_soil in rows:
-            x = round(tau * 50 * l_mh / 1000, 6)
+            x = round(reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, czestotliwosc_hz=50.0), 6)
             result.append(
                 {
                     "id": f"kab-nn-nkt-yakxs-{cores}x{section}",
@@ -108,8 +109,8 @@ def get_all_nkt_yakxs_lv_cable_types() -> list[dict[str, Any]]:
                         "return_conductor_cross_section_mm2": float(section),
                         "return_conductor_r_ohm_per_km_20c": r20,
                         "return_conductor_x_ohm_per_km": x,
-                        "ith_1s_a": ith_ka * 1000.0,
-                        "jth_1s_a_per_mm2": round(ith_ka * 1000 / section, 6),
+                        "ith_1s_a": ka_na_a(ith_ka),
+                        "jth_1s_a_per_mm2": round(ka_na_a(ith_ka) / section, 6),
                         "max_temperature_c": 90.0,
                         "short_circuit_temperature_c": 250.0,
                         "standard": "IEC 60502-1",
@@ -137,7 +138,7 @@ def get_all_nkt_lv_cable_types() -> list[dict[str, Any]]:
     result = []
     for cores, rows in ((4, NKT_YKXS_4Z), (5, NKT_YKXS_5Z)):
         for section, r20, l_mh, ith_ka, iz_air, iz_soil in rows:
-            x = round(tau * 50 * l_mh / 1000, 6)
+            x = round(reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, czestotliwosc_hz=50.0), 6)
             result.append(
                 {
                     "id": f"kab-nn-nkt-ykxs-{cores}x{section}",
@@ -156,8 +157,8 @@ def get_all_nkt_lv_cable_types() -> list[dict[str, Any]]:
                         "return_conductor_cross_section_mm2": float(section),
                         "return_conductor_r_ohm_per_km_20c": r20,
                         "return_conductor_x_ohm_per_km": x,
-                        "ith_1s_a": ith_ka * 1000,
-                        "jth_1s_a_per_mm2": round(ith_ka * 1000 / section, 6),
+                        "ith_1s_a": ka_na_a(ith_ka),
+                        "jth_1s_a_per_mm2": round(ka_na_a(ith_ka) / section, 6),
                         "max_temperature_c": 90.0,
                         "short_circuit_temperature_c": 250.0,
                         "standard": "IEC 60502-1",

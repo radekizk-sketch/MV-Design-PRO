@@ -524,3 +524,25 @@ def prad_wtorny_z_pierwotnego_a(
     cechą strony wtórnej). Walidacja ``I₁n > 0`` u wołającego.
     """
     return prad_pierwotny_a * prad_znamionowy_wtorny_a / prad_znamionowy_pierwotny_a
+
+
+# =============================================================================
+# Rodzina K — reaktancja z indukcyjności, X = 2πf·L (karta KATALOG-PRZEJECIE-PR)
+# =============================================================================
+
+
+def reaktancja_z_indukcyjnosci_ohm_per_km(
+    indukcyjnosc_mh_per_km: float, czestotliwosc_hz: float
+) -> float:
+    """Reaktancja podłużna linii/kabla z indukcyjności jednostkowej:
+    X = 2π·f·L, L[mH/km], f[Hz] → X[Ω/km] (przelicznik mH→H wliczony: /1000).
+
+    Karty producentów kabli (NKT, TFK) podają indukcyjność ruchową w mH/km,
+    a pole katalogu ``x_ohm_per_km`` jest reaktancją przy częstotliwości
+    karty. Kolejność działań ``math.tau * f * L / 1000.0`` jest DOKŁADNIE ta,
+    którą moduły katalogowe liczyły inline przed przeniesieniem tu wzoru
+    (``tau * 50 * l_mh / 1000`` — literały 50/50.0 i 1000/1000.0 są tym samym
+    floatem), więc odcisk katalogu jest bit w bit bez zmian (test tożsamości).
+    Częstotliwość przekazuje wołający.
+    """
+    return math.tau * czestotliwosc_hz * indukcyjnosc_mh_per_km / 1000.0

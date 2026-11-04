@@ -144,6 +144,18 @@ def ka_na_a(prad_ka: float) -> float:
 
 
 # =============================================================================
+# Pojemność — µF/nF
+# =============================================================================
+
+
+def mikrofarad_na_nanofarad(pojemnosc_uf: float) -> float:
+    """Pojemność: µF -> nF, x * 1000.0 (karty producentów kabli podają
+    pojemność ruchową w µF/km, pole katalogu ``c_nf_per_km`` jest w nF/km —
+    network_model/catalog/mv_cable_tfk_full.py, mv_cable_line_catalog.py)."""
+    return pojemnosc_uf * 1000.0
+
+
+# =============================================================================
 # Napięcie — V/kV
 # =============================================================================
 

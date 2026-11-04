@@ -13,8 +13,9 @@ dobrano pierwszy wariant w danym przekroju.
 
 from __future__ import annotations
 
-from math import tau
 from typing import Any
+
+from network_model.pochodne import ka_na_a, reaktancja_z_indukcyjnosci_ohm_per_km
 
 SOURCE = (
     "NKT YAKY/YAKYżo 0,6/1 kV, IEC 60502-1:2004,"
@@ -50,7 +51,7 @@ def get_all_nkt_yaky_lv_cable_types() -> list[dict[str, Any]]:
     result = []
     for cores, rows in ((4, NKT_YAKY_AL_4Z), (5, NKT_YAKY_AL_5Z)):
         for section, r20, l_mh, ith, iz_air, iz_ground in rows:
-            x = round(tau * 50 * l_mh / 1000, 6)
+            x = round(reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, czestotliwosc_hz=50.0), 6)
             result.append(
                 {
                     "id": f"kab-nn-nkt-yaky-{cores}x{section}",
@@ -69,8 +70,8 @@ def get_all_nkt_yaky_lv_cable_types() -> list[dict[str, Any]]:
                         "return_conductor_cross_section_mm2": float(section),
                         "return_conductor_r_ohm_per_km_20c": r20,
                         "return_conductor_x_ohm_per_km": x,
-                        "ith_1s_a": ith * 1000.0,
-                        "jth_1s_a_per_mm2": round(ith * 1000 / section, 6),
+                        "ith_1s_a": ka_na_a(ith),
+                        "jth_1s_a_per_mm2": round(ka_na_a(ith) / section, 6),
                         "max_temperature_c": 70.0,
                         "short_circuit_temperature_c": 160.0,
                         "standard": "IEC 60502-1",

@@ -14,8 +14,13 @@ istniejąca materializacja liczy je z jawnych założeń.
 
 from __future__ import annotations
 
-from math import tau
 from typing import Any
+
+from network_model.pochodne import (
+    ka_na_a,
+    mikrofarad_na_nanofarad,
+    reaktancja_z_indukcyjnosci_ohm_per_km,
+)
 
 TFK_WIND_ENERGY_2025_PDF = (
     "https://www.tele-fonika.com/storage/file/core_files/2025/3/27/"
@@ -84,17 +89,19 @@ def get_all_tfk_1220_cable_types() -> list[dict[str, Any]]:
                         "return_conductor_material": "CU",
                         "return_conductor_cross_section_mm2": float(screen),
                         "return_conductor_r_ohm_per_km_20c": r20_screen,
-                        "return_conductor_ith_1s_a": ith_screen * 1000.0,
-                        "return_conductor_jth_1s_a_per_mm2": round(ith_screen * 1000.0 / screen, 6),
+                        "return_conductor_ith_1s_a": ka_na_a(ith_screen),
+                        "return_conductor_jth_1s_a_per_mm2": round(ka_na_a(ith_screen) / screen, 6),
                         "insulation_type": "XLPE",
                         "cross_section_mm2": float(s),
                         "number_of_cores": 1,
                         "r_ohm_per_km": r20,
-                        "x_ohm_per_km": round(tau * 50.0 * l_mh / 1000.0, 6),
-                        "c_nf_per_km": cap * 1000.0,
+                        "x_ohm_per_km": round(
+                            reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, czestotliwosc_hz=50.0), 6
+                        ),
+                        "c_nf_per_km": mikrofarad_na_nanofarad(cap),
                         "rated_current_a": float(iz),
-                        "ith_1s_a": ith * 1000.0,
-                        "jth_1s_a_per_mm2": round(ith * 1000.0 / s, 6),
+                        "ith_1s_a": ka_na_a(ith),
+                        "jth_1s_a_per_mm2": round(ka_na_a(ith) / s, 6),
                         "voltage_rating_kv": 20.0,
                         "max_temperature_c": 90.0,
                         "short_circuit_temperature_c": 250.0,
@@ -181,17 +188,19 @@ def get_all_tfk_1830_cable_types() -> list[dict[str, Any]]:
                         "return_conductor_material": "CU",
                         "return_conductor_cross_section_mm2": float(screen),
                         "return_conductor_r_ohm_per_km_20c": r20_screen,
-                        "return_conductor_ith_1s_a": ith_screen * 1000.0,
-                        "return_conductor_jth_1s_a_per_mm2": round(ith_screen * 1000.0 / screen, 6),
+                        "return_conductor_ith_1s_a": ka_na_a(ith_screen),
+                        "return_conductor_jth_1s_a_per_mm2": round(ka_na_a(ith_screen) / screen, 6),
                         "insulation_type": "XLPE",
                         "cross_section_mm2": float(s),
                         "number_of_cores": 1,
                         "r_ohm_per_km": r20,
-                        "x_ohm_per_km": round(tau * 50.0 * l_mh / 1000.0, 6),
-                        "c_nf_per_km": cap * 1000.0,
+                        "x_ohm_per_km": round(
+                            reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, czestotliwosc_hz=50.0), 6
+                        ),
+                        "c_nf_per_km": mikrofarad_na_nanofarad(cap),
                         "rated_current_a": float(iz),
-                        "ith_1s_a": ith * 1000.0,
-                        "jth_1s_a_per_mm2": round(ith * 1000.0 / s, 6),
+                        "ith_1s_a": ka_na_a(ith),
+                        "jth_1s_a_per_mm2": round(ka_na_a(ith) / s, 6),
                         "voltage_rating_kv": 30.0,
                         "max_temperature_c": 90.0,
                         "short_circuit_temperature_c": 250.0,
@@ -279,17 +288,19 @@ def get_all_tfk_8715_cable_types() -> list[dict[str, Any]]:
                         "return_conductor_material": "CU",
                         "return_conductor_cross_section_mm2": float(screen),
                         "return_conductor_r_ohm_per_km_20c": r20_screen,
-                        "return_conductor_ith_1s_a": ith_screen * 1000.0,
-                        "return_conductor_jth_1s_a_per_mm2": round(ith_screen * 1000.0 / screen, 6),
+                        "return_conductor_ith_1s_a": ka_na_a(ith_screen),
+                        "return_conductor_jth_1s_a_per_mm2": round(ka_na_a(ith_screen) / screen, 6),
                         "insulation_type": "XLPE",
                         "cross_section_mm2": float(s),
                         "number_of_cores": 1,
                         "r_ohm_per_km": r20,
-                        "x_ohm_per_km": round(tau * 50.0 * l_mh / 1000.0, 6),
-                        "c_nf_per_km": cap * 1000.0,
+                        "x_ohm_per_km": round(
+                            reaktancja_z_indukcyjnosci_ohm_per_km(l_mh, czestotliwosc_hz=50.0), 6
+                        ),
+                        "c_nf_per_km": mikrofarad_na_nanofarad(cap),
                         "rated_current_a": float(iz),
-                        "ith_1s_a": ith * 1000.0,
-                        "jth_1s_a_per_mm2": round(ith * 1000.0 / s, 6),
+                        "ith_1s_a": ka_na_a(ith),
+                        "jth_1s_a_per_mm2": round(ka_na_a(ith) / s, 6),
                         "voltage_rating_kv": 15.0,
                         "max_temperature_c": 90.0,
                         "short_circuit_temperature_c": 250.0,
