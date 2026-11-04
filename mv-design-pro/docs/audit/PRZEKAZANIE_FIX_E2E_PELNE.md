@@ -71,3 +71,36 @@ Znalezisko w dowodzie: zrzut `kd6-ogniwo-model-*` (zrzut elementu wyższego niż
 kontenerze) malował tylko ~800 px treści, reszta pusta — dokument nie pokazywał rekordów. Spec podnosi
 okno do wysokości sekcji przed zrzutem; ponowny bieg kd6 ×2: 2 passed, zrzut 716×3611 px z kompletem
 rekordów. Werdyktu wizualnego (B-02) nie wystawiam — zrzuty w `frontend/test-results/zrzuty-dokumentacji/`.
+
+## Karta APARATURA-TABELA (2026-11-04, uwagi właściciela do zrzutu kd6)
+
+Sekcja „Wytrzymałość aparatury pól stacji" (`frontend/src/ui2/wyniki/zwarcia/aparatura/WeryfikacjaAparatury.tsx`)
+to jedna tabela: jedno pole = jeden wiersz (Pole, Aparat, [ip, Ith, Ib], Tk, trzy zapasy), natywny przełącznik
+z `aria-expanded` (klik w wiersz, Enter, spacja) rozwija porównanie Parametr | Obliczony | Aparat | Zapas
+(szczytowy, cieplny z Tk pola i Tkr aparatu, wyłączalny). Prądy nad tabelą wyłącznie przy równych wartościach
+backendu dla wszystkich pól. Założenia, wartości robocze, t_b z pochodzeniem, kompletność dowodu i karty werdyktu
+wszystkich kryteriów — w „Szczegółach obliczeń" (jeden przycisk na pole); „Parametry aparatu" — jeden przycisk na
+pole z modelu (`update_element_parameters`, `field: 'overrides'`). Wiersze neutralne; kolor (`data-uwaga`) tylko
+na komórce z zapasem ujemnym, brakiem zapasu/limitu albo czasem nieustalonym. Jeden formater liczb
+(`aparatura/format.ts`). `RekordWerdyktuZwijany` stracił konsumenta — skasowany z testem i stylami.
+
+Przyczyny niespójności (zbadane u źródła):
+- „Szyna nN" przy aparaturze SN — błąd etykiety, nie fizyki: prądy pola idą z `Bay.bus_ref` → wiersz biegu
+  punktu zabudowy pola (`backend/src/application/analyses/wytrzymalosc_aparatury_pol.py`, `prady_pol_z_biegu`);
+  wybrany punkt tylko wskazuje stację. Nagłówek nazywa stację, zdanie mówi, że punkt ją wskazuje.
+- I_cu przy wyłącznikach SN — znamię zależne od pasma z jednego predykatu `wielkosc_kryterium_wylaczania`
+  (`backend/src/application/equipment_proof/wielkosc_wylaczania.py`): SN/WN I_sc (IEC 62271-100 § 4.101),
+  nN I_cu (IEC 60947-2), bezpiecznik I_1 (IEC 60282-1), pasmo nieustalone I_wył; rekordy K, dowód doboru,
+  rejestr reguł, werdykt projektowy, podpowiedź i docstringi katalogu SN.
+- t_b = 0,36 s w polach bez czasu — to t_b PUNKTU dla I_b (`application/solvers/short_circuit_binding.py`
+  `czas_tb_punktu` → `application/analyses/protection/czas_wylaczenia_pola.py` `czas_tb_z_pol_lokalnych`:
+  najkrótszy czas wyłączenia pól lokalnych szyny), nie Tk pola. Kolumna Tk pokazuje `t_clearing_s` pola albo
+  „nieustalony"; t_b tylko w szczegółach z opisem pochodzenia.
+
+Weryfikacja (pod blokadą): backend 22 pliki testów powiązanych — 7 697 passed (RC=0); vitest `src/ui2/wyniki`,
+`src/ui/shared`, `src/ui/catalog`, `src/ui2/kreatory/edycja-parametrow`, `src/harness-fixtures`, `src/ui2/spaces` —
+215 plików, 5 097 testów (RC=0); `tsc --noEmit` RC=0; eslint zmienionych plików RC=0; black/ruff RC=0;
+`scripts/guardy_z_ci.py` RC=0 (115 strażników, 4 603 testy własne); e2e kd6 ×2, kd4 ×4, ogniwo ×2 — 8 passed,
+po poprawkach układu kd6+kd4 — 6 passed. Iniekcje: 9, każda czerwona. Pin `solver_input_substitute_guard`
+4503 → 4506 (pomiar: +3 pola znamienia). Zrzuty obu motywów: `docs/audit/visual/flow-ekspert/kd6-{ogniwo-model,
+tclearing,szczegoly}-{light,dark}.png`, `ogniwo-aparatura-{light,dark}.png`. Werdyktu wizualnego (B-02) nie wystawiam.

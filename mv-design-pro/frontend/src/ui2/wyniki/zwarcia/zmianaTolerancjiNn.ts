@@ -9,7 +9,7 @@
  * deklaracji (`parametr`: `lv_voltage_tolerance`). Akcja zaznacza ten element, przechodzi do
  * budowy sieci i otwiera ISTNIEJĄCY kreator `update_element_parameters` z kursorem w polu
  * deklaracji; zapis, walidacja i unieważnienie wyników należą do operacji domenowej —
- * tu wyłącznie selekcja i nawigacja (wzorzec `aparatura/zmianaWartosciAparatu.ts`).
+ * tu wyłącznie selekcja i nawigacja (wzorzec `aparatura/parametryAparatu.ts`).
  */
 
 import { useCallback } from 'react';

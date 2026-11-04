@@ -317,18 +317,20 @@ def test_ocena_wytrzymalosci_pola(ref: str) -> None:
         assert cieplna["status_maszynowy"] == "SPELNIA"
         assert cieplna["limit"]["wartosc"] == {"wartosc": icw, "jednostka": "kA"}
     if rodzaj in ("DISCONNECTOR", "LOAD_SWITCH", "EARTH_SWITCH"):
-        # Zdolność wyłączania „nie dotyczy” z rodzaju — bez braku „nie niesie I_cu”.
+        # Zdolność wyłączania „nie dotyczy” z rodzaju — bez braku „nie niesie znamienia”.
         assert wylaczanie["status_maszynowy"] == "NIE_DOTYCZY"
-        assert not any("I_cu" in b for b in wylaczanie["wyjasnienie"]["czego_brakuje"]), wylaczanie[
-            "wyjasnienie"
-        ]
+        assert not any(
+            "znamienia zdolności wyłączania" in b
+            for b in wylaczanie["wyjasnienie"]["czego_brakuje"]
+        ), wylaczanie["wyjasnienie"]
         assert "aparatura.brak_zdolnosci_wylaczania" not in pole["kody_gotowosci"]
     elif ik is None:
         # Brak danej ≠ nie dotyczy: wyłącznik ma tę zdolność, karta jej nie podaje.
         assert wylaczanie["status_maszynowy"] == "NIE_OCENIONO"
         assert wylaczanie["limit"] is None
         assert any(
-            "nie niesie znamionowej zdolności wyłączania zwarciowej I_cu" in b
+            # Wyłącznik SN/WN: znamię I_sc wg IEC 62271-100 (karta APARATURA-TABELA), nie I_cu.
+            "nie niesie znamienia zdolności wyłączania" in b and "I_sc" in b
             for b in wylaczanie["wyjasnienie"]["czego_brakuje"]
         )
         assert "aparatura.brak_zdolnosci_wylaczania" in pole["kody_gotowosci"]

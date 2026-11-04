@@ -27,7 +27,8 @@ WARSTWA APLIKACJI — ZERO FIZYKI WŁASNEJ:
 
 WERDYKT WYJAŚNIALNY: każdy wiersz niesie trzy rekordy K (``werdykt.OcenaKryterium``) —
 dynamiczny ``i_p ≤ I_dyn``, cieplny ``I_th ≤ I_th,zn·√(min(1, t_zn/t_k))`` i zdolności
-wyłączania ``I_b ≤ I_cu`` (wyłącznik SN/WN) albo ``I″k ≤ I_cu`` (nN, bezpiecznik) — z prądem,
+wyłączania ``I_b ≤ I_sc`` (wyłącznik SN/WN, IEC 62271-100) albo ``I″k ≤ I_cu`` (nN, IEC 60947-2;
+bezpiecznik ``I″k ≤ I_1``) — z prądem,
 czasem, limitem, marginesem i przyczyną braku. Wielkość kryterium wyłączania wybiera JEDEN
 predykat (``application.equipment_proof.wielkosc_wylaczania``), wspólny z dowodem doboru
 aparatury (karta SC-IB-ITH-ZRODLA); rekord nazywa porównaną wielkość i jej normę. Brak czasu
@@ -71,6 +72,8 @@ from application.analyses.aparaty_pol import (
 from application.analyses.protection.czas_wylaczenia_pola import czasy_wylaczenia_pol_stacji
 from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catalog
 from application.equipment_proof.wielkosc_wylaczania import (
+    NAZWA_ZNAMIENIA_NIEUSTALONA_PL,
+    SYMBOL_ZNAMIENIA_NIEUSTALONY,
     WIELKOSC_IB,
     WielkoscKryteriumWylaczania,
     wielkosc_kryterium_wylaczania,
@@ -456,10 +459,6 @@ _IEC_60865_1_WYDANIE = "2011"
 _PARAGRAF_ZNAMIENIA = {
     "i_dyn": "§ 4.6 znamionowy prąd szczytowy wytrzymywany I_p",
     "i_th": "§ 4.5 znamionowy prąd krótkotrwały wytrzymywany I_k i § 4.7 czas jego trwania t_k",
-    "i_cu": (
-        "znamionowa zdolność wyłączania zwarciowa I_cu (wyłącznik SN: IEC 62271-100 § 4.101 "
-        "znamionowy prąd wyłączalny zwarciowy I_sc)"
-    ),
 }
 
 _PODSTAWA_DYNAMICZNA = PodstawaWymagania(
@@ -500,7 +499,7 @@ _NIEPEWNOSC_POROWNANIA = Niepewnosc(
 
 
 def _podstawa_wartosci_roboczej(
-    zapis: dict[str, Any], etykieta: str, wielkosc: str
+    zapis: dict[str, Any], etykieta: str, paragraf_znamienia: str
 ) -> PodstawaWymagania:
     """Podstawa LIMITU opartego na wartości roboczej — nigdy ``KATALOG_PRODUCENTA`` (§3c pkt 4).
 
@@ -537,7 +536,7 @@ def _podstawa_wartosci_roboczej(
         rodzaj="ZALOZENIE_PROJEKTOWE",
         dokument=f"wartość nadana przez projektanta na elemencie modelu (aparat „{etykieta}”)",
         wydanie="bieżący stan modelu sieci",
-        jednostka_redakcyjna=f"{zapis['nazwa_pl']} — {_PARAGRAF_ZNAMIENIA[wielkosc]}",
+        jednostka_redakcyjna=f"{zapis['nazwa_pl']} — {paragraf_znamienia}",
         status="WSKAZANE",
         uwagi_pl=zapis.get("powod_projektanta_pl") or "wartość robocza projektanta bez dokumentu",
     )
@@ -548,16 +547,24 @@ def _podstawa_znamienia(
     etykieta: str,
     wielkosc: str,
     zapis_roboczy: dict[str, Any] | None = None,
+    *,
+    paragraf: str | None = None,
 ) -> PodstawaWymagania | None:
-    """Podstawa LIMITU — skąd pochodzi znamię aparatu (``None`` = znamienia nie ma)."""
+    """Podstawa LIMITU — skąd pochodzi znamię aparatu (``None`` = znamienia nie ma).
+
+    ``paragraf`` — jednostka redakcyjna znamienia podana wprost (zdolność wyłączania: nazwa
+    znamienia zależy od pasma — ``WielkoscKryteriumWylaczania.paragraf_znamienia``); bez niej
+    ``_PARAGRAF_ZNAMIENIA[wielkosc]``.
+    """
+    paragraf_znamienia = paragraf if paragraf is not None else _PARAGRAF_ZNAMIENIA[wielkosc]
     if zapis_roboczy is not None and zapis_roboczy.get("wartosc_robocza"):
-        return _podstawa_wartosci_roboczej(zapis_roboczy, etykieta, wielkosc)
+        return _podstawa_wartosci_roboczej(zapis_roboczy, etykieta, paragraf_znamienia)
     if pochodzenie == "producent":
         return PodstawaWymagania(
             rodzaj="KATALOG_PRODUCENTA",
             dokument=f"karta katalogowa producenta pozycji „{etykieta}”",
             wydanie="pozycja katalogu aparatów SN programu",
-            jednostka_redakcyjna=_PARAGRAF_ZNAMIENIA[wielkosc],
+            jednostka_redakcyjna=paragraf_znamienia,
             status="WSKAZANE",
         )
     if pochodzenie == "referencyjny":
@@ -565,7 +572,7 @@ def _podstawa_znamienia(
             rodzaj="NORMA",
             dokument=_IEC_62271_1,
             wydanie=_IEC_62271_1_WYDANIE,
-            jednostka_redakcyjna=_PARAGRAF_ZNAMIENIA[wielkosc],
+            jednostka_redakcyjna=paragraf_znamienia,
             status="WSKAZANE",
             uwagi_pl=(
                 f"pozycja generyczna „{etykieta}” bez producenta — wartość z szeregu "
@@ -904,7 +911,9 @@ def _ocena_wylaczania(
     prady: PradyPola,
     run_id: str,
 ) -> OcenaKryterium:
-    """Rekord K zdolności wyłączania: I_cu aparatu wobec wielkości z jedynego predykatu.
+    """Rekord K zdolności wyłączania: znamię wyłączania aparatu (I_sc wyłącznika SN/WN, I_cu
+    wyłącznika nN, I_1 bezpiecznika — nazwa z tego samego predykatu) wobec wielkości z jedynego
+    predykatu.
 
     Wyłącznik SN/WN → I_b (IEC 62271-100 § 4.101, IEC 60909-0 rozdz. 9); nN i bezpiecznik →
     I″k spodziewany. Rozłącznik, odłącznik, uziemnik i tor szynowy — NIE_DOTYCZY z powodem.
@@ -912,7 +921,7 @@ def _ocena_wylaczania(
     w śladzie (katalog nie niesie znamionowej składowej nieokresowej, porównania z nią nie
     wystawiamy).
 
-    Karta TB-WARTOSC-ROBOCZA (§0.4): I_b porównywany z I_cu policzony przy t_b będącym
+    Karta TB-WARTOSC-ROBOCZA (§0.4): I_b porównywany z I_sc policzony przy t_b będącym
     wartością roboczą (propozycja 0,1 s albo czas pola z roboczym czasem własnym wyłącznika)
     stoi na danej przyjętej — ``dane_przyjete`` (jakość ``ESTIMATED``), stan danych
     ``UNVALIDATED_INPUT``, kompletność ``NIEPELNY`` (SPELNIA → BRAK_DOWODU na poziomie
@@ -943,7 +952,20 @@ def _ocena_wylaczania(
                 f"wiersz biegu nie niesie wielkości {wielkosc.nazwa_pl} w punkcie zabudowy pola "
                 "— przelicz bieg zwarciowy"
             )
-    podstawa_limitu = _podstawa_znamienia(znamiona.get("i_cu_pochodzenie"), etykieta, "i_cu")
+    symbol_znamienia = (
+        wielkosc.symbol_znamienia if wielkosc is not None else SYMBOL_ZNAMIENIA_NIEUSTALONY
+    )
+    nazwa_znamienia = (
+        wielkosc.nazwa_znamienia_pl if wielkosc is not None else NAZWA_ZNAMIENIA_NIEUSTALONA_PL
+    )
+    podstawa_limitu = _podstawa_znamienia(
+        znamiona.get("i_cu_pochodzenie"),
+        etykieta,
+        "i_cu",
+        paragraf=(
+            wielkosc.paragraf_znamienia if wielkosc is not None else NAZWA_ZNAMIENIA_NIEUSTALONA_PL
+        ),
+    )
     limit: LimitKryterium | None = None
     if not nie_dotyczy:
         if i_cu is not None and podstawa_limitu is not None:
@@ -952,8 +974,8 @@ def _ocena_wylaczania(
             )
         else:
             braki.append(
-                f"pozycja katalogu „{etykieta}” nie niesie znamionowej zdolności wyłączania "
-                "zwarciowej I_cu"
+                f"pozycja katalogu „{etykieta}” nie niesie znamienia zdolności wyłączania "
+                f"({nazwa_znamienia})"
             )
     wynik = (
         WynikKryterium(
@@ -989,7 +1011,7 @@ def _ocena_wylaczania(
                 "znamionowej zdolności wyłączania zwarciowej"
                 + (f" ({wielkosc.nazwa_pl})" if wielkosc is not None else "")
             ),
-            warunek_latex=rf"{symbol} \le I_{{cu}}",
+            warunek_latex=rf"{symbol} \le {symbol_znamienia}",
             relacja="NIE_WIECEJ",
         ),
         podstawa=_podstawa_wylaczania(wielkosc),
@@ -1034,7 +1056,7 @@ def _ocena_wylaczania(
                 krok=f"{kryterium_id}:wylaczanie",
                 opis_pl=(
                     f"{symbol} = {wartosc} kA (wiersz biegu, punkt: {_opis_punktu(prady)}, "
-                    f"U_n = {prady.un_kv} kV); I_cu = {i_cu} kA; t_b = {tb_txt}; składowa "
+                    f"U_n = {prady.un_kv} kV); {nazwa_znamienia} = {i_cu} kA; t_b = {tb_txt}; składowa "
                     f"nieokresowa i_DC(t_b) = {idc_txt} — informacyjnie (IEC 60909-0 "
                     "rozdz. 10), katalog nie niesie znamionowej składowej nieokresowej"
                 ),

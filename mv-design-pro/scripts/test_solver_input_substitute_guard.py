@@ -2108,7 +2108,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Roznica zbiorow +1, -0: `jednostka_latex` (`OpisParametru` rejestru wartosci roboczych
     # maszyn wirujacych — jednostka parametru jako wzor dla formularza; `symbol_latex` byl juz
     # w zbiorze z innych kontraktow). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4503." in wyjscie, wyjscie
+    # Karta APARATURA-TABELA (znamie zdolnosci wylaczania wg pasma, 2026-11-04): 4503 -> 4506 —
+    # POMIAR `contract_fields()` na `7d04fcc0e` (`git archive`: 4503, pin zgodny) i na drzewie
+    # karty (4506). Roznica zbiorow +3, -0: `symbol_znamienia`, `nazwa_znamienia_pl`,
+    # `paragraf_znamienia` (`WielkoscKryteriumWylaczania` — I_sc dla SN/WN wg IEC 62271-100,
+    # I_cu dla nN wg IEC 60947-2, I_1 bezpiecznika wg IEC 60282-1 z jednego predykatu pasma).
+    # PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4506." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

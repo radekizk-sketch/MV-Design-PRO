@@ -2,7 +2,9 @@
  * Zrzuty ŻYWEJ aplikacji dla karty KD-6 (bramka 5, dyrektywa właściciela #8):
  *  - ogniwo z werdyktami wytrzymałości aparatury pochodzącymi z MODELU
  *    (żadnej ręcznej konfiguracji stacji — aparat z pozycji katalogu APARAT_SN),
- *  - rozbicie czasu wyłączenia wyprowadzonego z NASTAW zabezpieczeń pola.
+ *    jako tabela pól z rozwiniętym porównaniem pierwszego pola (karta APARATURA-TABELA),
+ *  - rozbicie czasu wyłączenia wyprowadzonego z NASTAW zabezpieczeń pola i pełne
+ *    „Szczegóły obliczeń” pierwszego pola.
  * Oba motywy. Zrzut = jedyny dowód wyglądu na stronie oceny.
  *
  * Scena jest REALNA: projekt + przypadek + sieć ze stacją, której pole liniowe
@@ -338,30 +340,25 @@ test.describe('kd6:zrzuty', () => {
       // Werdykt MUSI pochodzić z modelu — inaczej zrzut dokumentowałby co innego.
       await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
 
-      // Układ rekordów K: każdy rekord (wiersz pierwszego planu, pełna karta po rozwinięciu)
-      // ma czytelną szerokość. Karty wpięte luźno w wiersz flex kurczyły się do kilku znaków
-      // i sekcja miała ~186 000 px wysokości; dziewięć rozwiniętych kart — ~22 000 px.
-      // Rekordy SPELNIA startują zwinięte (FIX-E2E-PELNE), więc limit 20 000 px zostaje.
-      const karty = page
-        .getByTestId(`mvd-zwarcia-aparatura-oceny-${pierwszePole}`)
-        .locator(':scope > *');
-      // Trzy rekordy K na pole: wytrzymałość dynamiczna, cieplna i zdolność wyłączania
-      // (karta SC-IB-ITH-ZRODLA dodała trzeci — I_b ≤ I_cu dla wyłącznika SN).
-      expect(await karty.count()).toBe(3);
-      for (const karta of await karty.all()) {
-        const ramka = await karta.boundingBox();
-        // Rekord na całą szerokość listy, co najmniej 480 px — próg `@container`, od którego
-        // rozwinięta karta werdyktu stawia etykietę obok treści (dwie kolumny po 326 px
-        // dawały kartę 4 132 px, pomiar FIX-E2E-PELNE).
-        expect(ramka?.width ?? 0, 'rekord werdyktu w pełnym układzie, nie ściśnięty').toBeGreaterThanOrEqual(480);
+      // Tabela pól (karta APARATURA-TABELA): jeden wiersz na pole, natywne rozwinięcie
+      // pierwszego wiersza pokazuje porównanie trzech kryteriów (szczytowy, cieplny,
+      // wyłączalny) z liczbami rekordów K tego pola.
+      const tabela = page.getByTestId('mvd-zwarcia-aparatura-werdykty');
+      for (const pole of scena.polaZWerdyktem) {
+        await expect(tabela.getByTestId(`mvd-zwarcia-aparatura-pole-${pole}`)).toBeVisible();
       }
+      const przelacz = page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${pierwszePole}`);
+      await przelacz.click();
+      await expect(przelacz).toHaveAttribute('aria-expanded', 'true');
+      const porownanie = page.getByTestId(`mvd-zwarcia-aparatura-porownanie-${pierwszePole}`);
+      await expect(porownanie).toBeVisible();
+      expect(await porownanie.locator('tbody > tr').count()).toBe(3);
       const ramkaSekcji = await sekcja.boundingBox();
       expect(ramkaSekcji?.height ?? 0, 'sekcja aparatury o rozsądnej wysokości').toBeLessThan(20000);
 
       // Sekcja żyje w przewijanym kontenerze ekranu wyników: zrzut elementu wyższego niż okno
-      // malował tylko część w oknie (pomiar FIX-E2E-PELNE: 716×3611 px, treść ~800 px, reszta
-      // pusta), więc dokument nie pokazywał rekordów. Okno podnosimy do wysokości sekcji, żeby
-      // kontener nie przewijał i cała sekcja była namalowana.
+      // malował tylko część w oknie (pomiar FIX-E2E-PELNE), więc okno podnosimy do wysokości
+      // sekcji, żeby kontener nie przewijał i cała sekcja była namalowana.
       await page.setViewportSize({
         width: 1360,
         height: Math.ceil(ramkaSekcji?.height ?? 0) + 600,
@@ -370,10 +367,23 @@ test.describe('kd6:zrzuty', () => {
       await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });
 
-      const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pierwszePole}`);
+      // Szczegóły obliczeń pierwszego pola: rozbicie czasu wyłączenia T_k (człon nastawczy,
+      // czas własny, źródło, założenia), t_b punktu z pochodzeniem i karty werdyktu kryteriów.
+      await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pierwszePole}`).click();
+      const szczegoly = page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pierwszePole}`);
+      await expect(szczegoly).toBeVisible();
+      const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-szczegoly-${pierwszePole}`);
       await expect(czas).toBeVisible();
+      const ramkaSzczegolow = await szczegoly.boundingBox();
+      await page.setViewportSize({
+        width: 1360,
+        height: Math.ceil((ramkaSekcji?.height ?? 0) + (ramkaSzczegolow?.height ?? 0)) + 600,
+      });
+      await czas.scrollIntoViewIfNeeded();
       await bramkaTresciMatematycznej(page);
       await czas.screenshot({ path: path.join(OUTPUT_DIR, `kd6-tclearing-${id}.png`) });
+      await szczegoly.scrollIntoViewIfNeeded();
+      await szczegoly.screenshot({ path: path.join(OUTPUT_DIR, `kd6-szczegoly-${id}.png`) });
     });
   }
 });

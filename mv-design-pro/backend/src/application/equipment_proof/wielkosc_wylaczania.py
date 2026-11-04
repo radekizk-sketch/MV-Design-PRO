@@ -30,6 +30,8 @@ from dataclasses import dataclass
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 __all__ = [
+    "NAZWA_ZNAMIENIA_NIEUSTALONA_PL",
+    "SYMBOL_ZNAMIENIA_NIEUSTALONY",
     "WIELKOSC_IB",
     "WIELKOSC_IKSS_BEZPIECZNIK",
     "WIELKOSC_IKSS_NN",
@@ -45,7 +47,13 @@ class WielkoscKryteriumWylaczania:
     ``klucz`` — pole wyniku zwarciowego (``ib_ka`` / ``ikss_ka``); ``symbol`` — symbol LaTeX;
     ``nazwa_pl`` — mianownik (wynik kryterium), ``opis_pl`` — dopełniacz (zdanie porównania);
     ``dokument`` / ``wydanie`` / ``jednostka_redakcyjna`` — podstawa wymagania rekordu K;
-    ``norma`` — skrót podstawy do dowodu doboru aparatury.
+    ``norma`` — skrót podstawy do dowodu doboru aparatury;
+    ``symbol_znamienia`` / ``nazwa_znamienia_pl`` / ``paragraf_znamienia`` — ZNAMIĘ aparatu, z
+    którym wielkość się porównuje, nazwane wg normy aparatu TEGO pasma: wyłącznik SN/WN ma
+    znamionowy prąd wyłączalny zwarciowy I_sc (IEC 62271-100 § 4.101), wyłącznik nN graniczną
+    zdolność wyłączania zwarciowego I_cu (IEC 60947-2), bezpiecznik SN znamionowy maksymalny
+    prąd wyłączalny I_1 (IEC 60282-1). Nazwa znamienia idzie za tym samym predykatem co
+    porównywana wielkość — I_cu przy aparacie SN to błąd normowy (karta APARATURA-TABELA).
     """
 
     klucz: str
@@ -56,6 +64,9 @@ class WielkoscKryteriumWylaczania:
     dokument: str
     wydanie: str
     jednostka_redakcyjna: str
+    symbol_znamienia: str
+    nazwa_znamienia_pl: str
+    paragraf_znamienia: str
 
     @property
     def wielkosc_zwarciowa(self) -> str:
@@ -75,6 +86,9 @@ WIELKOSC_IB = WielkoscKryteriumWylaczania(
     jednostka_redakcyjna=(
         "§ 4.101 znamionowy prąd wyłączalny zwarciowy I_sc; I_b wg IEC 60909-0:2016 rozdz. 9"
     ),
+    symbol_znamienia="I_{sc}",
+    nazwa_znamienia_pl="znamionowy prąd wyłączalny zwarciowy I_sc",
+    paragraf_znamienia="IEC 62271-100 § 4.101 znamionowy prąd wyłączalny zwarciowy I_sc",
 )
 WIELKOSC_IKSS_NN = WielkoscKryteriumWylaczania(
     klucz="ikss_ka",
@@ -88,6 +102,9 @@ WIELKOSC_IKSS_NN = WielkoscKryteriumWylaczania(
         "p. 434.5.1 zdolność wyłączania nie mniejsza niż największy spodziewany prąd "
         "zwarciowy w miejscu zainstalowania"
     ),
+    symbol_znamienia="I_{cu}",
+    nazwa_znamienia_pl="znamionowa graniczna zdolność wyłączania zwarciowego I_cu",
+    paragraf_znamienia="IEC 60947-2 znamionowa graniczna zdolność wyłączania zwarciowego I_cu",
 )
 WIELKOSC_IKSS_BEZPIECZNIK = WielkoscKryteriumWylaczania(
     klucz="ikss_ka",
@@ -102,6 +119,20 @@ WIELKOSC_IKSS_BEZPIECZNIK = WielkoscKryteriumWylaczania(
         "znamionowy maksymalny prąd wyłączalny I_1 odniesiony do prądu spodziewanego "
         "(bezpiecznik ograniczający przerywa prąd przed pierwszym szczytem)"
     ),
+    symbol_znamienia="I_{1}",
+    nazwa_znamienia_pl="znamionowy maksymalny prąd wyłączalny bezpiecznika I_1",
+    paragraf_znamienia=(
+        "IEC 60282-1 znamionowy maksymalny prąd wyłączalny I_1 (bezpiecznik nN: znamionowa "
+        "zdolność wyłączania wg IEC 60269-1)"
+    ),
+)
+
+#: Znamię zdolności wyłączania, gdy pasma punktu nie da się ustalić (bieg bez napięcia
+#: znamionowego punktu) — nazwa ogólna, bez przypisywania symbolu normy jednego pasma.
+SYMBOL_ZNAMIENIA_NIEUSTALONY = r"I_{\mathrm{wył}}"
+NAZWA_ZNAMIENIA_NIEUSTALONA_PL = (
+    "znamionowa zdolność wyłączania zwarciowa aparatu (I_sc wyłącznika SN/WN wg IEC 62271-100 "
+    "albo I_cu wyłącznika nN wg IEC 60947-2 — zależnie od pasma punktu)"
 )
 
 

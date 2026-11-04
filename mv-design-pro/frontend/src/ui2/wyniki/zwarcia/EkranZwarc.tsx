@@ -16,7 +16,7 @@ import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import { parametryWkladowZKonfiguracji, useRozplywZwarciowy, useWkladyZwarciowe } from './api';
-import { useOtworzKonfiguracjeStacji, useZmienWartoscAparatu, WeryfikacjaAparatury } from './aparatura';
+import { useOtworzKonfiguracjeStacji, useParametryAparatu, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { PasmoMinMax } from './PasmoMinMax';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
@@ -70,8 +70,8 @@ export function EkranZwarc({
   const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
   // KD-4 (dług V12K-287): ogniwo „wynik zwarciowy → wytrzymałość aparatury".
   const otworzKonfiguracjeStacji = useOtworzKonfiguracjeStacji();
-  // Zasada nr 4 (V12K-351): wartość robocza aparatu → kreator edycji parametrów aparatu.
-  const zmienWartoscAparatu = useZmienWartoscAparatu();
+  // Zasada nr 4 (V12K-351): „Parametry aparatu” → kreator edycji parametrów aparatu.
+  const parametryAparatu = useParametryAparatu();
   // Zasada nr 4: sieć nN liczona na wartości roboczej tolerancji → kreator edycji pola
   // deklaracji elementu zasilającego (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
   const zmienTolerancjeNn = useZmienTolerancjeNn();
@@ -216,7 +216,7 @@ export function EkranZwarc({
         runId={runId}
         punktNazwa={nazwaAktywnego}
         onOtworzKonfiguracjeStacji={otworzKonfiguracjeStacji}
-        onZmienWartosc={zmienWartoscAparatu}
+        onParametryAparatu={parametryAparatu}
       />
 
       <RozplywZwarciowy

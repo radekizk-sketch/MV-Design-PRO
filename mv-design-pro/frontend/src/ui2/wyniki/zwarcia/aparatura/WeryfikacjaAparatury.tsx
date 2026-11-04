@@ -1,51 +1,49 @@
 /**
- * WeryfikacjaAparatury — OGNIWO ŁAŃCUCHA „wynik zwarciowy → wytrzymałość
- * aparatury" (karta KD-4; tor Z MODELU — karta KD-6 poz. 2-3).
+ * WeryfikacjaAparatury — OGNIWO ŁAŃCUCHA „wynik zwarciowy → wytrzymałość aparatury pól
+ * stacji" (karty KD-4, KD-6; prezentacja tabelaryczna — karta APARATURA-TABELA).
  *
- * DLACZEGO. Karta K7-B wpięła w konfigurator stacji sekcję werdyktu
- * wytrzymałości (I_dyn / I_th) liczonego przez backend, a KD-4 dołożyła
- * przejście z wyniku zwarciowego. Odbiór KD-4 nazwał jednak dług: aparat brał
- * się WYŁĄCZNIE z ręcznie zapisanej konfiguracji stacji, więc pole, którego
- * inżynier nie skonfigurował, nie istniało dla oceny — mimo że model wie, jaka
- * pozycja katalogu APARAT_SN w nim stoi. KD-6 domyka to ogniwo: werdykty
- * powstają dla WSZYSTKICH pól stacji z aparatami z modelu, a konfiguracja
- * pozostaje nadrzędna tam, gdzie inżynier jej użył (każdy wiersz mówi, skąd
- * wziął aparat).
+ * DLACZEGO TABELA. Właściciel ocenił poprzedni ekran (trzy duże karty pól, dziewięć rekordów
+ * z etykietami, akapity założeń w pierwszym planie) jako przegadany. Inżynier potrzebuje
+ * jednego spojrzenia: pole → liczby → zapasy wytrzymałości. Dlatego:
+ *  - jedno pole = jeden wiersz; natywny przycisk z `aria-expanded` (klik w wiersz, Enter,
+ *    spacja) rozwija porównanie Parametr | Obliczony | Aparat | Zapas trzech kryteriów;
+ *  - prądy ip, Ith, Ib stoją nad tabelą RAZ, wyłącznie gdy backend podał je jednakowe dla
+ *    wszystkich pól; inaczej idą do wierszy (ekran porównuje liczby backendu, nie liczy);
+ *  - założenia, wartości robocze, podstawy limitów, przedmiot, kompletność dowodu i pełne
+ *    wyjaśnienia kryteriów (`KartaWerdyktu`, wzory z `*_latex`) są w „Szczegółach obliczeń”;
+ *  - wiersze neutralne; kolor wyłącznie przy wartości wymagającej uwagi (zapas ujemny, brak
+ *    zapasu albo limitu, czas wyłączenia nieustalony).
  *
- * PRĄDY PER POLE (karta WYTRZYMALOSC-PRAD-POLA): do końcówki jedzie stacja i ZAPISANY bieg,
- * nie liczby wybranego punktu. Każdy wiersz pokazuje prądy SWOJEGO punktu zabudowy oraz trzy
- * rekordy werdyktu wyjaśnialnego (dynamiczny, cieplny, zdolności wyłączania — karta
- * SC-IB-ITH-ZRODLA: rekord nazywa porównaną wielkość Ib albo I″k i jej normę) jedyną kartą
- * werdyktu — status zawsze z wynikiem, limitem, marginesem i przyczyną braku.
+ * SKĄD LICZBY. Każda komórka porównania czyta rekord K TEGO pola (`ocenaRodzaju`): wynik,
+ * limit i margines z backendu (`wytrzymalosc_aparatury_pol.py`) — nigdy kopia innego pola
+ * i nigdy liczba policzona tutaj. Czas wyłączenia pola T_k i czas znamionowy T_kr aparatu
+ * pochodzą z `czas_wylaczenia.t_clearing_s` i `znamiona.i_th_duration_s`.
  *
- * ZERO FIZYKI W PREZENTACJI: ten plik nic nie porównuje i nie skaluje — składa
- * wejścia i pokazuje `message_pl` backendu. Trzy stany werdyktu (wytrzymuje /
- * nie wytrzymuje / NIEUSTALONE) są odwzorowane 1:1 z sekcji K7-B: „nieustalone"
- * to brak podstawy, a nie ocena negatywna.
- *
- * WARTOŚCI ROBOCZE (zasada nr 4, V12K-351): brak danej karty aparatu (czas własny, I_p, t_k)
- * nie zatrzymuje oceny — backend przyjmuje wartość roboczą z jawnym źródłem. Wiersz pola
- * pokazuje każdy parametr z pochodzeniem; wartość robocza ma etykietę „wartość robocza”, opis
- * źródła i wpływu oraz akcję „Zmień wartość”, która otwiera kreator edycji parametrów aparatu
- * (zapis na elemencie modelu, przeliczenie). Bez banerów — status i kompletność dowodu niesie
- * karta werdyktu (dane przyjęte w szczegółach kryterium).
+ * GRANICA KONTRAKTU WERDYKTU. Ten plik nie czyta statusu maszynowego rekordu i nie pokazuje
+ * etykiet statusu (przypięte testem źródła). Status, etykieta i kompletność dowodu żyją
+ * w rekordzie i w karcie werdyktu w szczegółach — tabela pokazuje liczby i ich braki.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import './aparatura.css';
 import { useAppStateStore } from '../../../../ui/app-state';
+import { MathInline } from '../../../../ui/proof/MathRenderer';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { TekstZWzorami } from '../../../kreatory/rama';
-import { RekordWerdyktuZwijany } from '../../wzorzec';
-import { fmtCzas, fmtKA, fmtLiczba } from '../strings';
+import { KartaWerdyktu } from '../../wzorzec';
+import type { OcenaKryterium } from '../../wzorzec/werdykt';
 import {
+  ocenaRodzaju,
   pobierzWytrzymaloscAparatury,
+  RODZAJE_KRYTERIUM_APARATU,
   znacznikWerdyktu,
   type PoleWytrzymalosci,
+  type RodzajKryteriumAparatu,
   type WartoscParametruAparatu,
 } from './api';
+import { formatujWielkosc, type RodzajWielkosci } from './format';
 import {
   nazwaStacji,
   powodBrakuPodstawy,
@@ -65,120 +63,198 @@ export interface WeryfikacjaAparaturyProps {
   readonly wiersz: ShortCircuitRow;
   /** Zapisany bieg zwarciowy ekranu — źródło prądów KAŻDEGO pola po stronie backendu. */
   readonly runId: string | null;
-  /** Nazwa punktu w języku ekranu (nagłówek sekcji). */
+  /** Nazwa wybranego punktu w języku ekranu (wskazuje stację). */
   readonly punktNazwa: string;
   /** Przejście do konfiguracji stacji (akcja naprawcza stanu zerowego). */
   readonly onOtworzKonfiguracjeStacji?: (stationRef: string) => void;
-  /** „Zmień wartość” parametru aparatu z modelu → kreator edycji parametrów aparatu. */
-  readonly onZmienWartosc?: (aparatRef: string, aparatNazwa: string, parametr: string) => void;
+  /** „Parametry aparatu” aparatu z modelu → kreator edycji parametrów aparatu. */
+  readonly onParametryAparatu?: (aparatRef: string, aparatNazwa: string) => void;
 }
 
-/** Etykieta źródła aparatu — inżynier musi wiedzieć, co ocenia. */
+/** Wyróżnienie komórki: `null` = neutralna. */
+type Uwaga = 'ujemny' | 'brak' | null;
+
+const NAZWA_KRYTERIUM: Readonly<Record<RodzajKryteriumAparatu, string>> = {
+  dynamiczna: T.kryteriumSzczytowy,
+  cieplna: T.kryteriumCieplny,
+  wylaczanie: T.kryteriumWylaczalny,
+};
+
+const KOLUMNA_ZAPASU: Readonly<Record<RodzajKryteriumAparatu, string>> = {
+  dynamiczna: T.kolZapasSzczytowy,
+  cieplna: T.kolZapasCieplny,
+  wylaczanie: T.kolZapasWylaczalny,
+};
+
+function liczba(wartosc: number | null | undefined, rodzaj: RodzajWielkosci): string {
+  return wartosc === null || wartosc === undefined ? T.kreska : formatujWielkosc(wartosc, rodzaj);
+}
+
+/** Komórka z liczbą albo z nazwanym brakiem; `uwaga` steruje wyłącznie kolorem. */
+function Komorka({
+  children,
+  uwaga = null,
+  testId,
+  tytul,
+  zrodloCzasu,
+}: {
+  readonly children: ReactNode;
+  readonly uwaga?: Uwaga;
+  readonly testId?: string;
+  readonly tytul?: string;
+  readonly zrodloCzasu?: string;
+}) {
+  return (
+    <td
+      className="mvd-num mvd-apar-komorka"
+      data-uwaga={uwaga ?? undefined}
+      data-testid={testId}
+      data-zrodlo-czasu={zrodloCzasu}
+      title={tytul}
+    >
+      {children}
+    </td>
+  );
+}
+
+interface Zapas {
+  readonly tekst: string;
+  readonly uwaga: Uwaga;
+  readonly tytul?: string;
+}
+
+/**
+ * Zapas kryterium z rekordu backendu: liczba ze znakiem (ujemna — wyróżniona), „nie dotyczy”
+ * (stosowalność z rekordu), „brak” z powodem w podpowiedzi albo „brak oceny”, gdy backend
+ * rekordu nie zwrócił. Nigdy liczba z innego pola.
+ */
+function zapas(rekord: OcenaKryterium | null): Zapas {
+  if (rekord === null) return { tekst: T.brakOceny, uwaga: 'brak' };
+  if (!rekord.stosowalnosc.dotyczy) {
+    return { tekst: T.nieDotyczy, uwaga: null, tytul: rekord.stosowalnosc.powod_pl };
+  }
+  const m = rekord.margines?.wartosc ?? null;
+  if (m === null) {
+    return {
+      tekst: T.brakZapasu,
+      uwaga: 'brak',
+      tytul: rekord.margines?.powod_pl ?? rekord.wyjasnienie.czego_brakuje.join('; '),
+    };
+  }
+  return { tekst: formatujWielkosc(m.wartosc, 'zapas'), uwaga: m.wartosc < 0 ? 'ujemny' : null };
+}
+
 function opisZrodla(pole: PoleWytrzymalosci): string {
   return pole.zrodlo === 'model' ? T.zrodloModel : T.zrodloKonfiguracja;
 }
 
-/** Prąd z backendu albo uczciwa kreska. */
-function kiloampery(wartosc: number | null): string {
-  return wartosc === null ? T.kreska : `${fmtKA(wartosc)} ${T.jednKA}`;
+function nazwaAparatu(pole: PoleWytrzymalosci): string {
+  return pole.aparat_etykieta ?? pole.aparat_nazwa ?? pole.aparat_catalog_ref;
 }
 
-/** Prądy pola z wiersza biegu dla JEGO punktu zabudowy (albo powód braku z backendu). */
-function PradyPola({ pole }: { readonly pole: PoleWytrzymalosci }) {
-  const prady = pole.prady_pola;
-  return (
-    <div
-      className="mvd-apar-czas"
-      data-testid={`mvd-zwarcia-aparatura-prady-${pole.pole}`}
-      data-punkt-ref={prady.punkt_ref ?? ''}
-    >
-      <dl className="mvd-apar-czas-pola">
-        <div>
-          <dt>{T.pradyPunkt}</dt>
-          <dd>{prady.punkt_nazwa ?? T.kreska}</dd>
-        </div>
-        <div>
-          <dt>{T.pradyIp}</dt>
-          <dd className="mvd-num">{kiloampery(prady.ip_ka)}</dd>
-        </div>
-        <div>
-          <dt>{T.pradyIth}</dt>
-          <dd className="mvd-num">{kiloampery(prady.ith_ka)}</dd>
-        </div>
-        {/* Karta SC-IB-ITH-ZRODLA: wielkości kryterium wyłączania z TEGO SAMEGO wiersza
-            biegu — Ib (prąd wyłączeniowy symetryczny), iDC(tb) informacyjnie i tb biegu. */}
-        <div>
-          <dt>{T.pradyIb}</dt>
-          <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-ib-${pole.pole}`}>
-            {kiloampery(prady.ib_ka)}
-          </dd>
-        </div>
-        <div>
-          <dt>{T.pradyIdc}</dt>
-          <dd className="mvd-num">{kiloampery(prady.i_dc_ka)}</dd>
-        </div>
-        <div>
-          <dt>{T.pradyTb}</dt>
-          <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-tb-${pole.pole}`}>
-            {prady.tb_s === null ? T.pradyTbBrak : sekundy(prady.tb_s)}
-          </dd>
-        </div>
-      </dl>
-      {prady.powod_pl !== null && <p className="mvd-apar-czas-powod">{prady.powod_pl}</p>}
-    </div>
+/** Czy backend podał dla wszystkich pól te same prądy (porównanie liczb, nie obliczenie). */
+export function pradyJednakowe(pola: readonly PoleWytrzymalosci[]): boolean {
+  if (pola.length === 0) return false;
+  const [pierwsze, ...reszta] = pola;
+  return reszta.every(
+    (p) =>
+      p.prady_pola.ip_ka === pierwsze.prady_pola.ip_ka &&
+      p.prady_pola.ith_ka === pierwsze.prady_pola.ith_ka &&
+      p.prady_pola.ib_ka === pierwsze.prady_pola.ib_ka,
   );
 }
 
-/** Sekunda z backendu albo uczciwa kreska (prezentacja NIC nie dolicza). */
-function sekundy(wartosc: number | null): string {
-  return wartosc === null ? T.kreska : `${fmtCzas(wartosc)} ${T.jednS}`;
-}
-
-/**
- * Rozbicie czasu wyłączenia (WHITE BOX): suma i OBA człony osobno, źródło oraz
- * założenia przyjęte przy braku danej. Liczby pochodzą wprost z odpowiedzi —
- * ekran ich nie sumuje, bo suma jest częścią wyprowadzenia, nie prezentacji.
- */
-function RozbicieCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
+/** Czas wyłączenia pola T_k (z backendu) albo jawne „nieustalony” — bez liczby. */
+function KomorkaCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
   const czas = pole.czas_wylaczenia;
-  const zrodlo =
-    czas.zrodlo === 'nastawy_pola'
-      ? T.czasZNastaw
-      : czas.zrodlo === 'konfiguracja'
-        ? T.czasZKonfiguracji
-        : T.czasNieustalony;
+  const t = czas.t_clearing_s;
   return (
-    <div
-      className="mvd-apar-czas"
-      data-testid={`mvd-zwarcia-aparatura-czas-${pole.pole}`}
-      data-zrodlo-czasu={czas.zrodlo ?? 'nieustalony'}
+    <Komorka
+      uwaga={t === null ? 'brak' : null}
+      testId={`mvd-zwarcia-aparatura-czas-${pole.pole}`}
+      tytul={czas.powod_pl}
+      zrodloCzasu={czas.zrodlo ?? 'nieustalony'}
     >
-      <dl className="mvd-apar-czas-pola">
-        <div>
-          <dt><TekstZWzorami tekst={T.czasSuma} /></dt>
-          <dd className="mvd-num">{sekundy(czas.t_clearing_s)}</dd>
-        </div>
-        <div>
-          <dt>{T.czasCzlonNastawczy}</dt>
-          <dd className="mvd-num">{sekundy(czas.czlon_nastawczy_s)}</dd>
-        </div>
-        <div>
-          <dt>{T.czasWlasny}</dt>
-          <dd className="mvd-num">{sekundy(czas.czas_wlasny_wylacznika_s)}</dd>
-        </div>
-        <div>
-          <dt>{T.czasZrodlo}</dt>
-          <dd>{zrodlo}</dd>
-        </div>
-      </dl>
-      <p className="mvd-apar-czas-powod">{czas.powod_pl}</p>
-      {czas.zalozenia_pl.map((zalozenie) => (
-        <p className="mvd-apar-czas-zalozenie" key={zalozenie}>
-          {T.czasZalozenie} {zalozenie}
-        </p>
-      ))}
-    </div>
+      {t === null ? T.nieustalony : formatujWielkosc(t, 'czas')}
+    </Komorka>
   );
+}
+
+/** Porównanie trzech kryteriów pola — każda liczba z rekordu K TEGO pola. */
+function Porownanie({ pole }: { readonly pole: PoleWytrzymalosci }) {
+  const tk = pole.czas_wylaczenia.t_clearing_s;
+  const tkr = pole.znamiona?.i_th_duration_s ?? null;
+  return (
+    <table
+      className="mvd-apar-porownanie"
+      data-testid={`mvd-zwarcia-aparatura-porownanie-${pole.pole}`}
+    >
+      <thead>
+        <tr>
+          <th scope="col">{T.porownanieParametr}</th>
+          <th scope="col">{T.porownanieObliczony}</th>
+          <th scope="col">{T.porownanieAparat}</th>
+          <th scope="col">{T.porownanieZapas}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {RODZAJE_KRYTERIUM_APARATU.map((rodzaj) => {
+          const rekord = ocenaRodzaju(pole, rodzaj);
+          const z = zapas(rekord);
+          const dotyczy = rekord?.stosowalnosc.dotyczy ?? true;
+          const limit = rekord?.limit?.wartosc ?? null;
+          const id = `${pole.pole}-${rodzaj}`;
+          return (
+            <tr key={rodzaj} data-testid={`mvd-zwarcia-aparatura-kryterium-${id}`}>
+              <th scope="row" className="mvd-apar-kryterium">
+                <span>{NAZWA_KRYTERIUM[rodzaj]}</span>
+                {rekord !== null && rekord.kryterium.warunek_latex.trim() !== '' && (
+                  <span className="mvd-apar-warunek">
+                    <MathInline latex={rekord.kryterium.warunek_latex} />
+                  </span>
+                )}
+                {rodzaj === 'cieplna' && (
+                  <span className="mvd-apar-czasy-odniesienia">
+                    <span
+                      data-testid={`mvd-zwarcia-aparatura-tk-${pole.pole}`}
+                      data-uwaga={tk === null ? 'brak' : undefined}
+                    >
+                      {T.czasTk} ={' '}
+                      {tk === null ? T.nieustalony : `${formatujWielkosc(tk, 'czas')} ${T.jednS}`}
+                    </span>
+                    {' · '}
+                    <span data-testid={`mvd-zwarcia-aparatura-tkr-${pole.pole}`}>
+                      {T.czasTkr} ={' '}
+                      {tkr === null ? T.kreska : `${formatujWielkosc(tkr, 'czas')} ${T.jednS}`}
+                    </span>
+                  </span>
+                )}
+              </th>
+              <Komorka testId={`mvd-zwarcia-aparatura-obliczony-${id}`}>
+                {liczba(rekord?.wynik?.wartosc.wartosc, 'prad')}
+              </Komorka>
+              <Komorka
+                testId={`mvd-zwarcia-aparatura-aparat-${id}`}
+                uwaga={dotyczy && limit === null ? 'brak' : null}
+              >
+                {dotyczy ? liczba(limit?.wartosc, 'prad') : T.nieDotyczy}
+              </Komorka>
+              <Komorka testId={`mvd-zwarcia-aparatura-zapas-${id}`} uwaga={z.uwaga} tytul={z.tytul}>
+                {z.tekst}
+              </Komorka>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function opisPochodzenia(w: WartoscParametruAparatu): string {
+  if (w.pochodzenie === 'KATALOG') return T.pochodzenieKatalog;
+  if (w.pochodzenie === 'PROPOZYCJA') return T.pochodzeniePropozycja;
+  if (w.pochodzenie === 'PROJEKTANT') return T.pochodzenieProjektant;
+  return T.pochodzenieBrak;
 }
 
 /** Parametry aparatu z backendu w stałej kolejności: czas własny, I_k, t_k, I_p. */
@@ -192,72 +268,350 @@ function parametryPola(pole: PoleWytrzymalosci): WartoscParametruAparatu[] {
   ].filter((w): w is WartoscParametruAparatu => w !== null && w !== undefined);
 }
 
-function opisPochodzenia(w: WartoscParametruAparatu): string {
-  if (w.pochodzenie === 'KATALOG') return T.pochodzenieKatalog;
-  if (w.pochodzenie === 'PROPOZYCJA') return T.pochodzeniePropozycja;
-  if (w.pochodzenie === 'PROJEKTANT') return T.pochodzenieProjektant;
-  return T.pochodzenieBrak;
+/**
+ * Szczegóły obliczeń pola: ocena backendu, aparat i źródło, prądy punktu zabudowy (z t_b
+ * i jego pochodzeniem), rozbicie czasu wyłączenia z założeniami, parametry aparatu z
+ * pochodzeniem i wartościami roboczymi oraz pełna karta werdyktu KAŻDEGO kryterium.
+ */
+function SzczegolyObliczen({ pole, id }: { readonly pole: PoleWytrzymalosci; readonly id: string }) {
+  const prady = pole.prady_pola;
+  const czas = pole.czas_wylaczenia;
+  const parametry = parametryPola(pole);
+  const zrodloCzasu =
+    czas.zrodlo === 'nastawy_pola'
+      ? T.czasZNastaw
+      : czas.zrodlo === 'konfiguracja'
+        ? T.czasZKonfiguracji
+        : T.nieustalony;
+  const opisTb = prady.tb_zrodlo?.opis_pl ?? null;
+  return (
+    <div
+      className="mvd-apar-szczegoly"
+      id={id}
+      data-testid={`mvd-zwarcia-aparatura-szczegoly-${pole.pole}`}
+    >
+      <section>
+        <h5 className="mvd-apar-szczegoly-tytul">{T.szczegolyOcena}</h5>
+        <p className="mvd-apar-komunikat" data-testid={`mvd-zwarcia-aparatura-komunikat-${pole.pole}`}>
+          {pole.komunikat_pl}
+        </p>
+        <p className="mvd-apar-zrodlo" data-testid={`mvd-zwarcia-aparatura-zrodlo-${pole.pole}`}>
+          {T.szczegolyAparat}: {nazwaAparatu(pole)} · {opisZrodla(pole)}
+        </p>
+      </section>
+
+      <section
+        data-testid={`mvd-zwarcia-aparatura-prady-${pole.pole}`}
+        data-punkt-ref={prady.punkt_ref ?? ''}
+      >
+        <h5 className="mvd-apar-szczegoly-tytul">{T.pradyPola}</h5>
+        <dl className="mvd-apar-czas-pola">
+          <div>
+            <dt>{T.pradyPunkt}</dt>
+            <dd>{prady.punkt_nazwa ?? T.kreska}</dd>
+          </div>
+          <div>
+            <dt>{T.pradyUn}</dt>
+            <dd className="mvd-num">{liczba(prady.un_kv, 'prad')}</dd>
+          </div>
+          <div>
+            <dt>{T.pradyIk}</dt>
+            <dd className="mvd-num">{liczba(prady.ik_ka, 'prad')}</dd>
+          </div>
+          <div>
+            <dt>{T.kolIp}</dt>
+            <dd className="mvd-num">{liczba(prady.ip_ka, 'prad')}</dd>
+          </div>
+          <div>
+            <dt>{T.kolIth}</dt>
+            <dd className="mvd-num">{liczba(prady.ith_ka, 'prad')}</dd>
+          </div>
+          <div>
+            <dt>{T.kolIb}</dt>
+            <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-ib-${pole.pole}`}>
+              {liczba(prady.ib_ka, 'prad')}
+            </dd>
+          </div>
+          <div>
+            <dt>{T.pradyIdc}</dt>
+            <dd className="mvd-num">{liczba(prady.i_dc_ka, 'prad')}</dd>
+          </div>
+          <div>
+            <dt>{T.pradyTb}</dt>
+            <dd className="mvd-num" data-testid={`mvd-zwarcia-aparatura-tb-${pole.pole}`}>
+              {prady.tb_s === null ? T.pradyTbBrak : formatujWielkosc(prady.tb_s, 'czas')}
+            </dd>
+          </div>
+        </dl>
+        {opisTb !== null && <p className="mvd-apar-czas-zalozenie">{opisTb}</p>}
+        {prady.powod_pl !== null && <p className="mvd-apar-czas-powod">{prady.powod_pl}</p>}
+      </section>
+
+      <section
+        data-testid={`mvd-zwarcia-aparatura-czas-szczegoly-${pole.pole}`}
+        data-zrodlo-czasu={czas.zrodlo ?? 'nieustalony'}
+      >
+        <h5 className="mvd-apar-szczegoly-tytul">{T.czasTytul}</h5>
+        <dl className="mvd-apar-czas-pola">
+          <div>
+            <dt>
+              <TekstZWzorami tekst={T.czasSuma} />
+            </dt>
+            <dd className="mvd-num">
+              {czas.t_clearing_s === null
+                ? T.nieustalony
+                : formatujWielkosc(czas.t_clearing_s, 'czas')}
+            </dd>
+          </div>
+          <div>
+            <dt>{T.czasCzlonNastawczy}</dt>
+            <dd className="mvd-num">{liczba(czas.czlon_nastawczy_s, 'czas')}</dd>
+          </div>
+          <div>
+            <dt>{T.czasWlasny}</dt>
+            <dd className="mvd-num">{liczba(czas.czas_wlasny_wylacznika_s, 'czas')}</dd>
+          </div>
+          <div>
+            <dt>{T.czasZrodlo}</dt>
+            <dd>{zrodloCzasu}</dd>
+          </div>
+        </dl>
+        <p className="mvd-apar-czas-powod">{czas.powod_pl}</p>
+        {czas.zalozenia_pl.map((zalozenie) => (
+          <p className="mvd-apar-czas-zalozenie" key={zalozenie}>
+            {T.czasZalozenie} {zalozenie}
+          </p>
+        ))}
+      </section>
+
+      {parametry.length > 0 && (
+        <section data-testid={`mvd-zwarcia-aparatura-parametry-${pole.pole}`}>
+          <h5 className="mvd-apar-szczegoly-tytul">{T.parametryTytul}</h5>
+          <ul className="mvd-apar-parametry">
+            {parametry.map((w) => (
+              <li
+                key={w.parametr}
+                className="mvd-apar-parametr"
+                data-testid={`mvd-zwarcia-aparatura-parametr-${pole.pole}-${w.parametr}`}
+                data-pochodzenie={w.pochodzenie ?? 'brak'}
+                data-wartosc-robocza={String(w.wartosc_robocza)}
+              >
+                <span className="mvd-apar-parametr-nazwa">{w.nazwa_pl}</span>
+                <span className="mvd-num">
+                  {w.wartosc === null
+                    ? T.kreska
+                    : `${formatujWielkosc(w.wartosc, w.jednostka === 's' ? 'czas' : 'prad')} ${w.jednostka}`}
+                </span>
+                {w.wartosc_robocza && (
+                  <span
+                    className="mvd-apar-parametr-robocza"
+                    data-testid={`mvd-zwarcia-aparatura-robocza-${pole.pole}-${w.parametr}`}
+                  >
+                    {T.etykietaRobocza}
+                  </span>
+                )}
+                <span className="mvd-apar-parametr-pochodzenie">{opisPochodzenia(w)}</span>
+                {w.wartosc_robocza && <p className="mvd-apar-czas-zalozenie">{w.opis_zrodla_pl}</p>}
+                {w.wartosc === null && w.powod_braku_pl !== null && (
+                  <p className="mvd-apar-czas-powod">{w.powod_braku_pl}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {pole.oceny.length > 0 && (
+        <section data-testid={`mvd-zwarcia-aparatura-oceny-${pole.pole}`}>
+          <h5 className="mvd-apar-szczegoly-tytul">{T.kryteriaTytul}</h5>
+          <div className="mvd-apar-oceny">
+            {pole.oceny.map((ocena) => (
+              <KartaWerdyktu key={ocena.kryterium_id} rekord={ocena} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
 }
 
-/**
- * Parametry aparatu użyte w ocenie — każda liczba z pochodzeniem; wartość robocza z etykietą,
- * opisem źródła i wpływu (tekst backendu) oraz akcją „Zmień wartość” dla aparatu z modelu.
- */
-function ParametryAparatu({
+/** Wiersz pola: natywny przełącznik rozwinięcia (klik w wiersz, Enter, spacja) + rozwinięcie. */
+function WierszPola({
   pole,
-  onZmienWartosc,
+  pradyWWierszach,
+  liczbaKolumn,
+  onParametryAparatu,
 }: {
   readonly pole: PoleWytrzymalosci;
-  readonly onZmienWartosc?: WeryfikacjaAparaturyProps['onZmienWartosc'];
+  readonly pradyWWierszach: boolean;
+  readonly liczbaKolumn: number;
+  readonly onParametryAparatu?: WeryfikacjaAparaturyProps['onParametryAparatu'];
 }) {
-  const parametry = parametryPola(pole);
-  if (parametry.length === 0) return null;
+  const [rozwiniety, setRozwiniety] = useState(false);
+  const [szczegoly, setSzczegoly] = useState(false);
+  const idRozwiniecia = useId();
+  const idSzczegolow = useId();
+  const prady = pole.prady_pola;
   const aparatRef = pole.zrodlo === 'model' ? pole.aparat_ref : null;
   return (
-    <div className="mvd-apar-czas" data-testid={`mvd-zwarcia-aparatura-parametry-${pole.pole}`}>
-      <span className="mvd-apar-parametry-tytul">{T.parametryTytul}</span>
-      <ul className="mvd-apar-parametry">
-        {parametry.map((w) => (
-          <li
-            key={w.parametr}
-            className="mvd-apar-parametr"
-            data-testid={`mvd-zwarcia-aparatura-parametr-${pole.pole}-${w.parametr}`}
-            data-pochodzenie={w.pochodzenie ?? 'brak'}
-            data-wartosc-robocza={String(w.wartosc_robocza)}
+    <>
+      <tr
+        className="mvd-apar-wiersz"
+        data-testid={`mvd-zwarcia-aparatura-pole-${pole.pole}`}
+        // Znacznik maszynowy werdyktu jądra: 'true' / 'false' / 'nieustalone' (filtry, testy).
+        data-withstand-ok={znacznikWerdyktu(pole)}
+        data-zrodlo={pole.zrodlo}
+        data-rozwiniety={String(rozwiniety)}
+        // Klik w dowolne miejsce wiersza = ten sam przełącznik co przycisk w pierwszej komórce
+        // (klawiatura obsługuje przycisk natywnie: Enter i spacja).
+        onClick={(zdarzenie) => {
+          if ((zdarzenie.target as HTMLElement).closest('button') !== null) return;
+          setRozwiniety((stan) => !stan);
+        }}
+      >
+        <th scope="row" className="mvd-apar-pole">
+          <button
+            type="button"
+            className="mvd-apar-przelacz"
+            aria-expanded={rozwiniety}
+            aria-controls={rozwiniety ? idRozwiniecia : undefined}
+            data-testid={`mvd-zwarcia-aparatura-rozwin-${pole.pole}`}
+            onClick={() => setRozwiniety((stan) => !stan)}
           >
-            <span className="mvd-apar-parametr-nazwa">{w.nazwa_pl}</span>
-            <span className="mvd-num">
-              {w.wartosc === null ? T.kreska : `${fmtLiczba(w.wartosc, 3)} ${w.jednostka}`}
+            <span className="mvd-apar-przelacz-znak" aria-hidden="true">
+              {rozwiniety ? '▾' : '▸'}
             </span>
-            {w.wartosc_robocza && (
-              <span
-                className="mvd-apar-parametr-robocza"
-                data-testid={`mvd-zwarcia-aparatura-robocza-${pole.pole}-${w.parametr}`}
-              >
-                {T.etykietaRobocza}
-              </span>
-            )}
-            <span className="mvd-apar-parametr-pochodzenie">{opisPochodzenia(w)}</span>
-            {aparatRef !== null && w.pochodzenie !== null && onZmienWartosc && (
+            {pole.pole}
+          </button>
+        </th>
+        <td className="mvd-apar-aparat">{nazwaAparatu(pole)}</td>
+        {pradyWWierszach && (
+          <>
+            <Komorka testId={`mvd-zwarcia-aparatura-ip-${pole.pole}`}>
+              {liczba(prady.ip_ka, 'prad')}
+            </Komorka>
+            <Komorka testId={`mvd-zwarcia-aparatura-ith-${pole.pole}`}>
+              {liczba(prady.ith_ka, 'prad')}
+            </Komorka>
+            <Komorka testId={`mvd-zwarcia-aparatura-ib-wiersz-${pole.pole}`}>
+              {liczba(prady.ib_ka, 'prad')}
+            </Komorka>
+          </>
+        )}
+        <KomorkaCzasu pole={pole} />
+        {RODZAJE_KRYTERIUM_APARATU.map((rodzaj) => {
+          const z = zapas(ocenaRodzaju(pole, rodzaj));
+          return (
+            <Komorka
+              key={rodzaj}
+              uwaga={z.uwaga}
+              tytul={z.tytul}
+              testId={`mvd-zwarcia-aparatura-zapas-wiersz-${pole.pole}-${rodzaj}`}
+            >
+              {z.tekst}
+            </Komorka>
+          );
+        })}
+      </tr>
+      {rozwiniety && (
+        <tr className="mvd-apar-rozwiniecie" id={idRozwiniecia}>
+          <td colSpan={liczbaKolumn}>
+            <Porownanie pole={pole} />
+            <div className="mvd-apar-akcje-pola">
+              {aparatRef !== null && onParametryAparatu && (
+                <button
+                  type="button"
+                  className="mvd-apar-akcja mvd-apar-akcja--wtorna"
+                  data-testid={`mvd-zwarcia-aparatura-parametry-aparatu-${pole.pole}`}
+                  onClick={() => onParametryAparatu(aparatRef, pole.aparat_nazwa ?? aparatRef)}
+                >
+                  {T.parametryAparatu}
+                </button>
+              )}
               <button
                 type="button"
                 className="mvd-apar-akcja mvd-apar-akcja--wtorna"
-                data-testid={`mvd-zwarcia-aparatura-zmien-${pole.pole}-${w.parametr}`}
-                onClick={() =>
-                  onZmienWartosc(aparatRef, pole.aparat_nazwa ?? aparatRef, w.parametr)
-                }
+                aria-expanded={szczegoly}
+                aria-controls={szczegoly ? idSzczegolow : undefined}
+                data-testid={`mvd-zwarcia-aparatura-szczegoly-przelacz-${pole.pole}`}
+                onClick={() => setSzczegoly((stan) => !stan)}
               >
-                {T.zmienWartosc}
+                {szczegoly ? T.szczegolyUkryj : T.szczegolyPokaz}
               </button>
+            </div>
+            {szczegoly && <SzczegolyObliczen pole={pole} id={idSzczegolow} />}
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function TabelaPol({
+  pola,
+  onParametryAparatu,
+}: {
+  readonly pola: readonly PoleWytrzymalosci[];
+  readonly onParametryAparatu?: WeryfikacjaAparaturyProps['onParametryAparatu'];
+}) {
+  const wspolne = pradyJednakowe(pola);
+  const pierwsze = pola[0]?.prady_pola ?? null;
+  // Pole, Aparat, (ip, Ith, Ib), Tk, trzy zapasy.
+  const liczbaKolumn = 2 + (wspolne ? 0 : 3) + 1 + RODZAJE_KRYTERIUM_APARATU.length;
+  return (
+    <>
+      {wspolne && pierwsze !== null && (
+        <div className="mvd-apar-prady-wspolne" data-testid="mvd-zwarcia-aparatura-prady-wspolne">
+          <span className="mvd-apar-prady-wspolne-tytul">{T.pradyWspolne}</span>
+          <dl>
+            <div>
+              <dt>{T.kolIp}</dt>
+              <dd className="mvd-num">{liczba(pierwsze.ip_ka, 'prad')}</dd>
+            </div>
+            <div>
+              <dt>{T.kolIth}</dt>
+              <dd className="mvd-num">{liczba(pierwsze.ith_ka, 'prad')}</dd>
+            </div>
+            <div>
+              <dt>{T.kolIb}</dt>
+              <dd className="mvd-num">{liczba(pierwsze.ib_ka, 'prad')}</dd>
+            </div>
+          </dl>
+        </div>
+      )}
+      <table className="mvd-apar-tabela" data-testid="mvd-zwarcia-aparatura-werdykty">
+        <thead>
+          <tr>
+            <th scope="col">{T.kolPole}</th>
+            <th scope="col">{T.kolAparat}</th>
+            {!wspolne && (
+              <>
+                <th scope="col">{T.kolIp}</th>
+                <th scope="col">{T.kolIth}</th>
+                <th scope="col">{T.kolIb}</th>
+              </>
             )}
-            {w.wartosc_robocza && <p className="mvd-apar-czas-zalozenie">{w.opis_zrodla_pl}</p>}
-            {w.wartosc === null && w.powod_braku_pl !== null && (
-              <p className="mvd-apar-czas-powod">{w.powod_braku_pl}</p>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
+            <th scope="col">{T.kolTk}</th>
+            {RODZAJE_KRYTERIUM_APARATU.map((rodzaj) => (
+              <th scope="col" key={rodzaj}>
+                {KOLUMNA_ZAPASU[rodzaj]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {pola.map((pole) => (
+            <WierszPola
+              key={`${pole.pole_ref ?? pole.pole}::${pole.aparat_ref ?? pole.aparat_catalog_ref}`}
+              pole={pole}
+              pradyWWierszach={!wspolne}
+              liczbaKolumn={liczbaKolumn}
+              onParametryAparatu={onParametryAparatu}
+            />
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 }
 
@@ -266,7 +620,7 @@ export function WeryfikacjaAparatury({
   runId,
   punktNazwa,
   onOtworzKonfiguracjeStacji,
-  onZmienWartosc,
+  onParametryAparatu,
 }: WeryfikacjaAparaturyProps) {
   const caseId = useAppStateStore((s) => s.activeCaseId);
   const snapshot = useSnapshotStore((s) => s.snapshot);
@@ -274,6 +628,7 @@ export function WeryfikacjaAparatury({
   const [powod, setPowod] = useState<PowodBrakuPodstawy | null>(null);
 
   const stacje = stacjeDlaPunktu(snapshot, wiersz);
+  const nazwyStacji = stacje.map((ref) => nazwaStacji(snapshot, ref)).join(', ');
 
   // Zmiana punktu zwarcia albo biegu unieważnia poprzedni werdykt (inaczej ekran
   // pokazywałby ocenę aparatury INNEGO punktu albo innego biegu).
@@ -322,11 +677,17 @@ export function WeryfikacjaAparatury({
     <section className="mvd-apar" data-testid="mvd-zwarcia-aparatura">
       <header className="mvd-apar-glowa">
         <div>
-          <h3 className="mvd-apar-tytul">
-            {T.tytul} — <span className="mvd-apar-punkt">{punktNazwa}</span>
+          <h3 className="mvd-apar-tytul" data-testid="mvd-zwarcia-aparatura-tytul">
+            {T.tytul}
+            {stacje.length > 0 && (
+              <>
+                {' — '}
+                <span className="mvd-apar-punkt">{nazwyStacji}</span>
+              </>
+            )}
           </h3>
-          <p className="mvd-apar-cel">
-            <TekstZWzorami tekst={T.cel} />
+          <p className="mvd-apar-cel" data-testid="mvd-zwarcia-aparatura-punkt">
+            {T.punktWskazuje} „{punktNazwa}” {T.punktWskazujeOpis}
           </p>
         </div>
         <button
@@ -346,13 +707,6 @@ export function WeryfikacjaAparatury({
 
       <dl className="mvd-apar-wejscia" data-testid="mvd-zwarcia-aparatura-wejscia">
         <div>
-          <dt>{T.wejsciePrady}</dt>
-          <dd data-testid="mvd-zwarcia-aparatura-prady">
-            {runId === null ? T.kreska : T.wejsciePradyOpis}
-            <span className="mvd-apar-zrodlo">{T.zrodloPradow}</span>
-          </dd>
-        </div>
-        <div>
           <dt>{T.wejscieStacja}</dt>
           {/* Strefa pierwszoplanowa mówi NAZWĄ stacji; ref modelu zostaje
               maszynowym atrybutem (podpowiedź i asercje), nie napisem. */}
@@ -361,17 +715,12 @@ export function WeryfikacjaAparatury({
             data-stacje-ref={stacje.join(',')}
             title={stacje.join(', ')}
           >
-            {stacje.length === 0
-              ? T.kreska
-              : stacje.map((ref) => nazwaStacji(snapshot, ref)).join(', ')}
+            {stacje.length === 0 ? T.kreska : nazwyStacji}
           </dd>
         </div>
         <div>
           <dt>{T.wejsciePola}</dt>
-          <dd className="mvd-num">
-            {liczbaPol === null ? T.kreska : String(liczbaPol)}
-            <span className="mvd-apar-zrodlo">{T.zrodloAparatu}</span>
-          </dd>
+          <dd className="mvd-num">{liczbaPol === null ? T.kreska : String(liczbaPol)}</dd>
         </div>
       </dl>
 
@@ -398,41 +747,7 @@ export function WeryfikacjaAparatury({
       )}
 
       {stan.rodzaj === 'gotowe' && powod === null && (
-        <ul className="mvd-apar-werdykty" data-testid="mvd-zwarcia-aparatura-werdykty">
-          {stan.wiersze.map((w) => (
-            <li
-              key={`${w.pole_ref ?? w.pole}::${w.aparat_ref ?? w.aparat_catalog_ref}`}
-              className="mvd-apar-werdykt"
-              data-testid={`mvd-zwarcia-aparatura-pole-${w.pole}`}
-              // Znacznik maszynowy werdyktu: 'true' / 'false' / 'nieustalone'.
-              data-withstand-ok={znacznikWerdyktu(w)}
-              data-zrodlo={w.zrodlo}
-            >
-              <span className="mvd-apar-pole mvd-num">{w.pole}</span>
-              <span className="mvd-apar-komunikat">{w.komunikat_pl}</span>
-              <span
-                className="mvd-apar-zrodlo"
-                data-testid={`mvd-zwarcia-aparatura-zrodlo-${w.pole}`}
-              >
-                {opisZrodla(w)}
-                {w.aparat_etykieta ? ` · ${w.aparat_etykieta}` : ''}
-              </span>
-              <PradyPola pole={w} />
-              <RozbicieCzasu pole={w} />
-              <ParametryAparatu pole={w} onZmienWartosc={onZmienWartosc} />
-              {/* Rekordy K w JEDNYM bloku na całą szerokość wiersza — jako luźne elementy
-                  wiersza flex kurczyły się do szerokości kilku znaków (zrzut KD-6). Każdy
-                  rekord to wiersz pierwszego planu (ocena, przedmiot, kryterium, wynik, limit
-                  z podstawą, margines); pełna karta po rozwinięciu, od razu dla NIE_SPELNIA
-                  i NIEJEDNOZNACZNY. */}
-              <div className="mvd-apar-oceny" data-testid={`mvd-zwarcia-aparatura-oceny-${w.pole}`}>
-                {w.oceny.map((ocena) => (
-                  <RekordWerdyktuZwijany key={ocena.kryterium_id} rekord={ocena} />
-                ))}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <TabelaPol pola={stan.wiersze} onParametryAparatu={onParametryAparatu} />
       )}
 
       <p className="mvd-apar-norma">{T.norma}</p>

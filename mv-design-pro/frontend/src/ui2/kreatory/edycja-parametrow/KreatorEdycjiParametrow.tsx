@@ -268,8 +268,9 @@ export function KreatorEdycjiParametrow() {
   );
   const jestAparatSn = galaz?.catalog_namespace === NAMESPACE_APARAT_SN;
   const poleKontekstu = readString(context?.field);
-  // `overrides` (akcja naprawcza blokady E011 — wartość projektanta spoza bramy) wskazuje całą
-  // sekcję aparatu: kursor w pierwszym polu.
+  // `overrides` (akcja naprawcza blokady E011 — wartość projektanta spoza bramy — oraz
+  // „Parametry aparatu” ekranu wytrzymałości aparatury) wskazuje całą sekcję aparatu: kursor
+  // w pierwszym polu. Pojedynczy parametr wskazuje edycja wiersza w inspektorze elementu.
   const poleAparatuZKontekstu = !jestAparatSn
     ? null
     : jestParametremAparatuSn(poleKontekstu)
@@ -285,8 +286,9 @@ export function KreatorEdycjiParametrow() {
   // opisem wymogu, nie kluczem parametru (`continuous_path_to_source`) — przyjmujemy go
   // wyłącznie, gdy jest kluczem ze słownika kontraktu (jedno źródło: SLOWNIKI_STATYCZNE
   // + `vector_group`), inaczej formularz zaczynałby się od klucza, którego backend nie zna.
-  // Parametr aparatu SN wskazany kontekstem (akcja „Zmień wartość" ekranu wytrzymałości)
-  // trafia do sekcji aparatu, nie do wiersza klucz → wartość.
+  // Parametr aparatu SN wskazany kontekstem (edycja wiersza w inspektorze elementu albo sekcja
+  // `overrides` z „Parametry aparatu” ekranu wytrzymałości) trafia do sekcji aparatu, nie do
+  // wiersza klucz → wartość.
   // Geometria słupa linii (akcja naprawcza `line.geometria_wartosc_robocza`) trafia do sekcji
   // linii 110 kV — to struktura, nie wartość wiersza klucz → wartość.
   const poleGeometriiZKontekstu =

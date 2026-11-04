@@ -18,6 +18,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import { wykonajBiegDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 import { transformatoryStacjiSnNn } from './transformatoryStacji';
+import { formatujWielkosc } from '../src/ui2/wyniki/zwarcia/aparatura/format';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -58,7 +59,12 @@ type WidokWytrzymalosci = {
     zrodlo: 'model' | 'konfiguracja';
     komunikat_pl: string;
     prady_pola: PradyPola;
-    czas_wylaczenia: { zrodlo: string | null };
+    czas_wylaczenia: { zrodlo: string | null; t_clearing_s: number | null };
+    oceny: Array<{
+      kryterium_id: string;
+      stosowalnosc: { dotyczy: boolean };
+      margines: { wartosc: { wartosc: number } | null } | null;
+    }>;
   }>;
 };
 
@@ -387,8 +393,14 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   await expect(wierszWerdyktu).toBeVisible({ timeout: 30000 });
   // Werdykt na ekranie = werdykt backendu dla prądów z biegu (nie literał UI).
   await expect(wierszWerdyktu).toHaveAttribute('data-withstand-ok', String(werdykt.ok));
-  await expect(wierszWerdyktu).toContainText(werdykt.message_pl);
-  // Prądy pola widoczne przy werdykcie, z punktem zabudowy jako daną maszynową.
+  // Komunikat backendu i prądy pola są w „Szczegółach obliczeń” (karta APARATURA-TABELA):
+  // natywny klik przełącznika wiersza, potem przełącznika szczegółów.
+  await page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${POLE}`).click();
+  await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${POLE}`).click();
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${POLE}`)).toContainText(
+    werdykt.message_pl,
+  );
+  // Prądy pola z punktem zabudowy jako daną maszynową.
   await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${POLE}`)).toHaveAttribute(
     'data-punkt-ref',
     pradyPola.punkt_ref ?? '',
@@ -458,14 +470,41 @@ test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', as
     // ŹRÓDŁO aparatu widoczne jako dana maszynowa — inżynier musi wiedzieć,
     // że ocenia aparat z modelu, a nie z własnego wpisu.
     await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
-    // Werdykt na ekranie = werdykt backendu (cytat, nie własne słowa ekranu).
-    await expect(wiersz).toContainText(pole.komunikat_pl);
+    // Zapasy w wierszu = margines rekordu K TEGO pola z odpowiedzi backendu (nigdy kopia
+    // innego pola); brak marginesu = jawne „brak”, nie liczba.
+    for (const rodzaj of ['dynamiczna', 'cieplna', 'wylaczanie'] as const) {
+      const rekord = pole.oceny.find((o) => o.kryterium_id.endsWith(`.${rodzaj}`));
+      const m = rekord?.margines?.wartosc?.wartosc ?? null;
+      const oczekiwany =
+        rekord === undefined
+          ? 'brak oceny'
+          : !rekord.stosowalnosc.dotyczy
+            ? 'nie dotyczy'
+            : m === null
+              ? 'brak'
+              : formatujWielkosc(m, 'zapas');
+      await expect(
+        page.getByTestId(`mvd-zwarcia-aparatura-zapas-wiersz-${pole.pole}-${rodzaj}`),
+      ).toHaveText(oczekiwany);
+    }
+    // Czas wyłączenia pola: liczba backendu albo jawne „nieustalony” (bez t_b innego pola).
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`)).toHaveText(
+      pole.czas_wylaczenia.t_clearing_s === null
+        ? 'nieustalony'
+        : formatujWielkosc(pole.czas_wylaczenia.t_clearing_s, 'czas'),
+    );
+    // Werdykt na ekranie = werdykt backendu (cytat w szczegółach, nie własne słowa ekranu).
+    await page.getByTestId(`mvd-zwarcia-aparatura-rozwin-${pole.pole}`).click();
+    await page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-przelacz-${pole.pole}`).click();
+    await expect(page.getByTestId(`mvd-zwarcia-aparatura-szczegoly-${pole.pole}`)).toContainText(
+      pole.komunikat_pl,
+    );
     // Prąd TEGO pola (punkt zabudowy pola z biegu), nie jedna liczba stacji.
     await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${pole.pole}`)).toHaveAttribute(
       'data-punkt-ref',
       pole.prady_pola.punkt_ref ?? '',
     );
-    // Rozbicie czasu wyłączenia: oba człony przy werdykcie (WHITE BOX).
+    // Źródło czasu wyłączenia jako dana maszynowa komórki Tk (rozbicie w szczegółach).
     const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`);
     await expect(czas).toHaveAttribute(
       'data-zrodlo-czasu',

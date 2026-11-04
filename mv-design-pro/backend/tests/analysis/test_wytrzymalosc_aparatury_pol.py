@@ -566,7 +566,11 @@ def test_kryterium_wylaczania_porownuje_wielkosc_z_jedynego_predykatu(
         assert ocena["wynik"]["wartosc"] == {"wartosc": wartosc, "jednostka": "kA"}
         # Rekord nazywa porównaną wielkość i normę — ekran pokazuje, CO porównano.
         assert symbol.replace("''", "″") in ocena["wynik"]["wielkosc_pl"].replace("I″k", "I_k″")
-        assert ocena["kryterium"]["warunek_latex"] == rf"{symbol} \le I_{{cu}}"
+        # Znamię nazwane wg normy aparatu TEGO pasma (karta APARATURA-TABELA): wyłącznik
+        # i reklozer SN — I_sc (IEC 62271-100 § 4.101), wyłącznik nN — I_cu (IEC 60947-2),
+        # bezpiecznik — I_1 (IEC 60282-1). I_cu przy aparacie SN byłoby błędem normowym.
+        znamie = "I_{1}" if aparat == BEZPIECZNIK else "I_{sc}" if symbol == "I_b" else "I_{cu}"
+        assert ocena["kryterium"]["warunek_latex"] == rf"{symbol} \le {znamie}"
         assert ocena["limit"]["wartosc"]["jednostka"] == "kA"
     if status in {"SPELNIA", "NIE_SPELNIA"}:
         assert ocena["margines"] is not None

@@ -12,6 +12,8 @@ from application.equipment_proof.types import (
     EquipmentProofResult,
 )
 from application.equipment_proof.wielkosc_wylaczania import (
+    NAZWA_ZNAMIENIA_NIEUSTALONA_PL,
+    SYMBOL_ZNAMIENIA_NIEUSTALONY,
     WIELKOSC_IB,
     WielkoscKryteriumWylaczania,
     wielkosc_kryterium_wylaczania,
@@ -195,7 +197,8 @@ class EquipmentProofGenerator:
             )
         if device_val is None or required_val is None:
             brak = (
-                f"nie podano I_cu aparatu albo {wielkosc.opis_pl} wymaganego"
+                f"nie podano znamienia aparatu ({wielkosc.nazwa_znamienia_pl}) albo "
+                f"{wielkosc.opis_pl} wymaganego"
                 if wielkosc.klucz != "ib_ka" or required_val is not None
                 else (
                     "wielkości biegu nie niosą prądu wyłączeniowego I_b punktu zwarcia "
@@ -223,8 +226,10 @@ class EquipmentProofGenerator:
             # Treść nazywa porównane wielkości, wartości i podstawę; status niesie pole
             # `status` (kontrakt werdyktu wyjaśnialnego: tekst nie składa kodu werdyktu).
             message_pl=(
-                f"I_cu aparatu {device_val:.4f} kA wobec {wielkosc.opis_pl} "
-                f"{required_val:.4f} kA (warunek I_cu ≥ wartość wymagana; {wielkosc.norma})."
+                f"{_symbol_tekstowy(wielkosc.symbol_znamienia)} aparatu ({wielkosc.nazwa_znamienia_pl}) "
+                f"{device_val:.4f} kA wobec {wielkosc.opis_pl} {required_val:.4f} kA (warunek "
+                f"{_symbol_tekstowy(wielkosc.symbol_znamienia)} ≥ wartość wymagana; "
+                f"{wielkosc.norma})."
             ),
             notes=notes,
         )
@@ -373,21 +378,22 @@ class EquipmentProofGenerator:
             run_timestamp=_P12_TIMESTAMP,
             solver_version="dobor-aparatury-1.0",
         )
+        wielkosc = _wielkosc_wylaczania(proof_input.device, proof_input.required_fault_results)
+        symbol_znamienia = _symbol_znamienia(wielkosc)
         steps = [
-            cls._step_device_data(proof_input.device),
+            cls._step_device_data(proof_input.device, wielkosc),
             cls._step_required_data(proof_input.required_fault_results),
             cls._step_check_u(checks[0]),
-            cls._step_check_icu(
-                checks[1],
-                _wielkosc_wylaczania(proof_input.device, proof_input.required_fault_results),
-            ),
+            cls._step_check_icu(checks[1], wielkosc),
             cls._step_check_idyn(checks[2]),
             cls._step_check_ith(checks[3], proof_input.device, proof_input.required_fault_results),
         ]
         summary = ProofSummary(
             key_results={
                 "u_m_ok": _status_value("U_{m,ok}", result.key_results["u_m_ok"], "u_m_ok"),
-                "icu_ok": _status_value("I_{cu,ok}", result.key_results["icu_ok"], "icu_ok"),
+                "icu_ok": _status_value(
+                    _symbol_ok(symbol_znamienia), result.key_results["icu_ok"], "icu_ok"
+                ),
                 "idyn_ok": _status_value("I_{dyn,ok}", result.key_results["idyn_ok"], "idyn_ok"),
                 "ith_ok": _status_value("I_{th,ok}", result.key_results["ith_ok"], "ith_ok"),
                 "overall_ok": _status_value(
@@ -435,16 +441,22 @@ class EquipmentProofGenerator:
         )
 
     @classmethod
-    def _step_device_data(cls, device: DeviceRating) -> ProofStep:
+    def _step_device_data(
+        cls, device: DeviceRating, wielkosc: WielkoscKryteriumWylaczania | None
+    ) -> ProofStep:
+        """Dane urządzenia — znamię zdolności wyłączania nazwane wg normy aparatu pasma punktu
+        (I_sc wyłącznika SN/WN, I_cu wyłącznika nN, I_1 bezpiecznika; ten sam predykat co
+        kryterium wyłączania)."""
+        symbol_znamienia = _symbol_znamienia(wielkosc)
         equation = _equation(
             "EQ_P12_001",
-            r"D_{dev} = \{U_m, I_{cu}, I_{dyn}, I_{th}, t_{th}\}",
+            rf"D_{{dev}} = \{{U_m, {symbol_znamienia}, I_{{dyn}}, I_{{th}}, t_{{th}}\}}",
             "Dane urządzenia (nameplate)",
             "PN-EN 60909",
             (
                 _symbol("D_{dev}", "—", "Zestaw danych urządzenia", "device"),
                 _symbol("U_m", "kV", "Napięcie znamionowe urządzenia", "device.u_m_kv"),
-                _symbol("I_{cu}", "kA", "Zdolność wyłączalna", "device.i_cu_ka"),
+                _symbol(symbol_znamienia, "kA", _nazwa_znamienia(wielkosc), "device.i_cu_ka"),
                 _symbol("I_{dyn}", "kA", "Wytrzymałość dynamiczna", "device.i_dyn_ka"),
                 _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),
                 _symbol("t_{th}", "s", "Czas odniesienia", "device.t_th_s"),
@@ -452,7 +464,7 @@ class EquipmentProofGenerator:
         )
         input_values = (
             _value_or_missing("U_m", device.u_m_kv, "kV", "device.u_m_kv"),
-            _value_or_icu(device, "device.i_cu_ka"),
+            _value_or_icu(device, "device.i_cu_ka", symbol_znamienia),
             _value_or_missing("I_{dyn}", device.i_dyn_ka, "kA", "device.i_dyn_ka"),
             _value_or_missing("I_{th}", device.i_th_ka, "kA", "device.i_th_ka"),
             _value_or_missing("t_{th}", device.t_th_s, "s", "device.t_th_s"),
@@ -551,21 +563,23 @@ class EquipmentProofGenerator:
         predykatu co `_check_icu` (`_wielkosc_wylaczania`: I_b dla wyłącznika SN/WN, I_k'' dla
         nN i bezpiecznika), więc dowód mówi, CO porównano. ``None`` (bieg bez napięcia punktu)
         → symbol I_b z brakiem wartości: kryterium bez podstawy, wymienione w treści kroku."""
+        symbol_znamienia = _symbol_znamienia(wielkosc)
+        nazwa_znamienia = _nazwa_znamienia(wielkosc)
         if wielkosc is None:
             wielkosc = WIELKOSC_IB
         equation = _equation(
             "EQ_P12_004",
-            rf"I_{{cu}} \ge {wielkosc.symbol}",
+            rf"{symbol_znamienia} \ge {wielkosc.symbol}",
             "Sprawdzenie zdolności wyłączalnej",
             wielkosc.norma,
             (
-                _symbol("I_{cu}", "kA", "Zdolność wyłączalna", "device.i_cu_ka"),
+                _symbol(symbol_znamienia, "kA", nazwa_znamienia, "device.i_cu_ka"),
                 _symbol(wielkosc.symbol, "kA", wielkosc.opis_pl, wielkosc.klucz),
             ),
         )
         input_values = (
             _value_or_not_applicable(
-                "I_{cu}", check.device_value, "kA", "device.i_cu_ka", check.status
+                symbol_znamienia, check.device_value, "kA", "device.i_cu_ka", check.status
             ),
             _value_or_missing(
                 wielkosc.symbol,
@@ -577,12 +591,12 @@ class EquipmentProofGenerator:
         substitution = _substitution_from_values(input_values)
         return _check_step(
             step_number=4,
-            title_pl="Check Icu",
+            title_pl=f"Check {_symbol_tekstowy(symbol_znamienia)}",
             equation=equation,
             input_values=input_values,
             substitution_latex=substitution,
             check=check,
-            result_symbol="I_{cu,ok}",
+            result_symbol=_symbol_ok(symbol_znamienia),
             result_key="icu_ok",
         )
 
@@ -739,7 +753,7 @@ def _uwagi_wylaczania(
         if zrodlo.get("wartosc_robocza") and zrodlo.get("ib_z_udzialem_maszyn"):
             uwagi.append(
                 "I_b z udziałem maszyn wirujących zależy od t_b (współczynniki μ, q — IEC "
-                "60909-0:2016 rozdz. 9), a t_b jest wartością roboczą: porównanie z I_cu jest "
+                "60909-0:2016 rozdz. 9), a t_b jest wartością roboczą: porównanie z I_sc jest "
                 "wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem przy "
                 "rzeczywistym czasie wyłączenia."
             )
@@ -753,7 +767,7 @@ def _uwaga_zalozen_zaniku(
     wielkosc: WielkoscKryteriumWylaczania | None, zalozenia_zaniku: tuple[dict[str, Any], ...]
 ) -> str | None:
     """Karta PODSTAWA-Q: zdanie o założeniach inżynierskich krzywych zaniku μ/q, na których
-    stoi I_b porównywany z I_cu — JEDNO źródło dla uwagi kryterium i ostrzeżenia dowodu.
+    stoi I_b porównywany z I_sc — JEDNO źródło dla uwagi kryterium i ostrzeżenia dowodu.
 
     ``None``, gdy kryterium nie porównuje I_b (aparat nN, bezpiecznik) albo gdy wszystkie μ, q
     punktu wyznaczono z zapisu normy. Zdanie z `zdanie_zalozen_zaniku_ib_pl` — to samo
@@ -783,7 +797,7 @@ def _dane_przyjete_wejscia(proof_input: EquipmentProofInput) -> tuple[DanaPrzyje
     (karta LINIA-110) — każde z czterech sprawdzeń porównuje wielkość z tego biegu.
     Wartości robocze parametrów maszyn wirujących wyspy punktu (karta PODSTAWA-Q,
     rozstrzygnięcie 3) — gdy wpływają na wielkość porównywaną w którymkolwiek sprawdzeniu
-    zwarciowym: I_p (I_dyn), I_th (I_th) i wielkość kryterium wyłączania (I_cu; aparat bez
+    zwarciowym: I_p (I_dyn), I_th (I_th) i wielkość kryterium wyłączania (znamię I_sc/I_cu/I_1; aparat bez
     zdolności wyłączania z definicji tego porównania nie ma).
     """
     tolerancja = (
@@ -827,7 +841,7 @@ def _compare_message(symbol: str, jednostka: str, device_val: float, required_va
     """Treść porównania: wielkość aparatu, wartość wymagana, jednostka i warunek.
 
     Status kryterium niesie wyłącznie pole ``status`` wyniku sprawdzenia — tekst nie składa
-    kodu werdyktu (kontrakt werdyktu wyjaśnialnego; ta sama forma co sprawdzenie I_cu).
+    kodu werdyktu (kontrakt werdyktu wyjaśnialnego; ta sama forma co sprawdzenie zdolności wyłączania).
     """
     return (
         f"{symbol} aparatu {device_val:.4f} {jednostka} wobec wartości wymaganej "
@@ -914,19 +928,39 @@ def _value_or_missing(
     )
 
 
-def _value_or_icu(device: DeviceRating, source_key: str) -> ProofValue:
-    """I_cu w kroku "dane urządzenia" — NIE_DOTYCZY zamiast BRAK, gdy aparat
-    nie ma zdolności wyłączania zwarć z definicji normy (2a).
+def _symbol_znamienia(wielkosc: WielkoscKryteriumWylaczania | None) -> str:
+    """Symbol LaTeX znamienia zdolności wyłączania z predykatu pasma (nieustalone = ogólny)."""
+    return wielkosc.symbol_znamienia if wielkosc is not None else SYMBOL_ZNAMIENIA_NIEUSTALONY
+
+
+def _nazwa_znamienia(wielkosc: WielkoscKryteriumWylaczania | None) -> str:
+    return wielkosc.nazwa_znamienia_pl if wielkosc is not None else NAZWA_ZNAMIENIA_NIEUSTALONA_PL
+
+
+def _symbol_ok(symbol: str) -> str:
+    """Symbol statusu kryterium: ``I_{sc}`` → ``I_{sc,ok}``."""
+    return f"{symbol[:-1]},ok}}" if symbol.endswith("}") else f"{symbol}_{{ok}}"
+
+
+def _symbol_tekstowy(symbol: str) -> str:
+    """Symbol do zdania (bez składni LaTeX): ``I_{sc}`` → ``I_sc``."""
+    return symbol.replace("\\mathrm{", "").replace("{", "").replace("}", "")
+
+
+def _value_or_icu(device: DeviceRating, source_key: str, symbol: str) -> ProofValue:
+    """Znamię wyłączania w kroku "dane urządzenia" — NIE_DOTYCZY zamiast BRAK, gdy aparat
+    nie ma zdolności wyłączania zwarć z definicji normy (2a). ``symbol`` — nazwa znamienia
+    wg normy aparatu pasma (``_symbol_znamienia``).
     """
     if device.i_cu_not_applicable:
         return ProofValue(
-            symbol="I_{cu}",
+            symbol=symbol,
             value="NIE DOTYCZY",
             unit="kA",
             formatted="NIE DOTYCZY kA".strip(),
             source_key=source_key,
         )
-    return _value_or_missing("I_{cu}", device.i_cu_ka, "kA", source_key)
+    return _value_or_missing(symbol, device.i_cu_ka, "kA", source_key)
 
 
 def _value_or_not_applicable(

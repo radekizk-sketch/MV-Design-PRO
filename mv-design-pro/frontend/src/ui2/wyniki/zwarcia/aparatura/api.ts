@@ -52,7 +52,8 @@ export interface ZnamionaWytrzymalosci {
   readonly i_th_duration_s: number | null;
   readonly i_th_pochodzenie: string | null;
   /**
-   * Znamionowa zdolność wyłączania zwarciowa I_cu z katalogu (karta SC-IB-ITH-ZRODLA);
+   * Znamionowa zdolność wyłączania zwarciowa z katalogu (wyłącznik SN: I_sc wg IEC 62271-100,
+   * nN: I_cu wg IEC 60947-2; karta SC-IB-ITH-ZRODLA);
    * `null` = katalog jej nie niesie albo aparat jej nie ma (`i_cu_nie_dotyczy`).
    */
   readonly i_cu_ka: number | null;
@@ -97,6 +98,13 @@ export interface PradyPola {
   readonly un_kv: number | null;
   readonly kody_gotowosci: readonly string[];
   readonly powod_pl: string | null;
+  /**
+   * Pochodzenie t_b punktu (karta TB-WARTOSC-ROBOCZA; addytywne — brak = t_b ze scenariusza
+   * projektanta). t_b to chwila prądu wyłączeniowego I_b PUNKTU, wspólna dla pól tej szyny
+   * (najkrótszy czas wyłączenia pól lokalnych albo wartość robocza) — nie czas wyłączenia
+   * pola T_k z oceny cieplnej.
+   */
+  readonly tb_zrodlo?: { readonly opis_pl?: string | null } | null;
 }
 
 /** Werdykt jądra K7-B. `null` w kryterium = brak podstawy, NIE ocena negatywna. */
@@ -170,6 +178,26 @@ export async function pobierzWytrzymaloscAparatury(
     );
   }
   return (await response.json()) as WidokWytrzymalosciAparatury;
+}
+
+/**
+ * Rodzaj rekordu K pola — przyrostek `kryterium_id` nadawany przez backend
+ * (`wytrzymalosc_aparatury_pol.py`: `{id}.dynamiczna`, `{id}.cieplna`, `{id}.wylaczanie`).
+ */
+export type RodzajKryteriumAparatu = 'dynamiczna' | 'cieplna' | 'wylaczanie';
+
+export const RODZAJE_KRYTERIUM_APARATU: readonly RodzajKryteriumAparatu[] = [
+  'dynamiczna',
+  'cieplna',
+  'wylaczanie',
+];
+
+/** Rekord K pola danego rodzaju (`null` = backend go nie zwrócił, np. aparat spoza katalogu). */
+export function ocenaRodzaju(
+  pole: PoleWytrzymalosci,
+  rodzaj: RodzajKryteriumAparatu,
+): OcenaKryterium | null {
+  return pole.oceny.find((o) => o.kryterium_id.endsWith(`.${rodzaj}`)) ?? null;
 }
 
 /**
