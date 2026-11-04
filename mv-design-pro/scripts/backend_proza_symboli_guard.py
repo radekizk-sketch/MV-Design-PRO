@@ -13,8 +13,10 @@ słowami („początkowy prąd zwarciowy", „napięcie znamionowe"), a wzór id
 
 CO JEST TRAFIENIEM. Stała tekstowa albo cały f-string (części stałe sklejone ze znacznikiem
 `{}`), która jednocześnie: ma spację (zdanie, nie identyfikator), ma słowo polskie i ma
-symbol z indeksem albo symbol spłaszczony (`SYMBOL_RE`). Tekst z ukośnikiem albo z `$` jest
-już LaTeX-em (polecenie albo segment wzoru) i nie jest prozą spłaszczoną.
+symbol z indeksem albo symbol spłaszczony (`SYMBOL_RE`). Tekst z ukośnikiem, z `$` albo
+z indeksem w klamrach (`_{`, `^{`) jest już LaTeX-em (polecenie, segment wzoru, zapis indeksu
+LaTeX) i nie jest prozą spłaszczoną. Słowo polskie to znak diakrytyczny, słowo funkcyjne albo
+rdzeń słownictwa elektroenergetycznego pisany bez diakrytyków (`POLSKI_RE`).
 
 CZEGO SKAN NIE LICZY — reguły strukturalne, nie lista wyjątków (każda z uzasadnieniem):
   1. Docstring (pierwsza instrukcja modułu/klasy/funkcji) — komentarz dla programisty.
@@ -83,8 +85,24 @@ SYMBOL_RE = re.compile(
     )(?!\w)
     """
 )
-#: Słowo polskie: znak diakrytyczny albo częste słowo funkcyjne (tekst dla człowieka).
-POLSKI_RE = re.compile(r"[ąćęłńóśźż]|\b(?:i|lub|albo|nie|dla|jest|brak|z|w|na)\b", re.I)
+#: Słowo polskie (tekst dla człowieka): znak diakrytyczny, częste słowo funkcyjne albo rdzeń
+#: słownictwa elektroenergetycznego pisany bez znaków diakrytycznych. Rdzenie domykają lukę
+#: zmierzoną 2026-11-04: etykieta albo zdanie bez diakrytyków i bez słów funkcyjnych
+#: („Rezystancja R′1 (20 °C)", „Zasilanie GPZ 15 kV Sk3 200 MVA", „Granica dopuszczalna I2")
+#: były przedtem niewidoczne dla skanu (108 tekstów w drzewie).
+POLSKI_RE = re.compile(
+    r"""(?xi)
+    [ąćęłńóśźż]
+    | \b(?:i|lub|albo|nie|dla|jest|brak|z|w|na|do|od|po|przy|bez|oraz|wg|ze|czy|przez|jako
+         |gdy|tylko|musi|wobec|otrzymano|pomija|definicja|granica|sprawdzenie|rachunek
+         |pasmo|wynik|topologia|strony|cieplna|zasilanie|naruszenie)\b
+    | \b(?:moc|prad|czas|punkt|zwarci|wymag|warun|aparat|siec|wartos|energi|uziom|okn
+         |nastaw|kontrakt|kart|odbior|temperatur|transformator|katalog|krzyw|napieci
+         |impedancj|rezystancj|reaktancj|szyn|kabl|lini|granic|dopuszczaln|znamionow
+         |zastepcz|przekladni|zabezpiecz|wyłącz|wylacz|rozlacz|obciaz|stacj|uzwojen
+         |falownik|generator|zrodl|polaczen|pomiar|sprawdz|ocen|okres|rodzin)\w*
+    """
+)
 _LOGGER = frozenset(
     {"debug", "info", "warning", "warn", "error", "exception", "critical", "log"}
 )
@@ -106,7 +124,7 @@ def oczysc(tekst: str) -> str:
 
 
 def jest_proza_z_symbolem(tekst: str | None) -> bool:
-    if tekst is None or "\\" in tekst or "$" in tekst:
+    if tekst is None or "\\" in tekst or "$" in tekst or re.search(r"[_^]\{", tekst):
         return False
     czysty = oczysc(tekst)
     return (

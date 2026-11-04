@@ -59,6 +59,17 @@ def _liczba(tmp_path: Path, wzgledna: str, tresc: str) -> int:
         ("Zakaz interpolacji, §0.2 karty P0.7", False),  # numer karty, nie symbol P0
         ("Straty jałowe P0 transformatora", True),  # symbol P0 w prozie
         ("Prąd znamionowy jest za duży", False),  # proza słowami
+        # Proza bez znaków diakrytycznych i bez słów funkcyjnych — rdzeń słownictwa
+        # elektroenergetycznego (luka zmierzona 2026-11-04: 108 tekstów niewidocznych).
+        ("Rezystancja R′1 (20 °C)", True),
+        ("Zasilanie GPZ 15 kV Sk3 200 MVA", True),
+        ("Granica dopuszczalna I2", True),
+        ("Rachunek pomija zaleznosc Pk od temperatury", True),
+        ("Rezystancja jednostkowa (20 °C)", False),  # rdzeń bez symbolu
+        ("Ratio I_th check", False),  # angielski identyfikator bez rdzenia polskiego
+        # Indeks w klamrach to zapis LaTeX, nie symbol spłaszczony.
+        ("S_{2obl} = S_{aparatow} + I_{2n}^2 R_p", False),
+        ("Moc S^{2} sieci", False),
     ],
 )
 def test_wykrycie_prozy_z_symbolem(tekst: str, trafienie: bool) -> None:
