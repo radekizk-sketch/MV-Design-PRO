@@ -9,6 +9,8 @@ POMIAR PRZED NAPRAWA (2026-08-12): 2 z 3 wpisow bylo juz DZIS sierotami
 (BuildSidebar.tsx i jego test przestaly uzywac SldLayerId wprost — konsumuja
 LayersSection przez LayersSectionProps) — usuniete z uzasadnieniem w
 komentarzu przy LEGACY_FILES.
+Karta FIX-E2E-PELNE (2026-11-04): ostatni wpis (LayersSection.tsx) skasowano
+razem z martwym BuildSidebar — zbior jest PUSTY i ten stan jest przypiety.
 """
 
 from __future__ import annotations
@@ -25,14 +27,11 @@ def test_freshness_is_green_on_repo() -> None:
     assert guard.check_legacy_files_freshness() == []
 
 
-def test_legacy_files_entries_all_have_a_raw_hit() -> None:
-    """Kazdy dzisiejszy wpis LEGACY_FILES ma realny raw hit (potwierdzenie
-    POMIARU PRZED NAPRAWA: 1 wpis pozostaje po usunieciu 2 sierot)."""
-    assert guard.LEGACY_FILES == {"frontend/src/ui/network-build/build-sidebar/LayersSection.tsx"}
-    for rel_path in guard.LEGACY_FILES:
-        full_path = guard.REPO_ROOT / rel_path
-        assert full_path.is_file(), f"brak pliku {rel_path!r}"
-        assert guard.scan_file(full_path), f"LEGACY_FILES[{rel_path!r}] jest sierota"
+def test_legacy_files_is_empty() -> None:
+    """Intencja dawnego testu ("kazdy wpis ma realny raw hit") zachowana jako
+    stan koncowy: po kasacji martwego BuildSidebar wyjatkow nie ma, a kazdy
+    plik spoza whitelisty z SldLayerId jest naruszeniem petli main()."""
+    assert guard.LEGACY_FILES == set()
 
 
 def test_freshness_catches_missing_file(monkeypatch) -> None:

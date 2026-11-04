@@ -21,7 +21,7 @@
  * Kliki natywne (userEvent) — Zero-Debt pkt 5.
  */
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -657,7 +657,14 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
-    // Zdanie wyjaśnienia i etykieta pochodzą Z REKORDU (prezentacja nic nie układa).
+    // Rekord to wiersz pierwszego planu (etykieta, kryterium z rekordu); pełna karta z
+    // wyjaśnieniem po natywnym kliku przełącznika (rekordy SPELNIA i BRAK_PODSTAWY startują
+    // zwinięte — FIX-E2E-PELNE). Treść nadal Z REKORDU (prezentacja nic nie układa).
+    expect(pole.textContent).toContain('Prąd udarowy nie przekracza I_dyn');
+    expect(pole.textContent).not.toContain('Zdanie wyjaśnienia kryterium dynamiczna z backendu.');
+    for (const przelacz of within(pole).getAllByRole('button', { name: 'Pokaż wyjaśnienie i dowód' })) {
+      await user.click(przelacz);
+    }
     expect(pole.textContent).toContain('Zdanie wyjaśnienia kryterium dynamiczna z backendu.');
     expect(pole.textContent).toContain('Zdanie wyjaśnienia kryterium cieplna z backendu.');
     expect(pole.textContent).toContain('Brak zweryfikowanej podstawy wymagania');
@@ -694,6 +701,10 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     // Bieg bez tb: żadnego domyślnego czasu w prądach pola.
     if (tb_s === null) expect(prady.textContent).not.toContain('0,1 s');
     const oceny = screen.getByTestId('mvd-zwarcia-aparatura-oceny-P-1');
+    // Trzeci rekord K jest wierszem listy; wyjaśnienie po rozwinięciu (natywny klik).
+    await user.click(
+      within(oceny).getByTestId('mvd-werdykt-zwijany-aparatura.field/x/in.aparat/01.wylaczanie-przelacz'),
+    );
     expect(oceny.textContent).toContain('Zdanie wyjaśnienia kryterium wylaczanie z backendu.');
     // Brak Ib nie dotyka znacznika WYTRZYMAŁOŚCI (I_dyn, I_th) — to osobny rekord K.
     expect(screen.getByTestId('mvd-zwarcia-aparatura-pole-P-1').getAttribute('data-withstand-ok')).toBe(

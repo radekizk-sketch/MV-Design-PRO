@@ -213,18 +213,14 @@
   font-style: italic;
 }
 
-/* Rekordy werdyktu K pola (wytrzymałość dynamiczna, cieplna, zdolność wyłączania) — blok na
-   pełną szerokość wiersza. Kolumna karty ma co najmniej 480 px: to próg, od którego karta
-   werdyktu stawia etykietę OBOK treści (`kartaWerdyktu.css`, `@container (max-width: 480px)`).
-   Dawne minimum 320 px dzieliło sekcję 716 px (okno 1360 px z inspektorem) na dwie kolumny
-   po 326 px: karta przechodziła w układ wąski, jedenaście pól wyjaśnienia łamało się w kolumnie
-   ~300 px i karta miała ~4 100 px wysokości (pomiar e2e kd6, karta FIX-E2E-PELNE). Karty obok
-   siebie dopiero, gdy każda dostaje pełny układ; węższy kontener niż 480 px — jedna kolumna
-   na całą szerokość. */
+/* Rekordy werdyktu K pola (wytrzymałość dynamiczna, cieplna, zdolność wyłączania) — lista
+   wierszy na pełną szerokość wiersza pola (`RekordWerdyktuZwijany`): wiersz pierwszego planu
+   kontraktu werdyktu, pełna karta po rozwinięciu. Dziewięć rozwiniętych kart w siatce dawało
+   sekcję ~22 000 px (pomiar e2e kd6, karta FIX-E2E-PELNE). */
 .mvd-apar-oceny {
   flex: 1 1 100%;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   min-width: 0;
 }

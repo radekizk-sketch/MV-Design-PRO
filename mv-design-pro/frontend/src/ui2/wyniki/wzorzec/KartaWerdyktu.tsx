@@ -94,7 +94,7 @@ export const SEMANTYKA_KOLOR: Readonly<Record<SemantykaEtykiety, string>> = {
 };
 
 /** Styl karty z własnością niestandardową koloru semantyki (typ bez rzutowania). */
-type StylKarty = CSSProperties & Record<'--mvd-werdykt-kolor', string>;
+export type StylKarty = CSSProperties & Record<'--mvd-werdykt-kolor', string>;
 
 // ---------------------------------------------------------------------------
 // Nazwy PL osi dowodu i słowników pomocniczych (NIE statusu werdyktu)
@@ -170,7 +170,7 @@ const NAZWA_SKALI_PL: Readonly<Record<RodzajSkali, string>> = {
 };
 
 /** Postać limitu wg relacji kryterium (opis słowny; nierówność pokazuje `warunek_latex`). */
-const NAZWA_RELACJI_PL: Readonly<Record<Relacja, string>> = {
+export const NAZWA_RELACJI_PL: Readonly<Record<Relacja, string>> = {
   NIE_WIECEJ: 'górna granica',
   NIE_MNIEJ: 'dolna granica',
   PASMO: 'pasmo dopuszczalne',
@@ -233,7 +233,7 @@ function nazwaPokrycia(pokrycie: PokrycieProgramu): string {
 // Teksty interfejsu (polski język techniczny, bez skrótów)
 // ---------------------------------------------------------------------------
 
-const TEKSTY = {
+export const TEKSTY = {
   ocena: 'Ocena',
   przedmiot: 'Przedmiot',
   element: 'element modelu',
@@ -340,6 +340,7 @@ const TEKSTY = {
   naruszoneBrak: 'brak',
   skladoweBrak:
     'wymaganie nie ma ocen składowych — powód (nie dotyczy albo brak metody wykazania) podaje wyjaśnienie',
+  // Rekord zwijany (wiersz pierwszego planu + pełna karta na żądanie)
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1186,8 +1187,9 @@ function KartaWerdyktuRekordu({
 }
 
 /**
- * Karta werdyktu wyjaśnialnego — JEDYNA prezentacja rekordu `OcenaKryterium` /
- * `WynikWymagania` w interfejsie. Poziom rekordu rozpoznawany po kształcie (`wymaganie_id`).
+ * Karta werdyktu wyjaśnialnego — JEDYNA prezentacja PEŁNEGO rekordu `OcenaKryterium` /
+ * `WynikWymagania` w interfejsie (wiersz `RekordWerdyktuZwijany.tsx` pokazuje pierwszy plan
+ * i rozwija właśnie tę kartę). Poziom rekordu rozpoznawany po kształcie (`wymaganie_id`).
  */
 export function KartaWerdyktu({ rekord, zwiniete = true, naglowek }: KartaWerdyktuProps) {
   return (

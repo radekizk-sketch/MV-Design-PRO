@@ -31,6 +31,11 @@ export {
 export type { NazwaObiektu } from './useNazwaObiektu';
 export type { WierszInformacjiAudytowych, InformacjeAudytoweProps } from './InformacjeAudytowe';
 export { KartaWerdyktu, StanDanychWyniku, type KartaWerdyktuProps } from './KartaWerdyktu';
+export {
+  RekordWerdyktuZwijany,
+  STATUSY_ROZWINIETE,
+  type RekordWerdyktuZwijanyProps,
+} from './RekordWerdyktuZwijany';
 export type { DanaPrzyjeta, StanDanych } from './werdykt';
 export { usePoprawWModelu } from './usePoprawWModelu';
 export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';

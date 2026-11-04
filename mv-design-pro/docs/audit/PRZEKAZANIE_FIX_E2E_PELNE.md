@@ -29,7 +29,7 @@ jasny" (:101). W biegu kontrolnym wszystkie sześć testów grupy zielone.
 | ui02-jeden-inspektor-zrzuty:91 | jw. | E | zielone bez zmian |
 | uiux-przed-po:101 (ciemny) + 3 did not run | jw. | E | zielone bez zmian |
 | ux-feedback-loop:337 | jw. | E | zielone bez zmian |
-| kd6-zrzuty:318 light, dark | sekcja aparatury 22 618 px: siatka kart `.mvd-apar-oceny` (`ui2/wyniki/zwarcia/aparatura/aparatura.css:224`, minimum kolumny 320 px) dzieliła sekcję 716 px na dwie kolumny po 326 px; karta werdyktu przechodziła w układ wąski (etykieta nad treścią), jedenaście pól wyjaśnienia (kontrakt werdyktu) łamało się w kolumnie ~300 px — karta 4 132 px, pole 7 149–8 036 px | J: kolumna karty werdyktu węższa niż próg pełnego układu karty | minimum kolumny = próg układu karty (480 px), węższy kontener jedna kolumna; inwentarz: `.mvd-apar-oceny` jedyna siatka z `KartaWerdyktu` (pozostałe siatki auto-fit ui2 niosą inne treści); bieg run6: karta 326 → 660 px, 4 132 → 2 426 px; sekcja 22 618 → 21 985 px — nadal > 20 000 px. Reszta to objętość treści: 3 pola × 3 rekordy × 11 pól pierwszego planu kontraktu werdyktu (samo „Wyjaśnienie” ~2 000 znaków, powtarza kryterium/wynik/limit/dowód); treść pochodzi z backendu (migracja werdyktów, inny wykonawca). Próg 20 000 px NIE podniesiony; asercja szerokości karty wzmocniona 280 → 480 px (pełny układ). OTWARTE — DECYZJA: zwarta prezentacja rekordów pola (np. rekordy pola rozwijane albo „Wyjaśnienie” bez powtórzeń pól) albo próg wyprowadzony z treści |
+| kd6-zrzuty:318 light, dark | sekcja aparatury 22 618 px: siatka kart `.mvd-apar-oceny` (`ui2/wyniki/zwarcia/aparatura/aparatura.css:224`, minimum kolumny 320 px) dzieliła sekcję 716 px na dwie kolumny po 326 px; karta werdyktu przechodziła w układ wąski (etykieta nad treścią), jedenaście pól wyjaśnienia (kontrakt werdyktu) łamało się w kolumnie ~300 px — karta 4 132 px, pole 7 149–8 036 px | J: kolumna karty werdyktu węższa niż próg pełnego układu karty | minimum kolumny = próg układu karty (480 px), węższy kontener jedna kolumna; inwentarz: `.mvd-apar-oceny` jedyna siatka z `KartaWerdyktu` (pozostałe siatki auto-fit ui2 niosą inne treści); bieg run6: karta 326 → 660 px, 4 132 → 2 426 px; sekcja 22 618 → 21 985 px — nadal > 20 000 px. Reszta to objętość treści: 3 pola × 3 rekordy × 11 pól pierwszego planu kontraktu werdyktu (samo „Wyjaśnienie” ~2 000 znaków, powtarza kryterium/wynik/limit/dowód); treść pochodzi z backendu (migracja werdyktów, inny wykonawca). Próg 20 000 px NIE podniesiony; asercja szerokości karty wzmocniona 280 → 480 px (pełny układ). Decyzja architekta (2026-11-04): zwarta prezentacja, próg bez zmian. Wdrożone: `ui2/wyniki/wzorzec/RekordWerdyktuZwijany.tsx` — rekord K jako wiersz pierwszego planu (ocena z etykiety rekordu, co oceniono, kryterium z warunkiem LaTeX, wynik z jednostką, limit z podstawą i stanem źródła, margines), pełna `KartaWerdyktu` po rozwinięciu natywnym przyciskiem z `aria-expanded`; startowo rozwinięte wyłącznie NIE_SPELNIA i NIEJEDNOZNACZNY; treść backendu bez zmian. Osobny plik, bo `KartaWerdyktu.tsx` jest przypięta jako źródło bez odczytu statusu maszynowego (pierwsza wersja w tym pliku złamała przypięcie — czerwony test `KartaWerdyktu.test.tsx`). Inwentarz: `.mvd-apar-oceny` jedyna lista rekordów K pola w sekcji aparatury. Testy: 7 statusów × {zwinięty, rozwinięty} × {mysz, Enter, spacja} + brak wyniku/limitu/marginesu + przypięcie literałów statusu w źródle; iniekcja (zawsze zwinięty, bez podstawy limitu): 21 czerwonych. Bieg e2e: patrz niżej |
 | parytety-fala2:241 | DEFEKT PRODUKTU: pierwszy klik dwukliku w wartość z dowodem zaznacza wiersz (`ui2/wyniki/wzorzec/TabelaWynikow.tsx` `wybierzWiersz` → `selectFromResults`), zaznaczenie rozwija inspektor (`ui2/shell/useInspektorZaZawartoscia.ts`), tabela przepływa i drugi klik/`dblclick` trafiają w inną komórkę; dowód: bieg z pojedynczym klikiem przed dwuklikiem zielony, bez niego czerwony | I: cel dwukliku po zmianie układu wywołanej pierwszym klikiem | wspólny `ui2/shared/useCelGestuDwukliku.ts` (cel gestu = element pod pierwszym klikiem, słuchacz `window` w fazie przechwytywania; ta sama reguła co gest wieloklikowy kanwy SLD) wpięty w wartość z dowodem tabeli wyników; inwentarz `onDoubleClick`: `ValueRow` (inspektor) — pierwszy klik nie zmienia układu; `ContextTree` — drzewo w lewym doku, rozwinięcie prawego panelu go nie przesuwa; listy projektów/przypadków/szablonów, `EdytowalnaTabela` — klik nie zmienia zaznaczenia elementu; testy 3 miejsca drugiego kliku × wiersz wybieralny/niewybieralny + zakończenie gestu; iniekcja: 4 czerwone; bieg run5: zielone |
 | pola-w-torze-zrzuty:36 | DEFEKT PRODUKTU: wpis historii kadrów niósł transform bez viewportu, w którym obowiązywał; pierwszy klik dwukliku otwiera inspektor (kanwa 1322 → 956 px), wpis bywa zapisany sprzed zwężenia, „Sieć” kładła stary transform na wąską kanwę, a zamknięcie inspektora dokładało 'resize' — każdy cykl przesuwał rysunek o 183 px (sonda: viewBox x −933 → −1498 → −2063 → −2628), czwarta stacja wyjeżdżała poza kanwę (`ui/sld/v3/canvas/camera.ts` akcja 'przywroc', `historiaKadrow.ts` `WpisHistoriiKadru`) | H: stan kamery zapisany bez pary transform+viewport | wpis historii i zgłoszenie kamery niosą `viewportSize` z tego samego stanu kamery; 'przywroc' przenosi kadr do bieżącego viewportu regułą 'resize' (ten sam viewport: bit w bit); testy: reduktor 2×2 viewport zapisu × powrotu + 5 cykli, workspace 2 chwile zwężenia × {1, 3} cykle; iniekcja (stary reduktor) czerwona 3 + 2; bieg run5: zielone |
 | s95-budowa-z-kanwy:250 | prawy klik w środek toru dalszej połówki trafia w tło: punkt liczony, gdy kamera jeszcze jedzie po zamknięciu menu stacji (sonda: `viewBox` 701→970 szerokości po Escape, przesunięcie x jeszcze po ~1 s) | G: klik współrzędnymi przed spoczynkiem kadru albo w punkt, gdzie cel nie jest na wierzchu | wspólny `e2e/stabilnaGeometria.ts` (poll do spoczynku, porażka zamiast cichego powrotu) wpięty we wszystkie kliki natywne liczone z geometrii obiektu kanwy: s95-budowa-z-kanwy, s95-zrzuty, kanon-menu-sld, wyspy-menu-sld (duplikaty helpera skasowane), menu-schematu-nn (sztywne pauzy 400/200 ms zastąpione), k2, k3, kd5, kd8, kd11 ×2, sld-gpz-zwiniety, ui02, w5e, inspektor-karta-techniczna; poza klasą: kliki w chrom (minimapa, uchwyt panelu) i przeciągnięcia tła — cel nie zależy od kamery; bieg run5: zielone |
@@ -44,14 +44,30 @@ Bieg run8 (s95-budowa, s95-zrzuty, kanon-menu, wyspy-menu ×3): s95-budowa zielo
 
 Bieg końcowy run12 (HEAD 2862fe6c8; 17 speców pierwotnie czerwonych + 8 speców z klikami klasy G; 63 testy): 61 passed, 2 failed — wyłącznie kd6 ×2 na asercji wysokości sekcji (21 985 px < 20 000 px), decyzja otwarta (wiersz kd6).
 
-## Znalezisko uboczne (nienaprawione)
+## Martwy kod (skasowany 2026-11-04, zasada nr 3)
 
-`frontend/src/ui/network-build/build-sidebar/{BuildSidebar,BuilderSection,LayersSection,NavigatorSection}.tsx`
-oraz `ui/network-build/dragDropController.ts` nie mają konsumenta produkcyjnego (tylko testy) — martwy kod
-do kasacji osobną kartą z inwentarzem klasy „moduły osierocone".
+Inwentarz klasy „moduły bez konsumenta produkcyjnego" w łańcuchu dawnego BuildSidebar (grep importów
+w `frontend/src`, `frontend/e2e`, `scripts`, `backend/tests`, `.github`):
+- skasowane z testami: `ui/network-build/build-sidebar/{BuildSidebar,BuilderSection,LayersSection,NavigatorSection}.tsx`,
+  `build-sidebar/__tests__/BuildSidebar.test.tsx`, `ui/network-build/dragDropController.ts` z testem;
+- skasowane jako ten sam łańcuch: `ui/sld/v2/builder/BuildSequence.ts` z testem (jedyny konsument produkcyjny
+  to `BuilderSection`, typ `BuildPhase`) i `ui/sld/v2/__tests__/fixtures/visualFixtures.ts` (zero importów);
+  `buildGate.test.ts` bez sekcji BuildSequence;
+- zostaje `build-sidebar/ReadinessSection.tsx` — konsument `station-configurator/cards/StationConfigReadinessCard.tsx`;
+- strażniki: `sld_layer_id_scope_guard.py` `LEGACY_FILES` pusty (test przypina pusty zbiór),
+  `sld_determinism_guards.py` bez katalogu `v2/builder` w szkielecie i bez Guard 5 (przedmiot skasowany),
+  `ui/sld/v2/builder` dopisany do importów zakazanych (Guard 3);
+- fałszywy docstring `SldCommandService.ts` („integracja z BuildSequence + HistoryStore") poprawiony;
+  próbka ścieżki v2 w `backend/tests/ci/test_sld_v1_route_audit.py` przepięta na istniejący moduł.
 
-## Pierwszy krok dla następcy
+## Bieg końcowy kd6 (2026-11-04)
 
-Uruchomić pod blokadą tylko 5 otwartych speców (kd6, parytety-fala2, pola-w-torze, s95-budowa-z-kanwy,
-sld-audyt-powykonawczy) i na ich `error-context.md` oraz zrzutach ustalić przyczyny; zacząć od klasy F
-(selektor), potem s95 i pola-w-torze (wspólne podejrzenie: geometria/kadr po zmianach pól).
+Pod blokadą: vitest `src/ui2/wyniki/wzorzec src/ui2/wyniki/zwarcia src/ui/network-build src/ui/sld/v2` —
+182 pliki, 3 038 testów zielonych (RC=0); `tsc --noEmit` RC=0; eslint zmienionych plików RC=0;
+`scripts/guardy_z_ci.py` RC=0 (107 guardów, 4 603 testy własne guardów). E2E kd6 ×2, kd4 ×4,
+ogniwo-zwarcie-aparatura ×2: 8 passed (RC=0). Sekcja aparatury: 21 985 → 3 611 px (próg 20 000 px bez zmian).
+
+Znalezisko w dowodzie: zrzut `kd6-ogniwo-model-*` (zrzut elementu wyższego niż okno w przewijanym
+kontenerze) malował tylko ~800 px treści, reszta pusta — dokument nie pokazywał rekordów. Spec podnosi
+okno do wysokości sekcji przed zrzutem; ponowny bieg kd6 ×2: 2 passed, zrzut 716×3611 px z kompletem
+rekordów. Werdyktu wizualnego (B-02) nie wystawiam — zrzuty w `frontend/test-results/zrzuty-dokumentacji/`.

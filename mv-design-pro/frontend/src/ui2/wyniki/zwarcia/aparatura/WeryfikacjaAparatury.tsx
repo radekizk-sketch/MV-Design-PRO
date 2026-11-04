@@ -38,7 +38,7 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { TekstZWzorami } from '../../../kreatory/rama';
-import { KartaWerdyktu } from '../../wzorzec';
+import { RekordWerdyktuZwijany } from '../../wzorzec';
 import { fmtCzas, fmtKA, fmtLiczba } from '../strings';
 import {
   pobierzWytrzymaloscAparatury,
@@ -421,10 +421,13 @@ export function WeryfikacjaAparatury({
               <RozbicieCzasu pole={w} />
               <ParametryAparatu pole={w} onZmienWartosc={onZmienWartosc} />
               {/* Rekordy K w JEDNYM bloku na całą szerokość wiersza — jako luźne elementy
-                  wiersza flex kurczyły się do szerokości kilku znaków (zrzut KD-6). */}
+                  wiersza flex kurczyły się do szerokości kilku znaków (zrzut KD-6). Każdy
+                  rekord to wiersz pierwszego planu (ocena, przedmiot, kryterium, wynik, limit
+                  z podstawą, margines); pełna karta po rozwinięciu, od razu dla NIE_SPELNIA
+                  i NIEJEDNOZNACZNY. */}
               <div className="mvd-apar-oceny" data-testid={`mvd-zwarcia-aparatura-oceny-${w.pole}`}>
                 {w.oceny.map((ocena) => (
-                  <KartaWerdyktu key={ocena.kryterium_id} rekord={ocena} />
+                  <RekordWerdyktuZwijany key={ocena.kryterium_id} rekord={ocena} />
                 ))}
               </div>
             </li>

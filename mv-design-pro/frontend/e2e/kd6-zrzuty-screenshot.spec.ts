@@ -338,8 +338,10 @@ test.describe('kd6:zrzuty', () => {
       // Werdykt MUSI pochodzić z modelu — inaczej zrzut dokumentowałby co innego.
       await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
 
-      // Układ rekordów K: każda karta werdyktu ma czytelną szerokość. Karty wpięte luźno
-      // w wiersz flex kurczyły się do kilku znaków i sekcja miała ~186 000 px wysokości.
+      // Układ rekordów K: każdy rekord (wiersz pierwszego planu, pełna karta po rozwinięciu)
+      // ma czytelną szerokość. Karty wpięte luźno w wiersz flex kurczyły się do kilku znaków
+      // i sekcja miała ~186 000 px wysokości; dziewięć rozwiniętych kart — ~22 000 px.
+      // Rekordy SPELNIA startują zwinięte (FIX-E2E-PELNE), więc limit 20 000 px zostaje.
       const karty = page
         .getByTestId(`mvd-zwarcia-aparatura-oceny-${pierwszePole}`)
         .locator(':scope > *');
@@ -348,14 +350,23 @@ test.describe('kd6:zrzuty', () => {
       expect(await karty.count()).toBe(3);
       for (const karta of await karty.all()) {
         const ramka = await karta.boundingBox();
-        // Karta w PEŁNYM układzie (etykieta obok treści) od 480 px — próg `@container` karty
-        // werdyktu. Dwie kolumny po 326 px (dawne minimum siatki 320 px) wpychały kartę
-        // w układ wąski: 4 132 px wysokości na kartę (pomiar FIX-E2E-PELNE).
-        expect(ramka?.width ?? 0, 'karta werdyktu w pełnym układzie, nie ściśnięta').toBeGreaterThanOrEqual(480);
+        // Rekord na całą szerokość listy, co najmniej 480 px — próg `@container`, od którego
+        // rozwinięta karta werdyktu stawia etykietę obok treści (dwie kolumny po 326 px
+        // dawały kartę 4 132 px, pomiar FIX-E2E-PELNE).
+        expect(ramka?.width ?? 0, 'rekord werdyktu w pełnym układzie, nie ściśnięty').toBeGreaterThanOrEqual(480);
       }
       const ramkaSekcji = await sekcja.boundingBox();
       expect(ramkaSekcji?.height ?? 0, 'sekcja aparatury o rozsądnej wysokości').toBeLessThan(20000);
 
+      // Sekcja żyje w przewijanym kontenerze ekranu wyników: zrzut elementu wyższego niż okno
+      // malował tylko część w oknie (pomiar FIX-E2E-PELNE: 716×3611 px, treść ~800 px, reszta
+      // pusta), więc dokument nie pokazywał rekordów. Okno podnosimy do wysokości sekcji, żeby
+      // kontener nie przewijał i cała sekcja była namalowana.
+      await page.setViewportSize({
+        width: 1360,
+        height: Math.ceil(ramkaSekcji?.height ?? 0) + 600,
+      });
+      await sekcja.scrollIntoViewIfNeeded();
       await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });
 
