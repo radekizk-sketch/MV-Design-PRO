@@ -67,6 +67,7 @@ from application.analyses.aparaty_pol import (
 from application.analyses.protection.ocena_nadpradowa import (
     czas_urzadzenia,
     rozwiaz_nastawy,
+    streszczenie_brakow_nastaw,
     wylacznik_urzadzenia,
 )
 from enm.mapping import ref_to_graph_id
@@ -74,7 +75,7 @@ from enm.models import Bay, EnergyNetworkModel, ProtectionAssignment
 from enm.nazwy_elementow import nazwa_elementu
 from enm.pola import pola_stacji, pola_wszystkich_stacji
 from enm.tor_pola import szyna_raportowa
-from enm.zabezpieczenie import sterownik_pola
+from enm.zabezpieczenie import nazwa_sterownika, sterownik_pola
 from network_model.catalog.wartosci_robocze import (
     PARAMETR_CZAS_WLASNY,
     WartoscRozstrzygnieta,
@@ -216,12 +217,12 @@ def _czas_wylaczenia_pola(
             "niewyznaczalny — czasu z innego pola ani stałej nie podstawiono.",
         )
 
-    nazwa_zabezpieczenia = nazwa_elementu(wpis, "protection_assignments")
+    nazwa_zabezpieczenia = nazwa_sterownika(enm, wpis)
     nastawy = rozwiaz_nastawy(enm, wpis)
     if not nastawy.gotowe:
         return _bez_czasu(
             READINESS_BRAK_NASTAW,
-            " ".join(b.komunikat_pl for b in nastawy.braki),
+            streszczenie_brakow_nastaw(nastawy.nazwa_pl, nastawy.braki),
             urzadzenie_ref=wpis.ref_id,
             braki_nastaw=[b.to_dict() for b in nastawy.braki],
         )

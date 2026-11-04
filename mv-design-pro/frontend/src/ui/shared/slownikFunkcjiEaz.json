@@ -1277,7 +1277,7 @@
       "rodzaj": "AUTOMATYKA",
       "wejscia_opcjonalne": [],
       "wejscia_wymagane": [
-        "U"
+        "SYGNAL"
       ]
     },
     "SPZE": {

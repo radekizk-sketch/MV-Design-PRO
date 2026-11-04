@@ -549,9 +549,10 @@ def _build_functions(
 
     Czyta sterownik (`enm.zabezpieczenie`): każda włączona funkcja rejestru z nastawą ``prog``
     (stopnie prądowe fazowe i zerowe) w grupie efektywnej. Funkcja bez progu w grupie nie
-    trafia do widoku; próg bez jednostki albo bez przekładni przekładnika nie ma wartości
-    pierwotnej — funkcja trafia z nazwanym brakiem (``it_curve_missing_data``), bez nastawy
-    liczbowej.
+    trafia do widoku; próg ma zawsze stronę przekładnika (model odrzuca próg bez jednostki —
+    `enm.nastawy_zabezpieczen.bledy_nastaw_funkcji`, PZ-09), więc wartości pierwotnej brak
+    wyłącznie bez przekładni przekładnika — funkcja trafia z nazwanym brakiem ``ct_ratio``
+    (``it_curve_missing_data``), bez nastawy liczbowej.
     """
     frontend_functions: list[dict[str, Any]] = []
     sanity_functions: list[SanityProtectionFunctionSummary] = []
@@ -580,9 +581,7 @@ def _build_functions(
                     "time_delay_s": setting.zwloka_s,
                     "curve_type": setting.krzywa,
                     "it_curve": None,
-                    "it_curve_missing_data": [
-                        ("threshold_unit" if setting.jednostka_progu is None else "ct_ratio")
-                    ],
+                    "it_curve_missing_data": ["ct_ratio"],
                     "notes_pl": notes_pl,
                 }
             )

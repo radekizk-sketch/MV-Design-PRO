@@ -65,16 +65,32 @@
       "graph_id": "375969fb-ba41-5dc5-85f8-8c8ef9a8f95a"
     },
     {
+      "ref_id": "field/406ec9c7de80233f6ff070bc72972037/1/sterownik",
+      "graph_id": "4056be1a-144f-5b4c-bada-47df24aebbd6"
+    },
+    {
       "ref_id": "field/406ec9c7de80233f6ff070bc72972037/2",
       "graph_id": "33354f69-fa8d-5e8e-a401-40d98501f5f1"
+    },
+    {
+      "ref_id": "field/406ec9c7de80233f6ff070bc72972037/2/sterownik",
+      "graph_id": "2fdc6c51-28a8-59f4-9ebf-4aa9f6d61e8b"
     },
     {
       "ref_id": "field/abf895244054e9481b88924a2bb075b2/1",
       "graph_id": "001fa57c-3ed6-5ddd-bbf6-fdd47d562ec6"
     },
     {
+      "ref_id": "field/abf895244054e9481b88924a2bb075b2/1/sterownik",
+      "graph_id": "0ebb8c72-7e41-5622-95f3-fc8134328b0a"
+    },
+    {
       "ref_id": "field/abf895244054e9481b88924a2bb075b2/2",
       "graph_id": "774615d4-51ee-5247-ad46-55d6a68d8e3e"
+    },
+    {
+      "ref_id": "field/abf895244054e9481b88924a2bb075b2/2/sterownik",
+      "graph_id": "143080b5-50c4-5f72-876f-815e03c8d8a8"
     },
     {
       "ref_id": "fuse_c",
@@ -213,10 +229,6 @@
       "graph_id": "5d91afb5-b3eb-5b3e-9ba1-3de160eb07ca"
     },
     {
-      "ref_id": "relay/25336230b9b6c2221a1154310b0305e6/assignment",
-      "graph_id": "b162b0c5-583d-55b3-ae73-15a74ea408c7"
-    },
-    {
       "ref_id": "seg/1957cf3c0508edb544739f771886cd58/segment",
       "graph_id": "17d2f1a3-a2e7-5c1d-9de1-8eeec30dffc2"
     },
@@ -253,6 +265,10 @@
       "graph_id": "a2629c2c-fba9-53b2-89ea-9fc3ca2c7be4"
     },
     {
+      "ref_id": "sn/9d008ed355939bef762652554f56b2e4/der/source_field/sterownik",
+      "graph_id": "1ff9e3ba-ce57-5cac-9f7f-339ce72d45ea"
+    },
+    {
       "ref_id": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_device",
       "graph_id": "4bd9af72-7882-5774-937c-729723a31427"
     },
@@ -285,12 +301,24 @@
       "graph_id": "ccc911dd-30fb-52a2-ae9f-6a06663832d0"
     },
     {
+      "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/000/sterownik",
+      "graph_id": "1e8d80db-b48e-5226-9b53-d38ab1647708"
+    },
+    {
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
       "graph_id": "1dcedea1-c589-587f-983b-41cd2122484e"
     },
     {
+      "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001/sterownik",
+      "graph_id": "46b5bfef-df10-5775-a390-61d564f8d602"
+    },
+    {
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
       "graph_id": "5f9189b7-1186-5164-95e9-efd1fa1f7da4"
+    },
+    {
+      "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002/sterownik",
+      "graph_id": "deb1a516-3b63-554d-8ca5-2b82f56600b2"
     },
     {
       "ref_id": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field_breaker/000",

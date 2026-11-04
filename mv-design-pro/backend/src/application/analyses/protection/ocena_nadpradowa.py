@@ -72,6 +72,7 @@ from enm.zabezpieczenie import (
     PrzekladnikPradowy,
     aparaty_funkcji,
     nastawy_funkcji,
+    nazwa_sterownika,
     przekladnik_pradowy,
 )
 from network_model.catalog.funkcje_eaz import (
@@ -273,6 +274,44 @@ class PozycjaGotowosci:
             "akcja_naprawcza_pl": self.akcja_naprawcza_pl,
             "funkcja": self.funkcja,
         }
+
+
+#: Krótka nazwa braku kompletności nastawy stopnia — do streszczenia braków sterownika.
+_BRAK_STOPNIA_KROTKO_PL: dict[str, str] = {
+    KOD_BRAK_PROGU: "progu rozruchowego",
+    KOD_JEDNOSTKA_PROGU_NIEUSTALONA: "jednostki progu",
+    KOD_BRAK_CHARAKTERYSTYKI: "charakterystyki czasowej",
+    KOD_BRAK_ZWLOKI: "zwłoki",
+    KOD_BRAK_MNOZNIKA: "mnożnika czasowego",
+}
+
+
+def streszczenie_brakow_nastaw(nazwa_pl: str, braki: Sequence[PozycjaGotowosci]) -> str:
+    """Braki nastaw sterownika jednym akapitem — JEDNO streszczenie dla czasu wyłączenia pola
+    (``czas_wylaczenia_pola``), czasu wyłączenia gałęzi (``czas_wylaczenia_galezi``)
+    i koordynacji (``coordination.analyzer``).
+
+    Braki kompletności stopni (próg, jednostka, charakterystyka, zwłoka, mnożnik) grupuje per
+    funkcja — nazwa sterownika pada raz, nie przy każdym braku; pozostałe braki (przekładnik,
+    zakresy katalogu, macierz wyzwoleń) zostają własnym zdaniem, w kolejności rozstrzygnięcia.
+    Żaden brak nie ginie: każdy z pełnym zdaniem i akcją naprawczą zostaje w ``braki``
+    (szczegóły na żądanie)."""
+    stopnie: dict[str, list[str]] = {}
+    czesci: list[str | None] = []
+    for brak in braki:
+        krotko = _BRAK_STOPNIA_KROTKO_PL.get(brak.kod)
+        if krotko is None or brak.funkcja is None:
+            czesci.append(brak.komunikat_pl)
+            continue
+        if not stopnie:
+            czesci.append(None)  # miejsce zdania o stopniach — pierwszy brak stopnia
+        stopnie.setdefault(brak.funkcja, []).append(krotko)
+    opis_stopni = "; ".join(
+        f"{etykieta_funkcji_eaz(funkcja)} — brak {', '.join(dict.fromkeys(krotkie))}"
+        for funkcja, krotkie in stopnie.items()
+    )
+    zdanie_stopni = f"Nastawy zabezpieczenia {nazwa_pl} są niekompletne: {opis_stopni}."
+    return " ".join(zdanie_stopni if c is None else c for c in czesci)
 
 
 @dataclass(frozen=True)
@@ -546,7 +585,7 @@ def wylacznik_urzadzenia(assignment: ProtectionAssignment) -> str | None:
 def _przekladnik(
     enm: EnergyNetworkModel, assignment: ProtectionAssignment
 ) -> tuple[PrzekladnikPradowy | None, list[PozycjaGotowosci]]:
-    nazwa = nazwa_elementu(assignment, "protection_assignments")
+    nazwa = nazwa_sterownika(enm, assignment)
     ct_ref = assignment.wejscia.ct_ref
     if not ct_ref:
         return None, [
@@ -629,7 +668,7 @@ def charakterystyki_sterownika(
     w katalogu analitycznym albo który nie ma ustalonej jednostki zakresów, jest nazwanym
     brakiem modelu (operacja zapisu go odrzuca — tu obrona odczytu migawki).
     """
-    nazwa = nazwa_elementu(assignment, "protection_assignments")
+    nazwa = nazwa_sterownika(enm, assignment)
     if assignment.charakterystyki_ref:
         wskazany = profil_charakterystyk(assignment.charakterystyki_ref)
         if wskazany is None:
@@ -930,7 +969,7 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
     (DT) albo mnożnik (zależna). Funkcja sterownika bez ewaluatora trafia do
     ``funkcje_nieoceniane`` z wyjaśnieniem (NIE_OCENIONO, nigdy cisza).
     """
-    nazwa = nazwa_elementu(assignment, "protection_assignments")
+    nazwa = nazwa_sterownika(enm, assignment)
     braki: list[PozycjaGotowosci] = []
     ct, braki_ct = _przekladnik(enm, assignment)
     braki.extend(braki_ct)
@@ -1146,7 +1185,7 @@ def urzadzenia_nadpradowe(
     objete: list[ProtectionAssignment] = []
     pominiete: list[PominieteUrzadzenie] = []
     for assignment in sorted(enm.protection_assignments, key=lambda a: a.ref_id):
-        nazwa = nazwa_elementu(assignment, "protection_assignments")
+        nazwa = nazwa_sterownika(enm, assignment)
         ma_funkcje_oc = any(f.kod in FUNKCJE_OCENIANE and f.wlaczona for f in assignment.funkcje)
         if not ma_funkcje_oc:
             pominiete.append(
@@ -2205,6 +2244,7 @@ def ocen_zabezpieczenia(
             oceny.append(
                 _ocena_punktu(
                     nastawy=nastawy,
+                    wylacznik=wylacznik,
                     punkt=punkt,
                     nazwa_punktu=nazwa_punktu,
                     prad=prad,
@@ -2242,6 +2282,7 @@ def ocen_zabezpieczenia(
 def _ocena_punktu(
     *,
     nastawy: NastawyUrzadzenia,
+    wylacznik: str,
     punkt: str,
     nazwa_punktu: str,
     prad: float,
@@ -2267,7 +2308,7 @@ def _ocena_punktu(
     return OcenaPunktu(
         urzadzenie_ref=nastawy.urzadzenie_ref,
         nazwa_urzadzenia_pl=nastawy.nazwa_pl,
-        breaker_ref=nastawy.breaker_ref,
+        breaker_ref=wylacznik,
         punkt_ref=punkt,
         nazwa_punktu_pl=nazwa_punktu,
         prad_przekaznika_a=prad,

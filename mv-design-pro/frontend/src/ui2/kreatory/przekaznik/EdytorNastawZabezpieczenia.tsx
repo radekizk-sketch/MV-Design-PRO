@@ -32,7 +32,9 @@ import {
   etykietaFunkcjiEaz,
   etykietaWartosciNastawy,
   funkcjaEaz,
+  RODZAJ_FUNKCJI_EAZ_PL,
   type SchematNastawyEaz,
+  wszystkieFunkcjeEaz,
 } from '../../../ui/shared/funkcjeEaz';
 import { aparatyWyzwalaneFunkcji, czyNastawaCzasu, liczbaNastawy } from '../../../ui/shared/opisNastawSterownika';
 import {
@@ -139,6 +141,25 @@ export function ladunekZapisu(
   if (Object.keys(wlaczone).length > 0) ladunek.wlaczone = wlaczone;
   if (profil !== (sterownik.charakterystyki_ref ?? null)) ladunek.charakterystyki_ref = profil;
   return Object.keys(ladunek).length > 1 ? ladunek : null;
+}
+
+/**
+ * Ładunek zmiany SKŁADU funkcji sterownika (`update_protection_settings` → `funkcje`: pełna lista
+ * kodów w kolejności sterownika). Dodanie dopisuje kod na końcu; zdjęcie usuwa go z listy —
+ * backend zdejmuje funkcję razem z nastawami we wszystkich grupach i wierszem macierzy
+ * (`enm.zabezpieczenie.ustaw_zestaw_funkcji`). `null` — zmiana bez skutku (kod już jest / nie ma).
+ */
+export function ladunekSkladuFunkcji(
+  sterownik: ProtectionAssignment,
+  zmiana: { readonly dodaj: string } | { readonly zdejmij: string },
+): Record<string, unknown> | null {
+  const kody = sterownik.funkcje.map((f) => f.kod);
+  if ('dodaj' in zmiana) {
+    if (zmiana.dodaj === '' || kody.includes(zmiana.dodaj)) return null;
+    return { protection_ref: sterownik.ref_id, funkcje: [...kody, zmiana.dodaj] };
+  }
+  if (!kody.includes(zmiana.zdejmij)) return null;
+  return { protection_ref: sterownik.ref_id, funkcje: kody.filter((k) => k !== zmiana.zdejmij) };
 }
 
 /** Jednostka pola nastawy w komórce tabeli (strona przekładnika progu idzie z wyboru obok). */
@@ -261,6 +282,8 @@ export function EdytorNastawZabezpieczenia({
   );
   const [profil, setProfil] = useState<string | null>(sterownik?.charakterystyki_ref ?? null);
   const [szczegoly, setSzczegoly] = useState(false);
+  const [doDodania, setDoDodania] = useState('');
+  const [doZdjecia, setDoZdjecia] = useState('');
   const [blad, setBlad] = useState<string | null>(null);
   const [zapisywanie, setZapisywanie] = useState(false);
 
@@ -498,6 +521,62 @@ export function EdytorNastawZabezpieczenia({
                     </option>
                   ))}
                 </select>
+              </dd>
+            </div>
+            <div data-testid={`${testid}-sklad`}>
+              <dt>{T.skladFunkcji}</dt>
+              <dd className="mvd-edytor-nastaw-sklad">
+                <select
+                  value={doDodania}
+                  onChange={(e) => setDoDodania(e.target.value)}
+                  aria-label={T.skladDodajWybor}
+                  data-testid={`${testid}-sklad-dodaj-wybor`}
+                >
+                  <option value="">{T.skladDodajPusty}</option>
+                  {wszystkieFunkcjeEaz()
+                    .filter((w) => !sterownik.funkcje.some((f) => f.kod === w.kod))
+                    .map((w) => (
+                      <option key={w.kod} value={w.kod}>
+                        {`${etykietaFunkcjiEaz(w.kod)} — ${w.nazwaPl} (${RODZAJ_FUNKCJI_EAZ_PL[w.rodzaj]})`}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={zapisywanie || !caseId || ladunekSkladuFunkcji(sterownik, { dodaj: doDodania }) === null}
+                  onClick={() => {
+                    const dane = ladunekSkladuFunkcji(sterownik, { dodaj: doDodania });
+                    if (dane) void wykonaj(dane).then(() => setDoDodania(''));
+                  }}
+                  data-testid={`${testid}-sklad-dodaj`}
+                >
+                  {T.skladDodaj}
+                </button>
+                <select
+                  value={doZdjecia}
+                  onChange={(e) => setDoZdjecia(e.target.value)}
+                  aria-label={T.skladZdejmijWybor}
+                  data-testid={`${testid}-sklad-zdejmij-wybor`}
+                >
+                  <option value="">{T.skladZdejmijPusty}</option>
+                  {sterownik.funkcje.map((f) => (
+                    <option key={f.ref} value={f.kod}>
+                      {etykietaFunkcjiEaz(f.kod)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={zapisywanie || !caseId || ladunekSkladuFunkcji(sterownik, { zdejmij: doZdjecia }) === null}
+                  onClick={() => {
+                    const dane = ladunekSkladuFunkcji(sterownik, { zdejmij: doZdjecia });
+                    if (dane) void wykonaj(dane).then(() => setDoZdjecia(''));
+                  }}
+                  data-testid={`${testid}-sklad-zdejmij`}
+                >
+                  {T.skladZdejmij}
+                </button>
+                <span className="mvd-edytor-nastaw-zalozenie">{T.skladOpis}</span>
               </dd>
             </div>
             {zakresy ? (

@@ -23,6 +23,8 @@ from enm.topology_ops import (
     update_node,
 )
 
+from tests.utils.sterownik import rekord_sterownika, stopien_51
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -667,18 +669,11 @@ class TestMeasurementOperations:
                 "meta": {},
             }
         ]
+        # Sterownik w jedynej strukturze modelu: przekładnik zasila wejście prądów fazowych.
         enm["protection_assignments"] = [
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "breaker_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [],
-                "is_enabled": True,
-                "tags": [],
-                "meta": {},
-            }
+            rekord_sterownika(
+                "pa_1", name="PA1", wylacznik="breaker_1", ct_ref="ct_1", stopnie=[stopien_51()]
+            )
         ]
         result = delete_measurement(enm, "ct_1")
         assert result.success is False

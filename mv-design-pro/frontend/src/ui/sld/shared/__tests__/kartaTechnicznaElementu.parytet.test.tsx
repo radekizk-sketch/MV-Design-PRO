@@ -20,6 +20,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { KartaTechnicznaElementu } from '../../../network-build/inspektor-elementu/KartaTechnicznaElementu';
+import { sterownikTestowy } from '../../../../test/sterownik';
 import type { DaneElementuKanwy } from '../daneElementuKanwy';
 import {
   BRAK_DANYCH_PL,
@@ -138,7 +139,6 @@ function model(wariant: Wariant): EnergyNetworkModel {
         primary_devices: [
           { device_ref: 'cb-in', kind: 'CB', linked_ref: 'cb-in', catalog_ref: jesli('vd4-24-630-20'), stan_obiektu: jesli('PROJEKTOWANY') },
         ],
-        protection_codes: p ? ['50', '51'] : [],
         tags: [],
         meta: {},
       },
@@ -311,7 +311,16 @@ function model(wariant: Wariant): EnergyNetworkModel {
          { id: 'vt-1', ref_id: 'vt-1', name: 'VT pola 01', bay_ref: 'bay-in', measurement_type: 'VT', rating: { ratio_primary: 15000, ratio_secondary: 100, accuracy_class: '0.5' }, tags: [], meta: {} }]
       : [],
     protection_assignments: p
-      ? [{ id: 'pa-1', ref_id: 'pa-1', name: 'Zabezpieczenie pola 01', breaker_ref: 'cb-in', device_type: 'overcurrent', tags: [], meta: {} }]
+      ? [
+          sterownikTestowy({
+            ref: 'pa-1',
+            nazwa: 'Zabezpieczenie pola 01',
+            bayRef: 'bay-in',
+            kody: ['50', '51'],
+            wylacznik: 'cb-in',
+            wejscia: { ct_ref: 'ct-1' },
+          }),
+        ]
       : [],
   } as unknown as EnergyNetworkModel;
 }
@@ -423,7 +432,7 @@ describe('karta techniczna — parytet rodzaj × dane {pełne, brak}', () => {
       ir: '630 A',
       ik: '20 kA',
       stan: 'zamknięty',
-      zabezpieczenie: 'Zabezpieczenie pola 01 (nadprądowe) · funkcje 50, 51 · przekładnik prądowy 200/5 A · kl. 5P20',
+      zabezpieczenie: 'Zabezpieczenie pola 01 · funkcje 50, 51 · przekładnik prądowy 200/5 A · kl. 5P20',
     });
     // Pole bez aparatu w modelu: komórki aparatu „brak danych", nie aparat z konwencji.
     const poleTr = pola.wiersze.find((r) => r.klucz === 'bay-tr')!;

@@ -70,6 +70,7 @@ from tests.reference_networks.budowa_przez_api import (
 )
 from tests.reference_networks.scena_pola_bkr import zbuduj_gpz_z_bkr
 from tests.utils.biegi import wykonaj_bieg
+from tests.utils.sterownik import rekord_sterownika, stopien
 
 FRONTEND = Path(__file__).resolve().parents[3] / "frontend"
 SCENA = "src/ui/sld/v3/scene/__tests__/fixtures"
@@ -283,9 +284,7 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
                 "substation_ref": gpz["ref_id"],
                 "bus_ref": szyna,
                 "gpz_section_id": sekcja,
-                "protection_codes": kody,
                 "primary_devices": aparaty,
-                "protection_ref": f"{pole}/prot",
             }
         )
         enm["measurements"].append(
@@ -305,41 +304,27 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
                 "ct_arrangement": "3xCT",
             }
         )
+        # JEDEN sterownik pola (karta OCHRONA-JEDNO-ZRODLO): funkcje 51/50 (i 51N w polach
+        # liniowych) z nastawami po stronie pierwotnej przekładnika, wejście prądów fazowych
+        # z przekładnika pola, 3I0 z filtru Holmgreena tych samych przekładników, macierz
+        # wyzwoleń na wyłącznik pola Q1.
+        nastawy_pola = {
+            "51": {"prog": prog51, "krzywa": "IEC_SI", "tms": tms},
+            "50": {"prog": prog50, "krzywa": "DT", "zwloka_s": zwloka50},
+            "51N": {"prog": 20, "krzywa": "DT", "zwloka_s": 0.3},
+        }
+        stopnie = [stopien(k, jednostka_progu="A_PIERWOTNY", **nastawy_pola[k]) for k in kody]
         enm["protection_assignments"].append(
-            {
-                "ref_id": f"{pole}/prot",
-                "name": f"Zabezpieczenie {opis}",
-                "breaker_ref": f"{pole}/cb",
-                "ct_ref": f"{pole}/ct",
-                "device_type": "overcurrent",
-                "settings": [
-                    {
-                        "function_type": "overcurrent_51",
-                        "threshold_a": prog51,
-                        "curve_type": "IEC_SI",
-                        "time_multiplier": tms,
-                    },
-                    {
-                        "function_type": "overcurrent_50",
-                        "threshold_a": prog50,
-                        "time_delay_s": zwloka50,
-                    },
-                ],
-            }
-        )
-        if rola == "OUT":
-            enm["protection_assignments"].append(
-                {
-                    "ref_id": f"{pole}/prot_n",
-                    "name": f"Ziemnozwarciowe {opis}",
-                    "breaker_ref": f"{pole}/cb",
-                    "ct_ref": f"{pole}/ct",
-                    "device_type": "earth_fault",
-                    "settings": [
-                        {"function_type": "earth_fault_51N", "threshold_a": 20, "time_delay_s": 0.3}
-                    ],
-                }
+            rekord_sterownika(
+                f"{pole}/sterownik",
+                name=f"Zabezpieczenie {opis}",
+                bay_ref=pole,
+                wylacznik=f"{pole}/cb",
+                ct_ref=f"{pole}/ct",
+                wejscia={"i0_uklad": "HOLMGREEN"} if "51N" in kody else None,
+                stopnie=stopnie,
             )
+        )
     # Rekordy dopisane powyżej przechodzą przez model (zrzut Pydantic), żeby fikstura niosła
     # PEŁNY kształt kontraktu jak migawka z API (m.in. wymagane `Bay.equipment_refs`) — sama
     # walidacja w ``normalizuj_migawke`` przepuszczała rekordy bez pól domyślnych, a konsumenci

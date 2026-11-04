@@ -1,12 +1,22 @@
 /**
- * Testy ekranu „Zabezpieczenia i automatyka" (E-27, realny dostawca ui2).
- * Interakcje przez natywną ścieżkę użytkownika (userEvent.click) — dyrektywa
- * Zero-Debt pkt 5 (żadnych syntetycznych dispatchEvent).
+ * Testy ekranu „Zabezpieczenia i automatyka" (E-27, realny dostawca ui2) — karta
+ * OCHRONA-JEDNO-ZRODLO (ADR-022): jedna tabela sterowników (sterownik = wiersz), automatyka jako
+ * funkcje tego samego sterownika (SPZ = funkcja 79), edytor nastaw w rozwinięciu wiersza.
  *
- * Read-model pola (`useFieldReadModel`) jest reużyty BEZ ZMIAN — w teście
- * podmieniamy wyłącznie jego wynik (fixture o kształcie 1:1 z ENM
- * `BayProtectionControlUnit`/`SpzState`); logika mapowania (`model.ts`) i
- * akcje store'ów (`openInspectorPanel`, `openRouteSurface`) pozostają rzeczywiste.
+ * Wejście: PRAWDZIWY model sieci złotej G08 (migawka z generatora fikstur harnessu: pola szablonu
+ * ze sterownikami bez nastaw, pole GPZ i pola nN bez sterownika, dwa sterowniki wyłączników
+ * liniowych z nastawami) i PRAWDZIWY read model `protection-view` tego modelu. Read model pola
+ * (`useFieldReadModel`) jest reużyty BEZ ZMIAN — podmieniony wyłącznie jego wynik, zbudowany z tej
+ * samej migawki tak jak backend (`base_model.zabezpieczenie` = sterownik pola z
+ * `protection_assignments`, `enm.zabezpieczenie.sterownik_pola`). Granica HTTP read modelu
+ * zabezpieczeń (`fetchProtectionView`) podmieniona danymi generatora. Interakcje natywne
+ * (userEvent.click) — dyrektywa Zero-Debt pkt 5.
+ *
+ * Iloczyn cech: {pole ze sterownikiem, bez sterownika, sterownik wyłącznika liniowego bez pola} ×
+ * {SPZ: brak funkcji 79, włączona z cyklami, włączona bez nastawy cykli, wyłączona} × {funkcja
+ * włączona, wyłączona} × {grupa aktywna 1, inna} × {jeden sterownik (rozwinięty od razu), wiele (na
+ * żądanie)} × {wyłącznik liniowy bez przekładnika, z przekładnikiem bez sterownika, kompletny} ×
+ * {odczyt read modelu udany, błąd} × {brak projektu, brak pól i sterowników}.
  */
 
 import { cleanup, render, screen, within } from '@testing-library/react';
@@ -15,100 +25,57 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { sterownikPola } from '../../../../ui/shared/sterownikZabezpieczen';
+import { sterownikTestowy } from '../../../../test/sterownik';
+import type { Bay, EnergyNetworkModel, ProtectionAssignment } from '../../../../types/enm';
 import { useShellStore } from '../../../shell/useShellStore';
 
 // Reużycie hooka read-modelu pola BEZ ZMIAN: nadpisujemy tylko jego wynik.
 vi.mock('../../../../ui/field/useFieldReadModel', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../../ui/field/useFieldReadModel')>();
+  const actual = await importOriginal<typeof import('../../../../ui/field/useFieldReadModel')>();
   return { ...actual, useFieldReadModel: vi.fn() };
 });
 
-// Read model zabezpieczeń: hook `useProtectionView` i selektor `urzadzeniaZNastawami` realne,
-// podmieniona wyłącznie granica HTTP (`fetchProtectionView`) — dane z generatora fikstur.
+// Read model zabezpieczeń: hook `useProtectionView` realny, podmieniona wyłącznie granica HTTP.
 vi.mock('../../../../ui/protection/protection-view', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../../ui/protection/protection-view')>();
+  const actual = await importOriginal<typeof import('../../../../ui/protection/protection-view')>();
   return { ...actual, fetchProtectionView: vi.fn() };
 });
 
-import {
-  useFieldReadModel,
-  type FieldReadModelItem,
-  type FieldReadModelView,
-} from '../../../../ui/field/useFieldReadModel';
-import {
-  fetchProtectionView,
-  type ProtectionViewResponse,
-} from '../../../../ui/protection/protection-view';
+import { useFieldReadModel, type FieldReadModelItem, type FieldReadModelView } from '../../../../ui/field/useFieldReadModel';
+import { fetchProtectionView, type ProtectionViewResponse } from '../../../../ui/protection/protection-view';
+import migawkaSceny from '../../../../harness-fixtures/generated/koordynacja_scena_migawka.json';
 import widokSceny from '../../../../harness-fixtures/generated/koordynacja_scena_widok_zabezpieczen.json';
 import { EkranZabezpieczenAutomatyki } from '../EkranZabezpieczenAutomatyki';
-import {
-  buildSterowniki,
-  buildWierszeZabezpieczen,
-  ETYKIETY_CECH,
-} from '../model';
+import { buildWierszeZabezpieczen } from '../model';
 import { ZABEZPIECZENIA_STRINGS as T } from '../strings';
 
+const MIGAWKA = migawkaSceny as unknown as EnergyNetworkModel;
+const WIDOK = widokSceny as unknown as ProtectionViewResponse;
 const mockReadModel = vi.mocked(useFieldReadModel);
+const mockWidok = vi.mocked(fetchProtectionView);
 
-function mkItem(
-  bayRef: string,
-  bayName: string,
-  protectionConfig: unknown,
-): FieldReadModelItem {
+/** Rekord read modelu pola z migawki — sterownik pola tak jak backend (`sterownik_pola`). */
+function poleReadModelu(model: EnergyNetworkModel, bay: Bay): FieldReadModelItem {
   return {
-    bay_id: bayRef,
-    bay_ref: bayRef,
-    bay_name: bayName,
+    bay_id: bay.ref_id,
+    bay_ref: bay.ref_id,
+    bay_name: bay.name,
     canonical_model: {
       base_model: {
-        bay_ref: bayRef,
-        protection_config: protectionConfig,
+        bay_ref: bay.ref_id,
+        zabezpieczenie: sterownikPola(model, bay.ref_id),
+        bay_template_ref: bay.bay_template_ref ?? null,
+        switchgear_family_ref: bay.switchgear_family_ref ?? null,
       },
     },
   } as unknown as FieldReadModelItem;
 }
 
-// Fixture ENM 1:1: pole liniowe z pełnym sterownikiem, SPZ aktywnym.
-const POLE_A = mkItem('bay-a', 'Pole liniowe A', {
-  unit_ref: 'unit-a',
-  model: 'REF615',
-  functions: [{ code: '50' }, { code: '51' }, { code: '50N' }],
-  measurement_inputs: {},
-  automation_features: {
-    synchrocheck_enabled: true,
-    arc_protection_enabled: false,
-    breaker_failure_enabled: true,
-  },
-  spz: {
-    bound_breaker_ref: 'cb-a',
-    enabled: true,
-    fast_attempts_max: 1,
-    slow_attempts_max: 2,
-    attempts_done: 0,
-    blocked: false,
-    blocked_reason: null,
-    state: 'gotowe',
-  },
-});
-
-// Fixture ENM 1:1: pole transformatorowe z sterownikiem, SPZ nieskonfigurowany.
-const POLE_B = mkItem('bay-b', 'Pole transformatorowe B', {
-  unit_ref: 'unit-b',
-  model: 'SEL-751',
-  functions: [{ code: '51' }],
-  measurement_inputs: {},
-  automation_features: {
-    synchrocheck_enabled: false,
-    arc_protection_enabled: false,
-    breaker_failure_enabled: false,
-  },
-  spz: null,
-});
-
-// Fixture ENM 1:1: pole pomiarowe bez przypisania zabezpieczenia.
-const POLE_C = mkItem('bay-c', 'Pole pomiarowe C', null);
+function polaModelu(model: EnergyNetworkModel): FieldReadModelItem[] {
+  return (model.bays ?? []).map((b) => poleReadModelu(model, b));
+}
 
 function ustawReadModel(fields: FieldReadModelItem[]) {
   mockReadModel.mockReturnValue({
@@ -129,11 +96,36 @@ function ustawReadModel(fields: FieldReadModelItem[]) {
   } as unknown as FieldReadModelView);
 }
 
+/** Model i read model pola z jednego źródła — żaden test nie rozjeżdża ich ręcznie. */
+function ustawModel(model: EnergyNetworkModel | null) {
+  useSnapshotStore.setState({ snapshot: model, error: null } as never);
+  ustawReadModel(model ? polaModelu(model) : []);
+}
+
+/** Wariant sieci złotej: sterownik pola zastąpiony podanym (ten sam `bay_ref`). */
+function zSterownikiemPola(sterownik: ProtectionAssignment): EnergyNetworkModel {
+  return {
+    ...MIGAWKA,
+    protection_assignments: [
+      ...MIGAWKA.protection_assignments!.filter((p) => p.bay_ref !== sterownik.bay_ref),
+      sterownik,
+    ],
+  };
+}
+
+const POLE_STEROWNIKA = MIGAWKA.protection_assignments!.find((p) => p.bay_ref)!.bay_ref!;
+const LINIOWE = MIGAWKA.protection_assignments!.filter((p) => !p.bay_ref);
+const POLE_BEZ_STEROWNIKA = MIGAWKA.bays!.find((b) => !sterownikPola(MIGAWKA, b.ref_id))!;
+
+let licznikPrzypadkow = 0;
+const otworzFormularz = vi.fn();
+
 beforeEach(() => {
   useAppStateStore.getState().reset();
   useNetworkBuildStore.getState().reset();
   useShellStore.setState({ activeSpace: 'wyniki' });
-  ustawReadModel([POLE_A, POLE_B, POLE_C]);
+  ustawModel(MIGAWKA);
+  mockWidok.mockResolvedValue(WIDOK);
 });
 
 afterEach(() => {
@@ -141,67 +133,94 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('model.ts — mapowanie ENM → UI (bez fabrykacji)', () => {
-  it('buildWierszeZabezpieczen: wszystkie pola, posortowane, z kodami funkcji', () => {
-    const wiersze = buildWierszeZabezpieczen([POLE_C, POLE_A, POLE_B]);
-    expect(wiersze.map((w) => w.bayRef)).toEqual(['bay-a', 'bay-b', 'bay-c']);
-    expect(wiersze[0].urzadzenie).toBe('REF615');
-    expect(wiersze[0].funkcje).toEqual(['50', '51', '50N']);
-    expect(wiersze[0].maZabezpieczenie).toBe(true);
+function aktywujProjekt() {
+  // Osobny przypadek na test — pamięć podręczna read modelu jest kluczowana przypadkiem.
+  licznikPrzypadkow += 1;
+  useAppStateStore.getState().setActiveProject('projekt-za', 'Projekt');
+  useAppStateStore.getState().setActiveCase(`case-za-${licznikPrzypadkow}`, 'Wariant bazowy');
+  // Zmiana przypadku czyści migawkę magazynu (inny przypadek = inny model) — model sieci złotej
+  // wraca po aktywacji, jak po odczycie przypadku w aplikacji.
+  ustawModel(MIGAWKA);
+}
+
+describe('model.ts — wiersze z modelu (bez fabrykacji)', () => {
+  it('każde pole read modelu i każdy sterownik wyłącznika liniowego — kolejność deterministyczna', () => {
+    const wiersze = buildWierszeZabezpieczen(polaModelu(MIGAWKA), MIGAWKA);
+    const pola = [...MIGAWKA.bays!].map((b) => b.ref_id).sort((a, b) => a.localeCompare(b));
+    expect(wiersze.map((w) => w.klucz)).toEqual([...pola, ...LINIOWE.map((s) => s.ref_id).sort()]);
+    // Odwrócona kolejność wejścia daje te same wiersze (determinizm).
+    expect(buildWierszeZabezpieczen([...polaModelu(MIGAWKA)].reverse(), MIGAWKA)).toEqual(wiersze);
+    for (const w of wiersze.filter((x) => x.bayRef !== null)) {
+      const s = sterownikPola(MIGAWKA, w.bayRef);
+      expect(w.sterownikRef).toBe(s?.ref_id ?? null);
+      expect(w.funkcje).toEqual(s ? s.funkcje.map((f) => f.kod) : []);
+    }
   });
 
-  it('buildWierszeZabezpieczen: pole bez przypisania → brak urządzenia i funkcji', () => {
-    const wiersze = buildWierszeZabezpieczen([POLE_C]);
-    expect(wiersze[0].urzadzenie).toBeNull();
-    expect(wiersze[0].funkcje).toEqual([]);
-    expect(wiersze[0].maZabezpieczenie).toBe(false);
-    // Pole bez rodziny producenta → szablon/rodzina null (uczciwie „uniwersalne").
-    expect(wiersze[0].szablon).toBeNull();
-    expect(wiersze[0].rodzina).toBeNull();
+  it('stacja pola w wierszu: nazwy pól powtarzają się między stacjami, para (stacja, pole) jest jednoznaczna', () => {
+    const wiersze = buildWierszeZabezpieczen(polaModelu(MIGAWKA), MIGAWKA).filter((w) => w.bayRef !== null);
+    const nazwy = wiersze.map((w) => w.nazwa);
+    // Warunek testu (nie pusta wyrocznia): sieć złota ma pola o tej samej nazwie w różnych stacjach.
+    expect(new Set(nazwy).size).toBeLessThan(nazwy.length);
+    for (const w of wiersze) {
+      const wlasciciel = MIGAWKA.bays!.find((b) => b.ref_id === w.bayRef)!.substation_ref;
+      const stacja = MIGAWKA.substations.find((st) => st.ref_id === wlasciciel);
+      // Wyrocznia: pole stacji obecnej w modelu ma stację w wierszu; bez stacji — jawne `null`.
+      expect(w.stacja === null).toBe(stacja === undefined);
+    }
+    const pary = wiersze.map((w) => `${w.stacja} · ${w.nazwa}`);
+    expect(new Set(pary).size).toBe(pary.length);
+    expect(buildWierszeZabezpieczen([], MIGAWKA).every((w) => w.stacja === null)).toBe(true);
   });
 
-  it('buildWierszeZabezpieczen: surfacing szablonu pola + rodziny producenta (Reference Engine)', () => {
-    const pole = {
-      bay_id: 'bay-t',
-      bay_ref: 'bay-t',
-      bay_name: 'Pole odpływowe T',
-      canonical_model: {
-        base_model: {
-          bay_ref: 'bay-t',
-          protection_config: null,
-          bay_template_ref: 'ABB__SAFERING__LINE_OUT',
-          switchgear_family_ref: 'ABB__SAFERING',
-        },
-      },
-    } as unknown as FieldReadModelItem;
-    const [wiersz] = buildWierszeZabezpieczen([pole]);
+  it('sterownik wyłącznika liniowego: nazwa gałęzi wyłącznika, urządzenie z katalogu', () => {
+    const wiersze = buildWierszeZabezpieczen([], MIGAWKA);
+    expect(wiersze).toHaveLength(LINIOWE.length);
+    for (const w of wiersze) {
+      const s = LINIOWE.find((x) => x.ref_id === w.klucz)!;
+      const wylacznik = s.macierz_wyzwolen[0].aparat_refs[0];
+      expect(w.bayRef).toBeNull();
+      expect(w.nazwa).toBe(MIGAWKA.branches.find((b) => b.ref_id === wylacznik)!.name);
+      expect(w.urzadzenie).toBe(s.materialized_params!.name_pl);
+    }
+  });
+
+  it('pole bez sterownika → brak urządzenia, funkcji, grupy i SPZ (uczciwie, nie zero)', () => {
+    const [wiersz] = buildWierszeZabezpieczen([poleReadModelu(MIGAWKA, POLE_BEZ_STEROWNIKA)], MIGAWKA);
+    expect(wiersz).toMatchObject({ sterownikRef: null, urzadzenie: null, funkcje: [], aktywnaGrupa: null, spz: null });
+  });
+
+  it.each([
+    ['brak funkcji 79', { kody: ['51'] }, null],
+    ['79 włączona z dwoma cyklami', { kody: ['51', '79'], nastawy: { '79': { liczba_cykli: 2 } } }, { wlaczone: true, cykle: 2 }],
+    ['79 włączona bez nastawy cykli', { kody: ['51', '79'] }, { wlaczone: true, cykle: null }],
+    ['79 wyłączona', { kody: ['51', '79'], wylaczone: ['79'], nastawy: { '79': { liczba_cykli: 1 } } }, { wlaczone: false, cykle: 1 }],
+  ] as const)('SPZ z funkcji 79 sterownika: %s', (_opis, dane, spz) => {
+    const sterownik = sterownikTestowy({ bayRef: POLE_STEROWNIKA, ...dane });
+    const model = zSterownikiemPola(sterownik);
+    const wiersz = buildWierszeZabezpieczen(polaModelu(model), model).find((w) => w.klucz === POLE_STEROWNIKA)!;
+    expect(wiersz.spz).toEqual(spz);
+  });
+
+  it('funkcja wyłączona nie jest na liście funkcji; grupa aktywna z modelu', () => {
+    const sterownik = sterownikTestowy({ bayRef: POLE_STEROWNIKA, kody: ['51', '50', '51N'], wylaczone: ['50'], aktywnaGrupa: 3 });
+    const model = zSterownikiemPola(sterownik);
+    const wiersz = buildWierszeZabezpieczen(polaModelu(model), model).find((w) => w.klucz === POLE_STEROWNIKA)!;
+    expect(wiersz.funkcje).toEqual(['51', '51N']);
+    expect(wiersz.aktywnaGrupa).toBe(3);
+  });
+
+  it('szablon pola i rodzina producenta (Reference Engine) przechodzą z rekordu pola', () => {
+    const bay = { ...POLE_BEZ_STEROWNIKA, bay_template_ref: 'ABB__SAFERING__LINE_OUT', switchgear_family_ref: 'ABB__SAFERING' };
+    const [wiersz] = buildWierszeZabezpieczen([poleReadModelu(MIGAWKA, bay as Bay)], MIGAWKA);
     expect(wiersz.szablon).toBe('ABB__SAFERING__LINE_OUT');
     expect(wiersz.rodzina).toBe('ABB__SAFERING');
-  });
-
-  it('buildSterowniki: tylko pola ze sterownikiem, cechy z etykietami PL', () => {
-    const sterowniki = buildSterowniki([POLE_A, POLE_B, POLE_C]);
-    expect(sterowniki.map((s) => s.bayRef)).toEqual(['bay-a', 'bay-b']);
-    const cechaSync = sterowniki[0].cechy.find((c) => c.klucz === 'synchrocheck_enabled');
-    expect(cechaSync?.etykieta).toBe(ETYKIETY_CECH.synchrocheck_enabled);
-    expect(cechaSync?.aktywna).toBe(true);
-    expect(sterowniki[0].cechy.find((c) => c.klucz === 'arc_protection_enabled')?.aktywna).toBe(false);
-  });
-
-  it('buildSterowniki: SPZ obecny → widok stanu; SPZ null → brak (uczciwe)', () => {
-    const sterowniki = buildSterowniki([POLE_A, POLE_B]);
-    expect(sterowniki[0].spz).not.toBeNull();
-    expect(sterowniki[0].spz?.aktywny).toBe(true);
-    expect(sterowniki[0].spz?.probySzybkie).toBe(1);
-    expect(sterowniki[0].spz?.probyWolne).toBe(2);
-    expect(sterowniki[0].spz?.stanEtykieta).toBe('Gotowe');
-    expect(sterowniki[1].spz).toBeNull();
   });
 });
 
 describe('EkranZabezpieczenAutomatyki — nagłówek i stany zerowe', () => {
   it('nagłówek: eyebrow obszaru i zdanie celu inżynierskiego', () => {
-    useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
+    aktywujProjekt();
     render(<EkranZabezpieczenAutomatyki />);
     expect(screen.getByText(T.eyebrow)).toBeInTheDocument();
     expect(screen.getByText(T.cel)).toBeInTheDocument();
@@ -210,177 +229,150 @@ describe('EkranZabezpieczenAutomatyki — nagłówek i stany zerowe', () => {
   it('bez aktywnego projektu: stan zerowy z akcją prowadzącą do przestrzeni Projekt', async () => {
     const user = userEvent.setup();
     render(<EkranZabezpieczenAutomatyki />);
-
     expect(screen.getByTestId('mvd-za-brak-projektu')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-za-zabezpieczenia')).not.toBeInTheDocument();
-
     await user.click(screen.getByTestId('mvd-za-brak-projektu-akcja'));
     expect(useShellStore.getState().activeSpace).toBe('projekt');
   });
 
-  it('projekt bez pól w modelu: stan zerowy z akcją prowadzącą do Modelu sieci', async () => {
+  it('projekt bez pól i bez sterowników: stan zerowy z akcją prowadzącą do Modelu sieci', async () => {
     const user = userEvent.setup();
-    useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
-    ustawReadModel([]);
+    aktywujProjekt();
+    ustawModel(null);
+    mockWidok.mockResolvedValue({ ...WIDOK, assignments: [], wylaczniki_liniowe: [] });
     render(<EkranZabezpieczenAutomatyki />);
-
     expect(screen.getByTestId('mvd-za-brak-pol')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-za-nastepny')).not.toBeInTheDocument();
     await user.click(screen.getByTestId('mvd-za-brak-pol-akcja'));
     expect(useShellStore.getState().activeSpace).toBe('model');
   });
+
+  it('sieć bez pól rozdzielni, ze sterownikami wyłączników liniowych — tabela zamiast stanu zerowego', async () => {
+    aktywujProjekt();
+    ustawReadModel([]);
+    render(<EkranZabezpieczenAutomatyki />);
+    expect(screen.queryByTestId('mvd-za-brak-pol')).not.toBeInTheDocument();
+    for (const s of LINIOWE) expect(screen.getByTestId(`mvd-za-wiersz-${s.ref_id}`)).toBeInTheDocument();
+  });
 });
 
-describe('EkranZabezpieczenAutomatyki — sekcja zabezpieczeń', () => {
+describe('EkranZabezpieczenAutomatyki — tabela sterowników', () => {
   beforeEach(() => {
-    useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
+    aktywujProjekt();
+    useNetworkBuildStore.setState({ openOperationForm: otworzFormularz });
   });
 
-  it('tabela zabezpieczeń: wiersz per pole z urządzeniem i kodami funkcji', () => {
+  it('wiersz sterownika: urządzenie, funkcje, grupa, SPZ; wiele sterowników — edytory zwinięte', () => {
     render(<EkranZabezpieczenAutomatyki />);
-    const tabela = screen.getByTestId('mvd-za-zabezpieczenia');
-    expect(within(tabela).getByTestId('mvd-za-wiersz-bay-a')).toBeInTheDocument();
-    expect(within(tabela).getByText('REF615')).toBeInTheDocument();
-    expect(within(tabela).getByText('50, 51, 50N')).toBeInTheDocument();
+    const [s] = LINIOWE;
+    const wiersz = screen.getByTestId(`mvd-za-wiersz-${s.ref_id}`);
+    expect(wiersz).toHaveTextContent(String(s.materialized_params!.name_pl));
+    expect(within(wiersz).getByTestId(`mvd-za-funkcje-${s.ref_id}`)).toHaveTextContent(s.funkcje.map((f) => f.kod).join(', '));
+    expect(within(wiersz).getByTestId(`mvd-za-spz-${s.ref_id}`)).toHaveTextContent('—');
+    expect(screen.queryByTestId(/^mvd-za-edytor-/)).toBeNull();
   });
 
-  it('pole bez zabezpieczenia: jawne „nie skonfigurowano" (bez fabrykacji)', () => {
-    render(<EkranZabezpieczenAutomatyki />);
-    expect(screen.getByTestId('mvd-za-bez-zabezpieczenia-bay-c')).toHaveTextContent(
-      T.spzNieSkonfigurowano,
-    );
-  });
-
-  it('akcja wiersza „Otwórz kartę pola" otwiera panel pola E-11 w store (realna ścieżka)', async () => {
+  it('„Nastawy" natywnym klikiem rozwija edytor sterownika z nastawami read modelu; drugi klik zwija', async () => {
     const user = userEvent.setup();
     render(<EkranZabezpieczenAutomatyki />);
-
-    await user.click(screen.getByTestId('mvd-za-otworz-pole-bay-a'));
-
-    const surface = useNetworkBuildStore.getState().activeSurface;
-    expect(surface?.screenCode).toBe('E-11');
+    const [s] = LINIOWE;
+    const przycisk = screen.getByTestId(`mvd-za-nastawy-${s.ref_id}`);
+    expect(przycisk).toHaveAttribute('aria-expanded', 'false');
+    await user.click(przycisk);
+    expect(przycisk).toHaveAttribute('aria-expanded', 'true');
+    const edytor = await screen.findByTestId(`mvd-za-edytor-${s.ref_id}`);
+    expect(within(edytor).getByTestId(`mvd-za-edytor-${s.ref_id}-przekladnia`)).toHaveTextContent('600/5 A 5P20');
+    expect(await within(edytor).findByTestId(`mvd-za-edytor-${s.ref_id}-gotowe`)).toBeInTheDocument();
+    await user.click(przycisk);
+    expect(screen.queryByTestId(`mvd-za-edytor-${s.ref_id}`)).toBeNull();
   });
-});
 
-describe('EkranZabezpieczenAutomatyki — sekcja automatyki', () => {
-  beforeEach(() => {
-    useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
-  });
-
-  it('chipy funkcji automatyki: stan włączony/wyłączony z automation_features', () => {
+  it('jeden sterownik w modelu — edytor rozwinięty od razu (zero kliknięć do nastaw)', async () => {
+    aktywujProjekt();
+    const [s] = LINIOWE;
+    ustawModel({ ...MIGAWKA, bays: [], protection_assignments: [s] });
     render(<EkranZabezpieczenAutomatyki />);
-    const sync = screen.getByTestId('mvd-za-cecha-bay-a-synchrocheck_enabled');
-    expect(sync).toHaveAttribute('data-aktywna', 'true');
-    const arc = screen.getByTestId('mvd-za-cecha-bay-a-arc_protection_enabled');
-    expect(arc).toHaveAttribute('data-aktywna', 'false');
+    expect(await screen.findByTestId(`mvd-za-edytor-${s.ref_id}`)).toBeInTheDocument();
+    expect(screen.getByTestId(`mvd-za-nastawy-${s.ref_id}`)).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('SPZ: szczegóły stanu dla skonfigurowanego, „nie skonfigurowano" dla braku', () => {
-    render(<EkranZabezpieczenAutomatyki />);
-    expect(screen.getByTestId('mvd-za-spz-bay-a')).toHaveTextContent('Gotowe');
-    expect(screen.getByTestId('mvd-za-spz-brak-bay-b')).toHaveTextContent(T.spzNieSkonfigurowano);
-  });
-});
-
-describe('EkranZabezpieczenAutomatyki — następny krok', () => {
-  it('akcja „Koordynacja zabezpieczeń" otwiera ekran E-28 w store', async () => {
+  it('pole bez sterownika: jawne „bez sterownika" i „Dodaj sterownik" z kotwicą pola', async () => {
     const user = userEvent.setup();
-    useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
     render(<EkranZabezpieczenAutomatyki />);
+    const ref = POLE_BEZ_STEROWNIKA.ref_id;
+    expect(screen.getByTestId(`mvd-za-bez-zabezpieczenia-${ref}`)).toHaveTextContent(T.bezSterownika);
+    expect(screen.queryByTestId(`mvd-za-nastawy-${ref}`)).toBeNull();
+    await user.click(screen.getByTestId(`mvd-za-dodaj-sterownik-${ref}`));
+    expect(otworzFormularz).toHaveBeenCalledWith('add_relay', { bay_ref: ref });
+  });
 
+  it('SPZ sterownika pola w kolumnie — wartości z nastaw funkcji 79 grupy aktywnej', () => {
+    aktywujProjekt();
+    const sterownik = sterownikTestowy({ bayRef: POLE_STEROWNIKA, kody: ['51', '79'], nastawy: { '79': { liczba_cykli: 2 } } });
+    ustawModel(zSterownikiemPola(sterownik));
+    render(<EkranZabezpieczenAutomatyki />);
+    expect(screen.getByTestId(`mvd-za-spz-${POLE_STEROWNIKA}`)).toHaveTextContent(T.spzWlaczone(2));
+  });
+
+  it('akcja wiersza „Karta pola" otwiera panel pola E-11 (realna ścieżka store)', async () => {
+    const user = userEvent.setup();
+    render(<EkranZabezpieczenAutomatyki />);
+    await user.click(screen.getByTestId(`mvd-za-otworz-pole-${POLE_STEROWNIKA}`));
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-11');
+  });
+
+  it('akcja „Koordynacja zabezpieczeń" otwiera ekran E-28', async () => {
+    const user = userEvent.setup();
+    render(<EkranZabezpieczenAutomatyki />);
     await user.click(screen.getByTestId('mvd-za-nastepny'));
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-28');
+  });
+
+  it('błąd odczytu read modelu nastaw — komunikat z przyczyną', async () => {
+    mockWidok.mockRejectedValue(new Error('HTTP 500'));
+    render(<EkranZabezpieczenAutomatyki />);
+    expect(await screen.findByTestId('mvd-za-nastawy-blad')).toHaveTextContent('HTTP 500');
   });
 });
 
 /**
- * Sekcja NASTAWY (karta BIEG-ZABEZPIECZEN-Z-MODELU): wyłączniki w torze z akcją zależną od stanu
- * i edytory nastaw urządzeń modelu. Wejście: PRAWDZIWY read model `protection-view` sieci złotej
- * z zabezpieczeniami magistrali (generator fikstur). Iloczyn cech: {wyłącznik: bez przekładnika,
- * z przekładnikiem bez zabezpieczenia, z przekładnikiem i zabezpieczeniem} × {urządzenia
- * z nastawami: są, brak} × {odczyt: udany, błąd}.
+ * Wyłączniki liniowe bez sterownika (prowadzenie do kreatorów). Sieć złota ma przy obu wyłącznikach
+ * liniowych SN przekładnik i sterownik; stany „bez przekładnika" i „bez sterownika" to zmiana JEDNEGO
+ * pola realnego wiersza read modelu.
  */
-describe('EkranZabezpieczenAutomatyki — sekcja nastaw', () => {
-  const WIDOK = widokSceny as unknown as ProtectionViewResponse;
-  const mockWidok = vi.mocked(fetchProtectionView);
-  const otworzFormularz = vi.fn();
-  let licznikPrzypadkow = 0;
+describe('EkranZabezpieczenAutomatyki — wyłączniki liniowe bez sterownika', () => {
+  const [KOMPLETNY] = WIDOK.wylaczniki_liniowe!.filter((w) => w.zabezpieczenia.length > 0);
 
   beforeEach(() => {
-    // Osobny przypadek na test — pamięć podręczna read modelu jest kluczowana przypadkiem.
-    licznikPrzypadkow += 1;
-    useAppStateStore.getState().setActiveProject('projekt-za', 'Projekt');
-    useAppStateStore.getState().setActiveCase(`case-za-${licznikPrzypadkow}`, 'Wariant bazowy');
+    aktywujProjekt();
     useNetworkBuildStore.setState({ openOperationForm: otworzFormularz });
   });
 
-  const [KOMPLETNY] = WIDOK.wylaczniki_liniowe!.filter((w) => w.zabezpieczenia.length > 0);
-  // Sieć złota ma przy obu wyłącznikach liniowych SN przekładnik i zabezpieczenie; stan „bez
-  // przekładnika" to zmiana JEDNEGO pola realnego wiersza (lista backendu nie zawiera aparatów
-  // strony nN — `enm.wylaczniki_liniowe.odmowa_kotwicy_wylacznika`).
-  const BEZ_CT = { ...KOMPLETNY, przekladniki: [], zabezpieczenia: [] };
-
   it('wyłącznik bez przekładnika → „Dodaj przekładnik" z kotwicą wyłącznika', async () => {
-    mockWidok.mockResolvedValue({ ...WIDOK, wylaczniki_liniowe: [BEZ_CT] });
+    const bezCt = { ...KOMPLETNY, przekladniki: [], zabezpieczenia: [] };
+    mockWidok.mockResolvedValue({ ...WIDOK, wylaczniki_liniowe: [bezCt] });
     render(<EkranZabezpieczenAutomatyki />);
-    const wiersz = await screen.findByTestId(`mvd-za-wylacznik-${BEZ_CT.ref_id}`);
-    expect(within(wiersz).queryByTestId(`mvd-za-dodaj-zabezpieczenie-${BEZ_CT.ref_id}`)).toBeNull();
-    await userEvent.click(within(wiersz).getByTestId(`mvd-za-dodaj-ct-${BEZ_CT.ref_id}`));
-    expect(otworzFormularz).toHaveBeenCalledWith('add_ct', {
-      kotwica: 'wylacznik',
-      breaker_ref: BEZ_CT.ref_id,
-    });
+    const wiersz = await screen.findByTestId(`mvd-za-wylacznik-${bezCt.ref_id}`);
+    expect(within(wiersz).queryByTestId(`mvd-za-dodaj-zabezpieczenie-${bezCt.ref_id}`)).toBeNull();
+    await userEvent.click(within(wiersz).getByTestId(`mvd-za-dodaj-ct-${bezCt.ref_id}`));
+    expect(otworzFormularz).toHaveBeenCalledWith('add_ct', { kotwica: 'wylacznik', breaker_ref: bezCt.ref_id });
   });
 
-  it('wyłącznik z przekładnikiem bez zabezpieczenia → „Dodaj zabezpieczenie"', async () => {
-    const bezZabezpieczenia = { ...KOMPLETNY, zabezpieczenia: [] };
-    mockWidok.mockResolvedValue({
-      ...WIDOK,
-      wylaczniki_liniowe: [bezZabezpieczenia],
-    });
+  it('wyłącznik z przekładnikiem bez sterownika → „Dodaj sterownik" z kotwicą wyłącznika', async () => {
+    const bezSterownika = { ...KOMPLETNY, zabezpieczenia: [] };
+    mockWidok.mockResolvedValue({ ...WIDOK, wylaczniki_liniowe: [bezSterownika] });
     render(<EkranZabezpieczenAutomatyki />);
     const wiersz = await screen.findByTestId(`mvd-za-wylacznik-${KOMPLETNY.ref_id}`);
     expect(within(wiersz).queryByTestId(`mvd-za-dodaj-ct-${KOMPLETNY.ref_id}`)).toBeNull();
     await userEvent.click(within(wiersz).getByTestId(`mvd-za-dodaj-zabezpieczenie-${KOMPLETNY.ref_id}`));
-    expect(otworzFormularz).toHaveBeenCalledWith('add_relay', {
-      kotwica: 'wylacznik',
-      breaker_ref: KOMPLETNY.ref_id,
-    });
+    expect(otworzFormularz).toHaveBeenCalledWith('add_relay', { kotwica: 'wylacznik', breaker_ref: KOMPLETNY.ref_id });
   });
 
-  it('wyłącznik z przekładnikiem i zabezpieczeniem — bez akcji; edytor każdego urządzenia modelu', async () => {
-    mockWidok.mockResolvedValue(WIDOK);
+  it('wyłączniki kompletne — sekcji prowadzenia nie ma (sterownik jest wierszem tabeli)', async () => {
     render(<EkranZabezpieczenAutomatyki />);
-    const wiersz = await screen.findByTestId(`mvd-za-wylacznik-${KOMPLETNY.ref_id}`);
-    expect(within(wiersz).queryByRole('button')).toBeNull();
-    for (const wpis of WIDOK.assignments) {
-      const edytor = await screen.findByTestId(`mvd-za-edytor-${wpis.device_id}`);
-      expect(edytor).toHaveTextContent(wpis.nastawy!.nazwa_pl);
-    }
-    expect(screen.queryByTestId('mvd-za-nastawy-brak')).toBeNull();
-  });
-
-  it('sieć bez pól rozdzielni — stan zerowy pól ORAZ sekcja nastaw wyłączników w torze', async () => {
-    ustawReadModel([]);
-    mockWidok.mockResolvedValue(WIDOK);
-    render(<EkranZabezpieczenAutomatyki />);
-    expect(screen.getByTestId('mvd-za-brak-pol')).toBeInTheDocument();
-    expect(await screen.findByTestId(`mvd-za-wylacznik-${KOMPLETNY.ref_id}`)).toBeInTheDocument();
-    for (const wpis of WIDOK.assignments) {
-      expect(await screen.findByTestId(`mvd-za-edytor-${wpis.device_id}`)).toBeInTheDocument();
-    }
-  });
-
-  it('model bez zabezpieczeń nadprądowych — nazwany stan, nie pusta sekcja', async () => {
-    mockWidok.mockResolvedValue({ ...WIDOK, assignments: [], wylaczniki_liniowe: [] });
-    render(<EkranZabezpieczenAutomatyki />);
-    expect(await screen.findByTestId('mvd-za-nastawy-brak')).toHaveTextContent(T.nastawyBrak);
+    // Read model wczytany (wynik odczytu widoczny w edytorze) — sekcja prowadzenia nadal nieobecna.
+    await userEvent.click(screen.getByTestId(`mvd-za-nastawy-${LINIOWE[0].ref_id}`));
+    expect(await screen.findByTestId(`mvd-za-edytor-${LINIOWE[0].ref_id}-gotowe`)).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-za-wylaczniki')).toBeNull();
-  });
-
-  it('błąd odczytu read modelu — komunikat z przyczyną, bez edytorów', async () => {
-    mockWidok.mockRejectedValue(new Error('HTTP 500'));
-    render(<EkranZabezpieczenAutomatyki />);
-    expect(await screen.findByTestId('mvd-za-nastawy-blad')).toHaveTextContent('HTTP 500');
-    expect(screen.queryByTestId(/^mvd-za-edytor-/)).toBeNull();
   });
 });

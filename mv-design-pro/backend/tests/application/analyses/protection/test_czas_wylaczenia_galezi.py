@@ -44,7 +44,7 @@ from network_model.solvers.short_circuit_contributions import (
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
-from tests.utils.sterownik import sterownik
+from tests.utils.sterownik import sterownik, stopien
 
 # ---------------------------------------------------------------------------
 # Fixtures: GPZ -[wylacznik CB1]- BUS2 -[kabel A]- BUS3 -[kabel B]- BUS4
@@ -213,7 +213,7 @@ def _zabezpieczenie(
     threshold_a: float = 600.0,
     time_multiplier: float | None = 0.2,
     time_delay_s: float | None = None,
-    function_type: str = "overcurrent_51",
+    kod: str = "51",
     is_enabled: bool = True,
 ) -> ProtectionAssignment:
     """Zabezpieczenie z modelu: próg po stronie PIERWOTNEJ (jednostka jawna, PZ-09),
@@ -226,14 +226,14 @@ def _zabezpieczenie(
         catalog_ref="REF-OC-200",
         is_enabled=is_enabled,
         stopnie=[
-            {
-                "function_type": function_type,
-                "threshold_a": threshold_a,
-                "threshold_unit": "A_PIERWOTNY",
-                "curve_type": curve_type,
-                "time_multiplier": time_multiplier,
-                "time_delay_s": time_delay_s,
-            }
+            stopien(
+                kod,
+                prog=threshold_a,
+                jednostka_progu="A_PIERWOTNY",
+                krzywa=curve_type,
+                tms=time_multiplier,
+                zwloka_s=time_delay_s,
+            )
         ],
     )
 
@@ -277,7 +277,7 @@ def test_czas_z_charakterystyki_odwrotnej_zgadza_sie_z_rachunkiem_recznym() -> N
     assert pozycja.z_nastawy is True
     assert pozycja.tk_s == pytest.approx(0.594119, abs=1e-5)
     assert pozycja.urzadzenie_ref == ref_to_graph_id("CB1")
-    assert pozycja.funkcja == "overcurrent_51"
+    assert pozycja.funkcja == "51"  # kod funkcji rejestru (karta OCHRONA-JEDNO-ZRODLO)
     assert pozycja.prad_galezi_a == pytest.approx(6000.0)
     assert pozycja.prad_rozruchowy_a == pytest.approx(600.0)
     assert pozycja.krzywa == "IEC_SI"
@@ -398,7 +398,7 @@ def test_funkcja_ziemnozwarciowa_nie_wyznacza_czasu_zwarcia_miedzyfazowego() -> 
     czasy = wyznacz_czasy_wylaczenia(
         graph=_graf(),
         sc_result=_sc_result(prad_a=6000.0),
-        nastawy_aparatow=_nastawy(_zabezpieczenie(function_type="earth_fault_51N")),
+        nastawy_aparatow=_nastawy(_zabezpieczenie(kod="51N")),
     )
     assert czasy["kabel_A"].tk_s is None
     assert czasy["kabel_A"].zrodlo == ZRODLO_BRAK_NASTAW

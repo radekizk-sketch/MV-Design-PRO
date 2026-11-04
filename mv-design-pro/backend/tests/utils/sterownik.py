@@ -59,11 +59,7 @@ def rekord_sterownika(
     """Rekord sterownika w kształcie migawki (``model_dump(mode="json")``)."""
     refy = _refy(stopnie)
     wylaczniki = (
-        []
-        if wylacznik is None
-        else [wylacznik]
-        if isinstance(wylacznik, str)
-        else list(wylacznik)
+        [] if wylacznik is None else [wylacznik] if isinstance(wylacznik, str) else list(wylacznik)
     )
     wylaczone_refy = set(wylaczone)
     spz = set(pobudza_spz)
@@ -89,6 +85,14 @@ def rekord_sterownika(
         and (wpis := FUNKCJE_EAZ.get(kod)) is not None
         and wpis.rodzaj == "ZABEZPIECZENIE"
     ]
+    if wylaczniki and not macierz and all(kod in FUNKCJE_EAZ for kod, _ in stopnie):
+        # Wyłącznik bez funkcji zabezpieczeniowej nie trafia do macierzy wyzwoleń — cichy
+        # sterownik „bez wyłącznika" ukrywałby błąd fikstury (odmowa zamiast zgadywania).
+        # Kod spoza rejestru odrzuca kontrakt modelu (`ProtectionAssignment`) — fikstura go
+        # przepuszcza, żeby test kontraktu widział odmowę modelu, nie odmowę pomocnika.
+        raise ValueError(
+            f"sterownik {ref_id!r}: wyłącznik {wylaczniki} podany bez funkcji zabezpieczeniowej"
+        )
     wejscia_rekordu = {"ct_ref": ct_ref, "vt_ref": vt_ref, **dict(wejscia or {})}
     return {
         "ref_id": ref_id,

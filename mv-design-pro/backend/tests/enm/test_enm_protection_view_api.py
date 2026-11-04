@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.utils.sterownik import rekord_sterownika, stopien
 
 
 def _seed_enm(client: TestClient, case_id: str, payload: dict) -> None:
@@ -183,7 +184,6 @@ def _enm_with_protection() -> dict:
                 "substation_ref": "sub_1",
                 "bus_ref": "bus_sn_b",
                 "equipment_refs": ["cb_in_1", "line_1"],
-                "protection_ref": "prot_oc_1",
             },
         ],
         "junctions": [],
@@ -210,37 +210,42 @@ def _enm_with_protection() -> dict:
         "protection_assignments": [
             {
                 "id": "00000000-0000-0000-0000-000000010110",
-                "ref_id": "prot_oc_1",
-                "name": "Zabezpieczenie pola IN",
                 "tags": [],
                 "meta": {},
-                "breaker_ref": "cb_in_1",
-                "ct_ref": "ct_in_1",
                 # Karta BIEG-ZABEZPIECZEN-Z-MODELU: urządzenie kompletne — pozycja katalogu
                 # z zakresami (×In) i progi ze ZADEKLAROWANĄ stroną przekładnika (PZ-09).
                 # Stopień zależny nie ma zwłoki niezależnej (sprzeczność odrzucana przy zapisie).
-                "catalog_ref": "REF-OC-200",
-                "device_type": "overcurrent",
-                "settings": [
-                    {
-                        "function_type": "overcurrent_51",
-                        "threshold_a": 240.0,
-                        "threshold_unit": "A_PIERWOTNY",
-                        "curve_type": "IEC_SI",
-                    },
-                    {
-                        "function_type": "overcurrent_50",
-                        "threshold_a": 800.0,
-                        "threshold_unit": "A_PIERWOTNY",
-                        "time_delay_s": 0.05,
-                        "curve_type": "DT",
-                    },
-                ],
-                "is_enabled": True,
+                **rekord_sterownika(
+                    "prot_oc_1",
+                    name="Zabezpieczenie pola IN",
+                    bay_ref="bay_in_1",
+                    wylacznik="cb_in_1",
+                    ct_ref="ct_in_1",
+                    catalog_ref="REF-OC-200",
+                    stopnie=[
+                        stopien("51", prog=240.0, jednostka_progu="A_PIERWOTNY", krzywa="IEC_SI"),
+                        stopien(
+                            "50",
+                            prog=800.0,
+                            jednostka_progu="A_PIERWOTNY",
+                            zwloka_s=0.05,
+                            krzywa="DT",
+                        ),
+                    ],
+                ),
             },
         ],
         "branch_points": [],
     }
+
+
+def _ustaw_nastawe(sterownik: dict, funkcja_ref: str, klucz: str, wartosc: object) -> None:
+    """Nastawa funkcji w grupie aktywnej rekordu sterownika; ``None`` zdejmuje nastawę."""
+    (grupa,) = (g for g in sterownik["grupy_nastaw"] if g["numer"] == sterownik["aktywna_grupa"])
+    wpis = next(f for f in grupa["funkcje"] if f["funkcja_ref"] == funkcja_ref)
+    wpis["nastawy"] = [n for n in wpis["nastawy"] if n["klucz"] != klucz]
+    if wartosc is not None:
+        wpis["nastawy"].append({"klucz": klucz, "wartosc": wartosc, "pochodzenie": "PROJEKTANT"})
 
 
 def test_get_protection_view_empty(client):
@@ -358,7 +363,6 @@ KODY_BRAKU_KRZYWEJ_IT = {
     "time_multiplier",
     "definite_time",
     "curve_type",
-    "threshold_unit",
     "ct_ratio",
     "it_curve_points",
 }
@@ -367,24 +371,24 @@ KODY_BRAKU_KRZYWEJ_IT = {
 @pytest.mark.parametrize(
     ("zmiana", "brak"),
     [
-        ({"time_delay_s": None}, "definite_time"),
-        ({"curve_type": None}, "curve_type"),
-        ({"threshold_unit": None}, "threshold_unit"),
+        ({"zwloka_s": None}, "definite_time"),
+        ({"krzywa": None}, "curve_type"),
     ],
-    ids=["bez_zwloki", "bez_charakterystyki", "prog_bez_strony_przekladnika"],
+    ids=["bez_zwloki", "bez_charakterystyki"],
 )
 def test_protection_view_brak_danych_stopnia_bezzwlocznego_nazwany(client, zmiana, brak):
-    """Stopień bezzwłoczny (50 I>>, DT) bez zwłoki, bez charakterystyki albo z progiem bez
-    strony przekładnika → krzywa I-t NIE jest rysowana, brak jest nazwany kodem z pary
-    backend↔interfejs. Czerwony na bazie: bez zwłoki read model podstawiał podłogę czasową
+    """Stopień bezzwłoczny (50 I>>, DT) bez zwłoki albo bez charakterystyki → krzywa I-t NIE
+    jest rysowana, brak jest nazwany kodem z pary backend↔interfejs (próg bez strony
+    przekładnika nie wchodzi do modelu — PZ-09, `test_prog_bez_strony_przekladnika_odrzuca_model`;
+    brak przekładni — kod ``ct_ratio``, test niżej). Czerwony na bazie: bez zwłoki read model podstawiał podłogę czasową
     solvera 0,001 s (cichy zapas „DT bez zwłoki = 0 s"), sprzeczny z jedną ścieżką oceny,
     która takiej nastawy nie ocenia."""
     import copy
 
     payload = copy.deepcopy(_enm_with_protection())
     device = next(d for d in payload["protection_assignments"] if d["ref_id"] == "prot_oc_1")
-    inst_setting = next(s for s in device["settings"] if s["function_type"] == "overcurrent_50")
-    inst_setting.update(zmiana)
+    for klucz, wartosc in zmiana.items():
+        _ustaw_nastawe(device, "50", klucz, wartosc)
     case_id = _nowy_przypadek(client)
     _seed_enm(client, case_id, payload)
 
@@ -398,6 +402,31 @@ def test_protection_view_brak_danych_stopnia_bezzwlocznego_nazwany(client, zmian
     assert set(inst["it_curve_missing_data"]) <= KODY_BRAKU_KRZYWEJ_IT
 
 
+def test_protection_view_prog_wtorny_bez_przekladni_nazwany(client):
+    """Próg po stronie WTÓRNEJ, a wejście prądów fazowych bez przekładnika (przekładni nie ma
+    z czego wziąć) — prądu pierwotnego nie ma, krzywa I-t nie jest rysowana, brak nazwany kodem
+    ``ct_ratio`` (para z interfejsem)."""
+    import copy
+
+    payload = copy.deepcopy(_enm_with_protection())
+    device = next(d for d in payload["protection_assignments"] if d["ref_id"] == "prot_oc_1")
+    _ustaw_nastawe(device, "50", "jednostka_progu", "A_WTORNY")
+    _ustaw_nastawe(device, "50", "prog", 4.0)
+    device["wejscia"].pop("ct_ref")
+    case_id = _nowy_przypadek(client)
+    _seed_enm(client, case_id, payload)
+
+    data = client.get(f"/api/cases/{case_id}/enm/protection-view").json()
+    assignment = next(item for item in data["assignments"] if item["device_id"] == "prot_oc_1")
+    inst = next(
+        fn for fn in assignment["settings_summary"]["functions"] if fn["code"] == "OVERCURRENT_INST"
+    )
+    assert inst["setpoint"] is None
+    assert inst["it_curve"] is None
+    assert inst["it_curve_missing_data"] == ["ct_ratio"]
+    assert set(inst["it_curve_missing_data"]) <= KODY_BRAKU_KRZYWEJ_IT
+
+
 def test_protection_view_inverse_it_curve_with_tms_from_solver(client):
     """Charakterystyka odwrotna (IEC_SI, 51 I>) Z nastawą TMS → krzywa I-t z solvera.
 
@@ -408,8 +437,7 @@ def test_protection_view_inverse_it_curve_with_tms_from_solver(client):
 
     payload = copy.deepcopy(_enm_with_protection())
     device = next(d for d in payload["protection_assignments"] if d["ref_id"] == "prot_oc_1")
-    inverse_setting = next(s for s in device["settings"] if s["curve_type"] == "IEC_SI")
-    inverse_setting["time_multiplier"] = 0.2  # TMS
+    _ustaw_nastawe(device, "51", "tms", 0.2)  # TMS stopnia IEC_SI
     case_id = _nowy_przypadek(client)
     _seed_enm(client, case_id, payload)
 

@@ -30,8 +30,6 @@
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
-      "protection_codes": [],
-      "protection_ref": null,
       "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -43,8 +41,7 @@
         "gpz_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     },
     {
       "apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -91,8 +88,6 @@
           "designation": "Q1",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::0",
           "earthing_role": null,
-          "funkcje_eaz_wylaczajace": [],
-          "funkcje_eaz_zasilane": [],
           "is_controllable": true,
           "kind": "DS",
           "linked_ref": null,
@@ -127,8 +122,6 @@
           "designation": "Q0",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1",
           "earthing_role": null,
-          "funkcje_eaz_wylaczajace": [],
-          "funkcje_eaz_zasilane": [],
           "is_controllable": true,
           "kind": "CB",
           "linked_ref": null,
@@ -163,8 +156,6 @@
           "designation": "T1",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::2",
           "earthing_role": null,
-          "funkcje_eaz_wylaczajace": [],
-          "funkcje_eaz_zasilane": [],
           "is_controllable": false,
           "kind": "CT",
           "linked_ref": null,
@@ -199,8 +190,6 @@
           "designation": "T2",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::3",
           "earthing_role": null,
-          "funkcje_eaz_wylaczajace": [],
-          "funkcje_eaz_zasilane": [],
           "is_controllable": false,
           "kind": "VT",
           "linked_ref": null,
@@ -231,8 +220,6 @@
           "designation": "Q9",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::4",
           "earthing_role": null,
-          "funkcje_eaz_wylaczajace": [],
-          "funkcje_eaz_zasilane": [],
           "is_controllable": true,
           "kind": "DS",
           "linked_ref": null,
@@ -267,8 +254,6 @@
           "designation": "Q8",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::5",
           "earthing_role": "field_earth",
-          "funkcje_eaz_wylaczajace": [],
-          "funkcje_eaz_zasilane": [],
           "is_controllable": false,
           "kind": "ES",
           "linked_ref": null,
@@ -299,8 +284,6 @@
           "designation": "Z1",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::6",
           "earthing_role": "surge_ground",
-          "funkcje_eaz_wylaczajace": [],
-          "funkcje_eaz_zasilane": [],
           "is_controllable": false,
           "kind": "SURGE_ARRESTER",
           "linked_ref": null,
@@ -331,8 +314,6 @@
           "designation": "GK",
           "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::7",
           "earthing_role": null,
-          "funkcje_eaz_wylaczajace": [],
-          "funkcje_eaz_zasilane": [],
           "is_controllable": false,
           "kind": "CABLE_HEAD",
           "linked_ref": null,
@@ -363,15 +344,6 @@
           "zrodlo_zaczepu": null
         }
       ],
-      "protection_codes": [
-        "67",
-        "27",
-        "59",
-        "81U",
-        "81O",
-        "81R"
-      ],
-      "protection_ref": null,
       "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
       "rodzaj_pomiaru": null,
       "runtime_state": null,
@@ -384,8 +356,7 @@
         "nn_source_field"
       ],
       "terminal_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal",
-      "wybor_bloku": null,
-      "zrodlo_u0_ref": null
+      "wybor_bloku": null
     }
   ],
   "branch_points": [],
@@ -721,7 +692,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "75c6000a100655f15aa6bfc12f0192b449a28cb1eb9a49296eceaaeb02275b91",
+    "hash_sha256": "3d41b7a83068a8d129d07d92abf841725357fe232a8acd446a68f5aebeb92c86",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -743,7 +714,112 @@
   ],
   "loads": [],
   "measurements": [],
-  "protection_assignments": [],
+  "protection_assignments": [
+    {
+      "aktywna_grupa": 1,
+      "bay_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "charakterystyki_ref": null,
+      "funkcje": [
+        {
+          "kod": "67",
+          "ref": "67",
+          "wlaczona": true
+        },
+        {
+          "kod": "27",
+          "ref": "27",
+          "wlaczona": true
+        },
+        {
+          "kod": "59",
+          "ref": "59",
+          "wlaczona": true
+        },
+        {
+          "kod": "81U",
+          "ref": "81U",
+          "wlaczona": true
+        },
+        {
+          "kod": "81O",
+          "ref": "81O",
+          "wlaczona": true
+        },
+        {
+          "kod": "81R",
+          "ref": "81R",
+          "wlaczona": true
+        }
+      ],
+      "grupy_nastaw": [],
+      "id": "35ad4027-aa67-5ad8-b334-3471396ba891",
+      "is_enabled": true,
+      "macierz_wyzwolen": [
+        {
+          "aparat_refs": [
+            "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1"
+          ],
+          "funkcja_ref": "67",
+          "pobudza_spz": false
+        },
+        {
+          "aparat_refs": [
+            "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1"
+          ],
+          "funkcja_ref": "27",
+          "pobudza_spz": false
+        },
+        {
+          "aparat_refs": [
+            "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1"
+          ],
+          "funkcja_ref": "59",
+          "pobudza_spz": false
+        },
+        {
+          "aparat_refs": [
+            "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1"
+          ],
+          "funkcja_ref": "81U",
+          "pobudza_spz": false
+        },
+        {
+          "aparat_refs": [
+            "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1"
+          ],
+          "funkcja_ref": "81O",
+          "pobudza_spz": false
+        },
+        {
+          "aparat_refs": [
+            "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1"
+          ],
+          "funkcja_ref": "81R",
+          "pobudza_spz": false
+        }
+      ],
+      "materialized_params": null,
+      "meta": {},
+      "name": "Sterownik pola Pole źródłowe BESS",
+      "overrides": [],
+      "parameter_source": null,
+      "prad_znamionowy_wejscia_a": null,
+      "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field/sterownik",
+      "source_mode": null,
+      "tags": [],
+      "wejscia": {
+        "ct_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::2",
+        "ct_strony_2_refs": [],
+        "i0_ct_ref": null,
+        "i0_uklad": null,
+        "u0_uklad": null,
+        "u0_vt_ref": null,
+        "vt_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::3"
+      }
+    }
+  ],
   "shunt_capacitors": [],
   "sources": [
     {

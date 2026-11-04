@@ -16743,10 +16743,18 @@
    },
    "ZabezpieczeniePola": {
     "additionalProperties": false,
+    "description": "Sterownik zabezpieczeń (IED) związany z elementem: jego pole, aparat z macierzy\nwyzwoleń albo przekładnik przypięty do wejścia (jeden nośnik — ADR-022).",
     "properties": {
      "aktywne": {
       "title": "Aktywne",
       "type": "boolean"
+     },
+     "kody_funkcji": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Kody Funkcji",
+      "type": "array"
      },
      "nazwa": {
       "title": "Nazwa",
@@ -16756,20 +16764,19 @@
       "title": "Ref Id",
       "type": "string"
      },
-     "rodzaj": {
-      "title": "Rodzaj",
-      "type": "string"
-     },
-     "wylacznik_ref": {
-      "title": "Wylacznik Ref",
-      "type": "string"
+     "wylaczniki_refs": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Wylaczniki Refs",
+      "type": "array"
      }
     },
     "required": [
      "ref_id",
      "nazwa",
-     "rodzaj",
-     "wylacznik_ref",
+     "kody_funkcji",
+     "wylaczniki_refs",
      "aktywne"
     ],
     "title": "ZabezpieczeniePola",
@@ -16968,6 +16975,43 @@
       "title": "Name",
       "type": "string"
      },
+     "protection_groups": {
+      "additionalProperties": {
+       "maximum": 4.0,
+       "minimum": 1.0,
+       "type": "integer"
+      },
+      "description": "Sterownik zabezpieczeń (ref_id) → grupa nastaw 1–4 wybrana w przypadku",
+      "title": "Protection Groups",
+      "type": "object"
+     },
+     "protection_overrides": {
+      "additionalProperties": {
+       "additionalProperties": {
+        "additionalProperties": {
+         "anyOf": [
+          {
+           "type": "number"
+          },
+          {
+           "type": "string"
+          },
+          {
+           "type": "boolean"
+          },
+          {
+           "type": "null"
+          }
+         ]
+        },
+        "type": "object"
+       },
+       "type": "object"
+      },
+      "description": "Delta nastaw przypadku: sterownik (ref_id) → funkcja (ref) → nastawa ze schematu rejestru funkcji → wartość (null zdejmuje nastawę)",
+      "title": "Protection Overrides",
+      "type": "object"
+     },
      "scenario_id": {
       "anyOf": [
        {
@@ -16989,14 +17033,12 @@
        "type": "string"
       },
       "description": "Łącznik (ref_id) → położenie w scenariuszu",
-      "minProperties": 1,
       "title": "Switch States",
       "type": "object"
      }
     },
     "required": [
-     "name",
-     "switch_states"
+     "name"
     ],
     "title": "ZapisScenariuszaLaczeniowego",
     "type": "object"
@@ -30907,7 +30949,7 @@
     ]
    },
    "post": {
-    "description": "Zapisz scenariusz nazwany ze stanami łączników.\n\n422 — stan wskazuje element, którego model nie ma, albo element niebędący łącznikiem;\n404 — ``scenario_id`` nieistniejące. Nowa rewizja istniejącego scenariusza zachowuje\njego pozostałe nadpisania (harmonogram dynamiki, nastawy) — zmienia nazwę i stany.",
+    "description": "Zapisz scenariusz nazwany ze stanami łączników i wyborem przypadku dla zabezpieczeń.\n\n422 — stan wskazuje element, którego model nie ma, albo element niebędący łącznikiem;\nwybór grupy albo delta nastaw wskazuje sterownik spoza modelu, funkcję spoza sterownika\nalbo nastawę sprzeczną ze schematem rejestru funkcji; 404 — ``scenario_id`` nieistniejące.\nNowa rewizja istniejącego scenariusza zachowuje jego pozostałe nadpisania (harmonogram\ndynamiki, nastawy źródeł) — zmienia nazwę, stany łączników i deltę zabezpieczeń (żądanie\nniesie ich pełny stan).",
     "operationId": "post_scenariusz_laczeniowy_api_scenariusze_laczeniowe_study_cases__case_id__post",
     "parameters": [
      {

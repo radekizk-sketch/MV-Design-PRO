@@ -2001,7 +2001,7 @@ if (creator === 'arcflash') {
         id: 'bay-odplyw-1', ref_id: 'bay-odplyw-1', name: `${FIELD_ROLE_LABEL_PL.LINIA_OUT} L-1`,
         tags: [], meta: {}, bay_role: 'OUT', substation_ref: STACJA_DEMO,
         bus_ref: SZYNA_SN_STACJI_DEMO,
-        gpz_section_id: null, equipment_refs: [], protection_ref: null,
+        gpz_section_id: null, equipment_refs: [],
       }],
     },
   } as never);

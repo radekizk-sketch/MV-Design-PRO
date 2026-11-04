@@ -1239,7 +1239,7 @@ def _naloz_delte_zabezpieczen(
         return
     # Import leniwy: reguła nastaw czyta rejestr funkcji (cykl przez pakiet `enm`).
     from .nastawy_zabezpieczen import bledy_sterownika
-    from .zabezpieczenie import zapisz_nastawy_funkcji
+    from .zabezpieczenie import aktywna_grupa_sterownika, zapisz_nastawy_funkcji
 
     sterowniki = _indeks_elementow(snapshot, "protection_assignments")
     zmienione: set[str] = set()
@@ -1268,11 +1268,13 @@ def _naloz_delte_zabezpieczen(
         if sterownik is None:
             raise _nieprzystaje(scenariusz, snapshot, ref_id, "brak sterownika zabezpieczeń")
         refy_funkcji = {str(f.get("ref")) for f in sterownik.get("funkcje") or []}
-        numer = int(sterownik.get("aktywna_grupa") or 1)
+        numer = aktywna_grupa_sterownika(sterownik)
         for funkcja_ref, delta in sorted(funkcje.items()):
             if funkcja_ref not in refy_funkcji:
                 raise ScenariuszNieprzystajeError(
-                    scenariusz.scenario_id, ref_id, f"sterownik nie ma funkcji {funkcja_ref!r}"
+                    scenariusz.scenario_id,
+                    ref_id,
+                    "sterownik nie ma funkcji, której nastawy zmienia scenariusz",
                 )
             grupa = next(
                 (g for g in sterownik.get("grupy_nastaw") or [] if g.get("numer") == numer),

@@ -28,7 +28,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from network_model.catalog.gazy_fluorowane import STANY_OBIEKTU, StanObiektu
 from network_model.catalog.obwody_wtorne_pola import napedy_aparatow_pola
@@ -39,7 +39,14 @@ from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from .migrations.klucze_meta_pola import KLUCZE_META_ZAKAZANE
 from .models import Bay, EnergyNetworkModel, ProtectionAssignment
 from .rola_pola_sn import kanoniczna_rola_pola_sn, nazwa_roli_pola_nn, nazwa_roli_pola_sn
-from .zabezpieczenie import ZACHOWAJ_ZRODLO_U0, ustaw_funkcje_pola
+from .zabezpieczenie import (
+    ZACHOWAJ_ZRODLO_U0,
+    domyslna_nazwa_sterownika_pola,
+    ustaw_funkcje_pola,
+)
+
+if TYPE_CHECKING:
+    from network_model.catalog.bay_templates import BayTemplate
 
 #: Kolejność ról przy grupowaniu pól po szynie — pola liniowe wyjściowe przed odgałęźnymi,
 #: te przed wejściowymi (kolejność wyboru wolnego pola startu ciągu; ta sama, którą miała
@@ -390,7 +397,6 @@ def zbuduj_pole(
     gpz_section_id: str | None = None,
     equipment_refs: Iterable[str] | None = None,
     funkcje_eaz: Iterable[str] | None = None,
-    katalog_sterownika_ref: str | None = None,
     bay_template_ref: str | None = None,
     switchgear_family_ref: str | None = None,
     manufacturer_ref: str | None = None,
@@ -419,10 +425,11 @@ def zbuduj_pole(
     zastanego zapisu (migracja, uzupełnienie pól ZKSN z katalogu), które stanu nie znają.
     Aparat pola bez własnego stanu DZIEDZICZY stan pola (aparat powstaje razem z polem).
 
-    ``funkcje_eaz`` (zestaw funkcji szablonu pola) i ``katalog_sterownika_ref`` (pozycja
-    katalogu urządzenia zabezpieczeniowego) nie są polami `Bay`: builder dołącza je pod
-    kluczem ``KLUCZ_STEROWNIKA_POLA``, a `dodaj_pole` zakłada z nich sterownik pola (karta
-    OCHRONA-JEDNO-ZRODLO — jedna struktura zabezpieczenia, `enm.zabezpieczenie`).
+    ``funkcje_eaz`` (zestaw funkcji szablonu pola) nie jest polem `Bay`: builder dołącza go pod
+    kluczem ``KLUCZ_STEROWNIKA_POLA``, a `dodaj_pole` zakłada z niego sterownik pola (karta
+    OCHRONA-JEDNO-ZRODLO — jedna struktura zabezpieczenia, `enm.zabezpieczenie`). Urządzenie
+    zabezpieczeniowe (pozycja katalogu) dobiera WYŁĄCZNIE `add_relay` — z bramą katalogową
+    i tożsamością urządzenia z rekordu katalogu.
 
     Pozostałe argumenty są 1:1 polami `Bay`; struktury zagnieżdżone kopiowane GŁĘBOKO (builder jest
     właścicielem tego, co zapisuje — wołający nie trzyma uchwytu do wnętrza migawki).
@@ -490,11 +497,10 @@ def zbuduj_pole(
     }
     wynik = waliduj_rekord_pola(rekord)
     kody = [str(k) for k in (funkcje_eaz or [])]
-    katalog = napis_lub_none(katalog_sterownika_ref)
-    if kody or katalog:
-        # Zestaw funkcji szablonu i pozycja katalogu urządzenia NIE są polami rekordu pola —
-        # jadą do JEDYNEGO pisarza sterownika (`dodaj_pole` → `enm.zabezpieczenie`).
-        wynik[KLUCZ_STEROWNIKA_POLA] = {"kody": kody, "katalog_ref": katalog}
+    if kody:
+        # Zestaw funkcji szablonu NIE jest polem rekordu pola — jedzie do JEDYNEGO pisarza
+        # sterownika (`dodaj_pole` → `enm.zabezpieczenie`).
+        wynik[KLUCZ_STEROWNIKA_POLA] = {"kody": kody}
     return wynik
 
 
@@ -643,7 +649,7 @@ def _wszystkie_ref_id(enm: Mapping[str, Any]) -> set[str]:
     return refs
 
 
-def _szablon_pola(rekord: Mapping[str, Any]) -> Any:
+def _szablon_pola(rekord: Mapping[str, Any]) -> BayTemplate | None:
     # Import w funkcji: `bay_templates` importuje `enm.rola_pola_sn`, a pakiet `enm` przy
     # inicjalizacji ładuje ten moduł (walidator → `gaz_fluorowany_pola` → `pola`) — import na
     # szczycie zamknąłby cykl dla wołającego, który zaczyna od katalogu szablonów.
@@ -674,8 +680,7 @@ def zapisz_sterownik_pola(
     rekord: Mapping[str, Any],
     *,
     kody: Iterable[str] | None,
-    katalog_ref: str | None = None,
-    zrodlo_u0_ref: Any = ZACHOWAJ_ZRODLO_U0,
+    zrodlo_u0_ref: str | None | object = ZACHOWAJ_ZRODLO_U0,
     aparaty_wymienione: Iterable[str] = (),
 ) -> None:
     """Sterownik pola z zestawu funkcji szablonu — JEDYNA droga z pisarzy rekordu pola."""
@@ -687,9 +692,8 @@ def zapisz_sterownik_pola(
         aparaty=[a for a in rekord.get("primary_devices") or [] if isinstance(a, Mapping)],
         obwody=szablon.obwody_wtorne if szablon is not None else None,
         zrodlo_u0_ref=zrodlo_u0_ref,
-        katalog_ref=katalog_ref,
         aparaty_wymienione=aparaty_wymienione,
-        nazwa_pola=str(rekord.get("bay_number") or rekord.get("name") or rekord["ref_id"]),
+        nazwa_domyslna=domyslna_nazwa_sterownika_pola(rekord),
     )
     if sterownik is None:
         return
@@ -719,7 +723,6 @@ def dodaj_pole(enm: dict[str, Any], rekord: Mapping[str, Any]) -> dict[str, Any]
             enm,
             zwalidowany,
             kody=sterownik.get("kody") or [],
-            katalog_ref=sterownik.get("katalog_ref"),
         )
     return zwalidowany
 
@@ -731,15 +734,10 @@ def zmien_pole(enm: dict[str, Any], ref_id: str, **zmiany: Any) -> dict[str, Any
     (`_aparaty_po_zmianie`).
 
     Argumenty sterownika pola (nie są polami rekordu — karta OCHRONA-JEDNO-ZRODLO):
-    ``funkcje_eaz`` (nowy zestaw funkcji szablonu), ``katalog_sterownika_ref`` (pozycja katalogu
-    urządzenia), ``zrodlo_u0_ref`` (źródło 3U₀ potwierdzone przez projektanta; ``None`` zdejmuje
+    ``funkcje_eaz`` (nowy zestaw funkcji szablonu), ``zrodlo_u0_ref`` (źródło 3U₀ potwierdzone przez projektanta; ``None`` zdejmuje
     powiązanie). Zmiana aparatów albo szablonu przelicza wiązania wejść i macierz wyzwoleń
     sterownika tą samą regułą (`enm.zabezpieczenie.ustaw_funkcje_pola`)."""
-    sterownik_zmiany = {
-        k: zmiany.pop(k)
-        for k in ("funkcje_eaz", "katalog_sterownika_ref", "zrodlo_u0_ref")
-        if k in zmiany
-    }
+    sterownik_zmiany = {k: zmiany.pop(k) for k in ("funkcje_eaz", "zrodlo_u0_ref") if k in zmiany}
     for i, rekord in enumerate(pola(enm)):
         if rekord.get("ref_id") != ref_id:
             continue
@@ -763,7 +761,6 @@ def zmien_pole(enm: dict[str, Any], ref_id: str, **zmiany: Any) -> dict[str, Any
                 enm,
                 zwalidowany,
                 kody=sterownik_zmiany.get("funkcje_eaz"),
-                katalog_ref=sterownik_zmiany.get("katalog_sterownika_ref"),
                 zrodlo_u0_ref=sterownik_zmiany.get("zrodlo_u0_ref", ZACHOWAJ_ZRODLO_U0),
                 aparaty_wymienione=_aparaty_wymienione(
                     rekord.get("primary_devices") or [], zwalidowany.get("primary_devices") or []

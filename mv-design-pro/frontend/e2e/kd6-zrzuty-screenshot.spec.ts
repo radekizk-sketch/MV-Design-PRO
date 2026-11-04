@@ -47,6 +47,7 @@ type DomainOpResponse = {
     transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
+    protection_assignments?: Array<{ ref_id: string; catalog_ref?: string | null }>;
   };
 };
 
@@ -157,20 +158,11 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
             ratio_primary_a: 400.0,
             ratio_secondary_a: 5.0,
           },
+          // Sterownik pola z zestawem funkcji rodzaju (I> 51, I>> 50); nastawy zapisuje niżej
+          // JEDYNY pisarz nastaw `update_protection_settings` (karta OCHRONA-JEDNO-ZRODLO).
           relay: {
             catalog_binding: catalogBinding('ZABEZPIECZENIE', PRZEKAZNIK_ID),
             relay_type: 'NADPRADOWY',
-            settings: [
-              {
-                function_type: 'overcurrent_51',
-                threshold_a: 400.0,
-                // Jednostka progu jest częścią nastawy (karta BIEG-ZABEZPIECZEN-Z-MODELU,
-                // PZ-09): 400 A po stronie pierwotnej przekładnika 400/5 A.
-                threshold_unit: 'A_PIERWOTNY',
-                curve_type: 'DT',
-                time_delay_s: 0.3,
-              },
-            ],
           },
         },
       },
@@ -182,6 +174,16 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
       'TR',
     ],
     transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
+  });
+
+  // Nastawy sterownika pola: I> 400 A po stronie pierwotnej przekładnika 400/5 A (jednostka
+  // progu jest częścią nastawy), charakterystyka niezależna 0,3 s; I>> wyłączony.
+  const sterownik = (op.snapshot?.protection_assignments ?? []).find((p) => p.catalog_ref === PRZEKAZNIK_ID);
+  expect(sterownik, 'sterownik pola z przekaźnikiem z katalogu').toBeTruthy();
+  op = await domainOp(request, studyCase.id, 'update_protection_settings', {
+    protection_ref: sterownik!.ref_id,
+    nastawy: { '51': { prog: 400.0, jednostka_progu: 'A_PIERWOTNY', krzywa: 'DT', zwloka_s: 0.3 } },
+    wlaczone: { '50': false },
   });
 
   const stacja = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));

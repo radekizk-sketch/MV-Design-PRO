@@ -26,7 +26,13 @@ const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
 /** Aparat z katalogu wytrzymałości backendu (`DEVICE_WITHSTAND_CATALOG`). */
 const APARAT_ID = 'wstd_breaker_vacuum_15_25';
-const CZAS_WYLACZENIA_S = 0.5;
+/** Przekładnik prądowy i urządzenie zabezpieczeniowe pola wejściowego (katalog backendu). */
+const CT_ID = 'ct_400_5_5p20_15va_abb';
+const PRZEKAZNIK_ID = 'REF-OC-100';
+/** Zwłoka członu I> (51, DT) zapisana w sterowniku pola — źródło czasu wyłączenia tk. */
+const ZWLOKA_51_S = 0.3;
+/** Czas wpisany w konfiguracji stacji — NIE jest źródłem tk (karta OCHRONA-JEDNO-ZRODLO). */
+const CZAS_Z_KONFIGURACJI_S = 9.0;
 
 let opCounter = 0;
 
@@ -38,6 +44,8 @@ type DomainOpResponse = {
     transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
+    bays?: Array<{ ref_id: string; substation_ref?: string | null; bay_role?: string }>;
+    protection_assignments?: Array<{ ref_id: string; bay_ref?: string | null }>;
   };
 };
 
@@ -58,7 +66,12 @@ type WidokWytrzymalosci = {
     zrodlo: 'model' | 'konfiguracja';
     komunikat_pl: string;
     prady_pola: PradyPola;
-    czas_wylaczenia: { zrodlo: string | null };
+    czas_wylaczenia: {
+      zrodlo: string | null;
+      t_clearing_s: number | null;
+      czlon_nastawczy_s: number | null;
+      czas_wlasny_wylacznika_s: number | null;
+    };
   }>;
 };
 
@@ -108,12 +121,15 @@ type Kontekst = {
   studyCase: { id: string; name: string };
   stationRef: string;
   busRefy: string[];
+  /** Pole wejściowe z przekładnikiem i sterownikiem z nastawami (gdy zbudowane z zabezpieczeniem). */
+  poleZabezpieczoneRef: string | null;
 };
 
 /** Projekt + przypadek + sieć ze stacją (aparat pola WSKAZANY z katalogu APARAT_SN). */
 async function zbudujProjektZeStacja(
   request: APIRequestContext,
   opis: string,
+  zZabezpieczeniem = false,
 ): Promise<Kontekst> {
   const znacznik = String(Date.now());
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
@@ -173,7 +189,19 @@ async function zbudujProjektZeStacja(
     // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
     // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
     // bez niego opisywal siec, ktorej kreator by nie zbudowal.
-    sn_fields: ['IN', 'OUT', 'TR'],
+    sn_fields: [
+      zZabezpieczeniem
+        ? {
+            field_role: 'LINIA_IN',
+            equipment: {
+              ct: { catalog_binding: catalogBinding('CT', CT_ID), ratio_primary_a: 400.0, ratio_secondary_a: 5.0 },
+              relay: { catalog_binding: catalogBinding('ZABEZPIECZENIE', PRZEKAZNIK_ID), relay_type: 'NADPRADOWY' },
+            },
+          }
+        : 'IN',
+      'OUT',
+      'TR',
+    ],
     transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
   });
 
@@ -182,6 +210,29 @@ async function zbudujProjektZeStacja(
   const stationRef = stacja!.ref_id;
   const busRefy = stacja!.bus_refs ?? [];
   expect(busRefy.length).toBeGreaterThan(0);
+
+  // Nastawy JEDYNYM pisarzem konfiguracji sterownika (`update_protection_settings`): człon I>
+  // (51) DT 400 A strony pierwotnej, zwłoka 0,3 s; I>> (50) z szablonu wyłączony przez
+  // projektanta. To jest jedyne źródło czasu wyłączenia tk oceny wytrzymałości cieplnej.
+  let poleZabezpieczoneRef: string | null = null;
+  if (zZabezpieczeniem) {
+    const poleIn = (op.snapshot?.bays ?? []).find(
+      (b) => b.substation_ref === stationRef && b.bay_role === 'IN',
+    );
+    expect(poleIn, 'pole wejściowe stacji').toBeTruthy();
+    const sterownik = (op.snapshot?.protection_assignments ?? []).find(
+      (p) => p.bay_ref === poleIn!.ref_id,
+    );
+    expect(sterownik, 'sterownik pola wejściowego').toBeTruthy();
+    await domainOp(request, studyCase.id, 'update_protection_settings', {
+      protection_ref: sterownik!.ref_id,
+      nastawy: {
+        '51': { prog: 400.0, jednostka_progu: 'A_PIERWOTNY', krzywa: 'DT', zwloka_s: ZWLOKA_51_S },
+      },
+      wlaczone: { '50': false },
+    });
+    poleZabezpieczoneRef = poleIn!.ref_id;
+  }
 
   // Katalogi gałęzi/transformatorów (żeby bieg był policzalny). Kategoria
   // katalogu MUSI pasować do rodzaju gałęzi — pozycję KABEL_SN dostają
@@ -219,7 +270,7 @@ async function zbudujProjektZeStacja(
     });
   }
 
-  return { project, studyCase, stationRef, busRefy };
+  return { project, studyCase, stationRef, busRefy, poleZabezpieczoneRef };
 }
 
 /** Bieg zwarciowy przypadku + wiersz punktu leżącego na szynie stacji. */
@@ -296,6 +347,7 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   const kontekst = await zbudujProjektZeStacja(
     request,
     'Bramka KD-4: wynik zwarciowy → wytrzymałość aparatury',
+    true,
   );
   const { project, studyCase, stationRef } = kontekst;
 
@@ -306,8 +358,11 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   // kluczowana oznaczeniem pola modelu — wpis bez pola modelu nie ma punktu
   // zabudowy, więc nie ma też prądu (werdykt uczciwie nieustalony).
   const widokModelu = await widokZBiegu(request, kontekst, runId);
-  expect(widokModelu.pola.length).toBeGreaterThan(0);
-  const POLE = widokModelu.pola[0].pole;
+  const wierszPolaZabezpieczonego = widokModelu.pola.find(
+    (p) => p.pole_ref === kontekst.poleZabezpieczoneRef,
+  );
+  expect(wierszPolaZabezpieczonego, 'wiersz pola ze sterownikiem').toBeTruthy();
+  const POLE = wierszPolaZabezpieczonego!.pole;
 
   // --- Aparatura pola w konfiguracji stacji (źródło aparatu i czasu) ---------
   const configResponse = await request.put(
@@ -323,7 +378,7 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
             // Liczby z DOBORU aparatu — ekran ma ich NIE użyć do sprawdzenia.
             i_peak_calculated_ka: 1.0,
             i_thermal_calculated_ka: 1.0,
-            t_clearing_s: CZAS_WYLACZENIA_S,
+            t_clearing_s: CZAS_Z_KONFIGURACJI_S,
           },
         },
       },
@@ -336,6 +391,13 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   const wierszKonfiguracji = widok.pola.find((p) => p.pole === POLE);
   expect(wierszKonfiguracji?.zrodlo).toBe('konfiguracja');
   const pradyPola = wierszKonfiguracji!.prady_pola;
+  // Jedno źródło tk: nastawy sterownika pola + czas własny wyłącznika — czas wpisany
+  // w konfiguracji stacji nie wchodzi do oceny (ten sam wiersz, oba kandydackie źródła).
+  const czas = wierszKonfiguracji!.czas_wylaczenia;
+  expect(czas.zrodlo).toBe('nastawy_pola');
+  expect(czas.czlon_nastawczy_s).toBeCloseTo(ZWLOKA_51_S, 6);
+  expect(czas.t_clearing_s).toBeCloseTo(ZWLOKA_51_S + (czas.czas_wlasny_wylacznika_s ?? NaN), 6);
+  expect(czas.t_clearing_s).not.toBeCloseTo(CZAS_Z_KONFIGURACJI_S, 3);
 
   // Werdykt referencyjny: jądro wytrzymałości z prądami PUNKTU ZABUDOWY POLA
   // (wiersz biegu) i czasem z konfiguracji.
@@ -346,7 +408,7 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
         device_id: APARAT_ID,
         i_peak_calculated_ka: pradyPola.ip_ka,
         i_thermal_calculated_ka: pradyPola.ith_ka,
-        t_clearing_s: CZAS_WYLACZENIA_S,
+        t_clearing_s: czas.t_clearing_s,
       },
     },
   );
@@ -389,6 +451,10 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   // Werdykt na ekranie = werdykt backendu dla prądów z biegu (nie literał UI).
   await expect(wierszWerdyktu).toHaveAttribute('data-withstand-ok', String(werdykt.ok));
   await expect(wierszWerdyktu).toContainText(werdykt.message_pl);
+  await expect(page.getByTestId(`mvd-zwarcia-aparatura-czas-${POLE}`)).toHaveAttribute(
+    'data-zrodlo-czasu',
+    'nastawy_pola',
+  );
   // Prądy pola widoczne przy werdykcie, z punktem zabudowy jako daną maszynową.
   await expect(page.getByTestId(`mvd-zwarcia-aparatura-prady-${POLE}`)).toHaveAttribute(
     'data-punkt-ref',

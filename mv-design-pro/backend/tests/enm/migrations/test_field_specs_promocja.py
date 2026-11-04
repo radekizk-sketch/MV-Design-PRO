@@ -125,7 +125,11 @@ def _model(klucz: str, nazwa: str, scalenie: str, meta: str) -> dict[str, Any]:
         ],
         "protection_assignments": [
             rekord_sterownika(
-                "pa", name="Z", bay_ref="bay/st/out", wylacznik="aparat-wpisu", stopnie=[stopien_51()]
+                "pa",
+                name="Z",
+                bay_ref="bay/st/out",
+                wylacznik="aparat-wpisu",
+                stopnie=[stopien_51()],
             )
         ],
         "branches": [

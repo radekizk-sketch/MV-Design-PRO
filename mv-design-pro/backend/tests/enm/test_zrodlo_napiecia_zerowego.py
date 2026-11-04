@@ -35,6 +35,14 @@ from enm.hash import hash_migawki_enm
 from enm.models import Bay, EnergyNetworkModel
 from enm.pole_liniowe_gpz import ocena_pola_liniowego
 from enm.validator import ENMValidator
+from enm.zabezpieczenie import (
+    funkcje_wylaczajace_aparat,
+    funkcje_zasilane_z_aparatu,
+    kody_funkcji_pola,
+    ref_aparatu_wyzwalanego,
+    ref_zrodla_u0_pola,
+    sterownik_pola,
+)
 from enm.zrodlo_napiecia_zerowego import (
     KOD_WALIDATORA_ZRODLA_U0,
     KOD_ZRODLA_U0_NIEPOPRAWNEGO,
@@ -173,8 +181,8 @@ def test_iloczyn_zestaw_powiazania_ocena_walidator_odczyt(
     assert zrodlo.ferranti
 
     # 1. Zestaw funkcji pola: 67N wyłącznie przy potwierdzonym źródle (resolver szablonu).
-    assert ("67N" in pole["protection_codes"]) is potwierdzone
-    assert pole["protection_codes"] == funkcje_eaz_szablonu(
+    assert ("67N" in kody_funkcji_pola(enm, pole["ref_id"])) is potwierdzone
+    assert kody_funkcji_pola(enm, pole["ref_id"]) == funkcje_eaz_szablonu(
         pole["bay_template_ref"],
         pole.get("klasa_pola"),
         WSZYSTKIE_WARUNKI if potwierdzone else frozenset(),
@@ -184,15 +192,20 @@ def test_iloczyn_zestaw_powiazania_ocena_walidator_odczyt(
     #    wyłącznie gdy pole funkcję ma (zero fikcyjnych połączeń na schemacie).
     ferranti = next(a for a in pole["primary_devices"] if a["kind"] == "CORE_BALANCE_CT")
     wylacznik = next(a for a in pole["primary_devices"] if a["kind"] == "CB")
-    assert ("67N" in (ferranti.get("funkcje_eaz_zasilane") or [])) is potwierdzone
-    assert ("67N" in (wylacznik.get("funkcje_eaz_wylaczajace") or [])) is potwierdzone
+    # Powiązania aparat → funkcja w sterowniku pola (wejścia i macierz wyzwoleń, karta
+    # OCHRONA-JEDNO-ZRODLO) — jedyny nośnik, czytany akcesorami `enm.zabezpieczenie`.
+    sterownik = sterownik_pola(enm, ref)
+    zasilane = funkcje_zasilane_z_aparatu(sterownik, ferranti["device_ref"])
+    wylaczajace = funkcje_wylaczajace_aparat(sterownik, ref_aparatu_wyzwalanego(wylacznik))
+    assert ("67N" in zasilane) is potwierdzone
+    assert ("67N" in wylaczajace) is potwierdzone
     # 2a. Kryterium prądowe 51N bloku „Zab. ziemnozwarciowe t1, t2" (ENEA Z.10 s.89, Z.11.1
     #     s.91 — linia Io z zacisku 2 przekładnika Ferrantiego) jest w KAŻDEJ komórce, bez
     #     warunku źródła 3U₀: przekładnik Ferrantiego je zasila, wyłącznik je wykonuje (uwaga
     #     właściciela 2026-10-29 pkt 4 — T2 powiązany z przekaźnikiem także bez 67N).
-    assert "51N" in pole["protection_codes"]
-    assert "51N" in (ferranti.get("funkcje_eaz_zasilane") or [])
-    assert "51N" in (wylacznik.get("funkcje_eaz_wylaczajace") or [])
+    assert "51N" in kody_funkcji_pola(enm, pole["ref_id"])
+    assert "51N" in zasilane
+    assert "51N" in wylaczajace
 
     # 3. Ocena pola liniowego: potwierdzone — ocena jak każdej funkcji; brak — NIE_OCENIONO
     #    z brakami źródła i dowodem z rysunków standardu (nigdy „spełnia").
@@ -225,7 +238,7 @@ def test_iloczyn_zestaw_powiazania_ocena_walidator_odczyt(
     assert item["zrodlo_u0"]["kody_brakow"] == list(zrodlo.kody_brakow)
     if potwierdzone:
         assert item["zrodlo_u0"]["kody_brakow"] == []
-        assert item["zrodlo_u0"]["vt_ref"] == pole["zrodlo_u0_ref"]
+        assert item["zrodlo_u0"]["vt_ref"] == ref_zrodla_u0_pola(enm, ref)
     if z17 == "obecne" and not potwierdzone:
         assert item["zrodlo_u0"]["kody_brakow"] == ["BRAK_POWIAZANIA"]
         assert [k["vt_ref"] for k in item["zrodlo_u0"]["kandydaci"]] == [
@@ -258,14 +271,14 @@ def test_powiazanie_i_zdjecie_powiazania_przelicza_zestaw(wykonanie: str) -> Non
     enm, ref = _komorka(wykonanie, "obecne", False)
     vt = _vt_z17(enm, _pole(enm, ref)["gpz_section_id"])
     z = _ok(_op(enm, "set_bay_equipment", {"bay_ref": ref, "mode": "szablon", "zrodlo_u0_ref": vt}))
-    assert "67N" in _pole(z, ref)["protection_codes"]
-    assert _pole(z, ref)["zrodlo_u0_ref"] == vt
+    assert "67N" in kody_funkcji_pola(z, ref)
+    assert ref_zrodla_u0_pola(z, ref) == vt
     bez = _ok(
         _op(z, "set_bay_equipment", {"bay_ref": ref, "mode": "szablon", "zrodlo_u0_ref": None})
     )
-    assert "67N" not in _pole(bez, ref)["protection_codes"]
-    assert _pole(bez, ref)["zrodlo_u0_ref"] is None
-    assert _pole(bez, ref)["protection_codes"] == _pole(enm, ref)["protection_codes"]
+    assert "67N" not in kody_funkcji_pola(bez, ref)
+    assert ref_zrodla_u0_pola(bez, ref) is None
+    assert kody_funkcji_pola(bez, ref) == kody_funkcji_pola(enm, ref)
 
 
 # --- odmowy operacji: każdy kod braku źródła --------------------------------------------------
@@ -373,9 +386,8 @@ def test_odmowa_powiazania_ze_zrodlem_niepoprawnym(wykonanie: str, kod: str) -> 
     assert odpowiedz.get("snapshot") in (None, przed)
     assert enm == przed
     if isinstance(wskazanie, str):
-        pole = copy.deepcopy(_pole(enm, ref))
-        pole["zrodlo_u0_ref"] = wskazanie
-        assert zrodlo_u0_pola(enm, pole).kody_brakow == (kod,)
+        # Reguła na wskazaniu z ładunku (przed zapisem) — ten sam brak co odmowa.
+        assert zrodlo_u0_pola(enm, _pole(enm, ref), wskazanie).kody_brakow == (kod,)
 
 
 def test_odmowa_wlasnego_przekladnika_w_gwiezdzie_z11_1() -> None:
@@ -392,9 +404,7 @@ def test_odmowa_wlasnego_przekladnika_w_gwiezdzie_z11_1() -> None:
         enm, "set_bay_equipment", {"bay_ref": ref, "mode": "szablon", "zrodlo_u0_ref": vt}
     )
     assert odpowiedz.get("error_code") == KOD_ZRODLA_U0_NIEPOPRAWNEGO
-    pole = copy.deepcopy(_pole(enm, ref))
-    pole["zrodlo_u0_ref"] = vt
-    assert zrodlo_u0_pola(enm, pole).kody_brakow == ("BRAK_OTWARTEGO_TROJKATA",)
+    assert zrodlo_u0_pola(enm, _pole(enm, ref), vt).kody_brakow == ("BRAK_OTWARTEGO_TROJKATA",)
 
 
 # --- powiązanie nieaktualne i deklaracja ręczna: W064 + NIE_OCENIONO ---------------------------
@@ -416,7 +426,7 @@ def test_zdjete_wyposazenie_pola_z17_zostawia_ostrzezenie_w064(wykonanie: str) -
     po = _ok(_op(enm, "set_bay_equipment", {"bay_ref": z17, "mode": "wyczysc"}))
     zgloszenia = _w064(po)
     for pole in _pola_liniowe(po, sekcja):
-        assert "67N" in pole["protection_codes"]
+        assert "67N" in kody_funkcji_pola(po, pole["ref_id"])
         assert pole["ref_id"] in zgloszenia
         assert zrodlo_u0_pola(po, pole).kody_brakow == ("APARAT_NIEOBECNY",)
         ocena = ocena_pola_liniowego(po, pole)
@@ -433,15 +443,16 @@ def test_deklaracja_reczna_67n_bez_zrodla_zglasza_w064(wykonanie: str) -> None:
     """Kody funkcji zmienione operacją ogólną (deklaracja projektanta, nie przypisanie
     automatyczne) — 67N bez źródła nie jest „spełnia": W064 i NIE_OCENIONO."""
     enm, ref = _komorka(wykonanie, "brak", False)
-    kody = [*_pole(enm, ref)["protection_codes"], "67N"]
+    kody = [*kody_funkcji_pola(enm, ref), "67N"]
+    # Deklaracja projektanta = zestaw funkcji sterownika pola (karta OCHRONA-JEDNO-ZRODLO).
     po = _ok(
         _op(
             enm,
-            "update_element_parameters",
-            {"element_ref": ref, "parameters": {"protection_codes": kody}},
+            "update_protection_settings",
+            {"protection_ref": sterownik_pola(enm, ref)["ref_id"], "funkcje": kody},
         )
     )
-    assert "67N" in _pole(po, ref)["protection_codes"]
+    assert "67N" in kody_funkcji_pola(po, ref)
     assert ref in _w064(po)
     ocena = ocena_pola_liniowego(po, _pole(po, ref))
     assert ocena is not None

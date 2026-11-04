@@ -47,6 +47,7 @@ from enm.pola import (
     zbuduj_pole,
 )
 from enm.store import przygotuj_model_po_odczycie
+from enm.zabezpieczenie import aparaty_sterownika
 from enm.zajetosc_pol import KOD_POLE_ZAJETE
 
 from tests.enm.test_branch_point_sn import _seed_with_cable_segment
@@ -607,7 +608,6 @@ def _do_dawnych_kluczy(snap: dict[str, Any]) -> dict[str, Any]:
             "bay_role": rekord["bay_role"],
             "bus_ref": rekord["bus_ref"],
             "equipment_refs": rekord["equipment_refs"],
-            "protection_ref": rekord["protection_ref"],
             "tags": rekord["tags"],
             "meta": {
                 **rekord["meta"],
@@ -689,7 +689,8 @@ def test_wyposazenie_pola_wskazuje_rekord_pola() -> None:
     )
     rekord = _pole_sn(snap, "LINIA_OUT")
     assert all(m["bay_ref"] == rekord["ref_id"] for m in snap["measurements"])
-    assert rekord["protection_ref"] in {p["ref_id"] for p in snap["protection_assignments"]}
+    # Sterownik pola wskazuje rekord pola (`bay_ref`) — jeden sterownik na pole.
+    assert [p["ref_id"] for p in snap["protection_assignments"] if p["bay_ref"] == rekord["ref_id"]]
 
 
 # ---------------------------------------------------------------------------
@@ -761,7 +762,7 @@ def test_odejscie_z_pola_gpz_04kv_i_odmowa_drugiego_kabla_z_tego_samego_pola() -
 def test_kaskada_usuniecia_zabiera_przekladniki_i_zabezpieczenia_pola(usuwany: str) -> None:
     """Przekładnik stoi na szynie i wskazuje pole, zabezpieczenie działa na wyłącznik pola —
     usunięcie stacji (szyny i pola) albo aparatu pola nie zostawia odwołań do elementów, których
-    nie ma (KLASA odwołań: `Measurement.bus_ref`/`bay_ref`, `ProtectionAssignment.breaker_ref`)."""
+    nie ma (KLASA odwołań: `Measurement.bus_ref`/`bay_ref`, macierz wyzwoleń sterownika)."""
     snap = _wstawiona_stacja()
     stacja = _stacja(snap)
     rekord = _pole_sn(snap, "LINIA_ODG")
@@ -783,7 +784,13 @@ def test_kaskada_usuniecia_zabiera_przekladniki_i_zabezpieczenia_pola(usuwany: s
         assert m["bus_ref"] in szyny, m
         assert m.get("bay_ref") is None or m["bay_ref"] in pola_po, m
     for pa in po.get("protection_assignments", []):
-        assert pa["breaker_ref"] in galezie, pa
+        assert set(aparaty_sterownika(pa)) <= galezie, pa
+        assert pa.get("bay_ref") is None or pa["bay_ref"] in pola_po, pa
     if usuwany == "aparat_pola":
-        assert po["protection_assignments"] == []
+        # Pole zostaje, więc zostaje jego sterownik (funkcje i nastawy projektanta); usunięty
+        # wyłącznik znika z macierzy wyzwoleń — ocena nazywa brak aparatu wyzwalanego.
+        (sterownik,) = (p for p in po["protection_assignments"] if p["bay_ref"] == rekord["ref_id"])
+        assert cel not in aparaty_sterownika(sterownik)
+    else:
+        assert all(p["bay_ref"] != rekord["ref_id"] for p in po["protection_assignments"])
     EnergyNetworkModel.model_validate(po)

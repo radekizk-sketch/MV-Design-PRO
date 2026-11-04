@@ -29,7 +29,7 @@ import { useShellStore } from '../../shell/useShellStore';
 import { buildWierszeZabezpieczen, type WierszZabezpieczenia } from './model';
 import { ZABEZPIECZENIA_STRINGS as T } from './strings';
 
-const LICZBA_KOLUMN = 6;
+const LICZBA_KOLUMN = 7;
 
 function StanZerowy({
   tytul,
@@ -136,6 +136,7 @@ function TabelaSterownikow({ wiersze }: { wiersze: readonly WierszZabezpieczenia
         <table className="mvd-za-tabela">
           <thead>
             <tr>
+              <th>{T.kolStacja}</th>
               <th>{T.kolPole}</th>
               <th>{T.kolUrzadzenie}</th>
               <th>{T.kolFunkcje}</th>
@@ -150,6 +151,7 @@ function TabelaSterownikow({ wiersze }: { wiersze: readonly WierszZabezpieczenia
               return (
                 <Fragment key={w.klucz}>
                   <tr data-testid={`mvd-za-wiersz-${w.klucz}`}>
+                    <td data-testid={`mvd-za-stacja-${w.klucz}`}>{w.stacja ?? '—'}</td>
                     <td title={w.szablon ? T.szablonOpis(w.szablon, w.rodzina) : undefined}>{w.nazwa}</td>
                     <td>
                       {w.urzadzenie ?? (

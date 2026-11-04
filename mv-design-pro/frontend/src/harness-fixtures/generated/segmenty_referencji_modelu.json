@@ -2,7 +2,6 @@
   "segmenty": [
     "apparatus",
     "arrester",
-    "assignment",
     "aux_load",
     "bay",
     "bay_device",
@@ -19,7 +18,6 @@
     "branch_end",
     "branch_pole",
     "branch_segment",
-    "breaker",
     "bus",
     "bus_sn",
     "bus_wn",
@@ -69,7 +67,6 @@
     "pv_inverter",
     "rcd",
     "rcd_bus",
-    "relay",
     "ring_closure",
     "run",
     "section",

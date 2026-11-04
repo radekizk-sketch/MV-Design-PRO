@@ -307,8 +307,17 @@ def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
 @pytest.mark.parametrize(
     ("przypisanie", "ct", "kod"),
     [
-        # model bez nastaw stopni nadprądowych
-        (_przypisanie(Q1, []), None, KOD_BRAK_STOPNI),
+        # sterownik bez stopni nadprądowych: tylko funkcja ziemnozwarciowa 51N wyzwalająca Q1
+        # (sterownik bez żadnej funkcji nie ma wyłącznika — macierz wyzwoleń wiąże funkcję
+        # z aparatem, więc „sterownik przy Q1 bez funkcji" nie istnieje w modelu)
+        (
+            _przypisanie(
+                Q1,
+                [stopien("51N", prog=0.2, jednostka_progu="A_WTORNY", krzywa="DT", zwloka_s=0.5)],
+            ),
+            None,
+            KOD_BRAK_STOPNI,
+        ),
         # stopień bez progu (dawniej: I> = 100 A z wartości domyślnej)
         (_przypisanie(Q1, [_stopien_51(prog=None)]), None, KOD_BRAK_PROGU),
         # stopień bez progu i bez strony przekładnika — oba braki nazwane (próg ze stroną

@@ -4,7 +4,7 @@
    zgodności z `measurement_type`, wyczyszczenie heurystyki
    `zero_sequence_current_source` w `application/field_read_model.py`.
 2. `BayPrimaryDevice.designation` (D1, V12K-035) — identyfikator per-aparat.
-3. `ProtectionAssignment.ct_refs_secondary` (D5, V12K-036) — strefa 87T.
+3. `ProtectionAssignment.wejscia.ct_strony_2_refs` (D5, V12K-036) — strefa 87T.
 
 Wszystkie pola są ADDYTYWNE (default None/[]) — zero łamania fixture/hash
 istniejących danych (asercja determinizmu poniżej).
@@ -34,7 +34,7 @@ from enm.models import (
 )
 from enm.store import reset_enm_store, set_enm
 
-from tests.utils.sterownik import sterownik
+from tests.utils.sterownik import sterownik, stopien
 
 
 @pytest.fixture(autouse=True)
@@ -134,7 +134,7 @@ class TestBayPrimaryDeviceDesignation:
 
 
 # ---------------------------------------------------------------------------
-# 3. Model-level — ProtectionAssignment.ct_refs_secondary
+# 3. Model-level — ProtectionAssignment.wejscia.ct_strony_2_refs
 # ---------------------------------------------------------------------------
 
 
@@ -144,14 +144,17 @@ class TestProtectionAssignmentCtRefsSecondary:
             ref_id="prot1",
             name="87T",
             wylacznik="cb1",
+            stopnie=[stopien("87T")],
             ct_ref="ct1",
             wejscia={"ct_strony_2_refs": ["ct2"]},
         )
-        assert pa.ct_refs_secondary == ["ct2"]
+        assert pa.wejscia.ct_strony_2_refs == ["ct2"]
 
     def test_ct_refs_secondary_defaults_empty(self):
-        pa = sterownik(ref_id="prot1", name="OC", wylacznik="cb1", ct_ref="ct1")
-        assert pa.ct_refs_secondary == []
+        pa = sterownik(
+            ref_id="prot1", name="OC", wylacznik="cb1", ct_ref="ct1", stopnie=[stopien("51")]
+        )
+        assert pa.wejscia.ct_strony_2_refs == []
 
 
 # ---------------------------------------------------------------------------

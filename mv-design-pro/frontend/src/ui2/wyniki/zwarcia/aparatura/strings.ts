@@ -49,7 +49,6 @@ export const APARATURA_STRINGS = {
   czasWlasny: 'Czas własny wyłącznika',
   czasZrodlo: 'Źródło czasu',
   czasZNastaw: 'z nastaw zabezpieczeń pola',
-  czasZKonfiguracji: 'z konfiguracji stacji',
   czasNieustalony: 'nieustalone',
   czasZalozenie: 'Założenie:',
 

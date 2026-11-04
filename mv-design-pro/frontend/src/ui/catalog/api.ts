@@ -265,7 +265,7 @@ export interface SzablonPolaKanoniczny {
   readonly wykonanie_lacznikow_pl: string | null;
   readonly tylko_gpz: boolean;
   /** Kody EAZ szablonu w klasie pola — ten sam zestaw, który operacja zapisze
-   *  w `Bay.protection_codes`. */
+   *  jako funkcje sterownika pola (`ProtectionAssignment.funkcje`). */
   readonly funkcje_eaz: readonly string[];
   /** Opis każdej funkcji ze słownika EAZ backendu (`funkcje_eaz.opis_funkcji_eaz_pl`:
    *  zapis rysunku, numer IEEE C37.2, nazwa) — w kolejności `funkcje_eaz`. */

@@ -1648,11 +1648,6 @@
     },
     {
       "action_type": "OPEN_MODAL",
-      "modal_type": "ProtectionModal",
-      "panel": null
-    },
-    {
-      "action_type": "OPEN_MODAL",
       "modal_type": "SegmentSnModal",
       "panel": null
     },

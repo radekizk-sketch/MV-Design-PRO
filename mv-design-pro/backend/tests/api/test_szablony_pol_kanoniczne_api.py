@@ -73,7 +73,7 @@ def test_ocena_kazdego_szablonu_w_iloczynie_cech_pola(app_client, pole_gpz, rodz
         for odmowa in wpis["odmowy"]:
             assert "ENEA" in odmowa["komunikat_pl"] or "IRiESD" in odmowa["komunikat_pl"]
             assert any(slowo in odmowa["komunikat_pl"] for slowo in ("Wybierz", "zmień"))
-        # Zestaw EAZ w KLASIE pola = zestaw, który operacja zapisze w `Bay.protection_codes`.
+        # Zestaw EAZ w KLASIE pola = zestaw funkcji, który operacja zapisze w sterowniku pola.
         assert wpis["funkcje_eaz"] == funkcje_eaz_szablonu(szablon.template_id, klasa)
         assert wpis["funkcje_eaz_pl"] == [opis_funkcji_eaz_pl(k) for k in wpis["funkcje_eaz"]]
         assert wpis["podstawa"] == szablon.podstawa

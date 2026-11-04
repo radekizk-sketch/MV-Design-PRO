@@ -325,8 +325,10 @@ class TestCanonicalization:
 class TestFormat300Contract:
     """`network_model`/`sld_diagrams`/`proofs` NIE ISTNIEJĄ w formacie 3.0.0."""
 
-    def test_schema_version_is_3xx(self):
-        assert ARCHIVE_SCHEMA_VERSION.startswith("3.")
+    def test_schema_version_is_4xx(self):
+        # Format 4.0.0 (karta OCHRONA-JEDNO-ZRODLO, jedna struktura sterownika pola) zachowuje
+        # cięcie formatu 3.0.0: sekcje `network_model`/`sld_diagrams`/`proofs` nie wracają.
+        assert ARCHIVE_SCHEMA_VERSION.startswith("4.")
 
     def test_deleted_section_classes_are_gone(self):
         import domain.project_archive as mod

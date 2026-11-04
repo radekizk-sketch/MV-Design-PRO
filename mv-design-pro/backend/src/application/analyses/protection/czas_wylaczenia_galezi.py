@@ -44,10 +44,12 @@ from application.analyses.protection.ocena_nadpradowa import (
     NastawyUrzadzenia,
     czas_urzadzenia,
     rozwiaz_nastawy,
+    streszczenie_brakow_nastaw,
     wylacznik_urzadzenia,
 )
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
+from enm.zabezpieczenie import aparaty_sterownika
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
@@ -233,23 +235,32 @@ def znajdz_aparat_chroniacy(graph: NetworkGraph, branch_id: str) -> str | None:
 def nastawy_aparatow_modelu(model: EnergyNetworkModel) -> dict[str, NastawyUrzadzenia]:
     """Identyfikator wylacznika W GRAFIE -> rozwiazane nastawy czynnego zabezpieczenia.
 
-    Wylacznik wykonawczy sterownika pochodzi z macierzy wyzwolen (``wylacznik_urzadzenia``
-    — ta sama regula co czas pola); sterownik bez wiersza macierzy dla stopnia
-    nadpradowego nie wyznacza czasu zadnej galezi. Model zna wylacznik przez ``ref_id``, a
-
-    graf zna go pod ``ref_to_graph_id`` — bez tego przelozenia zaden aparat nie zostalby
-    dopasowany i kazda galaz raportowalaby brak nastaw. Zabezpieczenie wylaczone z ruchu
-    nie wyznacza czasu. Przy kilku czynnych zabezpieczeniach jednego wylacznika wygrywa
-    pierwsze po ``ref_id`` (deterministycznie).
+    Sterownik jest przypisany do KAZDEGO aparatu swojej macierzy wyzwolen (``aparaty_sterownika``):
+    sterownik z samymi funkcjami ziemnozwarciowymi albo automatyki tez dziala na wylacznik,
+    wiec galaz za nim dostaje nazwany brak stopni 50/51 ocenianych tym torem, a nie zdanie
+    „aparat nie ma zabezpieczenia" (karta OCHRONA-JEDNO-ZRODLO pkt 4 — bez cudzej liczby i bez
+    falszywego braku). Przy kilku czynnych sterownikach jednego wylacznika wygrywa sterownik,
+    ktorego stopnie nadpradowe dzialaja na ten wylacznik (``wylacznik_urzadzenia``), a wsrod
+    rownych — pierwszy po ``ref_id`` (deterministycznie). Model zna wylacznik przez ``ref_id``,
+    a graf zna go pod ``ref_to_graph_id`` — bez tego przelozenia zaden aparat nie zostalby
+    dopasowany. Zabezpieczenie wylaczone z ruchu nie wyznacza czasu.
     """
     wynik: dict[str, NastawyUrzadzenia] = {}
+    ze_stopniami: set[str] = set()
     for wpis in sorted(model.protection_assignments, key=lambda w: w.ref_id):
         if not wpis.is_enabled:
             continue
-        wylacznik = wylacznik_urzadzenia(wpis)
-        if wylacznik is None:
-            continue
-        wynik.setdefault(ref_to_graph_id(wylacznik), rozwiaz_nastawy(model, wpis))
+        wykonawczy = wylacznik_urzadzenia(wpis)
+        nastawy: NastawyUrzadzenia | None = None
+        for aparat in sorted(aparaty_sterownika(wpis)):
+            klucz = ref_to_graph_id(aparat)
+            stopnie_na_aparacie = aparat == wykonawczy
+            if klucz in wynik and (klucz in ze_stopniami or not stopnie_na_aparacie):
+                continue
+            nastawy = nastawy or rozwiaz_nastawy(model, wpis)
+            wynik[klucz] = nastawy
+            if stopnie_na_aparacie:
+                ze_stopniami.add(klucz)
     return wynik
 
 
@@ -344,7 +355,7 @@ def wyznacz_czasy_wylaczenia(
                 branch_id=branch_id,
                 tk_s=None,
                 zrodlo=ZRODLO_BRAK_NASTAW,
-                powod_pl=" ".join(b.komunikat_pl for b in nastawy.braki),
+                powod_pl=streszczenie_brakow_nastaw(nastawy.nazwa_pl, nastawy.braki),
                 urzadzenie_ref=aparat_id,
                 urzadzenie_nazwa=nazwa_aparatu,
                 prad_galezi_a=prad_pokazany,

@@ -767,8 +767,8 @@ describe('UX-04 — przekaźnik pola obok pola (wymaganie właściciela 2026-10-
  * obce elementy, numeru „52" bez związku nie ma, linia wyłączania kończy się na zacisku
  * sterującym cewki wyłączającej Q0 (port `wylacz` symbolu wyłącznika), a przekładnik
  * Ferrantiego T2 ma linię pomiarową do przekaźnika (funkcja ziemnozwarciowa 51N z rdzenia T2,
- * ENEA Z.10 s.89: „Zab. ziemnozwarciowe t1, t2"). Wyrocznia z modelu (`Bay.protection_codes`,
- * rekordy aparatów), nie z kompozycji; iniekcje na gotowej scenie czerwienią każdy warunek.
+ * ENEA Z.10 s.89: „Zab. ziemnozwarciowe t1, t2"). Wyrocznia z modelu (surowy rekord sterownika
+ * pola `ProtectionAssignment` — włączone funkcje w kolejności zapisu, rekordy aparatów), nie z kompozycji; iniekcje na gotowej scenie czerwienią każdy warunek.
  * Iloczyn: wykonanie {Z.10, Z.11.1, Z.11} × łączniki {trójpołożeniowy, stały} × sekcja {1, 2}
  * × pole {zajęte, wolne} (fikstury) × warunek bloku {kody, ramka, „52", cewka, T2}.
  */
@@ -790,13 +790,21 @@ function oczekiwanyBlokPrzekaznika(kodyModelu: readonly string[]): string[] {
   return reszta > 0 ? [...zabezpieczenia, `+${reszta}`] : zabezpieczenia;
 }
 
+/** Wyrocznia kodów pola: SUROWY rekord sterownika (`bay_ref` pola), funkcje `wlaczona !== false`
+ *  w kolejności zapisu, kod raz (dwa stopnie jednej funkcji — jeden kod). */
+function kodySterownikaPola(enm: EnergyNetworkModel, bayRef: string): string[] {
+  const sterownik = (enm.protection_assignments ?? []).find((pa) => pa.bay_ref === bayRef);
+  const kody: string[] = [];
+  for (const f of sterownik?.funkcje ?? []) if (f.wlaczona !== false && !kody.includes(f.kod)) kody.push(f.kod);
+  return kody;
+}
+
 function naruszeniaBlokuPrzekaznika(enm: EnergyNetworkModel, scena: SceneV3): string[] {
   const bledy: string[] = [];
   const zawiera = (a: Rect, b: Rect): boolean =>
     b.x >= a.x && b.y >= a.y && b.x + b.width <= a.x + a.width && b.y + b.height <= a.y + a.height;
   for (const pole of polaLiniowe(enm)) {
-    const bay = (enm.bays ?? []).find((b) => b.ref_id === pole.ref)!;
-    const kodyModelu = [...(bay.protection_codes ?? [])];
+    const kodyModelu = kodySterownikaPola(enm, pole.ref);
     const przekaznik = scena.symbols.find((s) => s.meta?.ownerRef === pole.ref && s.symbolId === 'protectionRelay');
     if (!przekaznik) {
       bledy.push(`${pole.ref}: brak przekaźnika`);
@@ -911,7 +919,7 @@ describe('UX-04 — blok przekaźnika: jedna reprezentacja funkcji, cewka Q0, T2
     ['brak znacznika „+N"', (t: string) => t.replace(/ · \+\d+$/, '')],
     [
       'pełna lista funkcji (stan przed kartą)',
-      () => (enmZ11.bays ?? []).find((b) => b.ref_id === poleZ111.ref)!.protection_codes!.slice(2).join(' · '),
+      () => kodySterownikaPola(enmZ11, poleZ111.ref).slice(2).join(' · '),
     ],
   ] as const)('iniekcja: %s — blok ≠ wyrocznia', (_opis, zmiana) => {
     const s = zmien((k) => {
@@ -997,6 +1005,12 @@ function rodzajAdnotacjiZabezpieczen(l: OwnedLabel): string {
   return `nieznany (${sufiks})`;
 }
 
+function gpzBezPowiazan(): EnergyNetworkModel {
+  const enm = structuredClone((fxGpz110 as unknown as { snapshot: EnergyNetworkModel }).snapshot);
+  enm.protection_assignments = (enm.protection_assignments ?? []).map((pa) => ({ ...pa, wejscia: {}, macierz_wyzwolen: [] }));
+  return enm;
+}
+
 describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w krawędzi prostokąta', () => {
   // Iloczyn: kompozytor (pole GPZ z powiązaniami obwodów — blok przekaźnika; GPZ bez powiązań;
   // stacja SN — lista R-2 pod okręgiem) × rodzaj etykiety (wiersz kodów, odniesienie 3U₀,
@@ -1007,6 +1021,9 @@ describe('UX-04 — tekst etykiet warstwy adnotacji zabezpieczeń zaczepiony w k
     ...FIKSTURY,
     ['stacje SN i GPZ (geometria stacji, łączniki zamknięte)', (fxStacjeZamkniete as unknown as { snapshot: EnergyNetworkModel }).snapshot],
     ['GPZ 110 kV (geometria stacji)', (fxGpz110 as unknown as { snapshot: EnergyNetworkModel }).snapshot],
+    // Pole GPZ BEZ powiązań obwodów: sterowniki z funkcjami, bez wejść i bez macierzy wyzwoleń
+    // (stan po wyczyszczeniu wejść w edytorze nastaw) — przekaźnik z listą kodów pod okręgiem.
+    ['GPZ 110 kV · sterowniki bez wejść i macierzy wyzwoleń', gpzBezPowiazan()],
   ];
   const pokrycie = new Set<string>();
   for (const [nazwaFx, enm] of ZESTAW) {

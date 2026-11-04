@@ -129,7 +129,8 @@ class TestBay:
             bus_ref="bus_nn_1",
         )
         assert bay.bay_role == "OZE"
-        assert bay.protection_ref is None
+        # Karta OCHRONA-JEDNO-ZRODLO: pole nie wskazuje sterownika — sterownik wskazuje pole.
+        assert "protection_ref" not in Bay.model_fields
 
 
 class TestJunction:

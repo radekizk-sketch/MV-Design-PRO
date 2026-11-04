@@ -54,13 +54,17 @@ describe('SensitivityTable', () => {
     expect(screen.queryByText('Werdykt')).toBeNull();
   });
 
-  it('klik w wiersz zgłasza urządzenie', () => {
+  it('klik w wiersz zgłasza urządzenie', async () => {
     const onRowClick = vi.fn();
     const [pierwsze] = WYNIK.sensitivity_checks;
     render(
       <SensitivityTable checks={WYNIK.sensitivity_checks} devices={URZADZENIA} onRowClick={onRowClick} />,
     );
-    fireEvent.click(screen.getByText(nazwa(pierwsze.device_id)));
+    // Klik w nazwę urządzenia W JEGO wierszu: sterowniki pól szablonu różnych stacji noszą tę
+    // samą nazwę pola („Sterownik pola Pole liniowe wejściowe 1"), wiersz wskazuje referencja.
+    await userEvent.click(
+      within(screen.getByTestId(`sensitivity-row-${pierwsze.device_id}`)).getByText(nazwa(pierwsze.device_id)),
+    );
     expect(onRowClick).toHaveBeenCalledWith(pierwsze.device_id);
   });
 

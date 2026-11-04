@@ -82,7 +82,7 @@ export function buildCanonicalGpzProps(
     | 'generators'
     | 'branches'
     // F11.1 (spec §17.2/§18.3): rejestr device-ref — `protectionMarking`
-    // (`Bay.protection_ref` → `ProtectionAssignment`) i `ctRatingAnnotations`
+    // (sterownik pola `ProtectionAssignment`) i `ctRatingAnnotations`
     // (`Measurement`) potrzebują tych dwóch kolekcji, dokładnie jak stacje
     // (`buildExplicitStationMiniBays`, `enmToSldAdapter.ts`). Addytywne —
     // istniejący wywołujący (`buildScene.ts`/`SldWorkspaceContainer.tsx`)
@@ -665,7 +665,8 @@ export function flagiStatusuPola(
   model: Partial<Pick<EnergyNetworkModel, 'protection_assignments'>>,
   bay: Pick<Bay, 'ref_id'>,
 ): GpzStatusFlag[] {
-  const kody = new Set(kodyFunkcjiPola(model, bay.ref_id).map((kod) => kod.trim().toUpperCase()));
+  // Kody sterownika są kodami rejestru (walidator modelu), więc porównanie wprost.
+  const kody = new Set(kodyFunkcjiPola(model, bay.ref_id));
   return PLAKIETKI_GPZ.filter((flaga) => kody.has(KOD_FUNKCJI_PLAKIETKI[flaga]));
 }
 

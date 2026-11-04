@@ -158,8 +158,8 @@ export interface CanonicalGpzBay {
    *  model nie niesie żadnego rekordu aparatu. Kompozycja buduje z niej stos pola
    *  (`compose/gpz.ts specyfikacjaPolaGpz`); bez niej — sylwetka braku danych. */
   readonly primaryDevices?: readonly BayPrimaryDeviceView[];
-  /** Adnotacja zabezpieczeń pola — `Bay.protection_ref` rozwiązany na
-   *  `ProtectionAssignment`. Kody tu mają pierwszeństwo nad `protectionCodes`. */
+  /** Adnotacja zabezpieczeń pola — sterownik pola `ProtectionAssignment` (`bay_ref` pola).
+   *  Kody tu mają pierwszeństwo nad `protectionCodes`. */
   readonly protectionMarking?: BayProtectionMarkingView;
   /** Adnotacje przekładni CT pola (`Measurement.rating`). */
   readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];

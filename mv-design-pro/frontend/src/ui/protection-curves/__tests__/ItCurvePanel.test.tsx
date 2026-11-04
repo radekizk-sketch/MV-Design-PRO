@@ -156,13 +156,12 @@ describe('itCurveAdapter', () => {
       'time_multiplier',
       'definite_time',
       'curve_type',
-      'threshold_unit',
       'ct_ratio',
       'it_curve_points',
     ]) {
       const [powod] = itCurveMissingReasonsPl([kod]);
       expect(powod).not.toBe(kod);
-      expect(powod).toMatch(/^Brak|^Próg|^Solver/);
+      expect(powod).toMatch(/^Brak|^Solver/);
     }
     // Nieznany kod zwracany bez ukrywania.
     expect(itCurveMissingReasonsPl(['nieznany_kod'])).toEqual(['nieznany_kod']);

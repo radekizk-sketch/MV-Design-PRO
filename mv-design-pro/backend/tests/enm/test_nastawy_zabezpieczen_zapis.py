@@ -418,7 +418,12 @@ def test_zapis_profilu_charakterystyk_i_ocena_z_jednego_predykatu(profil: str) -
     uzyteczny = profil_charakterystyk(profil) is not None
     if not uzyteczny:
         assert wynik.get("error_code") == "relay.characteristics_invalid"
-        assert profil in str(wynik.get("error"))
+        # Odmowa nazywa sterownik NAZWĄ i nie niesie identyfikatora profilu (komunikaty
+        # odmów bez identyfikatorów — strażnik ``odmowa_bez_identyfikatora_guard``).
+        komunikat = str(wynik.get("error"))
+        assert "„Zabezpieczenie testu”" in komunikat
+        assert "profil charakterystyk" in komunikat
+        assert profil not in komunikat
         assert enm == przed
         return
     assert wynik.get("error") is None, wynik.get("error")
@@ -441,3 +446,19 @@ def test_zapis_profilu_charakterystyk_i_ocena_z_jednego_predykatu(profil: str) -
     )
     (rekord,) = (p for p in zdjete["protection_assignments"] if p["ref_id"] == zabezpieczenie)
     assert rekord.get("charakterystyki_ref") is None
+
+
+def test_brak_aktywnej_grupy_to_sprzecznosc_nie_grupa_1() -> None:
+    """Sterownik bez ``aktywna_grupa`` nie dostaje zastępczej grupy 1 (ta wskazałaby po cichu
+    inne nastawy niż wybrane): reguła zapisu nazywa brak, odczyt grupy efektywnej odmawia."""
+    from enm.zabezpieczenie import aktywna_grupa_sterownika, numer_grupy_efektywnej
+
+    sterownik = {"funkcje": [], "grupy_nastaw": [], "macierz_wyzwolen": []}
+    assert "Sterownik nie wskazuje aktywnej grupy nastaw (1–4)." in bledy_sterownika(sterownik)
+    with pytest.raises(ValueError, match="bez aktywnej grupy nastaw"):
+        aktywna_grupa_sterownika(sterownik)
+    with pytest.raises(ValueError, match="bez aktywnej grupy nastaw"):
+        numer_grupy_efektywnej(sterownik)
+    # Wybór przypadku (delta scenariusza) ma pierwszeństwo przed grupą bazową.
+    assert numer_grupy_efektywnej(sterownik, 3) == 3
+    assert numer_grupy_efektywnej({**sterownik, "aktywna_grupa": 2}) == 2

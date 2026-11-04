@@ -167,9 +167,11 @@ describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)'
     renderuj('12_der_full_path');
     fireEvent.click(screen.getByTestId('lv-domain-node-QF-G1'));
     const relay = screen.getByTestId('lv-domain-feeder-relay-REL-QF-G1');
-    expect(relay.textContent).toContain('df/dt · f< · Δφ');
-    expect(relay.textContent).toContain('ANSI 81R, 81U, 78');
-    expect(relay.textContent).toContain('pochodna częstotliwości (LoM)');
+    // Znaki z JEDNEGO rejestru funkcji (`funkcjeEaz`) w kolejności funkcji sterownika; funkcja
+    // bez znaku literowego w standardzie (78 — „skok wektora") ma na rysunku numer ANSI.
+    expect(relay.textContent).toContain('df/dt · 78 · f<');
+    expect(relay.textContent).toContain('ANSI 81R, 78, 81U');
+    expect(relay.textContent).toContain('szybkość zmian częstotliwości (ROCOF)');
     expect(relay.textContent).toContain('CT: CT-QF-G1');
     const symbol = screen.getByTestId('lv-domain-node-relay:REL-QF-G1');
     expect(symbol.querySelector('g[data-symbol-canon="cad.zabezpieczenie"]')).not.toBeNull();

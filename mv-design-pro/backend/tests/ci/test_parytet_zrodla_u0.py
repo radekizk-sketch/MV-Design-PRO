@@ -9,7 +9,8 @@ napięcia" przy przekaźniku i ostrzeżenia topologicznego 67N
 wspólnego testu rozjadą się na pierwszym nowym przypadku. Ten plik generuje fiksturę przypadków
 z WYNIKIEM BACKENDU (`potwierdzone`, `vt_ref`, `pole_zrodla_ref`, `kody_brakow`), a test frontu
 (`ui/sld/v2/model/__tests__/zrodloNapieciaZerowego.parytet.test.ts`) liczy lustro na tych samych
-polach modelu i porównuje. Strażnik niżej pilnuje, że fikstura równa się wynikowi backendu, że
+polach i sterownikach modelu i porównuje. Powiązanie źródła żyje w sterowniku pola (wejście 3U₀,
+otwarty trójkąt — karta OCHRONA-JEDNO-ZRODLO), więc fikstura niesie pola i sterowniki. Strażnik niżej pilnuje, że fikstura równa się wynikowi backendu, że
 słownik kodów braków i lista funkcji wymagających źródła są w obu językach te same.
 
 ILOCZYN CECH: wykonanie pola {Z.10, Z.11.1} × pole pomiaru napięcia Z.17 w sekcji {obecne,
@@ -54,9 +55,9 @@ _POLA_POLA = (
     "bus_ref",
     "bay_role",
     "funkcja_pomiaru",
-    "zrodlo_u0_ref",
-    "protection_codes",
 )
+#: Pola sterownika czytane przez regułę (wejście 3U₀ i funkcje sterownika pola).
+_POLA_STEROWNIKA = ("ref_id", "bay_ref", "wejscia", "funkcje")
 _POLA_APARATU = ("device_ref", "kind", "designation")
 
 
@@ -74,6 +75,10 @@ def _pole_fikstury(pole: dict[str, Any]) -> dict[str, Any]:
             for aparat in pole.get("primary_devices") or []
         ],
     }
+
+
+def _sterownik_fikstury(sterownik: dict[str, Any]) -> dict[str, Any]:
+    return {klucz: copy.deepcopy(sterownik.get(klucz)) for klucz in _POLA_STEROWNIKA}
 
 
 def _sekcje(enm: dict[str, Any]) -> list[str]:
@@ -122,6 +127,9 @@ def _przypadek(nazwa: str, enm: dict[str, Any], pole_ref: str) -> dict[str, Any]
         "nazwa": nazwa,
         "pole_ref": pole_ref,
         "bays": [_pole_fikstury(b) for b in enm["bays"]],
+        "protection_assignments": [
+            _sterownik_fikstury(s) for s in enm.get("protection_assignments") or []
+        ],
         "oczekiwane": {
             "potwierdzone": wynik.potwierdzone,
             "vt_ref": wynik.vt_ref,
@@ -131,11 +139,23 @@ def _przypadek(nazwa: str, enm: dict[str, Any], pole_ref: str) -> dict[str, Any]
     }
 
 
+def _ustaw_wejscie_u0(enm: dict[str, Any], pole_ref: str, zrodlo: str | None) -> None:
+    """Wejście 3U₀ sterownika pola (model importowany albo przebudowany po powiązaniu)."""
+    (sterownik,) = (
+        s for s in enm.get("protection_assignments") or [] if s.get("bay_ref") == pole_ref
+    )
+    wejscia = sterownik.setdefault("wejscia", {})
+    if zrodlo is None:
+        wejscia.pop("u0_uklad", None)
+        wejscia.pop("u0_vt_ref", None)
+    else:
+        wejscia["u0_uklad"] = "OTWARTY_TROJKAT"
+        wejscia["u0_vt_ref"] = zrodlo
+
+
 def _z_powiazaniem(enm: dict[str, Any], pole_ref: str, zrodlo: str | None) -> dict[str, Any]:
     wynik = copy.deepcopy(enm)
-    for pole in wynik["bays"]:
-        if pole["ref_id"] == pole_ref:
-            pole["zrodlo_u0_ref"] = zrodlo
+    _ustaw_wejscie_u0(wynik, pole_ref, zrodlo)
     return wynik
 
 
@@ -199,9 +219,7 @@ def przypadki() -> list[dict[str, Any]]:
         )
         # Bez Ferrantiego i bez pola Z.17 — oba składniki braku naraz (kolejność kodów).
         oba = copy.deepcopy(bez_ferrantiego)
-        for pole in oba["bays"]:
-            if pole["ref_id"] == pole_1["ref_id"]:
-                pole["zrodlo_u0_ref"] = None
+        _ustaw_wejscie_u0(oba, pole_1["ref_id"], None)
         oba["bays"] = [b for b in oba["bays"] if b["ref_id"] != z17_1["ref_id"]]
         wynik.append(
             _przypadek(f"{prefiks}_iniekcja_bez_ferrantiego_i_bez_z17", oba, pole_1["ref_id"])

@@ -22,7 +22,7 @@ from enm.models import (
 )
 from enm.validator import ENMValidator
 
-from tests.utils.sterownik import sterownik
+from tests.utils.sterownik import sterownik, stopien_51
 
 REF_KABEL_NN = "kab_nn_4x120_al"
 
@@ -394,7 +394,7 @@ def test_e063_nie_strzela_gdy_stacja_bez_odbiorow_nn() -> None:
 
 
 # ---------------------------------------------------------------------------
-# E064 — ProtectionAssignment.breaker_ref wskazujący nieistniejącą gałąź
+# E064 — wiersz macierzy wyzwoleń sterownika (`aparat_refs`) wskazujący nieistniejącą gałąź
 # ---------------------------------------------------------------------------
 
 
@@ -414,7 +414,9 @@ def test_e064_nie_strzela_gdy_galaz_istnieje() -> None:
                 status="closed",
             )
         ],
-        protection_assignments=[sterownik(ref_id="pa1", name="pa1", wylacznik="cb1")],
+        protection_assignments=[
+            sterownik(ref_id="pa1", name="pa1", wylacznik="cb1", stopnie=[stopien_51()])
+        ],
     )
     assert "E064" not in _codes(model)
 
@@ -422,7 +424,9 @@ def test_e064_nie_strzela_gdy_galaz_istnieje() -> None:
 def test_e064_strzela_gdy_galaz_nie_istnieje() -> None:
     model = _model(
         buses=[Bus(ref_id="b0", name="b0", voltage_kv=0.4)],
-        protection_assignments=[sterownik(ref_id="pa1", name="pa1", wylacznik="cb-widmo")],
+        protection_assignments=[
+            sterownik(ref_id="pa1", name="pa1", wylacznik="cb-widmo", stopnie=[stopien_51()])
+        ],
     )
     issues = ENMValidator().validate(model).issues
     e064 = [i for i in issues if i.code == "E064"]

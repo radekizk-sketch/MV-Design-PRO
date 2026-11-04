@@ -1010,14 +1010,14 @@
   "missing_data": [],
   "model_snapshot": {
     "case_id": "fixture-12_der_full_path",
-    "model_hash": "63d07cb7d4135ced8684420e4f78609aa09a5eb1887cf16b956bf482a14b2638",
+    "model_hash": "5a5199a5ae21077b20507bdc470ef1e6e6d23f056c39585f17fc0a4f90b3e28c",
     "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",
     "revision": 1,
     "run_snapshot_hash": null,
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "b6b2de657717b482e391a79d5ca4e5e35a5e619618e3db3d609734020bc7456a",
+  "projection_hash": "21a0197bd88d1897a92698c17609670954b8d12215500144ba8bc292ff1b8c7d",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -3165,7 +3165,7 @@
     {
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
-      "calculation_run_id": "71b2afb6-9677-53f8-addf-f3dd912989ec",
+      "calculation_run_id": "9048042e-0daf-501e-8631-a57dc2807cb3",
       "case_id": "fixture-12_der_full_path",
       "dane_przyjete": [
         {
@@ -3196,10 +3196,10 @@
           }
         }
       ],
-      "equivalent_id": "a6c4a5fb-5dbc-5521-bea2-c789fe68d185",
+      "equivalent_id": "d5f661a2-c999-5ab3-bf8d-10718a9aa85c",
       "ikss_ka": 18.7094198,
       "missing_data": [],
-      "model_hash": "63d07cb7d4135ced8684420e4f78609aa09a5eb1887cf16b956bf482a14b2638",
+      "model_hash": "5a5199a5ae21077b20507bdc470ef1e6e6d23f056c39585f17fc0a4f90b3e28c",
       "model_revision": 1,
       "note_pl": "Równoważnik Thevenina sieci SN w punkcie HV transformatora — granica wizualna domeny nN (L2) jest granicą domeny napięciowej i projekcji, NIE przerwaniem zależności obliczeniowej: ten snapshot jest dokładnie tym wejściem, którym solver pętli zwarcia nN liczy stronę SN (application.analyses.fault_loop).",
       "operating_state_id": "dcff351def864f684aba05d7bbb7dbfe50186f12d55d0d74cb787527e52bddcc",

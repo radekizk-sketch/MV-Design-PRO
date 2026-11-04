@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from network_model.catalog.funkcje_eaz import FUNKCJE_EAZ, FunkcjaEaz
 from network_model.catalog.obwody_wtorne_pola import (
@@ -40,6 +40,9 @@ from network_model.catalog.obwody_wtorne_pola import (
 )
 from network_model.catalog.przekladniki import zaczepy_przekladnika
 from network_model.catalog.wartosci_robocze import rozstrzygnij_zaczep_przekladnika
+
+if TYPE_CHECKING:
+    from enm.models import ObwodWtorny
 
 __all__ = [
     "ODNOSNIK_STEROWNIKA_POLA",
@@ -51,6 +54,7 @@ __all__ = [
     "funkcje_zasilane_z_aparatu",
     "kody_funkcji_pola",
     "kody_funkcji_sterownika",
+    "nazwa_sterownika",
     "nastawy_funkcji",
     "numer_grupy_efektywnej",
     "przekladnik_pradowy",
@@ -83,20 +87,51 @@ __all__ = [
 ODNOSNIK_STEROWNIKA_POLA = "sterownik"
 
 
-def _pole(obiekt: Any, nazwa: str, domyslna: Any = None) -> Any:
+def _pole(obiekt: object, nazwa: str, domyslna: object = None) -> object:
     if isinstance(obiekt, Mapping):
         return obiekt.get(nazwa, domyslna)
     return getattr(obiekt, nazwa, domyslna)
+
+
+def _lista(obiekt: object, nazwa: str) -> Sequence[object]:
+    """Pole-lista obu postaci modelu (pusta krotka: brak pola albo wartość nie-lista)."""
+    wartosc = _pole(obiekt, nazwa)
+    return wartosc if isinstance(wartosc, list | tuple) else ()
+
+
+def _liczba(wartosc: object) -> float | None:
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return None
+    return float(wartosc)
+
+
+def _obwod_wtorny(wartosc: object) -> ObwodWtorny | None:
+    """Obwód wtórny przekładnika w postaci modelu (słownik migawki walidowany kontraktem)."""
+    from enm.models import ObwodWtorny
+
+    if wartosc is None or isinstance(wartosc, ObwodWtorny):
+        return wartosc
+    return ObwodWtorny.model_validate(wartosc)
 
 
 def _napis(wartosc: object) -> str | None:
     return wartosc.strip() if isinstance(wartosc, str) and wartosc.strip() else None
 
 
-def sterowniki(enm: Any) -> list[Any]:
+def sterowniki(enm: object) -> list[Any]:
     """Sterowniki modelu w kolejności identyfikatorów (determinizm)."""
-    lista = _pole(enm, "protection_assignments") or []
+    lista = _lista(enm, "protection_assignments")
     return sorted(lista, key=lambda s: str(_pole(s, "ref_id") or ""))
+
+
+def domyslna_nazwa_sterownika_pola(pole: Mapping[str, Any]) -> str:
+    """Domyślna nazwa sterownika pola — JEDNA reguła dla pisarza z szablonu pola
+    (`enm.pola.zapisz_sterownik_pola`) i dla doboru urządzenia (`add_relay`): nazwa pola
+    z jedynego słownika nazw (`enm.nazwy_elementow.nazwa_elementu`), nigdy identyfikator."""
+    # Import leniwy: słownik nazw czyta pakiet `enm` (cykl przy imporcie modułu).
+    from enm.nazwy_elementow import nazwa_elementu
+
+    return f"Sterownik pola {nazwa_elementu(pole, 'bays')}"
 
 
 def referencja_sterownika_pola(bay_ref: str) -> str:
@@ -104,22 +139,50 @@ def referencja_sterownika_pola(bay_ref: str) -> str:
     return f"{bay_ref}/{ODNOSNIK_STEROWNIKA_POLA}"
 
 
-def sterownik_pola(enm: Any, bay_ref: str | None) -> Any | None:
+def nazwa_sterownika(enm: object, sterownik: object) -> str:
+    """Nazwa sterownika w wyjaśnieniach, ocenach i raportach: nazwa z modelu, a sterownika pola
+    stacji — z nazwą stacji (``<nazwa> — <stacja>``).
+
+    Nazwy pól są jednoznaczne wyłącznie w obrębie stacji („Pole liniowe wejściowe 1" jest
+    w każdej stacji magistrali), więc domyślna nazwa sterownika pola powtarza się między
+    stacjami i raport koordynacji pokazywałby dwa nieodróżnialne wiersze. Stacja pochodzi
+    z modelu (pole → ``substation_ref``) w chwili odczytu — nazwa zapisana w modelu zostaje
+    bez zmian, a nazwa, która już zawiera nazwę stacji, nie dostaje jej drugi raz. Sterownik
+    wyłącznika liniowego (bez pola) i pole bez stacji w modelu — sama nazwa z modelu.
+    """
+    from enm.models import EnergyNetworkModel
+    from enm.nazwy_elementow import nazwa_elementu
+    from enm.pola import stacja_pola
+
+    nazwa = nazwa_elementu(sterownik, "protection_assignments")
+    bay_ref = _napis(_pole(sterownik, "bay_ref"))
+    stacja = (
+        stacja_pola(enm, bay_ref)
+        if bay_ref and isinstance(enm, Mapping | EnergyNetworkModel)
+        else None
+    )
+    if stacja is None:
+        return nazwa
+    nazwa_stacji = nazwa_elementu(stacja, "substations")
+    return nazwa if nazwa_stacji in nazwa else f"{nazwa} — {nazwa_stacji}"
+
+
+def sterownik_pola(enm: object, bay_ref: str | None) -> Any | None:
     """Sterownik pola (najwyżej jeden — walidator modelu odrzuca drugi) albo ``None``."""
     if not bay_ref:
         return None
     # Wybór bez sortowania całej kolekcji (pisarze pól pytają o sterownik każdego pola przy
     # każdej operacji): przy niedozwolonym drugim sterowniku wygrywa najmniejszy identyfikator —
     # ten sam, który dałaby kolejność `sterowniki`.
-    pola = [s for s in _pole(enm, "protection_assignments") or [] if _pole(s, "bay_ref") == bay_ref]
+    pola = [s for s in _lista(enm, "protection_assignments") if _pole(s, "bay_ref") == bay_ref]
     return min(pola, key=lambda s: str(_pole(s, "ref_id") or ""), default=None)
 
 
-def _funkcje(sterownik: Any) -> list[Any]:
-    return list(_pole(sterownik, "funkcje") or [])
+def _funkcje(sterownik: object) -> list[Any]:
+    return list(_lista(sterownik, "funkcje"))
 
 
-def kody_funkcji_sterownika(sterownik: Any, *, tylko_wlaczone: bool = True) -> list[str]:
+def kody_funkcji_sterownika(sterownik: object, *, tylko_wlaczone: bool = True) -> list[str]:
     """Kody funkcji sterownika w kolejności zapisu, bez powtórzeń (dwa stopnie tej samej
     funkcji dają jeden kod)."""
     kody: list[str] = []
@@ -132,76 +195,88 @@ def kody_funkcji_sterownika(sterownik: Any, *, tylko_wlaczone: bool = True) -> l
     return kody
 
 
-def kody_funkcji_pola(enm: Any, bay_ref: str | None, *, tylko_wlaczone: bool = True) -> list[str]:
+def kody_funkcji_pola(
+    enm: object, bay_ref: str | None, *, tylko_wlaczone: bool = True
+) -> list[str]:
     """Kody funkcji zabezpieczeń i automatyki POLA — z jego sterownika (pusta lista: pole bez
     sterownika). Jedyne źródło bloku przekaźnika, karty pola, oceny pola i walidatora."""
     sterownik = sterownik_pola(enm, bay_ref)
     return kody_funkcji_sterownika(sterownik, tylko_wlaczone=tylko_wlaczone) if sterownik else []
 
 
-def aparaty_funkcji(sterownik: Any, funkcja_ref: str) -> tuple[str, ...]:
+def aparaty_funkcji(sterownik: object, funkcja_ref: str) -> tuple[str, ...]:
     """Aparaty, na które działa funkcja (macierz wyzwoleń); pusta krotka = funkcja nie
     wyzwala (alarm, blokada, automatyka bez wyjścia na wyłącznik)."""
-    for wiersz in _pole(sterownik, "macierz_wyzwolen") or []:
+    for wiersz in _lista(sterownik, "macierz_wyzwolen"):
         if _pole(wiersz, "funkcja_ref") == funkcja_ref:
-            return tuple(str(a) for a in _pole(wiersz, "aparat_refs") or [])
+            return tuple(str(a) for a in _lista(wiersz, "aparat_refs"))
     return ()
 
 
-def aparaty_sterownika(sterownik: Any) -> tuple[str, ...]:
+def aparaty_sterownika(sterownik: object) -> tuple[str, ...]:
     """Wszystkie aparaty z macierzy wyzwoleń sterownika (posortowane, bez powtórzeń)."""
     wynik: set[str] = set()
-    for wiersz in _pole(sterownik, "macierz_wyzwolen") or []:
-        wynik.update(str(a) for a in _pole(wiersz, "aparat_refs") or [])
+    for wiersz in _lista(sterownik, "macierz_wyzwolen"):
+        wynik.update(str(a) for a in _lista(wiersz, "aparat_refs"))
     return tuple(sorted(wynik))
 
 
-def numer_grupy_efektywnej(sterownik: Any, wybor_przypadku: int | None = None) -> int:
+def numer_grupy_efektywnej(sterownik: object, wybor_przypadku: int | None = None) -> int:
     """Numer grupy nastaw, którą czyta ocena: wybór przypadku (delta scenariusza, ADR-022),
     inaczej aktywna grupa bazowa sterownika."""
     if wybor_przypadku is not None:
         return int(wybor_przypadku)
-    return int(_pole(sterownik, "aktywna_grupa", 1) or 1)
+    return aktywna_grupa_sterownika(sterownik)
+
+
+def aktywna_grupa_sterownika(sterownik: object) -> int:
+    """Aktywna grupa bazowa sterownika (pole wymagane `ProtectionAssignment.aktywna_grupa`).
+
+    Brak pola to sprzeczność zapisu, nie grupa 1 — zastępcza liczba wskazałaby po cichu inną
+    grupę nastaw, niż projektant wybrał."""
+    numer = _pole(sterownik, "aktywna_grupa")
+    if not isinstance(numer, int) or isinstance(numer, bool):
+        raise ValueError(f"sterownik bez aktywnej grupy nastaw (odczytano {numer!r})")
+    return numer
 
 
 def nastawy_funkcji(
-    sterownik: Any, funkcja_ref: str, numer_grupy: int | None = None
+    sterownik: object, funkcja_ref: str, numer_grupy: int | None = None
 ) -> dict[str, Any]:
     """Nastawy funkcji w grupie (domyślnie aktywnej) — klucz schematu → wartość.
 
     Pusty słownik = funkcja bez nastaw w tej grupie (nazwany brak ocenia warstwa analiz).
     """
     numer = numer_grupy_efektywnej(sterownik, numer_grupy)
-    for grupa in _pole(sterownik, "grupy_nastaw") or []:
+    for grupa in _lista(sterownik, "grupy_nastaw"):
         if _pole(grupa, "numer") != numer:
             continue
-        for wpis in _pole(grupa, "funkcje") or []:
+        for wpis in _lista(grupa, "funkcje"):
             if _pole(wpis, "funkcja_ref") == funkcja_ref:
                 return {
-                    str(_pole(n, "klucz")): _pole(n, "wartosc")
-                    for n in _pole(wpis, "nastawy") or []
+                    str(_pole(n, "klucz")): _pole(n, "wartosc") for n in _lista(wpis, "nastawy")
                 }
     return {}
 
 
 def pochodzenie_nastaw_funkcji(
-    sterownik: Any, funkcja_ref: str, numer_grupy: int | None = None
+    sterownik: object, funkcja_ref: str, numer_grupy: int | None = None
 ) -> dict[str, str]:
     """Pochodzenie każdej nastawy funkcji w grupie (PROJEKTANT / DOBOR / WARTOSC_ROBOCZA)."""
     numer = numer_grupy_efektywnej(sterownik, numer_grupy)
-    for grupa in _pole(sterownik, "grupy_nastaw") or []:
+    for grupa in _lista(sterownik, "grupy_nastaw"):
         if _pole(grupa, "numer") != numer:
             continue
-        for wpis in _pole(grupa, "funkcje") or []:
+        for wpis in _lista(grupa, "funkcje"):
             if _pole(wpis, "funkcja_ref") == funkcja_ref:
                 return {
                     str(_pole(n, "klucz")): str(_pole(n, "pochodzenie") or "PROJEKTANT")
-                    for n in _pole(wpis, "nastawy") or []
+                    for n in _lista(wpis, "nastawy")
                 }
     return {}
 
 
-def wejscia_funkcji_w_aparacie(wejscia: Any) -> dict[str, tuple[str, ...]]:
+def wejscia_funkcji_w_aparacie(wejscia: object) -> dict[str, tuple[str, ...]]:
     """Wejście funkcji → aparaty, z których je zrealizowano (JEDNA reguła układów)."""
     ct = _napis(_pole(wejscia, "ct_ref"))
     vt = _napis(_pole(wejscia, "vt_ref"))
@@ -220,19 +295,19 @@ def wejscia_funkcji_w_aparacie(wejscia: Any) -> dict[str, tuple[str, ...]]:
         wynik["3U0"] = (str(_napis(_pole(wejscia, "u0_vt_ref"))),)
     elif u0 == "Z_NAPIEC_FAZOWYCH" and vt:
         wynik["3U0"] = (vt,)
-    strona_2 = tuple(r for r in (_pole(wejscia, "ct_strony_2_refs") or []) if _napis(r))
+    strona_2 = tuple(str(r) for r in _lista(wejscia, "ct_strony_2_refs") if _napis(r))
     if strona_2:
         wynik["I_STRONY_2"] = strona_2
     return wynik
 
 
-def wejscia_dostepne(sterownik: Any) -> frozenset[str]:
+def wejscia_dostepne(sterownik: object) -> frozenset[str]:
     """Wejścia sterownika zrealizowane przekładnikami (sygnał binarny ``SYGNAL`` jest
     wejściem logicznym sterownika — zawsze dostępny)."""
     return frozenset(wejscia_funkcji_w_aparacie(_pole(sterownik, "wejscia") or {})) | {"SYGNAL"}
 
 
-def brakujace_wejscia(sterownik: Any, kod: str) -> tuple[str, ...]:
+def brakujace_wejscia(sterownik: object, kod: str) -> tuple[str, ...]:
     """Wymagane wejścia funkcji (rejestr), których sterownik nie ma przypiętych."""
     wpis = FUNKCJE_EAZ.get(kod)
     if wpis is None:
@@ -241,7 +316,7 @@ def brakujace_wejscia(sterownik: Any, kod: str) -> tuple[str, ...]:
     return tuple(w for w in wpis.wejscia_wymagane if w not in dostepne)
 
 
-def funkcje_zasilane_z_aparatu(sterownik: Any, device_ref: str) -> list[str]:
+def funkcje_zasilane_z_aparatu(sterownik: object, device_ref: str) -> list[str]:
     """Kody włączonych funkcji, które mierzą z aparatu (przekładnik przypięty do ich wejścia)."""
     wejscia = wejscia_funkcji_w_aparacie(_pole(sterownik, "wejscia") or {})
     z_aparatu = {w for w, aparaty in wejscia.items() if device_ref in aparaty}
@@ -255,7 +330,7 @@ def funkcje_zasilane_z_aparatu(sterownik: Any, device_ref: str) -> list[str]:
     return kody
 
 
-def funkcje_wylaczajace_aparat(sterownik: Any, device_ref: str | None) -> list[str]:
+def funkcje_wylaczajace_aparat(sterownik: object, device_ref: str | None) -> list[str]:
     """Kody włączonych funkcji, które działają na aparat (macierz wyzwoleń; ``device_ref`` —
     wynik `ref_aparatu_wyzwalanego` aparatu pola albo identyfikator gałęzi wyłącznika)."""
     if not device_ref:
@@ -264,8 +339,8 @@ def funkcje_wylaczajace_aparat(sterownik: Any, device_ref: str | None) -> list[s
     # wierszy macierzy — dwa odczyty tego samego sterownika mówią tym samym porządkiem.
     dzialajace = {
         str(_pole(w, "funkcja_ref"))
-        for w in _pole(sterownik, "macierz_wyzwolen") or []
-        if device_ref in (_pole(w, "aparat_refs") or [])
+        for w in _lista(sterownik, "macierz_wyzwolen")
+        if device_ref in (_lista(w, "aparat_refs"))
     }
     kody: list[str] = []
     for f in _funkcje(sterownik):
@@ -299,7 +374,7 @@ class PrzekladnikPradowy:
     burden_va: float | None
     catalog_ref: str | None
     zaczep_roboczy: bool = False
-    obwod_wtorny: Any = None
+    obwod_wtorny: ObwodWtorny | None = None
 
 
 def _przekladnia_rdzenia(przekladnia: str) -> tuple[float, float] | None:
@@ -311,7 +386,7 @@ def _przekladnia_rdzenia(przekladnia: str) -> tuple[float, float] | None:
         return None
 
 
-def przekladnik_pradowy(enm: Any, ref: str | None) -> PrzekladnikPradowy | None:
+def przekladnik_pradowy(enm: object, ref: str | None) -> PrzekladnikPradowy | None:
     """Przekładnik prądowy o referencji ``ref`` — z `measurements` albo z aparatów pól.
 
     ``None`` — referencji nie ma w modelu, wskazuje inny rodzaj aparatu albo tabliczka nie
@@ -319,30 +394,37 @@ def przekladnik_pradowy(enm: Any, ref: str | None) -> PrzekladnikPradowy | None:
     """
     if not ref:
         return None
-    for pomiar in _pole(enm, "measurements") or []:
+    # Import leniwy: słownik nazw czyta pakiet `enm` (cykl przy imporcie modułu).
+    from enm.nazwy_elementow import nazwa_elementu
+
+    for pomiar in _lista(enm, "measurements"):
         if _pole(pomiar, "ref_id") != ref:
             continue
         if _pole(pomiar, "measurement_type") != "CT":
             return None
         rating = _pole(pomiar, "rating") or {}
+        pierwotny_a = _liczba(_pole(rating, "ratio_primary"))
+        wtorny_a = _liczba(_pole(rating, "ratio_secondary"))
+        if pierwotny_a is None or wtorny_a is None:
+            return None
         return PrzekladnikPradowy(
             ref=ref,
-            nazwa=str(_pole(pomiar, "name") or ref),
+            nazwa=nazwa_elementu(pomiar, "measurements"),
             zrodlo="POMIAR",
-            ratio_primary=float(_pole(rating, "ratio_primary")),
-            ratio_secondary=float(_pole(rating, "ratio_secondary")),
-            accuracy_class=_pole(rating, "accuracy_class"),
-            burden_va=_pole(rating, "burden_va"),
-            catalog_ref=_pole(pomiar, "catalog_ref"),
-            obwod_wtorny=_pole(pomiar, "obwod_wtorny"),
+            ratio_primary=pierwotny_a,
+            ratio_secondary=wtorny_a,
+            accuracy_class=_napis(_pole(rating, "accuracy_class")),
+            burden_va=_liczba(_pole(rating, "burden_va")),
+            catalog_ref=_napis(_pole(pomiar, "catalog_ref")),
+            obwod_wtorny=_obwod_wtorny(_pole(pomiar, "obwod_wtorny")),
         )
-    for pole in _pole(enm, "bays") or []:
-        for aparat in _pole(pole, "primary_devices") or []:
+    for pole in _lista(enm, "bays"):
+        for aparat in _lista(pole, "primary_devices"):
             if _pole(aparat, "device_ref") != ref:
                 continue
             if _pole(aparat, "kind") != "CT":
                 return None
-            rdzenie = list(_pole(aparat, "rdzenie") or [])
+            rdzenie = list(_lista(aparat, "rdzenie"))
             if not rdzenie:
                 return None
             ochronny = next(
@@ -351,7 +433,7 @@ def przekladnik_pradowy(enm: Any, ref: str | None) -> PrzekladnikPradowy | None:
             )
             przekladnie = [str(_pole(r, "przekladnia")) for r in rdzenie]
             zaczep = rozstrzygnij_zaczep_przekladnika(
-                zaczepy_przekladnika(przekladnie), _pole(aparat, "zaczep_pierwotny_a")
+                zaczepy_przekladnika(przekladnie), _liczba(_pole(aparat, "zaczep_pierwotny_a"))
             )
             rdzen = _przekladnia_rdzenia(str(_pole(ochronny, "przekladnia")))
             if rdzen is None:
@@ -359,13 +441,16 @@ def przekladnik_pradowy(enm: Any, ref: str | None) -> PrzekladnikPradowy | None:
             pierwotna = zaczep.wartosc if zaczep is not None else rdzen[0]
             return PrzekladnikPradowy(
                 ref=ref,
-                nazwa=str(_pole(aparat, "designation") or ref),
+                nazwa=str(
+                    _pole(aparat, "designation")
+                    or f"przekładnik prądowy pola {nazwa_elementu(pole, 'bays')}"
+                ),
                 zrodlo="APARAT_POLA",
                 ratio_primary=float(pierwotna),
                 ratio_secondary=rdzen[1],
-                accuracy_class=_pole(ochronny, "klasa"),
-                burden_va=_pole(ochronny, "moc_va"),
-                catalog_ref=_pole(aparat, "catalog_ref"),
+                accuracy_class=_napis(_pole(ochronny, "klasa")),
+                burden_va=_liczba(_pole(ochronny, "moc_va")),
+                catalog_ref=_napis(_pole(aparat, "catalog_ref")),
                 zaczep_roboczy=bool(zaczep is not None and zaczep.robocza),
             )
     return None
@@ -376,7 +461,7 @@ def przekladnik_pradowy(enm: Any, ref: str | None) -> PrzekladnikPradowy | None:
 # ---------------------------------------------------------------------------
 
 
-def ref_aparatu_wyzwalanego(aparat: Any) -> str | None:
+def ref_aparatu_wyzwalanego(aparat: object) -> str | None:
     """Identyfikator wyłącznika w macierzy wyzwoleń — JEDNA reguła dla pisarzy i odczytu.
 
     Wyłącznik pola wskazujący gałąź modelu (``linked_ref`` — gałąź ``breaker``, której stan
@@ -423,9 +508,9 @@ def _wiazania_z_obwodow(
             if p.funkcja not in obecne:
                 continue
             if p.wylacznik is not None:
-                cb = po_oznaczeniu.get((p.wylacznik, "CB"))
-                if cb is not None:
-                    wyzwolenia.setdefault(p.funkcja, []).append(cb)
+                wylacznik_obwodu = po_oznaczeniu.get((p.wylacznik, "CB"))
+                if wylacznik_obwodu is not None:
+                    wyzwolenia.setdefault(p.funkcja, []).append(wylacznik_obwodu)
             zerowe = "3I0" in FUNKCJE_EAZ[p.funkcja].wejscia_wymagane
             for w in p.wejscia:
                 if w.aparat is None:
@@ -533,7 +618,7 @@ def zapisz_nastawy_funkcji(
         wpisy.append({"funkcja_ref": funkcja_ref, "nastawy": lista})
     porzadek = {str(f.get("ref")): i for i, f in enumerate(sterownik.get("funkcje") or [])}
     grupa["funkcje"] = sorted(wpisy, key=lambda w: porzadek.get(str(w["funkcja_ref"]), 10**6))
-    sterownik["grupy_nastaw"] = sorted(grupy, key=lambda g: int(g.get("numer") or 0))
+    sterownik["grupy_nastaw"] = sorted(grupy, key=lambda g: int(g["numer"]))
 
 
 #: Rodzaje aparatu pola, które przerywają prąd zwarciowy — cel macierzy wyzwoleń (wyłącznik).
@@ -553,32 +638,32 @@ RODZAJE_WEJSCIA_STEROWNIKA: Mapping[str, frozenset[str]] = {
 }
 
 
-def _rodzaj_pomiaru(pomiar: Any) -> str | None:
+def _rodzaj_pomiaru(pomiar: object) -> str | None:
     rodzaj = _pole(pomiar, "measurement_type")
     if rodzaj == "CT":
         return "CORE_BALANCE_CT" if _pole(pomiar, "ct_arrangement") == "ferranti" else "CT"
     return "VT" if rodzaj == "VT" else None
 
 
-def _referencje_aparatow(enm: Any, aparaty: Iterable[Any] = ()) -> tuple[set[str], dict[str, str]]:
+def _referencje_aparatow(
+    enm: object, aparaty: Iterable[Any] = ()
+) -> tuple[set[str], dict[str, str]]:
     """Wyłączniki (gałąź ``breaker`` albo aparat pola rodzaju wyłącznika, regułą
     `ref_aparatu_wyzwalanego`) oraz rodzaj każdego aparatu pola i pomiaru (referencja →
     rodzaj; wejście sprawdza rodzaj regułą `RODZAJE_WEJSCIA_STEROWNIKA`) modelu i ``aparaty``."""
     wylaczniki = {
         str(_pole(g, "ref_id"))
-        for g in _pole(enm, "branches") or []
+        for g in _lista(enm, "branches")
         if _pole(g, "type") == "breaker" and _pole(g, "ref_id")
     }
     przekladniki: dict[str, str] = {}
-    for m in _pole(enm, "measurements") or []:
+    for m in _lista(enm, "measurements"):
         rodzaj = _rodzaj_pomiaru(m)
         if rodzaj is not None and _pole(m, "ref_id"):
             przekladniki[str(_pole(m, "ref_id"))] = rodzaj
-    wszystkie = [
-        a for pole in _pole(enm, "bays") or [] for a in _pole(pole, "primary_devices") or []
-    ]
+    wszystkie = [a for pole in _lista(enm, "bays") for a in _lista(pole, "primary_devices")]
     for aparat in [*wszystkie, *aparaty]:
-        rodzaj = _pole(aparat, "kind")
+        rodzaj = _napis(_pole(aparat, "kind"))
         if rodzaj in RODZAJE_APARATU_WYZWALANEGO and (cel := ref_aparatu_wyzwalanego(aparat)):
             wylaczniki.add(cel)
         if rodzaj:
@@ -605,7 +690,7 @@ def _niezgodne_wejscia(
 
 #: Znacznik „źródło 3U₀ bez zmian" pisarza `ustaw_funkcje_pola` (zmiana szablonu albo aparatów
 #: nie dotyka deklaracji projektanta).
-ZACHOWAJ_ZRODLO_U0: Any = object()
+ZACHOWAJ_ZRODLO_U0: object = object()
 
 
 def ustaw_funkcje_pola(
@@ -615,9 +700,8 @@ def ustaw_funkcje_pola(
     kody: Iterable[str] | None,
     aparaty: Sequence[Mapping[str, Any]],
     obwody: ObwodyWtornePola | None,
-    zrodlo_u0_ref: Any = ZACHOWAJ_ZRODLO_U0,
-    katalog_ref: str | None = None,
-    nazwa_pola: str | None = None,
+    zrodlo_u0_ref: str | None | object = ZACHOWAJ_ZRODLO_U0,
+    nazwa_domyslna: str,
     aparaty_wymienione: Iterable[str] = (),
 ) -> dict[str, Any] | None:
     """Załóż albo zaktualizuj sterownik pola z zestawu funkcji szablonu — JEDYNY pisarz.
@@ -626,16 +710,18 @@ def ustaw_funkcje_pola(
     identyfikator, stan włączenia i nastawy we wszystkich grupach; funkcja usunięta znika
     razem z nastawami i wierszem macierzy wyzwoleń. Wiązania wejść i wiersze macierzy
     wyzwoleń funkcji z szablonu pochodzą z obwodów wtórnych wzorca (`_wiazania_z_obwodow`);
-    wiązanie nadane wcześniej (katalog sterownika, `add_relay`) ma pierwszeństwo przed
+    wiązanie nadane wcześniej (dobór urządzenia `add_relay`) ma pierwszeństwo przed
     wiązaniem z szablonu, dopóki wskazuje ten sam aparat: wiązanie do aparatu wymienionego
     (``aparaty_wymienione`` — `enm.pola._aparaty_wymienione`) albo do aparatu, którego rodzaj
-    nie pasuje do wejścia (`RODZAJE_WEJSCIA_STEROWNIKA`), wraca z wzorca. ``zrodlo_u0_ref`` — przekładnik napięciowy z otwartym trójkątem
-    (źródło 3U₀ potwierdzone przez projektanta, `enm.zrodlo_napiecia_zerowego`).
+    nie pasuje do wejścia (`RODZAJE_WEJSCIA_STEROWNIKA`), wraca z wzorca. ``zrodlo_u0_ref`` —
+    przekładnik napięciowy z otwartym trójkątem (źródło 3U₀ potwierdzone przez projektanta,
+    `enm.zrodlo_napiecia_zerowego`). Pozycji katalogu urządzenia ten pisarz nie nadaje — dobór
+    urządzenia to wyłącznie `add_relay` (brama katalogowa).
 
     ``kody=None`` — zestaw bez zmian (zmiana aparatów albo szablonu przelicza wyłącznie
-    wiązania); ``katalog_ref`` — pozycja katalogu urządzenia wskazana przy budowie pola.
+    wiązania).
 
-    Pusty zestaw bez katalogu i brak sterownika — nic (pole bez funkcji nie dostaje pustego
+    Pusty zestaw bez źródła 3U₀ i brak sterownika — nic (pole bez funkcji nie dostaje pustego
     sterownika); pusty zestaw przy istniejącym sterowniku — sterownik zostaje bez funkcji
     (urządzenie z katalogu nie znika przez zmianę szablonu). Zwraca rekord sterownika albo
     ``None``.
@@ -653,7 +739,7 @@ def ustaw_funkcje_pola(
             lista_kodow.append(str(kod))
     if zrodlo_u0_ref is ZACHOWAJ_ZRODLO_U0:
         zrodlo_u0_ref = ref_zrodla_u0_pola(enm, bay_ref)
-    if sterownik is None and not lista_kodow and not katalog_ref and not zrodlo_u0_ref:
+    if sterownik is None and not lista_kodow and not zrodlo_u0_ref:
         return None
     wejscia_szablonu, wyzwolenia = _wiazania_z_obwodow(aparaty, obwody, lista_kodow)
     if zrodlo_u0_ref:
@@ -662,7 +748,7 @@ def ustaw_funkcje_pola(
     if sterownik is None:
         sterownik = {
             "ref_id": referencja_sterownika_pola(bay_ref),
-            "name": f"Sterownik pola {nazwa_pola or bay_ref}",
+            "name": nazwa_domyslna,
             "bay_ref": bay_ref,
             "wejscia": {},
             "funkcje": [],
@@ -672,9 +758,6 @@ def ustaw_funkcje_pola(
             "is_enabled": True,
         }
         lista.append(sterownik)
-    if katalog_ref:
-        sterownik["catalog_ref"] = katalog_ref
-        sterownik["catalog_namespace"] = "ZABEZPIECZENIE"
     wylaczniki, przekladniki = _referencje_aparatow(enm, aparaty)
     wymienione = set(aparaty_wymienione)
     wylaczniki -= wymienione
@@ -722,7 +805,7 @@ def ustaw_funkcje_pola(
     return sterownik
 
 
-def ref_zrodla_u0_pola(enm: Any, bay_ref: str | None) -> str | None:
+def ref_zrodla_u0_pola(enm: object, bay_ref: str | None) -> str | None:
     """Przekładnik napięciowy otwartego trójkąta przypięty do wejścia 3U₀ sterownika pola."""
     sterownik = sterownik_pola(enm, bay_ref)
     if sterownik is None:
@@ -772,11 +855,11 @@ class IndeksReferencjiSterownikow:
     przekladniki: Mapping[str, str]  # referencja aparatu pola albo pomiaru → rodzaj
 
 
-def indeks_referencji_sterownikow(enm: Any) -> IndeksReferencjiSterownikow:
+def indeks_referencji_sterownikow(enm: object) -> IndeksReferencjiSterownikow:
     """Indeks referencji: pola, sterowniki per pole, wyłączniki (gałąź ``breaker`` albo aparat
     pola rodzaju wyłącznika, wskazany regułą `ref_aparatu_wyzwalanego`), przekładniki (pomiar
     albo aparat pola rodzaju przekładnika)."""
-    pola = list(_pole(enm, "bays") or [])
+    pola = list(_lista(enm, "bays"))
     sterowniki_pol: dict[str, list[str]] = {}
     for s in sterowniki(enm):
         bay = _napis(_pole(s, "bay_ref"))
@@ -792,7 +875,7 @@ def indeks_referencji_sterownikow(enm: Any) -> IndeksReferencjiSterownikow:
 
 
 def naruszenia_referencji_sterownika(
-    enm: Any, sterownik: Any, *, indeks: IndeksReferencjiSterownikow | None = None
+    enm: object, sterownik: object, *, indeks: IndeksReferencjiSterownikow | None = None
 ) -> list[tuple[str, str, str]]:
     """Sterownik wobec MODELU — JEDNA reguła operacji (`attach_protection`, `update_protection`)
     i walidatora (E064): pole istnieje i nie ma drugiego sterownika, macierz wyzwoleń wskazuje
@@ -837,7 +920,10 @@ def naruszenia_referencji_sterownika(
                     aparat,
                 )
             )
-    for klucz, ref in _niezgodne_wejscia(_pole(sterownik, "wejscia") or {}, ind.przekladniki):
+    wejscia_sterownika = _pole(sterownik, "wejscia")
+    for klucz, ref in _niezgodne_wejscia(
+        wejscia_sterownika if isinstance(wejscia_sterownika, Mapping) else {}, ind.przekladniki
+    ):
         przyczyna = (
             "aparat, którego nie ma w modelu sieci"
             if ref not in ind.przekladniki

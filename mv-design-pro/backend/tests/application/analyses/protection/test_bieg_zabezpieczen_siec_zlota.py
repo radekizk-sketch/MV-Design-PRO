@@ -91,8 +91,26 @@ def _czas_normy(
     return min(czasy)
 
 
+def _sterowniki_szablonu_bez_nastaw(model: EnergyNetworkModel) -> set[str]:
+    """Sterowniki pól z samym zestawem funkcji szablonu stacji — bez żadnej zapisanej nastawy
+    (karta OCHRONA-JEDNO-ZRODLO: funkcje szablonu pola są funkcjami sterownika pola)."""
+    return {p.ref_id for p in model.protection_assignments if p.bay_ref and not p.grupy_nastaw}
+
+
+def _odmowy_tylko_szablonu(model: EnergyNetworkModel, wynik: dict[str, Any]) -> None:
+    """Odmawiają WYŁĄCZNIE sterowniki szablonu bez nastaw — jawne NIE_OCENIONO z brakami
+    i akcją naprawczą; żaden z dwóch sterowników z nastawami nie odmawia."""
+    szablonu = _sterowniki_szablonu_bez_nastaw(model)
+    assert {o["urzadzenie_ref"] for o in wynik["odmowy"]} == szablonu
+    for odmowa in wynik["odmowy"]:
+        assert odmowa["braki"] and all(b["akcja_naprawcza_pl"] for b in odmowa["braki"])
+
+
 def test_siec_zlota_niesie_dwa_zabezpieczenia_z_operacji(model: EnergyNetworkModel) -> None:
-    przypisania = {p.name: p for p in model.protection_assignments}
+    szablonu = _sterowniki_szablonu_bez_nastaw(model)
+    # Sześć pól SN dwóch stacji (po trzy z szablonu) — każde ma sterownik z funkcjami szablonu.
+    assert len(szablonu) == 6
+    przypisania = {p.name: p for p in model.protection_assignments if p.ref_id not in szablonu}
     assert set(przypisania) == {NAZWA_ZABEZPIECZENIA_Q1, NAZWA_ZABEZPIECZENIA_Q2}
     for przypisanie in przypisania.values():
         assert przypisanie.catalog_ref == "REF-OC-200"
@@ -116,11 +134,12 @@ def test_budowa_deterministyczna() -> None:
 
 
 def test_czasy_zgodne_ze_wzorem_normy_dla_kazdej_oceny(
+    model: EnergyNetworkModel,
     wynik_max: tuple[dict[str, Any], dict[str, Any]],
 ) -> None:
     _sc, wynik = wynik_max
     nastawy = {NAZWA_ZABEZPIECZENIA_Q1: NASTAWY_Q1, NAZWA_ZABEZPIECZENIA_Q2: NASTAWY_Q2}
-    assert wynik["odmowy"] == []
+    _odmowy_tylko_szablonu(model, wynik)
     assert len(wynik["evaluations"]) == 3
     for ocena in wynik["evaluations"]:
         t, stopien = _czas_normy(nastawy[ocena["nazwa_urzadzenia_pl"]], ocena["i_fault_a"])
@@ -206,14 +225,28 @@ def test_zabezpieczenia_nie_zmieniaja_liczb_biegu_zwarciowego(model: EnergyNetwo
         ).id
     )
     # Wiązanie dowodu (`proof_ref`, `proof_binding`) niesie odcisk MIGAWKI — ta różni się
-    # przypisaniami, więc wiązanie musi się różnić; każdy inny liść wiersza jest identyczny.
+    # przypisaniami, więc wiązanie musi się różnić. Zdania wyjaśnienia (`opis_pl`, `notes`)
+    # nazywają przyczynę wartości roboczej t_b: bez sterowników „pole nie ma czynnego
+    # sterownika", ze sterownikami szablonu pól bez nastaw — braki tych sterowników (karta
+    # OCHRONA-JEDNO-ZRODLO). Każda LICZBA i każdy inny liść wiersza są identyczne.
     tozsamosc_dowodu = {"proof_ref", "proof_binding"}
+    zdania = {"opis_pl", "notes"}
 
-    def fizyka(wiersze: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return [{k: v for k, v in w.items() if k not in tozsamosc_dowodu} for w in wiersze]
+    def fizyka(wartosc: Any) -> Any:
+        if isinstance(wartosc, dict):
+            return {
+                k: fizyka(v)
+                for k, v in wartosc.items()
+                if k not in tozsamosc_dowodu and k not in zdania
+            }
+        if isinstance(wartosc, list):
+            return [fizyka(v) for v in wartosc]
+        return wartosc
 
     assert len(wiersze_z) == 9
     assert fizyka(sc_bez.raw_result["results"]) == fizyka(wiersze_z)
+    opisy_tb = [w["tb_zrodlo"]["opis_pl"] for w in wiersze_z if w.get("tb_zrodlo")]
+    assert any("Sterownik pola" in o for o in opisy_tb), "przyczyna t_b nazywa sterownik pola"
 
 
 def test_edycja_nastaw_nie_wymaga_ponownego_zwarcia(model: EnergyNetworkModel) -> None:

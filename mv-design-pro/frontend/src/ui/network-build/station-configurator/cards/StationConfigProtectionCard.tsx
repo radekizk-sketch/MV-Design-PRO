@@ -8,8 +8,8 @@
  *    `WalidacjaWytrzymalosciAparaturySekcja` (K7-B, 2026-07-31).
  * Karta zestawia dane pól i pokazuje odpowiedzi; reguła NOT-A-SOLVER.
  *
- * Przekaźniki pochodzą z modelu (`przekaznikiStacji.ts`: `Bay.protection_ref` →
- * `ProtectionAssignment`). Dawne sekcje „Automatyka”, „Uzależnienia łączeniowe” i „Sterowanie”
+ * Przekaźniki pochodzą z modelu (`przekaznikiStacji.ts`: sterownik pola `ProtectionAssignment`
+ * z `bay_ref` pola stacji — jedyna struktura zabezpieczeń, karta OCHRONA-JEDNO-ZRODLO). Dawne sekcje „Automatyka”, „Uzależnienia łączeniowe” i „Sterowanie”
  * usunięte: zasilała je stała bez źródła w modelu (pusta lista, `false`, „lokalne”) — automatykę
  * i blokady pola pokazuje ekran zabezpieczeń i automatyki z read-modelu pól.
  */

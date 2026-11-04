@@ -258,8 +258,13 @@ BACKEND = ROOT / "backend"
 # naprawie 166/20: zdjete te 4 (cel operacji zawezony po rozstrzygnieciu pole/lacznik; wynik
 # wyszukania pola katalogowego w osobnej zmiennej) oraz 1 z `api/catalog.py` (union-attr: zestaw
 # EAZ szablonu z rejestru bez `None`), oba pliki karty bez bledow. Zero nowych.
-BASELINE_ERRORS = 166
-BASELINE_FILES = 20
+# Karta OCHRONA-JEDNO-ZRODLO, 2026-11-04: 166/20 -> 163/19. POMIAR `mypy_ratchet_guard` na
+# drzewie karty: przed naprawa 167/21 — karta wniosla 4 bledy w 2 plikach (`enm/zabezpieczenie.py`
+# 3: zmienna `cb` uzyta dla dwoch typow; `ocena_nadpradowa.py` 1: `breaker_ref` `str | None`
+# w `OcenaPunktu`), a kasacja dawnej struktury zabezpieczen zdjela 3 bledy i 1 plik. Po naprawie
+# (osobna zmienna wylacznika obwodu; wylacznik zawezony przekazywany do `_ocena_punktu`) 163/19.
+BASELINE_ERRORS = 163
+BASELINE_FILES = 19
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

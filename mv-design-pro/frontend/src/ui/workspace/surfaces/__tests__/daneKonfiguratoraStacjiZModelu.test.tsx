@@ -8,7 +8,7 @@
  * (`fixtures/generated/14_sub_boards.json`, pilnowana testem backendu).
  *
  * ILOCZYN CECH: przypadek aktywny {jest, brak} × odpowiedź projekcji {graf OK, HTTP 500};
- * pole SN {z zabezpieczeniem włączonym, z wyłączonym, bez, z ref nierozwiązywalnym};
+ * pole SN {ze sterownikiem włączonym, z wyłączonym, bez sterownika}, sterownik pola spoza stacji;
  * pole pomiarowe {układ energii, napięcie szyn} × przekładnik w polu.
  */
 import { screen, waitFor } from '@testing-library/react';
@@ -19,6 +19,7 @@ import { renderWithQueryClient as render } from '../../../../test/queryClientTes
 import { useAppStateStore } from '../../../app-state';
 import { scenariusz } from '../../../sld/v3/lv-domain/fixtures/scenariusze';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { sterownikTestowy } from '../../../../test/sterownik';
 import type { WorkspaceSurfaceDescriptor } from '../../types';
 import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
 
@@ -48,11 +49,9 @@ function pole(ref: string, rola: string, dodatki: Record<string, unknown> = {}) 
   return { ref_id: ref, name: ref, bay_role: rola, substation_ref: STACJA, bus_ref: 'sn', equipment_refs: [], tags: [], meta: {}, ...dodatki };
 }
 
-function zabezpieczenie(ref: string, typ: string, funkcje: string[], wlaczone: boolean) {
-  return {
-    ref_id: ref, name: ref, breaker_ref: `cb/${ref}`, device_type: typ, is_enabled: wlaczone,
-    settings: funkcje.map((function_type) => ({ function_type })), tags: [], meta: {},
-  };
+/** Sterownik pola w jednej strukturze zabezpieczeń (karta OCHRONA-JEDNO-ZRODLO). */
+function zabezpieczenie(ref: string, bayRef: string, nazwa: string, kody: string[], wlaczone: boolean) {
+  return sterownikTestowy({ ref, bayRef, nazwa, kody, wylacznik: `cb/${ref}`, isEnabled: wlaczone });
 }
 
 function ustawModel(): void {
@@ -63,10 +62,10 @@ function ustawModel(): void {
       branches: [], transformers: [], sources: [], loads: [], generators: [],
       substations: [{ id: 's', ref_id: STACJA, name: 'Stacja z podrozdzielnicami', tags: [], meta: {}, station_type: 'inline', bus_refs: ['sn'], transformer_refs: [] }],
       bays: [
-        pole('pole/we', 'IN', { protection_ref: 'pz/we' }),
-        pole('pole/wy', 'OUT', { protection_ref: 'pz/wy' }),
+        pole('pole/we', 'IN'),
+        pole('pole/wy', 'OUT'),
         pole('pole/tr', 'TR'),
-        pole('pole/zly', 'OUT', { protection_ref: 'pz/nie-ma' }),
+        pole('pole/zly', 'OUT'),
         pole('pole/pom', 'MEASUREMENT', { funkcja_pomiaru: 'UKLAD_ENERGII', rodzaj_pomiaru: 'PODSTAWOWY' }),
         pole('pole/szyny', 'MEASUREMENT', { funkcja_pomiaru: 'NAPIECIA_SZYN' }),
       ],
@@ -75,8 +74,10 @@ function ustawModel(): void {
         { ref_id: 'ct/pom', name: 'ct', measurement_type: 'CT', bus_ref: 'sn', bay_ref: 'pole/pom', rating: { ratio_primary: 100, ratio_secondary: 5 }, connection: 'star', purpose: 'metering', tags: [], meta: {} },
       ],
       protection_assignments: [
-        zabezpieczenie('pz/we', 'directional_overcurrent', ['directional_67', 'directional_67N'], true),
-        zabezpieczenie('pz/wy', 'overcurrent', ['overcurrent_50', 'overcurrent_51'], false),
+        zabezpieczenie('pz/we', 'pole/we', 'Nadprądowe kierunkowe', ['67', '67N'], true),
+        zabezpieczenie('pz/wy', 'pole/wy', 'Nadprądowe', ['50', '51'], false),
+        // Sterownik pola spoza stacji (pole nie istnieje w tej stacji) — pominięty.
+        zabezpieczenie('pz/obcy', 'pole/innej-stacji', 'Obce', ['51'], true),
       ],
       branch_points: [], line_runs: [], connection_nodes: [],
     } as never,

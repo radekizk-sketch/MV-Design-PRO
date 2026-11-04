@@ -36,7 +36,7 @@ from enm.models import (
 )
 from fastapi.testclient import TestClient
 
-from tests.utils.sterownik import sterownik
+from tests.utils.sterownik import sterownik, stopien
 
 
 def _reset_backend_state() -> None:
@@ -301,7 +301,12 @@ def test_model_rozstrzyga_wskazanie_sprzeczne_to_422_z_kodem(
         )
     )
     siec.protection_assignments.append(
-        sterownik(ref_id="PA1", name="Zabezpieczenie pola", wylacznik="CB1")
+        sterownik(
+            ref_id="PA1",
+            name="Zabezpieczenie pola",
+            wylacznik="CB1",
+            stopnie=[stopien("51"), stopien("50")],
+        )
     )
     run = _zapisana_kotwica(uuid4(), siec)
     bez_wskazania = client.get(

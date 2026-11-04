@@ -69,7 +69,8 @@ export interface ZnamionaWytrzymalosci {
 /** Czas wyłączenia użyty w kryterium cieplnym + jego rozbicie (WHITE BOX). */
 export interface CzasWylaczeniaPola {
   readonly t_clearing_s: number | null;
-  readonly zrodlo: string | null;
+  /** `nastawy_pola` — czas z nastaw sterownika pola; `null` — czas nieustalony (powód w `powod_pl`). */
+  readonly zrodlo: 'nastawy_pola' | null;
   readonly powod_pl: string;
   readonly czlon_nastawczy_s: number | null;
   readonly czas_wlasny_wylacznika_s: number | null;

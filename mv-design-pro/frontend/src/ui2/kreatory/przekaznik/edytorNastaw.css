@@ -270,3 +270,11 @@
   font-size: 12px;
   cursor: pointer;
 }
+
+/* Skład funkcji sterownika (szczegóły na żądanie): wybór i przycisk w jednej linii. */
+.mvd-edytor-nastaw-sklad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}

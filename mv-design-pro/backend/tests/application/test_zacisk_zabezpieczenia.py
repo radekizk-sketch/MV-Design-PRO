@@ -29,7 +29,6 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from application.protection_settings import zacisk_zabezpieczenia as modul
 from application.protection_settings.batch_run import (
     BrakDanychNastawError,
     kandydaci_nastepnej_szyny,
@@ -121,7 +120,9 @@ def _przypiecie(
     return sterownik(
         ref_id=ref_id,
         name=f"Zabezpieczenie {ref_id}",
-        wylacznik=wylacznik,
+        # Sterownik bez funkcji nie ma czego wyzwalać — wiersz macierzy tylko przy funkcjach
+        # (karta OCHRONA-JEDNO-ZRODLO; macierz wyzwoleń wiąże funkcję z wyłącznikiem).
+        wylacznik=wylacznik if kody else None,
         catalog_ref=TYP_Z_FUNKCJA_50_51,
         catalog_namespace="ZABEZPIECZENIE",
         stopnie=[stopien(k) for k in kody],
@@ -286,9 +287,9 @@ def test_funkcje_sterownika_filtruja_przypiecia_pakietu() -> None:
     assert isinstance(wylaczona, OdmowaZacisku) and wylaczona.kod == KOD_BRAK_WSKAZANIA
     # Różnicówki 87L przy OBU zaciskach i nadprądowe tylko przy `od`: model rozstrzyga `od`.
     snapshot = _siec_resolvera("wprost", "oba", ("87L",))
-    snapshot["protection_assignments"][0] = _przypiecie(
-        "PA_od", "CB_od", ("87L", "51")
-    ).model_dump(mode="json")
+    snapshot["protection_assignments"][0] = _przypiecie("PA_od", "CB_od", ("87L", "51")).model_dump(
+        mode="json"
+    )
     assert _werdykt(rozstrzygnij_zacisk(snapshot, "L", None)) == ("od", "model")
 
 

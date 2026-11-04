@@ -665,7 +665,7 @@ def post_wytrzymalosc_aparatury(
                 "prądzie zwarciowym maksymalnym (scenariusz MAX)."
             ),
         )
-    enm = _get_enm(klucz)
+    enm = _model_biegu(klucz, run)
     project_id = _resolve_project_id(case_id, request)
     return widok_wytrzymalosci_z_biegu(
         enm=enm,
@@ -675,6 +675,40 @@ def post_wytrzymalosc_aparatury(
         # Konfiguracja stacji pozostaje nadrzędna dla pól skonfigurowanych ręcznie.
         bay_device_withstand=_bay_device_withstand(project_id, body.station_ref, request),
     )
+
+
+def _model_biegu(klucz: str, run: Any) -> EnergyNetworkModel:
+    """Model, na którym policzono bieg: migawka efektywna scenariusza z koperty biegu.
+
+    Bieg ze scenariuszem (np. wybór grupy nastaw albo delta nastaw przypadku — ADR-022) ma
+    prądy i czas t_b z migawki efektywnej; czas wyłączenia pól w ocenie wytrzymałości musi
+    pochodzić z TEJ SAMEJ migawki, inaczej ocena łączyłaby prąd scenariusza z nastawami
+    modelu bazowego. Bieg bez scenariusza — model bieżący (dotychczasowa ścieżka).
+    Scenariusz biegu usunięty z magazynu — 409 z nazwaną przyczyną, nigdy cichy powrót
+    do modelu bazowego.
+    """
+    from enm.envelope import RevisionEnvelope
+    from enm.scenariusze import ScenariuszNieistniejeError, apply_scenario, wczytaj_scenariusz
+
+    enm = _get_enm(klucz)
+    koperta = RevisionEnvelope.from_dict(getattr(run, "envelope", None))
+    if koperta is None or koperta.scenario_ref is None:
+        return enm
+    scenario_id, rewizja = koperta.scenario_ref
+    try:
+        scenariusz = wczytaj_scenariusz(klucz, scenario_id, rewizja)
+    except ScenariuszNieistniejeError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Scenariusz, na którym policzono bieg zwarciowy, nie istnieje już w projekcie — "
+                "wytrzymałości aparatury nie można ocenić na migawce tego biegu."
+            ),
+        ) from exc
+    efektywna = apply_scenario(enm, scenariusz)
+    if efektywna.tozsama_z_baza:
+        return enm
+    return EnergyNetworkModel.model_validate(efektywna.snapshot)
 
 
 def _bay_device_withstand(

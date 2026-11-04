@@ -424,11 +424,6 @@ class SNFieldSpec(_FrozenBase):
     """Adresy kart katalogowych, z których pochodzą dane szablonu pola. Bez nich
     status źródła jest gołym słowem — proweniencja ma prowadzić do dokumentu."""
 
-    protection_catalog_ref: str | None = None
-    """Referencja zabezpieczenia przypisanego do pola (czytana przez wcięcie
-    stacji w odcinek). Wymagane FUNKCJE zabezpieczeniowe pola to osobna dana —
-    wyprowadza je z szablonu producenta wspólny resolver operacji."""
-
     equipment_refs: list[str] | None = None
     """Referencje elementów już istniejących w modelu, które należą do tego pola
     (czytane przez operację stacji na końcu ciągu). Aparat pola tworzony przez
@@ -1128,9 +1123,6 @@ class AddSnBayPayload(_FrozenBase):
     manufacturer_ref: str | None = None
     """Producent (metadana szablonu/rodziny)."""
 
-    protection_catalog_ref: str | None = None
-    """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
-
     # Pole z KATALOGU rozdzielnic (kanon `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md`
     # §2–§5, etap S5): wskazanie katalogowego pola albo jednostki bloku RMU przełącza
     # operację na plan katalogowy — rola pola, funkcja, rodzina, producent i wyposażenie
@@ -1188,7 +1180,7 @@ class DerMvFieldConfigurationSpec(_FrozenBase):
     """Wyposażenie dedykowanego pola źródłowego SN DER (łańcuch W1, katalog-first).
 
     Każde pole mapuje 1:1 na obecność aparatu pierwotnego pola albo na wymaganą
-    funkcję zabezpieczeniową (protection_relay → Bay.protection_codes). Kabel SN
+    funkcję zabezpieczeniową (protection_relay → funkcje sterownika pola). Kabel SN
     (odcinek przyłączeniowy TR blokowy → pole SN) materializowany z katalogu kabli.
     """
 

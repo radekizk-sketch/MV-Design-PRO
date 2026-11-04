@@ -93,8 +93,9 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
         {"segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": KABEL}},
     )
     segmenty = odp["snapshot"]["corridors"][0]["ordered_segment_refs"]
-    # Wyposażenie pola (CT + przekaźnik z NASTAWAMI) powstaje w TEJ SAMEJ
-    # operacji co stacja (B-3) — to produkcyjna droga zapisu nastaw pola.
+    # Wyposażenie pola (CT + sterownik zabezpieczeń z katalogu) powstaje w TEJ SAMEJ
+    # operacji co stacja (B-3); nastawy zapisuje JEDYNY pisarz `update_protection_settings`
+    # (karta OCHRONA-JEDNO-ZRODLO) — ta sama droga co edytor nastaw karty pola.
     pole_in: Any = (
         {
             "field_role": "LINIA_IN",
@@ -104,19 +105,7 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
                     "ratio_primary_a": 400.0,
                     "ratio_secondary_a": 5.0,
                 },
-                "relay": {
-                    "catalog_ref": PRZEKAZNIK,
-                    "relay_type": "NADPRADOWY",
-                    "settings": [
-                        {
-                            "function_type": "overcurrent_51",
-                            "threshold_a": 400.0,
-                            "threshold_unit": "A_PIERWOTNY",
-                            "curve_type": "DT",
-                            "time_delay_s": 0.3,
-                        }
-                    ],
-                },
+                "relay": {"catalog_ref": PRZEKAZNIK, "relay_type": "NADPRADOWY"},
             },
         }
         if z_zabezpieczeniem
@@ -154,6 +143,34 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
     )
     stacje = [s for s in odp["snapshot"]["substations"] if "/station" in s["ref_id"]]
     assert stacje, "Operacja musi utworzyć stację"
+    if z_zabezpieczeniem:
+        pola_stacji = {
+            b["ref_id"]
+            for b in odp["snapshot"]["bays"]
+            if b.get("substation_ref") == stacje[0]["ref_id"] and b.get("bay_role") == "IN"
+        }
+        (sterownik,) = (
+            p for p in odp["snapshot"]["protection_assignments"] if p.get("bay_ref") in pola_stacji
+        )
+        _operacja(
+            klient,
+            case_id,
+            "update_protection_settings",
+            {
+                "protection_ref": sterownik["ref_id"],
+                "nastawy": {
+                    "51": {
+                        "prog": 400.0,
+                        "jednostka_progu": "A_PIERWOTNY",
+                        "krzywa": "DT",
+                        "zwloka_s": 0.3,
+                    }
+                },
+                # Pole z jednym stopniem I> (51): funkcja I>> z zestawu szablonu wyłączona
+                # przez projektanta (wyłączona funkcja nie jest brakiem nastaw).
+                "wlaczone": {"50": False},
+            },
+        )
     return str(stacje[0]["ref_id"])
 
 
@@ -403,7 +420,7 @@ def test_czas_z_nastaw_pola_z_czasem_wlasnym_roboczym(klient: TestClient):
     czas = pole["czas_wylaczenia"]
     # WHITE BOX: człon i ślad nastawy, prąd = Ik″ punktu zabudowy TEGO pola.
     assert czas["czlon_nastawczy_s"] == 0.3
-    assert czas["funkcja"] == "overcurrent_51"
+    assert czas["funkcja"] == "51"
     assert czas["prad_zwarciowy_a"] == pytest.approx(pole["prady_pola"]["ik_ka"] * 1000.0)
     assert czas["czas_wlasny_wylacznika_s"] == 0.06
     assert czas["t_clearing_s"] == pytest.approx(0.36)

@@ -32,8 +32,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [],
-        "protection_ref": null,
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -45,8 +43,7 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -77,12 +74,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N"
-        ],
-        "protection_ref": null,
         "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/000",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -94,8 +85,7 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field_terminal/000",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -126,12 +116,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N"
-        ],
-        "protection_ref": null,
         "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -143,8 +127,7 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field_terminal/001",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -176,16 +159,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [
-          "87T",
-          "51",
-          "50",
-          "51N",
-          "63",
-          "26",
-          "63P"
-        ],
-        "protection_ref": null,
         "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -197,8 +170,7 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field_terminal/002",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -228,8 +200,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [],
-        "protection_ref": null,
         "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/nn_main_breaker",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -241,8 +211,7 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/7cddf2522393c53a01400984580df18d/feeder_bus",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -272,8 +241,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [],
-        "protection_ref": null,
         "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/nn_feeder/000",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -283,8 +250,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/1ba313c68f25dbab1e8b6a3de6ee936d/feeder_bus",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -317,8 +283,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [],
-        "protection_ref": null,
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -330,8 +294,7 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -362,12 +325,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N"
-        ],
-        "protection_ref": null,
         "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/000",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -379,8 +336,7 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field_terminal/000",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -411,12 +367,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N"
-        ],
-        "protection_ref": null,
         "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -428,8 +378,7 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field_terminal/001",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -461,16 +410,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [
-          "87T",
-          "51",
-          "50",
-          "51N",
-          "63",
-          "26",
-          "63P"
-        ],
-        "protection_ref": null,
         "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -482,8 +421,7 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field_terminal/002",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -513,8 +451,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [],
-        "protection_ref": null,
         "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/nn_main_breaker",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -526,8 +462,7 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": "nn/14f1b33bc028a5a5098ecbb8c67c13e7/feeder_bus",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -557,8 +492,6 @@
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
-        "protection_codes": [],
-        "protection_ref": null,
         "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/nn_feeder/000",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -568,8 +501,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": "nn/5a3f4ff06db406079e16be100188dda1/feeder_bus",
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -600,8 +532,6 @@
             "designation": "Q11",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/ds",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "DS",
             "linked_ref": null,
@@ -638,8 +568,6 @@
             "designation": "Q1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/cb",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": null,
@@ -676,8 +604,6 @@
             "designation": "T1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/ct",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/ct",
@@ -703,8 +629,6 @@
             "designation": "QE1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/es",
             "earthing_role": "field_earth",
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "ES",
             "linked_ref": null,
@@ -737,11 +661,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50"
-        ],
-        "protection_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/prot",
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -751,8 +670,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": null,
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -783,8 +701,6 @@
             "designation": "Q11",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/ds_bus",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "DS",
             "linked_ref": null,
@@ -821,8 +737,6 @@
             "designation": "Q1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/cb",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": null,
@@ -859,8 +773,6 @@
             "designation": "T1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/ct",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/ct",
@@ -886,8 +798,6 @@
             "designation": "Q12",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/ds_lin",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "DS",
             "linked_ref": null,
@@ -924,8 +834,6 @@
             "designation": "QE1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/es",
             "earthing_role": "field_earth",
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "ES",
             "linked_ref": null,
@@ -962,8 +870,6 @@
             "designation": null,
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/head",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -985,12 +891,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N"
-        ],
-        "protection_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/prot",
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -1000,8 +900,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": null,
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -1032,8 +931,6 @@
             "designation": "Q11",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/ds_bus",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "DS",
             "linked_ref": null,
@@ -1070,8 +967,6 @@
             "designation": "Q1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/cb",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": true,
             "kind": "CB",
             "linked_ref": null,
@@ -1108,8 +1003,6 @@
             "designation": "T1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/ct",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CT",
             "linked_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/ct",
@@ -1135,8 +1028,6 @@
             "designation": "Q12",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/ds_lin",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "DS",
             "linked_ref": null,
@@ -1173,8 +1064,6 @@
             "designation": "QE1",
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/es",
             "earthing_role": "field_earth",
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "ES",
             "linked_ref": null,
@@ -1211,8 +1100,6 @@
             "designation": null,
             "device_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/head",
             "earthing_role": null,
-            "funkcje_eaz_wylaczajace": [],
-            "funkcje_eaz_zasilane": [],
             "is_controllable": false,
             "kind": "CABLE_HEAD",
             "linked_ref": null,
@@ -1234,12 +1121,6 @@
             "zrodlo_zaczepu": null
           }
         ],
-        "protection_codes": [
-          "51",
-          "50",
-          "51N"
-        ],
-        "protection_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/prot",
         "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
@@ -1249,8 +1130,7 @@
         "switchgear_family_ref": null,
         "tags": [],
         "terminal_bus_ref": null,
-        "wybor_bloku": null,
-        "zrodlo_u0_ref": null
+        "wybor_bloku": null
       }
     ],
     "branch_points": [],
@@ -2266,7 +2146,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "0247cb3912be032e0830b325142fcc662bf1165993987525a8059a03ba1fc85d",
+      "hash_sha256": "7f9036bbe72f722f90cc1f15d93498a52cfa8d9ad932ff2ee31dbbd1535ffd32",
       "name": "GPZ — ścieżka danych (pola, CT, zabezpieczenia)",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2502,205 +2382,730 @@
     ],
     "protection_assignments": [
       {
-        "breaker_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/cb",
+        "aktywna_grupa": 1,
+        "bay_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/000",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "ct_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/ct",
-        "ct_refs_secondary": [],
-        "device_type": "overcurrent",
-        "id": "636e458d-b662-59e7-bd51-322d39e4400e",
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "8c0ec83d-2605-5310-aa95-3eb999844996",
         "is_enabled": true,
+        "macierz_wyzwolen": [],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole liniowe wejściowe 1",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/000/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": null,
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/001",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "2c50f2c2-a270-5696-8a5e-82f42cd7e316",
+        "is_enabled": true,
+        "macierz_wyzwolen": [],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole liniowe wyjściowe 2",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/001/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": null,
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/002",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "87T",
+            "ref": "87T",
+            "wlaczona": true
+          },
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "63",
+            "ref": "63",
+            "wlaczona": true
+          },
+          {
+            "kod": "26",
+            "ref": "26",
+            "wlaczona": true
+          },
+          {
+            "kod": "63P",
+            "ref": "63P",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "645d6461-90e4-51ca-9be8-d317e66f6e74",
+        "is_enabled": true,
+        "macierz_wyzwolen": [],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole transformatorowe 3",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "stn/ae500cc40ddc6117f9a58f2d2403d6f8/sn_field/002/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": null,
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/000",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "f429adb8-ef04-5862-bdf5-e99039c6ba62",
+        "is_enabled": true,
+        "macierz_wyzwolen": [],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole liniowe wejściowe 1",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/000/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": null,
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/001",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "44be0dd2-dbdd-5602-bb42-c08aabb3e43b",
+        "is_enabled": true,
+        "macierz_wyzwolen": [],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole liniowe wyjściowe 2",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/001/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": null,
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/002",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "87T",
+            "ref": "87T",
+            "wlaczona": true
+          },
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          },
+          {
+            "kod": "63",
+            "ref": "63",
+            "wlaczona": true
+          },
+          {
+            "kod": "26",
+            "ref": "26",
+            "wlaczona": true
+          },
+          {
+            "kod": "63P",
+            "ref": "63P",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [],
+        "id": "8b1f1875-a4d3-5dbf-84be-347fbe65f128",
+        "is_enabled": true,
+        "macierz_wyzwolen": [],
+        "materialized_params": null,
+        "meta": {},
+        "name": "Sterownik pola Pole transformatorowe 3",
+        "overrides": [],
+        "parameter_source": null,
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "stn/d9bee08221b591b1c3fd1b75bcf25afa/sn_field/002/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": null,
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [
+          {
+            "funkcje": [
+              {
+                "funkcja_ref": "51",
+                "nastawy": [
+                  {
+                    "klucz": "jednostka_progu",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "A_PIERWOTNY"
+                  },
+                  {
+                    "klucz": "krzywa",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "IEC_SI"
+                  },
+                  {
+                    "klucz": "prog",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 1100
+                  },
+                  {
+                    "klucz": "tms",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 0.25
+                  }
+                ]
+              },
+              {
+                "funkcja_ref": "50",
+                "nastawy": [
+                  {
+                    "klucz": "jednostka_progu",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "A_PIERWOTNY"
+                  },
+                  {
+                    "klucz": "krzywa",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "DT"
+                  },
+                  {
+                    "klucz": "prog",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 7700
+                  },
+                  {
+                    "klucz": "zwloka_s",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 0.1
+                  }
+                ]
+              }
+            ],
+            "numer": 1
+          }
+        ],
+        "id": "27ff607c-96b4-51bc-b201-7227ba7ac632",
+        "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/cb"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/cb"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Zabezpieczenie pola TR",
         "overrides": [],
         "parameter_source": null,
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/prot",
-        "settings": [
-          {
-            "curve_type": "IEC_SI",
-            "function_type": "overcurrent_51",
-            "is_directional": false,
-            "threshold_a": 1100.0,
-            "threshold_deg": null,
-            "threshold_hz": null,
-            "threshold_hz_s": null,
-            "threshold_unit": null,
-            "time_delay_s": null,
-            "time_multiplier": 0.25
-          },
-          {
-            "curve_type": null,
-            "function_type": "overcurrent_50",
-            "is_directional": false,
-            "threshold_a": 7700.0,
-            "threshold_deg": null,
-            "threshold_hz": null,
-            "threshold_hz_s": null,
-            "threshold_unit": null,
-            "time_delay_s": 0.1,
-            "time_multiplier": null
-          }
-        ],
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/sterownik",
         "source_mode": null,
         "tags": [],
-        "vt_ref": null
+        "wejscia": {
+          "ct_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/tr01/ct",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": null,
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
       },
       {
-        "breaker_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/cb",
+        "aktywna_grupa": 1,
+        "bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01",
         "catalog_namespace": null,
         "catalog_ref": null,
-        "ct_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/ct",
-        "ct_refs_secondary": [],
-        "device_type": "overcurrent",
-        "id": "4cbe5fd2-871b-5dd6-9176-50bd08b3504d",
+        "charakterystyki_ref": null,
+        "funkcje": [
+          {
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
+          },
+          {
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
+          {
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
+          }
+        ],
+        "grupy_nastaw": [
+          {
+            "funkcje": [
+              {
+                "funkcja_ref": "51",
+                "nastawy": [
+                  {
+                    "klucz": "jednostka_progu",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "A_PIERWOTNY"
+                  },
+                  {
+                    "klucz": "krzywa",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "IEC_SI"
+                  },
+                  {
+                    "klucz": "prog",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 360
+                  },
+                  {
+                    "klucz": "tms",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 0.15
+                  }
+                ]
+              },
+              {
+                "funkcja_ref": "50",
+                "nastawy": [
+                  {
+                    "klucz": "jednostka_progu",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "A_PIERWOTNY"
+                  },
+                  {
+                    "klucz": "krzywa",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "DT"
+                  },
+                  {
+                    "klucz": "prog",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 4000
+                  },
+                  {
+                    "klucz": "zwloka_s",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 0.05
+                  }
+                ]
+              },
+              {
+                "funkcja_ref": "51N",
+                "nastawy": [
+                  {
+                    "klucz": "jednostka_progu",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "A_PIERWOTNY"
+                  },
+                  {
+                    "klucz": "krzywa",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "DT"
+                  },
+                  {
+                    "klucz": "prog",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 20
+                  },
+                  {
+                    "klucz": "zwloka_s",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 0.3
+                  }
+                ]
+              }
+            ],
+            "numer": 1
+          }
+        ],
+        "id": "2dbcdc03-01e6-5362-8bc9-c102a986e0bb",
         "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/cb"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/cb"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/cb"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Zabezpieczenie Magistrala 01",
         "overrides": [],
         "parameter_source": null,
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/prot",
-        "settings": [
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/sterownik",
+        "source_mode": null,
+        "tags": [],
+        "wejscia": {
+          "ct_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/ct",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": "HOLMGREEN",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
+      },
+      {
+        "aktywna_grupa": 1,
+        "bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02",
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "charakterystyki_ref": null,
+        "funkcje": [
           {
-            "curve_type": "IEC_SI",
-            "function_type": "overcurrent_51",
-            "is_directional": false,
-            "threshold_a": 360.0,
-            "threshold_deg": null,
-            "threshold_hz": null,
-            "threshold_hz_s": null,
-            "threshold_unit": null,
-            "time_delay_s": null,
-            "time_multiplier": 0.15
+            "kod": "51",
+            "ref": "51",
+            "wlaczona": true
           },
           {
-            "curve_type": null,
-            "function_type": "overcurrent_50",
-            "is_directional": false,
-            "threshold_a": 4000.0,
-            "threshold_deg": null,
-            "threshold_hz": null,
-            "threshold_hz_s": null,
-            "threshold_unit": null,
-            "time_delay_s": 0.05,
-            "time_multiplier": null
-          }
-        ],
-        "source_mode": null,
-        "tags": [],
-        "vt_ref": null
-      },
-      {
-        "breaker_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/cb",
-        "catalog_namespace": null,
-        "catalog_ref": null,
-        "ct_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/ct",
-        "ct_refs_secondary": [],
-        "device_type": "earth_fault",
-        "id": "93551218-e752-5209-8bfc-1a26b4a59260",
-        "is_enabled": true,
-        "materialized_params": null,
-        "meta": {},
-        "name": "Ziemnozwarciowe Magistrala 01",
-        "overrides": [],
-        "parameter_source": null,
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line01/prot_n",
-        "settings": [
+            "kod": "50",
+            "ref": "50",
+            "wlaczona": true
+          },
           {
-            "curve_type": null,
-            "function_type": "earth_fault_51N",
-            "is_directional": false,
-            "threshold_a": 20.0,
-            "threshold_deg": null,
-            "threshold_hz": null,
-            "threshold_hz_s": null,
-            "threshold_unit": null,
-            "time_delay_s": 0.3,
-            "time_multiplier": null
+            "kod": "51N",
+            "ref": "51N",
+            "wlaczona": true
           }
         ],
-        "source_mode": null,
-        "tags": [],
-        "vt_ref": null
-      },
-      {
-        "breaker_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/cb",
-        "catalog_namespace": null,
-        "catalog_ref": null,
-        "ct_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/ct",
-        "ct_refs_secondary": [],
-        "device_type": "overcurrent",
-        "id": "85fb727e-0264-544d-831e-d1703e593f25",
+        "grupy_nastaw": [
+          {
+            "funkcje": [
+              {
+                "funkcja_ref": "51",
+                "nastawy": [
+                  {
+                    "klucz": "jednostka_progu",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "A_PIERWOTNY"
+                  },
+                  {
+                    "klucz": "krzywa",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "IEC_SI"
+                  },
+                  {
+                    "klucz": "prog",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 360
+                  },
+                  {
+                    "klucz": "tms",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 0.15
+                  }
+                ]
+              },
+              {
+                "funkcja_ref": "50",
+                "nastawy": [
+                  {
+                    "klucz": "jednostka_progu",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "A_PIERWOTNY"
+                  },
+                  {
+                    "klucz": "krzywa",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "DT"
+                  },
+                  {
+                    "klucz": "prog",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 4000
+                  },
+                  {
+                    "klucz": "zwloka_s",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 0.05
+                  }
+                ]
+              },
+              {
+                "funkcja_ref": "51N",
+                "nastawy": [
+                  {
+                    "klucz": "jednostka_progu",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "A_PIERWOTNY"
+                  },
+                  {
+                    "klucz": "krzywa",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": "DT"
+                  },
+                  {
+                    "klucz": "prog",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 20
+                  },
+                  {
+                    "klucz": "zwloka_s",
+                    "pochodzenie": "PROJEKTANT",
+                    "wartosc": 0.3
+                  }
+                ]
+              }
+            ],
+            "numer": 1
+          }
+        ],
+        "id": "4e2edc8f-3b4f-5322-99cc-3e08927456d9",
         "is_enabled": true,
+        "macierz_wyzwolen": [
+          {
+            "aparat_refs": [
+              "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/cb"
+            ],
+            "funkcja_ref": "51",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/cb"
+            ],
+            "funkcja_ref": "50",
+            "pobudza_spz": false
+          },
+          {
+            "aparat_refs": [
+              "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/cb"
+            ],
+            "funkcja_ref": "51N",
+            "pobudza_spz": false
+          }
+        ],
         "materialized_params": null,
         "meta": {},
         "name": "Zabezpieczenie Magistrala 02",
         "overrides": [],
         "parameter_source": null,
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/prot",
-        "settings": [
-          {
-            "curve_type": "IEC_SI",
-            "function_type": "overcurrent_51",
-            "is_directional": false,
-            "threshold_a": 360.0,
-            "threshold_deg": null,
-            "threshold_hz": null,
-            "threshold_hz_s": null,
-            "threshold_unit": null,
-            "time_delay_s": null,
-            "time_multiplier": 0.15
-          },
-          {
-            "curve_type": null,
-            "function_type": "overcurrent_50",
-            "is_directional": false,
-            "threshold_a": 4000.0,
-            "threshold_deg": null,
-            "threshold_hz": null,
-            "threshold_hz_s": null,
-            "threshold_unit": null,
-            "time_delay_s": 0.05,
-            "time_multiplier": null
-          }
-        ],
+        "prad_znamionowy_wejscia_a": null,
+        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/sterownik",
         "source_mode": null,
         "tags": [],
-        "vt_ref": null
-      },
-      {
-        "breaker_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/cb",
-        "catalog_namespace": null,
-        "catalog_ref": null,
-        "ct_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/ct",
-        "ct_refs_secondary": [],
-        "device_type": "earth_fault",
-        "id": "44b4f30e-299a-540e-b9f2-bc18973f33fa",
-        "is_enabled": true,
-        "materialized_params": null,
-        "meta": {},
-        "name": "Ziemnozwarciowe Magistrala 02",
-        "overrides": [],
-        "parameter_source": null,
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/prot_n",
-        "settings": [
-          {
-            "curve_type": null,
-            "function_type": "earth_fault_51N",
-            "is_directional": false,
-            "threshold_a": 20.0,
-            "threshold_deg": null,
-            "threshold_hz": null,
-            "threshold_hz_s": null,
-            "threshold_unit": null,
-            "time_delay_s": 0.3,
-            "time_multiplier": null
-          }
-        ],
-        "source_mode": null,
-        "tags": [],
-        "vt_ref": null
+        "wejscia": {
+          "ct_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bay/line02/ct",
+          "ct_strony_2_refs": [],
+          "i0_ct_ref": null,
+          "i0_uklad": "HOLMGREEN",
+          "u0_uklad": null,
+          "u0_vt_ref": null,
+          "vt_ref": null
+        }
       }
     ],
     "shunt_capacitors": [],

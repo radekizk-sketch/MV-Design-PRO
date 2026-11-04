@@ -46,6 +46,7 @@ from application.analyses.protection.ocena_nadpradowa import (
     OcenaPunktu,
     WynikOceny,
     czas_urzadzenia,
+    streszczenie_brakow_nastaw,
 )
 from domain.protection_device import (
     OverloadCheck,
@@ -260,7 +261,7 @@ class OvercurrentCoordinationAnalyzer:
         wyniki: list[SensitivityCheck] = []
         for ref in sorted(set(nastawy) | set(odmowy)):
             if ref not in nastawy or not any(k[0] == ref for k in oceny_min):
-                braki = odmowy[ref].braki if ref in odmowy else ()
+                odmowa = odmowy.get(ref)
                 wyniki.append(
                     SensitivityCheck(
                         device_id=ref,
@@ -270,7 +271,11 @@ class OvercurrentCoordinationAnalyzer:
                         margin_percent=None,
                         required_ratio=wymagany,
                         notes_pl=(
-                            " ".join(b.komunikat_pl for b in braki)
+                            (
+                                streszczenie_brakow_nastaw(odmowa.nazwa_pl, odmowa.braki)
+                                if odmowa is not None
+                                else ""
+                            )
                             or "Bieg minimalny nie ma punktu zwarcia w strefie urządzenia."
                         ),
                     )

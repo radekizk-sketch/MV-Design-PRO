@@ -203,6 +203,8 @@ from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
 from .zabezpieczenie import (
+    aparaty_sterownika,
+    domyslna_nazwa_sterownika_pola,
     kody_funkcji_sterownika,
     ref_aparatu_wyzwalanego,
     referencja_sterownika_pola,
@@ -1139,7 +1141,7 @@ def _kody_z_ladunku(payload: dict[str, Any]) -> tuple[list[str] | None, dict[str
     return list(zestaw), None
 
 
-def _odmowa_profilu_charakterystyk(profil_ref: Any, opis: str) -> dict[str, Any] | None:
+def _odmowa_profilu_charakterystyk(profil_ref: object, opis: str) -> dict[str, Any] | None:
     """Odmowa wskazania profilu charakterystyk funkcji (``charakterystyki_ref``) — albo ``None``.
 
     Charakterystyki (zakresy nastaw, krzywe) to odwołanie OSOBNE od wyrobu (``catalog_ref``):
@@ -1155,7 +1157,7 @@ def _odmowa_profilu_charakterystyk(profil_ref: Any, opis: str) -> dict[str, Any]
     if isinstance(profil_ref, str) and profil_charakterystyk(profil_ref) is not None:
         return None
     return _error_response(
-        f"Profil charakterystyk „{profil_ref}” dla {opis} nie istnieje w katalogu analitycznym "
+        f"Wskazany profil charakterystyk dla {opis} nie istnieje w katalogu analitycznym "
         "albo nie ma ustalonej jednostki zakresów nastaw — wybierz profil z listy profili "
         "charakterystyk.",
         "relay.characteristics_invalid",
@@ -1303,10 +1305,11 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         if istniejacy is not None
         else referencja_sterownika_pola(str(field_ref or breaker_ref))
     )
-    nazwa = nazwa_nadana(payload.get("name")) or (
-        (istniejacy or {}).get("name")
+    nazwa = (
+        nazwa_nadana(payload.get("name"))
+        or nazwa_nadana((istniejacy or {}).get("name"))
         or (
-            f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}"
+            domyslna_nazwa_sterownika_pola(pole_modelu(enm, field_ref) or {})
             if field_ref
             else f"Zabezpieczenie {opis_elementu(enm, breaker_ref, 'wyłącznika')}"
         )
@@ -1352,9 +1355,12 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 "name_pl": z_katalogu.get("name_pl"),
                 "vendor": z_katalogu.get("vendor"),
                 "series": z_katalogu.get("series"),
-                "catalog_binding": binding,
             },
             "overrides": [],
+            # Wiązanie katalogowe w `meta` — to samo miejsce co każdy element wiązany
+            # katalogiem (znacznik pochodzenia); sterownik z szablonu pola dostaje je przy
+            # doborze urządzenia tak samo jak sterownik nowy.
+            "meta": {**(sterownik.get("meta") or {}), "catalog_binding": binding},
         }
     )
     if prad_wejscia is not None:
@@ -1389,7 +1395,11 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         events=[
             {
                 "event_seq": 1,
-                "event_type": "PROTECTION_CREATED",
+                # Sterownik z szablonu pola istniał — dobór urządzenia zmienia jego konfigurację
+                # (ten sam typ zdarzenia co jedyny pisarz nastaw), nie tworzy drugiego rekordu.
+                "event_type": (
+                    "PROTECTION_CREATED" if istniejacy is None else "PROTECTION_SETTINGS_UPDATED"
+                ),
                 "element_id": protection_ref,
                 "field_ref": field_ref,
             }
@@ -1460,15 +1470,30 @@ def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> 
         kody = payload["funkcje"]
         if not isinstance(kody, list) or not all(isinstance(k, str) for k in kody):
             return _odmowa("funkcje podaje się listą kodów funkcji z rejestru.")
-        ustaw_zestaw_funkcji(sterownik, kody)
+        # Funkcja zabezpieczeniowa dopisana do sterownika działa na aparaty, które sterownik
+        # już wyzwala — ta sama reguła co `add_relay` (funkcja ZABEZPIECZENIE → wiersz macierzy
+        # na wyłącznik sterownika). Bez tego nowa funkcja nie wyłączałaby niczego po cichu;
+        # jawna `macierz_wyzwolen` w tym samym ładunku zastępuje macierz w całości (niżej).
+        aparaty = list(aparaty_sterownika(sterownik))
+        ustaw_zestaw_funkcji(
+            sterownik,
+            kody,
+            wyzwolenia={
+                k: aparaty
+                for k in kody
+                if aparaty and k in FUNKCJE_EAZ and FUNKCJE_EAZ[k].rodzaj == "ZABEZPIECZENIE"
+            },
+        )
     wlaczone = payload.get("wlaczone")
     if wlaczone is not None:
         if not isinstance(wlaczone, dict):
             return _odmowa("stan funkcji podaje się słownikiem funkcja → włączona.")
         refy = {str(f.get("ref")) for f in sterownik.get("funkcje") or []}
         for ref, stan in wlaczone.items():
-            if ref not in refy or not isinstance(stan, bool):
-                return _odmowa(f"funkcja „{ref}” nie istnieje albo stan nie jest logiczny.")
+            if ref not in refy:
+                return _odmowa("funkcji, której stan zmienia ładunek, nie ma w sterowniku.")
+            if not isinstance(stan, bool):
+                return _odmowa("stan funkcji podaje się wartością logiczną (włączona/wyłączona).")
         for funkcja in sterownik.get("funkcje") or []:
             if funkcja.get("ref") in wlaczone:
                 funkcja["wlaczona"] = wlaczone[funkcja["ref"]]
@@ -1481,7 +1506,7 @@ def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> 
     if nastawy is not None:
         if not isinstance(nastawy, dict) or not all(isinstance(v, dict) for v in nastawy.values()):
             return _odmowa("nastawy podaje się słownikiem funkcja → {nastawa: wartość}.")
-        grupa = payload.get("grupa", sterownik.get("aktywna_grupa", 1))
+        grupa = payload["grupa"] if "grupa" in payload else sterownik["aktywna_grupa"]
         numer_grupy = _numer_grupy(grupa)
         if numer_grupy is None:
             return _odmowa(f"grupa nastaw {grupa!r} spoza grup 1–4.")
@@ -1504,13 +1529,13 @@ def update_protection_settings(enm: dict[str, Any], payload: dict[str, Any]) -> 
         if odmowa_profilu is not None:
             return odmowa_profilu
         sterownik["charakterystyki_ref"] = payload["charakterystyki_ref"]
-    aktywna = sterownik.get("aktywna_grupa", 1)
+    aktywna = sterownik["aktywna_grupa"]
     grupy = sterownik.get("grupy_nastaw") or []
     if grupy and not any(g.get("numer") == aktywna for g in grupy):
         # Grupa bazowa istnieje zawsze, gdy sterownik ma jakąkolwiek grupę — pusta grupa to
         # nazwany brak nastaw w grupie, nie sprzeczność zapisu.
         sterownik["grupy_nastaw"] = sorted(
-            [*grupy, {"numer": aktywna, "funkcje": []}], key=lambda g: int(g.get("numer") or 0)
+            [*grupy, {"numer": aktywna, "funkcje": []}], key=lambda g: int(g["numer"])
         )
     bledy = bledy_sterownika(sterownik)
     if bledy:
@@ -2461,7 +2486,6 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     switchgear_family_ref = _clean_ref(payload.get("switchgear_family_ref"))
     bay_template_ref = _clean_ref(payload.get("bay_template_ref"))
     manufacturer_ref = _clean_ref(payload.get("manufacturer_ref"))
-    protection_catalog_ref = _clean_ref(payload.get("protection_catalog_ref"))
     # Wybór BLOKU FABRYCZNEGO RMU (`factory_configuration_ref` + numer jednostki)
     # — TA SAMA droga odczytu i TE SAME nazwy kluczy, co w operacjach stacyjnych.
     # Do domknięcia tego długu operacja katalogowa pola rozstrzygała blok, ale go
@@ -2479,7 +2503,6 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
     producer_refs: dict[str, Any] = {
         key: value
         for key, value in {
-            "katalog_sterownika_ref": protection_catalog_ref,
             "bay_template_ref": bay_template_ref,
             "switchgear_family_ref": switchgear_family_ref,
             "manufacturer_ref": manufacturer_ref,
@@ -2799,7 +2822,6 @@ def _zapisz_pole_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
                 terminal_bus_ref=terminal_bus_ref,
                 gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
                 equipment_refs=[apparatus_ref],
-                katalog_sterownika_ref=protection_catalog_ref,
                 funkcje_eaz=protection_codes,
                 bay_template_ref=bay_template_ref,
                 switchgear_family_ref=switchgear_family_ref,

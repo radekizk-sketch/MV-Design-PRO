@@ -409,8 +409,9 @@ def test_brak_wyrobu_nie_blokuje_czasu_a_profil_roboczy_jest_zalozeniem(
     # 5 A wtórne × 400/5 = 400 A < 8 kA → DT 0,3 s + czas własny roboczy 0,060 s
     assert czas["czlon_nastawczy_s"] == pytest.approx(0.3)
     assert czas["charakterystyki"]["zrodlo"] == ("WARTOSC_ROBOCZA" if robocze else "WYROB")
-    zalozenia_charakterystyk = [z for z in czas["zalozenia_pl"] if "profil" in z]
-    assert bool(zalozenia_charakterystyk) is robocze
+    powod_charakterystyk = czas["charakterystyki"]["powod_pl"]
+    assert (powod_charakterystyk is not None) is robocze
+    assert (powod_charakterystyk in czas["zalozenia_pl"]) is robocze
     if robocze:
         assert czas["charakterystyki"]["jakosc"] == "ESTIMATED"
 

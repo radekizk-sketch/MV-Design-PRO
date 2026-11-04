@@ -93,12 +93,12 @@ export interface PortAparatuPolaView {
 
 /**
  * F9.9 (SLD_CAD_SPEC_V3 §17.2) — adnotacja zabezpieczeń JEDNEGO pola,
- * projekcja `Bay.protection_codes` + `Bay.protection_ref` →
- * `ProtectionAssignment` (`v2/canvas/enmToSldAdapter.ts`
+ * projekcja sterownika pola `ProtectionAssignment` (`bay_ref` pola — jedyna
+ * struktura zabezpieczeń) (`v2/canvas/enmToSldAdapter.ts`
  * `resolveBayProtectionMarking`). `codes` jest ZAWSZE niepuste (adapter
- * zwraca `undefined` dla całego pola, gdy `Bay.protection_codes` jest puste —
+ * zwraca `undefined` dla całego pola, gdy sterownik nie ma włączonych funkcji —
  * §17.2 „brak danych = brak oznaczenia"). `breakerRef`/`ctRef` to SUROWE
- * referencje ENM (`ProtectionAssignment.breaker_ref`/`ct_ref`) — dopasowanie
+ * referencje ENM (macierz wyzwoleń i `wejscia.ct_ref` sterownika) — dopasowanie
  * na KONKRETNY aparat NARYSOWANEGO stosu dzieje się w `compose/
  * protectionMarking.ts` (adapter nie zna geometrii/kolejności rysowania).
  */
@@ -254,7 +254,7 @@ export interface MiniBlockBayDescriptor {
    *  nie zgadywał wyposażenia z typu pola. `undefined` gdy pole bez szablonu. */
   readonly configId?: string;
   /** F9.9 (SLD_CAD_SPEC_V3 §17.2): adnotacja zabezpieczeń tego pola —
-   *  `undefined` gdy `Bay.protection_codes` puste/nieobecne (brak danych =
+   *  `undefined` gdy sterownik pola nie ma włączonych funkcji (brak danych =
    *  brak oznaczenia, §17.2 dosłownie). */
   readonly protectionMarking?: BayProtectionMarkingView;
   /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `Measurement.ref_id` pomiaru

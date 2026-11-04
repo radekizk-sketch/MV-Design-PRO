@@ -53,7 +53,7 @@ from enm.models import (
 )
 from enm.topology import derive
 
-from tests.utils.sterownik import sterownik
+from tests.utils.sterownik import sterownik, stopien
 
 ZRODLA = (1, 2)
 STANY_Q = ("zamkniety", "otwarty", "bez_stanu")
@@ -212,7 +212,11 @@ def siec(zrodla: int, struktura: str, stan_q: str) -> EnergyNetworkModel:
         ]
     zabezpieczenia = [
         sterownik(
-            ref_id="PA_B_IN", name="Zabezpieczenie pola IN B", wylacznik="Q_B_IN", ct_ref="CT_B_IN"
+            ref_id="PA_B_IN",
+            name="Zabezpieczenie pola IN B",
+            wylacznik="Q_B_IN",
+            ct_ref="CT_B_IN",
+            stopnie=[stopien("51")],
         )
     ]
     return EnergyNetworkModel(

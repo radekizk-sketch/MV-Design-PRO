@@ -1,22 +1,1837 @@
 {
   "assignments": [
     {
-      "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+      "device_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000/sterownik",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Sterownik pola Pole liniowe wejściowe 1",
+      "element_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000",
+      "element_type": "BaySN",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S02 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S02",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001/sterownik",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Sterownik pola Pole liniowe wyjściowe 2",
+      "element_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001",
+      "element_type": "BaySN",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S02",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002/sterownik",
+      "device_kind": "RELAY_DIFFERENTIAL",
+      "device_name_pl": "Sterownik pola Pole transformatorowe 3",
+      "element_id": "stn/01bb98b8035012aa5698e4fc47869f83/transformer",
+      "element_type": "TransformerBranch",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S02 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "87T",
+            "powod_pl": "Funkcja różnicowe (87T) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          },
+          {
+            "funkcja": "63",
+            "powod_pl": "Funkcja Buchholz (63) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "26",
+            "powod_pl": "Funkcja temperatura (26) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "63P",
+            "powod_pl": "Funkcja ciśnienie (63P) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S02",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/002/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "i_rated_a": 24.248711306,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000/sterownik",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Sterownik pola Pole liniowe wejściowe 1",
+      "element_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000",
+      "element_type": "BaySN",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S04 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S04",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001/sterownik",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Sterownik pola Pole liniowe wyjściowe 2",
+      "element_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001",
+      "element_type": "BaySN",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S04",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002/sterownik",
+      "device_kind": "RELAY_DIFFERENTIAL",
+      "device_name_pl": "Sterownik pola Pole transformatorowe 3",
+      "element_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/transformer",
+      "element_type": "TransformerBranch",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S04 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "87T",
+            "powod_pl": "Funkcja różnicowe (87T) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          },
+          {
+            "funkcja": "63",
+            "powod_pl": "Funkcja Buchholz (63) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "26",
+            "powod_pl": "Funkcja temperatura (26) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "63P",
+            "powod_pl": "Funkcja ciśnienie (63P) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S04",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/002/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "i_rated_a": 24.248711306,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000/sterownik",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Sterownik pola Pole liniowe wejściowe 1",
+      "element_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000",
+      "element_type": "BaySN",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S03 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S03",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001/sterownik",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Sterownik pola Pole liniowe wyjściowe 2",
+      "element_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001",
+      "element_type": "BaySN",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S03",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/002/sterownik",
+      "device_kind": "RELAY_DIFFERENTIAL",
+      "device_name_pl": "Sterownik pola Pole transformatorowe 3",
+      "element_id": "stn/c843b440108cbcd0ade67891d02c462a/transformer",
+      "element_type": "TransformerBranch",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S03 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "87T",
+            "powod_pl": "Funkcja różnicowe (87T) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          },
+          {
+            "funkcja": "63",
+            "powod_pl": "Funkcja Buchholz (63) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "26",
+            "powod_pl": "Funkcja temperatura (26) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "63P",
+            "powod_pl": "Funkcja ciśnienie (63P) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S03",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/002/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "i_rated_a": 24.248711306,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000/sterownik",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Sterownik pola Pole liniowe wejściowe 1",
+      "element_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000",
+      "element_type": "BaySN",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wejściowe 1 — Stacja S01 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole liniowe wejściowe 1 — Stacja S01",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001/sterownik",
+      "device_kind": "RELAY_OVERCURRENT",
+      "device_name_pl": "Sterownik pola Pole liniowe wyjściowe 2",
+      "element_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001",
+      "element_type": "BaySN",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole liniowe wyjściowe 2 — Stacja S01",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002/sterownik",
+      "device_kind": "RELAY_DIFFERENTIAL",
+      "device_name_pl": "Sterownik pola Pole transformatorowe 3",
+      "element_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer",
+      "element_type": "TransformerBranch",
+      "nastawy": {
+        "alf": null,
+        "braki": [
+          {
+            "akcja_naprawcza_pl": "Dodaj przekładnik prądowy w polu zabezpieczenia i przypnij go do wejścia sterownika (karta pola → Zabezpieczenia i automatyka).",
+            "funkcja": null,
+            "kod": "zabezpieczenia.brak_przekladnika",
+            "komunikat_pl": "Zabezpieczenie Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma przypiętego przekładnika prądowego do wejścia prądów fazowych — prąd rozruchowy po stronie pierwotnej jest niewyznaczalny."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "51",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I> (51) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma charakterystyki czasowej."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_progu",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma dodatniego progu rozruchowego."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.jednostka_progu_nieustalona",
+            "komunikat_pl": "Próg stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma zadeklarowanej jednostki (strona wtórna albo pierwotna przekładnika)."
+          },
+          {
+            "akcja_naprawcza_pl": "Uzupełnij nastawy stopnia I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 w karcie pola.",
+            "funkcja": "50",
+            "kod": "zabezpieczenia.brak_charakterystyki",
+            "komunikat_pl": "Stopień I>> (50) zabezpieczenia Sterownik pola Pole transformatorowe 3 — Stacja S01 nie ma charakterystyki czasowej."
+          }
+        ],
+        "breaker_ref": null,
+        "charakterystyki": {
+          "jakosc": "ESTIMATED",
+          "model": "OC-EF-300",
+          "powod_pl": "sterownik nie wskazuje wyrobu z katalogu urządzeń — przyjęto profil OC-EF-300 (profil referencyjny katalogu analitycznego MV-DESIGN-PRO (D-33) wg IEC 60255-151 — założenie inżynierskie, nie dane producenta); zmień profil charakterystyk w karcie pola, gdy karta wyrobu poda zakresy nastaw.",
+          "profil": "REF-OC-EF-300",
+          "zrodlo": "WARTOSC_ROBOCZA"
+        },
+        "ct_ref": null,
+        "funkcje_nieoceniane": [
+          {
+            "funkcja": "87T",
+            "powod_pl": "Funkcja różnicowe (87T) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "51N",
+            "powod_pl": "Funkcja ziemnozwarciowa 51N widzi prąd 3·I0 toru składowej zerowej, a rozpływ biegu zwarciowego niesie rozkład składowej zgodnej — ta ocena jej nie obejmuje."
+          },
+          {
+            "funkcja": "63",
+            "powod_pl": "Funkcja Buchholz (63) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "26",
+            "powod_pl": "Funkcja temperatura (26) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          },
+          {
+            "funkcja": "63P",
+            "powod_pl": "Funkcja ciśnienie (63P) nie ma w produkcie ewaluatora — jej działania przy zwarciu ta ocena nie wyznacza (status: nie oceniono)."
+          }
+        ],
+        "gotowe": false,
+        "klasa_ct": null,
+        "nazwa_pl": "Sterownik pola Pole transformatorowe 3 — Stacja S01",
+        "obwod_wtorny_ct": null,
+        "pozycja_katalogu": null,
+        "przekladnia_a": null,
+        "stopnie": [],
+        "urzadzenie_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/002/sterownik",
+        "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.1
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "charakterystyki": [
+            {
+              "etykieta_pl": "czas niezależny (DT)",
+              "kod": "DT"
+            },
+            {
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
+              "kod": "IEC_SI"
+            },
+            {
+              "etykieta_pl": "IEC bardzo odwrotna (VI)",
+              "kod": "IEC_VI"
+            }
+          ],
+          "funkcje": [
+            "50",
+            "51",
+            "50N",
+            "51N"
+          ],
+          "jednostka_zakresow_pradowych": "KROTNOSC_IN",
+          "krzywe": [
+            "IEC_SI",
+            "IEC_VI",
+            "DT"
+          ],
+          "model": "OC-EF-300",
+          "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
+          "pozycja": "REF-OC-EF-300",
+          "wejscia_pradowe_a": [
+            1.0,
+            5.0
+          ]
+        }
+      },
+      "settings_summary": {
+        "base_values": {
+          "f_rated_hz": 50.0,
+          "i_rated_a": 24.248711306,
+          "u_rated_kv": 15.0
+        },
+        "curve_type": null,
+        "functions": []
+      },
+      "status": "ACTIVE"
+    },
+    {
+      "device_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch/sterownik",
       "device_kind": "RELAY_OVERCURRENT",
       "device_name_pl": "Zabezpieczenie odejścia S01",
       "element_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
       "element_type": "Switch",
       "nastawy": {
-        "alf": 20,
+        "alf": 20.0,
         "braki": [],
         "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
+        "charakterystyki": {
+          "jakosc": null,
+          "model": "OC-200",
+          "powod_pl": null,
+          "profil": "REF-OC-200",
+          "zrodlo": "WYROB"
+        },
         "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
         "funkcje_nieoceniane": [],
         "gotowe": true,
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie odejścia S01",
         "obwod_wtorny_ct": {
-          "alf": 20,
+          "alf": 20.0,
           "dlugosc_przewodu_m": null,
           "i2n_a": 5.0,
           "moc_stykow_va": null,
@@ -33,7 +1848,7 @@
         "stopnie": [
           {
             "etykieta_pl": "I> (51)",
-            "funkcja": "overcurrent_51",
+            "funkcja": "51",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "IEC_SI",
             "krzywa_pl": "IEC normalnie odwrotna (SI)",
@@ -77,7 +1892,7 @@
           },
           {
             "etykieta_pl": "I>> (50)",
-            "funkcja": "overcurrent_50",
+            "funkcja": "50",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "DT",
             "krzywa_pl": "czas niezależny (DT)",
@@ -120,8 +1935,32 @@
             "zwloka_s": 0.1
           }
         ],
-        "urzadzenie_ref": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
+        "urzadzenie_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch/sterownik",
         "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.0
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
           "charakterystyki": [
             {
               "etykieta_pl": "czas niezależny (DT)",
@@ -147,30 +1986,6 @@
             "DT"
           ],
           "model": "OC-200",
-          "overcurrent_50": {
-            "prog": [
-              0.1,
-              40.0
-            ],
-            "zwloka_s": [
-              0.05,
-              100.0
-            ]
-          },
-          "overcurrent_51": {
-            "mnoznik": [
-              0.05,
-              1.0
-            ],
-            "prog": [
-              0.05,
-              5.0
-            ],
-            "zwloka_s": [
-              0.05,
-              100.0
-            ]
-          },
           "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
           "pozycja": "REF-OC-200",
           "wejscia_pradowe_a": [
@@ -215,7 +2030,7 @@
               "standard": "IEC_60255",
               "time_multiplier": null
             },
-            "label_pl": "Nadprądowa bezzwłoczna (I>>)",
+            "label_pl": "Nadprądowe zwarciowe (bezzwłoczne) (I>>)",
             "notes_pl": null,
             "setpoint": {
               "abs_value": 1800.0,
@@ -504,7 +2319,7 @@
               "standard": "IEC_60255",
               "time_multiplier": 0.1
             },
-            "label_pl": "Nadprądowa czasowa (I>)",
+            "label_pl": "Nadprądowe zwłoczne (I>)",
             "notes_pl": null,
             "setpoint": {
               "abs_value": 180.0,
@@ -521,22 +2336,29 @@
       "status": "ACTIVE"
     },
     {
-      "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
+      "device_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch/sterownik",
       "device_kind": "RELAY_OVERCURRENT",
       "device_name_pl": "Zabezpieczenie pola liniowego GPZ",
       "element_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
       "element_type": "Switch",
       "nastawy": {
-        "alf": 20,
+        "alf": 20.0,
         "braki": [],
         "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
+        "charakterystyki": {
+          "jakosc": null,
+          "model": "OC-200",
+          "powod_pl": null,
+          "profil": "REF-OC-200",
+          "zrodlo": "WYROB"
+        },
         "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
         "funkcje_nieoceniane": [],
         "gotowe": true,
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
         "obwod_wtorny_ct": {
-          "alf": 20,
+          "alf": 20.0,
           "dlugosc_przewodu_m": null,
           "i2n_a": 5.0,
           "moc_stykow_va": null,
@@ -553,7 +2375,7 @@
         "stopnie": [
           {
             "etykieta_pl": "I> (51)",
-            "funkcja": "overcurrent_51",
+            "funkcja": "51",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "IEC_SI",
             "krzywa_pl": "IEC normalnie odwrotna (SI)",
@@ -597,7 +2419,7 @@
           },
           {
             "etykieta_pl": "I>> (50)",
-            "funkcja": "overcurrent_50",
+            "funkcja": "50",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "DT",
             "krzywa_pl": "czas niezależny (DT)",
@@ -640,8 +2462,32 @@
             "zwloka_s": 0.4
           }
         ],
-        "urzadzenie_ref": "relay/169595e1280084f388a48e078e44527b/assignment",
+        "urzadzenie_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch/sterownik",
         "zakresy": {
+          "50": {
+            "prog": [
+              0.1,
+              40.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
+          "51": {
+            "mnoznik": [
+              0.05,
+              1.0
+            ],
+            "prog": [
+              0.05,
+              5.0
+            ],
+            "zwloka_s": [
+              0.05,
+              100.0
+            ]
+          },
           "charakterystyki": [
             {
               "etykieta_pl": "czas niezależny (DT)",
@@ -667,30 +2513,6 @@
             "DT"
           ],
           "model": "OC-200",
-          "overcurrent_50": {
-            "prog": [
-              0.1,
-              40.0
-            ],
-            "zwloka_s": [
-              0.05,
-              100.0
-            ]
-          },
-          "overcurrent_51": {
-            "mnoznik": [
-              0.05,
-              1.0
-            ],
-            "prog": [
-              0.05,
-              5.0
-            ],
-            "zwloka_s": [
-              0.05,
-              100.0
-            ]
-          },
           "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
           "pozycja": "REF-OC-200",
           "wejscia_pradowe_a": [
@@ -735,7 +2557,7 @@
               "standard": "IEC_60255",
               "time_multiplier": null
             },
-            "label_pl": "Nadprądowa bezzwłoczna (I>>)",
+            "label_pl": "Nadprądowe zwarciowe (bezzwłoczne) (I>>)",
             "notes_pl": null,
             "setpoint": {
               "abs_value": 2400.0,
@@ -1024,7 +2846,7 @@
               "standard": "IEC_60255",
               "time_multiplier": 0.3
             },
-            "label_pl": "Nadprądowa czasowa (I>)",
+            "label_pl": "Nadprądowe zwłoczne (I>)",
             "notes_pl": null,
             "setpoint": {
               "abs_value": 240.0,
@@ -1044,63 +2866,161 @@
   "case_id": "case-demo",
   "diagnostics": [],
   "enm_revision": 2,
-  "slownik_nastaw": {
-    "charakterystyki": [
-      {
-        "etykieta_pl": "czas niezależny (DT)",
-        "kod": "DT"
-      },
-      {
-        "etykieta_pl": "IEC normalnie odwrotna (SI)",
-        "kod": "IEC_SI"
-      },
-      {
-        "etykieta_pl": "IEC bardzo odwrotna (VI)",
-        "kod": "IEC_VI"
-      },
-      {
-        "etykieta_pl": "IEC skrajnie odwrotna (EI)",
-        "kod": "IEC_EI"
-      },
-      {
-        "etykieta_pl": "IEC odwrotna długoczasowa (LTI, 120)",
-        "kod": "IEC_LTI"
-      },
-      {
-        "etykieta_pl": "IEEE umiarkowanie odwrotna (MI)",
-        "kod": "IEEE_MI"
-      },
-      {
-        "etykieta_pl": "IEEE bardzo odwrotna (VI)",
-        "kod": "IEEE_VI"
-      },
-      {
-        "etykieta_pl": "IEEE skrajnie odwrotna (EI)",
-        "kod": "IEEE_EI"
-      }
-    ],
-    "funkcje": [
-      {
-        "etykieta_pl": "I> (51)",
-        "kod": "overcurrent_51"
-      },
-      {
-        "etykieta_pl": "I>> (50)",
-        "kod": "overcurrent_50"
-      }
-    ],
-    "jednostki_progu": [
-      {
-        "etykieta_pl": "A (strona wtórna przekładnika)",
-        "kod": "A_WTORNY"
-      },
-      {
-        "etykieta_pl": "A (strona pierwotna przekładnika)",
-        "kod": "A_PIERWOTNY"
-      }
-    ]
-  },
+  "profile_charakterystyk": [
+    {
+      "etykieta_pl": "OC-100",
+      "kod": "REF-OC-100"
+    },
+    {
+      "etykieta_pl": "OC-200",
+      "kod": "REF-OC-200"
+    },
+    {
+      "etykieta_pl": "OC-EF-300",
+      "kod": "REF-OC-EF-300"
+    },
+    {
+      "etykieta_pl": "OC-EF-500",
+      "kod": "REF-OC-EF-500"
+    },
+    {
+      "etykieta_pl": "OC-EF-700",
+      "kod": "REF-OC-EF-700"
+    }
+  ],
   "summaries": [
+    {
+      "ct": null,
+      "element_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/000",
+      "element_name": "Pole liniowe wejściowe 1",
+      "element_type": "BaySN",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field/001",
+      "element_name": "Pole liniowe wyjściowe 2",
+      "element_type": "BaySN",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/01bb98b8035012aa5698e4fc47869f83/transformer",
+      "element_name": "Transformator SN/nN",
+      "element_type": "TransformerBranch",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/000",
+      "element_name": "Pole liniowe wejściowe 1",
+      "element_type": "BaySN",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/sn_field/001",
+      "element_name": "Pole liniowe wyjściowe 2",
+      "element_type": "BaySN",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/a19ee8b69c3cea6d38f563ade02b3523/transformer",
+      "element_name": "Transformator SN/nN",
+      "element_type": "TransformerBranch",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/000",
+      "element_name": "Pole liniowe wejściowe 1",
+      "element_type": "BaySN",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/c843b440108cbcd0ade67891d02c462a/sn_field/001",
+      "element_name": "Pole liniowe wyjściowe 2",
+      "element_type": "BaySN",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/c843b440108cbcd0ade67891d02c462a/transformer",
+      "element_name": "Transformator SN/nN",
+      "element_type": "TransformerBranch",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/000",
+      "element_name": "Pole liniowe wejściowe 1",
+      "element_type": "BaySN",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_field/001",
+      "element_name": "Pole liniowe wyjściowe 2",
+      "element_type": "BaySN",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
+    {
+      "ct": null,
+      "element_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/transformer",
+      "element_name": "Transformator SN/nN",
+      "element_type": "TransformerBranch",
+      "has_complete_data": false,
+      "margin_pct": null,
+      "overcurrent": null,
+      "verification_reason": "Brak skonfigurowanych funkcji zabezpieczeniowych",
+      "verification_status": "BRAK_DANYCH"
+    },
     {
       "ct": {
         "label": "600/5",
@@ -1167,16 +3087,16 @@
     }
   ],
   "summary": {
-    "active_assignments": 2,
+    "active_assignments": 14,
     "blocked_assignments": 0,
     "complete_count": 2,
     "error_count": 0,
     "failed_count": 0,
-    "incomplete_count": 0,
+    "incomplete_count": 12,
     "info_count": 0,
-    "no_data_count": 0,
-    "total_assignments": 2,
-    "total_elements": 2,
+    "no_data_count": 12,
+    "total_assignments": 14,
+    "total_elements": 14,
     "verified_count": 2,
     "warn_count": 0
   },
@@ -1193,7 +3113,7 @@
       ],
       "ref_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
       "zabezpieczenia": [
-        "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment"
+        "sw/3e1e898265680e8ac8b259ab59e21b41/switch/sterownik"
       ]
     },
     {
@@ -1203,7 +3123,7 @@
       ],
       "ref_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
       "zabezpieczenia": [
-        "relay/169595e1280084f388a48e078e44527b/assignment"
+        "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch/sterownik"
       ]
     }
   ]

@@ -63,7 +63,12 @@ def _assignment(
     """Sterownik pola OZE (karta OCHRONA-JEDNO-ZRODLO: funkcje LoM to funkcje sterownika pola —
     funkcja bez nastaw to funkcja zadeklarowana, której nastaw nie wpisano)."""
     return sterownik(
-        ref_id=ref, name="Zabezpieczenie LoM", bay_ref=bay_ref, wylacznik="cb_1", stopnie=stopnie
+        ref_id=ref,
+        name="Zabezpieczenie LoM",
+        bay_ref=bay_ref,
+        # Sterownik bez funkcji nie ma czego wyzwalać — wiersz macierzy tylko przy funkcjach.
+        wylacznik="cb_1" if stopnie else None,
+        stopnie=stopnie,
     )
 
 

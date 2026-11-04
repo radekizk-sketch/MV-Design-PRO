@@ -2,8 +2,7 @@
 
 Domyka lukę „(a)" z mapy konsumpcji V-SM-1/V12K-182: pakiet dowodowy zwarcia
 doziemnego (``earthing_ground_fault_sn``) był wołany WYŁĄCZNIE z testów — brak
-produkcyjnego dostawcy prądu doziemnego 1F. Ten most dostarcza go analogicznie
-do ``build_protection_input`` (zabezpieczenia 50N/51N), tak by napięcie dotykowe
+produkcyjnego dostawcy prądu doziemnego 1F. Ten most dostarcza go tak, by napięcie dotykowe
 liczyło się od POPRAWNEGO prądu doziemnego — a więc od poprawnej składowej
 zerowej zależnej od grupy połączeń transformatora.
 

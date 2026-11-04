@@ -1,16 +1,20 @@
 """
-Test: Protection Assignment — attach protection to breaker, CT requirement, BLOCKER errors.
+Test: sterownik zabezpieczeń (``ProtectionAssignment``) — operacje modelu niskiego poziomu.
 
-Validates:
-- Protection assignment to circuit breaker
-- CT requirement for overcurrent protection
-- Detach protection
-- Update protection settings
-- BLOCKER issues on invalid operations
+Karta OCHRONA-JEDNO-ZRODLO (ADR-022): zabezpieczenie to sterownik pola z funkcjami rejestru,
+nastawami w grupach 1–4, wejściami (przekładniki) i macierzą wyzwoleń. Sprawdza:
+- dołączenie sterownika (macierz wyzwoleń na wyłącznik, wejście prądów fazowych),
+- odmowy referencji (wyłącznik/przekładnik spoza modelu, rozłącznik w macierzy, drugi
+  sterownik pola) — ta sama reguła co walidator modelu (E064),
+- odmowę sprzecznych nastaw (rodzina czasu, PZ-09) już przy zapisie,
+- odłączenie, aktualizację i kaskadę usuwania (wyłącznik i przekładnik w użyciu).
 """
 
 from __future__ import annotations
 
+from typing import Any
+
+import pytest
 from enm.topology_ops import (
     attach_protection,
     delete_branch,
@@ -18,6 +22,8 @@ from enm.topology_ops import (
     detach_protection,
     update_protection,
 )
+
+from tests.utils.sterownik import rekord_sterownika, stopien, stopien_50, stopien_51
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -47,6 +53,22 @@ def _base_enm() -> dict:
         "measurements": [],
         "protection_assignments": [],
     }
+
+
+def _pole(enm: dict) -> dict:
+    """Pole rozdzielni ``bay_1`` przy szynie ``bus_1`` (kotwica sterownika pola)."""
+    enm["bays"] = [
+        {
+            "ref_id": "bay_1",
+            "name": "Pole 1",
+            "bay_role": "OUT",
+            "substation_ref": "st_1",
+            "bus_ref": "bus_1",
+            "tags": [],
+            "meta": {},
+        }
+    ]
+    return enm
 
 
 def _enm_with_breaker_and_ct() -> dict:
@@ -129,217 +151,155 @@ def _enm_with_breaker_and_ct() -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _sterownik(ref_id: str = "pa_1", **kwargs: Any) -> dict[str, Any]:
+    domyslne: dict[str, Any] = {
+        "name": "Zabezpieczenie nadprądowe",
+        "wylacznik": "brk_1",
+        "ct_ref": "ct_1",
+        "stopnie": [stopien_50(1000.0, jednostka_progu="A_PIERWOTNY")],
+    }
+    return {**rekord_sterownika(ref_id, **{**domyslne, **kwargs}), "tags": [], "meta": {}}
+
+
 class TestAttachProtection:
     def test_attach_overcurrent_with_ct(self):
-        """Attach overcurrent protection to breaker with CT — success."""
+        """Sterownik 50/51 z wejściem prądów fazowych — macierz wyzwoleń na wyłącznik brk_1."""
         enm = _enm_with_breaker_and_ct()
         result = attach_protection(
             enm,
-            {
-                "ref_id": "pa_1",
-                "name": "Zabezpieczenie nadprądowe",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                # Kontrakt zapisu (karta BIEG-ZABEZPIECZEN-Z-MODELU): próg z jawną stroną
-                # przekładnika, czas niezależny ze zwłoką dodatnią, charakterystyka zależna z
-                # mnożnikiem czasowym (bez zwłoki niezależnej) — sprzeczne nastawy są odrzucane.
-                "settings": [
-                    {
-                        "function_type": "overcurrent_50",
-                        "threshold_a": 1000,
-                        "threshold_unit": "A_PIERWOTNY",
-                        "time_delay_s": 0.05,
-                        "curve_type": "DT",
-                    },
-                    {
-                        "function_type": "overcurrent_51",
-                        "threshold_a": 200,
-                        "threshold_unit": "A_PIERWOTNY",
-                        "time_multiplier": 0.5,
-                        "curve_type": "IEC_SI",
-                    },
-                ],
-            },
+            _sterownik(
+                stopnie=[
+                    stopien_50(1000.0, jednostka_progu="A_PIERWOTNY"),
+                    stopien_51(200.0, jednostka_progu="A_PIERWOTNY", krzywa="IEC_SI", tms=0.5),
+                ]
+            ),
         )
-        assert result.success is True
+        assert result.success is True, result.issues
         assert result.created_ref == "pa_1"
-        assert len(result.enm["protection_assignments"]) == 1
-        pa = result.enm["protection_assignments"][0]
-        assert pa["breaker_ref"] == "brk_1"
-        assert pa["ct_ref"] == "ct_1"
-        assert len(pa["settings"]) == 2
+        (pa,) = result.enm["protection_assignments"]
+        assert pa["wejscia"]["ct_ref"] == "ct_1"
+        assert [f["kod"] for f in pa["funkcje"]] == ["50", "51"]
+        assert {tuple(w["aparat_refs"]) for w in pa["macierz_wyzwolen"]} == {("brk_1",)}
 
-    def test_attach_overcurrent_without_ct_fails(self):
-        """Overcurrent protection requires CT — BLOCKER."""
+    def test_attach_without_ct_is_allowed_and_named_by_evaluation(self):
+        """Sterownik bez przekładnika wchodzi do modelu (pole z szablonu ma funkcje przed
+        doborem przekładnika) — brak nazywa ocena (``zabezpieczenia.brak_przekladnika``),
+        nie operacja zapisu."""
         enm = _enm_with_breaker_and_ct()
-        result = attach_protection(
-            enm,
-            {
-                "ref_id": "pa_bad",
-                "name": "Bad PA",
-                "breaker_ref": "brk_1",
-                "device_type": "overcurrent",
-                # No ct_ref!
-            },
-        )
+        result = attach_protection(enm, _sterownik(ct_ref=None))
+        assert result.success is True, result.issues
+        assert "ct_ref" not in result.enm["protection_assignments"][0]["wejscia"]
+
+    @pytest.mark.parametrize(
+        ("zmiana", "kod"),
+        [
+            ({"wylacznik": "nonexistent"}, "OP_BREAKER_NOT_FOUND"),
+            ({"wylacznik": "disc_1"}, "OP_BREAKER_NOT_FOUND"),
+            ({"ct_ref": "ct_nonexistent"}, "OP_CT_NOT_FOUND"),
+            ({"ct_ref": "vt_1"}, "OP_CT_NOT_FOUND"),
+            ({"bay_ref": "bay_nonexistent"}, "OP_BAY_NOT_FOUND"),
+        ],
+        ids=[
+            "wylacznik_spoza_modelu",
+            "rozlacznik_w_macierzy",
+            "przekladnik_spoza_modelu",
+            "przekladnik_napieciowy_na_wejsciu_pradowym",
+            "pole_spoza_modelu",
+        ],
+    )
+    def test_attach_odmowa_referencji(self, zmiana, kod):
+        enm = _enm_with_breaker_and_ct()
+        result = attach_protection(enm, _sterownik(**zmiana))
         assert result.success is False
-        assert any(i.code == "OP_CT_REQUIRED" for i in result.issues)
+        assert any(i.code == kod for i in result.issues), result.issues
+        assert enm["protection_assignments"] == []
 
-    def test_attach_to_nonexistent_breaker(self):
-        """Attach to non-existent breaker — BLOCKER."""
+    @pytest.mark.parametrize(
+        "stopnie",
+        [
+            [stopien("50", prog=1000.0, krzywa="DT", zwloka_s=0.05)],
+            [stopien("51", prog=200.0, jednostka_progu="A_PIERWOTNY", krzywa="IEC_SI", zwloka_s=1)],
+            [stopien("50", prog=1000.0, jednostka_progu="A_PIERWOTNY", krzywa="DT", tms=0.1)],
+        ],
+        ids=["prog_bez_strony_przekladnika", "krzywa_zalezna_ze_zwloka", "dt_z_mnoznikiem"],
+    )
+    def test_attach_odmowa_sprzecznych_nastaw(self, stopnie):
         enm = _enm_with_breaker_and_ct()
-        result = attach_protection(
-            enm,
-            {
-                "ref_id": "pa_x",
-                "name": "PA X",
-                "breaker_ref": "nonexistent",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-            },
-        )
+        result = attach_protection(enm, _sterownik(stopnie=stopnie))
         assert result.success is False
-        assert any(i.code == "OP_BREAKER_NOT_FOUND" for i in result.issues)
+        assert any(i.code == "OP_SETTINGS_INVALID" for i in result.issues), result.issues
 
-    def test_attach_to_disconnector_fails(self):
-        """Cannot attach protection to disconnector (not a breaker)."""
+    def test_attach_earth_fault_holmgreen(self):
+        """Funkcja ziemnozwarciowa 51N z wejściem 3I0 z filtru Holmgreena przekładnika fazowego."""
         enm = _enm_with_breaker_and_ct()
         result = attach_protection(
             enm,
-            {
-                "ref_id": "pa_disc",
-                "name": "PA Disc",
-                "breaker_ref": "disc_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-            },
-        )
-        assert result.success is False
-        assert any(i.code == "OP_BREAKER_NOT_FOUND" for i in result.issues)
-
-    def test_attach_with_nonexistent_ct(self):
-        """Attach with non-existent CT — BLOCKER."""
-        enm = _enm_with_breaker_and_ct()
-        result = attach_protection(
-            enm,
-            {
-                "ref_id": "pa_nct",
-                "name": "PA No CT",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_nonexistent",
-                "device_type": "overcurrent",
-            },
-        )
-        assert result.success is False
-        assert any(i.code == "OP_CT_NOT_FOUND" for i in result.issues)
-
-    def test_attach_earth_fault_with_ct(self):
-        """Earth fault protection with CT — success."""
-        enm = _enm_with_breaker_and_ct()
-        result = attach_protection(
-            enm,
-            {
-                "ref_id": "pa_ef",
-                "name": "Zabezpieczenie ziemnozwarciowe",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "earth_fault",
-                "settings": [
-                    {
-                        "function_type": "earth_fault_51N",
-                        "threshold_a": 20,
-                        "threshold_unit": "A_PIERWOTNY",
-                        "time_delay_s": 1.0,
-                        "curve_type": "DT",
-                    },
+            _sterownik(
+                "pa_ef",
+                name="Zabezpieczenie ziemnozwarciowe",
+                wejscia={"i0_uklad": "HOLMGREEN"},
+                stopnie=[
+                    stopien(
+                        "51N", prog=20.0, jednostka_progu="A_PIERWOTNY", krzywa="DT", zwloka_s=1
+                    )
                 ],
-            },
+            ),
         )
-        assert result.success is True
+        assert result.success is True, result.issues
+        assert result.enm["protection_assignments"][0]["wejscia"]["i0_uklad"] == "HOLMGREEN"
 
     def test_attach_directional_with_ct_and_vt(self):
-        """Directional overcurrent with CT + VT — success."""
+        """Funkcja kierunkowa 67 z wejściami prądowym i napięciowym."""
         enm = _enm_with_breaker_and_ct()
         result = attach_protection(
             enm,
-            {
-                "ref_id": "pa_dir",
-                "name": "Zabezpieczenie kierunkowe",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "vt_ref": "vt_1",
-                "device_type": "directional_overcurrent",
-                "settings": [
-                    {
-                        "function_type": "directional_67",
-                        "threshold_a": 150,
-                        "threshold_unit": "A_PIERWOTNY",
-                        "time_delay_s": 0.3,
-                        "is_directional": True,
-                    },
+            _sterownik(
+                "pa_dir",
+                name="Zabezpieczenie kierunkowe",
+                vt_ref="vt_1",
+                stopnie=[
+                    stopien(
+                        "67",
+                        prog=150.0,
+                        jednostka_progu="A_PIERWOTNY",
+                        krzywa="DT",
+                        zwloka_s=0.3,
+                        kierunek="DO_LINII",
+                    )
                 ],
-            },
+            ),
         )
-        assert result.success is True
-        pa = result.enm["protection_assignments"][0]
-        assert pa["vt_ref"] == "vt_1"
+        assert result.success is True, result.issues
+        assert result.enm["protection_assignments"][0]["wejscia"]["vt_ref"] == "vt_1"
 
-    def test_duplicate_protection_on_breaker(self):
-        """Cannot attach second protection to same breaker."""
-        enm = _enm_with_breaker_and_ct()
-        # First attachment
-        result = attach_protection(
-            enm,
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-            },
-        )
-        assert result.success
-        enm = result.enm
-
-        # Second attachment to same breaker
-        result = attach_protection(
-            enm,
-            {
-                "ref_id": "pa_2",
-                "name": "PA2",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "earth_fault",
-            },
-        )
+    def test_second_controller_in_bay_refused(self):
+        """Pole ma JEDEN sterownik — funkcje dokłada się w nim, drugi sterownik jest odmową."""
+        enm = _pole(_enm_with_breaker_and_ct())
+        result = attach_protection(enm, _sterownik(bay_ref="bay_1"))
+        assert result.success, result.issues
+        result = attach_protection(result.enm, _sterownik("pa_2", bay_ref="bay_1"))
         assert result.success is False
-        assert any(i.code == "OP_BREAKER_HAS_PROTECTION" for i in result.issues)
+        assert any(i.code == "OP_BAY_HAS_PROTECTION" for i in result.issues)
+
+    def test_two_controllers_on_one_breaker_without_bay_allowed(self):
+        """Zabezpieczenie podstawowe i rezerwowe na ten sam wyłącznik liniowy (bez pola) —
+        dwa sterowniki, każdy z własną macierzą wyzwoleń."""
+        enm = _enm_with_breaker_and_ct()
+        result = attach_protection(enm, _sterownik())
+        assert result.success, result.issues
+        result = attach_protection(result.enm, _sterownik("pa_2"))
+        assert result.success is True, result.issues
 
 
 class TestDetachProtection:
     def test_detach_success(self):
-        """Detach existing protection — success."""
         enm = _enm_with_breaker_and_ct()
-        enm["protection_assignments"] = [
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [],
-                "is_enabled": True,
-                "tags": [],
-                "meta": {},
-            }
-        ]
+        enm["protection_assignments"] = [_sterownik()]
         result = detach_protection(enm, "pa_1")
         assert result.success is True
         assert len(result.enm["protection_assignments"]) == 0
 
     def test_detach_nonexistent(self):
-        """Detach non-existent protection — BLOCKER."""
         enm = _enm_with_breaker_and_ct()
         result = detach_protection(enm, "nonexistent")
         assert result.success is False
@@ -347,179 +307,67 @@ class TestDetachProtection:
 
 
 class TestUpdateProtection:
-    def test_update_settings(self):
-        """Update protection settings — success."""
+    def test_update_groups(self):
+        """Nowe grupy nastaw zastępują dawne (rekord w kształcie kontraktu)."""
         enm = _enm_with_breaker_and_ct()
-        enm["protection_assignments"] = [
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [
-                    {"function_type": "overcurrent_50", "threshold_a": 1000, "time_delay_s": 0.0},
-                ],
-                "is_enabled": True,
-                "tags": [],
-                "meta": {},
-            }
-        ]
-        result = update_protection(
-            enm,
-            {
-                "ref_id": "pa_1",
-                "settings": [
-                    {
-                        "function_type": "overcurrent_50",
-                        "threshold_a": 1200,
-                        "threshold_unit": "A_PIERWOTNY",
-                        "time_delay_s": 0.05,
-                    },
-                    {
-                        "function_type": "overcurrent_51",
-                        "threshold_a": 300,
-                        "threshold_unit": "A_PIERWOTNY",
-                        "time_multiplier": 0.8,
-                        "curve_type": "IEC_VI",
-                    },
-                ],
-            },
-        )
-        assert result.success is True
-        pa = result.enm["protection_assignments"][0]
-        assert len(pa["settings"]) == 2
-        assert pa["settings"][0]["threshold_a"] == 1200
+        enm["protection_assignments"] = [_sterownik()]
+        nowy = _sterownik(stopnie=[stopien_50(1200.0, jednostka_progu="A_PIERWOTNY")])
+        result = update_protection(enm, {"ref_id": "pa_1", "grupy_nastaw": nowy["grupy_nastaw"]})
+        assert result.success is True, result.issues
+        (wpis,) = result.enm["protection_assignments"][0]["grupy_nastaw"][0]["funkcje"]
+        assert {n["klucz"]: n["wartosc"] for n in wpis["nastawy"]}["prog"] == 1200.0
 
     def test_update_ct_ref(self):
-        """Update CT reference — validates new CT exists."""
+        """Wejście na przekładnik spoza modelu — odmowa, rekord bez zmian."""
         enm = _enm_with_breaker_and_ct()
-        enm["protection_assignments"] = [
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [],
-                "is_enabled": True,
-                "tags": [],
-                "meta": {},
-            }
-        ]
-        # Try to update CT to nonexistent
-        result = update_protection(
-            enm,
-            {
-                "ref_id": "pa_1",
-                "ct_ref": "ct_nonexistent",
-            },
-        )
+        enm["protection_assignments"] = [_sterownik()]
+        result = update_protection(enm, {"ref_id": "pa_1", "wejscia": {"ct_ref": "ct_nonexistent"}})
         assert result.success is False
         assert any(i.code == "OP_CT_NOT_FOUND" for i in result.issues)
+        assert enm["protection_assignments"][0]["wejscia"]["ct_ref"] == "ct_1"
 
     def test_disable_protection(self):
-        """Disable protection — success."""
         enm = _enm_with_breaker_and_ct()
-        enm["protection_assignments"] = [
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [],
-                "is_enabled": True,
-                "tags": [],
-                "meta": {},
-            }
-        ]
-        result = update_protection(
-            enm,
-            {
-                "ref_id": "pa_1",
-                "is_enabled": False,
-            },
-        )
+        enm["protection_assignments"] = [_sterownik()]
+        result = update_protection(enm, {"ref_id": "pa_1", "is_enabled": False})
         assert result.success is True
         assert result.enm["protection_assignments"][0]["is_enabled"] is False
 
 
 class TestProtectionCascadeValidation:
-    """Test cascade validation: breaker deletion blocked by protection."""
+    """Kaskada: wyłącznik w macierzy wyzwoleń i przekładnik na wejściu blokują usunięcie."""
 
     def test_delete_breaker_with_protection_blocked(self):
-        """Cannot delete breaker that has protection assigned."""
         enm = _enm_with_breaker_and_ct()
-        enm["protection_assignments"] = [
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [],
-                "is_enabled": True,
-                "tags": [],
-                "meta": {},
-            }
-        ]
+        enm["protection_assignments"] = [_sterownik()]
         result = delete_branch(enm, "brk_1")
         assert result.success is False
         assert any(i.code == "OP_HAS_PROTECTION" for i in result.issues)
 
     def test_delete_ct_with_protection_blocked(self):
-        """Cannot delete CT that is used by protection."""
         enm = _enm_with_breaker_and_ct()
-        enm["protection_assignments"] = [
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [],
-                "is_enabled": True,
-                "tags": [],
-                "meta": {},
-            }
-        ]
+        enm["protection_assignments"] = [_sterownik()]
         result = delete_measurement(enm, "ct_1")
         assert result.success is False
         assert any(i.code == "OP_CT_IN_USE" for i in result.issues)
 
     def test_proper_cascade_removal(self):
-        """Proper order: detach protection → delete CT → delete breaker."""
+        """Kolejność: odłącz sterownik → usuń przekładnik → usuń wyłącznik."""
         enm = _enm_with_breaker_and_ct()
-        enm["protection_assignments"] = [
-            {
-                "ref_id": "pa_1",
-                "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [],
-                "is_enabled": True,
-                "tags": [],
-                "meta": {},
-            }
-        ]
+        enm["protection_assignments"] = [_sterownik()]
 
-        # Step 1: Detach protection
         result = detach_protection(enm, "pa_1")
         assert result.success
         enm = result.enm
 
-        # Step 2: Delete CT (now safe)
         result = delete_measurement(enm, "ct_1")
         assert result.success
         enm = result.enm
 
-        # Step 3: Delete breaker (now safe)
         result = delete_branch(enm, "brk_1")
         assert result.success
         enm = result.enm
 
         assert len(enm["protection_assignments"]) == 0
-        assert len(enm["measurements"]) == 1  # VT still there
+        assert len(enm["measurements"]) == 1  # VT zostaje
         assert not any(b["ref_id"] == "brk_1" for b in enm["branches"])

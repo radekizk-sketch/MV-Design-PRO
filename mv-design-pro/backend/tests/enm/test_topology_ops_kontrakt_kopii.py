@@ -205,10 +205,13 @@ PRZYPADKI_BLEDU: list[tuple[str, str, Callable[[], dict], Callable[[dict], dict]
         lambda s: {**_payload_ct(s), "field_ref": "field/nie-ma-takiego"},
     ),
     (
+        # Kanon karty OCHRONA-JEDNO-ZRODLO: bramka przekładnika dotyczy funkcji DOKŁADANYCH
+        # (funkcje szablonu pola istnieją od budowy pola) — funkcja prądowa spoza szablonu
+        # na polu bez przekładnika jest odmową `relay.ct_missing`.
         "K3/przekaznik_bez_ct",
         "add_relay",
         _model_ze_stacja,
-        _payload_relay,
+        lambda s: {**_payload_relay(s), "funkcje": ["51", "50", "51N", "46"]},
     ),
 ]
 
@@ -365,7 +368,14 @@ class TestIzolacjaOperacjiDomenowej:
             _bajty(pierwotne) == przed
         ), "seria wyposażenia pola zmutowała model pierwotny wołającego"
         assert len(biezace.get("measurements", [])) == 2
-        assert len(biezace.get("protection_assignments", [])) == 1
+        # Pola szablonu mają sterowniki od budowy (karta OCHRONA-JEDNO-ZRODLO) — `add_relay`
+        # uzupełnia sterownik pola (pozycja katalogu, wejście CT), nie dokłada drugiego.
+        assert len(biezace["protection_assignments"]) == len(pierwotne["protection_assignments"])
+        (sterownik,) = (
+            p for p in biezace["protection_assignments"] if p["bay_ref"] == _pole_sn_ref(biezace)
+        )
+        assert sterownik["catalog_ref"] == _payload_relay(biezace)["catalog_ref"]
+        assert sterownik["wejscia"]["ct_ref"] in {m["ref_id"] for m in biezace["measurements"]}
 
     def test_wyposazenie_pola_z_bledem_nie_zostawia_polowicznej_migawki(self) -> None:
         """Krok pośredni serii pada → model wołającego bez ŻADNEGO elementu serii.
@@ -391,17 +401,30 @@ class TestIzolacjaOperacjiDomenowej:
         assert not pierwotne.get("measurements"), "CT z udanego kroku wyciekł do modelu pierwotnego"
 
     def test_pole_bez_ct_odrzucone_przed_dotknieciem_modelu(self) -> None:
-        """Uczciwy stan zerowy: brak CT to BLOCKER, a nie cichy zapis bez CT."""
+        """Uczciwy stan zerowy: funkcja prądowa DOKŁADANA na polu bez CT to odmowa, a nie
+        cichy zapis bez CT; sterownik szablonu pola bez CT nie jest cichy — ocena nazywa brak
+        przekładnika kodem gotowości (karta OCHRONA-JEDNO-ZRODLO)."""
+        from application.analyses.protection.ocena_nadpradowa import (
+            KOD_BRAK_PRZEKLADNIKA,
+            rozwiaz_nastawy,
+        )
+        from enm.models import EnergyNetworkModel
+
         snapshot = _siec_ze_stacja()
         przed = _bajty(snapshot)
         pole = _pole_sn_ref(snapshot)
 
         wynik = execute_domain_operation(
-            snapshot, "add_relay", {"field_ref": pole, "catalog_ref": "REF-OC-100"}
+            snapshot,
+            "add_relay",
+            {"field_ref": pole, "catalog_ref": "REF-OC-100", "funkcje": ["51", "50", "46"]},
         )
-
-        assert wynik.get("error")
+        assert wynik.get("error_code") == "relay.ct_missing"
         assert _bajty(snapshot) == przed
+
+        model = EnergyNetworkModel.model_validate(snapshot)
+        (sterownik,) = (p for p in model.protection_assignments if p.bay_ref == pole)
+        assert KOD_BRAK_PRZEKLADNIKA in {b.kod for b in rozwiaz_nastawy(model, sterownik).braki}
 
 
 # ---------------------------------------------------------------------------
@@ -542,10 +565,15 @@ def _model_topologiczny() -> dict[str, Any]:
             {
                 "ref_id": "pa_1",
                 "name": "PA1",
-                "breaker_ref": "brk_1",
-                "ct_ref": "ct_1",
-                "device_type": "overcurrent",
-                "settings": [],
+                # Sterownik w jednej strukturze zabezpieczeń (karta OCHRONA-JEDNO-ZRODLO).
+                "bay_ref": None,
+                "wejscia": {"ct_ref": "ct_1"},
+                "funkcje": [{"ref": "51", "kod": "51", "wlaczona": True}],
+                "grupy_nastaw": [],
+                "aktywna_grupa": 1,
+                "macierz_wyzwolen": [
+                    {"funkcja_ref": "51", "aparat_refs": ["brk_1"], "pobudza_spz": False}
+                ],
                 "is_enabled": True,
                 "tags": [],
                 "meta": {},
@@ -650,9 +678,11 @@ SUKCES: list[tuple[str, Callable[[dict], Any]]] = [
             e,
             {
                 "ref_id": "pa_2",
-                "breaker_ref": "brk_2",
-                "ct_ref": "ct_2",
-                "device_type": "overcurrent",
+                "wejscia": {"ct_ref": "ct_2"},
+                "funkcje": [{"ref": "51", "kod": "51", "wlaczona": True}],
+                "macierz_wyzwolen": [
+                    {"funkcja_ref": "51", "aparat_refs": ["brk_2"], "pobudza_spz": False}
+                ],
             },
         ),
     ),
@@ -751,9 +781,11 @@ BLOKADA: list[tuple[str, Callable[[dict], Any]]] = [
             e,
             {
                 "ref_id": "pa_x",
-                "breaker_ref": "nie-ma",
-                "ct_ref": "ct_2",
-                "device_type": "overcurrent",
+                "wejscia": {"ct_ref": "ct_2"},
+                "funkcje": [{"ref": "51", "kod": "51", "wlaczona": True}],
+                "macierz_wyzwolen": [
+                    {"funkcja_ref": "51", "aparat_refs": ["nie-ma"], "pobudza_spz": False}
+                ],
             },
         ),
     ),

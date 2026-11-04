@@ -21,7 +21,7 @@ export function czyNastawaCzasu(schemat: Pick<SchematNastawyEaz, 'klucz' | 'jedn
 export function liczbaNastawy(wartosc: number): string {
   return wartosc
     .toLocaleString('pl-PL', { maximumFractionDigits: 3, useGrouping: false })
-    .replace(/[   ]/g, ' ');
+    .replace(/[\u00a0\u202f\u2009]/g, ' ');
 }
 
 /** Strona przekładnika progu prądowego w zapisie skróconym kolumny (PZ-09). */

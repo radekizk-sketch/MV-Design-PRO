@@ -973,7 +973,16 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # wejściowego (738 liści, identyczny zbiór kluczy): 3 kody zabezpieczeń technologicznych
     # pola transformatora — klucze-nazwy „Buchholz", „temp", „ciśnienie" → numery IEEE C37.2
     # „63", „26", „63P". Enumeracja kontyngencji, dotkliwości i ranking identyczne.
-    "gn01_promieniowa": "138e374399ddb5b25f2b2b67d8e2b51caf911cad075301845c69aeae0bcedba0",
+    # 2026-11-04 (karta OCHRONA-JEDNO-ZRODLO, jedna struktura sterownika pola): gn01
+    # 138e3743… → fa645cd8…, gn03 bez zmiany. Pełne widoki z kodu bazy `44a2c6c02`
+    # (`git archive`, odtwarzają dokładnie poprzedni pin) i po karcie porównane liść po liściu:
+    # IDENTYCZNY zbiór 408 kluczy, różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # Jedyna różnica modelu wejściowego (738 → 765 liści, 0 liści wspólnych o innej wartości):
+    # kody funkcji zabezpieczeń z szablonu pola (`Bay.protection_codes`) i pola `protection_ref`,
+    # `zrodlo_u0_ref` pól (27 liści) przeszły do sterowników pól `protection_assignments`
+    # (`bay_ref`, `funkcje`, `aktywna_grupa` — 54 liście). Enumeracja kontyngencji, dotkliwości
+    # i ranking identyczne.
+    "gn01_promieniowa": "fa645cd8b1e44e46ebb6c7ad3c8886d699ba2230f19c859e8740a02ccadd1ce6",
     "gn03_pierscien": "c1a30de457e5befd7dce52b9ccbc466ca9d101118e6a4a5202103a02d66b29e4",
 }
 

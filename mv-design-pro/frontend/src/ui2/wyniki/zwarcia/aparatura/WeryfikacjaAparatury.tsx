@@ -140,12 +140,9 @@ function sekundy(wartosc: number | null): string {
  */
 function RozbicieCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
   const czas = pole.czas_wylaczenia;
-  const zrodlo =
-    czas.zrodlo === 'nastawy_pola'
-      ? T.czasZNastaw
-      : czas.zrodlo === 'konfiguracja'
-        ? T.czasZKonfiguracji
-        : T.czasNieustalony;
+  // Jedno źródło czasu (karta OCHRONA-JEDNO-ZRODLO pkt 4): nastawy sterownika pola; dawny czas
+  // wpisany ręcznie w konfiguracji stacji jest skasowany w backendzie.
+  const zrodlo = czas.zrodlo === 'nastawy_pola' ? T.czasZNastaw : T.czasNieustalony;
   return (
     <div
       className="mvd-apar-czas"

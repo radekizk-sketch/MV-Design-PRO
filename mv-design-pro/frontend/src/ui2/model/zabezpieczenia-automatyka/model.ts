@@ -22,6 +22,8 @@ import {
   sterowniki,
   wylacznikSterownika,
 } from '../../../ui/shared/sterownikZabezpieczen';
+import { stacjaPola } from '../../../ui/shared/polaStacji';
+import { nazwaStacjiJakWDrzewie } from '../../../ui/shared/publicTechnicalLabels';
 
 /** Stan SPZ z funkcji 79 sterownika (włączenie i liczba cykli aktywnej grupy). */
 export interface SpzWidok {
@@ -37,6 +39,10 @@ export interface WierszZabezpieczenia {
   /** Pole rozdzielni (`null` — sterownik wyłącznika liniowego bez pola). */
   readonly bayRef: string | null;
   readonly nazwa: string;
+  /** Stacja pola — nazwa jak w drzewie projektu (`null` — wyłącznik liniowy, pole bez stacji
+   *  w modelu). Nazwy pól powtarzają się między stacjami („Pole liniowe 1"), więc wiersz bez
+   *  stacji byłby niejednoznaczny. */
+  readonly stacja: string | null;
   /** Sterownik zabezpieczeń (`null` — pole bez sterownika). */
   readonly sterownikRef: string | null;
   readonly urzadzenie: string | null;
@@ -74,8 +80,13 @@ function zSterownika(sterownik: ProtectionAssignment | null) {
  */
 export function buildWierszeZabezpieczen(
   fields: readonly FieldReadModelItem[],
-  migawka: Partial<Pick<EnergyNetworkModel, 'protection_assignments' | 'branches'>> | null | undefined,
+  migawka: EnergyNetworkModel | null | undefined,
 ): WierszZabezpieczenia[] {
+  const stacjaWiersza = (bayRef: string): string | null => {
+    const ref = stacjaPola(migawka, bayRef);
+    const stacja = ref ? (migawka?.substations ?? []).find((s) => s.ref_id === ref) : undefined;
+    return migawka && stacja ? nazwaStacjiJakWDrzewie(migawka, stacja) : null;
+  };
   const pola = fields
     .map((item): WierszZabezpieczenia => {
       const base = item.canonical_model.base_model;
@@ -83,6 +94,7 @@ export function buildWierszeZabezpieczen(
         klucz: item.bay_ref,
         bayRef: item.bay_ref,
         nazwa: item.bay_name || item.bay_ref,
+        stacja: stacjaWiersza(item.bay_ref),
         ...zSterownika(base.zabezpieczenie ?? null),
         szablon: base.bay_template_ref ?? null,
         rodzina: base.switchgear_family_ref ?? null,
@@ -98,6 +110,7 @@ export function buildWierszeZabezpieczen(
         klucz: s.ref_id,
         bayRef: null,
         nazwa: galaz?.name?.trim() || s.name || s.ref_id,
+        stacja: null,
         ...zSterownika(s),
         szablon: null,
         rodzina: null,

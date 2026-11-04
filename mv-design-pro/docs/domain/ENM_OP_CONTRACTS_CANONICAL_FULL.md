@@ -131,7 +131,7 @@ Rejestr liczy **53** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `add_grid_source_sn` | Dodanie źródła zasilania sieciowego (GPZ) do sieci SN | `voltage_kv` | `catalog_binding`, `catalog_ref`, `gpz_coupler_name`, `gpz_line_field_apparatus`, `gpz_line_field_name`, `gpz_section_name`, `gpz_sections`, `grounding`, `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `line_fields_per_section`, `lv_voltage_tolerance`, `manual_equivalent`, `manufacturer_ref`, `name_pl`, `overrides`, `parameter_source`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `sections_count`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `solution_ref`, `source_id`, `source_mode`, `source_name`, `switchgear_family_ref`, `transformer_catalog_binding`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_count`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_sn_mva`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv`, `transformer_{order}_name`, `u_set_pu`, `x0_ohm`, `x_ohm`, `z0_z1_ratio`, `zero_sequence` | tak | `enm/domain_operations.py::add_grid_source_sn` |
 | `add_load_sn` | Dodanie odbioru wprost na wskazaną szynę (bez pośredniej stacji SN/nN) | `bus_ref` | `a_p`, `a_q`, `active_power_kw`, `b_p`, `b_q`, `c_p`, `c_q`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection_type`, `cos_phi`, `f0_hz`, `k_pf`, `k_qf`, `load_kind`, `load_name`, `p_mw`, `phases`, `q_mvar`, `reactive_power_kvar`, `v0_pu` | tak | `enm/domain_operations_v2.py::add_load_sn` |
 | `add_shunt_compensator_sn` | Dodanie baterii kondensatorów (kompensatora bocznikowego) na szynę SN | — | `bus_nn_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `dry_run`, `name`, `status` | tak | `enm/domain_operations_v2.py::add_shunt_compensator_sn` |
-| `add_sn_bay` | Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego RMU) z trybem próby (werdykt konfiguracji bez zapisu) | — | `apparatus_kind`, `bay_kind`, `bay_role`, `bay_template_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `complete_bay_template_ref`, `dry_run`, `earthing_role`, `existing_field_ref`, `factory_configuration_ref`, `factory_unit_index`, `field_name`, `field_ref`, `funkcja_pomiaru`, `gpz_section_id`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `station_ref`, `switchgear_family_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_sn_bay` |
+| `add_sn_bay` | Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego RMU) z trybem próby (werdykt konfiguracji bez zapisu) | — | `apparatus_kind`, `bay_kind`, `bay_role`, `bay_template_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `complete_bay_template_ref`, `dry_run`, `earthing_role`, `existing_field_ref`, `factory_configuration_ref`, `factory_unit_index`, `field_name`, `field_ref`, `funkcja_pomiaru`, `gpz_section_id`, `manufacturer_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `station_ref`, `switchgear_family_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_sn_bay` |
 | `add_surge_arrester_sn` | Dodanie ogranicznika przepięć w polu SN | — | `bay_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `dry_run`, `field_ref`, `station_ref` | tak | `enm/domain_operations_v2.py::add_surge_arrester_sn` |
 | `append_station_on_endpoint` | Dołączenie stacji na końcu istniejącego ciągu SN | — | `construction_type`, `designation`, `dry_run`, `endpoint_bus_ref`, `field_apparatus_catalog_ref`, `nn_block`, `nn_earthing`, `nn_voltage_kv`, `run_ref`, `sn_fields`, `station`, `station_auxiliary`, `station_name`, `station_type`, `switchgear`, `transformer` | tak | `enm/domain_operations.py::append_station_on_endpoint` |
 | `close_switch` | Zamknięcie łącznika w modelu bazowym (pozycja normalna bez zmian) | `switch_ref` | — | nie | `enm/operacje_lacznikow.py::close_switch` |
@@ -176,10 +176,10 @@ Rejestr liczy **53** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
 |---|---|---|---|---|---|
 | `add_ct` | Dodanie przekładnika prądowego (CT) | — | `accuracy_class`, `bay_ref`, `breaker_ref`, `burden_va`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection`, `field_ref`, `name`, `obwod_wtorny`, `purpose`, `ratio_primary_a`, `ratio_secondary_a` | tak | `enm/domain_operations_v2.py::add_ct` |
-| `add_relay` | Dodanie przekaźnika zabezpieczeniowego | — | `bay_ref`, `breaker_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `ct_ref`, `field_ref`, `name`, `protection`, `relay_type`, `settings`, `vt_ref` | tak | `enm/domain_operations_v2.py::add_relay` |
+| `add_relay` | Dodanie przekaźnika zabezpieczeniowego | — | `bay_ref`, `breaker_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `charakterystyki_ref`, `field_ref`, `funkcje`, `name`, `prad_znamionowy_wejscia_a`, `protection`, `relay_type`, `wejscia` | tak | `enm/domain_operations_v2.py::add_relay` |
 | `add_vt` | Dodanie przekładnika napięciowego (VT) | `field_ref` (albo `bay_ref`) | `accuracy_class`, `burden_va`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection`, `name`, `obwod_wtorny`, `purpose`, `ratio_primary_v`, `ratio_secondary_v`, `vt_uzwojenie` | tak | `enm/domain_operations_v2.py::add_vt` |
 | `set_measurement_secondary_circuit` | Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku | `measurement_ref` (albo `ref_id`), `obwod_wtorny` | `vt_uzwojenie` | nie | `enm/domain_operations_v2.py::set_measurement_secondary_circuit` |
-| `update_protection_settings` | Zapis nastaw zabezpieczenia w modelu sieci | `protection_ref`, `settings` | — | nie | `enm/domain_operations_v2.py::update_protection_settings` |
+| `update_protection_settings` | Zapis nastaw zabezpieczenia w modelu sieci | `protection_ref` | `aktywna_grupa`, `charakterystyki_ref`, `funkcje`, `grupa`, `macierz_wyzwolen`, `nastawy`, `pochodzenie`, `prad_znamionowy_wejscia_a`, `wejscia`, `wlaczone` | nie | `enm/domain_operations_v2.py::update_protection_settings` |
 
 ### Operacje uniwersalne (`universal`, 5)
 
@@ -258,7 +258,7 @@ Obiekty zagnieżdżone ładunku mają kształt w **31** operacjach (`KSZTALTY_ZA
 | `append_station_on_endpoint` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
 | `append_station_on_endpoint` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
 | `append_station_on_endpoint` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
-| `append_station_on_endpoint` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `catalog_bindings`, `equipment`, `equipment_refs`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
+| `append_station_on_endpoint` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `catalog_bindings`, `equipment`, `equipment_refs`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
 | `append_station_on_endpoint` | `station` | `construction_type`, `designation`, `name`, `nn_earthing`, `nn_voltage_kv`, `station_auxiliary`, `station_type`, `switchgear` |
 | `append_station_on_endpoint` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `append_station_on_endpoint` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
@@ -283,7 +283,7 @@ Obiekty zagnieżdżone ładunku mają kształt w **31** operacjach (`KSZTALTY_ZA
 | `insert_station_on_segment_sn` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
 | `insert_station_on_segment_sn` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
 | `insert_station_on_segment_sn` | `nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
-| `insert_station_on_segment_sn` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `equipment`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
+| `insert_station_on_segment_sn` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `equipment`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
 | `insert_station_on_segment_sn` | `station` | `construction_type`, `designation`, `name`, `name_pl`, `nn_earthing`, `nn_voltage_kv`, `sn_voltage_kv`, `station_auxiliary`, `station_name`, `station_type`, `switchgear` |
 | `insert_station_on_segment_sn` | `station.nn_earthing` | `lv_system`, `lv_voltage_tolerance`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
 | `insert_station_on_segment_sn` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
@@ -1430,7 +1430,7 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia:
 
 Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `MEASUREMENT_SECONDARY_CIRCUIT_SET`; zaznaczenie: `ct/0837f8bce764193b7bffcddcfc80f1c8/measurement`.
 
-#### 41. `add_relay` — zabezpieczenie nadprądowe pola liniowego z nastawami
+#### 41. `add_relay` — sterownik zabezpieczeń pola liniowego (urządzenie z katalogu, wejście prądów fazowych)
 
 ```json
 {
@@ -1441,32 +1441,18 @@ Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia:
     "idempotency_key": "przyklad-41",
     "payload": {
       "field_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000",
-      "ct_ref": "ct/0837f8bce764193b7bffcddcfc80f1c8/measurement",
-      "catalog_ref": "REF-OC-100",
-      "settings": [
-        {
-          "function_type": "overcurrent_51",
-          "threshold_a": 2.0,
-          "threshold_unit": "A_WTORNY",
-          "curve_type": "IEC_SI",
-          "time_multiplier": 0.3
-        },
-        {
-          "function_type": "overcurrent_50",
-          "threshold_a": 20.0,
-          "threshold_unit": "A_WTORNY",
-          "curve_type": "DT",
-          "time_delay_s": 0.4
-        }
-      ]
+      "wejscia": {
+        "ct_ref": "ct/0837f8bce764193b7bffcddcfc80f1c8/measurement"
+      },
+      "catalog_ref": "REF-OC-100"
     }
   }
 }
 ```
 
-Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 1, usunięte 0; zdarzenia: `PROTECTION_CREATED`; zaznaczenie: `relay/b7cc15e9cadfb4e554fa7c1a33e6f20e/assignment`.
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PROTECTION_SETTINGS_UPDATED`; zaznaczenie: `stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000/sterownik`.
 
-#### 42. `update_protection_settings` — zmiana nastaw (zwłoka członu zwarciowego 0,3 s)
+#### 42. `update_protection_settings` — nastawy funkcji I> (51) i I>> (50) w grupie aktywnej (zwłoka członu zwarciowego 0,3 s)
 
 ```json
 {
@@ -1476,29 +1462,27 @@ Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 1, usunięte 0; zdarzenia:
     "name": "update_protection_settings",
     "idempotency_key": "przyklad-42",
     "payload": {
-      "protection_ref": "relay/b7cc15e9cadfb4e554fa7c1a33e6f20e/assignment",
-      "settings": [
-        {
-          "function_type": "overcurrent_51",
-          "threshold_a": 2.0,
-          "threshold_unit": "A_WTORNY",
-          "curve_type": "IEC_SI",
-          "time_multiplier": 0.3
+      "protection_ref": "stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000/sterownik",
+      "nastawy": {
+        "51": {
+          "prog": 2.0,
+          "jednostka_progu": "A_WTORNY",
+          "krzywa": "IEC_SI",
+          "tms": 0.3
         },
-        {
-          "function_type": "overcurrent_50",
-          "threshold_a": 20.0,
-          "threshold_unit": "A_WTORNY",
-          "curve_type": "DT",
-          "time_delay_s": 0.3
+        "50": {
+          "prog": 20.0,
+          "jednostka_progu": "A_WTORNY",
+          "krzywa": "DT",
+          "zwloka_s": 0.3
         }
-      ]
+      }
     }
   }
 }
 ```
 
-Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PROTECTION_SETTINGS_UPDATED`; zaznaczenie: `relay/b7cc15e9cadfb4e554fa7c1a33e6f20e/assignment`.
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PROTECTION_SETTINGS_UPDATED`; zaznaczenie: `stn/54f86ddcdc7c49e37880d8f62fc9d7af/sn_field/000/sterownik`.
 
 #### 43. `add_nn_distribution_board` — rozdzielnica nN wolnostojąca
 

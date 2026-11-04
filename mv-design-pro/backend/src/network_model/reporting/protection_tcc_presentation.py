@@ -151,6 +151,28 @@ def wiersze_nastaw_urzadzenia(urzadzenie: dict[str, Any]) -> list[tuple[str, str
     return wiersze
 
 
+#: Nagłówek sekcji raportu z funkcjami sterowników, których produkt nie ocenia.
+NAGLOWEK_FUNKCJI_NIEOCENIANYCH_PL = "Funkcje bez oceny (status: nie oceniono)"
+
+
+def zdania_funkcji_nieocenianych(urzadzenia: list[dict[str, Any]]) -> list[str]:
+    """Zdania raportu o funkcjach sterownika, których produkt nie ocenia (karta
+    OCHRONA-JEDNO-ZRODLO pkt 5): urządzenie, funkcja (zapis z rysunku i kod) i powód — ten sam
+    zapis ``nastawy.funkcje_nieoceniane`` co widok zabezpieczeń i edytor nastaw. Funkcja bez
+    ewaluatora nie znika z raportu po cichu; kolejność: nazwa urządzenia, potem kolejność
+    funkcji sterownika. PDF i DOCX czytają to samo."""
+    zdania: list[str] = []
+    for urzadzenie in sorted(
+        urzadzenia, key=lambda d: (nazwa_wpisu_urzadzenia(d), str(d.get("id", "")))
+    ):
+        for wpis in (urzadzenie.get("nastawy") or {}).get("funkcje_nieoceniane") or []:
+            zdania.append(
+                f"{nazwa_wpisu_urzadzenia(urzadzenie)} · "
+                f"{etykieta_funkcji_eaz(str(wpis.get('funkcja')))}: {wpis.get('powod_pl')}"
+            )
+    return zdania
+
+
 def uzasadnienia_sprawdzen(sprawdzenia: list[dict[str, Any]], nazwy: dict[str, str]) -> list[str]:
     """Zdania sprawdzeń (czułość, selektywność, przeciążalność) — każdy wiersz tabeli ma zdanie
     po polsku z liczbami, punktem zwarcia i wartością wymaganą (``notes_pl`` sprawdzenia);

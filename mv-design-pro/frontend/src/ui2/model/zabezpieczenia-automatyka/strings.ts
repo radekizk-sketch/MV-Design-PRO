@@ -24,6 +24,7 @@ export const ZABEZPIECZENIA_STRINGS = {
 
   // Tabela sterowników (sterownik = wiersz, standard warsztatu §10).
   zabezpieczeniaTytul: 'Sterowniki zabezpieczeń i automatyki',
+  kolStacja: 'Stacja',
   kolPole: 'Pole / wyłącznik',
   kolUrzadzenie: 'Urządzenie',
   kolFunkcje: 'Funkcje',

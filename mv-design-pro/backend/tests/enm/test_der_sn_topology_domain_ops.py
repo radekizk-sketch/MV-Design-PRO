@@ -14,6 +14,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_sn_stacji
+from enm.zabezpieczenie import kody_funkcji_pola
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
@@ -280,8 +281,9 @@ def test_case2_pv_full_sn_chain_materializes_all_elements() -> None:
     # Zabezpieczenia interfejsu NC RfG: ROCOF 81R i napięciowo-częstotliwościowe — każda funkcja
     # raz; dawny kod-agregat „anti-islanding” (zestaw tych kryteriów) skasowany (decyzja
     # architekta 2026-10-30, `funkcje_eaz`).
-    assert {"27", "59", "81U", "81O", "81R"} <= set(field["protection_codes"])
-    assert "anti-islanding" not in field["protection_codes"]
+    kody = kody_funkcji_pola(snap, field["ref_id"])
+    assert {"27", "59", "81U", "81O", "81R"} <= set(kody)
+    assert "anti-islanding" not in kody
 
     EnergyNetworkModel.model_validate(snap)
 

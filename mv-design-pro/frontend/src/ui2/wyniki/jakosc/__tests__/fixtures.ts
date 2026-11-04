@@ -552,7 +552,7 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
           powod_pl: 'Czas z charakterystyki IEC_SI zabezpieczenia pola przy prądzie gałęzi.',
           urzadzenie_ref: 'CB1',
           urzadzenie_nazwa: 'Wyłącznik pola liniowego',
-          funkcja: 'overcurrent_51',
+          funkcja: '51',
           prad_galezi_a: 15000,
           prad_rozruchowy_a: 600,
           krzywa: 'IEC_SI',

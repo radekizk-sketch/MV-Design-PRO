@@ -35,6 +35,7 @@ from typing import Any
 import pytest
 from application.analyses import aparaty_pol as modul_aparatow
 from application.analyses.protection import ocena_nadpradowa
+from application.analyses.protection.catalog import catalog_store
 from application.analyses.protection.catalog.catalog_store import load_device_capability
 from application.analyses.wytrzymalosc_aparatury_pol import widok_wytrzymalosci_z_biegu
 from enm.models import (
@@ -201,6 +202,9 @@ def przekaznik_z_krzywa_ei(monkeypatch: pytest.MonkeyPatch) -> None:
             zdolnosc, curves_supported=(*zdolnosc.curves_supported, "IEC_EI")
         )
 
+    # Profil charakterystyk sterownika czyta JEDEN predykat `profil_charakterystyk` modułu
+    # katalogu (zapis i ocena) — dopisanie EI idzie tam, nie do kopii nazwy w module oceny.
+    monkeypatch.setattr(catalog_store, "load_device_capability", _zdolnosc)
     monkeypatch.setattr(ocena_nadpradowa, "load_device_capability", _zdolnosc)
 
 

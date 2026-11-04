@@ -40,6 +40,16 @@ export const NASTAWY_STRINGS = {
   profilWybor: 'Profil charakterystyk',
   profilZWyrobu: 'z wyrobu (albo profil roboczy)',
   zakresyProfilu: 'Zakresy profilu',
+  skladFunkcji: 'Funkcje sterownika',
+  skladDodajWybor: 'Funkcja do dodania',
+  skladDodajPusty: 'wybierz funkcję z rejestru',
+  skladDodaj: 'Dodaj funkcję',
+  skladZdejmijWybor: 'Funkcja do zdjęcia',
+  skladZdejmijPusty: 'wybierz funkcję sterownika',
+  skladZdejmij: 'Zdejmij funkcję',
+  skladOpis:
+    'Dodana funkcja zabezpieczeniowa wyzwala wyłączniki sterownika; zdjęta znika razem '
+    + 'z nastawami we wszystkich grupach i wierszem macierzy wyzwoleń.',
   obwodTytul: 'Obwód wtórny przekładnika prądowego',
   obwodOpis:
     'Z tych danych backend liczy nasycenie przekładnika (ALF_eff wg IEC 61869-2) — bez długości '

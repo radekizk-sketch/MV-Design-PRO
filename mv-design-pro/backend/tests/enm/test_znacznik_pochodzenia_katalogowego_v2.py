@@ -279,7 +279,12 @@ def _znaczniki_pomiaru(typ: str) -> Callable[[dict[str, Any]], dict[str, str | N
 
 
 def _znaczniki_zabezpieczenia(snapshot: dict[str, Any]) -> dict[str, str | None]:
-    przypisanie = _jedyny(snapshot.get("protection_assignments") or [], "protection_assignment")
+    # Każde pole z szablonu ma sterownik z funkcjami szablonu (karta OCHRONA-JEDNO-ZRODLO);
+    # znacznik pochodzenia niesie sterownik z dobranym urządzeniem (`add_relay`).
+    przypisanie = _jedyny(
+        [p for p in snapshot.get("protection_assignments") or [] if p.get("catalog_ref")],
+        "protection_assignment",
+    )
     return {
         "element": _znacznik(przypisanie),
         "meta.catalog_binding": (przypisanie.get("meta") or {})

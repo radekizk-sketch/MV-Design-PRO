@@ -192,8 +192,10 @@ def bledy_sterownika(dane: Mapping[str, Any]) -> list[str]:
             bledy.extend(
                 f"Grupa {numer}: {blad}" for blad in bledy_nastaw_funkcji(funkcja, wartosci)
             )
-    aktywna = dane.get("aktywna_grupa", 1)
-    if aktywna not in NUMERY_GRUP_NASTAW or isinstance(aktywna, bool):
+    aktywna = dane.get("aktywna_grupa")
+    if aktywna is None:
+        bledy.append("Sterownik nie wskazuje aktywnej grupy nastaw (1–4).")
+    elif aktywna not in NUMERY_GRUP_NASTAW or isinstance(aktywna, bool):
         bledy.append(f"Aktywna grupa nastaw {aktywna!r} spoza grup 1–4.")
     elif numery and aktywna not in numery:
         bledy.append(f"Aktywna grupa nastaw {aktywna} nie istnieje w sterowniku.")

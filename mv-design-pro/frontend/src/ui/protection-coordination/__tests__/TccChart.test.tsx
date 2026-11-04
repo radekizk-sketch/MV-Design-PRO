@@ -25,8 +25,10 @@ beforeAll(() => {
 const WYNIK = wynikSceny as unknown as CoordinationResult;
 
 describe('wynik sieci złotej na wykresie', () => {
-  it('wynik niesie krzywe obu urządzeń modelu z punktami z backendu', () => {
-    expect(WYNIK.devices.length).toBe(2);
+  it('wynik niesie krzywe obu urządzeń z nastawami z punktami z backendu', () => {
+    // Urządzenia wyniku = każdy sterownik modelu (także sterowniki pól szablonu bez nastaw —
+    // ADR-022); krzywą mają WYŁĄCZNIE dwa sterowniki wyłączników liniowych z nastawami.
+    expect(WYNIK.devices.length).toBeGreaterThan(2);
     expect(WYNIK.tcc_curves.length).toBe(2);
     for (const krzywa of WYNIK.tcc_curves) {
       expect(krzywa.points.length).toBeGreaterThan(0);
@@ -56,8 +58,11 @@ describe('wynik sieci złotej na wykresie', () => {
     render(
       <TccChartFromResult result={WYNIK} devices={WYNIK.devices} onDeviceClick={onDeviceClick} />,
     );
-    fireEvent.click(screen.getByText(WYNIK.devices[0].name));
-    expect(onDeviceClick).toHaveBeenCalledWith(WYNIK.devices[0].id);
+    // Legenda niesie urządzenia z krzywą (sterownik bez nastaw nie ma krzywej na wykresie).
+    const [krzywa] = WYNIK.tcc_curves;
+    const urzadzenie = WYNIK.devices.find((d) => d.id === krzywa.device_id)!;
+    fireEvent.click(screen.getByText(urzadzenie.name));
+    expect(onDeviceClick).toHaveBeenCalledWith(urzadzenie.id);
   });
 
   it('pusty wynik — stan pusty, nie wykres', () => {

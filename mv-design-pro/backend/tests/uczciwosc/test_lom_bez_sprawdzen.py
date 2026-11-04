@@ -88,7 +88,8 @@ def _enm(bays: list[Bay], generators: list[Generator], stopnie: list[Stopien] | 
                     ref_id="prot_lom",
                     name="Zabezpieczenie LoM",
                     bay_ref="bay_oze",
-                    wylacznik="cb_1",
+                    # Sterownik bez funkcji nie ma czego wyzwalać (wiersz macierzy przy funkcjach).
+                    wylacznik="cb_1" if stopnie else None,
                     stopnie=stopnie,
                 )
             ]

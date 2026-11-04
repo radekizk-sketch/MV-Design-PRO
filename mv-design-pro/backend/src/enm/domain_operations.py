@@ -195,7 +195,7 @@ from .uziemienie import blad_konfiguracji_uziemienia
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
-from .zabezpieczenie import aparaty_sterownika, kody_funkcji_pola, sterownik_pola
+from .zabezpieczenie import aparaty_sterownika, kody_funkcji_pola
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
     TYPY_ODCINKA_TERENOWEGO,
@@ -747,9 +747,9 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
         line_fields_count = _read_gpz_line_fields_count(entry, payload)
 
         # Kompozycja pól z szablonów producenta (opcjonalna, addytywna): jeżeli
-        # payload niesie `bays[]` per sekcja, każde pole ma własną rolę, szablon
-        # (bay_template_ref) i pozycję katalogu urządzenia zabezpieczeniowego
-        # (protection_catalog_ref). Bez
+        # payload niesie `bays[]` per sekcja, każde pole ma własną rolę i szablon
+        # (bay_template_ref); urządzenie zabezpieczeniowe dobiera wyłącznie `add_relay`
+        # (brama katalogowa, karta OCHRONA-JEDNO-ZRODLO). Bez
         # `bays[]` zachowane jest dotychczasowe zachowanie (kompatybilność wsteczna).
         bays: list[dict[str, Any]] = []
         raw_bays = entry.get("bays")
@@ -769,12 +769,6 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
                             str(bay["bay_template_ref"]).strip()
                             if isinstance(bay.get("bay_template_ref"), str)
                             and bay["bay_template_ref"].strip()
-                            else None
-                        ),
-                        "protection_catalog_ref": (
-                            str(bay["protection_catalog_ref"]).strip()
-                            if isinstance(bay.get("protection_catalog_ref"), str)
-                            and bay["protection_catalog_ref"].strip()
                             else None
                         ),
                     }
@@ -1862,14 +1856,12 @@ def _wyposaz_nowe_pole_gpz_jak_wzorzec(
     # (`_resolve_bay_template_protection_codes`: producent → szablon → rola).
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
 
-    # Sterownik nowego pola: funkcje szablonu i — jak wzorzec — ta sama pozycja katalogu
-    # urządzenia (nastawy nie są kopiowane: pole nowe ma własną selektywność).
-    sterownik_wzorca = sterownik_pola(enm, wzorzec.get("ref_id"))
+    # Sterownik nowego pola: funkcje szablonu (urządzenie i nastawy nie są kopiowane — dobór
+    # urządzenia to `add_relay` z bramą katalogową, a pole nowe ma własną selektywność).
     nowe_pole[KLUCZ_STEROWNIKA_POLA] = {
         "kody": _resolve_bay_template_protection_codes(
             wzorzec.get("manufacturer_ref"), szablon, nowe_pole["bay_role"]
         ),
-        "katalog_ref": (sterownik_wzorca or {}).get("catalog_ref"),
     }
     nowe_pole.setdefault("meta", {}).update(
         {
@@ -5133,7 +5125,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             bay_name = nazwa_nadana(bay_spec.get("name")) or section_field_names[field_index]
             # Szablon pola producenta: preferuj per-pole, potem sekcyjny.
             bay_template_ref = bay_spec.get("bay_template_ref") or section.get("bay_template_ref")
-            bay_protection_ref = bay_spec.get("protection_catalog_ref")
             section["line_field_refs"].append(bay_ref)
             equipment_refs: list[str] = []
             galaz_aparatu_pola: dict[str, Any] | None = None
@@ -5290,7 +5281,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                         terminal_bus_ref=zacisk_pola_gpz,
                         gpz_section_id=section["section_id"],
                         equipment_refs=equipment_refs,
-                        katalog_sterownika_ref=bay_protection_ref,
                         # Funkcje EAZ pola z jego szablonu — TEN SAM resolver co operacje
                         # dodające pole (producent → szablon → rola). Pole GPZ bez szablonu
                         # i bez aparatu (brak pozycji katalogowej aparatu pola) nie ma czym
@@ -6350,6 +6340,18 @@ def _zastosuj_wyposazenie_pol(
             dane = equipment.get(klucz)
             if not isinstance(dane, dict) or not dane:
                 continue
+            # Ten sam czujnik co dyspozytor (`execute_domain_operation`): klucz wyposażenia
+            # spoza kontraktu operacji atomowej przepadałby bez śladu (karta
+            # OCHRONA-JEDNO-ZRODLO: dawne ``settings`` zabezpieczenia pola po skasowaniu
+            # starej struktury nastaw) — trafia do dziennika serwera ze ścieżką klucza.
+            obce = klucze_spoza_kontraktu(nazwa_operacji, dane)
+            if obce:
+                logger.warning(
+                    "Ładunek operacji %r niesie klucze spoza kontraktu (handler ich nie czyta): %s",
+                    nazwa_operacji,
+                    ", ".join(f"sn_fields[].equipment.{klucz}.{k}" for k in obce),
+                    extra={"klucze_spoza_kontraktu": tuple(obce)},
+                )
             # BRAMA KATALOGOWA (defekt F): pozycja wyposażenia musi ISTNIEĆ w katalogu,
             # a nie tylko być wskazana. Handlery atomowe sprawdzają wyłącznie obecność
             # referencji, więc bez tego kroku tor domenowy przyjmował literówkę
@@ -6385,10 +6387,17 @@ def _zastosuj_wyposazenie_pol(
                     kod_bledu,
                 )
             new_enm = migawka
+            # Pole powstało w TEJ operacji stacyjnej, więc element, który operacja wyposażenia
+            # uzupełniła (sterownik pola z szablonu — `add_relay` zgłasza go jako zmieniony),
+            # też jest utworzony przez tę operację (karta OCHRONA-JEDNO-ZRODLO).
+            zmiany_wyposazenia = odpowiedz.get("changes") or {}
             utworzone.extend(
                 ref
-                for ref in (odpowiedz.get("changes") or {}).get("created_element_ids", [])
-                if isinstance(ref, str)
+                for ref in (
+                    *zmiany_wyposazenia.get("created_element_ids", []),
+                    *zmiany_wyposazenia.get("updated_element_ids", []),
+                )
+                if isinstance(ref, str) and ref not in utworzone
             )
             for zdarzenie in odpowiedz.get("domain_events") or []:
                 if isinstance(zdarzenie, dict):
@@ -7829,7 +7838,6 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         # ani jednego z nich — model nie wiedział, czy pole stoi na karcie
         # producenta, czy na układzie zastępczym pakietu.
         field_metadane = metadane_pochodzenia_pola(field_spec)
-        field_protection_ref = field_spec.get("protection_catalog_ref")
         field_protection_codes = _resolve_bay_template_protection_codes(
             field_manufacturer_ref, field_bay_template_ref, bay_role
         )
@@ -7887,7 +7895,6 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     bus_ref=sn_bus_b_id,
                     substation_ref=stn_id,
                     equipment_refs=[coupler_id],
-                    katalog_sterownika_ref=field_protection_ref,
                     funkcje_eaz=field_protection_codes,
                     bay_template_ref=field_bay_template_ref,
                     switchgear_family_ref=field_family_ref,
@@ -8001,7 +8008,6 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 substation_ref=stn_id,
                 terminal_bus_ref=terminal_bus_ref,
                 equipment_refs=[breaker_ref],
-                katalog_sterownika_ref=field_protection_ref,
                 funkcje_eaz=field_protection_codes,
                 bay_template_ref=field_bay_template_ref,
                 switchgear_family_ref=field_family_ref,
@@ -12289,9 +12295,6 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 funkcje_eaz=_resolve_bay_template_protection_codes(
                     field_manufacturer_ref, field_bay_template_ref, bay_role
                 ),
-                # Zabezpieczenie WSKAZANE na wpisie pola — ten sam klucz kontraktu payloadu,
-                # który honoruje wcięcie stacji w odcinek.
-                katalog_sterownika_ref=field.get("protection_catalog_ref"),
                 apparatus_catalog_ref=(
                     field_apparatus_ref.strip()
                     if isinstance(field_apparatus_ref, str) and field_apparatus_ref.strip()

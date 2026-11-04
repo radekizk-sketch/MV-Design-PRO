@@ -231,6 +231,8 @@ def _model(ref: str) -> EnergyNetworkModel:
             sterownik(
                 ref_id="prot/1",
                 name="Zabezpieczenie pola 1",
+                # Sterownik należy do pola (``bay_ref``) — jedyne powiązanie pola z nastawami.
+                bay_ref="pole/1",
                 wylacznik="aparat/1",
                 ct_ref="ct/1",
                 catalog_ref="REF-OC-200",

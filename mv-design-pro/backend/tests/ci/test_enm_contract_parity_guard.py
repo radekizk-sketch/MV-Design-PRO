@@ -135,15 +135,29 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     — pomiar guardem na drzewie `git archive 85bd2aadf`: 133. Zaczep przekładnika
     wieloprzekładniowego (§11.15) dodaje `BayPrimaryDevice.zrodlo_zaczepu` (PROJEKTANT |
     WARTOSC_ROBOCZA, lustro `ZrodloZaczepu` w `types/enm.ts`, parytet zbioru wartości
-    zachowany): 133 -> 134 (pomiar guardem na drzewie karty)."""
+    zachowany): 133 -> 134 (pomiar guardem na drzewie karty).
+
+    Karta OCHRONA-JEDNO-ZRODLO (2026-11-04, jedna struktura sterownika pola, stara struktura
+    skasowana bez kompatybilności): 134 -> 127. Zdjęte z kontraktem starej struktury
+    (10): `ProtectionAssignment.device_type`, `BayProtectionControlUnit.settings_mode`,
+    `EventEntry.source`, `ProtectionFunctionState.execution_mode`,
+    `ProtectionFunctionState.missing_input_policy`, `ProtectionSetting.curve_type`,
+    `ProtectionSetting.function_type`, `ProtectionSetting.threshold_unit`,
+    `ProtectionSettingValue.quality`, `SpzState.state` (SPZ to funkcja `79` rejestru
+    `funkcje_eaz`, nie osobna encja). Dodane z lustrem w `types/enm.ts` i parytetem zbioru
+    wartości (3): `WejsciaZabezpieczenia.i0_uklad` (HOLMGREEN | FERRANTI),
+    `WejsciaZabezpieczenia.u0_uklad` (OTWARTY_TROJKAT | Z_NAPIEC_FAZOWYCH),
+    `NastawaFunkcji.pochodzenie` (PROJEKTANT | DOBOR | WARTOSC_ROBOCZA). Pomiar: zbiór par
+    (encja, pole) liczonych przez guard bazy `44a2c6c02` (134) i drzewa karty (127), różnica
+    zbiorów dokładnie jak wyżej."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 134, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 134 — "
+    assert int(dopasowanie.group(1)) == 127, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 127 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

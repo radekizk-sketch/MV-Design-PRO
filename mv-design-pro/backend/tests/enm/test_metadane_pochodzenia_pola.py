@@ -43,6 +43,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from domain.canonical_operations import klucze_spoza_kontraktu
 from enm.domain_operations import (
     POLE_BLOKU_FABRYCZNEGO,
     POLE_JEDNOSTKI_BLOKU,
@@ -53,6 +54,7 @@ from enm.domain_operations import (
     execute_domain_operation,
 )
 from enm.pola import czy_pole_nn, pola, zbuduj_pole
+from enm.zabezpieczenie import kody_funkcji_pola, sterownik_pola
 from network_model.catalog.switchgear import (
     get_factory_configuration,
     list_switchgear_solution_templates_for_manufacturer,
@@ -374,25 +376,33 @@ def test_brak_metadanych_w_payloadzie_nie_daje_zadnej_wartosci(tor: str) -> None
 def test_obie_operacje_zapisuja_wskazane_zabezpieczenie_pola(tor: str) -> None:
     """Zabezpieczenie wskazane na wpisie pola honorują OBIE drogi budowy stacji.
 
-    Ta sama klasa rozjazdu, co metadane pochodzenia, tylko w drugą stronę:
-    kontrakt payloadu niesie `protection_ref`, wcięcie w odcinek zapisywało go
-    od dawna, a stacja końca ciągu IGNOROWAŁA go po cichu — wołający dostawał
-    zapis bez śladu po swoim wskazaniu i bez jednego słowa błędu.
+    Ta sama klasa rozjazdu, co metadane pochodzenia, tylko w drugą stronę: wcięcie w odcinek
+    honorowało wskazanie zabezpieczenia pola od dawna, a stacja końca ciągu IGNOROWAŁA je po
+    cichu. Karta OCHRONA-JEDNO-ZRODLO: jedyną drogą wskazania urządzenia jest wyposażenie pola
+    (`sn_fields[].equipment.relay` → `add_relay`, brama katalogowa); pozycja trafia do JEDYNEGO
+    sterownika pola razem z tożsamością urządzenia z rekordu katalogu. Dawny klucz pola
+    (wskazanie bez bramy) jest poza kontraktem obu operacji.
     """
     wpisy = _z_metadanymi(_wpisy_toru(tor), ())
-    for numer, wpis in enumerate(wpisy, start=1):
-        wpis["protection_ref"] = f"rel/test/{numer}"
+    for wpis in wpisy:
+        wpis["equipment"] = {"relay": {"catalog_ref": "REF-OC-100"}}
 
     for operacja in OPERACJE_STACYJNE:
         odpowiedz = _uruchom(operacja, wpisy)
         assert odpowiedz.get("error") in (None, ""), odpowiedz
         pola = _pola_z_payloadu(odpowiedz, wpisy)
         assert len(pola) == len(wpisy)
-        for spec, wpis in zip(pola, wpisy, strict=True):
-            assert spec.get("protection_ref") == wpis["protection_ref"], (
+        for spec in pola:
+            sterownik = sterownik_pola(odpowiedz["snapshot"], spec["ref_id"]) or {}
+            assert sterownik.get("catalog_ref") == "REF-OC-100", (
                 f"{operacja}/{tor}: wskazane zabezpieczenie pola nie dojechalo "
-                f"do migawki (jest {spec.get('protection_ref')!r})"
+                f"do migawki (jest {sterownik.get('catalog_ref')!r})"
             )
+            assert sterownik["materialized_params"]["catalog_item_id"] == "REF-OC-100"
+    for nazwa in ("insert_station_on_segment_sn", "append_station_on_endpoint"):
+        assert klucze_spoza_kontraktu(
+            nazwa, {"sn_fields": [{"protection_catalog_ref": "REF-OC-100"}]}
+        ) == ["sn_fields[0].protection_catalog_ref"]
 
 
 def test_wartosc_pusta_nie_jest_deklaracja_metadanej() -> None:
@@ -454,9 +464,10 @@ def test_pole_domykane_konca_ciagu_niesie_rodzaj_i_status_bez_kodow_zabezpieczen
             if spec.get("field_role") == "TRANSFORMATOROWE"
             else []
         )
-        assert spec["protection_codes"] == oczekiwane_kody, (
+        kody = kody_funkcji_pola(snapshot, spec["ref_id"])
+        assert kody == oczekiwane_kody, (
             "pole domykane nie ma szablonu producenta — kody zabezpieczen wylacznie "
-            f"z kanonu pola transformatora, nigdy z domyslu: {spec['protection_codes']}"
+            f"z kanonu pola transformatora, nigdy z domyslu: {kody}"
         )
 
 

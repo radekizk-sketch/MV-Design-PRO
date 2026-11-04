@@ -117,8 +117,11 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Karta UX-04/POLE-LINIOWE-WZORZEC po scaleniu z UX-04/POLE-BKR-MODEL: 167/21 → 166/20 —
     # pomiar `mypy_ratchet_guard` na pierwszym rodzicu (171/22, 4 błędy karty) i na drzewie
     # scalonym; zdjęte 4 błędy karty i 1 z `api/catalog.py`, zero nowych.
-    assert modul.BASELINE_ERRORS == 166
-    assert modul.BASELINE_FILES == 20
+    # Karta OCHRONA-JEDNO-ZRODLO: 166/20 → 163/19 — pomiar `mypy_ratchet_guard` na drzewie karty
+    # (167/21 przed naprawą: 4 błędy karty w 2 plikach naprawione u źródła, a skasowanie starej
+    # struktury nastaw zdjęło 3 błędy i 1 plik; opis przy `BASELINE_*` w guardzie).
+    assert modul.BASELINE_ERRORS == 163
+    assert modul.BASELINE_FILES == 19
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

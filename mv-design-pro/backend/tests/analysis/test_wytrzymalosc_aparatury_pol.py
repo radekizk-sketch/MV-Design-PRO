@@ -198,31 +198,57 @@ def test_bez_czasu_wylaczenia_kryterium_cieplne_ma_brak_podstawy() -> None:
     assert _ocena(pole, "dynamiczna")["status_maszynowy"] == "SPELNIA"
 
 
-def test_zapisana_konfiguracja_ma_pierwszenstwo_i_jest_tak_oznaczona() -> None:
-    """Inżynier, który wskazał aparat ręcznie, dostaje SWÓJ aparat, nie modelowy."""
+#: Czas wyłączenia pola z nastaw jego sterownika (kształt ``czasy_wylaczenia_pol_stacji``).
+_CZAS_Z_NASTAW = {
+    "t_clearing_s": 0.5,
+    "zrodlo": "nastawy_pola",
+    "powod_pl": "test",
+    "czlon_nastawczy_s": 0.44,
+    "czas_wlasny_wylacznika_s": 0.06,
+    "zalozenia_pl": [],
+    "kody_gotowosci": [],
+}
+
+
+@pytest.mark.parametrize("czas_z_nastaw", [True, False], ids=["sterownik", "bez_sterownika"])
+def test_zapisana_konfiguracja_wskazuje_aparat_a_czas_jest_z_nastaw_pola(
+    czas_z_nastaw: bool,
+) -> None:
+    """Inżynier, który wskazał aparat ręcznie, dostaje SWÓJ aparat, nie modelowy — ale czas
+    wyłączenia pola pochodzi WYŁĄCZNIE z nastaw sterownika pola (karta OCHRONA-JEDNO-ZRODLO
+    pkt 4). Intencja dawnego testu (konfiguracja nadrzędna i jawnie oznaczona) zostaje dla
+    APARATU; ręcznie wpisany czas (9 s) był drugą prawdą i jest ignorowany w obu wariantach:
+    ze sterownikiem (czas 0,5 s z nastaw) i bez sterownika (czas nieustalony, nigdy 9 s).
+    """
     widok = _widok(
         bay_device_withstand={
             "P-01": {
                 "device_id": APARAT_KONFIGURACJI,
                 "i_peak_calculated_ka": 1.0,
                 "i_thermal_calculated_ka": 1.0,
-                "t_clearing_s": 0.5,
+                "t_clearing_s": 9.0,
             }
-        }
+        },
+        czasy_pol={"pole/in": _CZAS_Z_NASTAW} if czas_z_nastaw else {},
     )
 
     pierwsze, drugie = widok["pola"]
     assert pierwsze["pole"] == "P-01"
     assert pierwsze["zrodlo"] == ZRODLO_KONFIGURACJA
     assert pierwsze["aparat_catalog_ref"] == APARAT_KONFIGURACJI
-    assert pierwsze["czas_wylaczenia"]["t_clearing_s"] == 0.5
-    # Czas z konfiguracji domyka kryterium cieplne; prąd i tak z biegu dla TEGO pola.
-    assert pierwsze["werdykt"]["i_th_ok"] is True
     cieplna = _ocena(pierwsze, "cieplna")
-    assert cieplna["status_maszynowy"] == "SPELNIA"
-    # 0,5 s < 1 s znamionowej: limit = I_th 25 kA, BEZ przeliczenia w górę (IEC 60865-1).
-    assert cieplna["limit"]["wartosc"]["wartosc"] == 25.0
-    assert cieplna["limit"]["podstawa"]["rodzaj"] == "KATALOG_PRODUCENTA"
+    if czas_z_nastaw:
+        assert pierwsze["czas_wylaczenia"]["t_clearing_s"] == 0.5
+        assert pierwsze["czas_wylaczenia"]["zrodlo"] == "nastawy_pola"
+        # Czas z nastaw domyka kryterium cieplne; prąd i tak z biegu dla TEGO pola.
+        assert pierwsze["werdykt"]["i_th_ok"] is True
+        assert cieplna["status_maszynowy"] == "SPELNIA"
+        # 0,5 s < 1 s znamionowej: limit = I_th 25 kA, BEZ przeliczenia w górę (IEC 60865-1).
+        assert cieplna["limit"]["wartosc"]["wartosc"] == 25.0
+        assert cieplna["limit"]["podstawa"]["rodzaj"] == "KATALOG_PRODUCENTA"
+    else:
+        assert pierwsze["czas_wylaczenia"]["t_clearing_s"] is None
+        assert cieplna["status_maszynowy"] != "SPELNIA"
     # Pole nieskonfigurowane nadal jedzie z modelu — konfiguracja nie wygasza reszty.
     assert drugie["zrodlo"] == ZRODLO_MODEL
 
