@@ -95,6 +95,9 @@ export interface KrokWhiteBox {
   readonly substitution_pl: string;
   readonly result_pl: string;
   readonly unit_check_pl: string;
+  /** Podstawienie i wynik jako wzór (MathRenderer); proza `*_pl` niesie to samo słowami. */
+  readonly substitution_latex?: string;
+  readonly result_latex?: string;
 }
 
 // ---------------------------------------------------------------------------

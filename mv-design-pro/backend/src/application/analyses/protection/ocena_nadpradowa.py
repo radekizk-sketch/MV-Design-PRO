@@ -1824,6 +1824,7 @@ def _opis_nasycenia(wynik: CtBurdenResult, *, alf_wymagany: float, i1n_a: float)
         "moc_wewnetrzna_va": wynik.moc_wewnetrzna_va,
         "readiness_codes": list(wynik.readiness_codes),
         "formula_ref": wynik.formula_ref,
+        "formula_latex": wynik.formula_latex,
         "assumptions": list(wynik.assumptions),
         "white_box_trace": list(wynik.white_box_trace),
     }
@@ -1833,7 +1834,11 @@ def _dane_jadra_pl(wejscie: CtBurdenInput, wynik: CtBurdenResult) -> str:
     """Z czego jądro policzyło ALF_eff — zdanie, które mówi, DLACZEGO rdzeń się nasyca."""
     czesci = [
         f"ALF {_liczba(float(wejscie.alf))}" if wejscie.alf is not None else "ALF nieznany",
-        f"S_n {_liczba(float(wejscie.sn_va))} VA" if wejscie.sn_va is not None else "",
+        (
+            f"moc znamionowa przekładnika {_liczba(float(wejscie.sn_va))} VA"
+            if wejscie.sn_va is not None
+            else ""
+        ),
         (
             f"obciążenie obwodu wtórnego {_liczba(wynik.moc_obliczeniowa_va)} VA"
             if wynik.moc_obliczeniowa_va is not None

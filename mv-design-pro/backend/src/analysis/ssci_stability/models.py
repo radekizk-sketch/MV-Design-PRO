@@ -144,6 +144,10 @@ class WhiteBoxStep:
     substitution_pl: str
     result_pl: str
     unit_check_pl: str
+    #: Podstawienie i wynik jako wzór dla `MathRenderer` (pola addytywne, pomijane, gdy brak);
+    #: `substitution_pl`/`result_pl` niosą to samo słowami.
+    substitution_latex: str | None = None
+    result_latex: str | None = None
 
 
 @dataclass(frozen=True)

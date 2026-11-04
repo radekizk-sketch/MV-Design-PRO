@@ -110,7 +110,8 @@ export function branchFlowTraceFixture() {
         ik_thevenin_a: 5611.281490619905,
         n_nodes: 3,
       },
-      substitution: 'i_inj[2] = -1 (pu); V = Z_bus @ i_inj',
+      substitution:
+        'wymuszenie jednostkowe w węźle zwarcia (indeks 2) równe minus jeden w jednostkach względnych; napięcia węzłowe z iloczynu macierzy impedancji węzłowych i wektora wymuszeń',
       substitution_latex: '\\underline{i}_{inj,2} = -1',
       result: {
         v_nodes_pu: [

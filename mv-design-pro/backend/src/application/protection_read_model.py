@@ -686,7 +686,7 @@ def _build_setpoint(pickup_a: float, base_values: Any) -> ProtectionSetpoint:
             operator=ProtectionSetpointOperator.GT,
             multiplier=multiplier,
             unit="pu",
-            display_pl=f"{_format_number(multiplier)}×In",
+            display_pl=f"{_format_number(multiplier)}-krotność prądu znamionowego",
         )
 
     return ProtectionSetpoint(

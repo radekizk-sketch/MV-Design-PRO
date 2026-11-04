@@ -1395,6 +1395,13 @@ def test_dobor_ct_uzywa_obwodu_wtornego_z_pomiaru_modelu(app_client) -> None:
     assert ct_alf["slad"], "obwod wtorny z modelu powinien dac slad bilansu mocy wtornej"
     krok_bilansu = next(k for k in ct_alf["slad"] if k["key"] == "ct_bilans_mocy")
     assert krok_bilansu["result"]["s2obl_va"]["value"] > 0
+    # Rachunek kryterium: proza słowami, wzór w polu LaTeX (decyzja architekta 2026-11-04);
+    # bez wymagania ALF nie ma wzoru wymagania — pola brak, nie pusty zapis.
+    assert ct_alf["dostepne"].startswith("efektywny współczynnik graniczny dokładności")
+    assert ct_alf["dostepne_latex"].startswith("ALF_{eff} = ")
+    assert ct_alf["wymagane"] is None
+    assert "wymagane_latex" not in ct_alf
+    assert ct_alf["podstawa_pl"].startswith("IEC 61869-2: ")
 
 
 def test_dobor_ct_bez_pomiaru_w_polu_zostaje_brak_danych_obwodu(app_client) -> None:

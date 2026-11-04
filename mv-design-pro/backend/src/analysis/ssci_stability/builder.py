@@ -329,16 +329,26 @@ class SsciStabilityBuilder:
                 symbol="L(jω)",
                 formula_latex=r"L(j\omega) = \dfrac{Z_{grid}(j\omega)}{Z_{conv}(j\omega)}",
                 substitution_pl=(
-                    f"max|L| = {_round(max_mag)} przy f = {_round(float(max_row['f_hz']), 2)} Hz; "
-                    f"próg przecięcia |L| = {self.gain_crossover_mag}"
+                    f"największy moduł wzmocnienia pętli {_round(max_mag)} przy częstotliwości "
+                    f"{_round(float(max_row['f_hz']), 2)} Hz; próg przecięcia modułów "
+                    f"{self.gain_crossover_mag}"
+                ),
+                substitution_latex=(
+                    rf"\max|L| = {_round(max_mag)},\ f = {_round(float(max_row['f_hz']), 2)}"
+                    rf"\ \mathrm{{Hz}};\ |L|_{{\mathrm{{gr}}}} = {self.gain_crossover_mag}"
                 ),
                 result_pl=(
                     "moduły impedancji "
                     + (
-                        "przecinają się (|L| ≥ 1)"
+                        "przecinają się (moduł wzmocnienia pętli osiąga próg)"
                         if max_mag >= self.gain_crossover_mag
-                        else "NIE przecinają się (|L| < 1)"
+                        else "NIE przecinają się (moduł wzmocnienia pętli poniżej progu)"
                     )
+                ),
+                result_latex=(
+                    rf"\max|L| \geq {self.gain_crossover_mag}"
+                    if max_mag >= self.gain_crossover_mag
+                    else rf"\max|L| < {self.gain_crossover_mag}"
                 ),
                 unit_check_pl=(
                     "wzmocnienie pętli to iloraz omów przez omy, więc jest bezwymiarowe; "
@@ -354,10 +364,15 @@ class SsciStabilityBuilder:
                     symbol="Δφ@|L|=1",
                     formula_latex=r"\Delta\varphi = 180^\circ - \left|\angle L\right|",
                     substitution_pl=(
-                        f"przy |L|=1: f = {gain_crossover.f_hz} Hz, "
-                        f"∠L = {gain_crossover.phase_l_deg}°"
+                        f"w punkcie przecięcia modułów: częstotliwość {gain_crossover.f_hz} Hz, "
+                        f"kąt wzmocnienia pętli {gain_crossover.phase_l_deg}°"
+                    ),
+                    substitution_latex=(
+                        rf"|L| = 1:\ f = {gain_crossover.f_hz}\ \mathrm{{Hz}},\ "
+                        rf"\angle L = {gain_crossover.phase_l_deg}^\circ"
                     ),
                     result_pl=f"Margines fazy przy przecięciu: {gain_crossover.phase_margin_deg}°",
+                    result_latex=rf"\Delta\varphi = {gain_crossover.phase_margin_deg}^\circ",
                     unit_check_pl="Kąt wzmocnienia pętli w stopniach; margines fazy to 180° minus moduł tego kąta.",
                 )
             )
@@ -370,10 +385,20 @@ class SsciStabilityBuilder:
                         r"\left(180^\circ - |\angle L(f)|\right)"
                     ),
                     substitution_pl=(
-                        f"min po paśmie |L| ≥ {self.gain_crossover_mag}; "
-                        f"f = {_round(worst_pm_f, 2) if worst_pm_f is not None else '—'} Hz"
+                        "minimum w paśmie, w którym moduł wzmocnienia pętli jest nie mniejszy od "
+                        f"{self.gain_crossover_mag}; częstotliwość "
+                        f"{_round(worst_pm_f, 2) if worst_pm_f is not None else '—'} Hz"
                     ),
-                    result_pl=f"Δφ_min = {_round(worst_pm, 3)}°",
+                    substitution_latex=(
+                        rf"|L| \geq {self.gain_crossover_mag};\ f = "
+                        + (
+                            rf"{_round(worst_pm_f, 2)}\ \mathrm{{Hz}}"
+                            if worst_pm_f is not None
+                            else r"\text{—}"
+                        )
+                    ),
+                    result_pl=f"Najmniejszy margines fazy {_round(worst_pm, 3)}°",
+                    result_latex=rf"\Delta\varphi_{{min}} = {_round(worst_pm, 3)}^\circ",
                     unit_check_pl="stopnie; niedodatni margines fazy oznacza, że kąt wzmocnienia pętli osiąga ±180°, "
                     "czyli okrążenie punktu −1.",
                 )
@@ -385,9 +410,15 @@ class SsciStabilityBuilder:
                 symbol="|L+1|_min",
                 formula_latex=r"d_{-1} = \min_{f}\left|L(j\omega) + 1\right|",
                 substitution_pl=(
-                    f"f = {nearest.f_hz} Hz, |L| = {nearest.mag}, ∠L = {nearest.phase_deg}°"
+                    f"częstotliwość {nearest.f_hz} Hz, moduł wzmocnienia pętli {nearest.mag}, "
+                    f"kąt wzmocnienia pętli {nearest.phase_deg}°"
                 ),
-                result_pl=f"d(−1) = {nearest.distance_to_minus_one} (odległość przebiegu od −1)",
+                substitution_latex=(
+                    rf"f = {nearest.f_hz}\ \mathrm{{Hz}},\ |L| = {nearest.mag},\ "
+                    rf"\angle L = {nearest.phase_deg}^\circ"
+                ),
+                result_pl=(f"Odległość przebiegu od punktu −1: {nearest.distance_to_minus_one}"),
+                result_latex=rf"d_{{-1}} = {nearest.distance_to_minus_one}",
                 unit_check_pl="bezwymiarowe (na płaszczyźnie L); d→0 ⟺ podejście do −1.",
             )
         )
@@ -399,8 +430,16 @@ class SsciStabilityBuilder:
                 formula_latex=(
                     r"N \approx \#\{\,\mathrm{Im}\,L = 0 \wedge \mathrm{Re}\,L < -1\,\}"
                 ),
-                substitution_pl="zliczenie przejść Im(L)=0 na lewo od −1 (skan jednostronny)",
-                result_pl=f"N ≈ {encirclements} (przybliżenie skończonego skanu, wskaźnik wspierający)",
+                substitution_pl=(
+                    "zliczenie przejść przebiegu przez oś rzeczywistą na lewo od punktu −1 "
+                    "(skan jednostronny)"
+                ),
+                substitution_latex=r"\mathrm{Im}\,L = 0 \wedge \mathrm{Re}\,L < -1",
+                result_pl=(
+                    f"Liczba okrążeń punktu −1 około {encirclements} (przybliżenie skończonego "
+                    "skanu, wskaźnik wspierający)"
+                ),
+                result_latex=rf"N \approx {encirclements}",
                 unit_check_pl="liczba całkowita; N ≥ 1 ⟺ okrążenie −1 ⟺ niestabilność.",
             )
         )

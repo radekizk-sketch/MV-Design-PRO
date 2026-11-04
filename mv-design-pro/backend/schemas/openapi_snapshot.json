@@ -1449,6 +1449,10 @@
       "title": "Assumptions",
       "type": "array"
      },
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -1539,6 +1543,7 @@
     "required": [
      "status",
      "formula_ref",
+     "formula_latex",
      "pozycja_katalogowa"
     ],
     "title": "CableAgingResponse",
@@ -3012,6 +3017,10 @@
       "title": "Assumptions",
       "type": "array"
      },
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -3199,6 +3208,7 @@
      "status_obciazenia",
      "status_nasycenia",
      "formula_ref",
+     "formula_latex",
      "pozycja_katalogowa"
     ],
     "title": "CtBurdenResponse",
@@ -14065,6 +14075,10 @@
    },
    "ShuntCompensatorPreviewResponse": {
     "properties": {
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -14096,7 +14110,8 @@
      "reactive_power_var",
      "susceptance_siemens",
      "rated_current_a",
-     "formula_ref"
+     "formula_ref",
+     "formula_latex"
     ],
     "title": "ShuntCompensatorPreviewResponse",
     "type": "object"
@@ -15440,6 +15455,10 @@
       ],
       "title": "Beta Optymalny"
      },
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -15552,6 +15571,7 @@
     "required": [
      "status",
      "formula_ref",
+     "formula_latex",
      "pozycja_katalogowa"
     ],
     "title": "TransformerLossesResponse",
@@ -16132,6 +16152,10 @@
       ],
       "title": "Delta U V"
      },
+     "formula_latex": {
+      "title": "Formula Latex",
+      "type": "string"
+     },
      "formula_ref": {
       "title": "Formula Ref",
       "type": "string"
@@ -16308,6 +16332,7 @@
      "status_obciazenia",
      "status_spadku",
      "formula_ref",
+     "formula_latex",
      "pozycja_katalogowa"
     ],
     "title": "VtBurdenResponse",

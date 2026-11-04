@@ -615,7 +615,10 @@ def oceny_izolacji(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
                 jednostka="kV",
                 wynik=_liczba(w.get("tov_10s_kv")),
                 limit=_liczba(w.get("predicted_tov_kv")),
-                limit_pl="U_TOV = k·U_m/√3",
+                limit_pl=(
+                    "przepięcie dorywcze: współczynnik doziemienia razy napięcie najwyższe "
+                    "urządzenia przez pierwiastek z trzech"
+                ),
                 dotyczy=not dlugotrwale,
                 powod_stosowalnosci_pl=(
                     "sieć izolowana albo kompensowana pracuje z doziemieniem długotrwale — "
@@ -716,7 +719,10 @@ def oceny_uziomu(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
             jednostka="V",
             wynik=_liczba(ladunek.get("u_touch_calculated_v")),
             limit=_liczba(ladunek.get("u_touch_allowable_v")),
-            limit_pl="U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f",
+            limit_pl=(
+                "napięcie dotykowe dopuszczalne wg IEEE 80 dla człowieka o masie 70 kg: "
+                "z rezystywności i współczynnika warstwy powierzchniowej oraz czasu rażenia"
+            ),
             braki=brak,
         ),
         _Porownanie(
@@ -730,7 +736,10 @@ def oceny_uziomu(ladunek: Mapping[str, Any], bieg: _Bieg) -> list[Rekord]:
             jednostka="V",
             wynik=_liczba(ladunek.get("u_step_calculated_v")),
             limit=_liczba(ladunek.get("u_step_allowable_v")),
-            limit_pl="U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f",
+            limit_pl=(
+                "napięcie krokowe dopuszczalne wg IEEE 80 dla człowieka o masie 70 kg: "
+                "z rezystywności i współczynnika warstwy powierzchniowej oraz czasu rażenia"
+            ),
             braki=brak,
         ),
     )

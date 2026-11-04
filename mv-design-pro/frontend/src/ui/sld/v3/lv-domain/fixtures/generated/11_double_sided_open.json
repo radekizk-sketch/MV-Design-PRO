@@ -1868,7 +1868,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "921292b16494e84c1cf27442fa513ace9b1bc2ff8525841d7345bc32cc49d162",
+  "projection_hash": "215b47b19c5d9c2794a78b7f245df37fb4bae5faea3cfe65a8d0bdc0721bc85f",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1960,7 +1960,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.094056284,
                         "r_total_ohm": 0.0909911111,
@@ -1975,7 +1976,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 2578.10646,
                       "ik_min_a": 2332.57251,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.094056284
@@ -2056,7 +2058,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0163618927,
                         "r_total_ohm": 0.00419111111,
@@ -2071,7 +2074,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 14820.2361,
                       "ik_min_a": 13408.7851,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0163618927
@@ -2156,7 +2160,8 @@
                         "x_ohm": 0.000355555556
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 0.14161608,
                       "r_total_ohm": 0.139599111,
@@ -2171,7 +2176,8 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 1712.28517,
                     "ik_min_a": 1549.21039,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.14161608
@@ -2211,7 +2217,8 @@
                     "ia_a": 630.0,
                     "in_a": 63.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zapewniający samoczynne wyłączenie równy górnej granicy pasma wyzwalania elektromagnetycznego razy prąd znamionowy wyłącznika (IEC 60898-1, G-D4)",
+                    "method_latex": "I_{a} = k_{m,\\max} \\cdot I_{n}",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {
@@ -2294,7 +2301,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.094056284,
                         "r_total_ohm": 0.0909911111,
@@ -2309,7 +2317,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 2578.10646,
                       "ik_min_a": 2332.57251,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.094056284
@@ -2390,7 +2399,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0163618927,
                         "r_total_ohm": 0.00419111111,
@@ -2405,7 +2415,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 14820.2361,
                       "ik_min_a": 13408.7851,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0163618927
@@ -2506,7 +2517,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0597544575,
                         "r_total_ohm": 0.0554711111,
@@ -2521,7 +2533,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 4058.05898,
                       "ik_min_a": 3671.57717,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0597544575
@@ -2602,7 +2615,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0163618927,
                         "r_total_ohm": 0.00419111111,
@@ -2617,7 +2631,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 14820.2361,
                       "ik_min_a": 13408.7851,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0163618927
@@ -2702,7 +2717,8 @@
                         "x_ohm": 0.000355555556
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 0.0870698306,
                       "r_total_ohm": 0.0841879111,
@@ -2717,7 +2733,8 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 2784.97284,
                     "ik_min_a": 2519.73733,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.0870698306
@@ -2757,7 +2774,8 @@
                     "ia_a": 1000.0,
                     "in_a": 100.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zapewniający samoczynne wyłączenie równy górnej granicy pasma wyzwalania elektromagnetycznego razy prąd znamionowy wyłącznika (IEC 60898-1, G-D4)",
+                    "method_latex": "I_{a} = k_{m,\\max} \\cdot I_{n}",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {
@@ -2850,7 +2868,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.094056284,
                         "r_total_ohm": 0.0909911111,
@@ -2865,7 +2884,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 2578.10646,
                       "ik_min_a": 2332.57251,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.094056284
@@ -2946,7 +2966,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0163618927,
                         "r_total_ohm": 0.00419111111,
@@ -2961,7 +2982,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 14820.2361,
                       "ik_min_a": 13408.7851,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0163618927
@@ -3046,7 +3068,8 @@
                         "x_ohm": 0.000355555556
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 0.14161608,
                       "r_total_ohm": 0.139599111,
@@ -3061,7 +3084,8 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 1712.28517,
                     "ik_min_a": 1549.21039,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.14161608
@@ -3200,7 +3224,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.094056284,
                         "r_total_ohm": 0.0909911111,
@@ -3215,7 +3240,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 2578.10646,
                       "ik_min_a": 2332.57251,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.094056284
@@ -3296,7 +3322,8 @@
                           "x_ohm": 0.000355555556
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 0.0163618927,
                         "r_total_ohm": 0.00419111111,
@@ -3311,7 +3338,8 @@
                       "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                       "ik_max_a": 14820.2361,
                       "ik_min_a": 13408.7851,
-                      "method": "I_k = c * U_n / |Z_loop|",
+                      "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 0.0163618927
@@ -3396,7 +3424,8 @@
                         "x_ohm": 0.000355555556
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 0.14161608,
                       "r_total_ohm": 0.139599111,
@@ -3411,7 +3440,8 @@
                     "c_zrodlo_min": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MIN",
                     "ik_max_a": 1712.28517,
                     "ik_min_a": 1549.21039,
-                    "method": "I_k = c * U_n / |Z_loop|",
+                    "method": "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez moduł impedancji pętli",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 0.14161608
@@ -3451,7 +3481,8 @@
                     "ia_a": 800.0,
                     "in_a": 80.0,
                     "klasa_mcb": "C",
-                    "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+                    "method": "prąd zapewniający samoczynne wyłączenie równy górnej granicy pasma wyzwalania elektromagnetycznego razy prąd znamionowy wyłącznika (IEC 60898-1, G-D4)",
+                    "method_latex": "I_{a} = k_{m,\\max} \\cdot I_{n}",
                     "step": "ia_gwarantowane_mcb"
                   },
                   {

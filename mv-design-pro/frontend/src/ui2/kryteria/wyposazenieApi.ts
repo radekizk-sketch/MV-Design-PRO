@@ -53,7 +53,10 @@ export interface BilansCtOdpowiedz {
   readonly zapas_alf: number | null;
   readonly wariant_alf: string | null;
   readonly readiness_codes: readonly string[];
+  /** Opis wzoru słowami (podstawa normowa). */
   readonly formula_ref: string;
+  /** Wzór w zapisie LaTeX — renderuje `MathInline`. */
+  readonly formula_latex: string;
   readonly assumptions: readonly string[];
   readonly white_box_trace: readonly KrokSladu[];
   readonly pozycja_katalogowa: string;
@@ -76,7 +79,10 @@ export interface BilansVtOdpowiedz {
   readonly limit_delta_u_procent: number | null;
   readonly kategoria_uzwojenia: string | null;
   readonly readiness_codes: readonly string[];
+  /** Opis wzoru słowami (podstawa normowa). */
   readonly formula_ref: string;
+  /** Wzór w zapisie LaTeX — renderuje `MathInline`. */
+  readonly formula_latex: string;
   readonly assumptions: readonly string[];
   readonly white_box_trace: readonly KrokSladu[];
   readonly pozycja_katalogowa: string;
@@ -93,7 +99,10 @@ export interface StarzenieKablaOdpowiedz {
   readonly temperatura_znamionowa_c: number | null;
   readonly typ_izolacji: string | null;
   readonly readiness_codes: readonly string[];
+  /** Opis wzoru słowami (podstawa normowa). */
   readonly formula_ref: string;
+  /** Wzór w zapisie LaTeX — renderuje `MathInline`. */
+  readonly formula_latex: string;
   readonly assumptions: readonly string[];
   readonly white_box_trace: readonly KrokSladu[];
   readonly pozycja_katalogowa: string;
@@ -110,7 +119,10 @@ export interface StratyTransformatoraOdpowiedz {
   readonly moc_obciazenia_mva: number | null;
   readonly udzial_strat_jalowych: number | null;
   readonly readiness_codes: readonly string[];
+  /** Opis wzoru słowami (podstawa normowa). */
   readonly formula_ref: string;
+  /** Wzór w zapisie LaTeX — renderuje `MathInline`. */
+  readonly formula_latex: string;
   readonly assumptions: readonly string[];
   readonly white_box_trace: readonly KrokSladu[];
   readonly pozycja_katalogowa: string;
@@ -126,6 +138,7 @@ function maKsztaltWyniku(dane: unknown): dane is { status: WerdyktKryterium } {
     typeof d.status === 'string'
     && WERDYKTY.includes(d.status)
     && typeof d.formula_ref === 'string'
+    && typeof d.formula_latex === 'string'
     && Array.isArray(d.readiness_codes)
     && Array.isArray(d.assumptions)
     && Array.isArray(d.white_box_trace)

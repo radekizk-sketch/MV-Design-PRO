@@ -90,7 +90,7 @@
                   "b0_s": 0.00024504422698,
                   "brak_b0_pl": null
                 },
-                "substitution": "I_C = √3·15 kV·0,000245 S = 6,3664 A",
+                "substitution": "pierwiastek z trzech razy napięcie znamionowe 15 kV razy susceptancja pojemnościowa zerowa 0,000245 S daje prąd pojemnościowy 6,3664 A",
                 "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}000245\\ \\mathrm{S} = 6{,}3664\\ \\mathrm{A}",
                 "result": {
                   "i_c_a": 6.3664
@@ -106,7 +106,7 @@
                   "i_w_a": null,
                   "z_f_ohm": null
                 },
-                "substitution": "|0,0000 + j6,3664| A = 6,3664 A",
+                "substitution": "moduł prądu doziemienia metalicznego 0,0000 + j6,3664 A, prąd doziemienia 6,3664 A",
                 "substitution_latex": "\\left|0{,}0000 + j\\,6{,}3664\\right|\\ \\mathrm{A} = 6{,}3664\\ \\mathrm{A}",
                 "result": {
                   "prad_a": 6.3664,
@@ -125,7 +125,7 @@
                   },
                   "z_f_ohm": null
                 },
-                "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+                "substitution": "napięcie składowej zerowej 8660,25 V; napięcie fazy b 15000,00 V; napięcie fazy c 15000,00 V",
                 "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
                 "result": {
                   "u0_v": 8660.254,
@@ -266,7 +266,7 @@
             "s_base_mva": 100.0
           },
           "substitution": "impedancja zerowa 0.0048 + j0.109895 pu na moc znamionową 25 MVA; 0.0192 + j0.439581 pu na moc bazową 100 MVA",
-          "substitution_latex": null,
+          "substitution_latex": "Z_{T0} = 0.0048 + j\\,0.109895\\ \\mathrm{pu}\\ (S_{rT}),\\quad Z_{T0} = 0.0192 + j\\,0.439581\\ \\mathrm{pu}\\ (S_{base})",
           "result": {
             "z_t0_pu_sn": {
               "re": 0.0048,
@@ -299,8 +299,8 @@
               "im": 0.0
             }
           },
-          "substitution": "brak drogi prądu zerowego: Z0 = — (otwarte)",
-          "substitution_latex": null,
+          "substitution": "brak drogi prądu zerowego: impedancja zerowa nieskończona (obwód otwarty)",
+          "substitution_latex": "Z_{0} \\rightarrow \\infty",
           "result": {
             "connection": "open",
             "z0_pu": null
@@ -419,7 +419,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "66fc06fca0fcaa936524baff86db22ae104e4ed3a2c22cb1fb8f9476e06baa73",
-          "result_hash": "699875e4f7dbdd96386ff88ae7d266d6f3ae89ef910fbf77ec3ba9e64869eb2d",
+          "result_hash": "1a02122df1025a46964550ade7aba4160867783634385007b3cad7c4075a02df",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -775,7 +775,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "66fc06fca0fcaa936524baff86db22ae104e4ed3a2c22cb1fb8f9476e06baa73",
-          "result_hash": "699875e4f7dbdd96386ff88ae7d266d6f3ae89ef910fbf77ec3ba9e64869eb2d",
+          "result_hash": "1a02122df1025a46964550ade7aba4160867783634385007b3cad7c4075a02df",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -1293,7 +1293,7 @@
                   "b0_s": 0.00024504422698,
                   "brak_b0_pl": null
                 },
-                "substitution": "I_C = √3·15 kV·0,000245 S = 6,3664 A",
+                "substitution": "pierwiastek z trzech razy napięcie znamionowe 15 kV razy susceptancja pojemnościowa zerowa 0,000245 S daje prąd pojemnościowy 6,3664 A",
                 "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}000245\\ \\mathrm{S} = 6{,}3664\\ \\mathrm{A}",
                 "result": {
                   "i_c_a": 6.3664
@@ -1319,7 +1319,7 @@
                     }
                   ]
                 },
-                "substitution": "I_N = 0,5516 − j97,7396 A",
+                "substitution": "prąd obwodu punktów neutralnych 0,5516 − j97,7396 A",
                 "substitution_latex": "I_N = 0{,}5516 - j\\,97{,}7396\\ \\mathrm{A}",
                 "result": {
                   "i_w_a": 0.5516,
@@ -1336,7 +1336,7 @@
                   "i_w_a": 0.5516,
                   "z_f_ohm": null
                 },
-                "substitution": "|0,5516 − j91,3732| A = 91,3748 A; v = -14,3523",
+                "substitution": "moduł prądu doziemienia metalicznego 0,5516 − j91,3732 A, prąd doziemienia 91,3748 A; rozstrojenie kompensacji -14,3523",
                 "substitution_latex": "\\left|0{,}5516 - j\\,91{,}3732\\right|\\ \\mathrm{A} = 91{,}3748\\ \\mathrm{A};\\quad v = -14{,}3523",
                 "result": {
                   "prad_a": 91.3748,
@@ -1355,7 +1355,7 @@
                   },
                   "z_f_ohm": null
                 },
-                "substitution": "U0 = 8660,25 V; U_b = 15000,00 V; U_c = 15000,00 V",
+                "substitution": "napięcie składowej zerowej 8660,25 V; napięcie fazy b 15000,00 V; napięcie fazy c 15000,00 V",
                 "substitution_latex": "U_0 = 8660{,}25\\ \\mathrm{V};\\quad U_b = 15000{,}00\\ \\mathrm{V};\\quad U_c = 15000{,}00\\ \\mathrm{V}",
                 "result": {
                   "u0_v": 8660.254,
@@ -1601,7 +1601,7 @@
             "s_base_mva": 100.0
           },
           "substitution": "impedancja zerowa 0.0048 + j0.109895 pu na moc znamionową 25 MVA; 0.0192 + j0.439581 pu na moc bazową 100 MVA",
-          "substitution_latex": null,
+          "substitution_latex": "Z_{T0} = 0.0048 + j\\,0.109895\\ \\mathrm{pu}\\ (S_{rT}),\\quad Z_{T0} = 0.0192 + j\\,0.439581\\ \\mathrm{pu}\\ (S_{base})",
           "result": {
             "z_t0_pu_sn": {
               "re": 0.0048,
@@ -1634,8 +1634,8 @@
               "im": 0.0
             }
           },
-          "substitution": "brak drogi prądu zerowego: Z0 = — (otwarte)",
-          "substitution_latex": null,
+          "substitution": "brak drogi prądu zerowego: impedancja zerowa nieskończona (obwód otwarty)",
+          "substitution_latex": "Z_{0} \\rightarrow \\infty",
           "result": {
             "connection": "open",
             "z0_pu": null
@@ -1779,7 +1779,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "c5a12173cd6a55db4c48cefd5158d346b82b2b281cfeb96d4062b537827e1411",
-          "result_hash": "7ba8234dc6605daa202b4394d36a4783809d24c50c699389a17c5148223e4c07",
+          "result_hash": "4bfff6166e4e8f9285b5964ba505e7087a6f50c9a6b1004fe94cd1bdea811fb8",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -2135,7 +2135,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "c5a12173cd6a55db4c48cefd5158d346b82b2b281cfeb96d4062b537827e1411",
-          "result_hash": "7ba8234dc6605daa202b4394d36a4783809d24c50c699389a17c5148223e4c07",
+          "result_hash": "4bfff6166e4e8f9285b5964ba505e7087a6f50c9a6b1004fe94cd1bdea811fb8",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -2875,7 +2875,7 @@
                   "b0_s": 0.00024504422698,
                   "brak_b0_pl": null
                 },
-                "substitution": "I_C = √3·15 kV·0,000245 S = 6,3664 A",
+                "substitution": "pierwiastek z trzech razy napięcie znamionowe 15 kV razy susceptancja pojemnościowa zerowa 0,000245 S daje prąd pojemnościowy 6,3664 A",
                 "substitution_latex": "I_C = \\sqrt{3}\\cdot 15\\ \\mathrm{kV}\\cdot 0{,}000245\\ \\mathrm{S} = 6{,}3664\\ \\mathrm{A}",
                 "result": {
                   "i_c_a": 6.3664
@@ -2901,7 +2901,7 @@
                     }
                   ]
                 },
-                "substitution": "I_N = 197,3113 − j9,0096 A",
+                "substitution": "prąd obwodu punktów neutralnych 197,3113 − j9,0096 A",
                 "substitution_latex": "I_N = 197{,}3113 - j\\,9{,}0096\\ \\mathrm{A}",
                 "result": {
                   "i_w_a": 197.3113,
@@ -2918,7 +2918,7 @@
                   "i_w_a": 197.3113,
                   "z_f_ohm": null
                 },
-                "substitution": "|197,3113 − j2,6432| A = 197,3290 A",
+                "substitution": "moduł prądu doziemienia metalicznego 197,3113 − j2,6432 A, prąd doziemienia 197,3290 A",
                 "substitution_latex": "\\left|197{,}3113 - j\\,2{,}6432\\right|\\ \\mathrm{A} = 197{,}3290\\ \\mathrm{A}",
                 "result": {
                   "prad_a": 197.329,
@@ -2945,7 +2945,7 @@
                   },
                   "z_f_ohm": null
                 },
-                "substitution": "U0 = 8650,66 V; U_b = 14883,63 V; U_c = 15090,73 V",
+                "substitution": "napięcie składowej zerowej 8650,66 V; napięcie fazy b 14883,63 V; napięcie fazy c 15090,73 V",
                 "substitution_latex": "U_0 = 8650{,}66\\ \\mathrm{V};\\quad U_b = 14883{,}63\\ \\mathrm{V};\\quad U_c = 15090{,}73\\ \\mathrm{V}",
                 "result": {
                   "u0_v": 8650.6583,
@@ -3246,7 +3246,7 @@
             "s_base_mva": 100.0
           },
           "substitution": "impedancja zerowa 0.0048 + j0.109895 pu na moc znamionową 25 MVA; 0.0192 + j0.439581 pu na moc bazową 100 MVA",
-          "substitution_latex": null,
+          "substitution_latex": "Z_{T0} = 0.0048 + j\\,0.109895\\ \\mathrm{pu}\\ (S_{rT}),\\quad Z_{T0} = 0.0192 + j\\,0.439581\\ \\mathrm{pu}\\ (S_{base})",
           "result": {
             "z_t0_pu_sn": {
               "re": 0.0048,
@@ -3279,8 +3279,8 @@
               "im": 0.0
             }
           },
-          "substitution": "brak drogi prądu zerowego: Z0 = — (otwarte)",
-          "substitution_latex": null,
+          "substitution": "brak drogi prądu zerowego: impedancja zerowa nieskończona (obwód otwarty)",
+          "substitution_latex": "Z_{0} \\rightarrow \\infty",
           "result": {
             "connection": "open",
             "z0_pu": null
@@ -3452,7 +3452,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "19f3930349f0debc59a28d63c0691f69c717ed99577a0490de65491a5a93e1e6",
-          "result_hash": "3f343815f0520c58ba837687ae3cdc8ee2ffefe416354b4ba3cb2e8837d943e7",
+          "result_hash": "947447baa16853c63f63fbc7435f802d8b41522ef03662c5298e9edf68f8347f",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -4266,7 +4266,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "19f3930349f0debc59a28d63c0691f69c717ed99577a0490de65491a5a93e1e6",
-          "result_hash": "3f343815f0520c58ba837687ae3cdc8ee2ffefe416354b4ba3cb2e8837d943e7",
+          "result_hash": "947447baa16853c63f63fbc7435f802d8b41522ef03662c5298e9edf68f8347f",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -5030,7 +5030,7 @@
                   },
                   "z_f_ohm": null
                 },
-                "substitution": "U0 = 6486,76 V; U_b = 11984,96 V; U_c = 12578,23 V",
+                "substitution": "napięcie składowej zerowej 6486,76 V; napięcie fazy b 11984,96 V; napięcie fazy c 12578,23 V",
                 "substitution_latex": "U_0 = 6486{,}76\\ \\mathrm{V};\\quad U_b = 11984{,}96\\ \\mathrm{V};\\quad U_c = 12578{,}23\\ \\mathrm{V}",
                 "result": {
                   "u0_v": 6486.7593,
@@ -5306,7 +5306,7 @@
             "s_base_mva": 100.0
           },
           "substitution": "impedancja zerowa 0.0048 + j0.109895 pu na moc znamionową 25 MVA; 0.0192 + j0.439581 pu na moc bazową 100 MVA",
-          "substitution_latex": null,
+          "substitution_latex": "Z_{T0} = 0.0048 + j\\,0.109895\\ \\mathrm{pu}\\ (S_{rT}),\\quad Z_{T0} = 0.0192 + j\\,0.439581\\ \\mathrm{pu}\\ (S_{base})",
           "result": {
             "z_t0_pu_sn": {
               "re": 0.0048,
@@ -5339,8 +5339,8 @@
               "im": 0.0
             }
           },
-          "substitution": "brak drogi prądu zerowego: Z0 = — (otwarte)",
-          "substitution_latex": null,
+          "substitution": "brak drogi prądu zerowego: impedancja zerowa nieskończona (obwód otwarty)",
+          "substitution_latex": "Z_{0} \\rightarrow \\infty",
           "result": {
             "connection": "open",
             "z0_pu": null
@@ -5503,7 +5503,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "65104c54a8a9f8c8007f986c4e01830152dc4eb27da5f0cdb80ef0eab719e14b",
-          "result_hash": "0c2a8695eaccce9590edf1c3607b4de1bbce8b09b539f8e87496fd6f4147fd0c",
+          "result_hash": "e8f22779f736630b819420e41209076164afc3e020b06b96e7971ec372033152",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",
@@ -6317,7 +6317,7 @@
           "formula_set_version": "iec60909_v1",
           "standard_basis_ref": "IEC_60909",
           "input_hash": "65104c54a8a9f8c8007f986c4e01830152dc4eb27da5f0cdb80ef0eab719e14b",
-          "result_hash": "0c2a8695eaccce9590edf1c3607b4de1bbce8b09b539f8e87496fd6f4147fd0c",
+          "result_hash": "e8f22779f736630b819420e41209076164afc3e020b06b96e7971ec372033152",
           "domain_model_version": "1.0",
           "bay_contract_version": "V12.5",
           "results_contract_version": "V12.5",

@@ -309,7 +309,8 @@ def zsumuj_skladowe_petli(
     )
     krok = {
         "step": "sum_components",
-        "method": "Z_loop = Σ(R_i + jX_i)",
+        "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+        "method_latex": r"Z_{loop} = \sum_{i} (R_{i} + jX_{i})",
         "components": [{"label": c.label, "r_ohm": c.r_ohm, "x_ohm": c.x_ohm} for c in components],
         "result": {
             "r_total_ohm": z_loop_complex.real,
@@ -387,7 +388,11 @@ def prad_z_petli(
     ik_max = (c.c_max * u_v) / z_magnitude
     krok = {
         "step": "compute_ik",
-        "method": "I_k = c * U_n / |Z_loop|",
+        "method": (
+            "prąd zwarcia pętli jako współczynnik napięciowy razy napięcie znamionowe przez "
+            "moduł impedancji pętli"
+        ),
+        "method_latex": r"I_{k} = \frac{c \cdot U_{n}}{|Z_{loop}|}",
         "c_min": c.c_min,
         "c_max": c.c_max,
         "c_zrodlo_min": c.zrodlo_min,

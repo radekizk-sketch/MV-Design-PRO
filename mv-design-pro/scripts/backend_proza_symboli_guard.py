@@ -19,6 +19,15 @@ LaTeX) i nie jest prozą spłaszczoną; tekst zaczynający się znacznikiem (`<`
 (XML pakietu XLSX), nie prozą. Tekst dla człowieka rozpoznaje znak diakrytyczny albo słowo
 z co najmniej czterech małych liter (`POLSKI_RE`) — proza angielska też trafia na ekran.
 
+DRUGA CZĘŚĆ KLASY — WZÓR BEZ SŁÓW (decyzja architekta 2026-11-04). Tekst, który jest samym
+wzorem albo podstawieniem (`Z_k = {} + {} = {}`, `Ik''={} kA`, `U0 = {} V; U_b = {} V`), nie ma
+słowa, więc pierwsza reguła go nie widzi, a ekran pokazuje go tak samo spłaszczonego. Trafienie:
+symbol (`SYMBOL_RE`), znak wzoru (`=`, `≥`, `≤`, `×`, `·` albo miejsce na liczbę `{}`), spacja
+albo znak działania (`×`, `≥`, `≤`, `·` — `{}×In` bez spacji też jest zapisem dla człowieka)
+i brak słowa. Naprawa: pole prozy słowami, wzór i podstawienie w addytywnym polu `*_latex`
+(`substitution_latex`, `result_latex`, …) renderowanym przez `MathRenderer`; komórka raportu
+tekstowego — słowa i symbol w zapisie LaTeX (format wzoru raportu, jak linia „Wzór:").
+
 CZEGO SKAN NIE LICZY — reguły strukturalne, nie lista wyjątków (każda z uzasadnieniem):
   1. Docstring (pierwsza instrukcja modułu/klasy/funkcji) i docstring atrybutu (gołe
      wyrażenie tekstowe w dowolnym miejscu, np. po polu klasy) — komentarz dla programisty;
@@ -57,6 +66,12 @@ CZEGO SKAN NIE LICZY — reguły strukturalne, nie lista wyjątków (każda z uz
      wersji. Opis służy integratorowi API (identyfikator `ref_id`, kody metryk), ekran go nie
      pokazuje. Każdy inny tekst tego pliku jest liczony.
 
+  10. Wartość zmiennej, która w tej samej funkcji idzie do pola `latex`/`*_latex`
+     (`formula = r"Z_k = Z_1"` … `formula_latex=formula`, klucz słownika albo przypisanie
+     `krok["substitution_latex"] = podstawienie`), i element krotki zwracanej przez
+     funkcję modułu rozpakowywanej do takiej zmiennej — zapis LaTeX bez ukośnika, nie proza.
+     Ta sama wartość zmiennej, która do pola LaTeX nie idzie, jest liczona.
+
 ZAPADKA PER PLIK (pin z pomiaru, w obie strony): `guard_references/backend_proza_symboli_pin.json`
 trzyma zmierzoną liczbę trafień każdego pliku. Plik spoza mapy ma pin 0 — nowy moduł startuje
 czysty. Więcej niż pin = czerwień (nowa proza z symbolem spłaszczonym). Mniej niż pin = też
@@ -82,11 +97,14 @@ SRC = ROOT / "backend" / "src"
 PIN_PLIK = Path(__file__).resolve().parent / "guard_references" / "backend_proza_symboli_pin.json"
 
 #: Symbol z indeksem (`U_n`, `I_th`, `Z_0`), znak symbolu spłaszczonego (prim, bis, φ, indeks
-#: dolny Unicode), zapis `Ik''`, `IΔ` i symbole elektrotechniki pisane bez podkreślnika
-#: (`Ik3`, `Un`, `ip`, `t_b`, `cos`, `R0`, `Pmax`, `S min`).
+#: dolny Unicode), zapis `Ik''`, `IΔ`, symbol wielkości z kwadratem Unicode (`I²t`, `k²S²`,
+#: `β²` — jednostka `A²`, `mm²` nie jest symbolem: litera A i przedrostek słowny odpadają)
+#: i symbole elektrotechniki pisane bez podkreślnika (`Ik3`, `Un`, `ip`, `t_b`, `cos`, `R0`,
+#: `Pmax`, `S min`).
 SYMBOL_RE = re.compile(
     r"""(?x)
     (?<![\w])[^\W\d_]{1,3}_[^\W_]\w{0,8}(?![\w]) | [″′φ₀-₉] | (?<![\w])[A-Za-z]{1,2}'' | IΔ
+    | (?<![\w])[IkSPQUZRXβ]²
     | (?<![\w])(?:
         I(?:k|p|b|th|dyn|cw|n|r|a|q|d|max|min|k3|kmax|kmin|0|1|2)
       | U(?:n|r|m|k|max|min|0|1|2) | u(?:k|kr) | i(?:p|b|DC) | t(?:k|b)
@@ -125,13 +143,48 @@ def oczysc(tekst: str) -> str:
     return re.sub(r"\b[A-ZĄĆĘŁŃÓŚŹŻ]{2,}(?:_[A-ZĄĆĘŁŃÓŚŹŻ0-9]{2,})+\b", " ", tekst)
 
 
-def jest_proza_z_symbolem(tekst: str | None) -> bool:
+#: Znak wzoru albo podstawienia: relacja, iloczyn albo miejsce na liczbę (`{}` f-stringu).
+WZOR_RE = re.compile(r"[=≥≤×·]|\{\}")
+#: Znak działania matematycznego — tekst z nim jest zapisem dla człowieka także bez spacji
+#: (`{}×In`, `5·I_Δn`); identyfikator kodu takiego znaku nie zawiera.
+ZNAK_DZIALANIA_RE = re.compile(r"[×≥≤·]")
+
+
+def _czysty_tekst(tekst: str | None) -> str | None:
+    """Tekst po regule 4 albo `None`, gdy to już LaTeX (ukośnik, `$`, indeks w klamrach) lub
+    znakowanie (`<…`)."""
     if tekst is None or "\\" in tekst or "$" in tekst or re.search(r"[_^]\{", tekst):
-        return False
+        return None
     if tekst.lstrip().startswith("<"):
-        return False  # znaczniki (XML pakietu XLSX, HTML) — nie proza
-    czysty = oczysc(tekst)
+        return None  # znaczniki (XML pakietu XLSX, HTML) — nie proza
+    return oczysc(tekst)
+
+
+def jest_proza_z_symbolem(tekst: str | None) -> bool:
+    czysty = _czysty_tekst(tekst)
+    if czysty is None:
+        return False
     return " " in czysty and bool(POLSKI_RE.search(czysty)) and bool(SYMBOL_RE.search(czysty))
+
+
+def jest_wzorem_bez_slow(tekst: str | None) -> bool:
+    """Tekst będący samym wzorem albo podstawieniem bez żadnego słowa (`Z_k = {} + {}`,
+    `Ik''={} kA`, `U0 = {} V; U_b = {} V`): symbol spłaszczony, znak wzoru, spacja albo znak
+    działania (zapis dla człowieka, nie identyfikator) i brak słowa (`POLSKI_RE`)."""
+    czysty = _czysty_tekst(tekst)
+    if czysty is None:
+        return False
+    return (
+        (" " in czysty.strip() or bool(ZNAK_DZIALANIA_RE.search(czysty)))
+        and not POLSKI_RE.search(czysty)
+        and bool(SYMBOL_RE.search(czysty))
+        and bool(WZOR_RE.search(czysty))
+    )
+
+
+def jest_trafieniem(tekst: str | None) -> bool:
+    """Klasa strażnika: proza z symbolem spłaszczonym albo wzór/podstawienie bez słów."""
+    return jest_proza_z_symbolem(tekst) or jest_wzorem_bez_slow(tekst)
 
 
 def _tekst(wezel: ast.AST) -> str | None:
@@ -187,8 +240,76 @@ def _wywolanie_trace_add(wezel: ast.AST) -> bool:
     )
 
 
+def _nazwy_do_pola_latex(funkcja: ast.AST) -> set[str]:
+    """Nazwy zmiennych podawane w funkcji jako wartość pola `latex`/`*_latex` (reguła 10)."""
+    nazwy: set[str] = set()
+    for w in ast.walk(funkcja):
+        if isinstance(w, ast.Call):
+            for k in w.keywords:
+                if k.arg is not None and _pole_latex(k.arg) and isinstance(k.value, ast.Name):
+                    nazwy.add(k.value.id)
+        if isinstance(w, ast.Dict):
+            for klucz, wartosc in zip(w.keys, w.values, strict=True):
+                if (
+                    isinstance(klucz, ast.Constant)
+                    and isinstance(klucz.value, str)
+                    and _pole_latex(klucz.value)
+                    and isinstance(wartosc, ast.Name)
+                ):
+                    nazwy.add(wartosc.id)
+        # `krok["substitution_latex"] = podstawienie` — ten sam przepływ co klucz słownika.
+        if isinstance(w, ast.Assign) and isinstance(w.value, ast.Name):
+            for cel in w.targets:
+                if (
+                    isinstance(cel, ast.Subscript)
+                    and isinstance(cel.slice, ast.Constant)
+                    and isinstance(cel.slice.value, str)
+                    and _pole_latex(cel.slice.value)
+                ):
+                    nazwy.add(w.value.id)
+    return nazwy
+
+
+def _oznacz_przeplyw_do_latex(drzewo: ast.AST, pomin: set[int]) -> None:
+    """Reguła 10: wartość przypisana zmiennej, która w tej samej funkcji idzie do pola
+    `*_latex`, jest zapisem LaTeX — także element krotki zwracanej przez funkcję modułu,
+    gdy wynik jest rozpakowywany do takiej zmiennej (`wzor, podst = _wzor_petli(...)`)."""
+    funkcje = {
+        w.name: w for w in ast.walk(drzewo) if isinstance(w, ast.FunctionDef | ast.AsyncFunctionDef)
+    }
+    for funkcja in funkcje.values():
+        nazwy = _nazwy_do_pola_latex(funkcja)
+        if not nazwy:
+            continue
+        for w in ast.walk(funkcja):
+            if not isinstance(w, ast.Assign | ast.AnnAssign) or w.value is None:
+                continue
+            cele = w.targets if isinstance(w, ast.Assign) else [w.target]
+            for cel in cele:
+                if isinstance(cel, ast.Name) and cel.id in nazwy:
+                    _oznacz(w.value, pomin)
+                if isinstance(cel, ast.Tuple) and isinstance(w.value, ast.Call):
+                    nazwa_wolanej = getattr(w.value.func, "attr", None) or getattr(
+                        w.value.func, "id", None
+                    )
+                    wolana = funkcje.get(str(nazwa_wolanej))
+                    indeksy = [
+                        i
+                        for i, e in enumerate(cel.elts)
+                        if isinstance(e, ast.Name) and e.id in nazwy
+                    ]
+                    if wolana is None or not indeksy:
+                        continue
+                    for zwrot in ast.walk(wolana):
+                        if isinstance(zwrot, ast.Return) and isinstance(zwrot.value, ast.Tuple):
+                            for i in indeksy:
+                                if i < len(zwrot.value.elts):
+                                    _oznacz(zwrot.value.elts[i], pomin)
+
+
 def _pominiete(drzewo: ast.AST, wzgledna: str, klucze_v126: frozenset[str]) -> set[int]:
     pomin: set[int] = set()
+    _oznacz_przeplyw_do_latex(drzewo, pomin)
     for w in ast.walk(drzewo):
         cialo = getattr(w, "body", None)
         if (
@@ -271,7 +392,7 @@ def trafienia_pliku(
         if id(w) in pomin:
             continue
         tekst = _tekst(w)
-        if jest_proza_z_symbolem(tekst):
+        if jest_trafieniem(tekst):
             yield getattr(w, "lineno", 0), str(tekst)
 
 
@@ -332,7 +453,8 @@ def main(argv: list[str] | None = None) -> int:
             for linia, tekst in trafienia:
                 print(f"{plik}:{linia}\t{tekst[:200]!r}")
     print(
-        f"Zmierzono: {razem} tekstów prozy z symbolem spłaszczonym w {len(zmierzone)} plikach "
+        f"Zmierzono: {razem} tekstów prozy z symbolem spłaszczonym albo wzorów bez słów "
+        f"w {len(zmierzone)} plikach "
         f"(pin łącznie {sum(pin.values())})."
     )
     for plik in przekroczenia:
@@ -357,7 +479,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if przekroczenia:
         print(
-            "\nFAILED: symbol w prozie pisz słowami, wzór podaj polem *_latex "
+            "\nFAILED: symbol w prozie pisz słowami, wzór i podstawienie podaj polem *_latex "
             "(KONTRAKT_PREZENTACJI_INZYNIERSKIEJ_V12_7.md)."
         )
         return 1

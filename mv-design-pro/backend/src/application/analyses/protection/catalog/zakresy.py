@@ -17,7 +17,7 @@ from .models import JEDNOSTKA_ZAKRESU_A_WTORNY, JEDNOSTKA_ZAKRESU_KROTNOSC_IN, D
 
 #: Jednostka zakresu w zdaniu dla projektanta.
 JEDNOSTKI_ZAKRESU_PL: dict[str, str] = {
-    JEDNOSTKA_ZAKRESU_KROTNOSC_IN: "×In",
+    JEDNOSTKA_ZAKRESU_KROTNOSC_IN: "krotności prądu znamionowego wejścia",
     JEDNOSTKA_ZAKRESU_A_WTORNY: "A (strona wtórna)",
 }
 

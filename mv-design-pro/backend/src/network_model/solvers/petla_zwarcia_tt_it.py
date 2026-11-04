@@ -384,7 +384,11 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
         trace.append(
             {
                 "step": "napiecie_dotykowe_pierwszego_zwarcia_it",
-                "method": "U_dotyk = R_A · I_d",
+                "method": (
+                    "napięcie dotykowe jako iloczyn rezystancji uziomu instalacji i prądu "
+                    "pierwszego zwarcia"
+                ),
+                "method_latex": r"U_{dotyk} = R_{A} \cdot I_{d}",
                 "r_a_ohm": dane.r_a_ohm,
                 "i_d_pierwsze_zwarcie_a": i_d1,
                 "u_dotyk_pierwsze_zwarcie_v": u_dotyk1,
@@ -399,7 +403,11 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
         trace.append(
             {
                 "step": "napiecie_dotykowe_pierwszego_zwarcia_it",
-                "method": "U_dotyk = R_A · I_d",
+                "method": (
+                    "napięcie dotykowe jako iloczyn rezystancji uziomu instalacji i prądu "
+                    "pierwszego zwarcia"
+                ),
+                "method_latex": r"U_{dotyk} = R_{A} \cdot I_{d}",
                 "r_a_ohm": None,
                 "result": (
                     "nie liczone — brak rezystancji uziomu instalacji w punkcie (dana "

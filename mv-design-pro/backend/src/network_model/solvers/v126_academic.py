@@ -1392,9 +1392,12 @@ class V126AcademicSolver:
                 "z_base_ohm": _round(z_base),
             },
             (
-                f"w_ci=2*pi*{converter.current_loop_bandwidth_hz} rad/s; "
-                f"w_pll=2*pi*{f_pll} rad/s; T_d={t_d_ms} ms; "
-                "K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn"
+                "pulsacja pętli prądowej to dwa pi razy pasmo "
+                f"{converter.current_loop_bandwidth_hz} Hz; pulsacja pętli synchronizacji "
+                f"fazowej to dwa pi razy pasmo {f_pll} Hz; opóźnienie sterowania {t_d_ms} ms; "
+                "wzmocnienia regulatora prądu metodą modelu wewnętrznego z indukcyjności "
+                "i rezystancji filtra; impedancja bazowa z kwadratu napięcia znamionowego "
+                "przez moc znamionową"
             ),
             {
                 "probe_f_hz": probe_f,
@@ -2287,7 +2290,13 @@ class V126AcademicSolver:
             f"C0={_round(b0_total_s, 12)}/{_round(omega, 4)}; "
             f"Ic=√3·{_round(omega, 4)}·{_round(c0_farad, 12)}·{u_line_v}",
             {"c0_farad": _round(c0_farad, 12), "ic_a": _round(ic_a, 4)},
-            "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l.",
+            (
+                "siemens przez radian na sekundę daje farad; radian na sekundę razy farad "
+                "razy wolt daje amper. Napięcie fazowe to przewodowe przez pierwiastek z trzech, "
+                "więc potrojony iloczyn pulsacji, pojemności zerowej i napięcia fazowego równa "
+                "się pierwiastkowi z trzech razy iloczyn pulsacji, pojemności zerowej i napięcia "
+                "przewodowego."
+            ),
             result_pl=(
                 f"{przedrostek}Prąd pojemnościowy doziemienia sieci: {_lp_tekst(_round(ic_a, 4))} A"
             ),

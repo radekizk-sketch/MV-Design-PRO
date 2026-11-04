@@ -60,7 +60,15 @@ _CONDUCTOR_KIND_LABELS_PL = {
     CONDUCTOR_KIND_BARE: "przewód goły (linia napowietrzna)",
 }
 
-_FORMULA_REF = "I_dop(t) = I_th(1s)·√(1 s / t);  S_min = I_th·√t / Jth(1s)"
+_FORMULA_REF = (
+    "prąd dopuszczalny dla czasu zwarcia to prąd jednosekundowy razy pierwiastek z ilorazu "
+    "jednej sekundy i czasu zwarcia; przekrój minimalny to prąd zastępczy cieplny razy "
+    "pierwiastek z czasu przez gęstość prądu jednosekundowego"
+)
+_FORMULA_LATEX = (
+    r"I_{dop}(t) = I_{th(1s)} \cdot \sqrt{\frac{1\,\mathrm{s}}{t}};\quad "
+    r"S_{min} = \frac{I_{th} \cdot \sqrt{t}}{J_{th(1s)}}"
+)
 
 # --- Wyprowadzenie wspolczynnika k wg IEC 60949 (karta F-K1 faza 8) ----------
 #
@@ -223,6 +231,7 @@ class ConductorThermalResult:
     margin_a: float | None
     readiness_codes: tuple[str, ...] = ()
     formula_ref: str = _FORMULA_REF
+    formula_latex: str = _FORMULA_LATEX
     # --- Karta F-K1 faza 6 (Calculation Evidence), wszystko addytywne ---
     # Bilans energii: to on jest fizyczna trescia kryterium (I²t <= k²S²), a prad
     # dopuszczalny jest tylko jego przeliczeniem na czas t.
@@ -249,7 +258,7 @@ class ConductorThermalResult:
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
             "Nagrzewanie zwarciowe adiabatyczne (bez odpływu ciepła do otoczenia).",
-            "Równoważna energia cieplna I²·t = const (IEC 60949).",
+            "Równoważna energia cieplna (kwadrat prądu razy czas) stała (IEC 60949).",
             "Prąd zastępczy cieplny pochodzi z obliczeń zwarciowych — nie jest prądem początkowym.",
             "Czas t to rzeczywisty czas wyłączenia zabezpieczenia przy tym prądzie.",
             "Wytrzymałość przewodu odniesiona do 1 s według danych katalogowych.",
@@ -557,7 +566,7 @@ def _build_white_box_trace(
             },
             "notes": (
                 "Nagrzewanie zwarciowe przyjmuje się za adiabatyczne, więc obowiązuje "
-                "równoważna energia cieplna I²·t = const (IEC 60949)."
+                "równoważna energia cieplna (kwadrat prądu razy czas) stała (IEC 60949)."
             ),
         },
         {
@@ -620,9 +629,9 @@ def _build_white_box_trace(
                 + r"\ \mathrm{A^2s}"
             ),
             "result": {
-                "i2t_a2s": _wartosc(i2t, "A²·s", "Energia cieplna zwarcia I²t"),
+                "i2t_a2s": _wartosc(i2t, "A²·s", "Energia cieplna zwarcia (całka Joule'a)"),
                 "i2t_dop_a2s": _wartosc(
-                    i2t_admissible, "A²·s", "Dopuszczalna energia cieplna żyły k²S²"
+                    i2t_admissible, "A²·s", "Dopuszczalna energia cieplna żyły"
                 ),
             },
             "notes": (
@@ -695,7 +704,9 @@ STANDARD_REFS: tuple[dict[str, str], ...] = (
         "norma": "PN-HD 60364-4-43",
         "punkt": "§ 434.5.2",
         "tresc_pl": (
-            "Warunek adiabatyczny doboru przekroju ze względu na zwarcie: S ≥ √(I²·t) / k."
+            "Warunek adiabatyczny doboru przekroju ze względu na zwarcie: przekrój nie mniejszy "
+            "od pierwiastka z całki Joule'a (kwadrat prądu razy czas) podzielonego przez "
+            "współczynnik k."
         ),
     },
     {
@@ -740,7 +751,10 @@ def _build_criteria(
         {
             "kod": "prad_dopuszczalny",
             "nazwa_pl": "Prąd zwarciowy wobec dopuszczalnego dla czasu t",
-            "warunek_pl": "I_th ≤ I_dop(t) = I_th(1s)/√t",
+            "warunek_pl": (
+                "prąd zastępczy cieplny nie większy od prądu dopuszczalnego dla czasu zwarcia"
+            ),
+            "warunek_latex": r"I_{th} \le I_{dop}(t) = I_{th(1s)} / \sqrt{t}",
             "wartosc": round(ith_a, 6),
             "granica": round(admissible_a, 6),
             "jednostka": "A",
@@ -749,7 +763,8 @@ def _build_criteria(
         {
             "kod": "energia_cieplna",
             "nazwa_pl": "Energia zwarcia wobec wytrzymałości żyły",
-            "warunek_pl": "I²·t ≤ k²·S²",
+            "warunek_pl": "energia zwarcia nie większa od wytrzymałości cieplnej żyły",
+            "warunek_latex": r"I^{2} t \le k^{2} S^{2}",
             "wartosc": round(i2t, 3),
             "granica": round(i2t_admissible, 3),
             "jednostka": "A²·s",
@@ -761,7 +776,8 @@ def _build_criteria(
             {
                 "kod": "przekroj_minimalny",
                 "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
-                "warunek_pl": "S ≥ S_min = √(I²·t)/k",
+                "warunek_pl": "przekrój nie mniejszy od minimalnego z warunku cieplnego",
+                "warunek_latex": r"S \ge S_{min} = \sqrt{I^{2} t} / k",
                 "wartosc": round(applied_section_mm2, 6),
                 "granica": round(required_section_mm2, 6),
                 "jednostka": "mm²",
@@ -775,7 +791,8 @@ def _build_criteria(
             {
                 "kod": "przekroj_minimalny",
                 "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
-                "warunek_pl": "S ≥ S_min = √(I²·t)/k",
+                "warunek_pl": "przekrój nie mniejszy od minimalnego z warunku cieplnego",
+                "warunek_latex": r"S \ge S_{min} = \sqrt{I^{2} t} / k",
                 "wartosc": None,
                 "granica": round(required_section_mm2, 6),
                 "jednostka": "mm²",
@@ -847,7 +864,8 @@ def _build_recommendations(
             {
                 "kod": "zwieksz_przekroj",
                 "dzialanie_pl": "Zwiększ przekrój żyły",
-                "wzor": "S ≥ I·√t / k",
+                "wzor": "przekrój co najmniej prąd razy pierwiastek z czasu przez k",
+                "wzor_latex": r"S \ge I \cdot \sqrt{t} / k",
                 "wartosc_docelowa": round(required_section_mm2, 3),
                 "jednostka": "mm²",
                 "wartosc_obecna": (
@@ -866,7 +884,8 @@ def _build_recommendations(
         {
             "kod": "skroc_czas",
             "dzialanie_pl": "Skróć czas wyłączenia zwarcia (nastawa zabezpieczenia)",
-            "wzor": "t ≤ (k·S / I)²",
+            "wzor": "czas co najwyżej kwadrat ilorazu k razy przekrój przez prąd",
+            "wzor_latex": r"t \le (k \cdot S / I)^{2}",
             "wartosc_docelowa": round(czas_max, 4),
             "jednostka": "s",
             "wartosc_obecna": round(duration_s, 4),
@@ -883,7 +902,8 @@ def _build_recommendations(
         {
             "kod": "ogranicz_prad",
             "dzialanie_pl": "Ogranicz prąd zwarciowy w tym miejscu sieci",
-            "wzor": "I ≤ k·S / √t",
+            "wzor": "prąd co najwyżej k razy przekrój przez pierwiastek z czasu",
+            "wzor_latex": r"I \le k \cdot S / \sqrt{t}",
             "wartosc_docelowa": round(prad_max, 1),
             "jednostka": "A",
             "wartosc_obecna": round(ith_a, 1),
@@ -898,7 +918,8 @@ def _build_recommendations(
             {
                 "kod": "zmien_material",
                 "dzialanie_pl": "Zmień materiał żyły albo izolację (wyższe k)",
-                "wzor": "k ≥ I·√t / S",
+                "wzor": "k co najmniej prąd razy pierwiastek z czasu przez przekrój",
+                "wzor_latex": r"k \ge I \cdot \sqrt{t} / S",
                 "wartosc_docelowa": round(ith_a * math.sqrt(duration_s) / applied_section_mm2, 2),
                 "jednostka": "A·√s/mm²",
                 "wartosc_obecna": round(jth_1s_a_per_mm2, 2),

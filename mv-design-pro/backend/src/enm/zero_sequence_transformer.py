@@ -225,6 +225,12 @@ def _fmt_c(value: complex) -> str:
     return f"{value.real:.6g} {sign} j{abs(value.imag):.6g}"
 
 
+def _fmt_c_tex(value: complex) -> str:
+    """Liczba zespolona w zapisie LaTeX — te same cyfry co `_fmt_c` (proza)."""
+    sign = "+" if value.imag >= 0 else "-"
+    return rf"{value.real:.6g} {sign} j\,{abs(value.imag):.6g}"
+
+
 def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqModel:
     """Buduje model składowej zerowej transformatora dwuuzwojeniowego.
 
@@ -324,6 +330,10 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             f"impedancja zerowa {_fmt_c(z_t_pu_sn)} pu na moc znamionową {trafo.sn_mva:g} MVA; "
             f"{_fmt_c(z_t_pu_base)} pu na moc bazową {S_BASE_MVA:g} MVA"
         ),
+        substitution_latex=(
+            rf"Z_{{T0}} = {_fmt_c_tex(z_t_pu_sn)}\ \mathrm{{pu}}\ (S_{{rT}}),\quad "
+            rf"Z_{{T0}} = {_fmt_c_tex(z_t_pu_base)}\ \mathrm{{pu}}\ (S_{{base}})"
+        ),
         result={"z_t0_pu_sn": z_t_pu_sn, "z_t0_pu_base": z_t_pu_base},
     )
 
@@ -343,8 +353,13 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
             "zn_lv_3_pu": zn_lv_pu,
         },
         substitution=(
-            f"{NAZWY_POLACZEN_ZEROWYCH_PL[connection]}: Z0 = "
-            f"{f'{_fmt_c(z0_pu)} pu' if z0_pu is not None else '— (otwarte)'}"
+            f"{NAZWY_POLACZEN_ZEROWYCH_PL[connection]}: impedancja zerowa "
+            f"{f'{_fmt_c(z0_pu)} pu' if z0_pu is not None else 'nieskończona (obwód otwarty)'}"
+        ),
+        substitution_latex=(
+            rf"Z_{{0}} = {_fmt_c_tex(z0_pu)}\ \mathrm{{pu}}"
+            if z0_pu is not None
+            else r"Z_{0} \rightarrow \infty"
         ),
         result={
             "connection": connection.value,

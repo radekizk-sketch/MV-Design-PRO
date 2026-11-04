@@ -517,7 +517,8 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
     {
       norma: 'PN-HD 60364-4-43',
       punkt: '§ 434.5.2',
-      tresc_pl: 'Warunek adiabatyczny doboru przekroju ze względu na zwarcie: S ≥ √(I²·t) / k.',
+      tresc_pl:
+        'Warunek adiabatyczny doboru przekroju ze względu na zwarcie: przekrój nie mniejszy od pierwiastka z całki Joule\'a (kwadrat prądu razy czas) podzielonego przez współczynnik k.',
     },
     {
       norma: 'IEC 60949',
@@ -567,7 +568,8 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
           {
             kod: 'i2t',
             nazwa_pl: 'Energia cieplna zwarcia',
-            warunek_pl: 'I²·t ≤ k²·S²',
+            warunek_pl: 'energia zwarcia nie większa od wytrzymałości cieplnej żyły',
+            warunek_latex: String.raw`I^{2} t \le k^{2} S^{2}`,
             wartosc: 56250000,
             granica: 127238400,
             jednostka: 'A²·s',
@@ -576,7 +578,8 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
           {
             kod: 'przekroj_minimalny',
             nazwa_pl: 'Przekrój minimalny żyły',
-            warunek_pl: 'S ≥ S_min',
+            warunek_pl: 'przekrój nie mniejszy od minimalnego z warunku cieplnego',
+            warunek_latex: String.raw`S \ge S_{min}`,
             wartosc: 120,
             granica: 79.8,
             jednostka: 'mm²',

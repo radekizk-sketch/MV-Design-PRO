@@ -46,6 +46,19 @@ function Werdykt({ status }: { status: StatusWarunku }) {
 }
 
 /** Energia zwarcia ma rząd 10⁷ A²·s — skala „mln" zamiast piętnastu cyfr. */
+/**
+ * Warunek albo wzór działania: zapis z pola `*_latex` przez `MathInline`, gdy backend go podał;
+ * proza słowami zostaje opisem (`title`). Bez pola LaTeX — sama proza.
+ */
+function ZapisWarunku({ proza, latex }: { proza: string; latex?: string }) {
+  if (latex === undefined) return <>{proza}</>;
+  return (
+    <span title={proza}>
+      <MathInline latex={latex} />
+    </span>
+  );
+}
+
 function fmtEnergiaPelna(wartosc: number | null): string {
   if (wartosc === null) return JAKOSC_STRINGS.kreska;
   if (Math.abs(wartosc) >= 1_000_000) return `${fmtLiczba(wartosc / 1_000_000, 3)} mln A²·s`;
@@ -148,7 +161,9 @@ export function PanelDowoduCieplnego({
               {pozycja.kryteria.map((kryterium) => (
                 <tr key={kryterium.kod}>
                   <td>{kryterium.nazwa_pl}</td>
-                  <td className="mvd-mono">{kryterium.warunek_pl}</td>
+                  <td>
+                    <ZapisWarunku proza={kryterium.warunek_pl} latex={kryterium.warunek_latex} />
+                  </td>
                   <td className="mvd-num">
                     {kryterium.wartosc === null
                       ? JAKOSC_STRINGS.kreska
@@ -188,7 +203,9 @@ export function PanelDowoduCieplnego({
               {pozycja.zalecenia.map((zalecenie) => (
                 <tr key={zalecenie.kod}>
                   <td>{zalecenie.dzialanie_pl}</td>
-                  <td className="mvd-mono">{zalecenie.wzor}</td>
+                  <td>
+                    <ZapisWarunku proza={zalecenie.wzor} latex={zalecenie.wzor_latex} />
+                  </td>
                   <td className="mvd-num">
                     {zalecenie.wartosc_obecna === null
                       ? JAKOSC_STRINGS.kreska

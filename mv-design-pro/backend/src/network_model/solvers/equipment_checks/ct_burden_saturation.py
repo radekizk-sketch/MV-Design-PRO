@@ -77,7 +77,15 @@ REZYSTYWNOSC_MIEDZI_20C = 0.017241
 WARIANT_ALF_PELNY = "PELNY_IEC61869_2"
 WARIANT_ALF_UPROSZCZONY = "UPROSZCZONY_BEZ_RCT"
 
-_FORMULA_REF = "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)"
+_FORMULA_REF = (
+    "IEC 61869-2: obciążenie obwodu wtórnego to suma mocy aparatów i strat w przewodach; "
+    "efektywny współczynnik graniczny dokładności skalowany stosunkiem mocy znamionowej "
+    "powiększonej o straty własne do obciążenia powiększonego o straty własne"
+)
+_FORMULA_LATEX = (
+    r"S_{2,obl} = S_{aparatow} + I_{2n}^{2} \cdot R_{p};\quad "
+    r"ALF_{eff} = ALF \cdot \frac{S_{n} + S_{w}}{S_{2,obl} + S_{w}}"
+)
 
 #: Oznaczenie klasy zabezpieczeniowej wg IEC 61869-2: liczba·P·ALF (np. „5P20”,
 #: „10P10”, „5PR10”). Klasy pomiarowe („0.5”, „0.2S”) NIE maja ALF — dla nich
@@ -163,6 +171,7 @@ class CtBurdenResult:
     wariant_alf: str | None
     readiness_codes: tuple[str, ...] = ()
     formula_ref: str = _FORMULA_REF
+    formula_latex: str = _FORMULA_LATEX
     white_box_trace: tuple[dict[str, Any], ...] = ()
     assumptions: tuple[str, ...] = ()
 

@@ -50,7 +50,7 @@
               "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
               "sprawdzenia_zakresu": [
                 {
-                  "jednostka": "×In",
+                  "jednostka": "krotności prądu znamionowego wejścia",
                   "maksimum": 5.0,
                   "minimum": 0.05,
                   "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
@@ -94,7 +94,7 @@
               "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
               "sprawdzenia_zakresu": [
                 {
-                  "jednostka": "×In",
+                  "jednostka": "krotności prądu znamionowego wejścia",
                   "maksimum": 40.0,
                   "minimum": 0.1,
                   "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
@@ -332,7 +332,7 @@
               "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
               "sprawdzenia_zakresu": [
                 {
-                  "jednostka": "×In",
+                  "jednostka": "krotności prądu znamionowego wejścia",
                   "maksimum": 5.0,
                   "minimum": 0.05,
                   "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
@@ -376,7 +376,7 @@
               "przeliczenie_latex": "I_{s,1} = I_{s,2} \\cdot \\frac{I_{1n}}{I_{2n}}",
               "sprawdzenia_zakresu": [
                 {
-                  "jednostka": "×In",
+                  "jednostka": "krotności prądu znamionowego wejścia",
                   "maksimum": 40.0,
                   "minimum": 0.1,
                   "podstawa_pl": "Profil referencyjny przekaźnika bez marki (decyzja D-33) — założenie projektowe katalogu analitycznego MV-DESIGN-PRO: zakresy nastaw prądowych w krotności prądu znamionowego wejścia In (1 A albo 5 A wg IEC 60255-1), typowe dla cyfrowego przekaźnika nadprądowego pola SN; nie są danymi producenta.",
@@ -604,56 +604,56 @@
       "current_a": 8623.26909853,
       "fault_type": "3F",
       "id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a_ik_max",
-      "label_pl": "Ik'' max 3F (Stacja S03)",
+      "label_pl": "prąd zwarciowy maksymalny 3F (Stacja S03)",
       "location": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
     },
     {
       "current_a": 8767.96928629,
       "fault_type": "3F",
       "id": "37c2925e-edbc-5956-b23a-7fed082c4f7d_ik_max",
-      "label_pl": "Ik'' max 3F (Stacja S02)",
+      "label_pl": "prąd zwarciowy maksymalny 3F (Stacja S02)",
       "location": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
     },
     {
       "current_a": 8551.13358524,
       "fault_type": "3F",
       "id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d_ik_max",
-      "label_pl": "Ik'' max 3F (Stacja S04)",
+      "label_pl": "prąd zwarciowy maksymalny 3F (Stacja S04)",
       "location": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
     },
     {
       "current_a": 9057.56344885,
       "fault_type": "3F",
       "id": "7aac8feb-7aba-5fe7-b625-233c4319c6ea_ik_max",
-      "label_pl": "Ik'' max 3F (Stacja S01)",
+      "label_pl": "prąd zwarciowy maksymalny 3F (Stacja S01)",
       "location": "7aac8feb-7aba-5fe7-b625-233c4319c6ea"
     },
     {
       "current_a": 7787.56838608,
       "fault_type": "3F",
       "id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a_ik_min",
-      "label_pl": "Ik'' min 3F (Stacja S03)",
+      "label_pl": "prąd zwarciowy minimalny 3F (Stacja S03)",
       "location": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a"
     },
     {
       "current_a": 7970.88116936,
       "fault_type": "3F",
       "id": "37c2925e-edbc-5956-b23a-7fed082c4f7d_ik_min",
-      "label_pl": "Ik'' min 3F (Stacja S02)",
+      "label_pl": "prąd zwarciowy minimalny 3F (Stacja S02)",
       "location": "37c2925e-edbc-5956-b23a-7fed082c4f7d"
     },
     {
       "current_a": 7693.43330775,
       "fault_type": "3F",
       "id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d_ik_min",
-      "label_pl": "Ik'' min 3F (Stacja S04)",
+      "label_pl": "prąd zwarciowy minimalny 3F (Stacja S04)",
       "location": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d"
     },
     {
       "current_a": 8234.14858986,
       "fault_type": "3F",
       "id": "7aac8feb-7aba-5fe7-b625-233c4319c6ea_ik_min",
-      "label_pl": "Ik'' min 3F (Stacja S01)",
+      "label_pl": "prąd zwarciowy minimalny 3F (Stacja S01)",
       "location": "7aac8feb-7aba-5fe7-b625-233c4319c6ea"
     }
   ],

@@ -1718,7 +1718,11 @@ class ShortCircuitIEC60909Solver:
                 "ik_thevenin_a": ik_thevenin_a,
                 "n_nodes": int(z_bus.shape[0]),
             },
-            substitution=f"i_inj[{fault_index}] = -1 (pu); V = Z_bus @ i_inj",
+            substitution=(
+                f"wymuszenie jednostkowe w węźle zwarcia (indeks {fault_index}) równe minus "
+                "jeden w jednostkach względnych; napięcia węzłowe z iloczynu macierzy "
+                "impedancji węzłowych i wektora wymuszeń"
+            ),
             substitution_latex=f"\\underline{{i}}_{{inj,{fault_index}}} = -1",
             result={"v_nodes_pu": [complex(v) for v in v_nodes]},
             notes=(

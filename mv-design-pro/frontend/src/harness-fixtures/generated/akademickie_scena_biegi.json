@@ -24,10 +24,10 @@
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "8072fb7faafa6715591600b6bd5f5d979fdb276991e2a52fb9831292bc0cd8c7",
-        "proof_id": "proof:v126:ssci_impedance:5c7281e425eba47a",
+        "proof_hash": "c2c4356788f956d8ca2f07b199bf09f487ea8711b9a1bfea4665f80d863d0644",
+        "proof_id": "proof:v126:ssci_impedance:90777b80f6f0d3f1",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
-        "source_result_hash": "5c7281e425eba47a6c5c08aac1a8a36c0e293b3e15f070a9556fe9f19a7fbb83",
+        "source_result_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee",
         "steps": [
           {
             "data": {
@@ -85,7 +85,7 @@
               "probe_f_hz": 1.0
             },
             "result_pl": "Impedancja wyjściowa przekształtnika przy 1 Hz: 1,6434 Ω",
-            "substitution": "w_ci=2*pi*900.0 rad/s; w_pll=2*pi*30.0 rad/s; T_d=0.5 ms; K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn",
+            "substitution": "pulsacja pętli prądowej to dwa pi razy pasmo 900.0 Hz; pulsacja pętli synchronizacji fazowej to dwa pi razy pasmo 30.0 Hz; opóźnienie sterowania 0.5 ms; wzmocnienia regulatora prądu metodą modelu wewnętrznego z indukcyjności i rezystancji filtra; impedancja bazowa z kwadratu napięcia znamionowego przez moc znamionową",
             "unit_check": "Impedancja filtru w jednostkach względnych, skalowana impedancją bazową [Ω]; wzmocnienia regulatorów bezwymiarowe."
           },
           {
@@ -136,7 +136,7 @@
       "koperta": {
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
-        "deterministic_hash": "5c7281e425eba47a6c5c08aac1a8a36c0e293b3e15f070a9556fe9f19a7fbb83",
+        "deterministic_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance",
@@ -149,19 +149,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "b6b248b2066e23cc0be4ec810e46bdaf097479e96281edecf9b22e6e73189da1",
-        "report_id": "report:v126:ssci_impedance:5c7281e425eba47a",
+        "report_hash": "1438aaf43ac550bf77801b4491b50079600625bdd1874d1da3954e0a7578d0c9",
+        "report_id": "report:v126:ssci_impedance:90777b80f6f0d3f1",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:ssci_impedance:5c7281e425eba47a"
+                "value": "proof:v126:ssci_impedance:90777b80f6f0d3f1"
               },
               {
                 "label": "proof_hash",
-                "value": "8072fb7faafa6715591600b6bd5f5d979fdb276991e2a52fb9831292bc0cd8c7"
+                "value": "c2c4356788f956d8ca2f07b199bf09f487ea8711b9a1bfea4665f80d863d0644"
               },
               {
                 "label": "trace_step_count",
@@ -175,7 +175,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "5c7281e425eba47a6c5c08aac1a8a36c0e293b3e15f070a9556fe9f19a7fbb83"
+                "value": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee"
               },
               {
                 "label": "solver_version",
@@ -190,12 +190,12 @@
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "8072fb7faafa6715591600b6bd5f5d979fdb276991e2a52fb9831292bc0cd8c7",
-        "source_result_hash": "5c7281e425eba47a6c5c08aac1a8a36c0e293b3e15f070a9556fe9f19a7fbb83"
+        "source_proof_hash": "c2c4356788f956d8ca2f07b199bf09f487ea8711b9a1bfea4665f80d863d0644",
+        "source_result_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee"
       },
       "slad": {
         "analysis_type": "ssci_impedance",
-        "deterministic_hash": "5c7281e425eba47a6c5c08aac1a8a36c0e293b3e15f070a9556fe9f19a7fbb83",
+        "deterministic_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "steps": [
           {
@@ -256,7 +256,7 @@
             },
             "result_pl": "Impedancja wyjściowa przekształtnika przy 1 Hz: 1,6434 Ω",
             "step": 1,
-            "substitution": "w_ci=2*pi*900.0 rad/s; w_pll=2*pi*30.0 rad/s; T_d=0.5 ms; K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn",
+            "substitution": "pulsacja pętli prądowej to dwa pi razy pasmo 900.0 Hz; pulsacja pętli synchronizacji fazowej to dwa pi razy pasmo 30.0 Hz; opóźnienie sterowania 0.5 ms; wzmocnienia regulatora prądu metodą modelu wewnętrznego z indukcyjności i rezystancji filtra; impedancja bazowa z kwadratu napięcia znamionowego przez moc znamionową",
             "unit_check": "Impedancja filtru w jednostkach względnych, skalowana impedancją bazową [Ω]; wzmocnienia regulatorów bezwymiarowe."
           },
           {
@@ -309,14 +309,14 @@
         "trace_version": "AcademicWhiteBoxTraceV1"
       },
       "stabilnosc": {
-        "analysis_id": "573f779b98934905588f17dbc2a4b3c9e0b75ebeb663384d08ef8c0532709631",
+        "analysis_id": "09b3d37722176a03e7675934c1f8bccbef416d4de8c01061fc598675c9f754f7",
         "context": {
           "case_id": "case-demo",
           "case_name": null,
           "project_name": null,
           "run_id": "run-v126-scena-akademickie-ssci_impedance",
           "run_timestamp": "2026-09-16T09:00:00+00:00",
-          "snapshot_hash": "5c7281e425eba47a6c5c08aac1a8a36c0e293b3e15f070a9556fe9f19a7fbb83"
+          "snapshot_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee"
         },
         "gain_crossover_mag": 1.0,
         "ocena": {
@@ -549,29 +549,37 @@
           "white_box": [
             {
               "formula_latex": "L(j\\omega) = \\dfrac{Z_{grid}(j\\omega)}{Z_{conv}(j\\omega)}",
-              "result_pl": "moduły impedancji przecinają się (|L| ≥ 1)",
-              "substitution_pl": "max|L| = 144.8886 przy f = 250.0 Hz; próg przecięcia |L| = 1.0",
+              "result_latex": "\\max|L| \\geq 1.0",
+              "result_pl": "moduły impedancji przecinają się (moduł wzmocnienia pętli osiąga próg)",
+              "substitution_latex": "\\max|L| = 144.8886,\\ f = 250.0\\ \\mathrm{Hz};\\ |L|_{\\mathrm{gr}} = 1.0",
+              "substitution_pl": "największy moduł wzmocnienia pętli 144.8886 przy częstotliwości 250.0 Hz; próg przecięcia modułów 1.0",
               "symbol": "L(jω)",
               "unit_check_pl": "wzmocnienie pętli to iloraz omów przez omy, więc jest bezwymiarowe; moduł równy 1 oznacza równość modułów impedancji sieci i przekształtnika."
             },
             {
               "formula_latex": "\\Delta\\varphi_{min} = \\min_{f:\\,|L(f)|\\geq 1}\\left(180^\\circ - |\\angle L(f)|\\right)",
-              "result_pl": "Δφ_min = 0.403°",
-              "substitution_pl": "min po paśmie |L| ≥ 1.0; f = 47.7 Hz",
+              "result_latex": "\\Delta\\varphi_{min} = 0.403^\\circ",
+              "result_pl": "Najmniejszy margines fazy 0.403°",
+              "substitution_latex": "|L| \\geq 1.0;\\ f = 47.7\\ \\mathrm{Hz}",
+              "substitution_pl": "minimum w paśmie, w którym moduł wzmocnienia pętli jest nie mniejszy od 1.0; częstotliwość 47.7 Hz",
               "symbol": "Δφ_min",
               "unit_check_pl": "stopnie; niedodatni margines fazy oznacza, że kąt wzmocnienia pętli osiąga ±180°, czyli okrążenie punktu −1."
             },
             {
               "formula_latex": "d_{-1} = \\min_{f}\\left|L(j\\omega) + 1\\right|",
-              "result_pl": "d(−1) = 1.1616 (odległość przebiegu od −1)",
-              "substitution_pl": "f = 1.0 Hz, |L| = 1.1426, ∠L = -114.738°",
+              "result_latex": "d_{-1} = 1.1616",
+              "result_pl": "Odległość przebiegu od punktu −1: 1.1616",
+              "substitution_latex": "f = 1.0\\ \\mathrm{Hz},\\ |L| = 1.1426,\\ \\angle L = -114.738^\\circ",
+              "substitution_pl": "częstotliwość 1.0 Hz, moduł wzmocnienia pętli 1.1426, kąt wzmocnienia pętli -114.738°",
               "symbol": "|L+1|_min",
               "unit_check_pl": "bezwymiarowe (na płaszczyźnie L); d→0 ⟺ podejście do −1."
             },
             {
               "formula_latex": "N \\approx \\#\\{\\,\\mathrm{Im}\\,L = 0 \\wedge \\mathrm{Re}\\,L < -1\\,\\}",
-              "result_pl": "N ≈ 1 (przybliżenie skończonego skanu, wskaźnik wspierający)",
-              "substitution_pl": "zliczenie przejść Im(L)=0 na lewo od −1 (skan jednostronny)",
+              "result_latex": "N \\approx 1",
+              "result_pl": "Liczba okrążeń punktu −1 około 1 (przybliżenie skończonego skanu, wskaźnik wspierający)",
+              "substitution_latex": "\\mathrm{Im}\\,L = 0 \\wedge \\mathrm{Re}\\,L < -1",
+              "substitution_pl": "zliczenie przejść przebiegu przez oś rzeczywistą na lewo od punktu −1 (skan jednostronny)",
               "symbol": "N(−1)",
               "unit_check_pl": "liczba całkowita; N ≥ 1 ⟺ okrążenie −1 ⟺ niestabilność."
             }
@@ -585,12 +593,12 @@
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:ssci_impedance:5c7281e425eba47a",
-        "report_ref": "report:v126:ssci_impedance:5c7281e425eba47a",
+        "proof_ref": "proof:v126:ssci_impedance:90777b80f6f0d3f1",
+        "report_ref": "report:v126:ssci_impedance:90777b80f6f0d3f1",
         "result": {
           "analysis_type": "ssci_impedance",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "5c7281e425eba47a6c5c08aac1a8a36c0e293b3e15f070a9556fe9f19a7fbb83",
+          "deterministic_hash": "90777b80f6f0d3f137a432bc2c4707433a4c67e84301baf43aeef9af42956eee",
           "input_hash": "3dd5efea79b997262ee9621c58c4c7dc47ff566ca0c57b0daff96084acb2ab4e",
           "result": {
             "base_frequency_hz": 50.0,
@@ -2113,7 +2121,7 @@
               },
               "result_pl": "Impedancja wyjściowa przekształtnika przy 1 Hz: 1,6434 Ω",
               "step": 1,
-              "substitution": "w_ci=2*pi*900.0 rad/s; w_pll=2*pi*30.0 rad/s; T_d=0.5 ms; K_p=w_ci*L_f, K_i=w_ci*R_f (IMC); Z_base=Un^2/Sn",
+              "substitution": "pulsacja pętli prądowej to dwa pi razy pasmo 900.0 Hz; pulsacja pętli synchronizacji fazowej to dwa pi razy pasmo 30.0 Hz; opóźnienie sterowania 0.5 ms; wzmocnienia regulatora prądu metodą modelu wewnętrznego z indukcyjności i rezystancji filtra; impedancja bazowa z kwadratu napięcia znamionowego przez moc znamionową",
               "unit_check": "Impedancja filtru w jednostkach względnych, skalowana impedancją bazową [Ω]; wzmocnienia regulatorów bezwymiarowe."
             },
             {
@@ -3364,7 +3372,7 @@
                         "wartosc": 921.431
                       },
                       "wersja_profilu": null,
-                      "zakres_stosowalnosci_pl": "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f"
+                      "zakres_stosowalnosci_pl": "napięcie dotykowe dopuszczalne wg IEEE 80 dla człowieka o masie 70 kg: z rezystywności i współczynnika warstwy powierzchniowej oraz czasu rażenia"
                     },
                     "margines": {
                       "definicja_latex": "m = x_{\\lim} - x",
@@ -3621,7 +3629,7 @@
                         "wartosc": 3019.629
                       },
                       "wersja_profilu": null,
-                      "zakres_stosowalnosci_pl": "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f"
+                      "zakres_stosowalnosci_pl": "napięcie krokowe dopuszczalne wg IEEE 80 dla człowieka o masie 70 kg: z rezystywności i współczynnika warstwy powierzchniowej oraz czasu rażenia"
                     },
                     "margines": {
                       "definicja_latex": "m = x_{\\lim} - x",
@@ -4536,7 +4544,7 @@
                         "wartosc": 17.5
                       },
                       "wersja_profilu": null,
-                      "zakres_stosowalnosci_pl": "U_TOV = k·U_m/√3"
+                      "zakres_stosowalnosci_pl": "przepięcie dorywcze: współczynnik doziemienia razy napięcie najwyższe urządzenia przez pierwiastek z trzech"
                     },
                     "margines": {
                       "definicja_latex": "m = x - x_{\\lim}",
@@ -7152,10 +7160,10 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "9a5f905dea155ffa8eb7ebb0dbc8a34cc6a18563ae1f9d912bf903a120d49f56",
-        "proof_id": "proof:v126:neutral_earthing_design:938af6d7dea03b31",
+        "proof_hash": "6333979246f76227b1ea961c6b93269690b33be8caff6cb081f68340276a773b",
+        "proof_id": "proof:v126:neutral_earthing_design:478f36daa6ea700e",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
-        "source_result_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a",
+        "source_result_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62",
         "steps": [
           {
             "data": {
@@ -7196,7 +7204,7 @@
             "result_pl": "Prąd pojemnościowy doziemienia sieci: 2,7797 A",
             "substitution": "C0=0.000106989469/314.1593; Ic=√3·314.1593·3.40558e-07·15000.0",
             "substitution_latex": "C_0 = \\dfrac{0,000107\\ \\mathrm{S}}{314,1593\\ \\mathrm{rad/s}}\\text{,}\\quad I_C = \\sqrt{3}\\cdot 314,1593\\cdot C_0 \\cdot 15\\ \\mathrm{kV}",
-            "unit_check": "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l."
+            "unit_check": "siemens przez radian na sekundę daje farad; radian na sekundę razy farad razy wolt daje amper. Napięcie fazowe to przewodowe przez pierwiastek z trzech, więc potrojony iloczyn pulsacji, pojemności zerowej i napięcia fazowego równa się pierwiastkowi z trzech razy iloczyn pulsacji, pojemności zerowej i napięcia przewodowego."
           },
           {
             "data": {
@@ -7258,7 +7266,7 @@
       "koperta": {
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
-        "deterministic_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a",
+        "deterministic_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design",
@@ -7271,19 +7279,19 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV2",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "bfa38d535000d1820f9506f1d8ab876cabe11e43e5230870b9d2c39466d8eea1",
-        "report_id": "report:v126:neutral_earthing_design:938af6d7dea03b31",
+        "report_hash": "4488e3cfdac52d3231ecdfa569b245e71c50bd60530ce032081ff62e924a4331",
+        "report_id": "report:v126:neutral_earthing_design:478f36daa6ea700e",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "sections": [
           {
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:neutral_earthing_design:938af6d7dea03b31"
+                "value": "proof:v126:neutral_earthing_design:478f36daa6ea700e"
               },
               {
                 "label": "proof_hash",
-                "value": "9a5f905dea155ffa8eb7ebb0dbc8a34cc6a18563ae1f9d912bf903a120d49f56"
+                "value": "6333979246f76227b1ea961c6b93269690b33be8caff6cb081f68340276a773b"
               },
               {
                 "label": "trace_step_count",
@@ -7297,7 +7305,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a"
+                "value": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62"
               },
               {
                 "label": "solver_version",
@@ -7312,12 +7320,12 @@
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "9a5f905dea155ffa8eb7ebb0dbc8a34cc6a18563ae1f9d912bf903a120d49f56",
-        "source_result_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a"
+        "source_proof_hash": "6333979246f76227b1ea961c6b93269690b33be8caff6cb081f68340276a773b",
+        "source_result_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62"
       },
       "slad": {
         "analysis_type": "neutral_earthing_design",
-        "deterministic_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a",
+        "deterministic_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "steps": [
           {
@@ -7363,7 +7371,7 @@
             "step": 2,
             "substitution": "C0=0.000106989469/314.1593; Ic=√3·314.1593·3.40558e-07·15000.0",
             "substitution_latex": "C_0 = \\dfrac{0,000107\\ \\mathrm{S}}{314,1593\\ \\mathrm{rad/s}}\\text{,}\\quad I_C = \\sqrt{3}\\cdot 314,1593\\cdot C_0 \\cdot 15\\ \\mathrm{kV}",
-            "unit_check": "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l."
+            "unit_check": "siemens przez radian na sekundę daje farad; radian na sekundę razy farad razy wolt daje amper. Napięcie fazowe to przewodowe przez pierwiastek z trzech, więc potrojony iloczyn pulsacji, pojemności zerowej i napięcia fazowego równa się pierwiastkowi z trzech razy iloczyn pulsacji, pojemności zerowej i napięcia przewodowego."
           },
           {
             "data": {
@@ -7430,12 +7438,12 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:neutral_earthing_design:938af6d7dea03b31",
-        "report_ref": "report:v126:neutral_earthing_design:938af6d7dea03b31",
+        "proof_ref": "proof:v126:neutral_earthing_design:478f36daa6ea700e",
+        "report_ref": "report:v126:neutral_earthing_design:478f36daa6ea700e",
         "result": {
           "analysis_type": "neutral_earthing_design",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "938af6d7dea03b31706f3ecbb58f1b7d43df5d2033c7ead8c3bcf39ce4d7e70a",
+          "deterministic_hash": "478f36daa6ea700ebb993cbd27f4028aaebbddd4abac01a487e3898f35c41f62",
           "input_hash": "3137ffb603700dda6852031f88d0bcc8ea9b7b5eb08c714c47e16858e1d08a9c",
           "result": {
             "active_component_a": 2.5303,
@@ -7546,7 +7554,7 @@
                 "dowod": {
                   "domena_pl": null,
                   "metoda": "OBLICZENIE",
-                  "odniesienie": "bieg analizy specjalistycznej (odcisk 938af6d7dea03b31)",
+                  "odniesienie": "bieg analizy specjalistycznej (odcisk 478f36daa6ea700e)",
                   "poziom": "UNVALIDATED_MODEL",
                   "rodzaj_twierdzenia": "STATIC_CALCULATION",
                   "status_danych": {
@@ -7828,7 +7836,7 @@
               "result_pl": "Prąd pojemnościowy doziemienia sieci: 2,7797 A",
               "step": 2,
               "substitution": "C0=0.000106989469/314.1593; Ic=√3·314.1593·3.40558e-07·15000.0",
-              "unit_check": "S/(rad/s)=F; (rad/s)·F·V=A. U_f=U_l/√3 ⇒ 3ωC0U_f=√3ωC0U_l."
+              "unit_check": "siemens przez radian na sekundę daje farad; radian na sekundę razy farad razy wolt daje amper. Napięcie fazowe to przewodowe przez pierwiastek z trzech, więc potrojony iloczyn pulsacji, pojemności zerowej i napięcia fazowego równa się pierwiastkowi z trzech razy iloczyn pulsacji, pojemności zerowej i napięcia przewodowego."
             },
             {
               "data": {

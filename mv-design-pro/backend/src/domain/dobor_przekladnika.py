@@ -106,6 +106,10 @@ class Kryterium:
     #: Wartosc WYMAGANA (z toru) i DOSTEPNA (z przekladnika) — jawny rachunek.
     wymagane: str | None = None
     dostepne: str | None = None
+    #: Zapis LaTeX wartości wymaganej i dostępnej — ADDYTYWNY, tylko gdy wartość jest
+    #: wzorem (`ALF_{eff} \geq 20`); pole prozy obok niesie te same liczby słowami.
+    wymagane_latex: str | None = None
+    dostepne_latex: str | None = None
     komentarz_pl: str | None = None
     #: Kody gotowosci jadra (karta W3-B) — ADDYTYWNE, puste dla kryteriow bez
     #: wlasnego solvera. Zrodlo: `CtBurdenResult.readiness_codes`.
@@ -116,7 +120,7 @@ class Kryterium:
     slad: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "kod": self.kod,
             "nazwa_pl": self.nazwa_pl,
             "podstawa_pl": self.podstawa_pl,
@@ -127,6 +131,11 @@ class Kryterium:
             "kody_gotowosci": list(self.kody_gotowosci),
             "slad": list(self.slad),
         }
+        if self.wymagane_latex is not None:
+            wynik["wymagane_latex"] = self.wymagane_latex
+        if self.dostepne_latex is not None:
+            wynik["dostepne_latex"] = self.dostepne_latex
+        return wynik
 
 
 @dataclass(frozen=True)
@@ -355,12 +364,20 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
     else:
         werdykt_nasycenia = "brak_danych"
     if wynik_nasycenia.alf_efektywny is not None:
-        dostepne_nasycenia = (
-            f"ALF_eff {wynik_nasycenia.alf_efektywny:.1f} ({wynik_nasycenia.wariant_alf}; "
-            f"S2obl {wynik_nasycenia.moc_obliczeniowa_va:.1f} VA / Sn {obciazalnosc:.1f} VA)"
+        dostepne_nasycenia: str | None = (
+            "efektywny współczynnik graniczny dokładności "
+            f"{wynik_nasycenia.alf_efektywny:.1f} (wariant {wynik_nasycenia.wariant_alf}; "
+            f"obciążenie obwodu wtórnego {wynik_nasycenia.moc_obliczeniowa_va:.1f} VA, "
+            f"moc znamionowa {obciazalnosc:.1f} VA)"
+        )
+        dostepne_nasycenia_latex: str | None = (
+            rf"ALF_{{eff}} = {wynik_nasycenia.alf_efektywny:.1f};\ "
+            rf"S_{{2,obl}} = {wynik_nasycenia.moc_obliczeniowa_va:.1f}\ \mathrm{{VA}};\ "
+            rf"S_{{n}} = {obciazalnosc:.1f}\ \mathrm{{VA}}"
         )
     else:
         dostepne_nasycenia = None
+        dostepne_nasycenia_latex = None
     # Komentarz PL: gdy jadro zglosilo kody gotowosci (brak danej ALBO wariant
     # uproszczony), ich kanoniczna tresc jest KONKRETNA (nazywa BRAKUJACA dana) —
     # ma pierwszenstwo przed ogolnym zalozeniem formuly. `assumptions` jadra
@@ -378,8 +395,17 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
             nazwa_pl="Nasycenie rdzenia (bilans mocy wtórnej)",
             podstawa_pl=wynik_nasycenia.formula_ref,
             werdykt=werdykt_nasycenia,
-            wymagane=(f"ALF_eff ≥ {alf_wymagany:.1f}" if alf_wymagany is not None else None),
+            wymagane=(
+                "efektywny współczynnik graniczny dokładności nie mniejszy niż "
+                f"{alf_wymagany:.1f}"
+                if alf_wymagany is not None
+                else None
+            ),
             dostepne=dostepne_nasycenia,
+            wymagane_latex=(
+                rf"ALF_{{eff}} \geq {alf_wymagany:.1f}" if alf_wymagany is not None else None
+            ),
+            dostepne_latex=dostepne_nasycenia_latex,
             komentarz_pl=komentarz_nasycenia,
             kody_gotowosci=wynik_nasycenia.readiness_codes,
             slad=wynik_nasycenia.white_box_trace,

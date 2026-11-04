@@ -1643,3 +1643,46 @@ negatywne asercje „nakładka wyłączona" przechodziły pusto. Przepisane na `
 na własnych portach (18551/15551) na `85865f69e`: doziemienie, czas wyłączenia, domena nN, dowody,
 zwarcia F2, kreatory w trybie eksperckim, pasma rozpływu i jakość — 67 passed, kod 0; 113 zrzutów
 w `frontend/test-results/zrzuty-dokumentacji/` (bez werdyktu wizualnego, B-02).
+
+**Punkt 4, wzór bez słów (decyzja architekta 2026-11-04).** Decyzja: addytywne, opcjonalne pole
+LaTeX obok pola prozy (konwencja `*_latex`, `exclude_none` — pole tylko, gdy jest wzór), proza
+słowami, komórka eksportu tekstowego — słowa i symbol w zapisie LaTeX. Strażnik
+`backend_proza_symboli_guard.py` liczy drugą część klasy (`jest_wzorem_bez_slow`: symbol, znak
+wzoru, spacja albo znak działania, brak słowa), symbol z kwadratem Unicode (`I²t`, `k²S²`, `β²`;
+jednostki `A²`, `mm²` odpadają) i regułę 10 (wartość zmiennej idącej do pola `*_latex` — argument,
+klucz słownika, przypisanie `krok["substitution_latex"] = …`, element krotki zwracanej). Pomiar:
+44 teksty przed decyzją, po rozszerzeniu detektora 35 + 8 (kwadrat Unicode), pin `{}` — każdy plik
+zero; samotest 86 testów (iloczyn: wzór bez słów × proza z symbolem rozłącznie, kwadrat ×
+jednostka, reguła 10 cztery drogi przepływu × para „ta sama wartość poza polem LaTeX liczona” ×
+inna funkcja, iniekcja w `main`).
+
+Nowe pola LaTeX (addytywne) i ich konsumenci: `formula_latex` pięciu kontroli wyposażenia
+(starzenie kabla, bilans CT i VT, straty transformatora — `api/equipment_checks.py`, ekrany
+`SekcjaKartyKatalogu`/`SekcjaBilansuCtVt` renderują `MathInline`, opis wzoru słowami pod nim),
+wytrzymałości cieplnej przewodu, podglądu kompensatora (`api/grid_source_preview.py`) i słownika
+CT oceny nadprądowej; `warunek_latex` kryteriów i `wzor_latex` zaleceń wytrzymałości cieplnej
+(`PanelDowoduCieplnego` — `ZapisWarunku`: wzór KaTeX, proza w `title`); `wymagane_latex`/
+`dostepne_latex` kryterium nasycenia przekładnika (`DoborPrzekladnikowSekcja` — `WartoscRachunku`);
+`substitution_latex`/`result_latex` kroków SSCI i migotania, `computed_from_latex` wartości
+wyliczonych nastaw, `requirement_latex` nastaw, `method_latex` kroków SWZ (MCB), pętli zwarciowej
+TN i napięcia dotykowego IT, `substitution_latex` kroków składowej zerowej transformatora.
+Słowa bez pola LaTeX (wzór już w bliźniaku albo miejsce bez KaTeX-a): podstawienia doziemienia
+(bliźniak `substitution_latex` istniał), etykieta znacznika TCC (SVG), `display_pl` nastaw,
+odstępstwa niezmienników katalogu, opis klasy tolerancji nN (także etykiety `<option>` frontu),
+komunikat wytrzymałości aparatury, rekordy werdyktu (`opis_pl`, `zakres_stosowalnosci_pl` —
+kontrakt werdyktu bez pola LaTeX, bez zmiany kontraktu). Eksport raportu: wielkości zwarcia
+„słowa $symbol$ = liczba jednostka”, trzy na linię (linia PDF 155 znaków).
+Rdzenie B-01 — wyłącznie teksty (AST z normalizacją stałych równy `01c5def16` dla wszystkich
+rdzeni zmienionych od bazy; odcisk `solver_hashes.json` `--init`): `short_circuit_iec60909.py`
+(podstawienie iniekcji jednostkowej słowami — bliźniak `substitution_latex` istniał),
+`ncrfg_ptpiree/engine.py` (punkt krytyczny deklaracji mocy), `v126_academic.py` (podstawienie
+nastaw regulatora przekształtnika i sprawdzenie jednostek prądu pojemnościowego).
+Testy: `tests/ci/test_wzor_w_polu_latex_obok_prozy.py` (miejsce × gałąź wyniku × para pól na
+rzeczywistym wyjściu), asercje pól w testach pętli TN/IT, SWZ, składowej zerowej, doziemienia,
+doboru CT (API), vitest kryteriów, doboru przekładników, wytrzymałości cieplnej. Iniekcje:
+front 6 czerwonych (wzór jako tekst w czterech komponentach), backend 4 czerwone (stary odsyłacz
+CT, brak `method_latex`).
+Zostaje zmierzone (sąsiednie klasy bez decyzji): algebra jednostek bez symbolu wielkości
+(`kV / Ω = kA`, sprawdzenia jednostek `equation_registry`/`unit_verifier`, ok. 200 tekstów) oraz
+zapis krotności `{x}×In` w starszej warstwie `ui/**` (ok. 138 linii: `TypeLibraryBrowser`,
+`TypePicker`, `settings-model`, `formatProtection`), którego `ui_math_guard` nie liczy.

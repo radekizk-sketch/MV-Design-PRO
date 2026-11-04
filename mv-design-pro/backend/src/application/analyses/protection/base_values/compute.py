@@ -7,11 +7,13 @@ REGUŁY GENEROWANIA (zgodne z kontraktem P16b):
 
 1. basis='IN' i znamy in_a:
    computed = multiplier × in_a [A]
-   computed_from = "multiplier × In (X.X × Y.Y A)"
+   computed_from = "3 razy prąd znamionowy (503 A)" (słowami),
+   computed_from_latex = "3 \\cdot I_{n} = 3 \\cdot 503\\ \\mathrm{A}" (wzór dla MathRenderer)
 
 2. basis='UN' i znamy un_kv:
    computed = multiplier × un_kv [kV] lub un_v [V]
-   computed_from = "multiplier × Un (X.X × Y.Y kV)"
+   computed_from = "0,8 razy napięcie znamionowe (15 kV)" (słowami),
+   computed_from_latex = zapis LaTeX iloczynu (wzór dla MathRenderer)
 
 3. basis='ABS':
    computed = abs_value [Hz/Hz/s/etc]
@@ -74,7 +76,15 @@ def compute_from_setpoint(
             return ProtectionComputedValue(
                 value=value,
                 unit="Hz",
-                computed_from=f"{_format_number(setpoint.multiplier)} × fn ({fn} Hz) = {_format_number(value)} Hz",
+                computed_from=(
+                    f"{_format_number(setpoint.multiplier)} razy częstotliwość znamionowa "
+                    f"({fn} Hz) daje {_format_number(value)} Hz"
+                ),
+                computed_from_latex=(
+                    rf"{_format_number(setpoint.multiplier)} \cdot f_{{n}} = "
+                    rf"{_format_number(setpoint.multiplier)} \cdot {fn}\ \mathrm{{Hz}} = "
+                    rf"{_format_number(value)}\ \mathrm{{Hz}}"
+                ),
             )
         return None
 
@@ -128,7 +138,14 @@ def _compute_in_multiplier(
     return ProtectionComputedValue(
         value=value,
         unit="A",
-        computed_from=f"{_format_number(setpoint.multiplier)} × In ({_format_number(in_a)} A)",
+        computed_from=(
+            f"{_format_number(setpoint.multiplier)} razy prąd znamionowy "
+            f"({_format_number(in_a)} A)"
+        ),
+        computed_from_latex=(
+            rf"{_format_number(setpoint.multiplier)} \cdot I_{{n}} = "
+            rf"{_format_number(setpoint.multiplier)} \cdot {_format_number(in_a)}\ \mathrm{{A}}"
+        ),
     )
 
 
@@ -151,7 +168,14 @@ def _compute_un_multiplier(
     return ProtectionComputedValue(
         value=value,
         unit="kV",
-        computed_from=f"{_format_number(setpoint.multiplier)} × Un ({_format_number(un_kv)} kV)",
+        computed_from=(
+            f"{_format_number(setpoint.multiplier)} razy napięcie znamionowe "
+            f"({_format_number(un_kv)} kV)"
+        ),
+        computed_from_latex=(
+            rf"{_format_number(setpoint.multiplier)} \cdot U_{{n}} = "
+            rf"{_format_number(setpoint.multiplier)} \cdot {_format_number(un_kv)}\ \mathrm{{kV}}"
+        ),
     )
 
 

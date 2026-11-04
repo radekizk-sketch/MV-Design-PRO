@@ -678,7 +678,12 @@ def ocen_swz(
     trace.append(
         {
             "step": "ia_gwarantowane_mcb",
-            "method": "Ia = pasmo_magnetyczne_max × In (IEC 60898-1, G-D4)",
+            "method": (
+                "prąd zapewniający samoczynne wyłączenie równy górnej granicy pasma "
+                "wyzwalania elektromagnetycznego razy prąd znamionowy wyłącznika "
+                "(IEC 60898-1, G-D4)"
+            ),
+            "method_latex": r"I_{a} = k_{m,\max} \cdot I_{n}",
             "in_a": aparat.in_a,
             "klasa_mcb": aparat.klasa_mcb,
             "ia_a": ia,

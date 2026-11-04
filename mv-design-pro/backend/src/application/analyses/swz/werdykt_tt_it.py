@@ -160,7 +160,7 @@ def _dowod_deklaracji_rcd(
     if rcd.verification_status != "ZWERYFIKOWANY" and t_a is not None:
         przyjete = (
             DanaPrzyjeta(
-                nazwa_pl=f"czas wyłączenia RCD „{rcd.nazwa}” przy prądzie {kolumna}",
+                nazwa_pl=f"czas wyłączenia RCD „{rcd.nazwa}” przy {kolumna}",
                 wartosc=_w(t_a, _J_S),
                 powod_pl=(
                     "rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 "
@@ -327,6 +327,11 @@ def _kryterium_prad_rcd(
     )
 
 
+_KOLUMNA_5_PL = "pięciokrotnym znamionowym prądzie różnicowym"
+_KOLUMNA_2_PL = "dwukrotnym znamionowym prądzie różnicowym"
+_KOLUMNA_1_PL = "znamionowym prądzie różnicowym"
+
+
 def czas_wylaczenia_rcd_dla_pradu(rcd: RcdNaTrasie, i_d_a: float) -> tuple[float | None, str]:
     """Kolumna czasu wyłączenia rekordu RCD właściwa dla prądu doziemnego ``i_d_a``.
 
@@ -339,15 +344,17 @@ def czas_wylaczenia_rcd_dla_pradu(rcd: RcdNaTrasie, i_d_a: float) -> tuple[float
     """
     krotnosc = i_d_a / rcd.i_delta_n_a
     kandydaci: list[tuple[float, float | None, str]] = [
-        (5.0, rcd.t_a_5idn_s, "5·I_Δn"),
-        (2.0, rcd.t_a_2idn_s, "2·I_Δn"),
-        (1.0, rcd.t_a_s, "I_Δn"),
+        # Kolumna słowami — idzie do zdań werdyktu („przy pięciokrotnym znamionowym prądzie
+        # różnicowym").
+        (5.0, rcd.t_a_5idn_s, _KOLUMNA_5_PL),
+        (2.0, rcd.t_a_2idn_s, _KOLUMNA_2_PL),
+        (1.0, rcd.t_a_s, _KOLUMNA_1_PL),
     ]
     for prog, czas, kolumna in kandydaci:
         if krotnosc >= prog and czas is not None:
             return czas, kolumna
     if krotnosc >= 1.0:
-        return None, "I_Δn"
+        return None, _KOLUMNA_1_PL
     return None, "poniżej znamionowego prądu różnicowego zadziałania"
 
 
@@ -365,8 +372,8 @@ def _kryterium_czas_rcd(
     wynik_k = (
         WynikKryterium(
             wielkosc_pl=(
-                f"maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna {kolumna} "
-                "rekordu katalogowego)"
+                f"maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna przy {kolumna} "
+                "w rekordzie katalogowym)"
             ),
             symbol_latex="t_a",
             wartosc=_w(t_a, _J_S),
@@ -410,15 +417,16 @@ def _kryterium_czas_rcd(
         slad=_slad(
             wynik,
             "napiecie_dotykowe_rcd",
-            f"RCD „{rcd.nazwa}”: I_Δn = {format_liczba(rcd.i_delta_n_a)} A, t_a = {format_liczba(rcd.t_a_s) if rcd.t_a_s is not None else 'brak'} s",
+            (
+                f"RCD „{rcd.nazwa}”: znamionowy prąd różnicowy "
+                f"{format_liczba(rcd.i_delta_n_a)} A, czas wyłączenia "
+                + (f"{format_liczba(rcd.t_a_s)} s" if rcd.t_a_s is not None else "brak w rekordzie")
+            ),
         ),
         braki_dodatkowe=(
             ()
             if t_a is not None
-            else (
-                f"Czas wyłączenia RCD „{rcd.nazwa}” przy prądzie {kolumna} w rekordzie "
-                "katalogowym",
-            )
+            else (f"Czas wyłączenia RCD „{rcd.nazwa}” przy {kolumna} w rekordzie " "katalogowym",)
         ),
     )
 
@@ -467,7 +475,11 @@ def _kryterium_napiecie_dotykowe_tt(
         slad=_slad(
             wynik,
             "napiecie_dotykowe_rcd",
-            f"U_dotyk = {format_liczba(r_a_ohm)} Ω · {format_liczba(rcd.i_delta_n_a)} A = {format_liczba(wynik.tt_it.u_dotyk_v)} V",
+            (
+                f"napięcie dotykowe: rezystancja uziomu {format_liczba(r_a_ohm)} Ω razy "
+                f"znamionowy prąd różnicowy {format_liczba(rcd.i_delta_n_a)} A daje "
+                f"{format_liczba(wynik.tt_it.u_dotyk_v)} V"
+            ),
         ),
         braki_dodatkowe=(_BRAK_LIMITU_TT_PL,) if limit is None else (),
     )
@@ -531,7 +543,10 @@ def _kryterium_pierwsze_zwarcie_it(
         slad=_slad(
             wynik,
             "prad_pierwszego_zwarcia_it",
-            f"I_d = {format_liczba(i_d1_a)} A, C_e = {format_liczba(c_e_f * 1e6)} µF",
+            (
+                f"prąd pierwszego doziemienia {format_liczba(i_d1_a)} A z pojemności doziemnej "
+                f"sieci {format_liczba(c_e_f * 1e6)} µF"
+            ),
         ),
         braki_dodatkowe=tuple(braki),
     )

@@ -25,6 +25,22 @@ class TestOcenSwzMcbSpelnia:
         assert result.t_wymagany_s == pytest.approx(0.4)
         assert "nie mniejszy od" in result.przyczyna_pl
 
+    @pytest.mark.parametrize(("ik1_min_a", "klasa"), [(500.0, "B"), (100.0, "C")])
+    def test_krok_pradu_samoczynnego_wylaczenia_slowami_wzor_w_method_latex(
+        self, ik1_min_a: float, klasa: str
+    ) -> None:
+        """Werdykt pozytywny i negatywny: metoda słowami, wzór w `method_latex` (decyzja
+        architekta 2026-11-04)."""
+        result = ocen_swz(
+            ik1_min_a=ik1_min_a,
+            u0_v=230.0,
+            aparat=AparatZabezpieczajacy(typ="MCB", in_a=16.0, klasa_mcb=klasa),
+        )
+        krok = next(k for k in result.white_box_trace if k["step"] == "ia_gwarantowane_mcb")
+        assert krok["method"].startswith("prąd zapewniający samoczynne wyłączenie równy")
+        assert "×" not in krok["method"]
+        assert krok["method_latex"] == r"I_{a} = k_{m,\max} \cdot I_{n}"
+
 
 class TestOcenSwzMcbNieSpelnia:
     def test_long_route_low_ik1_min_does_not_trip(self) -> None:

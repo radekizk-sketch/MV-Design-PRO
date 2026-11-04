@@ -418,7 +418,8 @@ class ProtectionSettingsEngine:
                 },
                 "substitution": f"{inp.ik2_min_end_a:.1f} / {i_setting:.1f}",
                 "result": {"sensitivity_ratio": round(sensitivity, 2)},
-                "requirement": "k_cz >= 1.5",
+                "requirement": "współczynnik czułości nie mniejszy od 1,5",
+                "requirement_latex": r"k_{cz} \geq 1{,}5",
                 "passed": sensitivity >= 1.5,
             }
         )

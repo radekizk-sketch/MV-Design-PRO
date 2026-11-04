@@ -345,6 +345,9 @@ class ProtectionComputedValue:
     value: float
     unit: ProtectionComputedUnit
     computed_from: str
+    #: To samo podstawienie jako wzór dla `MathRenderer` (pole addytywne, pomijane, gdy brak);
+    #: `computed_from` niesie je słowami.
+    computed_from_latex: str | None = None
 
     def __post_init__(self) -> None:
         """Validate computed value invariants."""
@@ -353,11 +356,14 @@ class ProtectionComputedValue:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
-        return {
+        wynik: dict[str, Any] = {
             "value": self.value,
             "unit": self.unit,
             "computed_from": self.computed_from,
         }
+        if self.computed_from_latex is not None:
+            wynik["computed_from_latex"] = self.computed_from_latex
+        return wynik
 
 
 # =============================================================================

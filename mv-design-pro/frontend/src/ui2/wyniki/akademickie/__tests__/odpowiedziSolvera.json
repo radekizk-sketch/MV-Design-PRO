@@ -423,7 +423,7 @@
                 "wartosc": 838.169
               },
               "wersja_profilu": null,
-              "zakres_stosowalnosci_pl": "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f"
+              "zakres_stosowalnosci_pl": "napięcie dotykowe dopuszczalne wg IEEE 80 dla człowieka o masie 70 kg: z rezystywności i współczynnika warstwy powierzchniowej oraz czasu rażenia"
             },
             "margines": {
               "definicja_latex": "m = x_{\\lim} - x",
@@ -581,7 +581,7 @@
                 "wartosc": 2686.582
               },
               "wersja_profilu": null,
-              "zakres_stosowalnosci_pl": "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f"
+              "zakres_stosowalnosci_pl": "napięcie krokowe dopuszczalne wg IEEE 80 dla człowieka o masie 70 kg: z rezystywności i współczynnika warstwy powierzchniowej oraz czasu rażenia"
             },
             "margines": {
               "definicja_latex": "m = x_{\\lim} - x",
@@ -1175,7 +1175,7 @@
                 "wartosc": 17.5
               },
               "wersja_profilu": null,
-              "zakres_stosowalnosci_pl": "U_TOV = k·U_m/√3"
+              "zakres_stosowalnosci_pl": "przepięcie dorywcze: współczynnik doziemienia razy napięcie najwyższe urządzenia przez pierwiastek z trzech"
             },
             "margines": {
               "definicja_latex": "m = x - x_{\\lim}",
@@ -2290,7 +2290,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg analizy specjalistycznej (odcisk d42f5cc130b13f63)",
+          "odniesienie": "bieg analizy specjalistycznej (odcisk 0998453037a396d0)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {

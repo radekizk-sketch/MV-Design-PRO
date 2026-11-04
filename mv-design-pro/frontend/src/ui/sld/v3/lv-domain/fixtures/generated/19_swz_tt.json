@@ -656,7 +656,7 @@
     "scenario_id": "MAX",
     "station_ref": "stTT"
   },
-  "projection_hash": "89ab727da6caac7a69d731fddaf02c44a209800948b4fb675959dee9a5bf40e0",
+  "projection_hash": "b7e02c463c8bd07771380c16593908dd9a62eff7149ffd0c42dc59231c3b2a9c",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -783,7 +783,8 @@
                           "x_ohm": 0.0
                         }
                       ],
-                      "method": "Z_loop = Σ(R_i + jX_i)",
+                      "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                      "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                       "result": {
                         "magnitude_ohm": 27.0736402,
                         "r_total_ohm": 27.0736311,
@@ -799,6 +800,7 @@
                       "ik_max_a": 8.95657588,
                       "ik_min_a": 8.10356865,
                       "method": "prąd doziemny jako iloraz napięcia względem ziemi pomnożonego przez współczynnik napięciowy i modułu impedancji pętli (pętla doziemna TT)",
+                      "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                       "step": "compute_ik",
                       "u_nom_v": 230.940108,
                       "z_magnitude_ohm": 27.0736402
@@ -967,7 +969,8 @@
                         "x_ohm": 0.0
                       }
                     ],
-                    "method": "Z_loop = Σ(R_i + jX_i)",
+                    "method": "impedancja pętli zwarciowej jako zespolona suma impedancji składników pętli",
+                    "method_latex": "Z_{loop} = \\sum_{i} (R_{i} + jX_{i})",
                     "result": {
                       "magnitude_ohm": 27.1125266,
                       "r_total_ohm": 27.1125175,
@@ -983,6 +986,7 @@
                     "ik_max_a": 8.94372983,
                     "ik_min_a": 8.09194604,
                     "method": "prąd doziemny jako iloraz napięcia względem ziemi pomnożonego przez współczynnik napięciowy i modułu impedancji pętli (pętla doziemna TT)",
+                    "method_latex": "I_{k} = \\frac{c \\cdot U_{n}}{|Z_{loop}|}",
                     "step": "compute_ik",
                     "u_nom_v": 230.940108,
                     "z_magnitude_ohm": 27.1125266
@@ -1191,7 +1195,7 @@
                           "dane_przyjete": [
                             {
                               "jakosc": "DATASHEET",
-                              "nazwa_pl": "czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn",
+                              "nazwa_pl": "czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym",
                               "powod_pl": "rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta",
                               "wartosc": {
                                 "jednostka": "s",
@@ -1267,7 +1271,7 @@
                         "wydanie": "2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych)"
                       },
                       "powody_niepelnosci": [
-                        "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta."
+                        "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta."
                       ],
                       "przedmiot": {
                         "element_ref": "QF-01_instalacja",
@@ -1277,7 +1281,7 @@
                       "slad": [
                         {
                           "krok": "petla-tt-it:QF-01_instalacja:napiecie_dotykowe_rcd",
-                          "opis_pl": "RCD „RCD-01”: I_Δn = 0,03 A, t_a = 0,3 s",
+                          "opis_pl": "RCD „RCD-01”: znamionowy prąd różnicowy 0,03 A, czas wyłączenia 0,3 s",
                           "run_id": null,
                           "wersja_silnika": null
                         }
@@ -1298,10 +1302,10 @@
                         "zastrzezenia": [
                           "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), §411.5 (układ TT) i Tab. 41.1 (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
                           "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), Tab. 41.1 (układ TT, obwody odbiorcze) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
-                          "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                          "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
                           "Zakres ważności: Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."
                         ],
-                        "zdanie_pl": "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — kryterium spełnione. Maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna 5·I_Δn rekordu katalogowego): 0,04 s wobec wymaganych ≤ 0,2 s wg Tab. 41.1 (układ TT, obwody odbiorcze) „IEC 60364-4-41” (margines +0,16 s, punkt: prąd doziemny minimalny 8,092 A = 269,7-krotność znamionowego prądu różnicowego zadziałania, względnie +80 % wartości granicznej)."
+                        "zdanie_pl": "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — kryterium spełnione. Maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna przy pięciokrotnym znamionowym prądzie różnicowym w rekordzie katalogowym): 0,04 s wobec wymaganych ≤ 0,2 s wg Tab. 41.1 (układ TT, obwody odbiorcze) „IEC 60364-4-41” (margines +0,16 s, punkt: prąd doziemny minimalny 8,092 A = 269,7-krotność znamionowego prądu różnicowego zadziałania, względnie +80 % wartości granicznej)."
                       },
                       "wynik": {
                         "chwila_s": null,
@@ -1312,7 +1316,7 @@
                           "jednostka": "s",
                           "wartosc": 0.04
                         },
-                        "wielkosc_pl": "maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna 5·I_Δn rekordu katalogowego)"
+                        "wielkosc_pl": "maksymalny czas wyłączenia RCD przy prądzie doziemnym (kolumna przy pięciokrotnym znamionowym prądzie różnicowym w rekordzie katalogowym)"
                       },
                       "zakres_waznosci": {
                         "model_urzadzenia": null,
@@ -1384,7 +1388,7 @@
                       "slad": [
                         {
                           "krok": "petla-tt-it:QF-01_instalacja:napiecie_dotykowe_rcd",
-                          "opis_pl": "U_dotyk = 25 Ω · 0,03 A = 0,75 V",
+                          "opis_pl": "napięcie dotykowe: rezystancja uziomu 25 Ω razy znamionowy prąd różnicowy 0,03 A daje 0,75 V",
                           "run_id": null,
                           "wersja_silnika": null
                         }
@@ -1455,7 +1459,7 @@
                     "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                     "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                     "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-                    "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                    "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
                     "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
                   ],
                   "slad": [
@@ -1467,13 +1471,13 @@
                     },
                     {
                       "krok": "petla-tt-it:QF-01_instalacja:napiecie_dotykowe_rcd",
-                      "opis_pl": "RCD „RCD-01”: I_Δn = 0,03 A, t_a = 0,3 s",
+                      "opis_pl": "RCD „RCD-01”: znamionowy prąd różnicowy 0,03 A, czas wyłączenia 0,3 s",
                       "run_id": null,
                       "wersja_silnika": null
                     },
                     {
                       "krok": "petla-tt-it:QF-01_instalacja:napiecie_dotykowe_rcd",
-                      "opis_pl": "U_dotyk = 25 Ω · 0,03 A = 0,75 V",
+                      "opis_pl": "napięcie dotykowe: rezystancja uziomu 25 Ω razy znamionowy prąd różnicowy 0,03 A daje 0,75 V",
                       "run_id": null,
                       "wersja_silnika": null
                     }
@@ -1497,7 +1501,7 @@
                       "Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                       "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności).",
                       "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Podstawa „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-                      "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                      "Czas wyłączenia wyłącznika różnicowoprądowego przy prądzie doziemnym obwodu nie przekracza czasu wymaganego dla układu TT (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
                       "Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD): Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym „model niezwalidowany” (wymagany solver zwalidowany — najwyższy poziom dowodowy zdolności)."
                     ],
                     "przyczyna_pl": "Prąd zwarcia doziemnego przez uziomy instalacji i stacji (scenariusz MIN) osiąga prąd różnicowy znamionowy wyłącznika różnicowoprądowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — podstawa limitu „rekord katalogowy wyłącznika różnicowoprądowego” (katalog producenta) ma stan źródła „nieustalone”; Napięcie na uziomie instalacji odbiorczej przy prądzie różnicowym znamionowym wyłącznika nie przekracza dopuszczalnego napięcia dotykowego (Obwód nN: QF-01 → Zaciski instalacji: Odbiór z RCD) — kryterium nie ma limitu z podstawą",
@@ -1507,7 +1511,7 @@
                       "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
                       "Zakres ważności: Pętla doziemna TT: trasa + transformator + sieć zasilająca + uziom roboczy sieci + uziom instalacji odbiorczej — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
                       "Podstawa „IEC 60364-4-41”, wydanie 2005 / 2017 (progi czasowe potwierdzone w dwóch źródłach wtórnych), Tab. 41.1 (układ TT, obwody odbiorcze) (norma): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
-                      "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy prądzie 5·I_Δn = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
+                      "Dana przyjęta bez walidacji: czas wyłączenia RCD „RCD-01” przy pięciokrotnym znamionowym prądzie różnicowym = 0,04 s, jakość danej: karta techniczna — rekord katalogowy rodziny generycznej o statusie referencyjnym (Tabela 1 IEC 61008-1 z dwóch źródeł wtórnych), nie zweryfikowana karta producenta.",
                       "Zakres ważności: Czas wyłączenia RCD z rekordu katalogowego wobec tabeli czasów układu TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
                       "Zakres ważności: Napięcie dotykowe z rezystancji uziomu instalacji i prądu różnicowego RCD — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie.",
                       "Zakres ważności: Ochrona przeciwporażeniowa obwodu nN w układzie TT — wynik nie obejmuje: zwarcia w instalacji poza modelem sieci (za zaciskami instalacji odbiorczej); wpływ innych transformatorów stacji przy sprzęgle zamkniętym (pętla od transformatora własnej sekcji); RCD inny niż najbliższy punktowi na trasie."

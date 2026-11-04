@@ -683,7 +683,9 @@ def _liczba_c(wartosc: float) -> str:
 def opis_c_klasy_nn_pl(tolerancja: TolerancjaNapieciaNn) -> str:
     """c_max/c_min klasy tolerancji jednym zwrotem — liczby z JEDYNEJ tabeli (``voltage_factor``)."""
     c_max, c_min = c_wiersza_nn(tolerancja)
-    return f"c_max {_liczba_c(c_max)}, c_min {_liczba_c(c_min)}"
+    return (
+        f"współczynnik napięciowy maksymalny {_liczba_c(c_max)}, " f"minimalny {_liczba_c(c_min)}"
+    )
 
 
 def _procent_pl(wartosc: float) -> str:

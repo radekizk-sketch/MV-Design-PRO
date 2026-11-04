@@ -22,13 +22,19 @@ def context_to_dict(context: SsciStabilityContext | None) -> dict[str, Any] | No
 
 
 def white_box_to_dict(step: WhiteBoxStep) -> dict[str, Any]:
-    return {
+    wynik: dict[str, Any] = {
         "symbol": step.symbol,
         "formula_latex": step.formula_latex,
         "substitution_pl": step.substitution_pl,
         "result_pl": step.result_pl,
         "unit_check_pl": step.unit_check_pl,
     }
+    # Pola wzoru podstawienia i wyniku addytywne (exclude_none).
+    if step.substitution_latex is not None:
+        wynik["substitution_latex"] = step.substitution_latex
+    if step.result_latex is not None:
+        wynik["result_latex"] = step.result_latex
+    return wynik
 
 
 def crossover_to_dict(point: CrossoverPoint | None) -> dict[str, Any] | None:

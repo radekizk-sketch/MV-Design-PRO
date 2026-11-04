@@ -19,7 +19,7 @@
     {
       "norma": "PN-HD 60364-4-43",
       "punkt": "§ 434.5.2",
-      "tresc_pl": "Warunek adiabatyczny doboru przekroju ze względu na zwarcie: S ≥ √(I²·t) / k."
+      "tresc_pl": "Warunek adiabatyczny doboru przekroju ze względu na zwarcie: przekrój nie mniejszy od pierwiastka z całki Joule'a (kwadrat prądu razy czas) podzielonego przez współczynnik k."
     },
     {
       "norma": "IEC 60949",

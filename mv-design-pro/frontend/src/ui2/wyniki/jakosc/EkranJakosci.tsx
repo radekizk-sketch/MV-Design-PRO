@@ -18,7 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './jakosc.css';
-import { MathBlock } from '../../../ui/proof/MathRenderer';
+import { MathBlock, MathInline } from '../../../ui/proof/MathRenderer';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import {
   EkranAnalizy,
@@ -592,6 +592,15 @@ function SzczegolWalidacji({
 // ---------------------------------------------------------------------------
 
 /** Ślad WHITE BOX (Wzór → Podstawienie → Wynik) — wzorzec `SladAnalizy`, inline. */
+/**
+ * Podstawienie albo wynik kroku śladu: wzór z pola `*_latex` przez KaTeX, a bez niego proza
+ * backendu słowami (kontrakt kroku śladu — proza bez znaczników LaTeX).
+ */
+function ZapisKroku({ proza, latex }: { proza: string; latex?: string }) {
+  if (latex) return <MathInline latex={latex} />;
+  return <code className="mvd-num">{proza}</code>;
+}
+
 function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
   if (kroki.length === 0) return null;
   return (
@@ -603,11 +612,11 @@ function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <code className="mvd-num">{krok.substitution_pl}</code>
+              <ZapisKroku proza={krok.substitution_pl} latex={krok.substitution_latex} />
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <code className="mvd-num">{krok.result_pl}</code>
+          <ZapisKroku proza={krok.result_pl} latex={krok.result_latex} />
         </li>
       ))}
     </ol>
@@ -842,11 +851,11 @@ function SladArcFlash({ kroki }: { kroki: readonly KrokArcFlash[] }) {
           {krok.substitution_pl && (
             <>
               <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
-              <code className="mvd-num">{krok.substitution_pl}</code>
+              <ZapisKroku proza={krok.substitution_pl} latex={krok.substitution_latex} />
             </>
           )}
           <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
-          <code className="mvd-num">{krok.result_pl}</code>
+          <ZapisKroku proza={krok.result_pl} latex={krok.result_latex} />
         </li>
       ))}
     </ol>

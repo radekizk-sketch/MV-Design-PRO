@@ -79,7 +79,7 @@ const PRZEGLAD_Z_ODSTEPSTWEM: PrzegladWiarygodnosci = {
           kod: 'KAT-W-002',
           regula: 'Straty jałowe mniejsze od strat obciążeniowych transformatora',
           pozycja_id: 'tr-podejrzany-630',
-          opis_wartosci: 'P0 = 30.0 kW, Pk = 20.0 kW',
+          opis_wartosci: 'straty jałowe 30.0 kW, straty obciążeniowe 20.0 kW',
         },
       ],
     },
@@ -131,7 +131,7 @@ describe('PozycjeDoPrzegladu', () => {
       'pozycje-do-przegladu-odstepstwo-tr-podejrzany-630',
     );
     expect(odstepstwo.textContent).toContain('KAT-W-002');
-    expect(odstepstwo.textContent).toContain('P0 = 30.0 kW, Pk = 20.0 kW');
+    expect(odstepstwo.textContent).toContain('straty jałowe 30.0 kW, straty obciążeniowe 20.0 kW');
   });
 
   it('uzasadnienie reguly pochodzi z backendu, nie z kopii we froncie', async () => {

@@ -361,7 +361,11 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
             nazwa=NAZWA_KRYTERIUM_II,
             status=KryteriumStatus.SPELNIA if spelnia else KryteriumStatus.NIE_SPELNIA,
             uzasadnienie_pl=uzasadnienie,
-            wartosci={"i2_a": i2, "limit_a": limit, "zrodlo": "IEC 60898-1 (1,45×In)"},
+            wartosci={
+                "i2_a": i2,
+                "limit_a": limit,
+                "zrodlo": "IEC 60898-1 (1,45 prądu znamionowego)",
+            },
         )
     if kandydat.kind == KIND_FUSE_SWITCH:
         i2 = FUSE_GG_IF_MULTIPLIER * kandydat.in_a
@@ -380,7 +384,7 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
             wartosci={
                 "i2_a": i2,
                 "limit_a": limit,
-                "zrodlo": "IEC 60269-1 (If=1,6×In)",
+                "zrodlo": "IEC 60269-1 (prąd zadziałania 1,6 prądu znamionowego)",
             },
         )
     # KIND_MCCB — karta D1: I2 = MCCB_I2_MULTIPLIER×Ir (IEC 60947-2), gdy

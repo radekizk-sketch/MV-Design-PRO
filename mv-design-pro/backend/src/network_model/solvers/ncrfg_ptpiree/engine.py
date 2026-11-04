@@ -1252,7 +1252,7 @@ class NcRfgPtpireeSolver:
             symbol_latex=r"P_{\min}",
             wartosc=_logiczna(spojna),
             punkt_krytyczny_pl=(
-                f"P_min = {format_liczba(modul.p_min_kw)} kW, P_max = "
+                f"moc minimalna {format_liczba(modul.p_min_kw)} kW, moc maksymalna "
                 f"{format_liczba(modul.p_max_kw)} kW"
             ),
             metoda="DEKLARACJA",

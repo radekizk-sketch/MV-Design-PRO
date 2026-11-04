@@ -679,7 +679,7 @@ EQ_SC3F_020 = EquationDefinition(
 
 EQ_SC3F_015 = EquationDefinition(
     equation_id="EQ_SC3F_015",
-    name_pl="Energia cieplna zwarcia I²t",
+    name_pl="Energia cieplna zwarcia (całka Joule'a)",
     standard_ref="IEC 60909-0:2016 § 12 (prąd zastępczy cieplny)",
     latex=r"I^2t = I_{th}^2 \cdot t_k",
     symbols=(
@@ -1852,7 +1852,10 @@ EQ_LVCV_008 = EquationDefinition(
 EQ_LVCV_009 = EquationDefinition(
     equation_id="EQ_LVCV_009",
     name_pl="Napięcie dotykowe przy uziomie instalacji (TT/IT) wobec limitu normy",
-    standard_ref="IEC 60364-4-41 §411.5.3 (TT: R_A·I_Δn) / §411.6.2 (IT: R_A·I_d)",
+    standard_ref=(
+        "IEC 60364-4-41 §411.5.3 (TT: rezystancja uziomu razy znamionowy prąd różnicowy) / "
+        "§411.6.2 (IT: rezystancja uziomu razy prąd pierwszego doziemienia)"
+    ),
     latex=r"U_{dotyk} = R_A \cdot I_{\Delta n} \le U_L",
     symbols=(
         SymbolDefinition(

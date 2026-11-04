@@ -328,7 +328,7 @@ class EquipmentProofGenerator:
                     "cieplnego zastępczego razy czas zwarcia)."
                 ),
                 notes=(
-                    f"t_th_s={device_time} s, tk_s={required_time} s",
+                    f"Czas prądu krótkotrwałego aparatu {device_time} s, czas zwarcia {required_time} s",
                     f"Całka Joule'a wymagana {required_i2t:.4f} kA²s",
                     f"Całka Joule'a aparatu {device_i2t:.4f} kA²s",
                 ),
@@ -344,7 +344,7 @@ class EquipmentProofGenerator:
             message_pl=_compare_message(
                 "Prąd krótkotrwały wytrzymywany", "kA", device_val, required_val
             ),
-            notes=(f"t_th_s={device_time} s",),
+            notes=(f"Czas prądu krótkotrwałego aparatu {device_time} s",),
         )
 
     @classmethod
@@ -671,7 +671,7 @@ class EquipmentProofGenerator:
             equation = _equation(
                 "EQ_P12_006b",
                 r"I_{th,req}^2 \cdot t_k \le I_{th}^2 \cdot t_{th}",
-                "Sprawdzenie wytrzymałości cieplnej (porównanie energii I²t)",
+                "Sprawdzenie wytrzymałości cieplnej (porównanie energii cieplnej zwarcia)",
                 "PN-EN 60909",
                 (
                     _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),

@@ -282,14 +282,31 @@ def test_export_run_report_docx_includes_full_iec60909_balance() -> None:
 
     document = _Document(_io.BytesIO(response.body))
     text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+    # Komórka raportu tekstowego: nazwa słowami i symbol w zapisie LaTeX (format wzoru
+    # raportu, jak linie „Wzór:" wywodu), po trzy wielkości w linii (szerokość PDF).
     assert (
-        "Ik''=4.5 kA | ip=9.2 kA | Ith=4.7 kA | Ib=4.5 kA | iDC(tb)=3.2 kA | Ik=4.5 kA | "
-        "Sk''=125 MVA" in text
+        "prąd zwarciowy początkowy $I''_{k}$ = 4.5 kA | prąd udarowy $i_{p}$ = 9.2 kA | "
+        "prąd zastępczy cieplny $I_{th}$ = 4.7 kA" in text
     )
     assert (
-        "Bilans IEC 60909: Rk=0.5 Ohm | Xk=1.5 Ohm | |Zk|=1.58114 Ohm | X/R=3 | kappa=1.4" in text
+        "prąd wyłączeniowy symetryczny $I_{b}$ = 4.5 kA | składowa nieokresowa "
+        "$i_{DC}(t_{b})$ = 3.2 kA | prąd zwarciowy ustalony $I_{k}$ = 4.5 kA" in text
     )
-    assert "c=1.1 | Un=15 kV | tk=1 s | tb=0.1 s | I2t=22.09 kA2s" in text
+    assert "moc zwarciowa początkowa $S''_{k}$ = 125 MVA" in text
+    assert "Bilans IEC 60909:" in text
+    assert (
+        "rezystancja zwarciowa $R_{k}$ = 0.5 Ω | reaktancja zwarciowa $X_{k}$ = 1.5 Ω | "
+        "moduł impedancji zwarciowej $|Z_{k}|$ = 1.58114 Ω" in text
+    )
+    assert (
+        "stosunek reaktancji do rezystancji $X/R$ = 3 | współczynnik udaru $\\kappa$ = 1.4 | "
+        "współczynnik napięciowy $c$ = 1.1" in text
+    )
+    assert (
+        "napięcie znamionowe $U_{n}$ = 15 kV | czas zwarcia $t_{k}$ = 1 s | "
+        "czas wyłączenia $t_{b}$ = 0.1 s" in text
+    )
+    assert "całka Joule'a $I^{2}t$ = 22.09 kA²s" in text
 
 
 def test_export_run_report_pdf_generates_for_short_circuit_run() -> None:

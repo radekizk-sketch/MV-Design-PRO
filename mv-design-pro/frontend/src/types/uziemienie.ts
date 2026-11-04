@@ -67,8 +67,8 @@ export const TOLERANCJE_NAPIECIA_NN: readonly TolerancjaNapieciaNn[] = ['PLUS_6'
  * UI nie używa tych liczb; c dobiera backend (`voltage_factor.dobierz_c`).
  */
 export const ETYKIETA_PL_TOLERANCJI_NN: Readonly<Record<TolerancjaNapieciaNn, string>> = {
-  PLUS_6: '+6 % (c_max 1,05; c_min 0,95)',
-  PLUS_10: '+10 % (c_max 1,10; c_min 0,90)',
+  PLUS_6: '+6 % (współczynnik napięciowy maksymalny 1,05; minimalny 0,95)',
+  PLUS_10: '+10 % (współczynnik napięciowy maksymalny 1,10; minimalny 0,90)',
 };
 
 /** Układ uziemienia ekranu kabla (`Cable.screen_bonding`, `CableType.z0_reference_bonding`). */

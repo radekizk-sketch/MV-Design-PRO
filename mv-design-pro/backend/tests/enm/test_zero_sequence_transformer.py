@@ -158,6 +158,21 @@ class TestSequenceConnectionTable:
         assert any("parse" in k for k in keys)
         assert any("conn" in k for k in keys)
 
+    @pytest.mark.parametrize(
+        ("vector_group", "latex_z0"),
+        [("YNd11", r"Z_{0} = "), ("Yy0", r"Z_{0} \rightarrow \infty")],
+    )
+    def test_podstawienie_polaczenia_slowami_wzor_w_latex(self, vector_group, latex_z0):
+        """Droga zerowa istnieje i nie istnieje: podstawienie słowami, wzór w
+        `substitution_latex` (decyzja architekta 2026-11-04)."""
+        trace = build_transformer_zero_seq_model(_mk_transformer(vector_group)).trace
+        krok = next(s for s in trace if "conn" in s["key"])
+        assert "impedancja zerowa" in krok["substitution"]
+        assert "Z0" not in krok["substitution"]
+        assert krok["substitution_latex"].startswith(latex_z0)
+        krok_zt = next(s for s in trace if "_zt[" in s["key"])
+        assert krok_zt["substitution_latex"].startswith(r"Z_{T0} = ")
+
 
 # ---------------------------------------------------------------------------
 # 1b) Audyt fizyki fala F: zakaz fabrykacji Z_N brakującej dla urządzeń

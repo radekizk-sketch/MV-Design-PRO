@@ -727,7 +727,7 @@
     {
       "code": "fault.c_tolerancja_nn_robocza",
       "element_ref": "tr_sn_nn",
-      "message_pl": "Sieć nN (szyny: Szyna nN; zasilanie: transformator TR 15/0.4 (bez deklaracji)): wartość robocza tolerancji +10 % (założenie inżynierskie: IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji +10 %: c_max 1,10, c_min 0,90 (sieć +6 %: c_max 1,05, c_min 0,95)) — żaden element zasilający sieć nN nie deklaruje tolerancji napięcia. Przyjęto klasę +10 % (c_max 1,10, c_min 0,90) — wybór zachowawczy w obu kierunkach: największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1. Wpływ: prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji projektanta; sieć o tolerancji +6 % ma prąd maksymalny mniejszy o 4,5 %, a minimalny większy o 5,6 % — ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności. Ta sama wartość robocza wyznacza maksymalny współczynnik napięciowy we współczynnikach korekcyjnych transformatora i maszyny tej sieci. Zmień wartość: tolerancja napięcia sieci nN na elemencie zasilającym.",
+      "message_pl": "Sieć nN (szyny: Szyna nN; zasilanie: transformator TR 15/0.4 (bez deklaracji)): wartość robocza tolerancji +10 % (założenie inżynierskie: IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji +10 %: współczynnik napięciowy maksymalny 1,10, minimalny 0,90 (sieć +6 %: współczynnik napięciowy maksymalny 1,05, minimalny 0,95)) — żaden element zasilający sieć nN nie deklaruje tolerancji napięcia. Przyjęto klasę +10 % (współczynnik napięciowy maksymalny 1,10, minimalny 0,90) — wybór zachowawczy w obu kierunkach: największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1. Wpływ: prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji projektanta; sieć o tolerancji +6 % ma prąd maksymalny mniejszy o 4,5 %, a minimalny większy o 5,6 % — ocena jest wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem zgodności. Ta sama wartość robocza wyznacza maksymalny współczynnik napięciowy we współczynnikach korekcyjnych transformatora i maszyny tej sieci. Zmień wartość: tolerancja napięcia sieci nN na elemencie zasilającym.",
       "scenariusz": "MAX",
       "parametr": "lv_voltage_tolerance",
       "element_type": "Transformer"
@@ -852,7 +852,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-      "result_hash": "cc548b5dabb3b5b24ffe8dca96e87ab86af58f74ef7f839baa93539a73ebe50e",
+      "result_hash": "a7b1dc52aee733561c782dcefb1e2f1b1fce5cc58669ffeea5104400446202d2",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

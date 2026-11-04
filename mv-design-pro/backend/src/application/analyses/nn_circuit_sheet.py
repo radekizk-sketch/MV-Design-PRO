@@ -618,7 +618,10 @@ def _i2t_dla_kabla(
             "margines_procent": wynik.margin_percent,
             "prad_dopuszczalny_a": wynik.admissible_current_a,
         },
-        "IEC 60949 / IEC 60364-4-43 §434 (I²t<=k²S², check_conductor_thermal_withstand)",
+        (
+            "IEC 60949 / IEC 60364-4-43 §434 (energia zwarcia wobec wytrzymałości cieplnej żyły, "
+            "`check_conductor_thermal_withstand`)"
+        ),
         dane_przyjete,
     )
 

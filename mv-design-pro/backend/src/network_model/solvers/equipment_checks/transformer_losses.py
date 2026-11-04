@@ -46,7 +46,13 @@ from network_model.solvers.equipment_checks.slad import (
 READINESS_TRANSFORMER_LOSS_DATA_MISSING = "transformer.loss_data_missing"
 READINESS_TRANSFORMER_LOADING_FACTOR_MISSING = "transformer.loading_factor_missing"
 
-_FORMULA_REF = "ΔP(β) = P0 + β²·Pk;  β_opt = √(P0/Pk)"
+_FORMULA_REF = (
+    "straty transformatora to straty jałowe plus straty obciążeniowe skalowane kwadratem "
+    "stopnia obciążenia; obciążenie optymalne przy równości obu składników"
+)
+_FORMULA_LATEX = (
+    r"\Delta P(\beta) = P_{0} + \beta^{2} \cdot P_{k};\quad " r"\beta_{opt} = \sqrt{P_{0}/P_{k}}"
+)
 
 
 @dataclass(frozen=True)
@@ -85,6 +91,7 @@ class TransformerLossesResult:
     udzial_strat_jalowych: float | None
     readiness_codes: tuple[str, ...] = ()
     formula_ref: str = _FORMULA_REF
+    formula_latex: str = _FORMULA_LATEX
     white_box_trace: tuple[dict[str, Any], ...] = ()
     assumptions: tuple[str, ...] = ()
 

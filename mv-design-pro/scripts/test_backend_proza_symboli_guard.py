@@ -220,3 +220,112 @@ def test_opis_pola_kontraktu_resultset_wolny_tylko_w_kontrakcie(tmp_path: Path) 
     )
     assert _liczba(tmp_path, guard.PLIK_KONTRAKTU_RESULTSET, tresc) == 1  # tylko `title`
     assert _liczba(tmp_path / "inny", "domain/inny_kontrakt.py", tresc) == 2
+
+
+# --- Druga część klasy: wzór albo podstawienie bez słów (decyzja architekta 2026-11-04) ---
+
+
+@pytest.mark.parametrize(
+    ("tekst", "trafienie"),
+    [
+        ("Z_k = {} + {} = {}", True),  # podstawienie f-stringu
+        ("Ik''={} kA", True),  # bez spacji, ale znak wzoru i miejsce na liczbę
+        ("U0 = {} V; U_b = {} V; U_c = {} V", True),
+        ("{}×In", True),  # znak działania zamiast spacji — zapis dla człowieka
+        ("I_dyn {}%", True),  # miejsce na liczbę jest znakiem wzoru
+        ("I²·t ≤ k²·S²", True),  # symbol z kwadratem Unicode
+        ("Z_loop = Σ(R_i + jX_i)", True),
+        ("Q_inj [MW]", False),  # etykieta bez znaku wzoru
+        ("kV / Ω = kA", False),  # algebra jednostek — bez symbolu wielkości
+        ("A²·s", False),  # jednostka, nie symbol
+        ("S_{2obl} = S_{aparatow} + I_{2n}^2 R_p", False),  # LaTeX — indeks w klamrach
+        ("I_th=I_dop", False),  # bez spacji i bez znaku działania — identyfikator
+        ("Prąd I_th = {} A", False),  # ma słowo — pierwsza część klasy, nie ta
+        ("Prąd zastępczy cieplny = {} A", False),  # słowa, bez symbolu
+    ],
+)
+def test_wykrycie_wzoru_bez_slow(tekst: str, trafienie: bool) -> None:
+    assert guard.jest_wzorem_bez_slow(tekst) is trafienie
+
+
+def test_obie_czesci_klasy_rozlaczne_i_laczone_w_trafieniu() -> None:
+    """Para predykatów: proza z symbolem i wzór bez słów nie nakładają się, `jest_trafieniem`
+    łączy obie — tekst trafia dokładnie jednym predykatem."""
+    proza, wzor = "Prąd I_th = {} A", "I_th = {} A"
+    assert guard.jest_proza_z_symbolem(proza) and not guard.jest_wzorem_bez_slow(proza)
+    assert guard.jest_wzorem_bez_slow(wzor) and not guard.jest_proza_z_symbolem(wzor)
+    assert guard.jest_trafieniem(proza) and guard.jest_trafieniem(wzor)
+    assert not guard.jest_trafieniem("Prąd zastępczy cieplny jest za duży")
+
+
+@pytest.mark.parametrize(
+    ("tekst", "trafienie"),
+    [
+        ("Energia cieplna zwarcia I²t", True),
+        ("Wytrzymałość cieplna przewodu k²S²", True),
+        ("Straty przy obciążeniu β² razy straty zwarcia", True),
+        ("Przekrój żyły 120 mm²", False),  # jednostka z przedrostkiem słownym
+        ("Energia zwarcia 5 A²·s", False),  # jednostka amper do kwadratu
+    ],
+)
+def test_symbol_z_kwadratem_unicode(tekst: str, trafienie: bool) -> None:
+    assert guard.jest_proza_z_symbolem(tekst) is trafienie
+
+
+@pytest.mark.parametrize(
+    ("tresc", "oczekiwane"),
+    [
+        # Reguła 10 — zmienna idzie do pola LaTeX: argument nazwany, klucz słownika,
+        # przypisanie do klucza `*_latex`, element krotki zwracanej przez funkcję modułu.
+        ('def f(a):\n    w = "U_b = {} V"\n    return E(substitution_latex=w)\n', 0),
+        ('def f(a):\n    w = "U_b = {} V"\n    return {"result_latex": w}\n', 0),
+        ('def f(a):\n    w = "U_b = {} V"\n    k = {}\n    k["substitution_latex"] = w\n', 0),
+        (
+            'def g():\n    return "U_b = {} V", 1\n'
+            "def f():\n    w, n = g()\n    return E(formula_latex=w)\n",
+            0,
+        ),
+        # Para: ta sama wartość, która do pola LaTeX nie idzie, jest liczona.
+        ('def f(a):\n    w = "U_b = {} V"\n    return E(substitution=w)\n', 1),
+        ('def f(a):\n    w = "U_b = {} V"\n    k = {}\n    k["substitution"] = w\n', 1),
+        (
+            'def g():\n    return "U_b = {} V", 1\n'
+            "def f():\n    w, n = g()\n    return E(formula=w)\n",
+            1,
+        ),
+        # Zmienna o tej samej nazwie w INNEJ funkcji nie dziedziczy wolności.
+        (
+            'def f():\n    w = "U_b = {} V"\n    return E(formula_latex=w)\n'
+            'def h():\n    w = "U_c = {} V"\n    return E(substitution=w)\n',
+            1,
+        ),
+    ],
+)
+def test_regula_10_przeplyw_do_pola_latex(tmp_path: Path, tresc: str, oczekiwane: int) -> None:
+    assert _liczba(tmp_path, "application/x.py", tresc) == oczekiwane
+
+
+def test_main_wstrzykniety_wzor_bez_slow_czerwieni(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Iniekcja drugiej części klasy: samo podstawienie w polu prozy czerwieni przy pustym
+    pinie; naprawa (słowa w prozie, wzór w `substitution_latex`) wraca do zieleni."""
+    src = _drzewo(tmp_path, {"modul/a.py": 'K = {"substitution": "U0 = 1 V; U_b = 2 V"}\n'})
+    pin = tmp_path / "pin.json"
+    pin.write_text(json.dumps({}), encoding="utf-8")
+    monkeypatch.setattr(guard, "SRC", src)
+    monkeypatch.setattr(guard, "PIN_PLIK", pin)
+    assert guard.main([]) == 1
+    (src / "modul/a.py").write_text(
+        'K = {"substitution": "napięcie składowej zerowej 1 V", '
+        '"substitution_latex": "U_0 = 1\\\\ \\\\mathrm{V}"}\n',
+        encoding="utf-8",
+    )
+    assert guard.main([]) == 0
+
+
+def test_pin_zywego_drzewa_pusty() -> None:
+    """Po domknięciu klasy (decyzja architekta 2026-11-04) pin jest pusty: każdy plik
+    `backend/src` ma zero trafień, nowy tekst z symbolem albo wzór bez słów czerwieni."""
+    assert guard.wczytaj_pin() == {}
+    assert guard.zmierz() == {}

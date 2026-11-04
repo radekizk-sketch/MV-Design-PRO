@@ -175,12 +175,23 @@ def _context(run: CanonicalRun) -> dict[str, Any]:
     return zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=True)
 
 
-def _step(symbol: str, formula_latex: str, substitution_pl: str, result_pl: str) -> dict[str, str]:
+def _step(
+    symbol: str,
+    formula_latex: str,
+    substitution_pl: str,
+    result_pl: str,
+    *,
+    substitution_latex: str,
+    result_latex: str,
+) -> dict[str, str]:
+    """Krok śladu: proza słowami (`*_pl`) i ten sam zapis jako wzór (`*_latex`)."""
     return {
         "symbol": symbol,
         "formula_latex": formula_latex,
         "substitution_pl": substitution_pl,
+        "substitution_latex": substitution_latex,
         "result_pl": result_pl,
+        "result_latex": result_latex,
     }
 
 
@@ -237,8 +248,14 @@ def _module_view(
         _step(
             "P_st,i",
             r"P_{st,i} = c_i \cdot \dfrac{S_{n,i}}{S_{k}''}",
-            f"P_st_i = {flicker_c:g} · {sn_mva:g} / {sk_mva:g} MVA",
-            f"P_st_i = {pst_i}",
+            f"współczynnik migotania {flicker_c:g} razy moc znamionowa modułu {sn_mva:g} MVA "
+            f"przez moc zwarciową {sk_mva:g} MVA",
+            f"Wkład modułu do wskaźnika krótkotrwałego migotania: {pst_i}",
+            substitution_latex=(
+                rf"P_{{st,i}} = {flicker_c:g} \cdot \dfrac{{{sn_mva:g}\ \mathrm{{MVA}}}}"
+                rf"{{{sk_mva:g}\ \mathrm{{MVA}}}}"
+            ),
+            result_latex=rf"P_{{st,i}} = {pst_i}",
         )
     ]
     return (
@@ -309,13 +326,16 @@ def _bus_entry(
         summed = sum(value**m for value in pst_contribs)
         pst = _r(summed ** (1.0 / m))
         plt = pst
-        terms = " + ".join(f"{value:g}^{m}" for value in pst_contribs)
+        terms = " + ".join(f"{value:g}^{{{m}}}" for value in pst_contribs)
+        wklady_pl = ", ".join(f"{value:g}" for value in pst_contribs)
         white_box.append(
             _step(
                 "P_st",
                 r"P_{st} = \left( \sum_i P_{st,i}^{\,m} \right)^{1/m}, \quad m = 3",
-                f"P_st = ({terms})^(1/{m})",
-                f"P_st = {pst}",
+                f"pierwiastek stopnia {m} z sumy potęg stopnia {m} wkładów modułów ({wklady_pl})",
+                f"Wskaźnik krótkotrwałego migotania: {pst}",
+                substitution_latex=rf"P_{{st}} = \left( {terms} \right)^{{1/{m}}}",
+                result_latex=rf"P_{{st}} = {pst}",
             )
         )
         white_box.append(
@@ -324,7 +344,9 @@ def _bus_entry(
                 r"P_{lt} = P_{st}",
                 f"Wskaźnik długotrwałego migotania równy krótkotrwałemu: {pst} (emisja ciągła, "
                 "założenie konserwatywne)",
-                f"P_lt = {plt}",
+                f"Wskaźnik długotrwałego migotania: {plt}",
+                substitution_latex=rf"P_{{lt}} = P_{{st}} = {pst}",
+                result_latex=rf"P_{{lt}} = {plt}",
             )
         )
     else:
@@ -339,8 +361,14 @@ def _bus_entry(
             _step(
                 "d",
                 r"d = k_{max} \cdot \dfrac{S_{n}}{S_{k}''} \cdot 100\%",
-                f"d = {RVC_KMAX:g} · {sn_total:g} / {sk_mva:g} · 100 %",
-                f"d = {d_percent} %",
+                f"współczynnik {RVC_KMAX:g} razy moc znamionowa modułów {sn_total:g} MVA przez "
+                f"moc zwarciową {sk_mva:g} MVA, w procentach",
+                f"Szybka zmiana napięcia: {d_percent} %",
+                substitution_latex=(
+                    rf"d = {RVC_KMAX:g} \cdot \dfrac{{{sn_total:g}\ \mathrm{{MVA}}}}"
+                    rf"{{{sk_mva:g}\ \mathrm{{MVA}}}} \cdot 100\%"
+                ),
+                result_latex=rf"d = {d_percent}\%",
             )
         )
     else:

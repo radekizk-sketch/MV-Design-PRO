@@ -18,7 +18,10 @@ export interface ShuntCompensatorPreviewResponse {
   reactive_power_var: number;
   susceptance_siemens: number;
   rated_current_a: number;
+  /** Opis wzoru słowami. */
   formula_ref: string;
+  /** Wzór w zapisie LaTeX (`MathRenderer`). */
+  formula_latex: string;
 }
 
 export async function fetchShuntCompensatorPreview(

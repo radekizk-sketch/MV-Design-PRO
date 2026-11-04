@@ -707,7 +707,10 @@ def _kroki_tt_it(data: LVCircuitVerificationInput, fl: FaultLoopResult) -> list[
         "EQ_LVCV_009",
         r"U_{dotyk} = R_A \cdot I_{\Delta n} \le U_L",
         "Napięcie dotykowe przy uziomie instalacji (TT/IT) wobec limitu normy",
-        "IEC 60364-4-41 §411.5.3 (TT: R_A·I_Δn) / §411.6.2 (IT: R_A·I_d)",
+        (
+            "IEC 60364-4-41 §411.5.3 (TT: rezystancja uziomu razy znamionowy prąd różnicowy) / "
+            "§411.6.2 (IT: rezystancja uziomu razy prąd pierwszego doziemienia)"
+        ),
         [
             _sym("U_{dotyk}", "V", "Napięcie dotykowe na uziomie instalacji", "u_dotyk_v"),
             _sym("R_A", "Ω", "Rezystancja uziomu instalacji odbiorczej", "r_a_ohm"),
@@ -944,7 +947,10 @@ class LVCircuitVerificationProofPack:
         i2_zrodlo: str
         if data.urzadzenie.kind == KIND_MCB:
             i2_a = PROG_CIEPLNY_WYZWALA_X_IN * in_a
-            i2_zrodlo = f"{PROG_CIEPLNY_WYZWALA_X_IN:g}×In (MCB, IEC 60898-1)"
+            i2_zrodlo = (
+                f"prąd zadziałania {PROG_CIEPLNY_WYZWALA_X_IN:g}-krotność prądu znamionowego "
+                "wyłącznika (MCB, IEC 60898-1)"
+            )
         elif data.urzadzenie.kind == KIND_FUSE_SWITCH:
             i2_a = FUSE_GG_IF_MULTIPLIER * in_a
             i2_zrodlo = (
@@ -1100,7 +1106,7 @@ class LVCircuitVerificationProofPack:
             ProofStep(
                 step_id=ProofStep.generate_step_id("LVCV", 7),
                 step_number=7,
-                title_pl="Wytrzymałość cieplna przewodu I²t ≤ k²S²",
+                title_pl="Wytrzymałość cieplna przewodu (energia zwarcia wobec wytrzymałości żyły)",
                 equation=eq7,
                 input_values=(
                     _pv(

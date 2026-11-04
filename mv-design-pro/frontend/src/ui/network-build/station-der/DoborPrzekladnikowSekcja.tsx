@@ -54,6 +54,9 @@ export interface KryteriumDoboru {
   readonly werdykt: WerdyktKryterium;
   readonly wymagane: string | null;
   readonly dostepne: string | null;
+  /** Zapis LaTeX wartości wymaganej/dostępnej — tylko gdy wartość jest wzorem (addytywne). */
+  readonly wymagane_latex?: string;
+  readonly dostepne_latex?: string;
   readonly komentarz_pl: string | null;
   /** Karta W3-B — addytywne, puste dla kryteriów bez własnego jądra. */
   readonly kody_gotowosci: readonly string[];
@@ -248,7 +251,8 @@ function Gniazdo({
             </div>
             {(kryterium.wymagane !== null || kryterium.dostepne !== null) && (
               <p className="text-xs text-scada-muted" data-testid={`kryterium-rachunek-${kryterium.kod}`}>
-                wymagane: {kryterium.wymagane ?? '—'} · dostępne: {kryterium.dostepne ?? '—'}
+                wymagane: <WartoscRachunku proza={kryterium.wymagane} latex={kryterium.wymagane_latex} />
+                {' · '}dostępne: <WartoscRachunku proza={kryterium.dostepne} latex={kryterium.dostepne_latex} />
               </p>
             )}
             <p className="text-xs text-scada-muted">{kryterium.podstawa_pl}</p>
@@ -306,6 +310,21 @@ function Gniazdo({
       </ul>
     </article>
   );
+}
+
+/**
+ * Wartość rachunku kryterium: wzór z pola `*_latex` przez `MathInline`, gdy backend go podał
+ * (proza słowami zostaje opisem w `title`), inaczej proza; brak wartości — kreska.
+ */
+function WartoscRachunku({ proza, latex }: { proza: string | null; latex?: string }) {
+  if (latex !== undefined) {
+    return (
+      <span title={proza ?? undefined}>
+        <MathInline latex={latex} />
+      </span>
+    );
+  }
+  return <>{proza ?? '—'}</>;
 }
 
 export interface DoborPrzekladnikowSekcjaProps {

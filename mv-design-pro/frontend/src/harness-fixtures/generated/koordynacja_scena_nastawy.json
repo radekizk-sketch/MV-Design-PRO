@@ -75,7 +75,8 @@
             "I_setting_A": 27.6
           },
           "passed": true,
-          "requirement": "k_cz >= 1.5",
+          "requirement": "współczynnik czułości nie mniejszy od 1,5",
+          "requirement_latex": "k_{cz} \\geq 1{,}5",
           "result": {
             "sensitivity_ratio": 244.19
           },

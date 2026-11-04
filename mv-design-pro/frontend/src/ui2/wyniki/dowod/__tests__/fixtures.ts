@@ -101,7 +101,8 @@ export function traceStepsSurowyKsztaltFixture() {
         fault_node_id: 'C',
         ik_thevenin_a: 5611.281490619905,
       },
-      substitution: 'i_inj[2] = -1 (pu)',
+      substitution: 'wymuszenie jednostkowe w węźle zwarcia (indeks 2) równe minus jeden w jednostkach względnych',
+      substitution_latex: '\\underline{i}_{inj,2} = -1',
       result: {
         z1_ohm: { re: 0.0821, im: 0.7734 },
       },

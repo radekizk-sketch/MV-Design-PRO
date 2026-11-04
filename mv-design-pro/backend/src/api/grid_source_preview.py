@@ -639,6 +639,7 @@ class ShuntCompensatorPreviewResponse(BaseModel):
     susceptance_siemens: float
     rated_current_a: float
     formula_ref: str
+    formula_latex: str
 
 
 @router.post(
@@ -662,6 +663,7 @@ def preview_shunt_compensator(
         susceptance_siemens=result.susceptance_siemens,
         rated_current_a=result.rated_current_a,
         formula_ref=result.formula_ref,
+        formula_latex=result.formula_latex,
     )
 
 

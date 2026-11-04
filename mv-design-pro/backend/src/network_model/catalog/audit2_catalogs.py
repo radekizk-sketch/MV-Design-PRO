@@ -1317,9 +1317,9 @@ def ocen_wytrzymalosc_aparatu(
     elif braki:
         zaliczone = []
         if i_dyn_ok is True and util_dyn is not None:
-            zaliczone.append(f"I_dyn {util_dyn:.0f}%")
+            zaliczone.append(f"wykorzystanie wytrzymałości dynamicznej {util_dyn:.0f}%")
         if i_th_ok is True and util_th is not None:
-            zaliczone.append(f"I_th {util_th:.0f}%")
+            zaliczone.append(f"wykorzystanie wytrzymałości cieplnej {util_th:.0f}%")
         czesc_zaliczona = f" Sprawdzone: {', '.join(zaliczone)}." if zaliczone else ""
         message = (
             f"NIEUSTALONE: aparatura „{etykieta_pl}” — brak {', '.join(braki)}."

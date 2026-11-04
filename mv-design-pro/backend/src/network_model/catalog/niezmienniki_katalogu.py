@@ -1312,7 +1312,11 @@ def _sprawdz_kat_w_001(pozycja: Any) -> _WynikReguly:
     if r0 is None or r1 is None:
         return _NIEPOLICZONA
     if r0 * LUZ_POROWNANIA < r1:
-        return _odstepstwo("KAT-W-001", pozycja, f"R0 = {r0} Ω/km, R1 = {r1} Ω/km")
+        return _odstepstwo(
+            "KAT-W-001",
+            pozycja,
+            (f"rezystancja składowej zerowej {r0} Ω/km, rezystancja składowej zgodnej {r1} Ω/km"),
+        )
     return _WynikReguly(policzona=True)
 
 
@@ -1323,7 +1327,9 @@ def _sprawdz_kat_w_002(pozycja: Any) -> _WynikReguly:
     if p0 is None or pk is None:
         return _NIEPOLICZONA
     if p0 >= pk:
-        return _odstepstwo("KAT-W-002", pozycja, f"P0 = {p0} kW, Pk = {pk} kW")
+        return _odstepstwo(
+            "KAT-W-002", pozycja, f"straty jałowe {p0} kW, straty obciążeniowe {pk} kW"
+        )
     return _WynikReguly(policzona=True)
 
 
@@ -1345,7 +1351,11 @@ def _sprawdz_kat_w_003(pozycja: Any) -> _WynikReguly:
     if icw is None or icu is None or icu <= 0.0:
         return _NIEPOLICZONA
     if icw > icu * LUZ_POROWNANIA:
-        return _odstepstwo("KAT-W-003", pozycja, f"Icw (I_th) = {icw} kA, Icu = {icu} kA")
+        return _odstepstwo(
+            "KAT-W-003",
+            pozycja,
+            (f"prąd krótkotrwały wytrzymywany {icw} kA, zdolność wyłączania {icu} kA"),
+        )
     return _WynikReguly(policzona=True)
 
 
@@ -1356,20 +1366,27 @@ def _sprawdz_kat_w_004(pozycja: Any) -> _WynikReguly:
     if icw is None or icu is None or icu <= 0.0:
         return _NIEPOLICZONA
     if icw > icu * LUZ_POROWNANIA:
-        return _odstepstwo("KAT-W-004", pozycja, f"Icw = {icw} kA, Icu = {icu} kA")
+        return _odstepstwo(
+            "KAT-W-004",
+            pozycja,
+            (f"prąd krótkotrwały wytrzymywany {icw} kA, zdolność wyłączania {icu} kA"),
+        )
     return _WynikReguly(policzona=True)
 
 
 def _sprawdz_kat_w_005(pozycja: Any) -> _WynikReguly:
     """0 < R/X < 1 umowy rownowaznej sieci — oba warianty (maksymalny i minimalny)."""
     policzona = False
-    for nazwa_pola, etykieta in (("rx_ratio", "R/X"), ("rx_ratio_min", "R/X (min)")):
+    for nazwa_pola, etykieta in (
+        ("rx_ratio", "stosunek rezystancji do reaktancji"),
+        ("rx_ratio_min", "stosunek rezystancji do reaktancji (wariant minimalny)"),
+    ):
         rx = _pomiar(pozycja, nazwa_pola)
         if rx is None:
             continue
         policzona = True
         if not 0.0 < rx < 1.0:
-            return _odstepstwo("KAT-W-005", pozycja, f"{etykieta} = {rx}")
+            return _odstepstwo("KAT-W-005", pozycja, f"{etykieta} {rx}")
     return _WynikReguly(policzona=policzona)
 
 
@@ -1379,7 +1396,7 @@ def _sprawdz_kat_w_006(pozycja: Any) -> _WynikReguly:
     if i0 is None:
         return _NIEPOLICZONA
     if not 0.0 < i0 < 10.0:
-        return _odstepstwo("KAT-W-006", pozycja, f"i0 = {i0} %")
+        return _odstepstwo("KAT-W-006", pozycja, f"prąd stanu jałowego {i0} %")
     return _WynikReguly(policzona=True)
 
 

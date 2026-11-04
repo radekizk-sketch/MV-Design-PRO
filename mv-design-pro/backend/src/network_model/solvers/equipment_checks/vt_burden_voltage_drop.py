@@ -73,7 +73,15 @@ ETYKIETA_KATEGORII_PL: dict[str, str] = {
 _KLASY_POMIAROWE = frozenset({"0.1", "0.2", "0.2S", "0.5", "0.5S", "1.0", "1", "3"})
 _KLASY_ZABEZPIECZENIOWE = frozenset({"3P", "6P"})
 
-_FORMULA_REF = "S2obl = S_aparatow + S_stykow;  I2 = S2obl/U2n;  ΔU% = I2·Rp/U2n·100"
+_FORMULA_REF = (
+    "IEC 61869-3: obciążenie obwodu wtórnego to suma mocy aparatów i styków; prąd wtórny "
+    "z obciążenia i napięcia znamionowego; zmiana napięcia to spadek na przewodach "
+    "w procentach napięcia znamionowego"
+)
+_FORMULA_LATEX = (
+    r"S_{2,obl} = S_{aparatow} + S_{stykow};\quad I_{2} = S_{2,obl}/U_{2n};\quad "
+    r"\Delta U\% = \frac{I_{2} \cdot R_{p}}{U_{2n}} \cdot 100"
+)
 
 
 def kategoria_z_klasy(accuracy_class: str | None) -> str | None:
@@ -147,6 +155,7 @@ class VtBurdenResult:
     kategoria_uzwojenia: str | None
     readiness_codes: tuple[str, ...] = ()
     formula_ref: str = _FORMULA_REF
+    formula_latex: str = _FORMULA_LATEX
     white_box_trace: tuple[dict[str, Any], ...] = ()
     assumptions: tuple[str, ...] = ()
 

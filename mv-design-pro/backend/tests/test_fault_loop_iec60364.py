@@ -209,10 +209,11 @@ class TestWhiteBoxTrace:
         result = compute_fault_loop(_make_typical_tn_s_input())
         sum_step = next(t for t in result.white_box_trace if t["step"] == "sum_components")
         ik_step = next(t for t in result.white_box_trace if t["step"] == "compute_ik")
-        assert "method" in sum_step
-        assert "Σ" in sum_step["method"]
-        assert "method" in ik_step
-        assert "c * U_n" in ik_step["method"]
+        # Proza metody słowami, wzór w `method_latex` (decyzja architekta 2026-11-04).
+        assert sum_step["method"].startswith("impedancja pętli zwarciowej jako zespolona suma")
+        assert sum_step["method_latex"] == r"Z_{loop} = \sum_{i} (R_{i} + jX_{i})"
+        assert ik_step["method"].startswith("prąd zwarcia pętli jako współczynnik napięciowy")
+        assert ik_step["method_latex"] == r"I_{k} = \frac{c \cdot U_{n}}{|Z_{loop}|}"
 
     def test_trace_audytowalne(self) -> None:
         """Trace zawiera wszystkie komponenty + c_factors + Z + Ik."""
