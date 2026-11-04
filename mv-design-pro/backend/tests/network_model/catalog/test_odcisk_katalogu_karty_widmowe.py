@@ -206,6 +206,12 @@ PRAD_Z_NUMERU_MODELU_ETANGO: dict[str, float] = {
 #: ``ODCISK_PO_ETANGO_NUMER_MODELU``; 0 zmienionych pozycji istniejących.
 ODCISK_PO_ETANGO_250_450 = "4e04f36cecf4a1e06c55b6c6e38023f28f44dee606fbd4302d1ec561b79c11ed"
 POZYCJE_ETANGO_250_450 = ("EM_E2TANGO_250", "EM_E2TANGO_450")
+#: Karta KATALOG-PRZEJECIE-PR, poz. 3 (2026-11-04): i0 24 pozycji NORMATYWNYCH olejowych
+#: 15|20/0,4 kV z katalogu BEZ ecoFIT² 2025 s. 5 (315/500 kVA: karty EG System). Dowód liść
+#: po liściu w teście niżej: w DOKŁADNIE tych 24 pozycjach różnią się wyłącznie liście
+#: ``i0_percent`` (null → wartość), ``source_reference`` i ``verification_note`` (dopisane
+#: źródło i0); przywrócenie dawnych liści daje ``ODCISK_PO_ETANGO_250_450``.
+ODCISK_PO_I0_OLEJOWYCH = "4776a67e7f55b02a7c8b58d2566f6394ec8e6eb4809444102d18861b337172f9"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -227,6 +233,32 @@ def _przywroc_prad_z_numeru_modelu_etango(zrzut: dict[str, object]) -> None:
         postac = zrzut["protection_device_types"][identyfikator]  # type: ignore[index]
         assert postac["rated_current_a"] is None, identyfikator
         postac["rated_current_a"] = dawny
+
+
+def _cofnij_i0_olejowych(zrzut: dict[str, object]) -> int:
+    """Cofa poz. 3 karty KATALOG-PRZEJECIE-PR (i0 pozycji normatywnych olejowych)."""
+    from network_model.catalog import mv_transformer_catalog as tr
+
+    cofniete = 0
+    for rekord in tr.TRANSFORMER_SN_NN_04_TIER2:
+        params = rekord["params"]
+        if tr.rodzaj_izolacji_transformatora(params["cooling_class"]) != tr.RODZAJ_OLEJOWY:
+            continue
+        moc_kva = round(params["rated_power_mva"] * 1000)
+        postac = zrzut["transformer_types"][rekord["id"]]  # type: ignore[index]
+        assert postac["i0_percent"] == tr.I0_OLEJOWE_REFERENCYJNE_PROC[moc_kva]
+        postac["i0_percent"] = None
+        postac["source_reference"] = f"{tr.ZRODLO_TIER2} || u_k, i0, zaczepy: {tr.ZRODLO_GEAFOL_UK}"
+        nota = postac["verification_note"]
+        poczatek = nota.index(", i0 = ")
+        koniec = nota.index(". Dla HV 15 kV")
+        postac["verification_note"] = (
+            nota[:poczatek]
+            + ", i0 — brak źródła dla transformatora olejowego (pole puste)"
+            + nota[koniec:]
+        )
+        cofniete += 1
+    return cofniete
 
 
 def _odcisk_zrzutu(zrzut: dict[str, object]) -> str:
@@ -291,6 +323,8 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_I0_OLEJOWYCH
+    assert _cofnij_i0_olejowych(zrzut) == 24
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_ETANGO_250_450
     for identyfikator in POZYCJE_ETANGO_250_450:
         zrzut["protection_device_types"].pop(identyfikator)  # type: ignore[attr-defined]
